@@ -10,9 +10,10 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Boxes, Plus, CheckCircle, ArrowUp, Layers, Rocket, Layout, ShoppingCart,
-  Briefcase, UserCircle, Star, TrendingUp, AlertTriangle,
+  Briefcase, UserCircle, Star, TrendingUp, AlertTriangle, Loader2,
 } from 'lucide-react';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
+import { useLensDraft } from '@/hooks/useLensDraft';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -35,6 +36,13 @@ const TEMPLATES = [
   { id: 'booking', name: 'Service Booking', icon: Layout, description: 'Appointment scheduling with calendar integration and client management' },
 ];
 
+// Real promotion-stage progress (draft -> published -> marketplace -> global),
+// the only genuinely app-specific "maturity" signal this lens tracks. The
+// prior "Avg Maturity" stat compared `version !== '0.0.1'`, but no app ever
+// gets created with version '0.0.1' (the default is always '1.0.0'), so it
+// was a dead check that silently always read 100%.
+const STAGE_PROGRESS: Record<string, number> = { draft: 0, published: 1, marketplace: 2, global: 3 };
+
 export function AppsPanel() {
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('app-maker');
   const newNameInputRef = useRef<HTMLInputElement>(null);
@@ -48,7 +56,14 @@ export function AppsPanel() {
   const [selectedTemplate, setSelectedTemplate] = useState('crm');
   const [appSearch, setAppSearch] = useState('');
   const [appStatusFilter, setAppStatusFilter] = useState<string>('all');
-  const [appBuildName, setAppBuildName] = useState('');
+  // F8: this field used to live in plain useState and vanished silently when
+  // the lens switched views (this panel unmounts). Route it through the
+  // standing lens-draft substrate instead — the same idiom other lenses use
+  // for the same shape of bug — and `clear()` it once the name has graduated
+  // into a real deployed app (handleDeploy, below).
+  const appBuildNameDraft = useLensDraft<string>('app-maker', 'build-app-name', { initial: '' });
+  const appBuildName = appBuildNameDraft.value;
+  const setAppBuildName = appBuildNameDraft.setValue;
   const [deploying, setDeploying] = useState(false);
   const [deployStatus, setDeployStatus] = useState<'idle' | 'deploying' | 'deployed'>('idle');
 
@@ -115,13 +130,22 @@ export function AppsPanel() {
   };
 
   const validateApp = async (id: string) => {
+    // F11: the previous blocking window.alert() produced no on-page, inspectable
+    // feedback — a dead-feeling control. Route the same real validation result
+    // through the panel's own toast idiom (already used for the error branch
+    // just below) so every outcome — pass, violations, or request failure —
+    // leaves a visible, consistent trace.
     try {
       const resp = await apiHelpers.apps.validate(id);
       const data = resp.data;
       if (data.valid) {
-        alert('App is valid — all invariants pass.');
+        useUIStore.getState().addToast({ type: 'success', message: 'App is valid — all invariants pass.' });
       } else {
-        alert(`Violations:\n${(data.violations || []).join('\n')}`);
+        const violations = data.violations || [];
+        useUIStore.getState().addToast({
+          type: 'warning',
+          message: violations.length > 0 ? `Validation failed: ${violations.join('; ')}` : 'Validation failed.',
+        });
       }
     } catch (e) {
       console.error('[AppMaker] Failed to validate app:', e);
@@ -144,7 +168,7 @@ export function AppsPanel() {
         ui: { lens: 'custom', layout: 'dashboard', panels: [] },
       });
       setDeployStatus('deployed');
-      setAppBuildName('');
+      await appBuildNameDraft.clear();
       await loadApps();
     } catch {
       setDeployStatus('idle');
@@ -183,8 +207,8 @@ export function AppsPanel() {
         <div className="panel p-3 flex items-center gap-3">
           <TrendingUp className="w-5 h-5 text-green-400" />
           <div>
-            <p className="text-lg font-bold">{apps.length > 0 ? ((apps.filter((a) => a.version !== '0.0.1').length / apps.length) * 100).toFixed(0) + '%' : '0%'}</p>
-            <p className="text-xs text-gray-400">Avg Maturity</p>
+            <p className="text-lg font-bold">{apps.length > 0 ? Math.round((apps.reduce((sum, a) => sum + (STAGE_PROGRESS[a.status] ?? 0), 0) / (apps.length * 3)) * 100) + '%' : '0%'}</p>
+            <p className="text-xs text-gray-400" title="Average promotion-stage progress across all apps: draft=0%, published=33%, marketplace=66%, global=100%">Avg Promotion Progress</p>
           </div>
         </div>
       </div>
@@ -329,18 +353,29 @@ export function AppsPanel() {
           Build Your App
         </h2>
         <p className="text-sm text-gray-400">
-          Choose a template, name your app, and deploy it directly into the Lattice ecosystem.
+          Choose a template and name your app to create it as a new draft in the Lattice ecosystem.
         </p>
 
         <div className="space-y-2">
           <label className="text-xs text-gray-400 uppercase tracking-wider">App Name</label>
-          <input
-            type="text"
-            value={appBuildName}
-            onChange={(e) => setAppBuildName(e.target.value)}
-            placeholder="Enter your app name..."
-            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={appBuildName}
+              onChange={(e) => setAppBuildName(e.target.value)}
+              placeholder="Enter your app name..."
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 pr-9 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors"
+              aria-describedby="app-maker-build-app-name-status"
+            />
+            <div
+              id="app-maker-build-app-name-status"
+              className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-1 pointer-events-none"
+              aria-live="polite"
+            >
+              {appBuildNameDraft.status === 'saving' && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" aria-hidden="true" />}
+              {appBuildNameDraft.status === 'saved' && <CheckCircle className="w-3 h-3 text-neon-green/70" aria-hidden="true" />}
+            </div>
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -410,17 +445,17 @@ export function AppsPanel() {
           {deployStatus === 'deploying' ? (
             <>
               <div className="w-4 h-4 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
-              Deploying...
+              Creating...
             </>
           ) : deployStatus === 'deployed' ? (
             <>
               <CheckCircle className="w-4 h-4" />
-              Deployed Successfully!
+              App Created!
             </>
           ) : (
             <>
               <Rocket className="w-4 h-4" />
-              Deploy App
+              Create App
             </>
           )}
         </button>

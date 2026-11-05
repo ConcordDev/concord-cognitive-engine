@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import React from 'react';
 
 const appsList = vi.fn();
@@ -44,6 +44,7 @@ const APP_A = { id: 'app_a', name: 'Alpha CRM', status: 'draft', author: 'u1', v
 const APP_B = { id: 'app_b', name: 'Beta Store', status: 'published', author: 'u1', version: '1.2.0', createdAt: '2026-06-28' };
 
 beforeEach(() => {
+  window.localStorage.clear();
   appsList.mockReset();
   appsCreate.mockReset();
   appsPromote.mockReset();
@@ -64,6 +65,18 @@ describe('AppsPanel', () => {
     expect(screen.getByText('2')).toBeInTheDocument(); // Total Apps stat
     expect(screen.getByText('draft')).toBeInTheDocument();
     expect(screen.getByText('published')).toBeInTheDocument();
+  });
+
+  it('"Avg Promotion Progress" reflects real promotion stage, not a dead version check', async () => {
+    // APP_A is draft (progress 0), APP_B is published (progress 1 of 3) ->
+    // (0 + 1) / (2 apps * 3 max stages) = 16.67% -> rounds to 17%. This
+    // replaces the old "Avg Maturity" stat, which compared `version !==
+    // '0.0.1'` against a default version ('1.0.0') that's never '0.0.1',
+    // so it always read 100% regardless of any app's real state.
+    render(<AppsPanel />);
+    await waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
+    expect(screen.getByText('17%')).toBeInTheDocument();
+    expect(screen.getByText(/Avg Promotion Progress/i)).toBeInTheDocument();
   });
 
   it('creates a new app with the real primitive/UI shape and reloads the list', async () => {
@@ -92,24 +105,26 @@ describe('AppsPanel', () => {
     expect(screen.getByRole('button', { name: /^Create$/i })).toBeDisabled();
   });
 
-  it('validate reports a valid app via a real alert with the invariant-pass message', async () => {
+  it('validate reports a valid app via a toast with the invariant-pass message (F11)', async () => {
     appsValidate.mockResolvedValue({ data: { valid: true } });
     render(<AppsPanel />);
     await waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
 
     fireEvent.click(screen.getAllByTitle('Validate')[0]);
     await waitFor(() => expect(appsValidate).toHaveBeenCalledWith('app_a'));
-    await waitFor(() => expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('all invariants pass')));
+    await waitFor(() =>
+      expect(addToastMock).toHaveBeenCalledWith({ type: 'success', message: expect.stringContaining('all invariants pass') }),
+    );
   });
 
-  it('validate reports real violations when the app is invalid', async () => {
+  it('validate reports real violations via a toast when the app is invalid (F11)', async () => {
     appsValidate.mockResolvedValue({ data: { valid: false, violations: ['missing schema', 'no execution macros'] } });
     render(<AppsPanel />);
     await waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
 
     fireEvent.click(screen.getAllByTitle('Validate')[0]);
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('missing schema')),
+      expect(addToastMock).toHaveBeenCalledWith({ type: 'warning', message: expect.stringContaining('missing schema') }),
     );
   });
 
@@ -162,13 +177,13 @@ describe('AppsPanel', () => {
     await waitFor(() => expect(screen.getByText(/No apps match the current filters/i)).toBeInTheDocument());
   });
 
-  it('Build Your App: picking a template and deploying calls create() with that template and shows a success state', async () => {
+  it('Build Your App: picking a template and creating calls create() with that template and shows a success state', async () => {
     render(<AppsPanel />);
     await waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
 
     fireEvent.click(screen.getByText('E-Commerce'));
     fireEvent.change(screen.getByPlaceholderText('Enter your app name...'), { target: { value: 'My Shop' } });
-    fireEvent.click(screen.getByRole('button', { name: /Deploy App/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Create App/i }));
 
     await waitFor(() =>
       expect(appsCreate).toHaveBeenCalledWith(
@@ -178,12 +193,36 @@ describe('AppsPanel', () => {
         }),
       ),
     );
-    await waitFor(() => expect(screen.getByText(/Deployed Successfully!/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/App Created!/i)).toBeInTheDocument());
   });
 
-  it('Deploy App button is disabled until a build name is entered', async () => {
+  it('Create App button is disabled until a build name is entered', async () => {
     render(<AppsPanel />);
     await waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: /Deploy App/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Create App/i })).toBeDisabled();
+  });
+
+  it('F8: an unsent build-app name survives a full unmount/remount (view switch), not just local state', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { unmount } = render(<AppsPanel />);
+      await vi.waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
+
+      fireEvent.change(screen.getByPlaceholderText('Enter your app name...'), { target: { value: 'Draft Name' } });
+      // Let the draft hook's debounced local-mirror write land (default 1500ms).
+      await vi.advanceTimersByTimeAsync(1600);
+
+      // Simulate switching to another app-maker view: the panel fully unmounts.
+      unmount();
+      cleanup();
+
+      render(<AppsPanel />);
+      await vi.waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
+      await vi.waitFor(() =>
+        expect(screen.getByPlaceholderText('Enter your app name...')).toHaveValue('Draft Name'),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

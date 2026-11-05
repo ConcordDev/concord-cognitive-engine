@@ -9,8 +9,9 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useStudioRunCount } from '@/lib/sim/studio-activity';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   Play, Sliders, Clock, Plus, Trash2, Copy, Download,
@@ -246,6 +247,21 @@ const MODEL_TEMPLATES: ModelTemplate[] = [
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+// useLensData's `create()` resolves the raw POST /api/lens/:domain response
+// body — `{ ok, artifact }` — not the artifact itself. Reading `.id` straight
+// off that envelope is always undefined (the real id lives one level deeper,
+// at `.artifact.id`), so any caller that skips this unwrap silently falls
+// back to a client-only id that was never persisted server-side; every
+// following update against it 404s "not found" (F3). Exported for direct
+// unit coverage of the extraction logic.
+export function extractRunArtifactId(
+  created: unknown,
+  fallbackId: string,
+): string {
+  const id = (created as { artifact?: { id?: string } } | undefined)?.artifact?.id;
+  return id || fallbackId;
 }
 
 function formatDuration(ms: number): string {
@@ -632,15 +648,38 @@ export function SimConsole() {
 
   const completedRuns = useMemo(() => runs.filter(r => r.status === 'completed'), [runs]);
 
+  // Studio's own persisted System Dynamics models (sim.listModels) — the real,
+  // server-backed count of models saved from the Studio tab. Queried here (not
+  // just inside SystemDynamicsBuilder) so the headline "Active Models" stat
+  // reflects Studio activity instead of only scenario modelType variety
+  // (sim.md F4: "the Studio's verified runs register in the headline they
+  // belong to").
+  const { data: studioModelsData } = useQuery({
+    queryKey: ['sim', 'studio-models'],
+    queryFn: async () => {
+      const r = await lensRun<{ models: Array<{ id: string }> }>('sim', 'listModels', {});
+      return r.data.ok && r.data.result ? r.data.result.models : [];
+    },
+    staleTime: 15000,
+  });
+  const studioModelCount = studioModelsData?.length || 0;
+  const studioRunCount = useStudioRunCount();
+
   // ── Dashboard stats ────────────────────────────────────────────────────────
+  // F4 fix: `backendSims` (the separate legacy /api/simulations system) no
+  // longer gets folded into the scenario/run counts it has nothing to do
+  // with — "Total Scenarios counts scenarios only" / "Runs Completed
+  // reflects completed runs". Studio's real activity (saved models + session
+  // run count) is folded into Active Models / Total Runs so the Studio tab
+  // is no longer invisible to the headline.
   const stats = useMemo(() => ({
-    totalScenarios: scenarios.length + backendSims.length,
-    runsCompleted: completedRuns.length + backendSims.length,
+    totalScenarios: scenarios.length,
+    runsCompleted: completedRuns.length,
     avgConvergence: completedRuns.length > 0
       ? (completedRuns.reduce((s, r) => s + (r.results?.stdDev || 0), 0) / completedRuns.length).toFixed(2)
       : '--',
-    activeModels: new Set(scenarios.map(s => s.modelType)).size || 0,
-  }), [scenarios, completedRuns, backendSims]);
+    activeModels: new Set(scenarios.map(s => s.modelType)).size + studioModelCount,
+  }), [scenarios, completedRuns, studioModelCount]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -651,13 +690,24 @@ export function SimConsole() {
       data: { ...editingScenario, updatedAt: new Date().toISOString() },
       meta: { tags: [editingScenario.modelType], status: 'draft' },
     };
-    if (editingScenario.id && scenarios.find(s => s.id === editingScenario.id)) {
-      await updateScenarioArtifact(editingScenario.id, payload);
-    } else {
-      await createScenarioArtifact(payload);
+    try {
+      if (editingScenario.id && scenarios.find(s => s.id === editingScenario.id)) {
+        await updateScenarioArtifact(editingScenario.id, payload);
+      } else {
+        await createScenarioArtifact(payload);
+      }
+      // sim.md M7: Save Scenario was silent — no confirmation it actually
+      // persisted. Give it the same receipt every other save path in this
+      // lens uses.
+      useUIStore.getState().addToast({ type: 'success', message: `Saved scenario "${editingScenario.name}".` });
+      setEditingScenario(null);
+      setShowScenarioBuilder(false);
+    } catch (err) {
+      useUIStore.getState().addToast({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Save scenario failed',
+      });
     }
-    setEditingScenario(null);
-    setShowScenarioBuilder(false);
   }, [editingScenario, scenarios, createScenarioArtifact, updateScenarioArtifact]);
 
   const handleDeleteScenario = useCallback(async (id: string) => {
@@ -697,12 +747,12 @@ export function SimConsole() {
       errorCount: 0,
       iterations,
     };
-    const artifact = await createRunArtifact({
+    const created = await createRunArtifact({
       title: `Run: ${scenario.name}`,
       data: newRun as unknown as Partial<SimRun>,
       meta: { tags: ['run', scenario.modelType], status: 'running' },
     });
-    const artifactId = artifact?.id || runId;
+    const artifactId = extractRunArtifactId(created, runId);
     setActiveTab('runs');
 
     try {
@@ -1015,7 +1065,7 @@ export function SimConsole() {
             { label: 'Simulations', value: scenarios.length, icon: FlaskConical },
             { label: 'Avg Runtime', value: `${avgRuntime}s`, icon: Clock },
             { label: 'Success Rate', value: `${successRate}%`, icon: CheckCircle2 },
-            { label: 'Total Runs', value: runs.length, icon: Activity },
+            { label: 'Total Runs', value: runs.length + studioRunCount, icon: Activity },
           ].map((stat) => (
             <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
               <stat.icon className="w-5 h-5 text-purple-400 shrink-0" />

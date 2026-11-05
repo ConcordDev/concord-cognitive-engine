@@ -64,7 +64,7 @@ describe("app-maker — registration (every lens-driven macro present)", () => {
       // page.tsx compute-action panel (useRunArtifact)
       "scaffoldApp", "uiComplexity", "wireframeValidate",
       // AppBuilderStudio — project lifecycle
-      "projectCreate", "projectList", "projectGet", "projectDuplicate", "projectDelete",
+      "projectCreate", "projectList", "projectGet", "projectDuplicate", "projectDelete", "projectRename",
       // visual editor
       "editorPalette", "editorAddPage", "editorSavePage", "editorDeletePage",
       // data model
@@ -235,11 +235,27 @@ describe("app-maker — project lifecycle round-trip", () => {
   });
 
   it("acting on an unknown projectId is a structured not_found, never a throw", async () => {
-    for (const m of ["projectGet", "projectDelete", "editorAddPage", "dataAddTable", "deployStatus", "versionList"]) {
+    for (const m of ["projectGet", "projectDelete", "projectRename", "editorAddPage", "dataAddTable", "deployStatus", "versionList"]) {
       const r = await call(m, ctxA, { projectId: "ghost" });
       assert.equal(r.ok, false);
       assert.equal(r.error, "project_not_found");
     }
+  });
+
+  it("rename (F10) updates the name, bumps updatedAt, and rejects an empty name", async () => {
+    const proj = await freshProject();
+    const before = proj.updatedAt;
+    const ren = await call("projectRename", ctxA, { projectId: proj.id, name: "  Renamed App  " });
+    assert.equal(ren.ok, true);
+    assert.equal(ren.result.project.name, "Renamed App");
+    assert.ok(ren.result.project.updatedAt >= before);
+
+    const got = await call("projectGet", ctxA, { projectId: proj.id });
+    assert.equal(got.result.project.name, "Renamed App");
+
+    const empty = await call("projectRename", ctxA, { projectId: proj.id, name: "   " });
+    assert.equal(empty.ok, false);
+    assert.equal(empty.error, "name_required");
   });
 });
 
@@ -329,16 +345,19 @@ describe("app-maker — preview + deploy + version round-trips", () => {
     assert.ok(r.result.html.includes("&lt;script&gt;"));
   });
 
-  it("deployPublish flips status to live with a real concord-os URL + snapshots a version", async () => {
+  it("deployPublish snapshots a version and marks it published — never fabricates a hosted URL", async () => {
     const proj = await freshProject();
     const dep = await call("deployPublish", ctxA, { projectId: proj.id });
     assert.equal(dep.ok, true);
-    assert.equal(dep.result.deployment.status, "live");
-    assert.match(dep.result.deployment.url, /^https:\/\/[a-z0-9-]+\.apps\.concord-os\.org$/);
+    assert.equal(dep.result.deployment.status, "snapshotted");
+    // There is no hosting infrastructure behind this — the URL must stay
+    // null rather than presenting a fabricated, never-served address.
+    assert.equal(dep.result.deployment.url, null);
 
-    // deployStatus reflects the live deployment.
+    // deployStatus reflects the same honest state.
     const st = await call("deployStatus", ctxA, { projectId: proj.id });
-    assert.equal(st.result.deployment.status, "live");
+    assert.equal(st.result.deployment.status, "snapshotted");
+    assert.equal(st.result.deployment.url, null);
 
     // a version was snapshotted by the deploy.
     const vl = await call("versionList", ctxA, { projectId: proj.id });

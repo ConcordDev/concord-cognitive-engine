@@ -25,6 +25,7 @@ import { StudioPanel } from '@/components/app-maker/StudioPanel';
 import { ActionsPanel } from '@/components/app-maker/ActionsPanel';
 import { AppsPanel } from '@/components/app-maker/AppsPanel';
 import { PackagesPanel } from '@/components/app-maker/PackagesPanel';
+import { AppMakerProjectProvider } from '@/components/app-maker/AppMakerProjectContext';
 
 type AppMakerView = 'studio' | 'actions' | 'apps' | 'packages';
 
@@ -88,17 +89,19 @@ export default function AppMakerLens() {
         cta={{ label: 'New app', icon: Plus, onClick: () => setActive('apps'), title: 'Create and deploy an app' }}
       >
         <main className="py-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={active}
-              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
-              transition={{ duration: reduceMotion ? 0 : 0.16 }}
-            >
-              <Panel />
-            </motion.div>
-          </AnimatePresence>
+          <AppMakerProjectProvider>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={active}
+                initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+                transition={{ duration: reduceMotion ? 0 : 0.16 }}
+              >
+                <Panel />
+              </motion.div>
+            </AnimatePresence>
+          </AppMakerProjectProvider>
         </main>
 
         <ConnectiveTissueBar lensId="app_maker" />
