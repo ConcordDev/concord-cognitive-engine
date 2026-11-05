@@ -25,7 +25,6 @@ import {
   SlidersHorizontal, Contact, CalendarDays, Sparkles,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
@@ -115,7 +114,13 @@ export default function MarketingLensPage() {
         subtitle="Campaigns, leads, content, automation and analytics."
         actions={
           <>
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+            {/* One honest tier statement (build(marketing) S1): the heading
+                carried a green-dot "LIVE" pill — the realtime layer's
+                connection flag — beside a "Data tier: Simulated" banner,
+                two claims in contradiction (Review 5 G2/F1). The pill is
+                removed from this page's heading; the LensShell tier banner
+                is the page's tier statement. A tier-aware indicator is the
+                shared template item, priced once — not forked here. */}
             <DTUExportButton domain="marketing" data={{}} compact />
           </>
         }
