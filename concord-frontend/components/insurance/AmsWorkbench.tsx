@@ -878,6 +878,7 @@ function Certificates({ policies }: { policies: PolicyLite[] }) {
   const [formType, setFormType] = useState('ACORD_25');
   const [description, setDescription] = useState('');
   const [additionalInsured, setAdditionalInsured] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ id: string; text: string; filename: string } | null>(null);
 
   const refresh = useCallback(async () => {
@@ -938,6 +939,14 @@ function Certificates({ policies }: { policies: PolicyLite[] }) {
     } catch (e) { console.error('[AMS] certificate-revoke', e); }
   }
 
+  // The certificate's own governed exit (F6) — two-step, beside revoke.
+  async function del(id: string) {
+    try {
+      const r = await lensRun('insurance', 'certificate-delete', { id });
+      if (r.data?.ok) { setConfirmId(null); await refresh(); }
+    } catch (e) { console.error('[AMS] certificate-delete', e); }
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-[11px] text-gray-400">
@@ -987,6 +996,16 @@ function Certificates({ policies }: { policies: PolicyLite[] }) {
                   {!c.revoked && (
                     <button onClick={() => revoke(c.id)} className={cn(btnGhost, 'text-red-400 hover:text-red-300')}>
                       <Trash2 className="w-3.5 h-3.5" /> Revoke
+                    </button>
+                  )}
+                  {confirmId === c.id ? (
+                    <>
+                      <button onClick={() => void del(c.id)} className={cn(btnGhost, 'bg-rose-600/80 text-white hover:text-white')}>Delete certificate?</button>
+                      <button onClick={() => setConfirmId(null)} className={btnGhost}>Keep</button>
+                    </>
+                  ) : (
+                    <button onClick={() => setConfirmId(c.id)} className={cn(btnGhost, 'text-red-400 hover:text-red-300')}>
+                      <Trash2 className="w-3.5 h-3.5" /> Delete
                     </button>
                   )}
                 </div>
