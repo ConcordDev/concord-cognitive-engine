@@ -37,7 +37,7 @@ export const FRONTEND_ARTIFACT_TYPES = {
   "events": ["Budget", "Guest", "RunOfShow", "TicketTier", "Vendor", "Venue"],
   "experience": ["experience"],
   "fitness": ["artifact"],
-  "food": ["MealPlan", "PantryItem", "Recipe", "ShoppingItem"],
+  "food": ["MealPlan", "PantryItem", "Recipe", "ShoppingItem", "Menu", "InventoryItem", "Booking", "Batch", "Shift"],
   "forum": ["community", "post"],
   "game": ["playtest"],
   "goals": ["challenge", "goal"],

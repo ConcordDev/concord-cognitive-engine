@@ -1179,11 +1179,23 @@ EXTENDED_DOMAIN_RULES.set("fitness", {
 });
 
 // === Food ===
+// This rule was authored for a generic recipe/meal-plan/inventory
+// vocabulary that was never reconciled against the real frontend — the
+// same stale-vocabulary class fixed for trades/services/security.
+// FoodKitchenWorkbench's ArtifactType union is Recipe | MealPlan |
+// ShoppingItem | PantryItem | Menu | InventoryItem | Booking | Batch |
+// Shift and its Status union is prep | active | 86d | seasonal |
+// archived, so every dialog create in the lens failed validateArtifact:
+// Recipe/PantryItem/MealPlan on the status check (the form's default
+// status "prep" is not a rule status), Menu/InventoryItem/Booking/
+// Batch/Shift on the type check as well (no rule type, and Menu had no
+// create path at any layer). The rule now carries the frontend's real
+// vocabulary alongside the macro-era lowercase types and statuses.
 EXTENDED_DOMAIN_RULES.set("food", {
-  types: ["recipe", "meal-plan", "inventory", "nutrition", "review"],
-  validStatuses: ["draft", "tested", "published", "archived"],
+  types: ["recipe", "meal-plan", "inventory", "nutrition", "review", "Recipe", "MealPlan", "ShoppingItem", "PantryItem", "Menu", "InventoryItem", "Booking", "Batch", "Shift"],
+  validStatuses: ["draft", "tested", "published", "archived", "prep", "active", "86d", "seasonal"],
   transitions: { draft: ["tested", "archived"], tested: ["published", "draft"], published: ["archived"], archived: [] },
-  requiredFields: { recipe: ["title"] },
+  requiredFields: { recipe: ["title"], Recipe: ["name"], MealPlan: ["name"], ShoppingItem: ["name"], PantryItem: ["name"], Menu: ["name"], InventoryItem: ["name"], Booking: ["name"], Batch: ["name"], Shift: ["name"] },
   computedFields: (type, data) => { data.ingredientCount = (data.ingredients || []).length; data.totalCalories = (data.ingredients || []).reduce((s, i) => s + (i.calories || 0), 0); return data; },
   scoring: (type, data) => Math.round(((data.ingredients || []).length > 0 ? 0.5 : 0.2) * 100) / 100,
 });
