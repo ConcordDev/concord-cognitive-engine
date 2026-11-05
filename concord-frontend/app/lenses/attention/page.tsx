@@ -62,8 +62,6 @@ export default function AttentionLensPage() {
     { lensId: 'attention' },
   );
 
-  const Panel = PANELS[active];
-
   return (
     <LensShell lensId="attention" asMain={false}>
 
@@ -120,9 +118,18 @@ export default function AttentionLensPage() {
         </nav>
 
         <main id="attention-main" className="min-w-0">
-          <section key={active}>
-            <Panel />
-          </section>
+          {/* All three views stay mounted (inactive hidden) so drafts
+              and form state survive view switches — the planner draft
+              used to die on a switch while the (server-side) timer
+              survived (F14). */}
+          {(Object.keys(PANELS) as AttentionView[]).map((id) => {
+            const Panel = PANELS[id];
+            return (
+              <section key={id} hidden={active !== id}>
+                <Panel />
+              </section>
+            );
+          })}
         </main>
 
         <CrossLensRecentsPanel lensId="attention" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
