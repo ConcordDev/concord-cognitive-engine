@@ -12,14 +12,17 @@
 //  - S-CK2-4 companion: usda-search returns generic reference foods
 //    ahead of Branded rows within the page.
 //
-// Run under --experimental-test-module-mocks (the food-feed-sources
-// module is mocked; free-api-live fetches through global fetch, which
-// is stubbed in-process).
+// Runs under the standard `node --test` runner (no module-mock flag):
+// the FDC feed is stubbed at the public-fetch transport seam
+// (__setPublicFetchTestTransport), and free-api-live fetches through
+// global fetch, which is stubbed in-process.
 
-import { describe, it, before, beforeEach, mock } from "node:test";
+import { describe, it, before, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
+import { _resetFeedCacheForTests } from "../lib/feed-cache.js";
 
-// ── Mock the FDC feed sources before importing the domain ──────────
+// ── Stub the FDC upstream before importing the domain ──────────
 const POTATO_FLOUR_NUTRIENTS = [
   { nutrientName: "Energy", value: 1490, unitName: "kJ" },   // kJ FIRST here…
   { nutrientName: "Energy", value: 357, unitName: "KCAL" },  // …kcal second
@@ -31,22 +34,23 @@ const POTATO_FLOUR_NUTRIENTS = [
   { nutrientName: "Sodium, Na", value: 55, unitName: "mg" },
 ];
 let searchFoods = [];
-mock.module("../lib/food-feed-sources.js", {
-  cache: false,
-  exports: {
-    getMealDbLetter: async () => ({ ok: false, reason: "mocked" }),
-    getUsdaSearch: async () => ({ ok: true, data: { foods: searchFoods, totalHits: searchFoods.length, currentPage: 1, totalPages: 1 }, fetchedAt: 0 }),
-    getUsdaFood: async (fdcId) => ({
-      ok: true,
-      data: {
-        fdcId, description: "Potato flour", dataType: "SR Legacy",
-        foodNutrients: POTATO_FLOUR_NUTRIENTS.map((n) => ({
-          nutrient: { name: n.nutrientName, unitName: n.unitName },
-          amount: n.value,
-        })),
-      },
-    }),
-  },
+const jsonRes = (status, body) => ({ ok: status >= 200 && status < 300, status, headers: { get: () => null }, json: async () => body });
+__setPublicFetchTestTransport(async (url) => {
+  const u = String(url);
+  if (u.includes("/fdc/v1/foods/search")) {
+    return jsonRes(200, { foods: searchFoods, totalHits: searchFoods.length, currentPage: 1, totalPages: 1 });
+  }
+  const m = u.match(/\/fdc\/v1\/food\/(\d+)/);
+  if (m) {
+    return jsonRes(200, {
+      fdcId: Number(m[1]), description: "Potato flour", dataType: "SR Legacy",
+      foodNutrients: POTATO_FLOUR_NUTRIENTS.map((n) => ({
+        nutrient: { name: n.nutrientName, unitName: n.unitName },
+        amount: n.value,
+      })),
+    });
+  }
+  return jsonRes(503, { error: "stubbed upstream unavailable" }); // themealdb etc.
 });
 
 const { default: registerCookingActions } = await import("../domains/cooking.js");
@@ -61,7 +65,8 @@ function call(name, params = {}, userId = "cook-1") {
 }
 
 before(() => { registerCookingActions(register); registerFreeApiLiveMacros(register); });
-beforeEach(() => { globalThis._concordSTATE = {}; searchFoods = []; });
+beforeEach(() => { globalThis._concordSTATE = {}; searchFoods = []; _resetFeedCacheForTests(); });
+after(() => { __setPublicFetchTestTransport(null); });
 
 function seedTwoRecipes() {
   const a = call("recipes-create", { title: "Pancakes", servings: 4, ingredients: [{ name: "flour", qty: 2, unit: "cups" }] }).result.recipe;

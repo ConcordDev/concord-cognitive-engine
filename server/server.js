@@ -114,6 +114,7 @@ import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import { buildAnalyticsGroundingBlock, groundingUserId } from "./lib/lens-grounding.js";
 import { createSqliteBridgeService } from "./lib/dtu-bridge/service.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
+import { selectGlobalFeed } from "./lib/global-feed.js";
 import { chatContextPool, makeChatMayUse } from "./lib/chat/context-pool.js";
 import { chatProgress as _chatProgress, withToolProgress as _chatWithToolProgress, readOllamaChatStream as _readOllamaChatStream } from "./lib/chat/progress.js";
 import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit } from "./lib/dtu-search-hits.js";
@@ -2093,7 +2094,7 @@ import {
 } from "./plugins/loader.js";
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
 import { configureWriteSpill, waitForWriteQuiet, replaySpill, spilledIsNewer, spillStats } from "./lib/shutdown-write-gate.js";
-import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus } from "./lib/dtu-ownership.js";
+import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus, founderSeedCustody, stampFounderSeed } from "./lib/dtu-ownership.js";
 import { dtuReadDenial, credibilityAdminDenial, collabParticipantDenial } from "./lib/dtu-macro-guards.js";
 import { exportableDtus, exportBulkDenial } from "./lib/export-filter.js";
 import { dtuImportDecision, importAuthDenial, stampImportedDtu } from "./lib/dtu-import-guard.js";
@@ -14531,6 +14532,14 @@ function auditSeedLineage() {
 
 async function seedIfEmpty() {
   if (STATE.dtus.size > 0) return { ok:true, seeded:false, reason:"already_has_dtus" };
+  // Founder seed content is private to the founder account. With no
+  // FOUNDER_USER_ID there is no owner to give it to, so nothing is seeded
+  // (never a shared global/public fallback).
+  const seedCustody = founderSeedCustody();
+  if (!seedCustody) {
+    structuredLog("warn", "seed_skipped_no_founder", { reason: "FOUNDER_USER_ID is not set" });
+    return { ok:false, seeded:false, reason:"founder_user_id_unset" };
+  }
   const seeds = await tryLoadSeedDTUs();
   if (!seeds.length) return { ok:false, seeded:false, error: SEED_INFO.error || "no seeds" };
 
@@ -14538,6 +14547,7 @@ async function seedIfEmpty() {
   // Instead of basic toOptionADTU() conversion, run the full ingestion pipeline
   // which normalizes, hashes, scores, tiers, scopes, tags, and generates edges.
   const ingestionResult = runBootstrapIngestion(STATE, seeds, {
+    seedCustody,
     log: (type, msg, meta) => {
       structuredLog("info", `bootstrap.${type}`, { message: msg, ...meta });
     },
@@ -14556,7 +14566,7 @@ async function seedIfEmpty() {
       ok: true,
       seeded: true,
       count: ingestionResult.stats.registered,
-      scope: "global",
+      scope: seedCustody.scope,
       ingestion: ingestionResult.stats,
     };
   }
@@ -14568,14 +14578,14 @@ async function seedIfEmpty() {
   });
   let n=0;
   for (const s of seeds) {
-    s.scope = "global";
-    const d = toOptionADTU(s);
+    const d = stampFounderSeed(toOptionADTU(s), seedCustody);
+    d.tier = "regular";
     STATE.dtus.set(d.id, d);
     n++;
   }
   saveStateDebounced();
-  log("seed", "Seeded DTUs via fallback path into Global scope", { count:n, scope:"global" });
-  return { ok:true, seeded:true, count:n, scope:"global", fallback:true };
+  log("seed", "Seeded DTUs via fallback path as founder-private content", { count:n, scope:seedCustody.scope });
+  return { ok:true, seeded:true, count:n, scope:seedCustody.scope, fallback:true };
 }
 await seedIfEmpty();
 seedGenesisRealityAnchor();
@@ -69135,16 +69145,15 @@ app.post("/api/credits/spend", requireAuth(), (req, res) => {
 app.get("/api/global/feed", (req, res) => {
   const { limit = 50, offset = 0, tier } = req.query;
 
-  // Get global DTUs (isGlobal flag, scope=global, or tier >= mega)
-  let globalDtus = Array.from(STATE.dtus?.values() || [])
-    .filter(d => d.isGlobal || d.scope === "global" || d.tier === "mega" || d.tier === "hyper")
-    .filter(d => !isShadowDTU(d))
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-
-  // Filter by tier if specified
-  if (tier) {
-    globalDtus = globalDtus.filter(d => d.tier === tier);
-  }
+  // Published (isGlobal flag or scope=global) DTUs the requesting viewer may
+  // read: same read filters as every other DTU read (lib/global-feed.js).
+  const globalDtus = selectGlobalFeed(STATE.dtus?.values() || [], {
+    viewerId: req.user?.id || null,
+    isHidden: _isHiddenSystemDtu,
+    isPrivateFrom: privateDtuHiddenFrom,
+    isShadow: isShadowDTU,
+    tier,
+  });
 
   const total = globalDtus.length;
   const feed = globalDtus.slice(Number(offset), Number(offset) + Number(limit));
@@ -69163,16 +69172,13 @@ app.get("/api/global/feed/:lensId", (req, res) => {
   const lensId = String(req.params.lensId || "").toLowerCase();
   const { limit = 50, offset = 0 } = req.query;
 
-  const feed = Array.from(STATE.dtus?.values() || [])
-    .filter(d => d.scope === "global" && !isShadowDTU(d))
-    .filter(d => {
-      // Match by published lens, tags, or domain
-      if (d.meta?.publishedFromLens === lensId) return true;
-      if ((d.tags || []).some(t => t.toLowerCase() === lensId)) return true;
-      if (d.meta?.domain === lensId) return true;
-      return false;
-    })
-    .sort((a, b) => new Date(b.meta?.publishedAt || b.createdAt || 0) - new Date(a.meta?.publishedAt || a.createdAt || 0));
+  const feed = selectGlobalFeed(STATE.dtus?.values() || [], {
+    viewerId: req.user?.id || null,
+    isHidden: _isHiddenSystemDtu,
+    isPrivateFrom: privateDtuHiddenFrom,
+    isShadow: isShadowDTU,
+    lensId,
+  });
 
   const total = feed.length;
   const items = feed.slice(Number(offset), Number(offset) + Number(limit));
@@ -93021,13 +93027,30 @@ register("observer", "compose_report", async (ctx, input = {}) => {
       worldId,
       sinceTs: Math.floor(Date.now() / 1000) - 3600,
     }, ctx);
-    const summary = focus ? `Observation focus: ${focus}.` : "General observation.";
+    // Shape the raw ripple for the report (Observe F2): the Focus input
+    // must shape the report it names (term-matched rows surface first,
+    // tagged and counted), and the report must state what its window
+    // covered — the four sources and their counts — so an empty window
+    // reads as "nothing recorded", never as a ripple-free world.
+    const { shapeRippleReport } = await import("./lib/ripple-report.js");
+    const shaped = shapeRippleReport(ripple?.ripples || {}, {
+      focus,
+      worldId,
+      sinceTs: ripple?.sinceTs,
+      untilTs: ripple?.sinceTs != null ? ripple.sinceTs + 3600 : undefined,
+    });
+    const reportRipple = { ...ripple, ripples: shaped.ripples, focusOutcome: shaped.focus, coverage: shaped.coverage };
+    const summary = [
+      focus ? `Observation focus: ${focus}.` : "General observation.",
+      shaped.focus ? shaped.focus.statement : null,
+      shaped.coverage.statement,
+    ].filter(Boolean).join(" ");
     const dtuId = `empirical_report:${userId}:${Date.now().toString(36)}`;
     const meta = {
       skill_kind: "empirical_report",
       world_id: worldId,
       focus,
-      ripple,
+      ripple: reportRipple,
       summary,
       observed_at: Date.now(),
     };
@@ -93035,7 +93058,7 @@ register("observer", "compose_report", async (ctx, input = {}) => {
       INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
       VALUES (?, 'empirical_report', ?, ?, ?, 1, 0, unixepoch())
     `).run(dtuId, `Empirical Report — ${worldId}`, userId, JSON.stringify(meta));
-    return { ok: true, dtuId, ripple };
+    return { ok: true, dtuId, ripple: reportRipple };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Observer composes empirical-report DTU from world ripple state. Cite-able, royalty-bearing." });
 
@@ -93105,7 +93128,7 @@ register("forecast", "accuracy", async (_ctx, input = {}) => {
     const lib = await import("./lib/world-forecast.js");
     return await lib.forecastAccuracy(db, worldId, limit);
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-}, { note: "Forecast accuracy — kind hit-rate + mean temp error vs. realized." });
+}, { note: "Forecast consistency — kind agreement + mean temp drift vs. the forecast composed nearest each target window (model-vs-model; derives on read from the archive)." });
 
 // Historical archive — persisted forecasts with extracted trend points.
 register("forecast", "archive", async (_ctx, input = {}) => {
