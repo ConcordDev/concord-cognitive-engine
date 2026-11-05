@@ -257,6 +257,12 @@ export function EnergyWorkspace() {
               await refresh();
               selectMeter(meterId);
             }}
+            onListChange={() => refresh(false)}
+            onDeleted={(meterId) => {
+              if (meterId !== selectedMeterId) return;
+              setSelectedMeterId('');
+              persist({ view, selectedMeterId: '' });
+            }}
           />
         )}
       </AnimatePresence>
@@ -288,16 +294,23 @@ function MeterPicker({
   onClose,
   onSelect,
   onCreated,
+  onListChange,
+  onDeleted,
 }: {
   meters: EnergyDevice[];
   selectedMeterId: string;
   onClose: () => void;
   onSelect: (meterId: string) => void;
   onCreated: (meterId: string) => Promise<void>;
+  onListChange: () => Promise<void>;
+  onDeleted: (meterId: string) => void;
 }) {
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const createMeter = async () => {
     if (!name.trim()) { setError('Meter name is required.'); return; }
@@ -311,6 +324,45 @@ function MeterPicker({
       await onCreated(response.data.result.device.id);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Failed to add meter.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveRename = async (meter: EnergyDevice) => {
+    const next = draft.trim();
+    if (!next) { setError('Meter name is required.'); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await lensRun('energy', 'device-update', { id: meter.id, name: next });
+      if (response.data?.ok === false) {
+        setError(response.data.error || 'Failed to rename meter.');
+        return;
+      }
+      setEditingId(null);
+      await onListChange();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Failed to rename meter.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDelete = async (meter: EnergyDevice) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await lensRun('energy', 'device-delete', { id: meter.id });
+      if (response.data?.ok === false) {
+        setError(response.data.error || 'Failed to delete meter.');
+        return;
+      }
+      setPendingDeleteId(null);
+      onDeleted(meter.id);
+      await onListChange();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Failed to delete meter.');
     } finally {
       setSaving(false);
     }
@@ -349,19 +401,54 @@ function MeterPicker({
               No meters are connected yet. Add the meter you submit readings from.
             </p>
           ) : meters.map((meter) => (
-            <button
+            <div
               key={meter.id}
-              type="button"
-              onClick={() => onSelect(meter.id)}
               className={cn(
-                'flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors',
-                selectedMeterId === meter.id ? 'border-teal-400/50 bg-teal-400/10' : 'border-white/10 hover:bg-white/5',
+                'rounded-xl border px-4 py-3',
+                selectedMeterId === meter.id ? 'border-teal-400/50 bg-teal-400/10' : 'border-white/10',
               )}
             >
-              <Gauge className="h-4 w-4 text-teal-300" />
-              <span className="font-medium text-zinc-100">{meter.name}</span>
-              {selectedMeterId === meter.id && <span className="ml-auto text-xs text-teal-300">Selected</span>}
-            </button>
+              {editingId === meter.id ? (
+                <div className="flex gap-2">
+                  <input
+                    aria-label={`New name for ${meter.name}`}
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black px-3 py-2 text-sm text-zinc-100 outline-none focus:border-teal-400/60"
+                  />
+                  <button type="button" onClick={() => void saveRename(meter)} disabled={saving} className="rounded-lg bg-teal-400 px-3 py-2 text-xs font-medium text-black disabled:opacity-50">Save</button>
+                  <button type="button" onClick={() => setEditingId(null)} className="rounded-lg px-2 text-xs text-zinc-400">Cancel</button>
+                </div>
+              ) : pendingDeleteId === meter.id ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-zinc-200">Delete {meter.name}? Readings logged on this meter are removed with it.</p>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => void confirmDelete(meter)} disabled={saving} className="rounded-lg bg-rose-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-50">Delete meter</button>
+                    <button type="button" onClick={() => setPendingDeleteId(null)} className="rounded-lg px-2 text-xs text-zinc-400">Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => onSelect(meter.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                    <Gauge className="h-4 w-4 shrink-0 text-teal-300" />
+                    <span className="truncate font-medium text-zinc-100">{meter.name}</span>
+                    {selectedMeterId === meter.id && <span className="text-xs text-teal-300">Selected</span>}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Rename ${meter.name}`}
+                    onClick={() => { setEditingId(meter.id); setDraft(meter.name); setPendingDeleteId(null); setError(null); }}
+                    className="text-xs text-zinc-400 hover:text-zinc-100"
+                  >Rename</button>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${meter.name}`}
+                    onClick={() => { setPendingDeleteId(meter.id); setEditingId(null); setError(null); }}
+                    className="text-xs text-zinc-400 hover:text-rose-300"
+                  >Delete</button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
 

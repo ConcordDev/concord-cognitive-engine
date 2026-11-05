@@ -222,7 +222,29 @@ describe("nonprofit tax receipts", () => {
     assert.equal(r.result.receipt.amount, 250);
     const ann = call("receipt-annual", ctxA, { donorId: d.id, year: new Date().getFullYear() });
     assert.equal(ann.ok, true);
-    assert.equal(ann.result.statement.totalDeductible, 250);
+    // F2: was totalDeductible — the statement asserted a tax status the lens
+    // nowhere records. It now totals contributions recorded, in neutral text.
+    assert.equal(ann.result.statement.totalRecorded, 250);
+    assert.equal(ann.result.statement.totalDeductible, undefined);
+    assert.doesNotMatch(ann.result.statement.statement, /deductib/i);
+    assert.doesNotMatch(r.result.receipt.statement, /deductib/i);
+  });
+
+  it("states the volunteer value rate it applies (unstated-figure genus)", () => {
+    const v = call("volunteer-signup", ctxA, { name: "Val" }).result.volunteer;
+    call("shift-schedule", ctxA, { volunteerId: v.id, role: "Setup", date: "2026-07-01", hours: 2 });
+    const log = call("shift-log-hours", ctxA, { volunteerId: v.id, hours: 2 });
+    assert.equal(log.result.hourlyRate, 31.8);
+    assert.equal(log.result.estValue, 64); // round(2 × 31.8)
+    const list = call("volunteer-list", ctxA, {});
+    assert.equal(list.result.hourlyRate, 31.8);
+  });
+
+  it("gift log stores the supplied date and campaign (F4 contract)", () => {
+    const d = call("donor-create", ctxA, { name: "Dated" }).result.donor;
+    const g = call("donor-gift-log", ctxA, { donorId: d.id, amount: 40, date: "2026-08-20", campaign: "Spring Drive" }).result.gift;
+    assert.ok(String(g.at).startsWith("2026-08-20"));
+    assert.equal(g.campaign, "Spring Drive");
   });
 });
 

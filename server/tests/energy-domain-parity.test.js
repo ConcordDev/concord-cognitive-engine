@@ -47,6 +47,15 @@ describe("energy.carbonFootprint (EPA emission factors)", () => {
     assert.equal(r.ok, true);
     // 0.417 + 0.265 + 0.2661 + 0.1275 ≈ 1.076 metric tons
     assert.ok(r.result.totalMetricTons > 1 && r.result.totalMetricTons < 1.2);
+    assert.equal(r.result.partial, false);
+    assert.match(r.result.vsUSAverage, /% of US average$/);
+  });
+
+  it("does not report 0 t when every source was omitted", () => {
+    const r = call("carbonFootprint", ctxA, { data: {} }, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.equal(r.result.totalMetricTons, undefined);
   });
 });
 
@@ -140,7 +149,15 @@ describe("energy.eia-generation-mix (EIA API)", () => {
     assert.equal(r.result.latestPeriod, "2026-04");
     // Latest only: total = 400,000 MWh; mix sorted by mwh desc
     assert.equal(r.result.mix[0].fuel, "Natural Gas");
+    assert.equal(r.result.mix[0].sharePct, 37.5);
     assert.equal(r.result.totalMWh, 400000);
+    const shareSum = r.result.mix.reduce((s, row) => s + row.sharePct, 0);
+    assert.ok(Math.abs(shareSum - 100) < 1, `sharePct summed to ${shareSum}`);
+    for (const row of r.result.mix) {
+      assert.equal(typeof row.sharePct, "number");
+      assert.equal(Number.isFinite(row.sharePct), true);
+      assert.equal(Object.hasOwn(row, "pct"), false);
+    }
     // Renewable share: solar 10% + wind 15% + hydroelectric 5% = 30%
     assert.ok(r.result.renewableSharePct > 28 && r.result.renewableSharePct < 32);
     assert.equal(r.result.source, "eia-electric-power-operational");

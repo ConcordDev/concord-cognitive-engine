@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Target, ChevronLeft, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Target, ChevronLeft, Trash2, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
@@ -14,7 +14,7 @@ import { ErrorState } from '@/components/ui';
 import { MarketingGmailSendPanel } from './MarketingGmailSendPanel';
 
 interface Kpis { impressions: number; clicks: number; conversions: number; spend: number; revenue: number; ctr: number; cpc: number; cpa: number; roas: number; conversionRate: number }
-interface Campaign { id: string; name: string; channel: string; budget: number; status: string; kpis?: Kpis }
+interface Campaign { id: string; name: string; channel: string; budget: number; status: string; endDate?: string | null; kpis?: Kpis }
 interface Pacing { budget: number; spent: number; expectedSpend: number; pace: string; utilisationPct: number }
 
 const CHANNELS = ['email', 'social', 'search', 'display', 'content', 'video', 'affiliate', 'events'];
@@ -38,6 +38,8 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
   const [verdict, setVerdict] = useState('no_data');
   const [pacing, setPacing] = useState<Pacing | null>(null);
   const [metricForm, setMetricForm] = useState({ date: calendarDateKey(), impressions: '', clicks: '', conversions: '', spend: '', revenue: '' });
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', budget: '', endDate: '', status: 'draft' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -56,6 +58,7 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
 
   const openCampaign = useCallback(async (c: Campaign) => {
     setSelected(c);
+    setEditing(false);
     const [k, p] = await Promise.all([
       lensRun('marketing', 'campaign-kpis', { campaignId: c.id }),
       lensRun('marketing', 'budget-pacing', { campaignId: c.id }),
@@ -79,6 +82,33 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
   const del = async (id: string) => {
     await lensRun('marketing', 'campaign-delete', { id });
     if (selected?.id === id) setSelected(null);
+    await refresh(); onChange();
+  };
+  // Edit path (build(marketing) S4 — Review 5 F4): `campaign-update` was
+  // registered with no surface anywhere, so a campaign's budget could not
+  // be corrected once created. The form edits exactly the verb's field set
+  // (name · budget · endDate · status); channel is not updatable server-side
+  // and is not offered.
+  const startEdit = () => {
+    if (!selected) return;
+    setEditForm({
+      name: selected.name, budget: String(selected.budget ?? ''),
+      endDate: selected.endDate || '', status: selected.status || 'draft',
+    });
+    setEditing(true);
+  };
+  const saveEdit = async () => {
+    if (!selected) return;
+    if (!editForm.name.trim()) { setError('Campaign name is required.'); return; }
+    const r = await lensRun('marketing', 'campaign-update', {
+      id: selected.id, name: editForm.name.trim(),
+      budget: Number(editForm.budget) || 0,
+      endDate: editForm.endDate || null, status: editForm.status,
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    const updated = (r.data?.result as { campaign?: Campaign } | null)?.campaign;
+    if (updated) setSelected(updated);
+    setEditing(false); setError(null);
     await refresh(); onChange();
   };
   const logMetric = async () => {
@@ -107,8 +137,32 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
           <ChevronLeft className="w-3.5 h-3.5" /> All campaigns
         </button>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
-          <h3 className="text-base font-bold text-zinc-100">{selected.name}</h3>
-          <p className="text-xs text-zinc-400 capitalize">{selected.channel} · ${selected.budget} budget · {selected.status}</p>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="text-base font-bold text-zinc-100">{selected.name}</h3>
+              <p className="text-xs text-zinc-400 capitalize">{selected.channel} · ${selected.budget} budget · {selected.status}</p>
+            </div>
+            <button type="button" onClick={() => (editing ? setEditing(false) : startEdit())}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg shrink-0">
+              <Pencil className="w-3.5 h-3.5" /> {editing ? 'Close edit' : 'Edit campaign'}
+            </button>
+          </div>
+          {editing && (
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <input placeholder="Campaign name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input placeholder="Budget ($)" inputMode="decimal" value={editForm.budget} onChange={(e) => setEditForm({ ...editForm, budget: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input type="date" title="End date" value={editForm.endDate} onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+                {['draft', 'active', 'paused', 'completed'].map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <button type="button" onClick={saveEdit}
+                className="col-span-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save changes</button>
+            </div>
+          )}
         </div>
 
         {kpis && (

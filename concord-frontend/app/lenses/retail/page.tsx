@@ -15,6 +15,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 import RetailWorkbench from '@/components/retail/RetailWorkbench';
 import { TaxRatesPanel } from '@/components/retail/TaxRatesPanel';
+import { FeedItemsPanel } from '@/components/retail/FeedItemsPanel';
 import { LivePosTerminal } from '@/components/retail/LivePosTerminal';
 import { RetailActionPanel } from '@/components/retail/RetailActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
@@ -107,6 +108,7 @@ export default function RetailLensPage() {
         </PipingProvider>
 
         <section className="mt-4"><LensFeedButton domain="retail" label="Live product feed" /></section>
+        <FeedItemsPanel />
       </div>
       </NorthStarFrame>
     </LensShell>

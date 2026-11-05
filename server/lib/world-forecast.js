@@ -41,7 +41,7 @@ export async function composeForecast(db, STATE, worldId) {
         kind: sig.weatherKind || "clear",
         confidence: 0.6,
         temperature_c: sig.temperature ?? null,
-        humidity_pct: sig.humidity ?? null,
+        humidity_pct: normalizeHumidityPct(sig.humidity),
       };
     }
   } catch { /* embodied module optional */ }
@@ -164,6 +164,18 @@ function badNumericField(input, keys) {
   return null;
 }
 
+// humidity_pct is a percent by contract: the embodied channel's own
+// weather-kind thresholds read 75/80 as percents, and the macro suites seed
+// 82 and pin it preserved through compose. Some world-sim writers record
+// the channel at fraction scale, and the signal fold averages rows raw —
+// so a fraction-scale value (0,1] is normalized to percent here, at
+// compose, the one point every consumer (24h, multi-day, hourly, regional)
+// reads from. Percent values pass through untouched.
+export function normalizeHumidityPct(v) {
+  if (typeof v !== "number" || !Number.isFinite(v)) return v ?? null;
+  return v > 0 && v <= 1 ? Math.round(v * 100) : v;
+}
+
 // Deterministic 0..1 hash from a string — used to spread region anchors and
 // to vary an extrapolated curve without inventing random data.
 function strHash(s) {
@@ -239,8 +251,12 @@ export async function composeMultiDay(db, STATE, worldId, days = 7) {
 
 // Hourly breakdown within the 24h window. Temperature follows a real diurnal
 // cosine curve (coldest pre-dawn ~05:00, warmest ~15:00) anchored on the
-// measured baseline; humidity is the inverse. No fabricated readings — the
-// curve is the standard diurnal model applied to the measured mean.
+// measured baseline; humidity is the inverse. Beyond the first day, a
+// deterministic per-day drift (composeMultiDay's idiom) moves the curve, so
+// a 48h window is not the first day tiled — the pure cosine is 24h-periodic
+// and would repeat day 1 exactly. No fabricated readings — the curve is the
+// standard diurnal model applied to the measured mean, drifted day-over-day
+// exactly the way the multi-day outlook drifts.
 export async function composeHourly(db, STATE, worldId, hours = 24) {
   if (badNumericField({ hours }, ["hours"])) return { ok: false, error: "invalid_hours" };
   const base = await composeForecast(db, STATE, worldId);
@@ -258,13 +274,22 @@ export async function composeHourly(db, STATE, worldId, hours = 24) {
     // Peak at 15:00, trough at 05:00 → phase shift of 9h.
     const phase = ((clock - 15) / 24) * Math.PI * 2;
     const factor = Math.cos(phase); // +1 warmest, -1 coldest
+    // Day-over-day drift: day block 0 is exactly the diurnal curve (the
+    // first 24h is unchanged); from day 1 on, the deterministic drift
+    // composeMultiDay uses — keyed per day, magnitude growing with
+    // distance — moves both series, so day 2 differs from day 1.
+    const dayBlock = Math.floor(h / 24);
+    const tempDrift = dayBlock === 0 ? 0
+      : (strHash(`${worldId}:h${dayBlock}:temp`) - 0.5) * (2 + dayBlock * 0.8);
+    const humDrift = dayBlock === 0 ? 0
+      : (strHash(`${worldId}:h${dayBlock}:hum`) - 0.5) * (4 + dayBlock);
     breakdown.push({
       hour_offset: h,
       clock_hour: clock,
       temperature_c: meanTemp == null ? null
-        : Number((meanTemp + factor * amplitude).toFixed(1)),
+        : Number((meanTemp + factor * amplitude + tempDrift).toFixed(1)),
       humidity_pct: meanHum == null ? null
-        : Math.max(0, Math.min(100, Number((meanHum - factor * 8).toFixed(0)))),
+        : Math.max(0, Math.min(100, Number((meanHum - factor * 8 + humDrift).toFixed(0)))),
       confidence: Number((conf * Math.max(0.4, 1 - h * 0.02)).toFixed(3)),
     });
   }
@@ -290,7 +315,7 @@ export async function composeRegional(db, STATE, worldId) {
       weather: sig?.hasData ? {
         kind: sig.weatherKind || "clear",
         temperature_c: sig.temperature ?? null,
-        humidity_pct: sig.humidity ?? null,
+        humidity_pct: normalizeHumidityPct(sig.humidity),
         air_quality: sig.airQuality ?? null,
         light: sig.light ?? null,
         noise: sig.noise ?? null,
@@ -304,7 +329,13 @@ export async function composeRegional(db, STATE, worldId) {
 // Forecast accuracy — compare each past persisted forecast against the
 // forecast composed nearest the time it predicted (its 24h target). The
 // "realized" reference is the persisted forecast whose composed_at is closest
-// to past.composed_at + 24h. Both sides are real persisted rows.
+// to past.composed_at + 24h. Both sides are real persisted rows. Read for
+// what it is: this is a CONSISTENCY measure (a forecast against the model's
+// own later forecast), not verification against observed weather — no
+// realized-state observation enters the loop, and it derives on read from
+// the archive (no stored samples, no writer). The panel is labelled
+// accordingly; scoring against realized state would need an as-of
+// embodied-signal read, which does not exist yet.
 export async function forecastAccuracy(db, worldId, limit = 20) {
   if (!db || !worldId) return { ok: false, reason: "missing_inputs" };
   if (badNumericField({ limit }, ["limit"])) return { ok: false, error: "invalid_limit" };

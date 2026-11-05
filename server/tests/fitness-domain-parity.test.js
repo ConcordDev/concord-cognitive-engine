@@ -21,7 +21,10 @@ const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
 
 describe("fitness.workout-list/save", () => {
   it("save + list scoped per user", () => {
-    const w = { id: "wo1", title: "Push day", startedAt: new Date().toISOString(), exercises: [] };
+    // Fixture carries one exercise: since the F5 fix, workout-save
+    // refuses a session with no exercises (see the pin below), so the
+    // scoping fixture can no longer ride an empty session.
+    const w = { id: "wo1", title: "Push day", startedAt: new Date().toISOString(), exercises: [{ id: "ex1", name: "Bench Press", sets: [{ reps: 5, weight: 60, done: true }] }] };
     assert.equal(call("workout-save", ctxA, { workout: w }).ok, true);
     const list = call("workout-list", ctxA, {});
     assert.equal(list.result.workouts.length, 1);
@@ -30,6 +33,16 @@ describe("fitness.workout-list/save", () => {
 
   it("rejects empty workout payload", () => {
     assert.equal(call("workout-save", ctxA, {}).ok, false);
+  });
+
+  it("F5: rejects a session with no exercises (empty-session Finish)", () => {
+    const empty = { id: "wo_empty", title: "Empty", startedAt: new Date().toISOString(), exercises: [] };
+    const r = call("workout-save", ctxA, { workout: empty });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no exercises/);
+    const noEx = { id: "wo_noex", title: "NoEx", startedAt: new Date().toISOString() };
+    assert.equal(call("workout-save", ctxA, { workout: noEx }).ok, false);
+    assert.equal(call("workout-list", ctxA, {}).result.workouts.length, 0);
   });
 });
 
@@ -619,5 +632,190 @@ describe("fitness.fitness-freshness (relative effort + fitness/freshness trend)"
     assert.equal(r.ok, true);
     assert.equal(r.result.fitness, 0);
     assert.deepEqual(r.result.weeklyEffort, []);
+  });
+});
+
+describe("fitness.activity-log / recovery-log (manual write paths, F12)", () => {
+  it("activity-log refuses an all-empty log and stores a real one as source manual", () => {
+    assert.equal(call("activity-log", ctxA, { date: daysAgoISO(0) }).ok, false);
+    const r = call("activity-log", ctxA, { date: daysAgoISO(0), exerciseMinutes: 45, steps: 8000 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.entry.source, "manual");
+    const s = call("activity-summary", ctxA, { days: 7 });
+    assert.equal(s.ok, true);
+    const today = s.result.days.find((d) => d.date === daysAgoISO(0));
+    assert.ok(today, "logged day appears in activity-summary");
+    assert.equal(today.exerciseMinutes, 45);
+    assert.equal(today.steps, 8000);
+    assert.equal(today.source, "manual");
+  });
+
+  it("activity-log upserts by date instead of duplicating the day", () => {
+    call("activity-log", ctxA, { date: daysAgoISO(1), exerciseMinutes: 20 });
+    const r2 = call("activity-log", ctxA, { date: daysAgoISO(1), exerciseMinutes: 35 });
+    assert.equal(r2.result.created, false);
+    const s = call("activity-summary", ctxA, { days: 7 });
+    const rows = s.result.days.filter((d) => d.date === daysAgoISO(1));
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].exerciseMinutes, 35);
+  });
+
+  it("recovery-log requires sleepHours and feeds recovery-history as source manual", () => {
+    assert.equal(call("recovery-log", ctxA, { date: daysAgoISO(0) }).ok, false);
+    const r = call("recovery-log", ctxA, { date: daysAgoISO(0), sleepHours: 7.5, restingHr: 58, hrv: 62 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.entry.source, "manual");
+    const h = call("recovery-history", ctxA, { days: 14 });
+    assert.equal(h.ok, true);
+    const day = h.result.days.find((d) => d.date === daysAgoISO(0));
+    assert.ok(day, "logged night appears in recovery-history");
+    assert.equal(day.sleepDurationHours, 7.5);
+    assert.equal(day.restingHr, 58);
+  });
+
+  it("manual logs are scoped per user", () => {
+    call("activity-log", ctxA, { date: daysAgoISO(0), exerciseMinutes: 10 });
+    const s = call("activity-summary", ctxB, { days: 7 });
+    assert.equal(s.result.days.length, 0);
+  });
+});
+
+describe("fitness.activity-summary derived minutes from real logs (F4)", () => {
+  it("a Hub activity and a finished Log workout surface as a logged day", () => {
+    call("activity-create", ctxA, { type: "run", distanceKm: 5, durationSec: 1800, date: daysAgoISO(2) });
+    const start = new Date(Date.now() - 2 * 86400000 - 3600000).toISOString();
+    const end = new Date(Date.now() - 2 * 86400000).toISOString();
+    call("workout-save", ctxA, {
+      workout: {
+        id: "wo_f4", title: "Logged session", startedAt: start, finishedAt: end,
+        exercises: [{ id: "ex1", name: "Squat", sets: [{ reps: 5, weight: 100, done: true }] }],
+      },
+    });
+    const s = call("activity-summary", ctxA, { days: 7 });
+    assert.equal(s.ok, true);
+    const day = s.result.days.find((d) => d.date === daysAgoISO(2));
+    assert.ok(day, "derived day present — the Activity view is no longer dead after logging");
+    assert.equal(day.source, "logged");
+    // 30 min Hub run + 60 min Log session = 90 derived exercise minutes.
+    assert.equal(day.exerciseMinutes, 90);
+    // Only exercise minutes are derived — nothing is invented.
+    assert.equal(day.moveCalories, 0);
+    assert.equal(day.steps, 0);
+    assert.equal(s.result.source, "logged");
+  });
+
+  it("a stored device/manual row wins over derivation (no double-count)", () => {
+    call("activity-create", ctxA, { type: "run", distanceKm: 5, durationSec: 1800, date: daysAgoISO(3) });
+    call("activity-log", ctxA, { date: daysAgoISO(3), exerciseMinutes: 25 });
+    const s = call("activity-summary", ctxA, { days: 7 });
+    const day = s.result.days.find((d) => d.date === daysAgoISO(3));
+    assert.equal(day.source, "manual");
+    assert.equal(day.exerciseMinutes, 25);
+  });
+});
+
+describe("fitness.feed / feed-library — the stored listing (F14 completion)", () => {
+  // The wger v2 list payload carries name: null (verified live) — real
+  // names live in exerciseinfo translations. The seen set is corpus
+  // level, so the seen form is the reachable state and must carry
+  // names + full DTU ids; the listing is read back from stored state.
+  const LIST = { results: [
+    { id: 184, uuid: "uuid-184", name: null, description: null },
+    { id: 185, uuid: "uuid-185", name: null, description: null },
+  ] };
+  const NAMES = { 184: "Deadlifts", 185: "Squats" };
+  let created, realFetch;
+  function feedCtx(searchDtus = []) {
+    return {
+      actor: { userId: "user_a" }, userId: "user_a",
+      macro: { run: async (domain, action, input) => {
+        if (domain === "dtu" && action === "create") {
+          const dtu = { id: `dtu_test_${input.meta.exerciseId}`, title: input.title, meta: input.meta };
+          created.set(dtu.id, dtu);
+          return { ok: true, dtu };
+        }
+        if (domain === "dtu" && action === "search") return { ok: true, dtus: searchDtus };
+        throw new Error(`unexpected macro ${domain}.${action}`);
+      } },
+    };
+  }
+  function stubFetch() {
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      const info = u.match(/exerciseinfo\/(\d+)\//);
+      if (info) return { ok: true, json: async () => ({ translations: [{ language: 2, name: NAMES[info[1]], description: "<p>d</p>" }] }) };
+      if (u.includes("/exercise/")) return { ok: true, json: async () => LIST };
+      throw new Error("unexpected fetch " + u);
+    };
+  }
+
+  it("fresh pull records real names (exerciseinfo) + DTU ids in the stored library", async () => {
+    created = new Map(); realFetch = globalThis.fetch; stubFetch();
+    try {
+      const ctx = feedCtx();
+      const r = await call("feed", ctx, {});
+      assert.equal(r.ok, true);
+      assert.equal(r.result.ingested, 2);
+      assert.deepEqual(r.result.exercises.map((e) => e.name), ["Deadlifts", "Squats"]);
+      assert.deepEqual(r.result.exercises.map((e) => e.dtuId), ["dtu_test_184", "dtu_test_185"]);
+      assert.equal(created.get("dtu_test_184").title, "Exercise: Deadlifts");
+      const lib = await call("feed-library", ctx, {});
+      assert.deepEqual(lib.result.items, [
+        { name: "Deadlifts", dtuId: "dtu_test_184", exerciseId: 184 },
+        { name: "Squats", dtuId: "dtu_test_185", exerciseId: 185 },
+      ]);
+    } finally { globalThis.fetch = realFetch; }
+  });
+
+  it("the SEEN pull (the reachable state) still lists real names + full DTU ids", async () => {
+    created = new Map(); realFetch = globalThis.fetch; stubFetch();
+    try {
+      const ctx = feedCtx();
+      await call("feed", ctx, {});
+      const r2 = await call("feed", ctx, {});
+      assert.equal(r2.result.ingested, 0);
+      assert.equal(r2.result.skipped, 2);
+      assert.deepEqual(r2.result.exercises.map((e) => [e.name, e.dtuId, e.fresh]), [
+        ["Deadlifts", "dtu_test_184", false],
+        ["Squats", "dtu_test_185", false],
+      ]);
+    } finally { globalThis.fetch = realFetch; }
+  });
+
+  it("feed-library answers from stored state with the network down (reload persistence)", async () => {
+    created = new Map(); realFetch = globalThis.fetch; stubFetch();
+    try {
+      const ctx = feedCtx();
+      await call("feed", ctx, {});
+      globalThis.fetch = async () => { throw new Error("network down"); };
+      const lib = await call("feed-library", ctx, {});
+      assert.equal(lib.ok, true);
+      assert.equal(lib.result.items.length, 2);
+      assert.equal(lib.result.items[0].dtuId, "dtu_test_184");
+    } finally { globalThis.fetch = realFetch; }
+  });
+
+  it("a legacy batch (seen before the library existed) heals: name from exerciseinfo, id recovered by meta.exerciseId", async () => {
+    created = new Map(); realFetch = globalThis.fetch; stubFetch();
+    try {
+      const legacy = [
+        { id: "dtu_legacy_184", title: "Exercise: Exercise 184", meta: { exerciseId: 184, uuid: "uuid-184", name: "Exercise 184" } },
+        { id: "dtu_legacy_185", title: "Exercise: Exercise 185", meta: { exerciseId: 185, uuid: "uuid-185", name: "Exercise 185" } },
+      ];
+      const ctx = feedCtx(legacy);
+      const s = globalThis._concordSTATE.fitnessLens ?? (globalThis._concordSTATE.fitnessLens = {});
+      // Reach the domain state the way the handler does: one no-op call
+      // materialises the bucket, then seed the legacy seen set.
+      await call("feed-library", ctx, {});
+      s.feedSeen = new Set(["wger_uuid-184", "wger_uuid-185"]);
+      const r = await call("feed", ctx, {});
+      assert.equal(r.result.ingested, 0);
+      assert.equal(r.result.skipped, 2);
+      assert.deepEqual(r.result.exercises.map((e) => [e.name, e.dtuId]), [
+        ["Deadlifts", "dtu_legacy_184"],
+        ["Squats", "dtu_legacy_185"],
+      ]);
+      assert.equal(created.size, 0); // healed, not re-ingested — no duplicates
+    } finally { globalThis.fetch = realFetch; }
   });
 });

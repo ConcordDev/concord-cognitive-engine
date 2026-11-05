@@ -9,6 +9,7 @@ import {
   VetInvoice,
   VetPrescription,
   SPECIES_EMOJI,
+  recordedMeasure,
 } from './vet-types';
 
 interface OwnerPortalData {
@@ -103,7 +104,7 @@ export function OwnerPortalPanel() {
                 <div key={p.id} className="rounded bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-300">
                   <span className="mr-1">{SPECIES_EMOJI[p.species] || '🐾'}</span>
                   <span className="font-semibold text-white">{p.name}</span> · {p.breed} ·{' '}
-                  {p.ageYears}yr · {p.weightLbs}lb · {p.visits.length} visit(s)
+                  age {recordedMeasure(p.ageYears, 'yr')} · weight {recordedMeasure(p.weightLbs, 'lb')} · {p.visits.length} visit(s)
                 </div>
               ))
             )}

@@ -58,11 +58,18 @@ export default function VoteLensPage() {
   const pollsQuery = useQuery({
     queryKey: ['vote-lens', 'poll-list-summary'],
     queryFn: async () => {
+      // A failed load must surface as an error state, never as zeros or an
+      // empty list (F5) — so this throws instead of swallowing into [].
       const { data } = await lensRun<{ polls: PollSummary[] }>('vote', 'poll-list', {});
-      return data.ok && data.result ? data.result.polls : [];
+      if (!data.ok) throw new Error(data.error || 'Failed to load polls');
+      return data.result ? data.result.polls : [];
     },
     staleTime: 15000,
   });
+
+  // Loading renders an ellipsis and a failed load a dash — never a
+  // fabricated 0 that reads as a real count (F5).
+  const statVal = (n: number) => (pollsQuery.isLoading ? '…' : pollsQuery.isError ? '—' : n);
 
   const stats = useMemo(() => {
     const polls = pollsQuery.data || [];
@@ -102,28 +109,28 @@ export default function VoteLensPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 * 0.05 }} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#111] p-3">
           <Scale className="w-5 h-5 text-neon-purple" />
           <div>
-            <p className="text-lg font-bold">{stats.active}</p>
+            <p className="text-lg font-bold">{statVal(stats.active)}</p>
             <p className="text-xs text-gray-400">Active Polls</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#111] p-3">
           <TrendingUp className="w-5 h-5 text-neon-cyan" />
           <div>
-            <p className="text-lg font-bold">{stats.totalBallots}</p>
+            <p className="text-lg font-bold">{statVal(stats.totalBallots)}</p>
             <p className="text-xs text-gray-400">Ballots Cast</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#111] p-3">
           <Percent className="w-5 h-5 text-neon-green" />
           <div>
-            <p className="text-lg font-bold">{stats.closed}</p>
+            <p className="text-lg font-bold">{statVal(stats.closed)}</p>
             <p className="text-xs text-gray-400">Resolved Polls</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#111] p-3">
           <Users className="w-5 h-5 text-neon-blue" />
           <div>
-            <p className="text-lg font-bold">{stats.avgBallots}</p>
+            <p className="text-lg font-bold">{statVal(stats.avgBallots)}</p>
             <p className="text-xs text-gray-400">Avg Ballots / Poll</p>
           </div>
         </motion.div>

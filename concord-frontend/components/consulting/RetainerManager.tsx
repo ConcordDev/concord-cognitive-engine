@@ -12,7 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Repeat, Loader2, Trash2, Plus, Receipt, Pause, Play } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
-interface Period { id: string; amount: number; hoursUsed: number; includedHours: number; overageHours: number; billedAt: string; status: string }
+interface Period { id: string; amount: number; hoursUsed: number; includedHours: number; overageHours: number; billedAt: string; status: string; invoiceId?: string; invoiceNumber?: string }
 interface Retainer {
   id: string; client: string; label: string; monthlyAmount: number; cadence: string;
   includedHours: number; status: string; periods: Period[]; nextBillDate: string;
@@ -111,6 +111,7 @@ export function RetainerManager() {
                   <p key={p.id} className="text-[10px] text-zinc-400">
                     {p.billedAt} · ${p.amount.toLocaleString()} · {p.hoursUsed}h used
                     {p.overageHours > 0 && <span className="text-amber-400"> · {p.overageHours}h overage</span>}
+                    {p.invoiceNumber && <span className="text-emerald-400"> · Invoice {p.invoiceNumber}</span>}
                   </p>
                 ))}
                 {r.periods.length === 0 && <p className="text-[10px] text-zinc-400 italic">No billing periods yet.</p>}
@@ -131,8 +132,8 @@ export function RetainerManager() {
       </ul>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} role="button" tabIndex={0}>
+          <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0}>
             <h4 className="text-sm font-bold text-zinc-100 mb-3">New Retainer</h4>
             <div className="space-y-2">
               <input value={form.client} onChange={e => setForm({ ...form, client: e.target.value })} placeholder="Client"

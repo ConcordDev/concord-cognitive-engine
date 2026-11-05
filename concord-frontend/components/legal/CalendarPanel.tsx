@@ -48,6 +48,16 @@ const RULES = [
   { id: 'frcp-36-rfa',             name: 'FRCP 36(a)(3) — Respond to RFA (30 days)' },
   { id: 'frcp-56-msj-response',    name: 'FRCP 56 — MSJ response (21 days, local-rule typical)' },
   { id: 'frap-4-notice-appeal',    name: 'FRAP 4(a)(1)(A) — Notice of appeal (30 days)' },
+  // State response times — computed server-side from the lens's procedure
+  // reference; the result carries the citation, counting note and the
+  // reference's disclaimer (LG-S5).
+  { id: 'ca-response', name: 'California — CCP § 412.20 — Respond to complaint (30 days)' },
+  { id: 'tx-response', name: 'Texas — Tex. R. Civ. P. 99 — Answer (20 days)' },
+  { id: 'ny-response', name: 'New York — CPLR 320(a) — Answer (20 days)' },
+  { id: 'fl-response', name: 'Florida — Fla. R. Civ. P. 1.140 — Answer (20 days)' },
+  { id: 'il-response', name: 'Illinois — Respond/appear (30 days; see result disclaimer)' },
+  { id: 'oh-response', name: 'Ohio — Civ.R. 12(A) — Answer (28 days)' },
+  { id: 'ga-response', name: 'Georgia — O.C.G.A. § 9-11-12(a) — Answer (30 days)' },
 ];
 
 export function CalendarPanel() {
@@ -58,7 +68,7 @@ export function CalendarPanel() {
   const [showCalc, setShowCalc] = useState(false);
   const [draft, setDraft] = useState<{ title: string; kind: CalEvent['kind']; date: string; time: string; location: string; matterId: string; description: string }>({ title: '', kind: 'deadline', date: '', time: '', location: '', matterId: '', description: '' });
   const [calc, setCalc] = useState({ rule: '', triggerDate: '', matterId: '' });
-  const [calcResult, setCalcResult] = useState<{ rule: string; ruleName: string; adjustedDeadline: string; rawDeadline: string; rolledForward: boolean; days: number } | null>(null);
+  const [calcResult, setCalcResult] = useState<{ rule: string; ruleName: string; adjustedDeadline: string; rawDeadline: string; rolledForward: boolean; days: number; citation?: string; state?: string; disclaimer?: string; countingNote?: string } | null>(null);
   const [showParse, setShowParse] = useState(false);
   const [docText, setDocText] = useState('');
   const [parseMatterId, setParseMatterId] = useState('');
@@ -116,7 +126,7 @@ export function CalendarPanel() {
           date: calcResult.adjustedDeadline,
           matterId: calc.matterId || undefined,
           sourceRule: calc.rule,
-          description: `Auto-computed from court rule ${calc.rule} triggered ${calc.triggerDate} (${calcResult.days} days). ${calcResult.rolledForward ? 'Rolled forward past weekend/holiday per FRCP 6(a).' : ''}`,
+          description: `Auto-computed from ${calcResult.citation || `court rule ${calc.rule}`} triggered ${calc.triggerDate} (${calcResult.days} days). ${calcResult.rolledForward ? (calcResult.citation ? 'Rolled forward past weekend/holiday.' : 'Rolled forward past weekend/holiday per FRCP 6(a).') : ''}`,
         },
       });
       setCalcResult(null);
@@ -230,8 +240,12 @@ export function CalendarPanel() {
                 <div className="text-gray-400 mt-1">{calcResult.ruleName}</div>
                 <div className="text-[10px] text-gray-400 mt-1">
                   {calcResult.days} days from {calc.triggerDate}.
-                  {calcResult.rolledForward && ` Raw was ${calcResult.rawDeadline}; rolled forward to next business day per FRCP 6(a)(1)(C).`}
+                  {calcResult.rolledForward && (calcResult.citation
+                    ? ` Raw was ${calcResult.rawDeadline}; rolled forward to the next business day.`
+                    : ` Raw was ${calcResult.rawDeadline}; rolled forward to next business day per FRCP 6(a)(1)(C).`)}
                 </div>
+                {calcResult.countingNote && <div className="text-[10px] text-gray-400 mt-1">{calcResult.countingNote}</div>}
+                {calcResult.disclaimer && <div className="text-[10px] text-amber-200/70 mt-1">{calcResult.disclaimer}</div>}
                 <button onClick={bookCalcResult} className="mt-2 px-2.5 py-1 text-[11px] rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Add to calendar</button>
               </div>
             )}

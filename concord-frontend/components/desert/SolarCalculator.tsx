@@ -11,6 +11,8 @@ import { lensRun } from '@/lib/api/client';
 import { Sun, Zap, Battery, Maximize, Leaf } from 'lucide-react';
 
 interface SolarResult {
+  status?: string;
+  message?: string;
   sizedFor: string;
   latitude: number;
   peakSunHours: number;
@@ -36,6 +38,13 @@ export function SolarCalculator() {
   const [targetDailyKwh, setTargetDailyKwh] = useState('30');
   const [panelCount, setPanelCount] = useState('20');
   const [panelWatt, setPanelWatt] = useState('450');
+  // The handler's contract (desert.solarInstall) also needs the module's
+  // datasheet area, the system derate, and the site's clear days — the
+  // values it previously assumed silently (2 m², 0.82, 300 d) are now
+  // labelled inputs with those documented values as their defaults.
+  const [panelAreaM2, setPanelAreaM2] = useState('2.0');
+  const [systemLossFactor, setSystemLossFactor] = useState('0.82');
+  const [clearDaysPerYear, setClearDaysPerYear] = useState('300');
   const [autonomyDays, setAutonomyDays] = useState('1');
   const [result, setResult] = useState<SolarResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -51,6 +60,9 @@ export function SolarCalculator() {
     const params: Record<string, unknown> = {
       latitude: lat,
       panelWatt: Number(panelWatt) || 450,
+      panelAreaM2: Number(panelAreaM2) || 0,
+      systemLossFactor: Number(systemLossFactor) || 0,
+      clearDaysPerYear: Number(clearDaysPerYear) || 0,
       autonomyDays: Number(autonomyDays) || 1,
     };
     if (mode === 'load') params.targetDailyKwh = Number(targetDailyKwh) || 0;
@@ -58,9 +70,15 @@ export function SolarCalculator() {
     setBusy(true);
     const r = await lensRun<SolarResult>('desert', 'solarInstall', params);
     setBusy(false);
-    if (r.data?.ok && r.data.result) setResult(r.data.result);
+    // A NOT_COMPUTED envelope is ok:true with no computed fields — it is
+    // a refusal, and must render as one, never as a result full of
+    // "undefined" tiles.
+    if (r.data?.ok && r.data.result?.status === 'NOT_COMPUTED') {
+      setResult(null);
+      setErr(r.data.result.message || 'Not computed — missing inputs');
+    } else if (r.data?.ok && r.data.result) setResult(r.data.result);
     else setErr(r.data?.error || 'Calculation failed');
-  }, [mode, latitude, targetDailyKwh, panelCount, panelWatt, autonomyDays]);
+  }, [mode, latitude, targetDailyKwh, panelCount, panelWatt, panelAreaM2, systemLossFactor, clearDaysPerYear, autonomyDays]);
 
   return (
     <div className="space-y-4">
@@ -92,6 +110,9 @@ export function SolarCalculator() {
           )}
           <Field label="Panel watt" value={panelWatt} onChange={setPanelWatt} />
           <Field label="Autonomy days" value={autonomyDays} onChange={setAutonomyDays} />
+          <Field label="Panel area m² (datasheet)" value={panelAreaM2} onChange={setPanelAreaM2} />
+          <Field label="System loss factor" value={systemLossFactor} onChange={setSystemLossFactor} />
+          <Field label="Clear days / year" value={clearDaysPerYear} onChange={setClearDaysPerYear} />
         </div>
         <button
           onClick={compute}

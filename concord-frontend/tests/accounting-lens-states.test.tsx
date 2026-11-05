@@ -61,7 +61,6 @@ vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
 vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
-vi.mock('@/components/lens/LensFeaturePanel', () => ({ LensFeaturePanel: () => null }));
 vi.mock('@/components/lens/IndicatorChart', () => ({ default: () => null }));
 vi.mock('@/components/accounting/AccountingActionPanel', () => ({ AccountingActionPanel: () => null }));
 vi.mock('@/components/accounting/CategoryRulesPanel', () => ({ CategoryRulesPanel: () => null }));

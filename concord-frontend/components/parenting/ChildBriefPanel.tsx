@@ -1,26 +1,14 @@
 'use client';
 
 /**
- * ChildBriefPanel — Wonder Weeks / Cozi-shape action surface for the
- * parenting lens. Self-contained: takes a child name + age (years +
- * months) and exposes 6 paid-app-tier actions wiring real backends
- * plus the 5 existing parenting macros that had no UI.
- *
- *   1. Milestone check  → parenting.milestoneCheck (age-banded
- *                          developmental expectations)
- *   2. Routine optimize → parenting.routineOptimizer (the day's
- *                          schedule reflowed against age + nap window)
- *   3. Mint snapshot    → dtu.create with the child's snapshot
- *                          (private; tags=[parenting,child:Name])
- *   4. DM caregiver     → /api/social/dm to co-parent / nanny / family
- *                          with the milestone summary + recent notes
- *   5. Publish journey  → dtu.create public anonymized growth DTU
- *                          (federation pickup for parenting communities)
- *   6. Developmental brief (agent) → chat_agent.do "what should I
- *                          watch for in the next 4-6 weeks?"
+ * ChildBriefPanel — quick actions beside the child's stored record.
+ * Milestone check reads parenting.milestoneCheck for the selected
+ * child (the CDC record). Age-targeted notes come from expert-content.
+ * A typed name and age still drive routine, snapshot, DM, and publish.
+ * This surface is not a developmental assessment.
  */
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Baby, Milestone, Clock, Sparkles, Send, Globe, Wand2,
   Loader2, Check, AlertTriangle,
@@ -42,7 +30,7 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
-type ActionId = 'milestone' | 'routine' | 'mint' | 'dm' | 'publish' | 'agent';
+type ActionId = 'milestone' | 'routine' | 'mint' | 'dm' | 'publish' | 'notes';
 
 function pickMessage(e: unknown): string {
   const ax = e as { response?: { data?: { error?: string } }; message?: string };
@@ -55,12 +43,24 @@ function pickMessage(e: unknown): string {
 // `ahead`/`suggestions`/`napWindow` fields that don't exist in the actual
 // macro output, so the buttons showed a fake "success" toast while silently
 // rendering nothing real. Fixed alongside the request-shape bug below.
-interface MilestoneCategoryResult { category: string; ageRange: string; expected: string[]; achieved: number; total: number; completionRate: number }
-interface MilestoneResult {
-  childName?: string; ageMonths: number; ageDisplay?: string;
-  milestoneResults: MilestoneCategoryResult[]; overallCompletionRate: number;
-  totalMilestonesRecorded: number; assessment: string;
+interface MilestoneRecord {
+  basis: 'record';
+  childId: string;
+  childName: string;
+  ageMonths: number;
+  eligibleCount: number;
+  achievedCount: number;
+  byCategory: Record<string, { total: number; achieved: number }>;
+  note: string;
 }
+interface ExpertNotes {
+  childName: string;
+  topic: string;
+  ageRange: string;
+  articles: Array<{ id: string; text: string }>;
+  note: string;
+}
+interface ChildRow { id: string; name: string; ageDisplay?: string }
 interface RoutineSlot { time: string; activity: string; duration: number; category: string }
 interface RoutineResult {
   stage: string; ageYears: number; suggestedRoutine: RoutineSlot[];
@@ -76,12 +76,23 @@ export function ChildBriefPanel() {
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
-  const [milestoneResult, setMilestoneResult] = useState<MilestoneResult | null>(null);
+  const [children, setChildren] = useState<ChildRow[]>([]);
+  const [childId, setChildId] = useState('');
+  const [record, setRecord] = useState<MilestoneRecord | null>(null);
+  const [notes, setNotes] = useState<ExpertNotes | null>(null);
   const [routineResult, setRoutineResult] = useState<RoutineResult | null>(null);
   const [snapshotDtuId, setSnapshotDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [dmRecipient, setDmRecipient] = useState('');
-  const [agentReply, setAgentReply] = useState<string | null>(null);
+
+  const loadChildren = useCallback(async () => {
+    const r = await lensRun('parenting', 'child-list', {});
+    const rows = r.data?.ok === false ? [] : (r.data?.result?.children as ChildRow[] | undefined) ?? [];
+    setChildren(rows);
+    setChildId((cur) => (cur && rows.some((c) => c.id === cur) ? cur : (rows[0]?.id ?? '')));
+  }, []);
+
+  useEffect(() => { void loadChildren(); }, [loadChildren]);
 
   const ageInMonths = (parseFloat(ageYears) || 0) * 12 + (parseFloat(ageMonths) || 0);
   const childKnown = childName.trim().length > 0 && ageInMonths > 0;
@@ -102,12 +113,17 @@ export function ChildBriefPanel() {
   }
 
   async function actMilestone() {
-    if (!childKnown) { err('Enter child name + age.'); return; }
+    if (!childId) { err('Add a child in Baby Care. A blank form is not this child\'s record.'); return; }
     setBusy('milestone'); setFeedback(null);
     try {
-      const r = await callMacro<MilestoneResult>('milestoneCheck', { childName: childName.trim(), childAge: childAgeStr(), milestones: [] });
-      if (r.ok && r.result) { setMilestoneResult(r.result); ok('Milestones loaded.'); }
-      else err(r.error ?? 'milestone check failed');
+      const r = await lensRun('parenting', 'milestoneCheck', { childId });
+      const result = r.data?.result as MilestoneRecord | undefined;
+      if (r.data?.ok === false || !result || result.basis !== 'record') {
+        err(r.data?.error || 'Milestone check did not read the stored record.');
+        return;
+      }
+      setRecord(result);
+      ok(`${result.achievedCount} of ${result.eligibleCount} recorded.`);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -142,7 +158,7 @@ export function ChildBriefPanel() {
               ageYears: parseFloat(ageYears) || 0,
               snapshotDate: new Date().toISOString(),
               recentNotes: recentNotes.trim(),
-              milestones: milestoneResult,
+              milestones: record,
               routine: routineResult,
             },
           },
@@ -165,11 +181,8 @@ export function ChildBriefPanel() {
       `Age: ${ageYears || 0}y ${ageMonths || 0}m`,
       '',
     ];
-    if (milestoneResult) {
-      parts.push(`Milestone assessment: ${milestoneResult.assessment} (${milestoneResult.overallCompletionRate}% complete)`);
-      for (const cat of milestoneResult.milestoneResults.slice(0, 4)) {
-        parts.push(`  • ${cat.category} (${cat.ageRange}): ${cat.achieved}/${cat.total} — ${cat.expected.join(', ')}`);
-      }
+    if (record) {
+      parts.push(`Milestones recorded: ${record.achievedCount} of ${record.eligibleCount}.`);
       parts.push('');
     }
     if (recentNotes.trim()) {
@@ -200,7 +213,6 @@ export function ChildBriefPanel() {
             anonymized: true,
             child: {
               ageMonths: ageInMonths,
-              milestones: milestoneResult,
               routine: routineResult,
             },
           },
@@ -216,40 +228,29 @@ export function ChildBriefPanel() {
     finally { setBusy(null); }
   }
 
-  async function actAgent() {
-    if (!childKnown) { err('Enter child name + age.'); return; }
-    setBusy('agent'); setFeedback(null); setAgentReply(null);
+  async function actNotes() {
+    if (!childId) { err('Add a child in Baby Care.'); return; }
+    setBusy('notes'); setFeedback(null); setNotes(null);
     try {
-      const expectedFlat = milestoneResult?.milestoneResults.flatMap((c) => c.expected) ?? [];
-      const task = [
-        `Developmental brief for ${childName.trim()}, ${ageInMonths} months old.`,
-        milestoneResult ? `Milestone assessment: ${milestoneResult.assessment} (${milestoneResult.overallCompletionRate}% complete).` : '',
-        expectedFlat.length ? `Currently expected: ${expectedFlat.slice(0, 4).join(', ')}.` : '',
-        recentNotes.trim() ? `Recent notes: ${recentNotes.trim()}.` : '',
-        ``,
-        `Return a short brief: what to watch for in the next 4-6 weeks, 2-3 simple activities`,
-        `that support the next milestones, and any developmental red flags to discuss with the pediatrician.`,
-      ].filter(Boolean).join(' ');
-      const r = await lensRun({
-        domain: 'chat_agent', name: 'do',
-        input: { task, maxTurns: 4 },
-      });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) {
-        setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
-        ok('Brief ready.');
-      } else err('Agent returned empty.');
+      const r = await lensRun('parenting', 'expert-content', { childId });
+      const result = r.data?.result as ExpertNotes | undefined;
+      if (r.data?.ok === false || !result?.articles) {
+        err(r.data?.error || 'Age-targeted notes are unavailable.');
+        return;
+      }
+      setNotes(result);
+      ok('Age-targeted notes loaded.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
-    { id: 'milestone', label: 'Milestone check', desc: 'Age-banded developmental expectations',         icon: Milestone, accent: '#8b5cf6', handler: actMilestone, disabled: !childKnown },
+    { id: 'milestone', label: 'Milestone check', desc: 'This child\'s stored CDC record', icon: Milestone, accent: '#8b5cf6', handler: actMilestone, disabled: !childId },
     { id: 'routine',   label: 'Optimize routine', desc: 'Day schedule reflowed against age',           icon: Clock,     accent: '#06b6d4', handler: actRoutine,   disabled: !childKnown },
     { id: 'mint',      label: snapshotDtuId ? 'Snapshot saved' : 'Mint snapshot', desc: snapshotDtuId ? `DTU ${snapshotDtuId.slice(0, 8)}…` : 'Private DTU of this child', icon: Sparkles, accent: '#3b82f6', handler: actMint, disabled: !childKnown || !!snapshotDtuId },
     { id: 'dm',        label: 'DM caregiver',     desc: 'Update co-parent / nanny / family',           icon: Send,      accent: '#ec4899', handler: actDm,        disabled: !childKnown },
     { id: 'publish',   label: publishedDtuId ? 'Journey published' : 'Publish journey', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Anonymized public DTU + federation', icon: Globe, accent: '#22c55e', handler: actPublish, disabled: !childKnown || !!publishedDtuId },
-    { id: 'agent',     label: 'Developmental brief', desc: 'Agent: what to watch for next 4-6 weeks',  icon: Wand2,     accent: '#eab308', handler: actAgent,     disabled: !childKnown },
+    { id: 'notes',     label: 'Age-targeted notes', desc: 'Notes for this child\'s age band', icon: Wand2, accent: '#eab308', handler: actNotes, disabled: !childId },
   ];
 
   return (
@@ -257,10 +258,24 @@ export function ChildBriefPanel() {
       <header className="flex items-center gap-2 border-b border-amber-500/10 pb-2">
         <Baby className="h-4 w-4 text-amber-400" />
         <h3 className="text-sm font-semibold text-white">Child action brief</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-          wonder weeks · cozi
-        </span>
       </header>
+      <p className="text-[11px] text-zinc-400">
+        Not a developmental assessment. Share concerns with your pediatrician. Milestone check reads the stored record. The notes are age-targeted guidance, not Wonder Weeks or Cozi.
+      </p>
+      <div>
+        <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Child on record</label>
+        <select
+          value={childId}
+          onChange={(e) => { setChildId(e.target.value); setRecord(null); setNotes(null); }}
+          className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+        >
+          {children.length === 0
+            ? <option value="">No child on record</option>
+            : children.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}{c.ageDisplay ? ` · ${c.ageDisplay}` : ''}</option>
+            ))}
+        </select>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <div>
@@ -313,23 +328,19 @@ export function ChildBriefPanel() {
         })}
       </div>
 
-      {milestoneResult && (
+      {record && (
         <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-3 space-y-2">
           <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold flex items-center gap-1.5">
-            <Milestone className="w-3 h-3" /> Milestones at {milestoneResult.ageDisplay ?? `${milestoneResult.ageMonths}mo`} · {milestoneResult.overallCompletionRate}% complete
+            <Milestone className="w-3 h-3" /> {record.childName}&apos;s record · {record.achievedCount} of {record.eligibleCount}
           </div>
-          <p className="text-[11px] text-purple-200">{milestoneResult.assessment}</p>
-          {milestoneResult.milestoneResults.length === 0 ? (
-            <p className="text-[11px] text-zinc-400 italic">No CDC benchmark bracket applies at this age yet.</p>
-          ) : (
-            <ul className="space-y-1">
-              {milestoneResult.milestoneResults.map((cat) => (
-                <li key={cat.category} className="text-[11px] text-gray-300">
-                  <strong className="text-purple-200">{cat.category}</strong> ({cat.ageRange}) — {cat.achieved}/{cat.total}: {cat.expected.join(' · ')}
-                </li>
-              ))}
-            </ul>
-          )}
+          <p className="text-[11px] text-purple-200">{record.note}</p>
+          <ul className="space-y-1">
+            {Object.entries(record.byCategory).map(([cat, row]) => (
+              <li key={cat} className="text-[11px] text-gray-300">
+                <strong className="text-purple-200 capitalize">{cat}</strong> — {row.achieved} of {row.total}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -350,13 +361,18 @@ export function ChildBriefPanel() {
         </div>
       )}
 
-      {agentReply && (
-        <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-56 overflow-y-auto">
-          <div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]">
+      {notes && (
+        <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-56 overflow-y-auto space-y-1.5">
+          <div className="flex items-center gap-1.5 text-yellow-400 font-semibold uppercase tracking-wider text-[10px]">
             <Wand2 className="w-3 h-3" />
-            Developmental brief
+            {notes.childName} · {notes.topic} ({notes.ageRange})
           </div>
-          <pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre>
+          <ul className="space-y-1">
+            {notes.articles.map((a) => (
+              <li key={a.id} className="text-[11px] text-zinc-200">{a.text}</li>
+            ))}
+          </ul>
+          <p className="text-[10px] text-zinc-400">{notes.note}</p>
         </div>
       )}
 

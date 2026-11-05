@@ -19,7 +19,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { MissionPlanningPanel } from '@/components/space/MissionPlanningPanel';
@@ -101,7 +100,6 @@ export default function SpaceLensPage() {
         subtitle="Missions, satellites, telemetry and orbital management"
         actions={
           <>
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="space" data={realtimeData || {}} compact />
           </>
         }

@@ -126,6 +126,9 @@ describe("energy — pure-compute calculators (exact values)", () => {
     // cost = round(15.2 * 2800) = 42560
     assert.equal(r.result.estimatedCost, 42560);
     assert.equal(r.result.afterTaxCredit, Math.round(42560 * 0.7));
+    // min(1824, 900) * 12 * 0.12 = 1296. The rate is named on the result.
+    assert.equal(r.result.annualSavings, 1296);
+    assert.equal(r.result.savingsRateUsdPerKwh, 0.12);
     assert.match(r.result.recommendation, /100% of usage/);
   });
 
@@ -146,7 +149,30 @@ describe("energy — pure-compute calculators (exact values)", () => {
     assert.equal(r.result.totalMetricTons, Math.round(total * 1000) / 1000);
     assert.equal(r.result.annualEstimate, Math.round(total * 12 * 100) / 100);
     assert.equal(r.result.topSource, "flights"); // highest single
+    assert.equal(r.result.vsUSAverage, `${Math.round((total * 12 / 16) * 100)}% of US average`);
+    assert.equal(r.result.partial, false);
+    assert.deepEqual(r.result.missingInputs, []);
     assert.ok(Array.isArray(r.result.reductionTips) && r.result.reductionTips.length > 0);
+  });
+
+  it("carbonFootprint: omitted fuels are not scored as zero tons", () => {
+    const r = callCalcPanel("carbonFootprint", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.status, "NOT_COMPUTED");
+    assert.equal(r.result.totalMetricTons, undefined);
+    assert.equal(r.result.vsUSAverage, undefined);
+    assert.deepEqual(r.result.missingInputs, ["electricityKWh", "naturalGasTherms", "gasolineGallons", "flightMiles"]);
+  });
+
+  it("carbonFootprint: a supplied zero is recorded and a blank sibling is not", () => {
+    const r = callCalcPanel("carbonFootprint", ctxA, { electricityKWh: 0, naturalGasTherms: "", gasolineGallons: null });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.breakdown.electricity, 0);
+    assert.equal(r.result.breakdown.naturalGas, null);
+    assert.equal(r.result.totalMetricTons, 0);
+    assert.equal(r.result.vsUSAverage, null);
+    assert.equal(r.result.partial, true);
+    assert.deepEqual(r.result.missingInputs, ["naturalGasTherms", "gasolineGallons", "flightMiles"]);
   });
 
   it("gridStatus: exact utilization/status/reserves + stable string echo", () => {
@@ -159,6 +185,34 @@ describe("energy — pure-compute calculators (exact values)", () => {
     assert.equal(r.result.renewableShare, "35%");
     assert.equal(r.result.frequencyStable, true); // |60.01-60| < 0.05
     assert.equal(r.result.reserves, "200 MW available");
+    assert.equal(r.result.reason, null);
+    assert.deepEqual(r.result.unavailable, []);
+  });
+
+  it("gridStatus: omitted readings are not 0 MW at a stable 60 Hz", () => {
+    const r = call("gridStatus", ctxA, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.currentDemand, null);
+    assert.equal(r.result.totalCapacity, null);
+    assert.equal(r.result.utilization, null);
+    assert.equal(r.result.status, null);
+    assert.equal(r.result.renewableShare, null);
+    assert.equal(r.result.gridFrequency, null);
+    assert.equal(r.result.frequencyStable, null);
+    assert.equal(r.result.reserves, null);
+    assert.equal(r.result.reason, "not_recorded");
+    assert.deepEqual(r.result.unavailable, ["currentDemandMW", "totalCapacityMW", "renewablePercent", "gridFrequencyHz"]);
+  });
+
+  it("gridStatus: an explicit 0 stays 0, and a missing frequency is not called stable", () => {
+    const r = call("gridStatus", ctxA, { currentDemandMW: 0, totalCapacityMW: 1000, renewablePercent: 0 });
+    assert.equal(r.result.currentDemand, "0 MW");
+    assert.equal(r.result.renewableShare, "0%");
+    assert.equal(r.result.utilization, 0);
+    assert.equal(r.result.status, "low-load");
+    assert.equal(r.result.gridFrequency, null);
+    assert.equal(r.result.frequencyStable, null);
+    assert.deepEqual(r.result.unavailable, ["gridFrequencyHz"]);
   });
 });
 
@@ -185,6 +239,7 @@ describe("energy — fail-closed poison (no Infinity/NaN leak, no throw)", () =>
       assert.equal(r.ok, true);
       assert.equal(r.result.maxPanels, null);
       assert.equal(r.result.estimatedCost, null);
+      assert.equal(r.result.savingsRateUsdPerKwh, null);
       assert.equal(r.result.reason, "not_recorded");
       assert.deepEqual(r.result.unavailable, ["roofAreaSqFt", "peakSunHours", "monthlyUsageKWh"]);
     }
@@ -199,6 +254,7 @@ describe("energy — fail-closed poison (no Infinity/NaN leak, no throw)", () =>
     assert.equal(r.result.coveragePercent, null);
     assert.equal(r.result.estimatedCost, null);
     assert.equal(r.result.annualSavings, null);
+    assert.equal(r.result.savingsRateUsdPerKwh, null);
     assert.equal(r.result.paybackYears, null);
     assert.equal(r.result.reason, "not_recorded");
     assert.deepEqual(r.result.unavailable, ["roofAreaSqFt", "peakSunHours", "monthlyUsageKWh"]);
@@ -208,24 +264,30 @@ describe("energy — fail-closed poison (no Infinity/NaN leak, no throw)", () =>
     const r = callCalcPanel("solarEstimate", ctxA, { roofAreaSqFt: 1000, peakSunHours: 5 });
     assert.equal(r.ok, true);
     assert.equal(r.result.maxPanels, null);
+    assert.equal(r.result.annualSavings, null);
+    assert.equal(r.result.savingsRateUsdPerKwh, null);
     assert.deepEqual(r.result.unavailable, ["monthlyUsageKWh"]);
   });
 
-  it("carbonFootprint: poisoned inputs → finite zeros, never null", () => {
+  it("carbonFootprint: poisoned inputs are not a measured zero household", () => {
     for (const p of POISON) {
       const r = callCalcPanel("carbonFootprint", ctxA, { electricityKWh: p, naturalGasTherms: p, gasolineGallons: p, flightMiles: p });
       assert.equal(r.ok, true);
       assertFinite(r.result, `carbonFootprint(${String(p)})`);
-      assert.equal(r.result.totalMetricTons, 0);
+      assert.equal(r.result.status, "NOT_COMPUTED");
+      assert.equal(r.result.totalMetricTons, undefined);
+      assert.doesNotMatch(JSON.stringify(r.result), /Infinity|NaN/);
     }
   });
 
-  it("gridStatus: poisoned inputs → finite, output strings never 'Infinity MW'", () => {
+  it("gridStatus: poisoned inputs are not a measured grid, and never render Infinity", () => {
     for (const p of POISON) {
       const r = call("gridStatus", ctxA, { currentDemandMW: p, totalCapacityMW: p, renewablePercent: p, gridFrequencyHz: p });
       assert.equal(r.ok, true);
       assert.doesNotMatch(JSON.stringify(r.result), /Infinity|NaN/);
-      assert.ok(Number.isFinite(r.result.utilization));
+      assert.equal(r.result.utilization, null);
+      assert.equal(r.result.frequencyStable, null);
+      assert.equal(r.result.reason, "not_recorded");
     }
   });
 

@@ -219,11 +219,31 @@ export default function FishingLensPage() {
 
   // Real derived stat — joins each catch's item_id ("raw_fish:<fishId>")
   // back to the catalog's rarity, never a fabricated count.
+  //
+  // F2 fix: a row's TRUE catch count is `quantity`, not "1 row". Repeat
+  // catches of an already-held species stack onto the existing row (the
+  // table's real PK is (user_id, item_id)) instead of adding a new row —
+  // so summing `quantity` is the honest total, and counting rows alone
+  // would undercount a player who's caught the same species twice.
+  const totalCatches = useMemo(
+    () => catches.reduce((sum, c) => sum + (c.quantity ?? 1), 0),
+    [catches],
+  );
+
   const legendaryCatches = useMemo(() => {
     if (catalog.length === 0) return null;
     const rarityById = new Map(catalog.map((f) => [f.id, f.rarity]));
-    return catches.filter((c) => rarityById.get(c.item_id.replace(/^raw_fish:/, '')) === 'legendary').length;
+    return catches
+      .filter((c) => rarityById.get(c.item_id.replace(/^raw_fish:/, '')) === 'legendary')
+      .reduce((sum, c) => sum + (c.quantity ?? 1), 0);
   }, [catches, catalog]);
+
+  // F5 fix: joins the already-fetched catalog onto catch rows so the log
+  // can show rarity/mass too — those columns don't live on player_inventory.
+  const speciesById = useMemo(
+    () => new Map(catalog.map((f) => [f.id, { rarity: f.rarity, mass: f.mass }])),
+    [catalog],
+  );
 
   const mostRecentCatch = catches[0] ? formatRelativeTime(catches[0].acquired_at * 1000) : 'None yet';
 
@@ -249,6 +269,22 @@ export default function FishingLensPage() {
       >
       <div className="space-y-5">
 
+        {/* Substrate tier declaration (F1): the species catalog, the cast/bite/reel
+            loop, and the Catch log below are real, persistent, per-player game
+            state — not a static demo or a simulation. Catches write to your
+            actual inventory (player_inventory, scoped to your account) and the
+            log survives reload. This is a lens-local disclosure; whether a
+            shared tier-badge component gets standardized across lenses is an
+            open platform question for the Lead's tier track (fishing.md §8 Q1). */}
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-700/30 bg-emerald-950/20 px-4 py-2.5 text-sm text-emerald-100">
+          <span className="rounded-full border border-emerald-600/50 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-300">
+            Live
+          </span>
+          <p>
+            Real player state: the catalog, your casts, and the Catch log below are persisted to your account, not demo data.
+          </p>
+        </div>
+
         {/* Honest world-ownership bridge: the spatial minigame's real home is
             the 3D world; this hub is a companion, not a duplicate. */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-700/30 bg-cyan-950/20 px-4 py-3">
@@ -271,7 +307,7 @@ export default function FishingLensPage() {
         <StatTileGrid columns={4}>
           <StatTile label="World" value={worldId} icon={<Compass className="h-4 w-4" aria-hidden="true" />} />
           <StatTile label="Species catalogued" value={catalog.length} icon={<Fish className="h-4 w-4" aria-hidden="true" />} />
-          <StatTile label="Catches logged" value={catches.length} />
+          <StatTile label="Catches logged" value={totalCatches} />
           <StatTile
             label="Legendary catches"
             value={legendaryCatches ?? '—'}
@@ -291,6 +327,7 @@ export default function FishingLensPage() {
               onSelectBiome={setActiveBiome}
               onSelectFish={setSelectedFish}
               density={tableDensity}
+              densityLevel={density}
             />
           </div>
           <div>
@@ -301,6 +338,7 @@ export default function FishingLensPage() {
               onRetry={() => loadCatches()}
               justCaughtId={justCaughtId}
               density={tableDensity}
+              speciesById={catalog.length > 0 ? speciesById : undefined}
             />
           </div>
         </div>

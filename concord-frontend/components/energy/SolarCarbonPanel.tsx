@@ -14,15 +14,27 @@ import { Sun, Leaf, Zap } from 'lucide-react';
 import { CalcPanel } from '@/components/lens-primitives/CalcPanel';
 
 interface SolarInput { roofAreaSqFt: number | ''; peakSunHours: number | ''; monthlyUsageKWh: number | '' }
-interface CarbonInput { electricityKWh: number; naturalGasTherms: number; gasolineGallons: number; flightMiles: number }
+interface CarbonInput { electricityKWh: number | ''; naturalGasTherms: number | ''; gasolineGallons: number | ''; flightMiles: number | '' }
 interface SolarResult {
   roofArea?: number | null; maxPanels?: number | null; systemSizeKW?: number | null;
   monthlyProductionKWh?: number | null; coveragePercent?: number | null;
   estimatedCost?: number | null; afterTaxCredit?: number | null; annualSavings?: number | null;
+  savingsRateUsdPerKwh?: number | null;
   paybackYears?: number | null; recommendation?: string | null;
   reason?: string | null; unavailable?: string[];
 }
-interface CarbonResult { breakdown?: Record<string, number>; totalMetricTons?: number; annualEstimate?: number; vsUSAverage?: string; topSource?: string; reductionTips?: string[] }
+interface CarbonResult {
+  status?: string;
+  message?: string;
+  missingInputs?: string[];
+  partial?: boolean;
+  breakdown?: Record<string, number | null>;
+  totalMetricTons?: number | null;
+  annualEstimate?: number | null;
+  vsUSAverage?: string | null;
+  topSource?: string | null;
+  reductionTips?: string[];
+}
 
 const coverageColour = (pct?: number) => {
   if (!pct) return 'text-zinc-400';
@@ -33,7 +45,7 @@ const coverageColour = (pct?: number) => {
 
 export function SolarCarbonPanel() {
   const [solar, setSolar] = useState<SolarInput>({ roofAreaSqFt: '', peakSunHours: '', monthlyUsageKWh: '' });
-  const [carbon, setCarbon] = useState<CarbonInput>({ electricityKWh: 0, naturalGasTherms: 0, gasolineGallons: 0, flightMiles: 0 });
+  const [carbon, setCarbon] = useState<CarbonInput>({ electricityKWh: '', naturalGasTherms: '', gasolineGallons: '', flightMiles: '' });
 
   return (
     <CalcPanel<SolarResult, CarbonResult>
@@ -61,19 +73,26 @@ export function SolarCarbonPanel() {
       }}
       right={{
         macro: 'carbonFootprint',
-        buildArtifact: () => ({ data: carbon }),
+        buildArtifact: () => {
+          const data: Record<string, number> = {};
+          (Object.keys(carbon) as (keyof CarbonInput)[]).forEach((key) => {
+            const value = carbon[key];
+            if (typeof value === 'number' && Number.isFinite(value)) data[key] = value;
+          });
+          return { data };
+        },
         render: (
           <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
             <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Leaf className="h-3 w-3" />Carbon inputs (monthly)</div>
             <div className="grid grid-cols-2 gap-2">
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Electricity (kWh)</span>
-                <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={carbon.electricityKWh} onChange={(e) => setCarbon({ ...carbon, electricityKWh: Math.max(0, Number(e.target.value) || 0) })} /></label>
+                <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={carbon.electricityKWh} onChange={(e) => setCarbon({ ...carbon, electricityKWh: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Nat. gas (therms)</span>
-                <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={carbon.naturalGasTherms} onChange={(e) => setCarbon({ ...carbon, naturalGasTherms: Math.max(0, Number(e.target.value) || 0) })} /></label>
+                <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={carbon.naturalGasTherms} onChange={(e) => setCarbon({ ...carbon, naturalGasTherms: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Gasoline (gal)</span>
-                <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={carbon.gasolineGallons} onChange={(e) => setCarbon({ ...carbon, gasolineGallons: Math.max(0, Number(e.target.value) || 0) })} /></label>
+                <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={carbon.gasolineGallons} onChange={(e) => setCarbon({ ...carbon, gasolineGallons: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Flights (mi)</span>
-                <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={carbon.flightMiles} onChange={(e) => setCarbon({ ...carbon, flightMiles: Math.max(0, Number(e.target.value) || 0) })} /></label>
+                <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={carbon.flightMiles} onChange={(e) => setCarbon({ ...carbon, flightMiles: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
             </div>
           </div>
         ),
@@ -96,12 +115,12 @@ export function SolarCarbonPanel() {
                   <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">System</div><div className="font-mono text-yellow-200">{typeof solarResult.systemSizeKW === 'number' ? `${solarResult.systemSizeKW} kW` : '—'}</div></div>
                   <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Panels</div><div className="font-mono text-yellow-200">{typeof solarResult.maxPanels === 'number' ? solarResult.maxPanels : '—'}</div></div>
                   <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Production</div><div className="font-mono text-yellow-200">{typeof solarResult.monthlyProductionKWh === 'number' ? `${solarResult.monthlyProductionKWh} kWh/mo` : '—'}</div></div>
-                  <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Savings</div><div className="font-mono text-emerald-200">{typeof solarResult.annualSavings === 'number' ? `$${solarResult.annualSavings}/yr` : '—'}</div></div>
+                  <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Savings</div><div className="font-mono text-emerald-200">{typeof solarResult.annualSavings === 'number' ? `$${solarResult.annualSavings}/yr` : '—'}</div>{typeof solarResult.savingsRateUsdPerKwh === 'number' && <div className="text-[9px] text-zinc-500">at ${solarResult.savingsRateUsdPerKwh.toFixed(2)}/kWh assumed, not this account&apos;s rate</div>}</div>
                 </div>
                 <div className="rounded border border-yellow-500/20 bg-zinc-950/40 px-2 py-1">
                   <div className="text-[9px] text-zinc-400">Cost</div>
                   <div className="font-mono text-yellow-200">{typeof solarResult.estimatedCost === 'number' ? `$${solarResult.estimatedCost.toLocaleString()}` : '—'} <span className="text-[9px] text-zinc-400">(after 30% credit: {typeof solarResult.afterTaxCredit === 'number' ? `$${solarResult.afterTaxCredit.toLocaleString()}` : '—'})</span></div>
-                  <div className="text-[10px] text-zinc-400">Payback: {typeof solarResult.paybackYears === 'number' ? `~${solarResult.paybackYears} years` : '—'}</div>
+                  <div className="text-[10px] text-zinc-400">Payback: {typeof solarResult.paybackYears === 'number' ? `~${solarResult.paybackYears} years` : '—'}{typeof solarResult.savingsRateUsdPerKwh === 'number' ? `, at the same $${solarResult.savingsRateUsdPerKwh.toFixed(2)}/kWh assumption` : ''}</div>
                 </div>
               </div>
             )}
@@ -109,23 +128,35 @@ export function SolarCarbonPanel() {
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
             <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Leaf className="h-3 w-3" />Carbon footprint</div>
             {!carbonResult && <div className="text-[11px] text-zinc-400">Analyze to compute.</div>}
-            {carbonResult && (
+            {carbonResult && carbonResult.status === 'NOT_COMPUTED' && (
+              <div className="text-[11px] text-zinc-400">
+                {carbonResult.message || 'Not computed.'}
+                {carbonResult.missingInputs?.length ? ` Missing: ${carbonResult.missingInputs.join(', ')}.` : ''}
+              </div>
+            )}
+            {carbonResult && carbonResult.status !== 'NOT_COMPUTED' && (
               <div className="space-y-2 text-[11px]">
                 <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-2xl text-emerald-200">{carbonResult.annualEstimate}</span>
-                  <span className="text-zinc-400">tons CO₂/yr</span>
+                  <span className="font-mono text-2xl text-emerald-200">{typeof carbonResult.annualEstimate === 'number' ? carbonResult.annualEstimate : '—'}</span>
+                  <span className="text-zinc-400">tons CO₂/yr{carbonResult.partial ? ' (recorded sources only)' : ''}</span>
                 </div>
-                <div className="text-[10px] text-zinc-400">{carbonResult.vsUSAverage} · top source: <span className="text-rose-300">{carbonResult.topSource}</span></div>
+                <div className="text-[10px] text-zinc-400">
+                  {carbonResult.vsUSAverage || 'US average not compared'}
+                  {carbonResult.partial && carbonResult.missingInputs?.length ? ` · not recorded: ${carbonResult.missingInputs.join(', ')}` : ''}
+                  {' · top source: '}
+                  <span className="text-rose-300">{carbonResult.topSource || '—'}</span>
+                </div>
                 {carbonResult.breakdown && (
                   <div className="space-y-0.5">
                     {Object.entries(carbonResult.breakdown).map(([k, v]) => {
-                      const max = Math.max(...Object.values(carbonResult.breakdown || {}));
-                      const pct = max > 0 ? (v / max) * 100 : 0;
+                      const nums = Object.values(carbonResult.breakdown || {}).filter((n): n is number => typeof n === 'number');
+                      const max = nums.length ? Math.max(...nums) : 0;
+                      const pct = typeof v === 'number' && max > 0 ? (v / max) * 100 : 0;
                       return (
                         <div key={k} className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1">
                           <div className="flex items-center justify-between">
                             <span className="text-zinc-300 capitalize">{k}</span>
-                            <span className="font-mono text-emerald-200">{v} t</span>
+                            <span className="font-mono text-emerald-200">{typeof v === 'number' ? `${v} t` : 'not recorded'}</span>
                           </div>
                           <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-zinc-800">
                             <div className="h-full bg-emerald-500/60" style={{ width: `${pct}%` }} />
@@ -147,8 +178,8 @@ export function SolarCarbonPanel() {
       )}
       dtu={{
         apiSource: 'concord-energy-solar-carbon',
-        title: (s, c) => `Solar ${s.systemSizeKW ?? '—'} kW · Carbon ${c.annualEstimate ?? '—'} t/yr`,
-        content: (s, c) => `Solar:\n  ${s.recommendation}\n  System: ${s.systemSizeKW} kW (${s.maxPanels} panels)\n  Monthly production: ${s.monthlyProductionKWh} kWh\n  Cost: $${s.estimatedCost?.toLocaleString()} (after 30% credit: $${s.afterTaxCredit?.toLocaleString()})\n  Savings: $${s.annualSavings}/yr · Payback: ${s.paybackYears} years\n\nCarbon:\n  Monthly: ${c.totalMetricTons} tons CO2 | Annual: ${c.annualEstimate} tons\n  vs US avg: ${c.vsUSAverage}\n  Top source: ${c.topSource}\n  Breakdown:\n${Object.entries(c.breakdown || {}).map(([k, v]) => `    ${k}: ${v} t`).join('\n')}\n  Tips:\n${(c.reductionTips || []).map((t) => `    • ${t}`).join('\n')}`,
+        title: (s, c) => `Solar ${s.systemSizeKW ?? '—'} kW · Carbon ${typeof c.annualEstimate === 'number' ? c.annualEstimate : '—'} t/yr`,
+        content: (s, c) => `Solar:\n  ${s.recommendation ?? 'not recorded'}\n  System: ${s.systemSizeKW ?? 'not recorded'} kW (${s.maxPanels ?? 'not recorded'} panels)\n  Monthly production: ${s.monthlyProductionKWh ?? 'not recorded'} kWh\n  Cost: ${typeof s.estimatedCost === 'number' ? `$${s.estimatedCost.toLocaleString()}` : 'not recorded'} (after 30% credit: ${typeof s.afterTaxCredit === 'number' ? `$${s.afterTaxCredit.toLocaleString()}` : 'not recorded'})\n  Savings: ${typeof s.annualSavings === 'number' ? `$${s.annualSavings}/yr` : 'not recorded'}${typeof s.savingsRateUsdPerKwh === 'number' ? ` at $${s.savingsRateUsdPerKwh.toFixed(2)}/kWh assumed, not this account's rate` : ''} · Payback: ${typeof s.paybackYears === 'number' ? `${s.paybackYears} years` : 'not recorded'}\n\nCarbon:\n  ${c.status === 'NOT_COMPUTED' ? `Not computed. ${c.message ?? ''}` : `Monthly: ${typeof c.totalMetricTons === 'number' ? c.totalMetricTons : 'not recorded'} tons CO2 | Annual: ${typeof c.annualEstimate === 'number' ? c.annualEstimate : 'not recorded'} tons\n  vs US avg: ${c.vsUSAverage ?? 'not compared'}\n  Top source: ${c.topSource ?? 'not recorded'}\n  Breakdown:\n${Object.entries(c.breakdown || {}).map(([k, v]) => `    ${k}: ${typeof v === 'number' ? `${v} t` : 'not recorded'}`).join('\n')}\n  Tips:\n${(c.reductionTips || []).map((t) => `    • ${t}`).join('\n')}`}`,
         tags: () => ['energy', 'solar', 'carbon'],
         rawData: (s, c) => ({ solar, carbon, solarResult: s, carbonResult: c }),
       }}

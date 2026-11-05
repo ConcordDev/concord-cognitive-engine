@@ -5,9 +5,11 @@ import { lensRun } from '@/lib/api/client';
 import { Heart, Plus, Trash2, Loader2, Stethoscope, Syringe, ChevronRight } from 'lucide-react';
 import {
   VetPatient,
+  VetPrescription,
   SPECIES_OPTIONS,
   SPECIES_EMOJI,
   VISIT_KINDS,
+  recordedMeasure,
 } from './vet-types';
 
 export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
@@ -43,15 +45,30 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
 
   const addPatient = async () => {
     if (!pName.trim()) return;
-    setBusy(true);
-    const r = await lensRun('veterinary', 'patient-add', {
+    const input: Record<string, unknown> = {
       name: pName,
       species: pSpecies,
       breed: pBreed,
       owner: pOwner,
-      ageYears: Number(pAge) || 0,
-      weightLbs: Number(pWeight) || 0,
-    });
+    };
+    if (pAge.trim() !== '') {
+      const n = Number(pAge);
+      if (!Number.isFinite(n) || n < 0) {
+        setError('Age must be a number, 0 or more.');
+        return;
+      }
+      input.ageYears = n;
+    }
+    if (pWeight.trim() !== '') {
+      const n = Number(pWeight);
+      if (!Number.isFinite(n) || n < 0) {
+        setError('Weight must be a number, 0 or more.');
+        return;
+      }
+      input.weightLbs = n;
+    }
+    setBusy(true);
+    const r = await lensRun('veterinary', 'patient-add', input);
     setBusy(false);
     if (r.data.ok) {
       setPName('');
@@ -165,7 +182,7 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
                   <div>
                     <p className="text-sm font-semibold text-white">{p.name}</p>
                     <p className="text-xs text-zinc-400">
-                      {p.breed} · {p.species} · {p.owner || 'no owner'}
+                      {p.breed} · {p.species} · {p.owner || 'no owner'} · age {recordedMeasure(p.ageYears, 'yr')} · weight {recordedMeasure(p.weightLbs, 'lb')}
                     </p>
                   </div>
                 </button>
@@ -197,12 +214,53 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
 }
 
 function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged: () => void }) {
+  const [name, setName] = useState(patient.name);
+  const [species, setSpecies] = useState(patient.species);
+  const [breed, setBreed] = useState(patient.breed);
+  const [owner, setOwner] = useState(patient.owner);
+  const [age, setAge] = useState(patient.ageYears == null ? '' : String(patient.ageYears));
+  const [weight, setWeight] = useState(patient.weightLbs == null ? '' : String(patient.weightLbs));
   const [vKind, setVKind] = useState('checkup');
   const [vDiagnosis, setVDiagnosis] = useState('');
   const [vCost, setVCost] = useState('');
   const [vacName, setVacName] = useState('');
-  const [vacDue, setVacDue] = useState('');
+  const [vacGiven, setVacGiven] = useState('');
+  const [vacEvery, setVacEvery] = useState('');
+  const [vacUnit, setVacUnit] = useState<'day' | 'month' | 'year'>('year');
+  const [vacError, setVacError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setName(patient.name);
+    setSpecies(patient.species);
+    setBreed(patient.breed);
+    setOwner(patient.owner);
+    setAge(patient.ageYears == null ? '' : String(patient.ageYears));
+    setWeight(patient.weightLbs == null ? '' : String(patient.weightLbs));
+  }, [patient]);
+
+  const [meds, setMeds] = useState<VetPrescription[] | null>(null);
+  const [medError, setMedError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await lensRun('veterinary', 'prescription-list', { patientId: patient.id });
+      if (cancelled) return;
+      if (r.data.ok && r.data.result) {
+        const list = (r.data.result as { prescriptions?: VetPrescription[] }).prescriptions;
+        setMeds(Array.isArray(list) ? list : []);
+        setMedError(null);
+      } else {
+        setMeds(null);
+        setMedError(r.data.error || 'Medications unavailable');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [patient.id]);
 
   const logVisit = async () => {
     setBusy(true);
@@ -220,28 +278,173 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
 
   const addVaccine = async () => {
     if (!vacName.trim()) return;
+    if (!vacGiven) {
+      setVacError('Given date is required.');
+      return;
+    }
+    const every = Number(vacEvery);
+    if (!Number.isInteger(every) || every < 1) {
+      setVacError('Interval must be a whole number, 1 or more.');
+      return;
+    }
     setBusy(true);
-    await lensRun('veterinary', 'vaccine-record', {
+    const r = await lensRun('veterinary', 'vaccine-record', {
       patientId: patient.id,
       vaccine: vacName,
-      nextDue: vacDue,
+      date: vacGiven,
+      intervalCount: every,
+      intervalUnit: vacUnit,
     });
     setBusy(false);
-    setVacName('');
-    setVacDue('');
-    onChanged();
+    if (r.data?.ok) {
+      setVacName('');
+      setVacGiven('');
+      setVacEvery('');
+      setVacError(null);
+      onChanged();
+    } else {
+      setVacError(r.data?.error || 'failed to record vaccination');
+    }
+  };
+
+  const saveChart = async () => {
+    if (!name.trim()) {
+      setEditError('Patient name is required.');
+      return;
+    }
+    const input: Record<string, unknown> = {
+      id: patient.id,
+      name: name.trim(),
+      species,
+      breed,
+      owner,
+    };
+    if (age.trim() !== '') {
+      const n = Number(age);
+      if (!Number.isFinite(n) || n < 0) {
+        setEditError('Age must be a number, 0 or more.');
+        return;
+      }
+      input.ageYears = n;
+    }
+    if (weight.trim() !== '') {
+      const n = Number(weight);
+      if (!Number.isFinite(n) || n < 0) {
+        setEditError('Weight must be a number, 0 or more.');
+        return;
+      }
+      input.weightLbs = n;
+    }
+    setBusy(true);
+    const r = await lensRun('veterinary', 'patient-update', input);
+    setBusy(false);
+    if (r.data?.ok) {
+      setEditError(null);
+      onChanged();
+    } else {
+      setEditError(r.data?.error || 'failed to update patient');
+    }
+  };
+
+  const removeVisit = async (id: string) => {
+    const r = await lensRun('veterinary', 'visit-delete', { patientId: patient.id, id });
+    if (r.data?.ok) onChanged();
+    else setEditError(r.data?.error || 'failed to delete visit');
+  };
+
+  const removeVaccine = async (id: string) => {
+    const r = await lensRun('veterinary', 'vaccine-delete', { patientId: patient.id, id });
+    if (r.data?.ok) onChanged();
+    else setEditError(r.data?.error || 'failed to delete vaccination');
   };
 
   return (
-    <div className="grid gap-3 border-t border-zinc-800 p-3 md:grid-cols-2">
+    <div className="space-y-3 border-t border-zinc-800 p-3">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          saveChart();
+        }}
+        className="grid grid-cols-2 md:grid-cols-4 gap-2"
+      >
+        <p className="col-span-2 md:col-span-4 text-xs font-semibold uppercase tracking-wide text-zinc-400">Chart</p>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          aria-label={`Name for ${patient.name}`}
+          className="col-span-2 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+        />
+        <select
+          value={species}
+          onChange={(e) => setSpecies(e.target.value)}
+          aria-label={`Species for ${patient.name}`}
+          className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+        >
+          {SPECIES_OPTIONS.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        <input
+          value={breed}
+          onChange={(e) => setBreed(e.target.value)}
+          aria-label={`Breed for ${patient.name}`}
+          placeholder="Breed"
+          className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+        />
+        <input
+          value={owner}
+          onChange={(e) => setOwner(e.target.value)}
+          aria-label={`Owner for ${patient.name}`}
+          placeholder="Owner"
+          className="col-span-2 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+        />
+        <input
+          value={age}
+          onChange={(e) => setAge(e.target.value)}
+          aria-label={`Age for ${patient.name}`}
+          placeholder="Age (yr)"
+          inputMode="decimal"
+          className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+        />
+        <input
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+          aria-label={`Weight for ${patient.name}`}
+          placeholder="Weight (lb)"
+          inputMode="decimal"
+          className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+        />
+        <button
+          type="submit"
+          disabled={busy}
+          className="col-span-2 md:col-span-4 rounded bg-zinc-700 px-2 py-1 text-xs text-white hover:bg-zinc-600 disabled:opacity-50"
+        >
+          Save chart
+        </button>
+        {editError && <p className="col-span-2 md:col-span-4 text-xs text-red-300">{editError}</p>}
+      </form>
+    <div className="grid gap-3 md:grid-cols-2">
+      <p className="text-xs text-zinc-300 md:col-span-2">
+        Age {recordedMeasure(patient.ageYears, 'yr')} · Weight {recordedMeasure(patient.weightLbs, 'lb')}
+      </p>
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Visit history</p>
         <div className="max-h-32 space-y-1 overflow-y-auto">
           {patient.visits.length === 0 && <p className="text-xs text-zinc-400">No visits.</p>}
           {patient.visits.map((v) => (
-            <div key={v.id} className="rounded bg-zinc-950 px-2 py-1 text-xs text-zinc-300">
-              <span className="text-pink-400">{v.kind}</span> · {v.date} · ${v.cost}
-              {v.diagnosis && <span className="text-zinc-400"> — {v.diagnosis}</span>}
+            <div key={v.id} className="flex items-center justify-between gap-2 rounded bg-zinc-950 px-2 py-1 text-xs text-zinc-300">
+              <span>
+                <span className="text-pink-400">{v.kind}</span> · {v.date} · ${v.cost}
+                {v.diagnosis && <span className="text-zinc-400"> — {v.diagnosis}</span>}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeVisit(v.id)}
+                aria-label={`Delete visit ${v.kind} ${v.date}`}
+                className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
             </div>
           ))}
         </div>
@@ -284,9 +487,25 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
         <div className="max-h-32 space-y-1 overflow-y-auto">
           {patient.vaccinations.length === 0 && <p className="text-xs text-zinc-400">No vaccinations.</p>}
           {patient.vaccinations.map((v) => (
-            <div key={v.id} className="rounded bg-zinc-950 px-2 py-1 text-xs text-zinc-300">
-              <span className="text-emerald-400">{v.vaccine}</span> · {v.date}
-              {v.nextDue && <span className="text-zinc-400"> → due {v.nextDue}</span>}
+            <div key={v.id} className="flex items-center justify-between gap-2 rounded bg-zinc-950 px-2 py-1 text-xs text-zinc-300">
+              <span>
+                <span className="text-emerald-400">{v.vaccine}</span>
+                {v.date && <span> · given {v.date}</span>}
+                {v.intervalCount != null && v.intervalUnit && (
+                  <span className="text-zinc-400">
+                    {' '}· every {v.intervalCount} {v.intervalCount === 1 ? v.intervalUnit : `${v.intervalUnit}s`}
+                  </span>
+                )}
+                {v.nextDue && <span className="text-zinc-400"> → due {v.nextDue}</span>}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeVaccine(v.id)}
+                aria-label={`Delete vaccination ${v.vaccine}`}
+                className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
             </div>
           ))}
         </div>
@@ -298,12 +517,30 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
             className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-1 text-xs text-white"
           />
           <input
-            value={vacDue}
-            onChange={(e) => setVacDue(e.target.value)}
-            placeholder="Next due"
+            value={vacGiven}
+            onChange={(e) => setVacGiven(e.target.value)}
+            aria-label="Given date"
             type="date"
             className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-1 text-xs text-white"
           />
+          <input
+            value={vacEvery}
+            onChange={(e) => setVacEvery(e.target.value)}
+            aria-label="Interval"
+            placeholder="Every"
+            inputMode="numeric"
+            className="w-16 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-1 text-xs text-white"
+          />
+          <select
+            value={vacUnit}
+            onChange={(e) => setVacUnit(e.target.value as 'day' | 'month' | 'year')}
+            aria-label="Interval unit"
+            className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-1 text-xs text-white"
+          >
+            <option value="year">years</option>
+            <option value="month">months</option>
+            <option value="day">days</option>
+          </select>
           <button
             onClick={addVaccine}
             disabled={busy || !vacName.trim()}
@@ -311,8 +548,21 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
           >
             Add
           </button>
+          {vacError && <p className="w-full text-xs text-red-300">{vacError}</p>}
         </div>
       </div>
+      <div className="space-y-1 md:col-span-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Medications</p>
+        {medError ? <p className="text-xs text-zinc-400">{medError}</p> : null}
+        {meds && meds.length === 0 ? <p className="text-xs text-zinc-400">No medications on this chart.</p> : null}
+        {meds?.map((rx) => (
+          <div key={rx.id} className="rounded bg-zinc-950 px-2 py-1 text-xs text-zinc-300">
+            <span className="text-violet-300">{rx.drug}</span>
+            {rx.dosage ? ` · ${rx.dosage}` : ''} · {rx.status}
+          </div>
+        ))}
+      </div>
+    </div>
     </div>
   );
 }

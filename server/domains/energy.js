@@ -75,9 +75,13 @@ export default function registerEnergyActions(registerLensAction) {
     if (roofSqFt == null) unavailable.push("roofAreaSqFt");
     if (sunHours == null) unavailable.push("peakSunHours");
     if (usageKWh == null) unavailable.push("monthlyUsageKWh");
+    // Annual savings use this assumed retail rate. It is returned on the
+    // result so the surface can name it. It is not the account rate.
+    const assumedSavingsUsdPerKwh = 0.12;
     const blank = {
       roofArea: null, maxPanels: null, systemSizeKW: null, monthlyProductionKWh: null,
       coveragePercent: null, estimatedCost: null, afterTaxCredit: null, annualSavings: null,
+      savingsRateUsdPerKwh: null,
       paybackYears: null, recommendation: null,
     };
     if (unavailable.length) {
@@ -90,30 +94,76 @@ export default function registerEnergyActions(registerLensAction) {
     const monthlyProduction = systemKW * sunHours * 30 * 0.8;
     const coveragePercent = Math.round((monthlyProduction / usageKWh) * 100);
     const costEstimate = Math.round(systemKW * 2800);
-    const annualSavings = Math.round(Math.min(monthlyProduction, usageKWh) * 12 * 0.12);
+    const annualSavings = Math.round(Math.min(monthlyProduction, usageKWh) * 12 * assumedSavingsUsdPerKwh);
     const paybackYears = annualSavings > 0 ? Math.round((costEstimate * 0.7) / annualSavings * 10) / 10 : 0; // 30% tax credit
-    return { ok: true, result: { roofArea: roofSqFt, maxPanels, systemSizeKW: Math.round(systemKW * 10) / 10, monthlyProductionKWh: Math.round(monthlyProduction), coveragePercent, estimatedCost: costEstimate, afterTaxCredit: Math.round(costEstimate * 0.7), annualSavings, paybackYears, recommendation: coveragePercent >= 100 ? "Solar can cover 100% of usage" : `Solar can cover ${coveragePercent}% of usage`, reason: null, unavailable: [] } };
+    return { ok: true, result: { roofArea: roofSqFt, maxPanels, systemSizeKW: Math.round(systemKW * 10) / 10, monthlyProductionKWh: Math.round(monthlyProduction), coveragePercent, estimatedCost: costEstimate, afterTaxCredit: Math.round(costEstimate * 0.7), annualSavings, savingsRateUsdPerKwh: assumedSavingsUsdPerKwh, paybackYears, recommendation: coveragePercent >= 100 ? "Solar can cover 100% of usage" : `Solar can cover ${coveragePercent}% of usage`, reason: null, unavailable: [] } };
   });
   registerLensAction("energy", "carbonFootprint", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // Fail-closed, non-negative finite inputs CLAMPED to a sane upper bound so a
-    // poisoned magnitude (e.g. 1e308) can never overflow an emission-factor
-    // multiply into Infinity (which would render as null in the UI). 1e12 is far
-    // above any real annual consumption yet leaves headroom before float overflow.
+    // A missing, blank, or non-finite reading is not zero use. Values outside
+    // [0, 1e12] are refused rather than clamped into a tonnage. 1e12 is far
+    // above any real consumption and stays under the point where an emission
+    // factor would overflow to Infinity. An explicit 0 is a recorded zero.
     const MAX_CONSUMPTION = 1e12;
-    const electricityKWh = finiteNum(data.electricityKWh, 0, 0, MAX_CONSUMPTION);
-    const naturalGasTherms = finiteNum(data.naturalGasTherms, 0, 0, MAX_CONSUMPTION);
-    const gasolineGallons = finiteNum(data.gasolineGallons, 0, 0, MAX_CONSUMPTION);
-    const flightMiles = finiteNum(data.flightMiles, 0, 0, MAX_CONSUMPTION);
-    // EPA emission factors. Re-coerce each derived figure to finite as a
-    // belt-and-suspenders guard against any residual non-finite arithmetic.
-    const co2Electricity = finiteNum(electricityKWh * 0.000417, 0); // metric tons per kWh
-    const co2Gas = finiteNum(naturalGasTherms * 0.0053, 0);
-    const co2Gasoline = finiteNum(gasolineGallons * 0.00887, 0);
-    const co2Flights = finiteNum(flightMiles * 0.000255, 0);
-    const total = finiteNum(co2Electricity + co2Gas + co2Gasoline + co2Flights, 0);
-    const usAvg = 16; // tons per capita
-    return { ok: true, result: { breakdown: { electricity: Math.round(co2Electricity * 1000) / 1000, naturalGas: Math.round(co2Gas * 1000) / 1000, transportation: Math.round(co2Gasoline * 1000) / 1000, flights: Math.round(co2Flights * 1000) / 1000 }, totalMetricTons: Math.round(total * 1000) / 1000, annualEstimate: Math.round(total * 12 * 100) / 100, vsUSAverage: `${Math.round((total * 12 / usAvg) * 100)}% of US average`, topSource: [["electricity", co2Electricity], ["naturalGas", co2Gas], ["transportation", co2Gasoline], ["flights", co2Flights]].sort((a, b) => b[1] - a[1])[0][0], reductionTips: co2Electricity > co2Gas ? ["Switch to renewable energy provider", "Improve insulation", "LED lighting"] : ["Improve heating efficiency", "Seal air leaks", "Smart thermostat"] } };
+    const recordedUse = (v) => {
+      if (v == null || v === "") return null;
+      const n = typeof v === "number" ? v : parseFloat(v);
+      if (!Number.isFinite(n) || n < 0 || n > MAX_CONSUMPTION) return null;
+      return n;
+    };
+    const sources = [
+      { key: "electricityKWh", name: "electricity", factor: 0.000417 },
+      { key: "naturalGasTherms", name: "naturalGas", factor: 0.0053 },
+      { key: "gasolineGallons", name: "transportation", factor: 0.00887 },
+      { key: "flightMiles", name: "flights", factor: 0.000255 },
+    ];
+    const tons = {};
+    const missing = [];
+    for (const source of sources) {
+      const amount = recordedUse(data[source.key]);
+      if (amount == null) {
+        missing.push(source.key);
+        tons[source.name] = null;
+      } else {
+        tons[source.name] = amount * source.factor;
+      }
+    }
+    if (missing.length === sources.length) {
+      return notComputed(missing, "Not computed: no recorded electricity, gas, gasoline, or flight miles.");
+    }
+    const round3 = (n) => Math.round(n * 1000) / 1000;
+    const breakdown = {
+      electricity: tons.electricity == null ? null : round3(tons.electricity),
+      naturalGas: tons.naturalGas == null ? null : round3(tons.naturalGas),
+      transportation: tons.transportation == null ? null : round3(tons.transportation),
+      flights: tons.flights == null ? null : round3(tons.flights),
+    };
+    const total = Object.values(tons).reduce((sum, n) => sum + (n == null ? 0 : n), 0);
+    const complete = missing.length === 0;
+    const usAvg = 16; // tons per capita, only comparable when every source was recorded
+    const ranked = sources
+      .filter((source) => tons[source.name] != null)
+      .sort((a, b) => tons[b.name] - tons[a.name]);
+    let reductionTips = [];
+    if (tons.electricity != null && (tons.naturalGas == null || tons.electricity > tons.naturalGas)) {
+      reductionTips = ["Switch to renewable energy provider", "Improve insulation", "LED lighting"];
+    } else if (tons.naturalGas != null) {
+      reductionTips = ["Improve heating efficiency", "Seal air leaks", "Smart thermostat"];
+    }
+    return {
+      ok: true,
+      result: {
+        breakdown,
+        totalMetricTons: round3(total),
+        annualEstimate: Math.round(total * 12 * 100) / 100,
+        vsUSAverage: complete ? `${Math.round((total * 12 / usAvg) * 100)}% of US average` : null,
+        topSource: ranked.length ? ranked[0].name : null,
+        reductionTips,
+        missingInputs: missing,
+        partial: !complete,
+        ...(complete ? {} : { message: `Recorded sources only. Not recorded: ${missing.join(", ")}. US average comparison needs every source.` }),
+      },
+    };
   });
   /**
    * eia-electricity-rates — Real average retail electricity price by
@@ -173,6 +223,9 @@ export default function registerEnergyActions(registerLensAction) {
    * natural gas, nuclear, hydro, solar, wind, etc.). Latest monthly
    * data from EIA seriesId ELEC.GEN.*.M.
    * params: { region?: "US"|"CAL"|"TEX"|"NY"|... (regionId from EIA) }
+   * result.mix[]: { fuel, mwh, sharePct }. sharePct is that fuel's
+   * percent of latest-period generation, one decimal. The Rates panel
+   * formats sharePct. There is no field named pct.
    */
   registerLensAction("energy", "eia-generation-mix", async (_ctx, _artifact, params = {}) => {
     const region = String(params.region || "US").toUpperCase().trim();
@@ -230,15 +283,49 @@ export default function registerEnergyActions(registerLensAction) {
 
   registerLensAction("energy", "gridStatus", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    // Fail-closed finite parse with sane bounds; these values are also echoed
-    // into output strings, so an unguarded Infinity would render "Infinity MW".
-    const demandMW = finiteNum(data.currentDemandMW, 0, 0, 100_000_000);
-    const capacityMW = finiteNum(data.totalCapacityMW, 0, 0, 100_000_000);
-    const renewablePercent = finiteNum(data.renewablePercent, 0, 0, 100);
-    const frequency = finiteNum(data.gridFrequencyHz, 60, 0, 1000);
-    const utilization = capacityMW > 0 ? Math.round((demandMW / capacityMW) * 100) : 0;
-    const frequencyDeviation = Math.abs(frequency - 60);
-    return { ok: true, result: { currentDemand: `${demandMW} MW`, totalCapacity: `${capacityMW} MW`, utilization, renewableShare: `${renewablePercent}%`, gridFrequency: `${frequency} Hz`, frequencyStable: frequencyDeviation < 0.05, status: utilization > 90 ? "critical-load" : utilization > 75 ? "high-load" : utilization > 50 ? "normal" : "low-load", reserves: `${Math.round(capacityMW - demandMW)} MW available` } };
+    // A blank or non-finite reading is not zero, and a missing frequency is
+    // not 60 Hz. Out-of-range values are refused rather than clamped into the
+    // snapshot. Explicit 0 stays 0. The 60 Hz nominal is used only to judge a
+    // frequency the caller actually sent.
+    const recorded = (v, min, max) => {
+      if (v == null || v === "") return null;
+      const n = typeof v === "number" ? v : parseFloat(v);
+      if (!Number.isFinite(n) || n < min || n > max) return null;
+      return n;
+    };
+    const demandMW = recorded(data.currentDemandMW, 0, 100_000_000);
+    const capacityMW = recorded(data.totalCapacityMW, 0, 100_000_000);
+    const renewablePercent = recorded(data.renewablePercent, 0, 100);
+    const frequency = recorded(data.gridFrequencyHz, 0, 1000);
+    const unavailable = [];
+    if (demandMW == null) unavailable.push("currentDemandMW");
+    if (capacityMW == null) unavailable.push("totalCapacityMW");
+    if (renewablePercent == null) unavailable.push("renewablePercent");
+    if (frequency == null) unavailable.push("gridFrequencyHz");
+    const utilization = demandMW != null && capacityMW != null && capacityMW > 0
+      ? Math.round((demandMW / capacityMW) * 100)
+      : null;
+    const status = utilization == null ? null
+      : utilization > 90 ? "critical-load"
+      : utilization > 75 ? "high-load"
+      : utilization > 50 ? "normal"
+      : "low-load";
+    return {
+      ok: true,
+      result: {
+        currentDemand: demandMW == null ? null : `${demandMW} MW`,
+        totalCapacity: capacityMW == null ? null : `${capacityMW} MW`,
+        utilization,
+        renewableShare: renewablePercent == null ? null : `${renewablePercent}%`,
+        gridFrequency: frequency == null ? null : `${frequency} Hz`,
+        frequencyStable: frequency == null ? null : Math.abs(frequency - 60) < 0.05,
+        status,
+        reserves: demandMW != null && capacityMW != null ? `${Math.round(capacityMW - demandMW)} MW available` : null,
+        reason: unavailable.length ? "not_recorded" : null,
+        unavailable,
+        ...(unavailable.length ? { message: `Not recorded: ${unavailable.join(", ")}.` } : {}),
+      },
+    };
   });
 
   // ─── Sense 2026 parity — home energy monitor ────────────────────────

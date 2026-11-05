@@ -99,11 +99,13 @@ function DistrictCompass({
   );
 }
 
-export function RegionalForecast({ worldId }: { worldId: string }) {
+export function RegionalForecast({ worldId, refreshKey = 0 }: { worldId: string; refreshKey?: number }) {
   const [regions, setRegions] = useState<Region[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // refreshKey: the page's compose version — a fresh compose re-reads the
+  // district signals in session (F2).
   const load = useCallback(async () => {
     setLoading(true);
     const r = await lensRun<RegionalResult>('forecast', 'regional', { worldId });
@@ -113,7 +115,7 @@ export function RegionalForecast({ worldId }: { worldId: string }) {
       setRegions([]);
     }
     setLoading(false);
-  }, [worldId]);
+  }, [worldId, refreshKey]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -156,8 +158,8 @@ export function RegionalForecast({ worldId }: { worldId: string }) {
             {reg.hasData && reg.weather ? (
               <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
                 <div className="flex justify-between"><dt className="text-zinc-400">Sky</dt><dd className="text-zinc-200">{reg.weather.kind}</dd></div>
-                <div className="flex justify-between"><dt className="text-zinc-400">Temp</dt><dd className="font-mono text-cyan-300">{reg.weather.temperature_c !== null ? `${reg.weather.temperature_c}°C` : '—'}</dd></div>
-                <div className="flex justify-between"><dt className="text-zinc-400">Humidity</dt><dd className="font-mono text-zinc-200">{reg.weather.humidity_pct !== null ? `${reg.weather.humidity_pct}%` : '—'}</dd></div>
+                <div className="flex justify-between"><dt className="text-zinc-400">Temp</dt><dd className="font-mono text-cyan-300">{reg.weather.temperature_c !== null ? `${reg.weather.temperature_c.toFixed(1)}°C` : '—'}</dd></div>
+                <div className="flex justify-between"><dt className="text-zinc-400">Humidity</dt><dd className="font-mono text-zinc-200">{reg.weather.humidity_pct !== null ? `${Math.round(reg.weather.humidity_pct)}%` : '—'}</dd></div>
                 <div className="flex justify-between"><dt className="text-zinc-400">Air</dt><dd className="font-mono text-zinc-200">{reg.weather.air_quality !== null ? reg.weather.air_quality.toFixed(2) : '—'}</dd></div>
                 <div className="flex justify-between"><dt className="text-zinc-400">Light</dt><dd className="font-mono text-zinc-200">{reg.weather.light !== null ? reg.weather.light.toFixed(0) : '—'}</dd></div>
                 <div className="flex justify-between"><dt className="text-zinc-400">Noise</dt><dd className="font-mono text-zinc-200">{reg.weather.noise !== null ? `${reg.weather.noise.toFixed(0)}dB` : '—'}</dd></div>

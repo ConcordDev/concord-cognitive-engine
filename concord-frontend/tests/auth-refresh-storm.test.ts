@@ -21,7 +21,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 // Keep the module graph tiny + deterministic: the client pulls in a Zustand UI
 // store and a CSRF cookie reader, neither of which this behaviour depends on.
-vi.mock('@/store/ui-store', () => ({
+vi.mock('@/store/ui', () => ({
   useUIStore: { getState: () => ({ setAuthPosture: () => {} }) },
 }));
 

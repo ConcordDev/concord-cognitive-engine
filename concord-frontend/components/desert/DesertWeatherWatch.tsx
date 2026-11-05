@@ -22,6 +22,11 @@ interface MeteoResponse {
   longitude: number;
 }
 
+interface UvResult {
+  uvIndex: number;
+  uvLevel: string;
+}
+
 const DESERTS = [
   { id: 'sahara', label: 'Sahara (Adrar, MR)', lat: 20.5, lon: -12.0 },
   { id: 'mojave', label: 'Mojave (Death Valley)', lat: 36.5, lon: -116.9 },
@@ -48,7 +53,27 @@ export function DesertWeatherWatch() {
     })),
   });
 
-  const sites = DESERTS.map((d, i) => ({ d, q: results[i] }));
+  // The subtitle promises heat and UV safety, so the conditions surface
+  // itself carries a current UV value: the lens's own heatUvAlert derives
+  // it from the same Open-Meteo feed (the shared forecast preset behind
+  // the cards above carries no UV). A site with no UV reading yet simply
+  // shows none — no value is ever fabricated for it.
+  const uvResults = useQueries({
+    queries: DESERTS.map((d) => ({
+      queryKey: ['desert-uv', d.id],
+      queryFn: async () => {
+        const r = await lensRun<UvResult>('desert', 'heatUvAlert', { lat: d.lat, lng: d.lon, name: d.label });
+        if (!r.data?.ok || !r.data.result) throw new Error(r.data?.error || 'uv unavailable');
+        return r.data.result;
+      },
+      staleTime: 5 * 60 * 1000,
+      refetchInterval: 5 * 60 * 1000,
+    })),
+  });
+  const uvBySite = DESERTS.map((d, i) => ({ d, uv: uvResults[i]?.data }));
+  const peakUv = uvBySite.filter(({ uv }) => uv).sort((a, b) => (b.uv!.uvIndex || 0) - (a.uv!.uvIndex || 0))[0];
+
+  const sites = DESERTS.map((d, i) => ({ d, q: results[i], uv: uvResults[i]?.data }));
   const loaded = sites.filter(({ q }) => q.data?.current);
   const avgTemp = loaded.length > 0 ? loaded.reduce((a, { q }) => a + (q.data!.current!.temperature_2m || 0), 0) / loaded.length : 0;
   const maxTemp = loaded.length > 0 ? Math.max(...loaded.map(({ q }) => q.data!.current!.temperature_2m)) : 0;
@@ -77,7 +102,7 @@ export function DesertWeatherWatch() {
           />
         )}
       </header>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">Avg temp</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">{loaded.length > 0 ? `${avgTemp.toFixed(1)}°C` : '—'}</div>
@@ -90,9 +115,14 @@ export function DesertWeatherWatch() {
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">Avg humidity</div>
           <div className="mt-0.5 font-mono text-lg text-cyan-300">{loaded.length > 0 ? `${avgHum.toFixed(0)}%` : '—'}</div>
         </div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Peak UV now</div>
+          <div className="mt-0.5 font-mono text-lg text-amber-300">{peakUv ? `${peakUv.uv!.uvIndex} · ${peakUv.uv!.uvLevel}` : '—'}</div>
+          {peakUv && <div className="text-[10px] text-zinc-500">{peakUv.d.label}</div>}
+        </div>
       </div>
       <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-        {sites.map(({ d, q }) => {
+        {sites.map(({ d, q, uv }) => {
           const c = q.data?.current;
           return (
             <div key={d.id} className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5">
@@ -107,6 +137,12 @@ export function DesertWeatherWatch() {
                   <div className="flex items-center gap-1"><Thermometer className="h-3 w-3 text-rose-400" /><span className="font-mono text-zinc-100">{c.temperature_2m.toFixed(1)}°C</span></div>
                   <div className="flex items-center gap-1"><Droplets className="h-3 w-3 text-cyan-400" /><span className="font-mono text-zinc-100">{c.relative_humidity_2m}%</span></div>
                   <div className="flex items-center gap-1"><Wind className="h-3 w-3 text-zinc-400" /><span className="font-mono text-zinc-100">{c.wind_speed_10m.toFixed(1)} km/h</span></div>
+                </div>
+              )}
+              {uv && (
+                <div className="mt-1.5 flex items-center gap-1 text-[11px]">
+                  <Sun className="h-3 w-3 text-amber-400" />
+                  <span className="font-mono text-zinc-100">UV {uv.uvIndex} · {uv.uvLevel}</span>
                 </div>
               )}
             </div>
