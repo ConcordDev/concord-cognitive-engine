@@ -19,8 +19,78 @@ export function SleepRecovery() {
   const [days, setDays] = useState<RecoveryDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // F12: the empty state promised "log manually" but no manual-log
+  // control existed anywhere — and the server action it named
+  // (fitness.recovery-log) wasn't registered either. Both exist now;
+  // this form is the control.
+  const [showLogForm, setShowLogForm] = useState(false);
+  const [logDate, setLogDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [logSleep, setLogSleep] = useState('');
+  const [logRestingHr, setLogRestingHr] = useState('');
+  const [logHrv, setLogHrv] = useState('');
+  const [logScore, setLogScore] = useState('');
+  const [logBusy, setLogBusy] = useState(false);
+  const [logError, setLogError] = useState<string | null>(null);
+  const [logNote, setLogNote] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
+
+  async function submitLog() {
+    const sleepHours = parseFloat(logSleep);
+    if (!(sleepHours > 0)) { setLogError('Enter the night’s sleep hours — that is the one required field.'); return; }
+    setLogBusy(true); setLogError(null); setLogNote(null);
+    try {
+      const input: Record<string, unknown> = { date: logDate, sleepHours };
+      const rhr = parseFloat(logRestingHr); if (rhr > 0) input.restingHr = rhr;
+      const hrv = parseFloat(logHrv); if (hrv > 0) input.hrv = hrv;
+      const score = parseFloat(logScore); if (score > 0) input.recoveryScore = score;
+      const res = await lensRun({ domain: 'fitness', action: 'recovery-log', input });
+      if (res.data?.ok === false) {
+        setLogError(res.data?.error || 'Log failed.');
+      } else {
+        setLogNote(`Logged ${sleepHours}h sleep for ${logDate} (manual entry).`);
+        setLogSleep(''); setLogRestingHr(''); setLogHrv(''); setLogScore('');
+        await refresh();
+      }
+    } catch (e) {
+      setLogError(e instanceof Error ? e.message : 'Log failed.');
+    } finally { setLogBusy(false); }
+  }
+
+  const logForm = (
+    <div className="px-4 pb-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+        <label>
+          <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Date</span>
+          <input type="date" value={logDate} onChange={e => setLogDate(e.target.value)} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+        </label>
+        <label>
+          <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Sleep (hours) *</span>
+          <input type="number" step="0.1" min="0" value={logSleep} onChange={e => setLogSleep(e.target.value)} placeholder="7.5" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+        </label>
+        <label>
+          <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Resting HR</span>
+          <input type="number" min="0" value={logRestingHr} onChange={e => setLogRestingHr(e.target.value)} placeholder="58" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+        </label>
+        <label>
+          <span className="block text-[10px] uppercase text-gray-400 mb-0.5">HRV (ms)</span>
+          <input type="number" min="0" value={logHrv} onChange={e => setLogHrv(e.target.value)} placeholder="62" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+        </label>
+        <label>
+          <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Recovery %</span>
+          <input type="number" min="0" max="100" value={logScore} onChange={e => setLogScore(e.target.value)} placeholder="—" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+        </label>
+      </div>
+      <div className="flex items-center gap-2 mt-2">
+        <button onClick={submitLog} disabled={logBusy} className="px-3 py-1.5 rounded bg-cyan-500 text-black text-xs font-bold hover:bg-cyan-400 disabled:opacity-50">
+          {logBusy ? 'Logging…' : 'Log entry'}
+        </button>
+        <span className="text-[10px] text-gray-500">Stored as a manual entry — never shown as a device reading.</span>
+      </div>
+      {logError && <p role="alert" className="text-xs text-red-300 mt-2">{logError}</p>}
+      {logNote && <p role="status" className="text-xs text-emerald-300 mt-2">{logNote}</p>}
+    </div>
+  );
 
   async function refresh() {
     setLoading(true);
@@ -59,7 +129,15 @@ export function SleepRecovery() {
           <button onClick={() => void refresh()} className="px-3 py-1 rounded bg-cyan-500/20 text-cyan-200 border border-cyan-500/30 hover:bg-cyan-500/30">Retry</button>
         </div>
       ) : !latest ? (
-        <div className="px-3 py-8 text-center text-xs text-gray-400">No recovery data — connect a wearable or log manually.</div>
+        <>
+          <div className="px-3 pt-8 pb-3 text-center text-xs text-gray-400">
+            No recovery data — connect a wearable or log manually.
+            <div className="mt-3">
+              <button onClick={() => setShowLogForm(v => !v)} className="px-3 py-1.5 rounded bg-cyan-500/20 text-cyan-200 border border-cyan-500/30 hover:bg-cyan-500/30 text-xs font-semibold">Log manually</button>
+            </div>
+          </div>
+          {showLogForm && logForm}
+        </>
       ) : (
         <>
           <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -115,6 +193,10 @@ export function SleepRecovery() {
               </p>
             </div>
           </div>
+          <div className="px-4 pb-3">
+            <button onClick={() => setShowLogForm(v => !v)} className="text-xs text-cyan-300 hover:text-cyan-100 font-semibold">Log manually</button>
+          </div>
+          {showLogForm && logForm}
         </>
       )}
     </div>
