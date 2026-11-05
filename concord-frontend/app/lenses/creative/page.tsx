@@ -84,12 +84,17 @@ export default function CreativeLensPage() {
   // DTU context (v3.0 artifact support) — real substrate, unrelated to the
   // removed CRUD system.
   const {
-    contextDTUs: creativeDTUs, hyperDTUs, megaDTUs, regularDTUs,
+    domainDTUs, hyperDTUs, megaDTUs, regularDTUs,
     tierDistribution, publishToMarketplace: publishDTU,
     refetch: refetchDTUs,
   } = useLensDTUs({ lens: 'creative' });
 
-  const creativeArtifacts = creativeDTUs.filter((d: DTU) => d.artifact);
+  // The Library grid lists the lens's OWN artifact DTUs (the domain
+  // list, newest first). It used to read contextDTUs — context.query
+  // is a relevance search across the whole lattice, so a fresh
+  // upload (title = its filename) could never rank into its top
+  // results and the Library never showed what was uploaded to it.
+  const creativeArtifacts = domainDTUs.filter((d: DTU) => d.artifact);
 
 
   return (
