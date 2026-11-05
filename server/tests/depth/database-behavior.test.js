@@ -337,9 +337,9 @@ describe("database — connection manager + dataset store (shared ctx)", () => {
     const dup = await lensRun("database", "dataset-create", { params: { connectionId, name: "people" } }, ctx);
     assert.equal(dup.result.ok, false);
     assert.match(dup.result.error, /dataset name already exists/);
-    // empty columns → default id col
+    // empty columns → default id col, marked as the dataset's primary key
     const ds2 = await lensRun("database", "dataset-create", { params: { connectionId, name: "blank" } }, ctx);
-    assert.deepEqual(ds2.result.dataset.columns, [{ name: "id", type: "integer" }]);
+    assert.deepEqual(ds2.result.dataset.columns, [{ name: "id", type: "integer", pk: true }]);
   });
 
   it("row-insert coerces cell types; row-update + row-delete operate on _rid", async () => {

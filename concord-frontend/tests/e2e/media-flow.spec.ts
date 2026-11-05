@@ -28,12 +28,11 @@ test.describe('Media Section', () => {
 
     expect(response?.status()).toBeLessThan(500);
 
-    const url = page.url();
-    if (url.includes('/login')) {
-      await expect(page).toHaveURL(/\/login/);
-    } else {
-      await expect(page).not.toHaveURL(/\/login/);
-    }
+    // Either the lens renders or the middleware/client sends the fake session
+    // to /login. Settle first: reading page.url() mid-hydration and then
+    // asserting "not /login" raced the client-side redirect.
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    await expect(page).toHaveURL(/\/(lenses\/feed|login)/);
   });
 
   test('studio lens page loads without server errors', async ({ page }) => {
@@ -41,12 +40,11 @@ test.describe('Media Section', () => {
 
     expect(response?.status()).toBeLessThan(500);
 
-    const url = page.url();
-    if (url.includes('/login')) {
-      await expect(page).toHaveURL(/\/login/);
-    } else {
-      await expect(page).not.toHaveURL(/\/login/);
-    }
+    // Either the lens renders or the middleware/client sends the fake session
+    // to /login. Settle first: reading page.url() mid-hydration and then
+    // asserting "not /login" raced the client-side redirect.
+    await page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    await expect(page).toHaveURL(/\/(lenses\/studio|login)/);
   });
 });
 

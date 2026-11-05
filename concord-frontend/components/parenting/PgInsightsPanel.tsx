@@ -18,7 +18,7 @@ interface Trends {
   days: number;
   daily: DailyPoint[];
   averages: { feedsPerDay: number; sleepMinPerDay: number; diapersPerDay: number };
-  sleepTrend: 'improving' | 'declining' | 'steady';
+  sleepTrend: 'improving' | 'declining' | 'steady' | null;
   anomalies: Anomaly[];
   daysWithData: number;
   note: string | null;
@@ -80,14 +80,21 @@ export function PgInsightsPanel({ childId }: { childId: string }) {
               <Stat label="Sleep/day" value={`${Math.round((trends.averages.sleepMinPerDay / 60) * 10) / 10}h`} />
               <Stat label="Diapers/day" value={trends.averages.diapersPerDay} />
             </div>
-            {(() => {
+            <p className="text-[11px] text-zinc-400 mb-1">
+              Averages from {trends.daysWithData} day{trends.daysWithData === 1 ? '' : 's'} with logs
+            </p>
+            {trends.sleepTrend ? (() => {
               const Icon = TREND_ICON[trends.sleepTrend];
               return (
                 <p className={`flex items-center gap-1 text-[11px] mb-2 ${TREND_COLOR[trends.sleepTrend]}`}>
                   <Icon className="w-3.5 h-3.5" /> Sleep trend: {trends.sleepTrend}
                 </p>
               );
-            })()}
+            })() : (
+              <p className="flex items-center gap-1 text-[11px] text-zinc-500 mb-2">
+                <Minus className="w-3.5 h-3.5" /> Sleep trend not computed · {trends.daysWithData} day{trends.daysWithData === 1 ? '' : 's'} with logs
+              </p>
+            )}
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
               <ResponsiveContainer width="100%" height={170}>
                 <ComposedChart data={chartData}>
