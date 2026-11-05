@@ -1564,6 +1564,7 @@ export const apiHelpers = {
     introspection: () => api.get('/api/metacognition/introspection-status'),
     predictions: () => api.get('/api/metacognition/predictions'),
     assessments: () => api.get('/api/metacognition/assessments'),
+    domainRecord: () => api.get('/api/metacognition/domain-record'),
     // NOTE: the backend macro (recordPrediction, server.js) reads `input.statement`,
     // not `claim` — a prior version of this helper sent `claim` and every prediction
     // silently recorded an empty statement. Keep the caller-facing param named
@@ -1581,9 +1582,10 @@ export const apiHelpers = {
     // user), and the Knowledge Confidence Map / Skill Timeline could never populate.
     assess: (data: { domain: string }) =>
       api.post('/api/metacognition/assess', { topic: data.domain }),
-    // NOTE: introspectOnFailures (server.js) ignores its input entirely (analyzes
-    // ALL resolved predictions, unfiltered) — `focus` is accepted here for a
-    // future filtered pass but currently has no effect server-side.
+    // NOTE: introspectOnFailures (server.js) scopes the run by `focus`
+    // (predictions whose statement or domain mentions a focus term) and
+    // names the scope in its result — the S-MC-3 build made the focus
+    // real server-side; it was previously accepted and ignored.
     introspect: (data: { focus?: string }) =>
       api.post('/api/metacognition/introspect', data),
     // NOTE: selectStrategy (server.js) reads `input.problem`, not `strategy` — not

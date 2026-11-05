@@ -39,28 +39,37 @@ export function AwarenessPanel() {
                     const name = String(
                       domain.domain || domain.name || domain.label || `Domain ${i + 1}`
                     );
-                    const confidence = typeof domain.confidence === 'number' ? domain.confidence : 0;
-                    const confPct = pct(confidence);
+                    const confidence = typeof domain.confidence === 'number' ? domain.confidence : null;
+                    const confPct = confidence != null ? pct(confidence) : 0;
+                    const resolved = typeof domain.resolved === 'number' ? domain.resolved : 0;
+                    const correct = typeof domain.correct === 'number' ? domain.correct : 0;
                     return (
                       <div key={i} className="space-y-1">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-300 truncate mr-2">{name}</span>
                           <span className="font-mono text-xs text-gray-400 shrink-0">
-                            {confPct.toFixed(0)}%
+                            {confidence != null ? `${confPct.toFixed(0)}%` : 'no record yet'}
                           </span>
                         </div>
-                        <div className="h-2.5 bg-lattice-deep rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              confPct >= 75
-                                ? 'bg-green-500'
-                                : confPct >= 40
-                                  ? 'bg-yellow-500'
-                                  : 'bg-red-500'
-                            }`}
-                            style={{ width: `${confPct}%` }}
-                          />
-                        </div>
+                        {confidence != null ? (
+                          <div className="h-2.5 bg-lattice-deep rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                confPct >= 75
+                                  ? 'bg-green-500'
+                                  : confPct >= 40
+                                    ? 'bg-yellow-500'
+                                    : 'bg-red-500'
+                              }`}
+                              style={{ width: `${confPct}%` }}
+                            />
+                          </div>
+                        ) : null}
+                        <p className="text-[11px] text-gray-500">
+                          {resolved > 0
+                            ? `${correct} of ${resolved} resolved predictions correct${typeof domain.brierScore === 'number' ? ` · Brier ${domain.brierScore.toFixed(2)}` : ''}`
+                            : 'Predictions logged, none resolved yet — resolve some to build this row.'}
+                        </p>
                       </div>
                     );
                   }
@@ -128,7 +137,7 @@ export function AwarenessPanel() {
                 </div>
               ) : (
                 <p className="text-center py-6 text-gray-400 text-sm">
-                  No blind spots detected. Run introspection to discover potential gaps.
+                  No blind spots in your record yet. A domain becomes a blind spot when at least half of its resolved predictions (2 or more) turn out wrong.
                 </p>
               )}
             </div>
@@ -156,6 +165,13 @@ export function AwarenessPanel() {
                       </div>
                     )}
                   </div>
+                  {!!cal.quality && (
+                    <p className="text-xs text-gray-400">
+                      Calibration quality: <span className="text-gray-200 capitalize">{String(cal.quality)}</span>
+                      {typeof cal.ece === 'number' ? ` (ECE ${Number(cal.ece).toFixed(3)})` : ''} — one scale for the whole lens:
+                      excellent &lt; 0.05 · good &lt; 0.10 · moderate &lt; 0.20 · poor ≥ 0.20.
+                    </p>
+                  )}
                   {/* Additional calibration metrics (whitelisted — `buckets` is a nested
                       object the grid isn't shaped for, so it's shown separately, not here) */}
                   <div className="grid grid-cols-2 gap-3">

@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 
 export function useMetacognitionDesk() {
   const queryClient = useQueryClient();
   const [latestIntrospection, setLatestIntrospection] = useState<Record<string, unknown> | null>(null);
+  const [latestAssessment, setLatestAssessment] = useState<Record<string, unknown> | null>(null);
 
   const statusQ = useQuery({
     queryKey: ['metacognition-status'],
@@ -37,9 +38,12 @@ export function useMetacognitionDesk() {
     refetchInterval: 15000,
   });
 
-  const assessQ = useQuery({
-    queryKey: ['metacognition-assessments'],
-    queryFn: () => apiHelpers.metacognition.assessments().then((r) => r.data),
+  // S-MC-1: the domain list is the RECORD (per-domain resolved
+  // accuracy over the user's own predictions), not the coverage
+  // assessments — the assessments query is retired from this desk.
+  const domainRecordQ = useQuery({
+    queryKey: ['metacognition-domain-record'],
+    queryFn: () => apiHelpers.metacognition.domainRecord().then((r) => r.data),
     refetchInterval: 30000,
   });
 
@@ -88,13 +92,28 @@ export function useMetacognitionDesk() {
 
   const runAssessment = useMutation({
     mutationFn: (domain: string) => apiHelpers.metacognition.assess({ domain }),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      const data = (res as { data?: Record<string, unknown> })?.data;
+      const assessment = data && typeof data.assessment === 'object' ? (data.assessment as Record<string, unknown>) : null;
+      if (assessment) setLatestAssessment(assessment);
       queryClient.invalidateQueries({ queryKey: ['metacognition-status'] });
-      queryClient.invalidateQueries({ queryKey: ['metacognition-calibration'] });
-      queryClient.invalidateQueries({ queryKey: ['metacognition-assessments'] });
+      queryClient.invalidateQueries({ queryKey: ['metacognition-domain-record'] });
     },
     onError: (err) =>
       console.error('runAssessment failed:', err instanceof Error ? err.message : err),
+  });
+
+  const deletePrediction = useMutation({
+    mutationFn: (id: string) => lensRun('metacognition', 'prediction_delete', { predictionId: id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['metacognition-status'] });
+      queryClient.invalidateQueries({ queryKey: ['metacognition-calibration'] });
+      queryClient.invalidateQueries({ queryKey: ['metacognition-predictions'] });
+      queryClient.invalidateQueries({ queryKey: ['metacognition-domain-record'] });
+      queryClient.invalidateQueries({ queryKey: ['metacognition-blindspots'] });
+    },
+    onError: (err) =>
+      console.error('deletePrediction failed:', err instanceof Error ? err.message : err),
   });
 
   const spots = useMemo(() => {
@@ -124,35 +143,46 @@ export function useMetacognitionDesk() {
     return Array.isArray(raw) ? (raw as Record<string, unknown>[]) : [];
   }, [predQ.data]);
 
-  const assessmentsList = useMemo(() => {
-    const raw = (assessQ.data as Record<string, unknown> | undefined)?.assessments;
+  const domainRecord = useMemo(() => {
+    const raw = (domainRecordQ.data as Record<string, unknown> | undefined)?.domains;
     return Array.isArray(raw) ? (raw as Record<string, unknown>[]) : [];
-  }, [assessQ.data]);
+  }, [domainRecordQ.data]);
 
   const recentPatterns = useMemo(() => {
     const raw = introData.recentPatterns;
     return Array.isArray(raw) ? (raw as Record<string, unknown>[]) : [];
   }, [introData]);
 
+  // The Confidence Map / Skill Timeline rows: one per domain, the
+  // figure is resolved accuracy from the record, inputs attached.
   const knowledgeDomains = useMemo(() => {
-    return assessmentsList.map((a) => ({
-      domain: a.topic,
-      confidence: a.knowledgeScore,
-      gaps: a.gaps,
-      recommendation: a.recommendation,
-      assessedAt: a.assessedAt,
+    return domainRecord.map((d) => ({
+      domain: d.domain,
+      confidence: typeof d.accuracy === 'number' ? d.accuracy : null,
+      resolved: d.resolved,
+      correct: d.correct,
+      brierScore: d.brierScore,
+      predictions: d.predictions,
     }));
-  }, [assessmentsList]);
+  }, [domainRecord]);
 
   const introspectionHistory = recentPatterns;
 
+  // "Acquisitions" are record events now (S-MC-1: the templated
+  // recommendation lines are gone) — the user's own recent
+  // resolutions, newest first.
   const learningInsights = useMemo(() => {
-    return assessmentsList.map((a) => ({
-      description: a.recommendation,
-      domain: a.topic,
-      timestamp: a.assessedAt,
-    }));
-  }, [assessmentsList]);
+    return predictions
+      .filter((p) => p.outcome === 'correct' || p.outcome === 'incorrect')
+      .slice()
+      .sort((a, b) => String(b.resolvedAt || b.createdAt).localeCompare(String(a.resolvedAt || a.createdAt)))
+      .slice(0, 20)
+      .map((p) => ({
+        description: `Resolved "${String(p.statement || 'prediction')}" — ${p.outcome === 'correct' ? 'correct' : 'incorrect'} at ${typeof p.confidence === 'number' ? `${(p.confidence * 100).toFixed(0)}%` : '?'} confidence`,
+        domain: p.domain,
+        timestamp: p.resolvedAt || p.createdAt,
+      }));
+  }, [predictions]);
 
   const patterns = useMemo(() => {
     const counts = new Map<string, number>();
@@ -188,16 +218,16 @@ export function useMetacognitionDesk() {
   }, [predictions]);
 
   const isLoading = statusQ.isLoading;
-  const isError = statusQ.isError || spotsQ.isError || calQ.isError || introQ.isError || predQ.isError || assessQ.isError;
+  const isError = statusQ.isError || spotsQ.isError || calQ.isError || introQ.isError || predQ.isError || domainRecordQ.isError;
   const errorMessage =
-    statusQ.error?.message || spotsQ.error?.message || calQ.error?.message || introQ.error?.message || predQ.error?.message || assessQ.error?.message;
+    statusQ.error?.message || spotsQ.error?.message || calQ.error?.message || introQ.error?.message || predQ.error?.message || domainRecordQ.error?.message;
   const refetchAll = () => {
     statusQ.refetch();
     spotsQ.refetch();
     calQ.refetch();
     introQ.refetch();
     predQ.refetch();
-    assessQ.refetch();
+    domainRecordQ.refetch();
   };
 
   return {
@@ -212,8 +242,10 @@ export function useMetacognitionDesk() {
     patterns,
     predictionStats,
     latestIntrospection,
+    latestAssessment,
     makePrediction,
     resolvePrediction,
+    deletePrediction,
     runIntrospection,
     runAssessment,
     isLoading,
