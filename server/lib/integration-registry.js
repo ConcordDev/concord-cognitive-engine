@@ -203,7 +203,7 @@ export const REGISTRY = Object.freeze({
   eco:          { tier: TIER.REAL_FREE, sources: ["noaa.climate", "open-meteo.air-quality"], note: "NOAA climate + Open-Meteo air quality" },
   agriculture:  { tier: TIER.REAL_FREE, sources: ["usda.nass", "usda.fooddata"], note: "USDA NASS + FoodData Central" },
   food:         { tier: TIER.REAL_FREE, sources: ["usda.fooddata", "wikipedia.cuisine"], note: "USDA FoodData + Wikipedia" },
-  cooking:      { tier: TIER.REAL_FREE, sources: ["usda.fooddata"], note: "USDA FoodData" },
+  cooking:      { tier: TIER.REAL_LIVE, sources: ["usda.fooddata", "themealdb.recipes"], note: "Member path LIVE (own recipes/plan/pantry/lists, per-user server state); reference layer REAL_FREE — USDA FoodData + TheMealDB are real but static open-access datasets" },
   pharmacy:     { tier: TIER.REAL_FREE, sources: ["fda.openfda.labels", "fda.openfda.adverse"], paywallReason: "formulary + drug interaction databases (FirstDataBank ~$5k/mo, RxNorm partial)", note: "OpenFDA labels + adverse events; full formulary requires paid license" },
   travel:       { tier: TIER.REAL_FREE, sources: ["openstreetmap.nominatim", "wikipedia.geo"], note: "OSM + Wikipedia geo" },
   history:      { tier: TIER.REAL_FREE, sources: ["wikipedia.api", "met-museum.api"], note: "Wikipedia + MET Museum" },
