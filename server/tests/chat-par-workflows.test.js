@@ -6,6 +6,10 @@ import { chatAgentRoute, clientToolCall, webAgentMessage } from "../lib/chat/age
 import { routeComputeQuestion } from "../lib/chat/compute-router.js";
 import { isNewsQuery, newsTopic, parseBingNewsResults, parseGoogleNewsRss } from "../emergent/conscious-web-search.js";
 
+// These tests pin the keyword route lists; the agent-by-default fallback
+// (route "general") is covered in tests/chat-agent-default-route.test.js.
+process.env.CONCORD_CHAT_AGENT_DEFAULT = "0";
+
 test("real Chat workflows route to the agent tool loop", () => {
   const cases = [
     ["What's today's top tech news?", "web"],

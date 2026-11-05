@@ -1568,7 +1568,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['reorderCheck', 'pipelineValue', 'customerLTV', 'slaStatus', 'inventoryForecast', 'priceOptimize', 'promotionROI', 'churnPredict'],
     category: 'operations',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Retail & commerce.",
       caption: "Products, orders, customers, leads, tickets \u2014 reorder, forecast, retain.",
@@ -1723,7 +1723,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     // Matters, time entries, contacts and invoices are the user's own
     // persisted records (server/domains/legal.js); case-law search hits the
     // real CourtListener API. DEMO rendered a "Demo" chip over all of it.
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: 'No matters opened.',
       caption: 'Open a matter, log time, bill it \u2014 saved to your account. Case-law search uses CourtListener; Westlaw / LexisNexis aren\u2019t connected (not supported yet).',
@@ -1734,6 +1734,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
         { caption: 'Practice: open a matter, log time entries, and see the real unbilled total on the matter.' },
         { caption: 'Case law searches CourtListener opinions. Westlaw / LexisNexis are not connected yet.' },
         { caption: 'Keep a matter report as a private DTU, then draft it in Thread. Nothing is filed or published.' },
+        { caption: 'Legal is the practice surface of the legal domain; the Law lens is its document surface (versions, redlines, e-signatures).' },
       ],
     },
   },
@@ -1747,7 +1748,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['donorRetention', 'grantReporting', 'volunteerMatch', 'campaignProgress', 'impactReport', 'taxReceipt', 'eventROI', 'memberEngagement'],
     category: 'social',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Run your nonprofit.",
       caption: "Donors, grants, volunteers, campaigns, impact \u2014 retain, report, match, measure.",
@@ -1771,7 +1772,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['capRate', 'cashFlow', 'closingTimeline', 'vacancyRate', 'comparableAnalysis', 'mortgageCalc', 'inspectionChecklist', 'netOperatingIncome'],
     category: 'finance',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Real estate workflow.",
       caption: "Listings, showings, transactions, rentals, deals \u2014 cap rate, NOI, comparables.",
@@ -1844,7 +1845,12 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['scheduleOptimize', 'bomCost', 'oeeCalculate', 'safetyRate', 'defectTrend', 'maintenancePredict', 'batchTrace', 'capacityPlan'],
     category: 'operations',
-    dataTier: 'SIM_GRADE_A',
+    // The shop floor is the user's own persisted per-user workspace
+    // (server/domains/manufacturing.js — machines, work orders, lots,
+    // SPC samples in STATE), not a simulation — same tier as the other
+    // user-data lenses. SIM_GRADE_A rendered a false "Simulated" banner
+    // over a live workspace whose numbers the first-pass walk verified.
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Manufacturing ops.",
       caption: "Work orders, BOM, QC, machines, safety \u2014 schedule, cost, OEE, defect trend.",
@@ -1868,7 +1874,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'geojson', 'kml'],
     actions: ['populationTrend', 'complianceCheck', 'trailCondition', 'diversionRate', 'sampleChainOfCustody', 'emissionsCalc', 'habitatAssess', 'impactForecast'],
     category: 'government',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Environmental monitoring.",
       caption: "Sites, species, surveys, samples \u2014 population trends, compliance, habitat assessment.",
@@ -2113,7 +2119,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['scaleRecipe', 'mealPlan', 'shoppingList', 'nutritionCalc', 'substitutions', 'pairings'],
     category: 'lifestyle',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: 'No recipes saved.',
       caption: 'Author or import a recipe; scale, plan meals, generate shopping lists. Nutrition pulls from USDA FoodData (real numbers).',
@@ -3085,15 +3091,15 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Emergency dispatch.",
-      caption: "Incidents, dispatches, resources, protocols, responses \u2014 REAL_FREE data from open feeds.",
+      caption: "Incidents, dispatches, resources, protocols, responses \u2014 your own live board: units, incidents and agency records persist on Concord's backend; seismic data is a live USGS feed.",
       firstActionLabel: "Open the dispatch board",
     },
     firstRunGuide: {
       steps: [
-        { caption: "Incidents stream in real-time from connected feeds." },
+        { caption: "Incidents you log persist on the board, per account or per agency." },
         { caption: "Resource allocation runs against the live availability map." },
         { caption: "Protocols compose response checklists from the playbook substrate." },
       ],
@@ -3649,7 +3655,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Masonry projects.",
       caption: "Walls, blocks, mortar, patterns, foundations \u2014 analyze, generate, validate.",
@@ -3715,7 +3721,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'healthcare',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: 'No sessions logged.',
       caption: 'Log a session, run an assessment, draft a plan. NIH MedlinePlus powers the resource browser (free, real federal health info).',
@@ -4023,7 +4029,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Plumbing projects.",
       caption: "Pipes, fixtures, codes, inspections, materials \u2014 analyze, generate, validate.",
@@ -4306,10 +4312,10 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Supply chain ops.",
-      caption: "Orders, shipments, warehouses, routes, forecasts \u2014 SIM_GRADE_A engine.",
+      caption: "Orders, shipments, warehouses, routes, forecasts \u2014 over your live workspace state.",
       firstActionLabel: "Open the chain",
     },
     firstRunGuide: {
@@ -5599,7 +5605,12 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'courtship',     label: 'Courtship',          artifacts: ['courtship'],   macros: { list: 'lens.courtship.list',     get: 'lens.courtship.get' },     exports: ['json'], actions: ['interact', 'propose', 'wed', 'conceive'], category: 'lifestyle' },
   { domain: 'creatures',     label: 'Creatures',          artifacts: ['creature'],    macros: { list: 'creatures.roster',        get: 'creatures.taxonomy',     create: 'creatures.breed' },     exports: ['json'], actions: ['roster', 'species', 'breed', 'lineage', 'taxonomy', 'for_world'], category: 'lifestyle' },
   { domain: 'fishing',       label: 'Fishing',            artifacts: ['catch'],       macros: { list: 'lens.fishing.list',       get: 'lens.fishing.get',       create: 'lens.fishing.create' },       exports: ['json'], actions: ['cast', 'reel'], category: 'lifestyle' },
-  { domain: 'garage',        label: 'Garage',             artifacts: ['vehicle'],     macros: { list: 'garage.list',             get: 'garage.get',           create: 'garage.spawn',     run: 'garage.spawn' },        exports: ['json'], actions: ['spawn', 'mine', 'mount', 'dismount', 'move'], category: 'lifestyle' },
+  // dataTier REAL_LIVE (F1): a real, persistent world_vehicles store (mig 177)
+  // — spawn/list/mine/get/despawn all hit the live DB, reconcile exactly, and
+  // survive reload. The generic REAL_LIVE caption says "polled live from an
+  // external source", which is false here (no external feed) -- overridden
+  // in useDepthBadge's LENS_DEPTH_OVERRIDE with an honest, lens-specific line.
+  { domain: 'garage',        label: 'Garage',             artifacts: ['vehicle'],     macros: { list: 'garage.list',             get: 'garage.get',           create: 'garage.spawn',     run: 'garage.spawn' },        exports: ['json'], actions: ['spawn', 'mine', 'mount', 'dismount', 'move'], category: 'lifestyle', dataTier: 'REAL_LIVE' },
 ];
 
 // ---- Sub-lens auto-registration ----

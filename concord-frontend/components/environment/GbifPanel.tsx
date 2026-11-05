@@ -40,7 +40,14 @@ interface GbifTaxon {
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
     const r = await lensRun({ domain, name, input });
-    return r?.data as T;
+    const data = r?.data as { ok?: boolean; result?: unknown } | undefined;
+    if (!data) return null;
+    // The lens-run response is an envelope: the handler's return rides in
+    // `result`. Reading the envelope as the result left every field
+    // undefined — the panel re-timestamped its footer and rendered nothing
+    // over a macro that had succeeded underneath (F6).
+    if (data.result && typeof data.result === 'object') return data.result as T;
+    return data as unknown as T;
   } catch {
     return null;
   }
@@ -59,6 +66,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [searchedQuery, setSearchedQuery] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchData = useCallback(async (q: string) => {
@@ -79,6 +87,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
       setTotal(r.total || 0);
       setUpdatedAt(r.fetchedAt || Math.floor(Date.now() / 1000));
     } else setError(r?.reason || 'fetch_failed');
+    setSearchedQuery(q.trim());
     setLoading(false);
   }, [domain]);
 
@@ -170,6 +179,18 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
             ))}
           </ul>
         </>
+      )}
+
+      {!error && !loading && searchedQuery && searchedQuery === query.trim() && !taxon?.scientificName && occurrences.length === 0 && (
+        <div className="px-3 py-3 text-xs text-zinc-400">
+          No GBIF match for &ldquo;{searchedQuery}&rdquo; — check the spelling, or try the scientific name.
+        </div>
+      )}
+
+      {taxon?.scientificName && occurrences.length === 0 && !loading && (
+        <div className="px-3 py-3 text-xs text-zinc-400">
+          No occurrences with coordinates recorded for {taxon.scientificName}.
+        </div>
       )}
 
       <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">

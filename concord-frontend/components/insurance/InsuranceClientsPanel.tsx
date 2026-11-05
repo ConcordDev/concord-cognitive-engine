@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Loader2, Plus, Search, Phone, Mail, MapPin, FileText, ClipboardList, DollarSign } from 'lucide-react';
+import { Loader2, Plus, Search, Phone, Mail, MapPin, FileText, ClipboardList, DollarSign, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { ClientRecord } from './ClientAutocomplete';
@@ -32,6 +32,16 @@ export function InsuranceClientsPanel({ clients, loading, query, onQueryChange, 
   const [showAdd, setShowAdd] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  // Governed exit (F6): two-step confirm; the server detaches the client's
+  // policies/claims (their stamped names survive) rather than orphaning them.
+  const deleteClient = useCallback(async (id: string) => {
+    const r = await lensRun('insurance', 'client-delete', { id });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed to delete client.'); return; }
+    setConfirmId(null);
+    onRefresh();
+  }, [onRefresh]);
   const [form, setForm] = useState({
     name: '', phone: '', email: '', address: '', dob: '',
     riskProfile: 'standard', referralSource: '', notes: '',
@@ -132,6 +142,13 @@ export function InsuranceClientsPanel({ clients, loading, query, onQueryChange, 
                 {c.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {c.email}</span>}
                 {c.address && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {c.address}</span>}
               </div>
+              {(c.dob || c.referralSource || c.notes) && (
+                <div className="mt-1 text-[11px] text-zinc-500">
+                  {c.dob && <span>born {c.dob}</span>}
+                  {c.referralSource && <span>{c.dob ? ' · ' : ''}via {c.referralSource}</span>}
+                  {c.notes && <div className="italic mt-0.5">&ldquo;{c.notes}&rdquo;</div>}
+                </div>
+              )}
               <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-[11px]">
                 <span className="flex items-center gap-1 text-blue-300">
                   <FileText className="w-3 h-3" /> {c.policyCount ?? 0} polic{(c.policyCount ?? 0) === 1 ? 'y' : 'ies'}
@@ -145,6 +162,19 @@ export function InsuranceClientsPanel({ clients, loading, query, onQueryChange, 
                     <DollarSign className="w-3 h-3" /> ${c.totalAnnualPremium}/yr
                   </span>
                 )}
+                <span className="ml-auto">
+                  {confirmId === c.id ? (
+                    <span className="inline-flex items-center gap-1">
+                      <button type="button" onClick={() => void deleteClient(c.id)}
+                        className="px-1.5 py-0.5 rounded bg-rose-600/80 text-white text-[10px]">Delete client?</button>
+                      <button type="button" onClick={() => setConfirmId(null)}
+                        className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">Keep</button>
+                    </span>
+                  ) : (
+                    <button type="button" aria-label={`Delete ${c.name}`} onClick={() => setConfirmId(c.id)}
+                      className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  )}
+                </span>
               </div>
             </li>
           ))}

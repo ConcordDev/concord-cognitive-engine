@@ -3,7 +3,8 @@
 /**
  * Custom lens: north-star chrome over the no-code lens builder. Drag widgets
  * onto a canvas, bind them to any macro or REST endpoint, wire actions, and
- * publish into the sidebar. Stat counts are reported by CanvasBuilder itself.
+ * publish (recorded in the lens's Published list). Stat counts are reported
+ * by CanvasBuilder itself.
  */
 
 import { useCallback, useState } from 'react';
@@ -37,10 +38,9 @@ export default function CustomLensPage() {
 
   const newCanvas = useCallback(() => {
     setView('builder');
+    // CanvasBuilder owns the in-page create dialog; ask it to open.
     requestAnimationFrame(() => {
-      const el = document.querySelector<HTMLElement>('[data-lens-theme="custom"] input:not([type="file"])');
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el?.focus();
+      window.dispatchEvent(new CustomEvent('concord:custom-new-canvas'));
     });
   }, []);
 
@@ -72,7 +72,7 @@ export default function CustomLensPage() {
       <NorthStarFrame
         lensId="custom"
         crumb="Custom"
-        subtitle="A no-code app builder: bind widgets to any macro or REST endpoint, wire actions, and publish straight into the sidebar."
+        subtitle="A no-code app builder: bind widgets to any macro or REST endpoint, wire actions, and publish a lens — recorded under Published lenses here."
         actions={
           <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />

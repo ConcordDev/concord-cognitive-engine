@@ -81,7 +81,6 @@ vi.mock('@/components/lens/AutoActionStrip', () => ({ AutoActionStrip: () => nul
 vi.mock('@/components/lens/CrossLensRecentsPanel', () => ({ CrossLensRecentsPanel: () => null }));
 vi.mock('@/components/lens/DepthBadge', () => ({ DepthBadge: () => null }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () => null }));
-vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
 // heavy construction children (their own backend macros are covered by the
 // construction-lens-macros + construction-domain-parity server tests) → inert.
 vi.mock('@/components/construction/FieldManagementPanel', () => ({ FieldManagementPanel: () => null }));

@@ -368,11 +368,24 @@ export default function registerMarketingActions(registerLensAction) {
     const s = getMktState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = mkClean(params.name, 120);
     if (!name) return { ok: false, error: "lead name required" };
+    const campaignId = params.campaignId ? String(params.campaignId) : null;
+    let source = mkClean(params.source, 60).toLowerCase() || "direct";
+    // The label conforms to the engine (build(marketing) S5 — Review 5 F5):
+    // a lead created under a campaign was stored as source "direct" while
+    // the attribution engine credited that campaign — the label and the
+    // engine contradicted each other on the same record. When the campaign
+    // resolves and the source is absent or the untouched default, the
+    // source IS that campaign (its name, matching the attribution row's
+    // label). An explicitly chosen source is never overridden.
+    if (campaignId && source === "direct") {
+      const campaign = findCampaign(s, mkAid(ctx), campaignId);
+      if (campaign) source = campaign.name;
+    }
     const lead = {
       id: mkId("lead"), name,
       email: mkClean(params.email, 160) || null,
-      source: mkClean(params.source, 60).toLowerCase() || "direct",
-      campaignId: params.campaignId ? String(params.campaignId) : null,
+      source,
+      campaignId,
       value: Math.max(0, mkNum(params.value)),
       stage: "new", score: 0,
       createdAt: mkNow(),
@@ -603,6 +616,19 @@ export default function registerMarketingActions(registerLensAction) {
       ok: true,
       result: { segments, totalReach: segments.reduce((a, x) => a + mkNum(x.size), 0) },
     };
+  });
+
+  // Segment delete (build(marketing) S6 — Review 5 F6): segments were
+  // create-only; the pass's fixture segment stood as its sole residue with
+  // no exit. Same find/remove idiom as campaign-delete.
+  registerLensAction("marketing", "segment-delete", (ctx, _a, params = {}) => {
+    const s = getMktState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.segments.get(mkAid(ctx)) || [];
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "segment not found" };
+    arr.splice(i, 1);
+    saveMktState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   // ── Budget pacing ───────────────────────────────────────────────────

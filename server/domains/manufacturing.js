@@ -103,7 +103,7 @@ export default function registerManufacturingActions(registerLensAction) {
         machines,
         source: machines.length === 0 ? "empty" : "wired-feed",
         notes: machines.length === 0
-          ? "No machines registered. Wire an MES/SCADA feed (OPC-UA, MQTT Sparkplug B, MTConnect agent) or POST machines via manufacturing.machine-register to populate."
+          ? "No machines registered yet. Register one on this board (manufacturing.machine-register), then log readings via manufacturing.iot-reading-ingest to populate it."
           : null,
       },
     };
@@ -120,7 +120,7 @@ export default function registerManufacturingActions(registerLensAction) {
         orders,
         source: orders.length === 0 ? "empty" : "wired-feed",
         notes: orders.length === 0
-          ? "No work orders. Wire an ERP webhook (Tulip/Plex/NetSuite) or POST via manufacturing.work-order-create to populate."
+          ? "No work orders yet. Create one on this board (manufacturing.work-order-create) to populate."
           : null,
       },
     };
@@ -141,7 +141,7 @@ export default function registerManufacturingActions(registerLensAction) {
           product,
           samples: [],
           source: "empty",
-          notes: "No SPC samples logged for this product. Wire a QA gauge feed (gauge bridge or POST via manufacturing.spc-sample-log) to populate.",
+          notes: "No SPC samples logged for this product. Log samples via manufacturing.spc-sample-log to populate.",
         },
       };
     }
@@ -149,10 +149,13 @@ export default function registerManufacturingActions(registerLensAction) {
     const values = samples.map((s) => s.value);
     const mean = values.reduce((s, v) => s + v, 0) / values.length;
     const std = Math.sqrt(values.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / values.length);
-    // upperSpec / lowerSpec come from the sample envelope if provided;
-    // otherwise we infer ±3σ control limits from the data.
-    const upperSpec = samples[0]?.upperSpec ?? mean + 3 * std;
-    const lowerSpec = samples[0]?.lowerSpec ?? mean - 3 * std;
+    // upperSpec / lowerSpec come from a sample envelope when the samples
+    // carry a real spec; otherwise they fall back to the data-derived
+    // ±3σ control range — and specSource says which, because Cpk against
+    // derived limits is 1.00 by construction, not a measurement.
+    const specSample = samples.find((s) => s.upperSpec != null && s.lowerSpec != null);
+    const upperSpec = specSample?.upperSpec ?? mean + 3 * std;
+    const lowerSpec = specSample?.lowerSpec ?? mean - 3 * std;
     const cpk = std > 0 ? Math.min((upperSpec - mean) / (3 * std), (mean - lowerSpec) / (3 * std)) : 0;
     const outOfSpec = samples.filter((s) => s.value > upperSpec || s.value < lowerSpec).length;
     const ppm = (outOfSpec / samples.length) * 1_000_000;
@@ -169,6 +172,7 @@ export default function registerManufacturingActions(registerLensAction) {
         cpk: Math.round(cpk * 100) / 100,
         ppm: Math.round(ppm),
         inControl,
+        specSource: specSample ? "samples" : "derived",
         source: "wired-feed",
       },
     };
@@ -234,7 +238,10 @@ export default function registerManufacturingActions(registerLensAction) {
     const availabilityRatio = runCount / readings.length;
     machine.availability = Math.round(availabilityRatio * 100);
 
-    let performanceRatio = 0;
+    // Performance needs a time span: at least two readings with elapsed
+    // run time. Until then it is NOT DERIVABLE — leave it null, the same
+    // treatment quality gets below, rather than writing a measured-looking 0.
+    let performanceRatio = null;
     const ideal = Number(machine.idealCycleTime);
     if (Number.isFinite(ideal) && ideal > 0 && readings.length >= 2) {
       const t0 = Date.parse(readings[0].at);
@@ -246,12 +253,12 @@ export default function registerManufacturingActions(registerLensAction) {
         performanceRatio = (ideal * cycles) / runTimeMin;
       }
     }
-    machine.performance = Math.round(performanceRatio * 100);
+    machine.performance = performanceRatio == null ? null : Math.round(performanceRatio * 100);
     const q = machine.quality;
-    if (typeof q === "number" && Number.isFinite(q)) {
+    if (performanceRatio != null && typeof q === "number" && Number.isFinite(q)) {
       machine.oee = Math.round(availabilityRatio * performanceRatio * (q / 100) * 100);
     } else {
-      machine.quality = null;
+      if (typeof q !== "number" || !Number.isFinite(q)) machine.quality = null;
       machine.oee = null;
     }
     machine.updatedAt = new Date().toISOString();
@@ -287,7 +294,7 @@ export default function registerManufacturingActions(registerLensAction) {
           idealCycleTime: ideal,
           status: "idle",
           availability: 0,
-          performance: 0,
+          performance: null,
           quality: null,
           oee: null,
           lastDowntimeReason: null,
@@ -350,12 +357,26 @@ export default function registerManufacturingActions(registerLensAction) {
       const s = getMfgState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const id = String(params.id ?? "").trim();
       if (!id) return { ok: false, error: "id required" };
-      const status = String(params.status ?? "").trim();
-      if (!WO_STATUSES.has(status)) return { ok: false, error: "status must be queued, in_progress, on_hold, or complete" };
+      // Status and produced quantity are independent updates; either or
+      // both may be supplied. A status-only call behaves exactly as before.
+      const hasStatus = params.status != null && String(params.status).trim() !== "";
+      const hasQty = params.quantityProduced != null;
+      if (!hasStatus && !hasQty) return { ok: false, error: "nothing to update: pass status or quantityProduced" };
+      let status = null;
+      if (hasStatus) {
+        status = String(params.status).trim();
+        if (!WO_STATUSES.has(status)) return { ok: false, error: "status must be queued, in_progress, on_hold, or complete" };
+      }
+      let qty = null;
+      if (hasQty) {
+        qty = finiteInput(params.quantityProduced);
+        if (qty == null || qty < 0) return { ok: false, error: "quantityProduced must be a finite number >= 0" };
+      }
       // Caller-scoped: another user's id is not found. Do not read their list.
       const order = getList(s.workOrders, uid(ctx)).find((o) => o.id === id);
       if (!order) return { ok: false, error: "not found" };
-      order.status = status;
+      if (hasStatus) order.status = status;
+      if (hasQty) order.quantityProduced = qty;
       order.updatedAt = new Date().toISOString();
       saveMfg();
       return { ok: true, result: { order } };
@@ -372,7 +393,23 @@ export default function registerManufacturingActions(registerLensAction) {
       const subgroup = params.subgroup == null || String(params.subgroup).trim() === ""
         ? null
         : String(params.subgroup).trim().slice(0, 80);
+      // Optional real spec limits. Both or neither, and upper must exceed
+      // lower — a sample carrying a spec is what makes Cpk a measurement
+      // rather than a tautology against data-derived limits.
+      const hasUpper = params.upperSpec != null;
+      const hasLower = params.lowerSpec != null;
+      if (hasUpper !== hasLower) return { ok: false, error: "upperSpec and lowerSpec must be supplied together" };
+      let upperSpec = null;
+      let lowerSpec = null;
+      if (hasUpper) {
+        upperSpec = finiteInput(params.upperSpec);
+        lowerSpec = finiteInput(params.lowerSpec);
+        if (upperSpec == null || lowerSpec == null || !(upperSpec > lowerSpec)) {
+          return { ok: false, error: "upperSpec and lowerSpec must be finite numbers with upperSpec > lowerSpec" };
+        }
+      }
       const sample = { at: new Date().toISOString(), value, subgroup };
+      if (upperSpec != null) { sample.upperSpec = upperSpec; sample.lowerSpec = lowerSpec; }
       const list = getList(s.spcSamples, `${uid(ctx)}::${product}`);
       list.push(sample);
       if (list.length > 500) list.splice(0, list.length - 500);
@@ -471,7 +508,7 @@ export default function registerManufacturingActions(registerLensAction) {
       if (!machineId) return { ok: false, error: "machineId required" };
       const list = getList(s.iotReadings, `${uid(ctx)}::${machineId}`);
       if (list.length === 0) {
-        return { ok: true, result: { machineId, source: "empty", readings: [], notes: "No IoT readings. Ingest via manufacturing.iot-reading-ingest (OPC-UA / MQTT Sparkplug B bridge)." } };
+        return { ok: true, result: { machineId, source: "empty", readings: [], notes: "No IoT readings for this machine yet. Ingest a reading via manufacturing.iot-reading-ingest to populate." } };
       }
       const latest = list[list.length - 1];
       const downtimeReasons = {};
@@ -480,7 +517,9 @@ export default function registerManufacturingActions(registerLensAction) {
         if (r.machineState === "running") runCount++;
         if (r.downtimeReason) downtimeReasons[r.downtimeReason] = (downtimeReasons[r.downtimeReason] || 0) + 1;
       }
-      const cycleSpan = list.length > 1 ? (list[list.length - 1].cycleCount - list[0].cycleCount) : 0;
+      // A span needs two readings; with one reading there is no window
+      // delta to report — null, not a 0 that contradicts latestCycleCount.
+      const cycleSpan = list.length > 1 ? (list[list.length - 1].cycleCount - list[0].cycleCount) : null;
       return {
         ok: true,
         result: {
@@ -595,6 +634,8 @@ export default function registerManufacturingActions(registerLensAction) {
       if (!material) return { ok: false, error: "material required" };
       const lots = getList(s.lots, uid(ctx));
       if (lots.some((l) => l.lotNumber === lotNumber)) return { ok: false, error: "lot already registered" };
+      const parentLots = Array.isArray(params.parentLots) ? params.parentLots.map(String) : [];
+      if (parentLots.includes(lotNumber)) return { ok: false, error: "a lot cannot be its own parent" };
       const lot = {
         id: nid("lot"),
         lotNumber,
@@ -603,7 +644,7 @@ export default function registerManufacturingActions(registerLensAction) {
         quantity: Number(params.quantity) || 0,
         supplier: params.supplier || null,
         workOrderId: params.workOrderId || null,
-        parentLots: Array.isArray(params.parentLots) ? params.parentLots.map(String) : [],
+        parentLots,
         createdAt: new Date().toISOString(),
       };
       lots.push(lot);
@@ -638,11 +679,16 @@ export default function registerManufacturingActions(registerLensAction) {
           children: buildDown(c.lotNumber, seen),
         }));
       }
+      // Upstream is the forest of PARENT trees — the lot itself is the
+      // panel's subject (result.lot), never its own ancestor. The root's
+      // number is pre-seeded into the seen set so a cyclic parent chain
+      // back to the root terminates instead of listing the root upstream.
+      const seenUp = new Set([root.lotNumber]);
       return {
         ok: true,
         result: {
           lot: root,
-          upstream: buildUp(root, new Set()),
+          upstream: root.parentLots.map((p) => buildUp(byNumber.get(p), seenUp)).filter(Boolean),
           downstream: buildDown(target, new Set()),
         },
       };
@@ -910,6 +956,121 @@ export default function registerManufacturingActions(registerLensAction) {
           source: items.length === 0 ? "empty" : "wired-feed",
         },
       };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  // ─── Exits: one delete verb per object type ────────────────────────────
+  // Every collection the lens creates can also be removed by its owner.
+  // All deletes are caller-scoped (another user's id is simply not found)
+  // and return the removed record so the caller can receipt or undo it.
+
+  registerLensAction("manufacturing", "machine-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const machineId = String(params.machineId ?? "").trim();
+      if (!machineId) return { ok: false, error: "machineId required" };
+      const machines = getList(s.machines, uid(ctx));
+      const idx = machines.findIndex((m) => m.id === machineId);
+      if (idx < 0) return { ok: false, error: "machine not found" };
+      const [machine] = machines.splice(idx, 1);
+      if (s.iotReadings instanceof Map) s.iotReadings.delete(`${uid(ctx)}::${machineId}`);
+      saveMfg();
+      return { ok: true, result: { deleted: machine } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "work-order-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const id = String(params.id ?? "").trim();
+      if (!id) return { ok: false, error: "id required" };
+      const orders = getList(s.workOrders, uid(ctx));
+      const idx = orders.findIndex((o) => o.id === id);
+      if (idx < 0) return { ok: false, error: "not found" };
+      const [order] = orders.splice(idx, 1);
+      saveMfg();
+      return { ok: true, result: { deleted: order } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "work-instruction-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const sets = getList(s.workInstructions, uid(ctx));
+      const idx = sets.findIndex((x) => x.id === params.instructionSetId);
+      if (idx < 0) return { ok: false, error: "instruction set not found" };
+      const [set] = sets.splice(idx, 1);
+      return { ok: true, result: { deleted: set } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "schedule-job-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const jobs = getList(s.scheduleJobs, uid(ctx));
+      const idx = jobs.findIndex((j) => j.id === params.jobId);
+      if (idx < 0) return { ok: false, error: "job not found" };
+      const [job] = jobs.splice(idx, 1);
+      return { ok: true, result: { deleted: job } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "lot-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const lotNumber = String(params.lotNumber || "").trim();
+      if (!lotNumber) return { ok: false, error: "lotNumber required" };
+      const lots = getList(s.lots, uid(ctx));
+      const idx = lots.findIndex((l) => l.lotNumber === lotNumber);
+      if (idx < 0) return { ok: false, error: "lot not found" };
+      const [lot] = lots.splice(idx, 1);
+      return { ok: true, result: { deleted: lot } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "andon-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const alerts = getList(s.andonAlerts, uid(ctx));
+      const idx = alerts.findIndex((x) => x.id === params.alertId);
+      if (idx < 0) return { ok: false, error: "alert not found" };
+      const [alert] = alerts.splice(idx, 1);
+      return { ok: true, result: { deleted: alert } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "ncr-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const ncrs = getList(s.ncrs, uid(ctx));
+      const idx = ncrs.findIndex((x) => x.id === params.ncrId);
+      if (idx < 0) return { ok: false, error: "ncr not found" };
+      const [ncr] = ncrs.splice(idx, 1);
+      return { ok: true, result: { deleted: ncr } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "maintenance-plan-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const plans = getList(s.maintenancePlans, uid(ctx));
+      const idx = plans.findIndex((p) => p.id === params.planId);
+      if (idx < 0) return { ok: false, error: "plan not found" };
+      const [plan] = plans.splice(idx, 1);
+      return { ok: true, result: { deleted: plan } };
+    } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  });
+
+  registerLensAction("manufacturing", "inventory-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const sku = String(params.sku || "").trim();
+      if (!sku) return { ok: false, error: "sku required" };
+      const items = getList(s.inventory, uid(ctx));
+      const idx = items.findIndex((x) => x.sku === sku);
+      if (idx < 0) return { ok: false, error: "sku not found" };
+      const [item] = items.splice(idx, 1);
+      return { ok: true, result: { deleted: item } };
     } catch (e) { return { ok: false, error: String(e.message || e) }; }
   });
 

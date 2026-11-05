@@ -402,7 +402,7 @@ export default function STSVKExplorer({ theorems: theoremsProp, className }: STS
         <input
           type="range"
           min="-0.5"
-          max="1.5"
+          max="2"
           step="0.01"
           value={sliderX}
           onChange={(e) => setSliderX(parseFloat(e.target.value))}

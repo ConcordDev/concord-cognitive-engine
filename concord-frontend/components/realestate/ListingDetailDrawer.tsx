@@ -11,7 +11,7 @@ interface FullListing extends Listing {
   priceHistory: Array<{ date: string; price: number; kind: string }>;
   lotSqft: number;
 }
-interface HotScore { score: number; tag: string; daysOnMarket: number; tourCount: number }
+interface HotScore { score: number; tag: string; daysOnMarket: number; tourCount: number; basis?: { base: number; marketAge: number; priceDrop: number; tours: number; favourite: number } }
 
 export function ListingDetailDrawer({ listing, onClose, onRequestTour }: { listing: Listing | null; onClose: () => void; onRequestTour?: (id: string) => void }) {
   const [full, setFull] = useState<FullListing | null>(null);
@@ -122,6 +122,15 @@ export function ListingDetailDrawer({ listing, onClose, onRequestTour }: { listi
                 <div className={cn('h-full transition-all', hot.score >= 65 ? 'bg-rose-500' : hot.score >= 45 ? 'bg-amber-500' : 'bg-cyan-500')} style={{ width: `${hot.score}%` }} />
               </div>
               <div className="mt-1 text-[10px] text-gray-400">{hot.daysOnMarket}d on market · {hot.tourCount} tour{hot.tourCount === 1 ? '' : 's'} requested</div>
+              {hot.basis && (
+                <div className="mt-0.5 text-[10px] text-gray-500">
+                  Basis: base {hot.basis.base}
+                  {hot.basis.marketAge !== 0 && <> · market age {hot.basis.marketAge > 0 ? '+' : ''}{hot.basis.marketAge}</>}
+                  {hot.basis.tours !== 0 && <> · tours +{hot.basis.tours}</>}
+                  {hot.basis.priceDrop !== 0 && <> · price drop {hot.basis.priceDrop}</>}
+                  {hot.basis.favourite !== 0 && <> · favourited +{hot.basis.favourite}</>}
+                </div>
+              )}
             </div>
           )}
         </div>

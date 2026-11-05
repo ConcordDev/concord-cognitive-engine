@@ -44,12 +44,12 @@ type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'case' | 'patrol' | 'report' | 'stats' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
-interface CaseResult { caseId?: string; evidenceCount: number; witnessCount: number; suspectCount: number; caseStrength: number; prosecutable: boolean; status: string; nextSteps: string[] }
+interface CaseResult { caseId?: string; evidenceCount: number; bookedEvidenceCount?: number; stagedEvidenceCount?: number; linkedCase?: { caseNumber: string; title: string; status: string } | null; witnessCount: number; suspectCount: number; caseStrength: number; prosecutable: boolean; status: string; nextSteps: string[]; scope?: string }
 interface ResolvedCase { id: string; caseNumber: string; title: string; status: string; assignedDetective: string }
 interface ZoneRec { zone: string; crimeRate: number; population: number; currentPatrols: number; recommended: number }
-interface PatrolResult { zones: ZoneRec[]; totalUnitsNeeded: number; totalCurrentUnits: number; hotspots: string[] }
+interface PatrolResult { zones: ZoneRec[]; totalUnitsNeeded: number; totalCurrentUnits: number; hotspots: string[]; scope?: string }
 interface ReportResult { reportId: string; complete: boolean; missingFields: string[]; type: string; date: string; location: string; severity: string; status: string }
-interface CrimeStatsResult { totalIncidents: number; byType: { type: string; count: number }[]; clearanceRate: number; mostCommon: string; trend: string }
+interface CrimeStatsResult { totalIncidents: number; byType: { type: string; count: number }[]; clearanceRate: number; mostCommon: string; trend: string; scope?: string; sources?: { mappedIncidents: number; cases: number; stagedRows: number }; message?: string }
 
 // ---- small repeatable-row form primitives ---------------------------------
 
@@ -163,7 +163,7 @@ export function LawEnforcementActionPanel() {
     setBusy('patrol'); setFeedback(null);
     try {
       const r = await callMacro<PatrolResult>('patrolOptimize', { artifact: { data: { zones } } });
-      if (r.ok && r.result) { setPatrolResult(r.result); pipe.publish('le.patrol', r.result, { label: `Patrol ${r.result.hotspots.length} hotspots` }); ok(`${r.result.hotspots.length} hotspots · need ${r.result.totalUnitsNeeded} units.`); } else err(r.error ?? 'patrol failed');
+      if (r.ok && r.result) { setPatrolResult(r.result); pipe.publish('le.patrol', r.result, { label: `Patrol plan ${r.result.totalCurrentUnits}/${r.result.totalUnitsNeeded} units` }); ok(`${r.result.hotspots.length} high-rate staged zone(s) · need ${r.result.totalUnitsNeeded} units.`); } else err(r.error ?? 'patrol failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -187,14 +187,19 @@ export function LawEnforcementActionPanel() {
   }
 
   async function actStats() {
+    // S1: no staged rows are required — crimeStats reads the lens's own
+    // records (Crime Map incidents + cases on file) and counts any rows
+    // staged here alongside them, naming the scope in the result.
     const incidents = incidentRows
       .filter((i) => i.type.trim())
       .map((i) => ({ type: i.type.trim(), resolved: i.resolved }));
-    if (incidents.length === 0) { err('Add at least one incident log entry.'); return; }
     setBusy('stats'); setFeedback(null);
     try {
       const r = await callMacro<CrimeStatsResult>('crimeStats', { artifact: { data: { incidents } } });
-      if (r.ok && r.result) { setStatsResult(r.result); pipe.publish('le.stats', r.result, { label: `Stats ${r.result.totalIncidents}, ${r.result.clearanceRate}% cleared` }); ok(`${r.result.totalIncidents} incidents · ${r.result.clearanceRate}% cleared.`); } else err(r.error ?? 'stats failed');
+      if (r.ok && r.result) {
+        if (typeof r.result.totalIncidents === 'number') { setStatsResult(r.result); pipe.publish('le.stats', r.result, { label: `Stats ${r.result.totalIncidents}, ${r.result.clearanceRate}% cleared` }); ok(`${r.result.totalIncidents} incidents · ${r.result.clearanceRate}% cleared.`); }
+        else { setStatsResult(null); ok(r.result.message ?? 'No incidents on record yet.'); }
+      } else err(r.error ?? 'stats failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -212,7 +217,7 @@ export function LawEnforcementActionPanel() {
     setBusy('dm'); setFeedback(null);
     const body = [`🚓 Beat report`, '',
       caseResult ? `Case: strength ${caseResult.caseStrength}/100 · ${caseResult.status} · ${caseResult.prosecutable ? '✓ prosecutable' : '✗ insufficient'}` : '',
-      patrolResult ? `Patrol: ${patrolResult.totalCurrentUnits}/${patrolResult.totalUnitsNeeded} units · hotspots: ${patrolResult.hotspots.join(', ')}` : '',
+      patrolResult ? `Patrol plan (staged zones): ${patrolResult.totalCurrentUnits}/${patrolResult.totalUnitsNeeded} units · high-rate staged zones: ${patrolResult.hotspots.join(', ') || 'none'}` : '',
       reportResult ? `IR ${reportResult.reportId}: ${reportResult.type} @ ${reportResult.location}${reportResult.complete ? '' : ` (missing: ${reportResult.missingFields.join(', ')})`}` : '',
       statsResult ? `Stats: ${statsResult.totalIncidents} incidents · ${statsResult.clearanceRate}% cleared · top: ${statsResult.mostCommon}` : '',
       mintedDtuId ? `\n[DTU ${mintedDtuId}]` : '',
@@ -246,7 +251,19 @@ export function LawEnforcementActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Watch commander brief. ${caseResult ? `Open case: strength ${caseResult.caseStrength}/100 (${caseResult.status}).` : ''} ${patrolResult ? `Patrol: ${patrolResult.totalCurrentUnits}/${patrolResult.totalUnitsNeeded} units, hotspots: ${patrolResult.hotspots.join(', ')}.` : ''} ${statsResult ? `${statsResult.totalIncidents} incidents this period, ${statsResult.clearanceRate}% clearance.` : ''} Identify single highest-leverage allocation change for next shift + one community-engagement opportunity. Plain text, 3 sentences max.`;
+      // F4 grounding: the brief is generated ONLY from figures the lens
+      // can show. Hotspot claims come from the Crime Map — the lens's
+      // detector of record — read fresh here; the patrol workbench's
+      // staged zones are planning rows, never detections, and are not
+      // cited as hotspots. When the detector reads zero, the brief is
+      // told so in words and cannot cite a hotspot.
+      let mapFact = 'Crime Map detector: not run yet this session.';
+      try {
+        const m = await lensRun<{ hotspotCount: number; total: number }>('law-enforcement', 'crimeMap', {});
+        const res = (m.data as { result?: { hotspotCount: number; total: number } })?.result;
+        if (res) mapFact = `Crime Map detector: ${res.hotspotCount} hotspot(s) detected across ${res.total} mapped incident(s)${res.hotspotCount === 0 ? ' — no hotspot is detected this period; do not cite one' : ''}.`;
+      } catch { /* keep the not-run wording — honest either way */ }
+      const task = `Watch commander brief. Use ONLY the figures in this prompt; do not invent detections, counts, or places. ${mapFact} ${caseResult ? `Case strength: ${caseResult.caseStrength}/100 (${caseResult.status})${caseResult.scope ? ` — ${caseResult.scope}` : ''}` : 'No case analysis run.'} ${statsResult ? `Crime stats: ${statsResult.totalIncidents} incidents, ${statsResult.clearanceRate}% clearance${statsResult.scope ? ` — ${statsResult.scope}` : ''}` : 'No crime stats run.'} ${patrolResult ? `Patrol plan (staged workbench zones, planning figures only): ${patrolResult.totalCurrentUnits}/${patrolResult.totalUnitsNeeded} units allocated.` : ''} Identify single highest-leverage allocation change for next shift + one community-engagement opportunity. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
@@ -400,13 +417,15 @@ export function LawEnforcementActionPanel() {
             <div className={cn('text-[11px] font-semibold capitalize', STATUS_COLOR[caseResult.status])}>{caseResult.status.replace(/-/g, ' ')}</div>
             <div className="text-[10px] text-zinc-400">E {caseResult.evidenceCount} · W {caseResult.witnessCount} · S {caseResult.suspectCount}</div>
             {caseResult.nextSteps.map((s, i) => <div key={i} className="text-[10px] text-purple-200 mt-0.5">→ {s}</div>)}
+            {caseResult.scope && <div className="text-[9px] text-zinc-500 mt-1 leading-snug">{caseResult.scope}</div>}
           </div>
         )}
         {patrolResult && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Patrol · {patrolResult.totalCurrentUnits}/{patrolResult.totalUnitsNeeded}</div>
-            {patrolResult.hotspots.length > 0 && <div className="text-[11px] text-red-300 font-semibold">⚠ hotspots: {patrolResult.hotspots.join(', ')}</div>}
+            {patrolResult.hotspots.length > 0 && <div className="text-[11px] text-red-300 font-semibold">⚠ high-rate staged zones: {patrolResult.hotspots.join(', ')}</div>}
             {patrolResult.zones.map((z, i) => <div key={i} className={cn('text-[10px] mt-0.5', z.recommended > z.currentPatrols ? 'text-amber-300' : 'text-zinc-300')}><span className="font-mono">{z.zone}</span> · CR {z.crimeRate} · {z.currentPatrols}/{z.recommended} units</div>)}
+            {patrolResult.scope && <div className="text-[9px] text-zinc-500 mt-1 leading-snug">{patrolResult.scope}</div>}
           </div>
         )}
         {reportResult && (
@@ -423,6 +442,7 @@ export function LawEnforcementActionPanel() {
             <div className="text-2xl font-bold text-green-300">{statsResult.clearanceRate}%<span className="text-xs text-zinc-400"> cleared</span></div>
             <div className="text-[10px] text-zinc-400">{statsResult.totalIncidents} total · top: {statsResult.mostCommon}</div>
             {statsResult.byType.slice(0, 4).map((t, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5">{t.type}: {t.count}</div>)}
+            {statsResult.scope && <div className="text-[9px] text-zinc-500 mt-1 leading-snug">{statsResult.scope}</div>}
           </div>
         )}
       </div>

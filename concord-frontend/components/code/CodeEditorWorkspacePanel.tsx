@@ -7,7 +7,7 @@ import LensAgentFab from '@/components/lens/LensAgentFab';
 import { QuickScriptProjectBadge } from '@/components/code/QuickScriptProjectBadge';
 import { RunStamp, UnfurlPre, QuietSuccessEdge } from '@/components/code/delight';
 import { useMutation } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,8 @@ import { CodeRunMenu } from '@/components/code/CodeRunMenu';
 import type { CodeExecResult } from '@/components/code/codeRunReport';
 import { readExecStatus, subscribeExecStatus, type CodeExecStatus } from '@/components/code/codeExecGate';
 import { isLocallyRunnable, runLocalScript } from '@/components/code/localExec';
+import { scriptDtuCreateCall, scriptDtuUpdateCall, savedArtifactId, dtuRunRefused } from '@/components/code/scriptDtu';
+import { dtuRecordId, dtuReadBackCall, dtuReadBackMatches } from '@/components/wallet/walletReceipt';
 import { codeAiSessionId, fetchCodeAiHistory } from '@/components/code/codeAiHistory';
 import { LIVE_PROJECT_ID, LIVE_SNIPPET_PATH, snippetFromFilesRead, tabAfterSnippetRead } from '@/components/code/liveSnippet';
 
@@ -76,6 +78,10 @@ interface Tab {
   id: string;
   name: string;
   language: string;
+  /** The content DTU this script's saves mint/update (F8) — set on first
+   *  save, read back from the artifact's data on open, so a re-save
+   *  updates the same DTU instead of minting a duplicate. */
+  dtuId?: string;
   content: string;
   isDirty: boolean;
   scriptType: ScriptType;
@@ -239,7 +245,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
   }), [codeHyperDTUs.length, codeMegaDTUs.length, codeRegularDTUs.length]);
 
   // Persist scripts to backend
-  const { isLoading, isError, error, refetch, create: saveScript, items: savedScripts } = useLensData('code', 'script', { noSeed: true });
+  const { isLoading, isError, error, refetch, create: saveScript, update: updateScript, items: savedScripts } = useLensData('code', 'script', { noSeed: true });
 
   const [files, setFiles] = useState<FileNode[]>([]);
   const [tabs, setTabs] = useState<Tab[]>([
@@ -425,11 +431,12 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
       // Open the saved script as a new tab
       const script = savedScripts.find((s) => s.id === hit.sourceId);
       if (!script) return;
-      const data = (script as { data?: { content?: string; language?: string; scriptType?: ScriptType }; title?: string }).data;
+      const data = (script as { data?: { content?: string; language?: string; dtuId?: string; scriptType?: ScriptType }; title?: string }).data;
       const newTab: Tab = {
         id: script.id,
         name: (script as { title?: string }).title || 'untitled',
         language: data?.language || 'javascript',
+        dtuId: data?.dtuId,
         content: String(data?.content || ''),
         isDirty: false,
         scriptType: (data?.scriptType as ScriptType) || 'snippet',
@@ -649,15 +656,15 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
     const tab = tabs.find(t => t.id === activeTabId);
     if (!tab) return;
     setSaveError('');
+    // Phase 1 — the lens artifact (the save's original contract).
+    let artifactId = '';
     try {
-      await saveScript({
+      const saved = await saveScript({
         title: tab.name,
-        data: { content: tab.content, language: tab.language, scriptType: tab.scriptType },
+        data: { content: tab.content, language: tab.language, scriptType: tab.scriptType, ...(tab.dtuId ? { dtuId: tab.dtuId } : {}) },
         meta: { tags: ['script', tab.scriptType], status: 'active' },
       });
-      setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isDirty: false } : t));
-      setSaveFlash((n) => n + 1);
-      void refetch();
+      artifactId = savedArtifactId(saved);
     } catch (err) {
       console.error('[Code] Save failed:', err);
       const e = err as { response?: { data?: { errors?: unknown; details?: unknown; error?: unknown } }; message?: string };
@@ -669,8 +676,54 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
       setSaveError(named.length > 0
         ? `Save failed — ${named.join(' ')}`
         : `Save failed${data?.error ? ` — ${String(data.error)}` : ''}${e?.message && !data?.error ? `: ${e.message}` : ''}. Nothing was saved.`);
+      return;
     }
-  }, [tabs, activeTabId, saveScript, refetch]);
+    // Phase 2 — the DTU the Save button promises ("persists to your
+    // library as a DTU", F8): the script itself as a content-bearing DTU,
+    // via the canonical dtu.create / dtu.update macros, read-back-confirmed
+    // before the save may claim it (the CodeRunMenu discipline). A failure
+    // here is named as the DTU step — the artifact IS saved, and the
+    // success flash does not fire for a half the surface didn't deliver.
+    const facts = { name: tab.name, language: tab.language, scriptType: tab.scriptType, content: tab.content, artifactId };
+    try {
+      let dtuId = tab.dtuId || '';
+      if (dtuId) {
+        const call = scriptDtuUpdateCall({ ...facts, dtuId });
+        if (!call) throw new Error('the DTU update could not be composed');
+        const upd = await lensRun(call.domain, call.action, call.input);
+        if (dtuRunRefused(upd)) throw new Error('the DTU update was refused');
+      } else {
+        const call = scriptDtuCreateCall(facts);
+        if (!call) throw new Error('the DTU create could not be composed');
+        const created = await lensRun(call.domain, call.action, call.input);
+        const id = dtuRecordId(created.data);
+        if (!id) throw new Error('the DTU create returned no id');
+        const rb = dtuReadBackCall(id);
+        const back = await lensRun(rb.domain, 'get', rb.input);
+        if (!dtuReadBackMatches(id, back.data)) throw new Error('the DTU read-back did not match');
+        dtuId = id;
+      }
+      setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isDirty: false, ...(dtuId ? { dtuId } : {}) } : t));
+      // Persist the link on the artifact just created, so a reopened tab
+      // re-links instead of minting a second DTU. The DTU and the script
+      // both exist either way; a failed stamp is a warning, not a failure.
+      if (dtuId && dtuId !== tab.dtuId && artifactId) {
+        try {
+          await updateScript(artifactId, { data: { dtuId } });
+        } catch {
+          setSaveError('Saved — the script and its DTU both exist, but the link between them could not be recorded. Saving again from a reopened tab may create a second DTU copy.');
+        }
+      }
+      setSaveFlash((n) => n + 1);
+      void refetch();
+    } catch (err) {
+      console.error('[Code] DTU save failed:', err);
+      setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isDirty: false } : t));
+      void refetch();
+      const reason = err instanceof Error ? err.message : 'the DTU step failed';
+      setSaveError(`Saved to the lens, but the library DTU was not ${tab.dtuId ? 'updated' : 'created'} — ${reason}. The script itself is saved; save again to retry the DTU.`);
+    }
+  }, [tabs, activeTabId, saveScript, updateScript, refetch]);
 
   const handleCodeAction = async (action: string) => {
     const targetId = savedScripts[0]?.id;
@@ -719,6 +772,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
       id: file.id,
       name: file.name,
       language: file.language || 'javascript',
+      dtuId: (file as { dtuId?: string }).dtuId,
       content: file.content || '',
       isDirty: false,
       scriptType: file.scriptType || 'snippet',

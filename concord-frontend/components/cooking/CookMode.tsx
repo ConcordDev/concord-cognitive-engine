@@ -11,6 +11,7 @@ import {
   ChevronLeft, ChevronRight, X, Timer, Play, Pause, RotateCcw, CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { lensRun } from '@/lib/api/client';
 
 interface Ingredient { name: string; qty: number | null; unit: string }
 export interface CookModeRecipe {
@@ -36,6 +37,13 @@ function minutesInStep(step: string): number {
 export function CookMode({ recipe, onClose }: CookModeProps) {
   const [stepIdx, setStepIdx] = useState(0);
   const [done, setDone] = useState<Set<number>>(new Set());
+  // Completion: Finish on the last step LOGS the cook (recipe-log-cooked)
+  // and lands a completion state — a session that can be finished, not
+  // only exited. `finishing` guards the in-flight call; `finishError`
+  // keeps a failed log visible instead of pretending completion.
+  const [finished, setFinished] = useState<{ timesCooked: number } | null>(null);
+  const [finishing, setFinishing] = useState(false);
+  const [finishError, setFinishError] = useState<string | null>(null);
   const steps = useMemo(
     () => (recipe.steps.length ? recipe.steps : ['This recipe has no steps yet.']),
     [recipe.steps],
@@ -81,6 +89,26 @@ export function CookMode({ recipe, onClose }: CookModeProps) {
     setDone((prev) => { const s = new Set(prev); s.add(stepIdx); return s; });
     if (!lastStep) go(1);
   }, [stepIdx, lastStep, go]);
+
+  const finish = useCallback(async () => {
+    if (finishing || finished) return;
+    setDone((prev) => { const s = new Set(prev); s.add(stepIdx); return s; });
+    setFinishing(true);
+    setFinishError(null);
+    try {
+      const r = await lensRun('cooking', 'recipe-log-cooked', { id: recipe.id, note: 'Cook mode' });
+      if (r.data?.ok && r.data.result) {
+        setFinished({ timesCooked: r.data.result.timesCooked ?? 1 });
+        window.dispatchEvent(new CustomEvent('cooking:changed'));
+      } else {
+        setFinishError(r.data?.error || 'Could not log this cook — try Finish again.');
+      }
+    } catch {
+      setFinishError('Could not log this cook — try Finish again.');
+    } finally {
+      setFinishing(false);
+    }
+  }, [finishing, finished, recipe.id, stepIdx]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -156,33 +184,52 @@ export function CookMode({ recipe, onClose }: CookModeProps) {
           </div>
 
           {/* Navigation */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => go(-1)}
-              disabled={stepIdx === 0}
-              className="inline-flex items-center gap-1 rounded border border-white/10 px-4 py-2 text-sm text-gray-300 hover:bg-white/[0.05] disabled:opacity-30"
-            >
-              <ChevronLeft className="w-4 h-4" /> Back
-            </button>
-            <button
-              onClick={markDone}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded px-5 py-2 text-sm font-semibold',
-                done.has(stepIdx) ? 'border border-emerald-500/40 text-emerald-300' : 'bg-orange-500 text-black hover:bg-orange-400',
-              )}
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              {lastStep ? 'Finish' : done.has(stepIdx) ? 'Done' : 'Done · next'}
-            </button>
-            {!lastStep && (
+          {finished ? (
+            <div className="flex flex-col items-center gap-3" role="status">
+              <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-300">
+                <CheckCircle2 className="w-4 h-4" />
+                Cooked — logged to your history ({finished.timesCooked}× cooked)
+              </div>
               <button
-                onClick={() => go(1)}
-                className="inline-flex items-center gap-1 rounded border border-white/10 px-4 py-2 text-sm text-gray-300 hover:bg-white/[0.05]"
+                onClick={onClose}
+                className="inline-flex items-center gap-1.5 rounded bg-orange-500 px-5 py-2 text-sm font-semibold text-black hover:bg-orange-400"
               >
-                Next <ChevronRight className="w-4 h-4" />
+                Done
               </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => go(-1)}
+                  disabled={stepIdx === 0}
+                  className="inline-flex items-center gap-1 rounded border border-white/10 px-4 py-2 text-sm text-gray-300 hover:bg-white/[0.05] disabled:opacity-30"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Back
+                </button>
+                <button
+                  onClick={lastStep ? finish : markDone}
+                  disabled={lastStep && finishing}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded px-5 py-2 text-sm font-semibold disabled:opacity-50',
+                    done.has(stepIdx) && !lastStep ? 'border border-emerald-500/40 text-emerald-300' : 'bg-orange-500 text-black hover:bg-orange-400',
+                  )}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {lastStep ? (finishing ? 'Logging…' : 'Finish') : done.has(stepIdx) ? 'Done' : 'Done · next'}
+                </button>
+                {!lastStep && (
+                  <button
+                    onClick={() => go(1)}
+                    className="inline-flex items-center gap-1 rounded border border-white/10 px-4 py-2 text-sm text-gray-300 hover:bg-white/[0.05]"
+                  >
+                    Next <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              {finishError && <p role="alert" className="text-xs text-rose-300">{finishError}</p>}
+            </div>
+          )}
         </div>
 
         {/* Ingredients sidebar */}

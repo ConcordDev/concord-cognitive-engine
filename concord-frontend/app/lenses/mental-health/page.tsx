@@ -11,7 +11,7 @@ import { MentalHealthActionPanel } from '@/components/mental-health/MentalHealth
 import { MedlinePlusPanel } from '@/components/health/MedlinePlusPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { lensRun } from '@/lib/api/client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Brain, Heart, Shield, AlertTriangle, Sparkles, Loader2, LifeBuoy, Sun, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,7 @@ const TRIGGER_OPTIONS = ['anxiety', 'depression', 'stress', 'anger', 'grief'] as
 
 interface CopingResult { triggers: number; strategies: string[]; categories: string[]; note?: string }
 interface WellnessResult { wellnessScore: number; breakdown: Record<string, string>; areas: string[] }
+interface TrackedWellnessResult { wellnessScore: number | null; basis: string; breakdown?: Record<string, string>; areas?: string[]; message?: string; note?: string }
 
 type MhView = 'today' | 'analysis' | 'toolkit' | 'support';
 
@@ -89,6 +90,29 @@ export default function MentalHealthLensPage() {
   const [wellnessBusy, setWellnessBusy] = useState(false);
   const [wellnessResult, setWellnessResult] = useState<WellnessResult | null>(null);
   const [wellnessError, setWellnessError] = useState<string | null>(null);
+
+  // ── Wellness score from the member's tracked data (S-MH-1) ────────
+  // The headline score: computed server-side from the member's own
+  // check-ins, sleep logs and practice (wellness-score-tracked). The
+  // manual calculator below stays available, labelled as manual.
+  const [trackedResult, setTrackedResult] = useState<TrackedWellnessResult | null>(null);
+  const [trackedBusy, setTrackedBusy] = useState(false);
+  const [trackedError, setTrackedError] = useState<string | null>(null);
+
+  const loadTracked = async () => {
+    setTrackedBusy(true); setTrackedError(null);
+    try {
+      const r = await lensRun<TrackedWellnessResult>('mental-health', 'wellness-score-tracked', {});
+      if (r.data?.ok === false || !r.data?.result) { setTrackedError(r.data?.error || 'Request failed.'); setTrackedResult(null); }
+      else setTrackedResult(r.data.result);
+    } catch (e) {
+      setTrackedError(e instanceof Error ? e.message : 'Request failed.');
+    } finally {
+      setTrackedBusy(false);
+    }
+  };
+
+  useEffect(() => { if (view === 'analysis') void loadTracked(); }, [view]);
 
   const runWellness = async () => {
     setWellnessBusy(true); setWellnessError(null);
@@ -209,6 +233,61 @@ export default function MentalHealthLensPage() {
             <span className="text-xs font-semibold text-pink-400 uppercase tracking-wider flex items-center gap-1.5">
               <Heart className="w-3.5 h-3.5" /> Wellness Score
             </span>
+            {trackedBusy && (
+              <p className="text-xs text-gray-400 flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Reading your tracked data…</p>
+            )}
+            {trackedError && <p className="text-xs text-red-400">{trackedError}</p>}
+            {trackedResult && trackedResult.wellnessScore == null && (
+              <p className="text-xs text-gray-300 bg-white/5 rounded p-2">{trackedResult.message || 'No tracked data yet — log a check-in, a night\'s sleep or a practice session and your score appears here.'}</p>
+            )}
+            {trackedResult && trackedResult.wellnessScore != null && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-4">
+                  <div className="relative w-16 h-16 shrink-0">
+                    {(() => {
+                      const score = trackedResult.wellnessScore as number;
+                      const radius = 28;
+                      const circumference = 2 * Math.PI * radius;
+                      const offset = circumference - (score / 100) * circumference;
+                      const color = score >= 75 ? '#4ade80' : score >= 50 ? '#22d3ee' : score >= 25 ? '#facc15' : '#f87171';
+                      return (
+                        <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+                          <circle cx="32" cy="32" r={radius} fill="none" stroke="#27272a" strokeWidth="6" />
+                          <motion.circle
+                            cx="32" cy="32" r={radius} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round"
+                            strokeDasharray={circumference}
+                            initial={{ strokeDashoffset: circumference }}
+                            animate={{ strokeDashoffset: offset }}
+                            transition={{ duration: 0.8 }}
+                          />
+                          <text x="32" y="37" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold" className="rotate-90 origin-center">{score}</text>
+                        </svg>
+                      );
+                    })()}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    {Object.entries(trackedResult.breakdown || {}).map(([key, val]) => (
+                      <div key={key} className="flex justify-between text-xs gap-2">
+                        <span className="text-gray-400 capitalize">{key}</span>
+                        <span className="text-gray-300 font-mono text-right">{val}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-[11px] text-gray-400">Your score, from your own tracked check-ins, sleep and practice in this lens.{trackedResult.basis === 'tracked' ? ' Social interactions are not tracked here, so they are not counted.' : ''}</p>
+                {Array.isArray(trackedResult.areas) && trackedResult.areas.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {trackedResult.areas.map((a, i) => (
+                      <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-pink-500/15 text-pink-300">{a}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="border-t border-white/10 pt-3">
+              <p className="text-[11px] font-semibold text-gray-300 uppercase tracking-wider">Manual calculator</p>
+              <p className="text-[11px] text-gray-500">Enter values yourself — the score above already uses your tracked data.</p>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <label className="text-xs text-gray-400">
                 Sleep (hrs)

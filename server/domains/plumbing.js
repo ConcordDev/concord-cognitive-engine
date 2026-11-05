@@ -20,8 +20,8 @@ export default function registerPlumbingActions(registerLensAction) {
   const fInt = (v, def) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : def; };
   registerLensAction("plumbing", "pipeSize", (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["flowGPM>0", "velocityFPS>0"]); if (_req.missing.length) return notComputed(_req.missing, "Pipe sizing needs the design flow (GPM) and design velocity (ft/s). Common max design velocity guidance is 5–8 ft/s (Copper Development Association, Copper Tube Handbook).", { formula: "d = √(GPM / (2.448·v))" }); const flowGPM = _req.values.flowGPM; const velocity = _req.values.velocityFPS; /* Standard plumbing flow relation: GPM = 2.448 · d² · v (d in inches, v in ft/s). So d = √(GPM/(2.448·v)). The prior code named this quantity "area" and then applied the circle-area inverse (2·√(d²/π)), which inflated the diameter by 2/√π ≈ 1.13× and oversized the recommended pipe. */ const dSquaredIn = flowGPM / (velocity * 2.448); const diameter = Math.sqrt(dSquaredIn); const nominalSizes = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4]; const recommended = nominalSizes.find(s => s >= diameter) || 4; return { ok: true, result: { flowRate: `${flowGPM} GPM`, velocity: `${velocity} ft/s`, calculatedDiameter: `${Math.round(diameter*100)/100}"`, recommendedSize: `${recommended}" nominal`, material: data.material || "copper", note: velocity > 8 ? "High velocity — may cause noise and erosion" : "Within acceptable range" } }; });
   registerLensAction("plumbing", "waterHeaterSize", (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["household>0", "simultaneousFixtures>0"]); if (_req.missing.length) return notComputed(_req.missing, "Water-heater sizing needs household size and number of fixtures used at once."); const people = Math.trunc(_req.values.household); const simultaneous = Math.trunc(_req.values.simultaneousFixtures); const peakGPM = simultaneous * 2.5; const tankGallons = people * 15; /* Electric tankless sizing: kW = GPM · 8.33 lb/gal · 60 min/hr · ΔT(°F) / 3412 BTU/kWh. The prior code omitted the temperature rise entirely, yielding an absurd ~1 kW whole-house unit (real units are 18–54 kW). ΔT defaults to the industry-standard 70°F rise (≈50°F incoming → 120°F setpoint), overridable via data.tempRiseF. */ const tempRiseF = fNum(data.tempRiseF, 70) || 70; const tanklessKW = Math.round(peakGPM * 8.33 * 60 * tempRiseF / 3412); return { ok: true, result: { household: people, peakDemandGPM: peakGPM, tankRecommendation: `${Math.ceil(tankGallons/10)*10} gallon tank`, tanklessRecommendation: `${tanklessKW} kW tankless`, firstHourRating: Math.round(tankGallons * 1.5), assumptions: [...(optNum(data.tempRiseF) ? [] : ["tempRiseF = 70°F (≈50°F inlet → 120°F setpoint; declared, override with tempRiseF)"]), "peak flow 2.5 GPM per simultaneous fixture", "tank 15 gal/person"], recommendation: people > 4 ? "Consider tankless for unlimited hot water" : "Standard tank should suffice" } }; });
-  registerLensAction("plumbing", "drainSlope", (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["pipeSizeInches>0", "lengthFeet>0"]); if (_req.missing.length) return notComputed(_req.missing, "Drain slope needs pipe size (in) and run length (ft) — IPC Table 704.1."); const pipeSize = _req.values.pipeSizeInches; const length = _req.values.lengthFeet; const slopePerFoot = pipeSize <= 2 ? 0.25 : pipeSize <= 3 ? 0.1875 : 0.125; const totalDrop = Math.round(length * slopePerFoot * 100) / 100; return { ok: true, result: { pipeSize: `${pipeSize}"`, length: `${length} ft`, slopePerFoot: `${slopePerFoot}" per foot (${slopePerFoot/12*100}%)`, totalDrop: `${totalDrop}"`, ipcCode: `IPC Table 704.1 — ${pipeSize}" pipe requires ${slopePerFoot}"/ft minimum`, tip: "Use a level and measure drop at each joint" } }; });
-  registerLensAction("plumbing", "fixtureCount", (ctx, artifact, _params) => { const fixtures = Array.isArray(artifact.data?.fixtures) ? artifact.data.fixtures : []; if (fixtures.length === 0) return { ok: true, result: { message: "Add fixtures to calculate water supply needs." } }; const wsfuValues = { toilet: 2.5, lavatory: 1, bathtub: 2, shower: 2, "kitchen-sink": 1.5, dishwasher: 1.5, "washing-machine": 2, "hose-bib": 2.5 }; const totalWSFU = fixtures.reduce((s, f) => { if (!f || typeof f !== "object") return s; const type = (f.type || f.name || "").toLowerCase(); return s + (wsfuValues[type] || 1.5) * (fInt(f.count, 1) || 1); }, 0); const meterSize = totalWSFU <= 15 ? '3/4"' : totalWSFU <= 30 ? '1"' : totalWSFU <= 60 ? '1.5"' : '2"'; return { ok: true, result: { fixtures: fixtures.length, totalWSFU, meterSize, supplyLine: totalWSFU <= 20 ? '3/4" main' : '1" main', note: "WSFU = Water Supply Fixture Units per IPC/UPC" } }; });
+  registerLensAction("plumbing", "drainSlope", (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["pipeSizeInches>0", "lengthFeet>0"]); if (_req.missing.length) return notComputed(_req.missing, "Drain slope needs pipe size (in) and run length (ft) — IPC Table 704.1."); const pipeSize = _req.values.pipeSizeInches; const length = _req.values.lengthFeet; const slopePerFoot = pipeSize <= 2 ? 0.25 : pipeSize <= 3 ? 0.1875 : 0.125; const totalDrop = Math.round(length * slopePerFoot * 100) / 100; return { ok: true, result: { pipeSize: `${pipeSize}"`, length: `${length} ft`, slopePerFoot: `${slopePerFoot}" per foot (${Math.round(slopePerFoot / 12 * 10000) / 100}%)`, totalDrop: `${totalDrop}"`, ipcCode: `IPC Table 704.1 — ${pipeSize}" pipe requires ${slopePerFoot}"/ft minimum`, tip: "Use a level and measure drop at each joint" } }; });
+  registerLensAction("plumbing", "fixtureCount", (ctx, artifact, _params) => { const fixtures = Array.isArray(artifact.data?.fixtures) ? artifact.data.fixtures : []; if (fixtures.length === 0) return { ok: true, result: { message: "Add fixtures to calculate water supply needs." } }; /* WSFU values are IPC Table 709.1, private use — the table this panel cites. The prior table priced a flush-tank water closet at 2.5, so the cited case (toilet x2 + lavatory x1) totalled 6 against the table's 7, and no per-fixture basis was returned for the surface to show. Hose bib is not a 709.1 fixture; it keeps the conventional 2.5. */ const wsfuValues = { toilet: 3, lavatory: 1, bathtub: 2, shower: 2, "kitchen-sink": 2, dishwasher: 2, "washing-machine": 4, "hose-bib": 2.5 }; const breakdown = []; let totalWSFU = 0; let fixtureTotal = 0; for (const f of fixtures) { if (!f || typeof f !== "object") continue; const type = (f.type || f.name || "").toLowerCase(); const count = fInt(f.count, 1) || 1; const wsfuEach = wsfuValues[type] ?? 1.5; const subtotal = wsfuEach * count; breakdown.push({ type: type || "fixture", count, wsfuEach, subtotal }); totalWSFU += subtotal; fixtureTotal += count; } totalWSFU = Math.round(totalWSFU * 10) / 10; const meterSize = totalWSFU <= 15 ? '3/4"' : totalWSFU <= 30 ? '1"' : totalWSFU <= 60 ? '1.5"' : '2"'; return { ok: true, result: { fixtures: fixtureTotal, totalWSFU, breakdown, meterSize, supplyLine: totalWSFU <= 20 ? '3/4" main' : '1" main', note: "WSFU = Water Supply Fixture Units per IPC Table 709.1 (private use)" } }; });
 
   // ─── Code quick-reference library (Track D, copyright-aware) ────────
   // Closes the "Codes" deferred-permit gap (docs/lens-specs/plumbing-
@@ -318,13 +318,25 @@ export default function registerPlumbingActions(registerLensAction) {
       let rows = dispatch.slice();
       if (dateFilter) rows = rows.filter(d => d.date === dateFilter);
       rows.sort((a, b) => a.date.localeCompare(b.date) || a.startHour - b.startHour);
+      const withWorkflow = (d) => {
+        const wf = g.s.workflows.get(d.id);
+        if (!wf || (wf.ownerId && wf.ownerId !== userId)) return { ...d, workflow: null };
+        const done = wf.checklist.filter(c => c.done).length;
+        return {
+          ...d,
+          workflow: {
+            progress: wf.checklist.length ? Math.round(done / wf.checklist.length * 100) : 0,
+            completedAt: wf.completedAt || null,
+          },
+        };
+      };
       const lanes = techs.map(t => ({
         techId: t.id, techName: t.name, baseColor: t.baseColor,
-        assignments: rows.filter(d => d.techId === t.id),
+        assignments: rows.filter(d => d.techId === t.id).map(withWorkflow),
         loadHours: rows.filter(d => d.techId === t.id && d.status !== "cancelled")
           .reduce((s, d) => s + d.durationHours, 0),
       }));
-      const unassigned = rows.filter(d => !d.techId);
+      const unassigned = rows.filter(d => !d.techId).map(withWorkflow);
       return {
         ok: true,
         result: {
@@ -388,8 +400,15 @@ export default function registerPlumbingActions(registerLensAction) {
         result: {
           items: book,
           count: book.length,
-          avgMarginPct: book.length
+          // F3: the field named avgMarginPct used to average the markupPct
+          // column — a 50% markup (cost 100 -> price 150) is a 33.3% margin,
+          // and the two words price differently in every trade bid. Both are
+          // now returned under their true names.
+          avgMarkupPct: book.length
             ? Math.round(book.reduce((s, i) => s + i.markupPct, 0) / book.length)
+            : 0,
+          avgMarginPct: book.length
+            ? Math.round(book.reduce((s, i) => s + (i.price > 0 ? (i.price - i.cost) / i.price * 100 : 0), 0) / book.length)
             : 0,
         },
       };

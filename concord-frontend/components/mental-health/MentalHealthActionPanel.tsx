@@ -9,7 +9,7 @@
  * server/domains/mentalhealth.js as `mental-health`.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Heart, Phone, BarChart3, BookOpen, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
@@ -37,6 +37,8 @@ interface StatsResult { year: number; stateAbbr: string; measures: StatMeasure[]
 interface MoodEntryIn { mood: number; date?: string }
 interface MoodResult { entries: number; avgMood: number; trend: string; lowest: number; highest: number; variance: number }
 interface PromptResult { mood: string; prompts: string[]; instruction: string; reminder?: string }
+interface TrackedMood { entries: number; average: number | null; trend: string }
+interface GratitudeEntry { id: string; items: string[]; date: string }
 
 // No seeded mood csv — enter real values.
 export function MentalHealthActionPanel() {
@@ -56,6 +58,8 @@ export function MentalHealthActionPanel() {
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
+  const [trackedMood, setTrackedMood] = useState<TrackedMood | null>(null);
+  const [journalEntries, setJournalEntries] = useState<GratitudeEntry[]>([]);
 
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
@@ -63,6 +67,18 @@ export function MentalHealthActionPanel() {
   const pipe = usePipe();
   const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
   const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
+  // S-MH-1: the Mood and Journal tiles read the member's own tracked
+  // store (mood-insights / gratitude-list) — no hand-typed CSV required.
+  const loadTrackedMood = async () => {
+    const r = await callMacro<TrackedMood>('mood-insights', {});
+    if (r.ok && r.result) setTrackedMood(r.result);
+  };
+  const loadJournalEntries = async () => {
+    const r = await callMacro<{ entries: GratitudeEntry[] }>('gratitude-list', {});
+    if (r.ok && r.result) setJournalEntries(r.result.entries || []);
+  };
+  useEffect(() => { void loadTrackedMood(); void loadJournalEntries(); }, []);
 
   async function actHotline() {
     setBusy('hotline'); setFeedback(null);
@@ -81,7 +97,19 @@ export function MentalHealthActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMood() {
-    if (!moodCsv.trim()) { err('Mood csv required.'); return; }
+    if (!moodCsv.trim()) {
+      // Primary path: the member's own tracked check-ins.
+      setBusy('mood'); setFeedback(null);
+      try {
+        const r = await callMacro<TrackedMood>('mood-insights', {});
+        if (r.ok && r.result) {
+          setTrackedMood(r.result);
+          if (r.result.entries > 0) ok(`${r.result.entries} tracked check-ins — avg ${r.result.average}/5 (${r.result.trend}).`);
+          else err('No check-ins tracked yet — check in from the Today view, or paste a series below.');
+        } else err(r.error ?? 'mood failed');
+      } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+      return;
+    }
     const entries: MoodEntryIn[] = moodCsv.split(',').map(s => s.trim()).filter(Boolean).map((m, i) => ({ mood: parseInt(m, 10), date: new Date(Date.now() - (10 - i) * 86400000).toISOString().split('T')[0] }));
     if (entries.length === 0) { err('Mood entries required.'); return; }
     setBusy('mood'); setFeedback(null);
@@ -94,7 +122,7 @@ export function MentalHealthActionPanel() {
     setBusy('prompt'); setFeedback(null);
     try {
       const r = await callMacro<PromptResult>('journalPrompt', { currentMood });
-      if (r.ok && r.result) { setPromptResult(r.result); pipe.publish('mh.prompt', r.result, { label: `Prompts (${currentMood})` }); ok(`${r.result.prompts.length} prompts for ${currentMood}.`); } else err(r.error ?? 'prompt failed');
+      if (r.ok && r.result) { setPromptResult(r.result); pipe.publish('mh.prompt', r.result, { label: `Prompts (${currentMood})` }); ok(`${r.result.prompts.length} prompts for ${currentMood}.`); void loadJournalEntries(); } else err(r.error ?? 'prompt failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -153,7 +181,7 @@ export function MentalHealthActionPanel() {
   const actions = [
     { id: 'hotline' as ActionId, label: 'Hotlines', desc: 'crisis lines by country', icon: Phone, accent: '#ef4444', handler: actHotline },
     { id: 'stats' as ActionId, label: 'CDC stats', desc: 'BRFSS prevalence', icon: BarChart3, accent: '#06b6d4', handler: actStats },
-    { id: 'mood' as ActionId, label: 'Mood', desc: 'moodTracker trend', icon: Heart, accent: '#ec4899', handler: actMood },
+    { id: 'mood' as ActionId, label: 'Mood', desc: 'your tracked check-ins', icon: Heart, accent: '#ec4899', handler: actMood },
     { id: 'prompt' as ActionId, label: 'Journal', desc: 'journalPrompt seed', icon: BookOpen, accent: '#a855f7', handler: actPrompt },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private wellness DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send wellness check', icon: Send, accent: '#f59e0b', handler: actDm },
@@ -182,7 +210,7 @@ export function MentalHealthActionPanel() {
           <option value="happy">happy</option><option value="sad">sad</option><option value="anxious">anxious</option><option value="neutral">neutral</option><option value="angry">angry</option>
         </select>
         <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
-        <input type="text" value={moodCsv} onChange={(e) => setMoodCsv(e.target.value)} className="md:col-span-5 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Mood 1-10 csv (10 days)" />
+        <input type="text" value={moodCsv} onChange={(e) => setMoodCsv(e.target.value)} className="md:col-span-5 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Optional: paste a mood series (1-10, comma-separated) to analyse instead of your tracked check-ins" />
         <div className="md:col-span-5 flex items-center gap-2 flex-wrap">
           <RecallSlot ctl={dmRecall} />
           <RecallSlot ctl={publishRecall} />
@@ -226,11 +254,24 @@ export function MentalHealthActionPanel() {
             <div className="text-[10px] text-zinc-400">range {moodResult.lowest}-{moodResult.highest} · variance {moodResult.variance}</div>
           </div>
         )}
+        {trackedMood && trackedMood.entries > 0 && (
+          <div className="rounded-md border border-pink-500/30 bg-pink-500/5 p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-pink-300 font-semibold">Your mood · tracked check-ins</div>
+            <div className="text-2xl font-bold text-pink-300">{trackedMood.average}<span className="text-xs text-zinc-400">/5 avg</span></div>
+            <div className="text-[10px] text-zinc-400">{trackedMood.entries} check-ins · trend {trackedMood.trend}</div>
+          </div>
+        )}
         {promptResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 md:col-span-2">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Journal prompts · {promptResult.mood}</div>
             {promptResult.prompts.map((p, i) => <div key={i} className="text-[12px] text-zinc-200 mt-1.5 leading-snug">• {p}</div>)}
             <div className="text-[10px] text-zinc-400 italic mt-1.5">{promptResult.instruction} · {promptResult.reminder}</div>
+          </div>
+        )}
+        {promptResult && journalEntries.length > 0 && (
+          <div className="rounded-md border border-zinc-700 bg-zinc-900/40 p-2.5 md:col-span-2">
+            <div className="text-[10px] uppercase tracking-wider text-zinc-300 font-semibold">Your recent journal entries</div>
+            {journalEntries.slice(0, 3).map((e) => <div key={e.id} className="text-[11px] text-zinc-300 mt-1">{e.date} — {e.items.join(' · ')}</div>)}
           </div>
         )}
       </div>

@@ -19,8 +19,10 @@ import OEEDashboard from '@/components/manufacturing/OEEDashboard';
 import WorkOrderBoard from '@/components/manufacturing/WorkOrderBoard';
 import QualitySPC from '@/components/manufacturing/QualitySPC';
 import ShopFloorSuite from '@/components/manufacturing/ShopFloorSuite';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { DeleteReceiptToast } from '@/components/manufacturing/DeleteSafety';
+import { MFG_MUTATED_EVENT } from '@/components/manufacturing/mfg-events';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { lensRun } from '@/lib/api/client';
@@ -152,6 +154,14 @@ export default function ManufacturingLensPage() {
   });
   const k = kpis || EMPTY_KPIS;
 
+  // F8: panels announce successful mutations; the KPI strip refetches
+  // instead of sitting on its first-load values until a reload.
+  useEffect(() => {
+    const onMutated = () => { void refetch(); };
+    window.addEventListener(MFG_MUTATED_EVENT, onMutated);
+    return () => window.removeEventListener(MFG_MUTATED_EVENT, onMutated);
+  }, [refetch]);
+
 
   return (
     <LensShell lensId="manufacturing" asMain={false}>
@@ -233,6 +243,7 @@ export default function ManufacturingLensPage() {
           </div>
         </div>
       </NorthStarFrame>
+      <DeleteReceiptToast />
       {/* Phase 12 (Item 5) — mobile thumb-reachable tab bar. */}
       <MobileTabBar
         tabs={[

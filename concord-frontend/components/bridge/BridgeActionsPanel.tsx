@@ -1,30 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity, ArrowLeftRight, BarChart3, GitMerge, Loader2, RefreshCw, XCircle, Zap,
 } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
+import { lensRun } from '@/lib/api/client';
 
-/** Bridge connection macros — connectionHealth / dataMapping / syncStatus / throughputAnalysis */
+/** Bridge connection macros — connectionHealth / dataMapping / syncStatus / throughputAnalysis.
+ *  The actions run against the Federation Console's own state (registered
+ *  peers and their recorded flows ARE the connections); the server verbs
+ *  derive their inputs from that state, so no separate "connection
+ *  artifact" is needed to enable them. */
 export function BridgeActionsPanel() {
   const [isRunning, setIsRunning] = useState<string | null>(null);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const { items: bridgeItems } = useLensData('bridge', 'connection', { noSeed: true });
-  const runAction = useRunArtifact('bridge');
+  const [peerCount, setPeerCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await lensRun<{ peers: unknown[] }>('bridge', 'peerList', {});
+      if (!cancelled && r.data.ok && r.data.result) {
+        setPeerCount((r.data.result.peers || []).length);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleBridgeAction = async (action: string) => {
-    const targetId = bridgeItems[0]?.id;
-    if (!targetId) return;
     setIsRunning(action);
     try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) {
-        setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` });
+      const r = await lensRun<Record<string, unknown>>('bridge', action, {});
+      if (!r.data.ok) {
+        setActionResult({ message: `Action failed: ${r.data.error || 'Unknown error'}` });
       } else {
-        setActionResult(res.result as Record<string, unknown>);
+        setActionResult(r.data.result as Record<string, unknown>);
       }
     } catch (e) {
       console.error(`Action ${action} failed:`, e);
@@ -49,7 +60,7 @@ export function BridgeActionsPanel() {
           <button
             key={action}
             onClick={() => handleBridgeAction(action)}
-            disabled={isRunning !== null || bridgeItems.length === 0}
+            disabled={isRunning !== null || !peerCount}
             className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isRunning === action ? <Loader2 className="w-4 h-4 animate-spin text-purple-400" /> : icon}
@@ -57,8 +68,8 @@ export function BridgeActionsPanel() {
           </button>
         ))}
       </div>
-      {bridgeItems.length === 0 && (
-        <p className="text-xs text-zinc-400 text-center py-1">No bridge connection artifact found — actions are unavailable.</p>
+      {peerCount === 0 && (
+        <p className="text-xs text-zinc-400 text-center py-1">No federation peers yet — register a peer in the Federation Console and these actions run against its recorded state.</p>
       )}
       {actionResult && (
         <motion.div

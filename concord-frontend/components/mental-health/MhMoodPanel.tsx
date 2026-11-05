@@ -16,7 +16,10 @@ interface Insights { entries: number; average: number | null; trend: string; dis
 
 const MOOD_EMOJI = ['', '😞', '😕', '😐', '🙂', '😄'];
 const TREND_COLOR: Record<string, string> = {
-  improving: 'text-emerald-400', declining: 'text-rose-400', stable: 'text-zinc-400', no_data: 'text-zinc-400',
+  improving: 'text-emerald-400', declining: 'text-rose-400', stable: 'text-zinc-400', no_data: 'text-zinc-400', 'not-enough-data': 'text-zinc-400',
+};
+const TREND_LABEL: Record<string, string> = {
+  improving: 'Improving', declining: 'Declining', stable: 'Stable', no_data: 'No data', 'not-enough-data': 'Not enough data yet',
 };
 
 export function MhMoodPanel({ onChange }: { onChange: () => void }) {
@@ -99,7 +102,7 @@ export function MhMoodPanel({ onChange }: { onChange: () => void }) {
             <p className="text-[10px] text-zinc-400 uppercase">Avg mood</p>
           </div>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
-            <p className={cn('text-lg font-bold capitalize', TREND_COLOR[insights.trend])}>{insights.trend}</p>
+            <p className={cn('text-lg font-bold', TREND_COLOR[insights.trend])}>{TREND_LABEL[insights.trend] ?? insights.trend}</p>
             <p className="text-[10px] text-zinc-400 uppercase">Trend</p>
           </div>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">

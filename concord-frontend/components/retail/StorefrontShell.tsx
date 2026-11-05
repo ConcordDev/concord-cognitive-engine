@@ -26,6 +26,12 @@ export interface StorefrontOrder {
   timestamp: string;
 }
 
+export interface StorefrontProduct { sku: string; name: string; price: number; stock: number }
+export interface StorefrontCustomer { id: string; name: string; email: string; orderCount: number; totalSpent: number }
+export interface StorefrontDiscount { id: string; code: string; kind: string; value: number; usageCount: number; active: boolean }
+export interface StorefrontZone { id: string; name: string; countries: string[]; rate?: number }
+export interface StorefrontInfo { name: string; slug: string | null; published: boolean }
+
 export interface StorefrontShellProps {
   activeNav?: 'home' | 'orders' | 'products' | 'customers' | 'analytics' | 'discounts' | 'shipping' | 'settings';
   onNavChange?: (nav: StorefrontShellProps['activeNav']) => void;
@@ -36,6 +42,12 @@ export interface StorefrontShellProps {
   visitors?: number;
   revenue7dSeries: number[];
   recentOrders: StorefrontOrder[];
+  /** Real lists behind the nav views (F9 — the nav switches views, it is not decoration). */
+  products?: StorefrontProduct[];
+  customers?: StorefrontCustomer[];
+  discounts?: StorefrontDiscount[];
+  shippingZones?: StorefrontZone[];
+  storefront?: StorefrontInfo | null;
   className?: string;
 }
 
@@ -61,6 +73,7 @@ export function StorefrontShell({
   storeName = 'My Concord Store',
   revenueToday, ordersToday, conversionRate, visitors,
   revenue7dSeries, recentOrders,
+  products, customers, discounts, shippingZones, storefront,
   className,
 }: StorefrontShellProps) {
   return (
@@ -89,61 +102,137 @@ export function StorefrontShell({
         </nav>
       </aside>
 
-      {/* Main area */}
+      {/* Main area — every nav item renders its own real view (F9) */}
       <main className="flex-1 p-5 space-y-4 bg-white">
-        {/* Hero metric cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <MetricCard icon={DollarSign} label="Total sales" value={fmtMoney(revenueToday)} caption="Today" tone="positive" />
-          <MetricCard icon={ShoppingBag} label="Orders" value={String(ordersToday)} caption="Today" />
-          <MetricCard icon={TrendingUp} label="Conversion" value={conversionRate != null ? `${conversionRate.toFixed(2)}%` : '—'} caption="Last 7 days" />
-          <MetricCard icon={ShoppingCart} label="Visitors" value={visitors != null ? visitors.toLocaleString() : '—'} caption="Last 7 days" />
-        </div>
+        {(activeNav === 'home' || activeNav === 'analytics') && (
+          <>
+            {/* Hero metric cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <MetricCard icon={DollarSign} label="Total sales" value={fmtMoney(revenueToday)} caption="Today" tone="positive" />
+              <MetricCard icon={ShoppingBag} label="Orders" value={String(ordersToday)} caption="Today" />
+              <MetricCard icon={TrendingUp} label="Conversion" value={conversionRate != null ? `${conversionRate.toFixed(2)}%` : '—'} caption="Last 7 days" />
+              <MetricCard icon={ShoppingCart} label="Visitors" value={visitors != null ? visitors.toLocaleString() : '—'} caption="Last 7 days" />
+            </div>
+            <p className="text-[10px] text-gray-400 -mt-2">Sales basis: order totals, tax included, net of refunds.</p>
 
-        {/* Chart placeholder */}
-        <section className="rounded-lg border border-gray-200 p-4">
-          <header className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-gray-900">Sales · last 7 days</h3>
-            <span className="text-xs text-gray-400">{fmtMoney(revenue7dSeries.reduce((s, v) => s + v, 0))}</span>
-          </header>
-          <RevenueChart series={revenue7dSeries} />
-        </section>
+            {/* Chart */}
+            <section className="rounded-lg border border-gray-200 p-4">
+              <header className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-900">Sales · last 7 days</h3>
+                <span className="text-xs text-gray-400">{fmtMoney(revenue7dSeries.reduce((s, v) => s + v, 0))}</span>
+              </header>
+              <RevenueChart series={revenue7dSeries} />
+            </section>
+          </>
+        )}
 
-        {/* Recent orders */}
-        <section className="rounded-lg border border-gray-200 overflow-hidden">
-          <header className="px-4 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900">Recent orders</h3>
-            <span className="text-xs text-emerald-700 hover:text-emerald-800 cursor-pointer">View all →</span>
-          </header>
-          {recentOrders.length === 0 ? (
-            <div className="p-6 text-center text-sm text-gray-400">No orders yet</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-400">
-                <tr><th className="text-left px-4 py-1.5">Order</th><th className="text-left">Customer</th><th className="text-right">Items</th><th className="text-right">Total</th><th className="text-right pr-4">Status</th></tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {recentOrders.slice(0, 8).map((o) => (
-                  <tr key={o.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 font-mono text-emerald-700">{o.number}</td>
-                    <td className="text-gray-700">{o.customer || 'Guest'}</td>
-                    <td className="text-right text-gray-600">{o.itemCount}</td>
-                    <td className="text-right font-mono tabular-nums text-gray-900">{fmtMoney(o.total)}</td>
-                    <td className="text-right pr-4">
-                      <span className={cn(
-                        'text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium',
-                        o.status === 'paid' ? 'bg-emerald-100 text-emerald-700'
-                          : o.status === 'pending' ? 'bg-amber-100 text-amber-700'
-                          : o.status === 'fulfilled' ? 'bg-cyan-100 text-cyan-700'
-                          : 'bg-rose-100 text-rose-700'
-                      )}>{o.status}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
+        {(activeNav === 'home' || activeNav === 'orders') && (
+          <section className="rounded-lg border border-gray-200 overflow-hidden">
+            <header className="px-4 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">Recent orders</h3>
+              <span className="text-xs text-gray-400">{recentOrders.length} shown</span>
+            </header>
+            {recentOrders.length === 0 ? (
+              <div className="p-6 text-center text-sm text-gray-400">No orders yet</div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-xs text-gray-400">
+                  <tr><th className="text-left px-4 py-1.5">Order</th><th className="text-left">Customer</th><th className="text-right">Items</th><th className="text-right">Total</th><th className="text-right pr-4">Status</th></tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {recentOrders.map((o) => (
+                    <tr key={o.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 font-mono text-emerald-700">{o.number}</td>
+                      <td className="text-gray-700">{o.customer || 'Guest'}</td>
+                      <td className="text-right text-gray-600">{o.itemCount}</td>
+                      <td className="text-right font-mono tabular-nums text-gray-900">{fmtMoney(o.total)}</td>
+                      <td className="text-right pr-4">
+                        <span className={cn(
+                          'text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium',
+                          o.status === 'paid' ? 'bg-emerald-100 text-emerald-700'
+                            : o.status === 'pending' ? 'bg-amber-100 text-amber-700'
+                            : o.status === 'fulfilled' ? 'bg-cyan-100 text-cyan-700'
+                            : 'bg-rose-100 text-rose-700'
+                        )}>{o.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+        )}
+
+        {activeNav === 'products' && (
+          <ListSection title="Products" empty="No products in the catalog yet.">
+            {(products || []).map((pr) => (
+              <Row key={pr.sku} left={<span className="font-mono text-emerald-700">{pr.sku}</span>} mid={pr.name} right={`${fmtMoney(pr.price)} · ${pr.stock} in stock`} />
+            ))}
+          </ListSection>
+        )}
+
+        {activeNav === 'customers' && (
+          <ListSection title="Customers" empty="No customers yet.">
+            {(customers || []).map((c) => (
+              <Row key={c.id} left={<span className="text-gray-900">{c.name}</span>} mid={c.email} right={`${c.orderCount} orders · ${fmtMoney(c.totalSpent)}`} />
+            ))}
+          </ListSection>
+        )}
+
+        {activeNav === 'discounts' && (
+          <ListSection title="Discounts" empty="No discount codes yet.">
+            {(discounts || []).map((d) => (
+              <Row key={d.id} left={<span className="font-mono text-emerald-700">{d.code}</span>} mid={d.active ? 'Active' : 'Inactive'} right={`${d.kind === 'percentage' ? `${d.value}% off` : fmtMoney(d.value) + ' off'} · ${d.usageCount} redeemed`} />
+            ))}
+          </ListSection>
+        )}
+
+        {activeNav === 'shipping' && (
+          <ListSection title="Shipping zones" empty="No shipping zones configured.">
+            {(shippingZones || []).map((z) => (
+              <Row key={z.id} left={<span className="text-gray-900">{z.name}</span>} mid={z.countries.join(', ')} right={z.rate != null ? fmtMoney(z.rate) : ''} />
+            ))}
+          </ListSection>
+        )}
+
+        {activeNav === 'settings' && (
+          <section className="rounded-lg border border-gray-200 p-4 space-y-2">
+            <h3 className="text-sm font-semibold text-gray-900">Storefront settings</h3>
+            {storefront ? (
+              <div className="text-sm text-gray-700 space-y-1">
+                <div>Name: <span className="text-gray-900">{storefront.name || storeName}</span></div>
+                <div>Address: <span className="font-mono text-gray-900">{storefront.slug ? `/shop/${storefront.slug}` : 'not configured'}</span></div>
+                <div>Status: <span className="text-gray-900">{storefront.published ? 'Published' : 'Not published'}</span></div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">Storefront not configured yet.</p>
+            )}
+            <p className="text-xs text-gray-400">Configure the name, theme and published products in the Commerce Suite&apos;s Storefront tab below — publishing lives there.</p>
+          </section>
+        )}
       </main>
+    </div>
+  );
+}
+
+function ListSection({ title, empty, children }: { title: string; empty: string; children: React.ReactNode }) {
+  const has = Array.isArray(children) ? children.length > 0 : Boolean(children);
+  return (
+    <section className="rounded-lg border border-gray-200 overflow-hidden">
+      <header className="px-4 py-2 border-b border-gray-200 bg-gray-50">
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+      </header>
+      {!has ? <div className="p-6 text-center text-sm text-gray-400">{empty}</div> : <div className="divide-y divide-gray-100">{children}</div>}
+    </section>
+  );
+}
+
+function Row({ left, mid, right }: { left: React.ReactNode; mid?: string; right?: string }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50">
+      <span className="w-36 flex-shrink-0 truncate">{left}</span>
+      <span className="flex-1 truncate text-gray-600">{mid || ''}</span>
+      <span className="font-mono tabular-nums text-gray-900">{right || ''}</span>
     </div>
   );
 }
