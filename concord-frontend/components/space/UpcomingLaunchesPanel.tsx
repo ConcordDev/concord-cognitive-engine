@@ -30,7 +30,13 @@ interface Launch {
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
     const r = await api.post('/api/lens/run', { domain, name, input });
-    return r?.data as T;
+  // The lens-run envelope wraps the macro's return in `result`; the
+  // panels once read the envelope AS the result, so every field was
+  // undefined and each panel fell into its failure/empty state even when
+  // the macro succeeded (F6 — the four dead Live Data panels). Unwrap.
+    const d = r?.data as { result?: T } | T | undefined;
+    if (d && typeof d === 'object' && 'result' in d) return (d as { result?: T }).result ?? null;
+    return (d ?? null) as T | null;
   } catch {
     return null;
   }

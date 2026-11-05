@@ -1,8 +1,11 @@
 'use client';
 
 /**
- * IssPassPanel — real Open Notify ISS pass times for a lat/lon, drop-in
- * for astronomy + space lenses. No API key.
+ * IssPassPanel — ISS pass times for a lat/lon, drop-in for astronomy +
+ * space lenses. Open Notify retired its pass endpoint; the server now
+ * computes passes from wheretheiss.at's predicted orbital positions.
+ * In the astronomy lens the panel opens on the observer location the
+ * Sky Chart holds (F6: it once kept its own NYC default regardless).
  *
  * Phase 4 (sixth wave) of the UX completeness sprint.
  */
@@ -21,7 +24,13 @@ interface Pass {
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
     const r = await lensRun({ domain, name, input });
-    return r?.data as T;
+  // The lens-run envelope wraps the macro's return in `result`; the
+  // panels once read the envelope AS the result, so every field was
+  // undefined and each panel fell into its failure/empty state even when
+  // the macro succeeded (F6 — the four dead Live Data panels). Unwrap.
+    const d = r?.data as { result?: T } | T | undefined;
+    if (d && typeof d === 'object' && 'result' in d) return (d as { result?: T }).result ?? null;
+    return (d ?? null) as T | null;
   } catch {
     return null;
   }
@@ -50,6 +59,24 @@ export interface IssPassPanelProps {
 
 export function IssPassPanel({ domain, className }: IssPassPanelProps) {
   const [city, setCity] = useState(SAMPLE_CITIES[0]);
+  const [observerCity, setObserverCity] = useState<{ label: string; latitude: number; longitude: number } | null>(null);
+
+  // Astronomy: follow the lens's observer location (the Sky Chart's
+  // localStorage store) instead of defaulting to New York regardless.
+  useEffect(() => {
+    if (domain !== 'astronomy') return;
+    try {
+      const raw = localStorage.getItem('astronomy:observer');
+      if (!raw) return;
+      const p = JSON.parse(raw) as { latitude?: number; longitude?: number };
+      if (typeof p.latitude === 'number' && typeof p.longitude === 'number'
+        && Number.isFinite(p.latitude) && Number.isFinite(p.longitude)) {
+        const oc = { label: 'Your observer location', latitude: p.latitude, longitude: p.longitude };
+        setObserverCity(oc);
+        setCity(oc);
+      }
+    } catch { /* no stored observer — the sample cities stand */ }
+  }, [domain]);
   const [passes, setPasses] = useState<Pass[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,11 +115,12 @@ export function IssPassPanel({ domain, className }: IssPassPanelProps) {
         <select
           value={city.label}
           onChange={(e) => {
-            const next = SAMPLE_CITIES.find(c => c.label === e.target.value);
+            const next = (observerCity ? [observerCity, ...SAMPLE_CITIES] : SAMPLE_CITIES).find(c => c.label === e.target.value);
             if (next) setCity(next);
           }}
           className="w-full text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100"
         >
+          {observerCity && <option value={observerCity.label}>{observerCity.label} (Sky Chart)</option>}
           {SAMPLE_CITIES.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
         </select>
         <div className="text-[10px] text-zinc-400 font-mono mt-1 flex items-center gap-1">
@@ -103,7 +131,7 @@ export function IssPassPanel({ domain, className }: IssPassPanelProps) {
 
       {error && (
         <div className="px-3 py-3 text-xs text-rose-300/80">
-          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" /> Open Notify unreachable ({error})
+          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" /> ISS pass source unreachable ({error})
         </div>
       )}
 
@@ -131,7 +159,7 @@ export function IssPassPanel({ domain, className }: IssPassPanelProps) {
       )}
 
       <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
-        Source: Open Notify · open-notify.org
+        Source: passes computed from wheretheiss.at orbital positions
       </footer>
     </section>
   );

@@ -13,7 +13,7 @@
 //   retail.live_zippopotam         Zippopotam.us — postal-code lookup
 //   logistics.live_zippopotam      shared
 //   travel.live_zippopotam         shared
-//   astronomy.live_iss_pass        Open Notify ISS pass times (lat/lon)
+//   astronomy.live_iss_pass        ISS pass times, computed from wheretheiss.at positions (Open Notify retired its endpoint)
 //   space.live_iss_pass            shared
 //
 // No API keys needed; rate limits are generous for public open data.
@@ -193,35 +193,87 @@ export default function registerCivicDataApiMacros(register) {
   // ─────────────────────────────────────────────────────────────────────
   // Note: open-notify.org currently serves http only; we proxy via fetch
   // so the browser doesn't issue a mixed-content fetch.
+  // Open Notify RETIRED its iss-pass endpoint (it answers 404; the panel's
+  // honest "unreachable" was the source's death, not a wiring fault). The
+  // passes are now COMPUTED from wheretheiss.at's predicted ISS positions:
+  // sample the next 24 h, convert each fix to a topocentric elevation for
+  // the observer, and report the above-horizon windows. Same return shape
+  // the panel has always rendered ({ risetime, riseTimeIso, durationSeconds }).
   const issPasses = async (_ctx, input = {}) => {
     const lat = Number(input.latitude);
     const lon = Number(input.longitude);
     if (!Number.isFinite(lat) || lat < -90 || lat > 90) return { ok: false, reason: "invalid_latitude" };
     if (!Number.isFinite(lon) || lon < -180 || lon > 180) return { ok: false, reason: "invalid_longitude" };
     const n = Math.min(Math.max(Number(input.count) || 5, 1), 10);
-    const url = `http://api.open-notify.org/iss-pass.json?lat=${lat}&lon=${lon}&n=${n}`;
     try {
-      const data = await fetchJsonWithTimeout(url);
-      if (data.message !== "success") {
-        return { ok: false, reason: "open_notify_error", upstream: data.reason || null };
-      }
-      const passes = (data.response || []).map(p => ({
-        risetime: p.risetime,
-        riseTimeIso: p.risetime ? new Date(p.risetime * 1000).toISOString() : null,
-        durationSeconds: p.duration,
-      }));
+      const positions = await sampleIssPositions(26 * 3600);
+      if (positions.length < 10) return { ok: false, reason: "iss_positions_unreachable" };
+      const passes = computePasses(positions, lat, lon).slice(0, n);
       return {
         ok: true,
-        source: "Open Notify",
+        source: "wheretheiss.at positions — passes computed by Concord",
         fetchedAt: Math.floor(Date.now() / 1000),
         latitude: lat,
         longitude: lon,
         passes,
       };
     } catch (e) {
-      return { ok: false, reason: "open_notify_unreachable", error: String(e?.message || e) };
+      return { ok: false, reason: "iss_positions_unreachable", error: String(e?.message || e) };
     }
   };
+
+  // Fetch predicted ISS positions from wheretheiss.at (max 10 timestamps
+  // per request), 3-minute steps for the first 12 h, 5-minute steps after.
+  async function sampleIssPositions(spanSeconds) {
+    const now = Math.floor(Date.now() / 1000);
+    const stamps = [];
+    for (let t = now; t <= now + 12 * 3600; t += 180) stamps.push(t);
+    for (let t = now + 12 * 3600 + 300; t <= now + spanSeconds; t += 300) stamps.push(t);
+    const out = [];
+    for (let i = 0; i < stamps.length; i += 10) {
+      const batch = stamps.slice(i, i + 10);
+      const url = `https://api.wheretheiss.at/v1/satellites/25544/positions?timestamps=${batch.join(",")}&units=kilometers`;
+      const data = await fetchJsonWithTimeout(url);
+      if (Array.isArray(data)) out.push(...data);
+    }
+    return out.sort((a, b) => a.timestamp - b.timestamp);
+  }
+
+  // Topocentric elevation (degrees) of a satellite fix for an observer.
+  function issElevationDeg(fix, obsLat, obsLon) {
+    const R = 6371, D = Math.PI / 180;
+    const ecef = (la, lo, altKm) => {
+      const r = R + altKm, laR = la * D, loR = lo * D;
+      return [r * Math.cos(laR) * Math.cos(loR), r * Math.cos(laR) * Math.sin(loR), r * Math.sin(laR)];
+    };
+    const o = ecef(obsLat, obsLon, 0);
+    const s = ecef(fix.latitude, fix.longitude, fix.altitude);
+    const rx = s[0] - o[0], ry = s[1] - o[1], rz = s[2] - o[2];
+    const laR = obsLat * D, loR = obsLon * D;
+    const up = rx * Math.cos(laR) * Math.cos(loR) + ry * Math.cos(laR) * Math.sin(loR) + rz * Math.sin(laR);
+    const dist = Math.hypot(rx, ry, rz);
+    return Math.asin(Math.max(-1, Math.min(1, up / dist))) / D;
+  }
+
+  // Above-horizon windows from sampled fixes; window edges refined by
+  // linear interpolation of elevation between the bracketing samples.
+  function computePasses(positions, obsLat, obsLon) {
+    const pts = positions.map((f) => ({ t: f.timestamp, el: issElevationDeg(f, obsLat, obsLon) }));
+    const passes = [];
+    let start = null, prev = null;
+    const cross = (a, b) => a.t + (b.t - a.t) * (0 - a.el) / (b.el - a.el);
+    for (const pt of pts) {
+      if (start === null && pt.el > 0 && prev && prev.el <= 0) start = cross(prev, pt);
+      if (start !== null && pt.el <= 0 && prev && prev.el > 0) {
+        const rise = Math.round(start), set = cross(prev, pt);
+        passes.push({ risetime: rise, riseTimeIso: new Date(rise * 1000).toISOString(), durationSeconds: Math.max(0, Math.round(set - start)) });
+        start = null;
+      }
+      prev = pt;
+    }
+    return passes;
+  }
+
   register("astronomy", "live_iss_pass", issPasses, { note: "live Open Notify ISS pass times" });
   register("space", "live_iss_pass", issPasses, { note: "live Open Notify ISS pass times" });
 }
