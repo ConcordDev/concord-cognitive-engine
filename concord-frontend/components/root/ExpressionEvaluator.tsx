@@ -19,6 +19,7 @@ interface EvalResult {
   semantic: string;
   steps: EvalStep[];
   tokenCount: number;
+  warnings?: string[];
 }
 
 /* Multi-term expression evaluator — talks to the root.evaluate macro so
@@ -106,7 +107,7 @@ export function ExpressionEvaluator({ onSaved }: { onSaved?: () => void }) {
             <div className="text-2xl text-violet-300">{result.glyph}</div>
             <div className="text-sm text-gray-400">
               <span className="text-gray-600">decimal: </span>
-              {result.decimal !== null ? result.decimal : '∞'}
+              {result.decimal !== null ? result.decimal : 'undefined'}
             </div>
             <div className="flex gap-2">
               <button onClick={() => void save()}
@@ -122,6 +123,15 @@ export function ExpressionEvaluator({ onSaved }: { onSaved?: () => void }) {
           <div className="text-xs text-violet-400 italic bg-violet-950/30 rounded-lg p-3 border border-violet-900/40">
             {result.semantic}
           </div>
+          {result.warnings && result.warnings.length > 0 && (
+            <div className="space-y-1">
+              {result.warnings.map((w, i) => (
+                <div key={i} className="flex items-start gap-1 text-[11px] leading-snug text-amber-300/90">
+                  <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />{w}
+                </div>
+              ))}
+            </div>
+          )}
           {result.steps.length > 0 && (
             <div className="border-t border-gray-800 pt-2">
               <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-1.5">
@@ -133,7 +143,7 @@ export function ExpressionEvaluator({ onSaved }: { onSaved?: () => void }) {
                     <span className="text-gray-600 w-5">{i + 1}.</span>
                     <span className="text-gray-300">{s.a} {s.op} {s.b}</span>
                     <span className="text-gray-600">=</span>
-                    <span className="text-emerald-300">{isFinite(s.decimal) ? s.decimal : '∞'}</span>
+                    <span className="text-emerald-300">{isFinite(s.decimal) ? s.decimal : 'undefined'}</span>
                     <span className="text-violet-300">{s.glyph}</span>
                   </li>
                 ))}

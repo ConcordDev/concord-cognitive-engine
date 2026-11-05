@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { motion } from 'framer-motion';
-import { Binary, AlertCircle, Loader2 } from 'lucide-react';
+import { Binary, AlertCircle, Loader2, Save } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+
+export interface BitwiseHandle { load: (p: { a: string; b: string; op: string }) => void; }
 
 interface BitwiseResult {
   op: string;
@@ -27,15 +29,36 @@ const OPS: { id: string; label: string }[] = [
   { id: 'not', label: 'NOT ¬' },
 ];
 
-/* Bitwise / modular operations in the base-6 algebra — calls root.bitwise. */
-export function BitwisePanel() {
+/* Bitwise / modular operations in the base-6 algebra — calls root.bitwise.
+   Results save through root.save kind 'bitwise' (S-ROOT-5: every Compute
+   panel's results save by the same path), and a notebook reload of a
+   bitwise entry lands back here via the load handle. */
+export const BitwisePanel = forwardRef<BitwiseHandle, { onSaved?: () => void }>(function BitwisePanel({ onSaved }, ref) {
   const [a, setA] = useState('');
   const [b, setB] = useState('');
   const [op, setOp] = useState('and');
   const [result, setResult] = useState<BitwiseResult | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
   const isUnary = op === 'not';
+
+  useImperativeHandle(ref, () => ({
+    load: (p) => { setA(p.a); setB(p.b); setOp(p.op); setResult(null); setNotice('Loaded from notebook'); },
+  }), []);
+
+  const save = useCallback(async () => {
+    if (!result) return;
+    setNotice('');
+    const r = await lensRun('root', 'save', {
+      kind: 'bitwise',
+      a: a.trim(), b: isUnary ? null : b.trim(), op,
+      resultGlyph: result.glyph,
+      resultDecimal: result.decimal,
+    });
+    if (r.data?.ok) { setNotice('Saved to notebook'); onSaved?.(); }
+    else setNotice(r.data?.error || 'Save failed');
+  }, [result, a, b, op, isUnary, onSaved]);
 
   const compute = useCallback(async () => {
     if (!a.trim()) { setError('Operand a is required'); return; }
@@ -108,8 +131,15 @@ export function BitwisePanel() {
           <div className="text-xs text-violet-400 italic bg-violet-950/30 rounded-lg p-3 border border-violet-900/40">
             {result.semantic}
           </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => void save()}
+              className="text-[11px] px-2 py-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-gray-300 inline-flex items-center gap-1">
+              <Save className="w-3 h-3" /> Save to notebook
+            </button>
+            {notice && <span className="text-[11px] text-emerald-400">{notice}</span>}
+          </div>
         </motion.div>
       )}
     </section>
   );
-}
+});
