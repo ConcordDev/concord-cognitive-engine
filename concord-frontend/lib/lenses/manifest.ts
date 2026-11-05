@@ -5429,7 +5429,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // The prior `lens.sub-worlds.*` ids were PHANTOM (never registered). Lens-id
   // is `sub-worlds`; the macro DOMAIN is `sub_worlds` (underscore) — distinct
   // and correct. Slots map onto the real handlers the page drives.
-  { domain: 'sub-worlds', label: 'Sub-Worlds (Research Zones)', artifacts: ['sub_world'], macros: { list: 'sub_worlds.list', get: 'sub_worlds.discover', create: 'sub_worlds.spawn', update: 'sub_worlds.update_settings', delete: 'sub_worlds.archive', run: 'sub_worlds.visit' }, exports: ['json'], actions: ['spawn', 'discover', 'visit', 'favorite', 'set_status', 'analytics'], category: 'knowledge' },
+  { domain: 'sub-worlds', label: 'Sub-Worlds (Research Zones)', artifacts: ['sub_world'], macros: { list: 'sub_worlds.list', get: 'sub_worlds.discover', create: 'sub_worlds.spawn', update: 'sub_worlds.update_settings', delete: 'sub_worlds.archive', run: 'sub_worlds.visit' }, exports: ['json'], actions: ['spawn', 'discover', 'visit', 'favorite', 'set_status', 'analytics'], category: 'knowledge', dataTier: 'REAL_LIVE' },
   { domain: 'sync', label: 'Cross-Device Sync', artifacts: ['sync_session'], macros: { list: 'lens.sync.list', get: 'lens.sync.get', create: 'lens.sync.create', update: 'lens.sync.update', delete: 'lens.sync.delete', run: 'lens.sync.run', export: 'lens.sync.export' }, exports: ['json'], actions: ['enable', 'sync'], category: 'system' },
   // Real wellness.* macros (registered via registerWellnessMacros in server.js,
   // canonical register convention → reachable via /api/lens/run AND runMacro).
