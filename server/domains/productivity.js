@@ -5,6 +5,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { registerHeartbeat } from "../emergent/heartbeat-registry.js";
 import { fetchPublicUrl } from "../lib/public-fetch.js";
+import { lookupUserIdentity, resolveUserByHandle } from "../lib/user-identity.js";
 
 export default function registerProductivityActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -443,12 +444,24 @@ export default function registerProductivityActions(registerLensAction) {
   });
 
   // ── Smart views ─────────────────────────────────────────────────────
-  registerLensAction("productivity", "today-view", (ctx, _a, _params = {}) => {
+  // Due dates are calendar days in the VIEWER's timezone. The client
+  // passes its local today (F1: bucketing off the server's UTC day made
+  // the agenda disagree with the viewer's calendar around midnight and
+  // in the strip's labels); a validated params.today wins, the UTC day
+  // remains the default for directory-less callers.
+  const viewerToday = (params) => {
+    const t = params && typeof params.today === "string" ? params.today : "";
+    return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : new Date().toISOString().slice(0, 10);
+  };
+  registerLensAction("productivity", "today-view", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const today = new Date().toISOString().slice(0, 10);
+    const today = viewerToday(params);
     const tasks = (s.tasks.get(pdAid(ctx)) || [])
       .filter((t) => !t.done && t.dueDate && t.dueDate <= today)
-      .map((t) => ({ ...t, dueState: dueState(t.dueDate) }))
+      .map((t) => ({
+        ...t,
+        dueState: t.dueDate < today ? "overdue" : t.dueDate === today ? "today" : "upcoming",
+      }))
       .sort((a, b) => a.priority - b.priority);
     return {
       ok: true,
@@ -460,16 +473,24 @@ export default function registerProductivityActions(registerLensAction) {
     };
   });
 
-  registerLensAction("productivity", "upcoming-view", (ctx, _a, _params = {}) => {
+  registerLensAction("productivity", "upcoming-view", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const now = Date.now();
+    const start = viewerToday(params);
+    const [sy, sm, sd] = start.split("-").map((x) => parseInt(x, 10));
+    const startMs = Date.UTC(sy, sm - 1, sd);
     const tasks = (s.tasks.get(pdAid(ctx)) || []).filter((t) => !t.done && t.dueDate);
     const days = [];
     for (let d = 0; d < 7; d++) {
-      const date = new Date(now + d * PD_DAY).toISOString().slice(0, 10);
+      const date = new Date(startMs + d * PD_DAY).toISOString().slice(0, 10);
       days.push({ date, tasks: tasks.filter((t) => t.dueDate === date).sort((a, b) => a.priority - b.priority) });
     }
-    return { ok: true, result: { days } };
+    // F1: overdue tasks belong to no upcoming bucket — they ride along
+    // explicitly so the strip can show an Overdue group instead of
+    // silently dropping them.
+    const overdue = tasks
+      .filter((t) => t.dueDate < start)
+      .sort((a, b) => a.priority - b.priority);
+    return { ok: true, result: { days, overdue } };
   });
 
   registerLensAction("productivity", "eisenhower-matrix", (ctx, _a, _params = {}) => {
@@ -635,7 +656,10 @@ export default function registerProductivityActions(registerLensAction) {
       ok: true,
       result: {
         activeTasks: active.length,
-        dueToday: active.filter((t) => t.dueDate && t.dueDate <= today).length,
+        // F8: DUE TODAY means due today — overdue tasks are counted
+        // separately under their own name, not folded into this tile.
+        dueToday: active.filter((t) => t.dueDate && t.dueDate === today).length,
+        overdue: active.filter((t) => t.dueDate && t.dueDate < today).length,
         projects: (s.projects.get(userId) || []).length,
         habits: (s.habits.get(userId) || []).length,
         completedToday: tasks.filter((t) => t.done && String(t.completedAt).slice(0, 10) === today).length,
@@ -1054,13 +1078,30 @@ export default function registerProductivityActions(registerLensAction) {
         month: `${String(yr).padStart(4, "0")}-${String(mo).padStart(2, "0")}`,
         firstWeekday: first.getUTCDay(),
         daysInMonth, days: grid,
-        totalScheduled: tasks.filter((t) => t.dueDate.startsWith(`${String(yr).padStart(4, "0")}-${String(mo).padStart(2, "0")}`)).length,
+        // F3: the month's scheduled count covers OPEN tasks — a completed
+        // task still renders in its day cell (grayed) but no longer keeps
+        // the month "scheduled" forever; completed ones are reported
+        // separately so the count's basis is visible.
+        totalScheduled: tasks.filter((t) => !t.done && t.dueDate.startsWith(`${String(yr).padStart(4, "0")}-${String(mo).padStart(2, "0")}`)).length,
+        completedScheduled: tasks.filter((t) => t.done && t.dueDate.startsWith(`${String(yr).padStart(4, "0")}-${String(mo).padStart(2, "0")}`)).length,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
   function icsEscape(v) { return String(v == null ? "" : v).replace(/[\\;,]/g, (c) => "\\" + c).replace(/\n/g, "\\n"); }
+  // F5: Concord priorities (P1 highest … P4 lowest) and RFC 5545
+  // PRIORITY (1 highest … 9 lowest) are different scales — writing the
+  // internal number verbatim made a lowest-priority P4 read as HIGH in
+  // every external calendar. The maps spread the internal scale across
+  // the RFC scale monotonically, so export→import round-trips exactly:
+  // P1→1→P1, P2→3→P2, P3→6→P3, P4→9→P4.
+  const ICS_PRIORITY_OUT = { 1: 1, 2: 3, 3: 6, 4: 9 };
+  const icsPriorityIn = (rfc) => {
+    const n = parseInt(rfc, 10);
+    if (!Number.isFinite(n) || n <= 0) return 4;
+    return n <= 1 ? 1 : n <= 4 ? 2 : n <= 7 ? 3 : 4;
+  };
   registerLensAction("productivity", "calendar-export-ics", (ctx, _a, _params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pdAid(ctx);
@@ -1077,7 +1118,7 @@ export default function registerProductivityActions(registerLensAction) {
       lines.push(hasTime ? `DTSTART:${dt}` : `DTSTART;VALUE=DATE:${dt}`);
       lines.push(`SUMMARY:${icsEscape(t.content)}`);
       lines.push(`DESCRIPTION:${icsEscape("Concord task P" + t.priority + (t.labels.length ? " @" + t.labels.join(" @") : ""))}`);
-      lines.push(`PRIORITY:${t.priority}`);
+      lines.push(`PRIORITY:${ICS_PRIORITY_OUT[t.priority] || 9}`);
       lines.push("END:VEVENT");
     }
     lines.push("END:VCALENDAR");
@@ -1106,10 +1147,60 @@ export default function registerProductivityActions(registerLensAction) {
         if (m) cur.date = `${m[1]}-${m[2]}-${m[3]}`;
         const tm = val.match(/T(\d{2})(\d{2})/);
         if (tm) cur.time = `${tm[1]}:${tm[2]}`;
+        // F5: a trailing Z (or a TZID parameter) makes the time ZONED —
+        // it names an instant, not a wall clock. Keep that fact; the
+        // importer converts zoned instants into the viewer's timezone
+        // instead of storing UTC as local wall time.
+        if (/Z$/i.test(val.trim())) cur.utc = true;
+        const tz = keyPart.match(/TZID=([^;:]+)/i);
+        if (tz) cur.tzid = tz[1].replace(/^"|"$/g, "");
       } else if (key === "UID") cur.uid = val;
       else if (key === "PRIORITY") cur.priority = parseInt(val, 10);
     }
     return events;
+  }
+
+  // Convert a zoned ICS instant into the viewer's local { date, time }.
+  // `utcOffsetMinutes` is the viewer's offset EAST of UTC (EST = -300),
+  // supplied by the client; TZID values resolve through Intl. Returns
+  // null when the zone cannot be resolved (caller keeps the wall time).
+  function icsZonedToViewer(ev, utcOffsetMinutes) {
+    if (!ev.time) return null;
+    const [y, mo, d] = ev.date.split("-").map((x) => parseInt(x, 10));
+    const [hh, mi] = ev.time.split(":").map((x) => parseInt(x, 10));
+    const pad = (n) => String(n).padStart(2, "0");
+    const parts = (ms) => {
+      const dt = new Date(ms);
+      return {
+        date: `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`,
+        time: `${pad(dt.getUTCHours())}:${pad(dt.getUTCMinutes())}`,
+      };
+    };
+    if (ev.utc) {
+      const off = Number.isFinite(utcOffsetMinutes) ? utcOffsetMinutes : 0;
+      return parts(Date.UTC(y, mo - 1, d, hh, mi) + off * 60000);
+    }
+    if (ev.tzid) {
+      try {
+        // Wall time in ev.tzid → instant: read the zone's offset at a
+        // first-guess instant via Intl, then correct once.
+        const guess = Date.UTC(y, mo - 1, d, hh, mi);
+        const fmt = new Intl.DateTimeFormat("en-US", {
+          timeZone: ev.tzid, year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+        });
+        const zoneWallMs = (ms) => {
+          const p = Object.fromEntries(fmt.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+          return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute);
+        };
+        const instant = guess - (zoneWallMs(guess) - guess);
+        const off = Number.isFinite(utcOffsetMinutes) ? utcOffsetMinutes : 0;
+        return parts(instant + off * 60000);
+      } catch {
+        return null;
+      }
+    }
+    return null;
   }
   registerLensAction("productivity", "calendar-import-ics", async (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1141,16 +1232,26 @@ export default function registerProductivityActions(registerLensAction) {
     if (!icsText) return { ok: false, error: "ics text or url required" };
     const events = parseIcs(icsText);
     const projectId = params.projectId ? String(params.projectId) : null;
+    const utcOffsetMinutes = Number.isFinite(Number(params.utcOffsetMinutes)) && params.utcOffsetMinutes != null
+      ? Number(params.utcOffsetMinutes) : null;
     const existing = s.tasks.get(userId) || [];
     const imported = [];
     for (const ev of events) {
       if (!ev.date) continue;
       // dedupe by uid (stored on task as importUid)
       if (ev.uid && existing.some((t) => t.importUid === ev.uid)) continue;
+      // F5: zoned times are instants — convert into the viewer's local
+      // date/time; floating times keep their wall clock as before.
+      let dueDate = ev.date;
+      let dueTime = ev.time || null;
+      if (ev.utc || ev.tzid) {
+        const local = icsZonedToViewer(ev, utcOffsetMinutes);
+        if (local) { dueDate = local.date; dueTime = local.time; }
+      }
       const task = {
         id: pdId("tsk"), content: pdClean(ev.summary, 500) || "(untitled event)",
-        projectId, priority: [1, 2, 3, 4].includes(ev.priority) ? ev.priority : 4,
-        dueDate: ev.date, dueTime: ev.time || null,
+        projectId, priority: icsPriorityIn(ev.priority),
+        dueDate, dueTime,
         labels: ["calendar"], recurring: null, subtasks: [], assigneeId: null, comments: [],
         importUid: ev.uid || null,
         done: false, completedAt: null, createdAt: pdNow(),
@@ -1171,21 +1272,46 @@ export default function registerProductivityActions(registerLensAction) {
     if (!(s.projectShares instanceof Map)) s.projectShares = new Map();
     return s.projectShares;
   }
+  // F6: a collaborator/assignee reference must name a real account.
+  // When the call carries a users directory (ctx.db — every production
+  // UI call does), the reference is resolved through the shared
+  // resolver (id / @username / display name) and the canonical id +
+  // display name are what get stored. Directory-less macro contexts
+  // keep the previous accept-as-id behavior: there is nothing to
+  // validate against, and inventing a rejection there would break
+  // callers that legitimately pass ids.
+  function resolvePerson(ctx, reference) {
+    const db = ctx?.db || null;
+    if (!db || typeof db.prepare !== "function") {
+      return { userId: String(reference), username: null, displayName: null, validated: false };
+    }
+    const hit = resolveUserByHandle(db, reference);
+    if (hit.error) return { error: hit.error };
+    return { userId: hit.userId, username: hit.username, displayName: hit.displayName, validated: true };
+  }
   registerLensAction("productivity", "project-share", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pdAid(ctx);
     const project = (s.projects.get(userId) || []).find((p) => p.id === params.projectId);
     if (!project) return { ok: false, error: "project not found" };
-    const collaboratorId = pdClean(params.collaboratorId, 80);
-    if (!collaboratorId) return { ok: false, error: "collaboratorId required" };
+    const reference = pdClean(params.collaboratorId, 80);
+    if (!reference) return { ok: false, error: "collaboratorId required" };
+    const person = resolvePerson(ctx, reference);
+    if (person.error) return { ok: false, error: person.error };
+    const collaboratorId = person.userId;
     if (collaboratorId === userId) return { ok: false, error: "cannot share with yourself" };
     const role = ["editor", "viewer"].includes(String(params.role)) ? String(params.role) : "editor";
     const map = getShareMap();
     const shares = pdListB(map, params.projectId);
     let share = shares.find((x) => x.collaboratorId === collaboratorId);
-    if (share) { share.role = role; }
+    if (share) { share.role = role; if (person.displayName) share.collaboratorName = person.displayName; }
     else {
-      share = { id: pdId("shr"), collaboratorId, role, ownerId: userId, sharedAt: pdNow() };
+      share = {
+        id: pdId("shr"), collaboratorId,
+        collaboratorName: person.displayName || null,
+        collaboratorUsername: person.username || null,
+        role, ownerId: userId, sharedAt: pdNow(),
+      };
       shares.push(share);
     }
     saveProdState();
@@ -1196,7 +1322,12 @@ export default function registerProductivityActions(registerLensAction) {
     const userId = pdAid(ctx);
     const project = (s.projects.get(userId) || []).find((p) => p.id === params.projectId);
     if (!project) return { ok: false, error: "project not found" };
-    const collaborators = [...(getShareMap().get(params.projectId) || [])];
+    const db = ctx?.db || null;
+    const collaborators = [...(getShareMap().get(params.projectId) || [])].map((c) => {
+      if (c.collaboratorName) return c;
+      const idn = lookupUserIdentity(db, c.collaboratorId);
+      return idn.displayName ? { ...c, collaboratorName: idn.displayName, collaboratorUsername: idn.username } : c;
+    });
     return { ok: true, result: { collaborators, count: collaborators.length } };
   });
   registerLensAction("productivity", "project-unshare", (ctx, _a, params = {}) => {
@@ -1215,9 +1346,27 @@ export default function registerProductivityActions(registerLensAction) {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const task = findTask(s, pdAid(ctx), params.taskId);
     if (!task) return { ok: false, error: "task not found" };
-    task.assigneeId = params.assigneeId ? String(params.assigneeId) : null;
+    if (!params.assigneeId) {
+      task.assigneeId = null;
+      task.assigneeName = null;
+    } else {
+      // F6: same validation as project-share — an assignee must be a
+      // real account when a directory is attached to the call.
+      const person = resolvePerson(ctx, pdClean(params.assigneeId, 80));
+      if (person.error) return { ok: false, error: person.error };
+      task.assigneeId = person.userId;
+      task.assigneeName = person.displayName || null;
+    }
     saveProdState();
-    return { ok: true, result: { task: { id: task.id, content: task.content, assigneeId: task.assigneeId } } };
+    return {
+      ok: true,
+      result: {
+        task: {
+          id: task.id, content: task.content,
+          assigneeId: task.assigneeId, assigneeName: task.assigneeName || null,
+        },
+      },
+    };
   });
   registerLensAction("productivity", "task-comment-add", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1226,7 +1375,16 @@ export default function registerProductivityActions(registerLensAction) {
     const body = pdClean(params.body, 800);
     if (!body) return { ok: false, error: "comment body required" };
     if (!Array.isArray(task.comments)) task.comments = [];
-    const comment = { id: pdId("cmt"), body, authorId: pdAid(ctx), createdAt: pdNow() };
+    const authorId = pdAid(ctx);
+    // F6: comments carry the author's display name (resolved from the
+    // users table) so no surface has to render a raw user id.
+    const idn = lookupUserIdentity(ctx?.db || null, authorId);
+    const comment = {
+      id: pdId("cmt"), body, authorId,
+      authorName: idn.displayName || null,
+      authorUsername: idn.username || null,
+      createdAt: pdNow(),
+    };
     task.comments.push(comment);
     saveProdState();
     return { ok: true, result: { comment, commentCount: task.comments.length } };
@@ -1235,7 +1393,12 @@ export default function registerProductivityActions(registerLensAction) {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const task = findTask(s, pdAid(ctx), params.taskId);
     if (!task) return { ok: false, error: "task not found" };
-    const comments = Array.isArray(task.comments) ? [...task.comments] : [];
+    const db = ctx?.db || null;
+    const comments = (Array.isArray(task.comments) ? [...task.comments] : []).map((c) => {
+      if (c.authorName) return c;
+      const idn = lookupUserIdentity(db, c.authorId);
+      return idn.displayName ? { ...c, authorName: idn.displayName, authorUsername: idn.username } : c;
+    });
     return { ok: true, result: { comments, count: comments.length } };
   });
 
