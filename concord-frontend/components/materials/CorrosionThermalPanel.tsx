@@ -216,7 +216,7 @@ export function CorrosionThermalPanel() {
                     {Object.entries(thermResult.suitability).map(([k, v]) => (
                       <div key={k} className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1">
                         <div className="text-[9px] text-zinc-400">{k}</div>
-                        <div className={`font-mono ${suitColour(v)}`}>{v || 'not recorded'}</div>
+                        <div className={`font-mono ${suitColour(v ?? undefined)}`}>{v || 'not recorded'}</div>
                       </div>
                     ))}
                   </div>
