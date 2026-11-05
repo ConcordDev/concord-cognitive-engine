@@ -226,6 +226,7 @@ export const AGENT_LOOP_TOOLS = Object.freeze([
   { name: "read_zip", description: "List or read an entry in a zip stored as a DTU.", params: { dtuId: { type: "string", required: true } } },
   { name: "expert_mode", description: "Cited answer over the corpus.", params: { query: { type: "string", required: true } } },
   { name: "generate_image", description: "Generate an image.", params: { prompt: { type: "string", required: true } } },
+  { name: "art_draw", description: "Draw a picture onto a new Art lens canvas as editable vector layers (no GPU).", params: { subject: { type: "string", required: false }, style: { type: "string", required: false }, size: { type: "string", required: false }, shapes: { type: "array", required: false }, svg: { type: "string", required: false } } },
   { name: "generate_3d", description: "Free-form 3D model on the GPU pod (FLUX concept → TRELLIS mesh), returned as a rotatable mesh.", params: { prompt: { type: "string", required: true } } },
   { name: "start_long_task", description: "Hand a big multi-step job to a background job that posts its result back.", params: { goal: { type: "string", required: true } } },
   { name: "check_long_task", description: "Progress of the user's background jobs.", params: { jobId: { type: "string", required: false } } },
