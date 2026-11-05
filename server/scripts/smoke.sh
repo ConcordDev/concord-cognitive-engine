@@ -91,12 +91,14 @@ check "Jobs paginated" "/api/jobs/paginated?limit=5"
 check "Marketplace paginated" "/api/marketplace/paginated?limit=5"
 
 # ── Artifact Upload ──────────────────────────────────────
-# routes/artifacts.js requireAuth allows AUTH_MODE=public anonymous
-# uploads through; schema uses name/content (not title/data).
+# routes/artifacts.js /upload attributes the artifact to req.user.id and
+# returns 401 auth_required without one, even under AUTH_MODE=public (the
+# owner/visibility checks need a real owner). This anonymous script pins
+# that refusal; schema uses name/content (not title/data).
 echo ""
 echo "--- Artifact Upload ---"
 UPLOAD_BODY='{"name":"smoke-test.txt","mimeType":"text/plain","content":"SGVsbG8gV29ybGQ="}'
-check "Upload artifact" "/api/artifacts/upload" "POST" "$UPLOAD_BODY"
+check "Upload artifact (auth required)" "/api/artifacts/upload" "POST" "$UPLOAD_BODY" "401"
 
 # ── Durable DTU ──────────────────────────────────────────
 echo ""
@@ -125,13 +127,15 @@ check "Master job" "/api/studio/master/job" "POST" '{"project_id":"test","preset
 # ── Events ───────────────────────────────────────────────
 echo ""
 echo "--- Events ---"
-check "Events log" "/api/events/log?limit=10"
+# The event ring is global but its rows are per-user: gateLogRead() answers
+# an anonymous caller with 401, a member sees only rows attributed to them.
+check "Events log (auth required)" "/api/events/log?limit=10" "GET" "" "401"
 
 # ── Guidance Layer ────────────────────────────────────────
 echo ""
 echo "--- Guidance Layer ---"
 check "System health" "/api/system/health"
-check "Events paginated" "/api/events/paginated?limit=5"
+check "Events paginated (auth required)" "/api/events/paginated?limit=5" "GET" "" "401"
 check "Suggestions" "/api/guidance/suggestions"
 check "First-win status" "/api/guidance/first-win"
 
