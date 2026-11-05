@@ -13,7 +13,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
+import { useCurrentUser } from '@/hooks/use-current-user';
 import { ChartKit } from '@/components/viz';
 import {
   Plus, X, Vote, ListChecks, Users, ShieldCheck, Network, Layers,
@@ -67,6 +69,7 @@ interface PollResults {
     method: string;
     ranking: TallyRow[];
     winner: string | null;
+    tied: string[];
     rounds: Array<{ round: number; tally: TallyRow[]; exhausted: number }> | null;
   };
   resolution: {
@@ -128,6 +131,7 @@ function fmtDate(d?: string | null): string {
 // ---------------------------------------------------------------------------
 
 export function GovernanceWorkbench() {
+  const queryClient = useQueryClient();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -141,11 +145,15 @@ export function GovernanceWorkbench() {
     if (data.ok && data.result) {
       setPolls(data.result.polls);
       setSelectedId((cur) => cur && data.result!.polls.some((p) => p.id === cur) ? cur : data.result!.polls[0]?.id ?? null);
+      // The page header's stat cards read this same list through their own
+      // query — invalidate it so a create / cast / close shows there
+      // in-session instead of a cycle later (F5).
+      queryClient.invalidateQueries({ queryKey: ['vote-lens', 'poll-list-summary'] });
     } else {
       setErr(data.error || 'Failed to load polls.');
     }
     setLoading(false);
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     loadPolls();
@@ -200,6 +208,15 @@ export function GovernanceWorkbench() {
         <OpinionClusterPanel />
       ) : loading ? (
         <div className="py-12 text-center text-sm text-zinc-400">Loading governance polls…</div>
+      ) : polls.length === 0 && err ? (
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 py-12 text-center">
+          <AlertCircle className="mx-auto h-8 w-8 text-rose-400" />
+          <p className="mt-2 text-sm text-rose-300">Polls could not be loaded.</p>
+          <p className="text-xs text-zinc-400">{err}</p>
+          <button onClick={loadPolls} className="mt-3 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:text-white">
+            Retry
+          </button>
+        </div>
       ) : polls.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-800 py-12 text-center">
           <ListChecks className="mx-auto h-8 w-8 text-zinc-600" />
@@ -514,7 +531,15 @@ function ResultsPanel({ poll, onClosed }: { poll: Poll; onClosed: () => void }) 
   if (loading) return <div className="py-8 text-center text-xs text-zinc-400">Tallying…</div>;
   if (!res) return <div className="py-8 text-center text-xs text-zinc-400">No results available.</div>;
 
-  const outcomeTone = res.resolution.outcome === 'passed'
+  // While the poll is OPEN the tally is a lead, not an outcome (F3): the
+  // banner speaks provisionally and no final language renders. Final
+  // language comes from the server's resolution, which since S1/S4 can
+  // also be "unresolved" or "tied".
+  const isOpen = res.status === 'open';
+  const tied = res.tally.tied || [];
+  const outcomeTone = isOpen
+    ? 'text-amber-300 bg-amber-500/10 border-amber-500/30'
+    : res.resolution.outcome === 'passed'
     ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30'
     : res.resolution.outcome === 'failed'
     ? 'text-rose-300 bg-rose-500/10 border-rose-500/30'
@@ -524,10 +549,19 @@ function ResultsPanel({ poll, onClosed }: { poll: Poll; onClosed: () => void }) 
     <div className="space-y-4">
       <div className={`rounded-lg border px-3 py-2.5 ${outcomeTone}`}>
         <div className="flex items-center gap-2 text-sm font-semibold uppercase">
-          {res.resolution.outcome === 'passed' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-          {res.resolution.outcome}
+          {isOpen ? <AlertCircle className="h-4 w-4" />
+            : res.resolution.outcome === 'passed' ? <CheckCircle2 className="h-4 w-4" />
+            : res.resolution.outcome === 'failed' ? <XCircle className="h-4 w-4" />
+            : <AlertCircle className="h-4 w-4" />}
+          {isOpen ? 'Provisional — voting still open' : res.resolution.outcome}
         </div>
-        <p className="mt-0.5 text-xs opacity-90">{res.resolution.detail}</p>
+        <p className="mt-0.5 text-xs opacity-90">{isOpen
+          ? (tied.length > 1
+            ? `${tied.join(' and ')} are tied for the lead under ${res.tally.method} voting — no outcome until close.`
+            : res.tally.winner
+              ? `${res.tally.winner} is leading under ${res.tally.method} voting — final outcome at close.`
+              : 'No ballots cast yet.')
+          : res.resolution.detail}</p>
         <p className="mt-1 text-[11px] opacity-70">
           Quorum {res.resolution.totalBallots}/{res.resolution.quorum} · {res.resolution.quorumMet ? 'met' : 'not met'}
           {res.delegatedBallots > 0 && ` · ${res.delegatedBallots} delegated ballot(s) folded in`}
@@ -555,7 +589,9 @@ function ResultsPanel({ poll, onClosed }: { poll: Poll; onClosed: () => void }) 
         <div className="space-y-1">
           {res.tally.ranking.map((row, i) => {
             const val = row.votes ?? row.total ?? row.effectiveVotes ?? 0;
-            const isWinner = row.option === res.tally.winner;
+            const isWinner = !isOpen && row.option === res.tally.winner;
+            const isLeader = isOpen && row.option === res.tally.winner;
+            const isTied = tied.includes(row.option);
             return (
               <div key={row.option} className={`flex items-center gap-2 rounded border px-2.5 py-1.5 text-xs ${
                 isWinner ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-zinc-800'
@@ -566,6 +602,8 @@ function ResultsPanel({ poll, onClosed }: { poll: Poll; onClosed: () => void }) 
                 {row.avg != null && <span className="text-zinc-400">avg {row.avg}</span>}
                 <span className="font-mono font-semibold text-neon-purple">{val}</span>
                 {isWinner && <span className="rounded bg-emerald-500/20 px-1.5 text-[10px] text-emerald-300">WINNER</span>}
+                {isLeader && <span className="rounded bg-cyan-500/20 px-1.5 text-[10px] text-cyan-300">LEADING</span>}
+                {isTied && <span className="rounded bg-amber-500/20 px-1.5 text-[10px] text-amber-300">TIE</span>}
               </div>
             );
           })}
@@ -659,6 +697,9 @@ function DelegationPanel({ poll }: { poll: Poll }) {
 
   const revoke = async (pollId: string) => {
     setBusy(true);
+    // The "Delegation set." confirmation must not outlive the delegation
+    // it confirmed (F9).
+    setMsg(null);
     await lensRun('vote', 'revoke-delegation', pollId === '*' ? {} : { pollId });
     setBusy(false);
     load();
@@ -1001,6 +1042,7 @@ function OpinionClusterPanel() {
 // ---------------------------------------------------------------------------
 
 function CreatePollModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const { data: meData } = useCurrentUser();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [method, setMethod] = useState<VoteMethod>('plurality');
@@ -1049,6 +1091,9 @@ function CreatePollModal({ onClose, onCreated }: { onClose: () => void; onCreate
     }
     if (method === 'score') input.scoreMax = Number(scoreMax) || 5;
     if (method === 'quadratic') input.creditBudget = Number(creditBudget) || 100;
+    // Creator attribution (F6): the poll records who created it — the
+    // signed-in account's display name, never a blanket "Anonymous".
+    if (meData?.user) input.ownerLabel = meData.user.displayName || meData.user.username;
 
     const { data } = await lensRun('vote', 'poll-create', input);
     setBusy(false);

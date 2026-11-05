@@ -2,6 +2,12 @@
 // invoices are the user's own persisted records, so the lens must not be
 // labelled DEMO, and the manifest must only advertise macros the server
 // really registers.
+//
+// Tier pin updated 2026-11-04 (LG-S1, build(legal)): the declaration was
+// REAL_FREE ("Real but static") over a layer the determination probe proved
+// live (R5 full pass, F1) — the manifest now declares REAL_LIVE and the
+// legal depth override labels it "Live". No behaviour assertion changed;
+// the two pinned values moved with the commissioned flip.
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -12,10 +18,10 @@ import { useDepthBadge } from '@/hooks/useDepthBadge';
 const m = getLensManifest('legal');
 
 describe('Legal manifest honesty', () => {
-  it('is on the real-data tier with a "Real" chip, not DEMO', () => {
-    expect(m?.dataTier).toBe('REAL_FREE');
+  it('is on the live tier with a "Live" chip, not DEMO', () => {
+    expect(m?.dataTier).toBe('REAL_LIVE');
     const badge = renderHook(() => useDepthBadge('legal')).result.current;
-    expect(badge?.label).toBe('Real');
+    expect(badge?.label).toBe('Live');
   });
 
   it('empty state and guide do not call the lens DEMO, and say Westlaw/Lexis is not supported yet', () => {

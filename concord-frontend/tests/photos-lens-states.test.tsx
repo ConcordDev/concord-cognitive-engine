@@ -116,7 +116,7 @@ describe('photos lens — four UX states', () => {
     await waitFor(() => expect(view!.getByTestId('photos-list')).toBeInTheDocument());
 
     await act(async () => {
-      fireEvent.click(view!.getByLabelText('Share photo Sunset over the spire'));
+      fireEvent.click(view!.getByLabelText('Publish photo Sunset over the spire — mints a DTU and makes it public'));
     });
     await waitFor(() =>
       expect(addToastMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' })),
@@ -136,9 +136,47 @@ describe('photos lens — four UX states', () => {
     await act(async () => {
       fireEvent.click(view!.getByLabelText('Delete photo Sunset over the spire'));
     });
+    await act(async () => {
+      fireEvent.click(view!.getByLabelText('Confirm delete photo Sunset over the spire'));
+    });
     await waitFor(() =>
       expect(addToastMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })),
     );
+  });
+
+  it('DELETE CONFIRM (F3): resting Delete never calls the route; only Confirm does, and Cancel disarms it', async () => {
+    const deleteCalls: string[] = [];
+    vi.spyOn(global, 'fetch').mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/delete')) { deleteCalls.push(url); return jsonResponse({ ok: true }); }
+      return jsonResponse({ ok: true, photos: deleteCalls.length ? [] : [PHOTO] });
+    });
+    let view: ReturnType<typeof render>;
+    await act(async () => { view = render(<PhotosLensPage />); });
+    await waitFor(() => expect(view!.getByTestId('photos-list')).toBeInTheDocument());
+
+    // Resting Delete arms the confirm row — no network call yet.
+    await act(async () => {
+      fireEvent.click(view!.getByLabelText('Delete photo Sunset over the spire'));
+    });
+    expect(deleteCalls).toHaveLength(0);
+    expect(view!.getByLabelText('Confirm delete photo Sunset over the spire')).toBeInTheDocument();
+
+    // Cancel disarms it — the resting Delete control returns, still no call.
+    await act(async () => {
+      fireEvent.click(view!.getByLabelText('Cancel delete'));
+    });
+    expect(deleteCalls).toHaveLength(0);
+    expect(view!.getByLabelText('Delete photo Sunset over the spire')).toBeInTheDocument();
+
+    // Arm again, then Confirm actually deletes.
+    await act(async () => {
+      fireEvent.click(view!.getByLabelText('Delete photo Sunset over the spire'));
+    });
+    await act(async () => {
+      fireEvent.click(view!.getByLabelText('Confirm delete photo Sunset over the spire'));
+    });
+    expect(deleteCalls).toHaveLength(1);
   });
 
   it('IMPORT: shows the caption only after mine contains the new id', async () => {

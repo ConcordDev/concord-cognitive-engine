@@ -1,6 +1,7 @@
 /**
  * POST /api/photos/:id/share is owner-gated and non-200 on failure.
- * DELETE is the same. A failed dtus insert does not stamp dtu_id.
+ * DELETE is the same. Share without a reachable DTU substrate (STATE) does
+ * not stamp dtu_id — it fails honestly instead of silently no-opping.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -12,27 +13,17 @@ import Database from "better-sqlite3";
 import { createPhotosRouter } from "../routes/photos.js";
 import { savePhoto } from "../lib/photo-gallery.js";
 import { up as upPhotos } from "../migrations/243_photo_gallery.js";
+import { up as upPhotoMetadata } from "../migrations/496_photo_metadata.js";
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "concord-photos-http-"));
 process.env.CONCORD_PHOTO_DIR = TMP;
 
 const TINY_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=";
 
-function freshDb({ withDtus }) {
+function freshDb() {
   const db = new Database(":memory:");
-  if (withDtus) {
-    db.exec(`
-      CREATE TABLE dtus (
-        id TEXT PRIMARY KEY,
-        title TEXT,
-        type TEXT,
-        creator_id TEXT,
-        created_at INTEGER,
-        body_json TEXT
-      );
-    `);
-  }
   upPhotos(db);
+  upPhotoMetadata(db);
   return db;
 }
 
@@ -42,7 +33,7 @@ function listen(app) {
   });
 }
 
-function appFor(db, actor) {
+function appFor(db, actor, STATE) {
   const app = express();
   app.use(express.json({ limit: "8mb" }));
   app.use((req, _res, next) => {
@@ -52,6 +43,7 @@ function appFor(db, actor) {
   app.use("/api/photos", createPhotosRouter({
     db,
     requireAuth: () => (_req, _res, next) => next(),
+    STATE,
   }));
   return app;
 }
@@ -64,11 +56,12 @@ async function post(base, urlPath, actorId, appActor) {
 }
 
 test("share rejects a non-owner; delete rejects a non-owner; both are non-200", async () => {
-  const db = freshDb({ withDtus: true });
+  const db = freshDb();
+  const STATE = { dtus: new Map() };
   const actor = { id: "owner" };
   const saved = await savePhoto(db, "owner", { dataUrl: TINY_PNG, caption: "frame" });
   assert.equal(saved.ok, true);
-  const app = appFor(db, actor);
+  const app = appFor(db, actor, STATE);
   const server = await listen(app);
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
@@ -91,6 +84,11 @@ test("share rejects a non-owner; delete rejects a non-owner; both are non-200", 
     const row = db.prepare("SELECT visibility, dtu_id FROM user_photos WHERE id = ?").get(saved.id);
     assert.equal(row.visibility, "public");
     assert.equal(row.dtu_id, shared.body.dtuId);
+    // The real, findable object — what dtu.list/dtu.get actually read.
+    const dtu = STATE.dtus.get(shared.body.dtuId);
+    assert.ok(dtu, "the minted DTU must land in the live substrate");
+    assert.equal(dtu.ownerId, "owner");
+    assert.equal(dtu.visibility, "public");
 
     const delDenied = await post(base, `/api/photos/${saved.id}/delete`, "other", actor);
     assert.equal(delDenied.status, 403);
@@ -109,11 +107,11 @@ test("share rejects a non-owner; delete rejects a non-owner; both are non-200", 
   }
 });
 
-test("share is non-200 and does not stamp dtu_id when the dtus insert fails", async () => {
-  const db = freshDb({ withDtus: false });
+test("share is non-200 and does not stamp dtu_id when no DTU substrate (STATE) reaches the route", async () => {
+  const db = freshDb();
   const actor = { id: "owner" };
   const saved = await savePhoto(db, "owner", { dataUrl: TINY_PNG, caption: "held" });
-  const app = appFor(db, actor);
+  const app = appFor(db, actor, undefined);
   const server = await listen(app);
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
@@ -122,7 +120,7 @@ test("share is non-200 and does not stamp dtu_id when the dtus insert fails", as
     assert.notEqual(res.status, 200);
     assert.equal(res.status, 500);
     assert.equal(body.ok, false);
-    assert.equal(body.error, "dtu_insert_failed");
+    assert.equal(body.error, "dtu_store_unavailable");
     const row = db.prepare("SELECT dtu_id, visibility FROM user_photos WHERE id = ?").get(saved.id);
     assert.equal(row.dtu_id, null);
     assert.equal(row.visibility, "private");
@@ -133,7 +131,7 @@ test("share is non-200 and does not stamp dtu_id when the dtus insert fails", as
 });
 
 test("image: the owner gets the bytes; a blob gone from disk is a 404, not a crash", async () => {
-  const db = freshDb({ withDtus: true });
+  const db = freshDb();
   const actor = { id: "owner" };
   const saved = await savePhoto(db, "owner", { dataUrl: TINY_PNG, caption: "frame" });
   const server = await listen(appFor(db, actor));
@@ -155,7 +153,7 @@ test("image: the owner gets the bytes; a blob gone from disk is a 404, not a cra
 });
 
 test("save: a database failure is a 500 with ok:false (savePhoto reports it; the route catch guards unexpected throws)", async () => {
-  const db = freshDb({ withDtus: true });
+  const db = freshDb();
   db.close(); // every query now fails
   const server = await listen(appFor(db, { id: "owner" }));
   const base = `http://127.0.0.1:${server.address().port}`;

@@ -149,7 +149,19 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
   const [expanded, setExpanded] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', address: '', type: 'Individual', notes: '' });
-  const [gift, setGift] = useState({ amount: '', fund: 'General', method: 'check' });
+  // F4: the gift form gains the date and the campaign link the record needs
+  // (donor-gift-log has always accepted both; the form never sent them, so
+  // gifts entered the CRM undated and unattributed while the Tax Receipts
+  // machinery summarised them by calendar year).
+  const [gift, setGift] = useState({ amount: '', fund: 'General', method: 'check', date: new Date().toISOString().slice(0, 10), campaign: '' });
+  const [campaignNames, setCampaignNames] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    lensRun<{ campaigns: Array<{ name: string }> }>('nonprofit', 'campaign-list', {})
+      .then((r) => { if (!cancelled && r.data?.ok) setCampaignNames((r.data.result?.campaigns || []).map((c) => c.name)); })
+      .catch(() => { /* the select simply stays empty */ });
+    return () => { cancelled = true; };
+  }, []);
   const [segments, setSegments] = useState<Segments | null>(null);
   const [segSummary, setSegSummary] = useState<Record<string, number> | null>(null);
   const [givingHistory, setGivingHistory] = useState<Record<string, { totalGiven: number; averageGift: number; firstGift: string | null; lastGift: string | null; giftCount: number }>>({});
@@ -166,8 +178,8 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
   const logGift = async (donorId: string) => {
     if (!gift.amount || Number(gift.amount) <= 0) return;
     setBusy(true);
-    await lensRun('nonprofit', 'donor-gift-log', { donorId, amount: Number(gift.amount), fund: gift.fund, method: gift.method });
-    setGift({ amount: '', fund: 'General', method: 'check' });
+    await lensRun('nonprofit', 'donor-gift-log', { donorId, amount: Number(gift.amount), fund: gift.fund, method: gift.method, date: gift.date || undefined, campaign: gift.campaign || undefined });
+    setGift({ amount: '', fund: 'General', method: 'check', date: new Date().toISOString().slice(0, 10), campaign: '' });
     await reload(); setBusy(false);
   };
   const runSegment = async () => {
@@ -313,6 +325,11 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
                 <div className="flex flex-wrap gap-1 items-center">
                   <input value={gift.amount} onChange={e => setGift({ ...gift, amount: e.target.value })} placeholder="$ gift" className={`${inp} w-20`} />
                   <input value={gift.fund} onChange={e => setGift({ ...gift, fund: e.target.value })} placeholder="fund" className={`${inp} w-24`} />
+                  <input type="date" value={gift.date} onChange={e => setGift({ ...gift, date: e.target.value })} aria-label="Gift date" className={`${inp} w-36`} />
+                  <select value={gift.campaign} onChange={e => setGift({ ...gift, campaign: e.target.value })} aria-label="Campaign" className={inp}>
+                    <option value="">No campaign</option>
+                    {campaignNames.map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
                   <select value={gift.method} onChange={e => setGift({ ...gift, method: e.target.value })} className={inp}>
                     {['check', 'credit_card', 'ach', 'cash', 'stock', 'daf'].map(m => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
                   </select>
@@ -608,7 +625,7 @@ function ReceiptsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: 
           {annual.gifts.map((g: any, i: number) => (
             <p key={i} className="text-zinc-400">{shortDate(g.date)} · {money(g.amount)} · {g.fund}</p>
           ))}
-          <p className="text-emerald-400 font-bold mt-1">Total deductible: {money(annual.totalDeductible)} ({annual.giftCount} gift{annual.giftCount !== 1 ? 's' : ''})</p>
+          <p className="text-emerald-400 font-bold mt-1">Total recorded: {money(annual.totalRecorded)} ({annual.giftCount} gift{annual.giftCount !== 1 ? 's' : ''})</p>
           <p className="text-zinc-400 mt-1 italic">{annual.statement}</p>
         </div>
       )}
@@ -704,7 +721,7 @@ function PagesTab() {
 // ===========================================================================
 function VolunteersTab() {
   const [vols, setVols] = useState<Volunteer[]>([]);
-  const [meta, setMeta] = useState<{ totalHours: number; estValue: number } | null>(null);
+  const [meta, setMeta] = useState<{ totalHours: number; estValue: number; hourlyRate?: number } | null>(null);
   const [form, setForm] = useState({ name: '', email: '', skills: '', availability: '' });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [shift, setShift] = useState({ role: '', date: '', hours: '' });
@@ -715,7 +732,7 @@ function VolunteersTab() {
     const r = await lensRun('nonprofit', 'volunteer-list', {});
     if (r.data?.ok) {
       setVols((r.data.result?.volunteers as Volunteer[]) || []);
-      setMeta({ totalHours: r.data.result?.totalHours ?? 0, estValue: r.data.result?.estValue ?? 0 });
+      setMeta({ totalHours: r.data.result?.totalHours ?? 0, estValue: r.data.result?.estValue ?? 0, hourlyRate: (r.data.result as { hourlyRate?: number })?.hourlyRate });
     }
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
@@ -753,7 +770,7 @@ function VolunteersTab() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Stat label="Volunteers" value={String(vols.length)} />
         <Stat label="Total Hours" value={String(Math.round(meta?.totalHours ?? 0))} />
-        <Stat label="Est. Value" value={money(meta?.estValue ?? 0)} />
+        <Stat label={meta?.hourlyRate ? `Est. Value (at $${meta.hourlyRate.toFixed(2)}/hr)` : 'Est. Value'} value={money(meta?.estValue ?? 0)} />
       </div>
 
       <div className={`${card} p-2.5 flex flex-wrap gap-1.5`}>

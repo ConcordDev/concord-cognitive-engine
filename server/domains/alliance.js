@@ -64,6 +64,10 @@ export default function registerAllianceActions(registerLensAction) {
     const capabilitySimilarity = jaccard(a.capabilities || [], b.capabilities || []);
     const valuesSimilarity = jaccard(a.values || [], b.values || []);
     const resourceSimilarity = jaccard(a.resources || [], b.resources || []);
+    // Strengths are a solicited input, so their similarity is reported as
+    // its own component (F4) — previously strengths surfaced only inside
+    // the complementarity blend, leaving the fourth card unaccountable.
+    const strengthSimilarity = jaccard(a.strengths || [], b.strengths || []);
     const resourceComplementarity = complementarity(a.resources || [], b.resources || []);
     const strengthComplementarity = complementarity(a.strengths || [], b.strengths || []);
 
@@ -106,8 +110,12 @@ export default function registerAllianceActions(registerLensAction) {
         capabilitySimilarity: Math.round(capabilitySimilarity * 10000) / 100,
         valuesAlignment: Math.round(valuesSimilarity * 10000) / 100,
         resourceSimilarity: Math.round(resourceSimilarity * 10000) / 100,
+        strengthSimilarity: Math.round(strengthSimilarity * 10000) / 100,
         complementarity: Math.round(complementarityScore * 10000) / 100,
       },
+      // The composite's full recipe, so a reader can reconstruct the
+      // headline number from the displayed components (F4).
+      formula: "composite = (capabilitySimilarity × w.capabilities + valuesAlignment × w.values + resourceSimilarity × w.resources + complementarity × w.complementarity) / totalWeight; complementarity = mean(resourceComplementarity, strengthComplementarity), each the share of the two lists' combined items that only one partner has",
       overlap: {
         capabilities: capOverlap,
         values: valOverlap,
@@ -335,7 +343,10 @@ export default function registerAllianceActions(registerLensAction) {
           partnerName: a.partnerName,
           dependencyPct: dep,
           normalizedPct: Math.round(normalized * 100) / 100,
-          isConcentrated: dep >= concentrationThreshold,
+          // The threshold applies to the partner's SHARE of total
+          // dependency — the quantity the table presents (F5: applying it
+          // to the raw input flagged every partner on a 60/40 split).
+          isConcentrated: normalized >= concentrationThreshold,
         };
       })
       .sort((a, b) => b.dependencyPct - a.dependencyPct);
@@ -429,6 +440,8 @@ export default function registerAllianceActions(registerLensAction) {
       hhi: hhiRounded,
       hhiClassification,
       diversificationIndex,
+      concentrationThreshold,
+      concentrationBasis: `a partner is concentrated when its share of total dependency is at least ${concentrationThreshold}%`,
       concentrationRisks,
       singlePointsOfFailure,
       categoryRedundancy,
@@ -564,6 +577,7 @@ export default function registerAllianceActions(registerLensAction) {
       attachments: msg.attachments || [],
       reactions: msg.reactions || {},
       createdAt: msg.createdAt,
+      editedAt: msg.editedAt || null,
     };
   }
 
@@ -610,31 +624,43 @@ export default function registerAllianceActions(registerLensAction) {
     }
   }
 
-  // @handle, bare username, or an id that is a real users row.
-  // An arbitrary string that is not a user is rejected.
+  // @handle, bare username, the display name the platform itself shows,
+  // or an id that is a real users row. An arbitrary string that is not a
+  // user is rejected. Failures are distinguishable (F1): no directory is
+  // not "unknown user", and a display name shared by several accounts
+  // names its own remedy — only a true no-match is "unknown user".
   function resolveInvitee(ctx, raw) {
     const token = String(raw || "").trim().replace(/^@+/, "");
     if (!token) return { ok: false, error: "handle required" };
     const db = allianceDb(ctx);
-    if (!db || typeof db.prepare !== "function") return { ok: false, error: "unknown user" };
+    if (!db || typeof db.prepare !== "function") return { ok: false, error: "user lookup unavailable" };
     try {
       const cols = userColumns(db);
-      if (cols && !cols.has("username")) return { ok: false, error: "unknown user" };
+      if (cols && !cols.has("username")) return { ok: false, error: "user lookup unavailable" };
       const active = !!(cols && cols.has("is_active"));
-      let row = null;
-      if (active) {
-        row = db.prepare("SELECT id, username FROM users WHERE username = ? AND is_active = 1").get(token)
-          || db.prepare("SELECT id, username FROM users WHERE lower(username) = lower(?) AND is_active = 1").get(token)
-          || db.prepare("SELECT id, username FROM users WHERE id = ? AND is_active = 1").get(token);
-      } else {
-        row = db.prepare("SELECT id, username FROM users WHERE username = ?").get(token)
-          || db.prepare("SELECT id, username FROM users WHERE lower(username) = lower(?)").get(token)
-          || db.prepare("SELECT id, username FROM users WHERE id = ?").get(token);
+      const act = active ? " AND is_active = 1" : "";
+      let row = db.prepare(`SELECT id, username FROM users WHERE username = ?${act}`).get(token)
+        || db.prepare(`SELECT id, username FROM users WHERE lower(username) = lower(?)${act}`).get(token)
+        || db.prepare(`SELECT id, username FROM users WHERE id = ?${act}`).get(token);
+      if (!row && cols && cols.has("display_name")) {
+        const selectNamed = (sql) => {
+          const stmt = db.prepare(sql);
+          if (stmt && typeof stmt.all === "function") return stmt.all(token);
+          const one = stmt && typeof stmt.get === "function" ? stmt.get(token) : null;
+          return one ? [one] : [];
+        };
+        const named = selectNamed(`SELECT id, username FROM users WHERE display_name = ?${act}`);
+        const matches = (named.length ? named : selectNamed(`SELECT id, username FROM users WHERE lower(display_name) = lower(?)${act}`))
+          .filter((x) => x && x.id);
+        if (matches.length > 1) {
+          return { ok: false, error: "that name matches more than one account — use their @username instead" };
+        }
+        row = matches[0] || null;
       }
       if (!row || !row.id) return { ok: false, error: "unknown user" };
       return { ok: true, userId: String(row.id) };
     } catch {
-      return { ok: false, error: "unknown user" };
+      return { ok: false, error: "user lookup unavailable" };
     }
   }
 
@@ -1012,6 +1038,36 @@ export default function registerAllianceActions(registerLensAction) {
       saveAlliance();
       emitRealtime("alliance:message-deleted", { allianceId: hit.alliance.id, channelId, messageId });
       return { ok: true, result: { deleted: messageId, removed: removeIds.size } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // Edit one of the caller's own channel messages (F7 — the registry had
+  // react/reply/delete but no edit). Author-only; the edit is timestamped
+  // and the message carries editedAt from then on.
+  registerLensAction("alliance", "message-edit", (ctx, _a, params = {}) => {
+    try {
+      const s = getAllianceState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = aid(ctx);
+      const channelId = String(params.channelId || "");
+      const messageId = String(params.messageId || "");
+      const content = String(params.content || "").trim();
+      if (!content) return { ok: false, error: "message content required" };
+      const hit = findChannel(s, channelId);
+      if (!hit || !hit.alliance) return { ok: false, error: "channel not found" };
+      if (!roleOf(hit.alliance, userId)) return { ok: false, error: "forbidden: not a member" };
+      const msgs = listFor(s.messages, channelId);
+      const msg = msgs.find((m) => m.id === messageId);
+      if (!msg) return { ok: false, error: "message not found" };
+      if (msg.userId !== userId) return { ok: false, error: "forbidden: only the author can edit" };
+      msg.content = content;
+      msg.editedAt = nowIso();
+      saveAlliance();
+      const shown = presentMessage(ctx, msg, userId);
+      emitRealtime("alliance:message-edited", { allianceId: hit.alliance.id, channelId, message: shown });
+      return { ok: true, result: { message: shown } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -1514,12 +1570,34 @@ export default function registerAllianceActions(registerLensAction) {
   // who has left every alliance still resolves if their account exists.
   // Never the raw id, and never a name the client stored on the member row.
 
+  // Resolve a displayed identifier (@username or profile display name)
+  // to a user id + public name — the composer's handle start for DMs and
+  // the search-as-you-type foundation for invites (S1/S2). Read-only; the
+  // resolution rules (and their distinct errors) are resolveInvitee's.
+  registerLensAction("alliance", "user-resolve", (ctx, _a, params = {}) => {
+    try {
+      const resolved = resolveInvitee(ctx, params.handle || params.username || params.query);
+      if (!resolved.ok) return resolved;
+      return { ok: true, result: { userId: resolved.userId, name: publicName(ctx, resolved.userId) } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   registerLensAction("alliance", "dm-send", (ctx, _a, params = {}) => {
     try {
       const s = getAllianceState();
       if (!s) return { ok: false, error: "STATE unavailable" };
       const fromId = aid(ctx);
-      const toId = String(params.toId || "").trim();
+      // A recipient may be addressed by id or by the handle the platform
+      // displays (S2) — resolution errors ("unknown user") stay distinct
+      // from the member gate below ("recipient not found").
+      let toId = String(params.toId || "").trim();
+      if (!toId && (params.handle || params.username)) {
+        const resolved = resolveInvitee(ctx, params.handle || params.username);
+        if (!resolved.ok) return resolved;
+        toId = resolved.userId;
+      }
       if (!toId) return { ok: false, error: "toId required" };
       if (!findAllianceMember(s, toId)) return { ok: false, error: "recipient not found" };
       const content = String(params.content || "").trim();

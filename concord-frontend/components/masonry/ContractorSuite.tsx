@@ -24,6 +24,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Ruler, FileText, CalendarDays, Camera, ClipboardEdit, BookOpen,
   Receipt, Library, Plus, Trash2, Loader2, X, CheckCircle2,
@@ -58,6 +59,58 @@ async function run<T = any>(action: string, input: Record<string, unknown> = {})
   const r = await lensRun<T>('masonry', action, input);
   if (!r.data?.ok) return null;
   return r.data.result;
+}
+
+/**
+ * The page header's stat cards read three react-query keys
+ * (masonry-stats-schedule / -invoices / -proposals). Suite writes go
+ * through lensRun directly, so without an explicit invalidation the
+ * cards only settled on reload (F7). Every successful mutation in the
+ * tabs that feed those cards calls this.
+ */
+const MASONRY_STATS_KEYS = ['masonry-stats-schedule', 'masonry-stats-invoices', 'masonry-stats-proposals'];
+function useInvalidateStats() {
+  const queryClient = useQueryClient();
+  return useCallback(() => {
+    for (const queryKey of MASONRY_STATS_KEYS) {
+      void queryClient.invalidateQueries({ queryKey: [queryKey] });
+    }
+  }, [queryClient]);
+}
+
+/**
+ * Two-step delete for persisted suite records (F4 — the Price Book's
+ * one-click delete was the priced exhibit; every persisted delete in
+ * this suite gets the same contract): the first click only arms an
+ * inline confirmation naming the record; the delete runs only on the
+ * explicit Delete click. Transient form-state removals (segments,
+ * openings, proposal lines) do not use this — they delete nothing
+ * persisted.
+ */
+function ConfirmDelete({ name, ariaLabel, className, onConfirm, children }: {
+  name: string;
+  ariaLabel: string;
+  className?: string;
+  onConfirm: () => void;
+  children: React.ReactNode;
+}) {
+  const [armed, setArmed] = useState(false);
+  if (!armed) {
+    return (
+      <button type="button" aria-label={ariaLabel} className={className} onClick={() => setArmed(true)}>
+        {children}
+      </button>
+    );
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5 text-[11px]">
+      <span className="text-zinc-300">Delete {name}?</span>
+      <button type="button" className="rounded bg-rose-500/20 px-2 py-0.5 font-semibold text-rose-300 hover:bg-rose-500/30"
+        onClick={() => { setArmed(false); onConfirm(); }}>Delete</button>
+      <button type="button" className="rounded border border-zinc-700 px-2 py-0.5 text-zinc-300 hover:border-zinc-500"
+        onClick={() => setArmed(false)}>Cancel</button>
+    </span>
+  );
 }
 
 const card = 'rounded-xl border border-zinc-800 bg-zinc-950/60 p-4';
@@ -188,7 +241,7 @@ function TakeoffTab() {
                 <p className="text-xs font-medium text-white">{t.name}</p>
                 <p className="text-[10px] text-zinc-400">{t.materialLabel} · {t.netAreaSqFt} sf · {t.unitsNeeded} units · {money(t.totalMaterialCost)}</p>
               </button>
-              <button onClick={() => del(t.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete takeoff"><Trash2 className="h-3.5 w-3.5" /></button>
+              <ConfirmDelete name={`takeoff "${t.name}"`} ariaLabel="Delete takeoff" className="text-zinc-600 hover:text-rose-400" onConfirm={() => del(t.id)}><Trash2 className="h-3.5 w-3.5" /></ConfirmDelete>
             </div>
           ))}
         </div>
@@ -226,6 +279,7 @@ function ProposalsTab() {
   const [list, setList] = useState<Proposal[]>([]);
   const [busy, setBusy] = useState(false);
   const [rendered, setRendered] = useState<{ number: string; document: string } | null>(null);
+  const invalidateStats = useInvalidateStats();
 
   const load = useCallback(async () => {
     const r = await run<{ proposals: Proposal[] }>('proposal-list');
@@ -241,9 +295,9 @@ function ProposalsTab() {
       lineItems: lines.filter((l) => l.description.trim()),
     });
     setBusy(false);
-    if (r) { setClient(''); setTitle(''); setScope(''); setLines([newLine()]); await load(); }
+    if (r) { setClient(''); setTitle(''); setScope(''); setLines([newLine()]); await load(); invalidateStats(); }
   };
-  const setStatus = async (id: string, status: string) => { await run('proposal-update-status', { id, status }); await load(); };
+  const setStatus = async (id: string, status: string) => { await run('proposal-update-status', { id, status }); await load(); invalidateStats(); };
   const render = async (id: string) => {
     const r = await run<{ number: string; document: string }>('proposal-render', { id });
     if (r) setRendered(r);
@@ -330,6 +384,7 @@ function ScheduleTab() {
   const [jobs, setJobs] = useState<SchedJob[]>([]);
   const [crewLoad, setCrewLoad] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
+  const invalidateStats = useInvalidateStats();
 
   const load = useCallback(async () => {
     const r = await run<{ jobs: SchedJob[]; crewLoad: Record<string, number> }>('schedule-list');
@@ -345,9 +400,9 @@ function ScheduleTab() {
       crew: crew.split(',').map((c) => c.trim()).filter(Boolean),
     });
     setBusy(false);
-    if (r) { setTitle(''); setStart(''); setCrew(''); await load(); }
+    if (r) { setTitle(''); setStart(''); setCrew(''); await load(); invalidateStats(); }
   };
-  const del = async (id: string) => { await run('schedule-delete', { id }); await load(); };
+  const del = async (id: string) => { await run('schedule-delete', { id }); await load(); invalidateStats(); };
 
   const timeline: TimelineEvent[] = jobs.map((j) => ({
     id: j.id, label: j.title, time: j.startDate,
@@ -395,7 +450,7 @@ function ScheduleTab() {
                 <p className="text-xs font-medium text-white">{j.title}</p>
                 <p className="text-[10px] text-zinc-400">{j.startDate} · {j.durationDays}d · {j.crew.join(', ') || 'no crew'}</p>
               </div>
-              <button onClick={() => del(j.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete job"><Trash2 className="h-3.5 w-3.5" /></button>
+              <ConfirmDelete name={`job "${j.title}"`} ariaLabel="Delete job" className="text-zinc-600 hover:text-rose-400" onConfirm={() => del(j.id)}><Trash2 className="h-3.5 w-3.5" /></ConfirmDelete>
             </div>
             {j.weather.advisories.length > 0 && (
               <div className={`mt-1.5 rounded px-2 py-1 text-[10px] ${j.weather.risk === 'high' ? 'bg-rose-500/15 text-rose-300' : 'bg-amber-500/15 text-amber-300'}`}>
@@ -474,7 +529,7 @@ function PhotosTab() {
                   </div>
                   <div className="flex items-center justify-between px-2 py-1.5">
                     <span className="truncate text-[10px] text-zinc-400">{p.caption || p.takenAt.slice(0, 10)}</span>
-                    <button onClick={() => del(p.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete photo"><Trash2 className="h-3 w-3" /></button>
+                    <ConfirmDelete name={p.caption ? `photo "${p.caption}"` : 'this photo'} ariaLabel="Delete photo" className="text-zinc-600 hover:text-rose-400" onConfirm={() => del(p.id)}><Trash2 className="h-3 w-3" /></ConfirmDelete>
                   </div>
                 </div>
               ))}
@@ -613,7 +668,7 @@ function PriceBookTab() {
                 <td className="text-right font-mono text-amber-200">{money(p.unitCost)}</td>
                 <td className="text-right">
                   <button onClick={() => setEditing(p)} className="mr-2 text-zinc-400 hover:text-amber-400" aria-label="Edit"><ClipboardEdit className="inline h-3.5 w-3.5" /></button>
-                  <button onClick={() => del(p.id)} className="text-zinc-400 hover:text-rose-400" aria-label="Delete"><Trash2 className="inline h-3.5 w-3.5" /></button>
+                  <ConfirmDelete name={`price item "${p.name}"`} ariaLabel="Delete" className="text-zinc-400 hover:text-rose-400" onConfirm={() => del(p.id)}><Trash2 className="inline h-3.5 w-3.5" /></ConfirmDelete>
                 </td>
               </tr>
             ))}
@@ -660,6 +715,7 @@ function InvoicesTab() {
   const [payFor, setPayFor] = useState<Invoice | null>(null);
   const [payAmt, setPayAmt] = useState(0);
   const [payMethod, setPayMethod] = useState('check');
+  const invalidateStats = useInvalidateStats();
 
   const load = useCallback(async () => {
     const r = await run<{ invoices: Invoice[]; totalBilled: number; totalCollected: number; outstanding: number }>('invoice-list');
@@ -672,14 +728,14 @@ function InvoicesTab() {
     setBusy(true);
     const r = await run('invoice-create', { client, jobId, contractTotal: contract, progressPct: progress, dueDate: due });
     setBusy(false);
-    if (r) { setClient(''); setJobId(''); setContract(0); await load(); }
+    if (r) { setClient(''); setJobId(''); setContract(0); await load(); invalidateStats(); }
   };
   const recordPay = async () => {
     if (!payFor) return;
     const r = await run('invoice-record-payment', { id: payFor.id, amount: payAmt, method: payMethod });
-    if (r) { setPayFor(null); setPayAmt(0); await load(); }
+    if (r) { setPayFor(null); setPayAmt(0); await load(); invalidateStats(); }
   };
-  const del = async (id: string) => { await run('invoice-delete', { id }); await load(); };
+  const del = async (id: string) => { await run('invoice-delete', { id }); await load(); invalidateStats(); };
 
   return (
     <div className="space-y-4">
@@ -721,7 +777,7 @@ function InvoicesTab() {
               </div>
               <div className="mt-1.5 flex gap-1.5">
                 {iv.balance > 0 && <button className={btnS} onClick={() => { setPayFor(iv); setPayAmt(iv.balance); }}><DollarSign className="h-3 w-3" />Record payment</button>}
-                <button className={btnS} onClick={() => del(iv.id)}><Trash2 className="h-3 w-3" />Delete</button>
+                <ConfirmDelete name={`invoice ${iv.number}`} ariaLabel={`Delete invoice ${iv.number}`} className={btnS} onConfirm={() => del(iv.id)}><Trash2 className="h-3 w-3" />Delete</ConfirmDelete>
               </div>
             </div>
           ))}
@@ -872,7 +928,7 @@ function ClientsTab() {
                     {c.address && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{c.address}</span>}
                   </p>
                 </button>
-                <button onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete client"><Trash2 className="h-3.5 w-3.5" /></button>
+                <ConfirmDelete name={`client "${c.name}"`} ariaLabel="Delete client" className="text-zinc-600 hover:text-rose-400" onConfirm={() => del(c.id)}><Trash2 className="h-3.5 w-3.5" /></ConfirmDelete>
               </div>
               <div className="mt-1.5 flex flex-wrap gap-3 text-[10px] text-zinc-400">
                 <span>{c.proposalsCount} proposal{c.proposalsCount === 1 ? '' : 's'} · {money(c.proposalsValue)}</span>
@@ -1197,9 +1253,9 @@ function CertificationsTab() {
                           {c.expiryDate ? ` · exp ${c.expiryDate}` : ' · no expiry on file'}
                         </div>
                       </div>
-                      <button onClick={() => remove(c.id)} className="shrink-0 text-zinc-600 hover:text-rose-400" aria-label={`Remove ${c.certType} certification for ${name}`}>
+                      <ConfirmDelete name={`${c.certType} certification for ${name}`} ariaLabel={`Remove ${c.certType} certification for ${name}`} className="shrink-0 text-zinc-600 hover:text-rose-400" onConfirm={() => remove(c.id)}>
                         <Trash2 className="h-3 w-3" />
-                      </button>
+                      </ConfirmDelete>
                     </li>
                   ))}
                 </ul>
@@ -1214,9 +1270,16 @@ function CertificationsTab() {
 
 // ───────────────────────── Modal helper ─────────────────────────
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  // F3: the backdrop and panel used to carry Enter/Space keydown handlers
+  // that preventDefault()ed and programmatically clicked the div — a
+  // keydown from a focused form field bubbles up to them, so typing a
+  // space (or Enter) in a name field closed the modal unsaved, while
+  // pasting the same text never fired the handler and worked. The divs
+  // are a backdrop and a panel, not buttons; they carry no key handler
+  // now, so typed input can never dismiss the modal.
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950 p-4" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950 p-4" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-white">{title}</h3>
           <button onClick={onClose} className="text-zinc-400 hover:text-white" aria-label="Close"><X className="h-4 w-4" /></button>

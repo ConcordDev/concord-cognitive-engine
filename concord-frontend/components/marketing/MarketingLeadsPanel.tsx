@@ -33,6 +33,7 @@ export function MarketingLeadsPanel({ onChange }: { onChange: () => void }) {
   const [form, setForm] = useState({ name: '', email: '', source: 'direct', campaignId: '', value: '' });
   const [scoreFor, setScoreFor] = useState<string | null>(null);
   const [scoreForm, setScoreForm] = useState({ emailOpens: '', linkClicks: '', pageViews: '', formSubmits: '' });
+  const [scoreOut, setScoreOut] = useState<{ id: string; score: number; grade: string; basis: string } | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -74,10 +75,22 @@ export function MarketingLeadsPanel({ onChange }: { onChange: () => void }) {
   };
   const del = async (id: string) => { await lensRun('marketing', 'lead-delete', { id }); await refresh(); };
   const score = async (id: string) => {
-    await lensRun('marketing', 'lead-score', {
-      id, emailOpens: Number(scoreForm.emailOpens) || 0, linkClicks: Number(scoreForm.linkClicks) || 0,
+    const signals = {
+      emailOpens: Number(scoreForm.emailOpens) || 0, linkClicks: Number(scoreForm.linkClicks) || 0,
       pageViews: Number(scoreForm.pageViews) || 0, formSubmits: Number(scoreForm.formSubmits) || 0,
-    });
+    };
+    const r = await lensRun('marketing', 'lead-score', { id, ...signals });
+    // Show the computed score and its basis (build(marketing) S5 — Review 5
+    // F5): lead-score RETURNS { score, grade } and this path used to ignore
+    // the return, so scoring on empty signals was a silent no-op — a 0 with
+    // no basis looked exactly like nothing happening.
+    const res = (r.data?.result || null) as { score?: number; grade?: string } | null;
+    if (r.data?.ok !== false && res && typeof res.score === 'number') {
+      setScoreOut({
+        id, score: res.score, grade: res.grade || '',
+        basis: `opens ${signals.emailOpens} · clicks ${signals.linkClicks} · views ${signals.pageViews} · submits ${signals.formSubmits}`,
+      });
+    }
     setScoreFor(null);
     setScoreForm({ emailOpens: '', linkClicks: '', pageViews: '', formSubmits: '' });
     await refresh();
@@ -186,6 +199,12 @@ export function MarketingLeadsPanel({ onChange }: { onChange: () => void }) {
                     className="mt-1.5 flex items-center gap-1 text-[11px] text-orange-400 hover:text-orange-300">
                     <Gauge className="w-3 h-3" /> Score this lead
                   </button>
+                )}
+                {scoreOut && scoreOut.id === l.id && (
+                  <p className="mt-1.5 text-[11px] text-zinc-300">
+                    Score {scoreOut.score} · grade {scoreOut.grade}
+                    <span className="text-zinc-500"> — {scoreOut.basis}</span>
+                  </p>
                 )}
               </li>
             ))}
