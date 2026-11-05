@@ -6,10 +6,13 @@
  * Two real substrates, both surfaced honestly:
  *   1. reasoning.logicValidate + reasoning.fallacyDetect  (deterministic
  *      contradiction / fallacy engines in server/domains/reasoning.js)
- *   2. POST /api/reasoning/run  mode=constraint_check     (the same wire
- *      DriftAlertToast uses) AND reasoning.run via lensRun. HLR's
- *      REASONING_MODES does not include constraint_check — a rejection
- *      is rendered as the engine's error, never as a fake pass.
+ *   2. The HLR engine (reasoning.run) in deductive mode — constraint
+ *      checking IS the deductive leg. (An earlier build sent a
+ *      "constraint_check" mode the engine rejects by construction and
+ *      rendered that guaranteed rejection as content — Review 3, S-RS-2:
+ *      the sub-call runs in a mode the engine accepts, and its result is
+ *      reported as its own leg, separately from the local verdict, which
+ *      the optional question field can never alter.)
  */
 
 import { useState } from 'react';
@@ -80,40 +83,24 @@ export function ConstraintCheckPanel() {
 
       const topic = question.trim() || conclusion.trim() || premises[0] || '';
       if (topic) {
-        const rest = await fetch('/api/reasoning/run', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            mode: 'constraint_check',
-            question: topic,
-            topic,
-            input: { question: topic, premises, conclusion: conclusion.trim() },
-          }),
-        });
-        let restJson: Record<string, unknown> | null = null;
-        try { restJson = await rest.json() as Record<string, unknown>; } catch { restJson = null; }
-
+        // The HLR leg runs in deductive mode (the engine's own mode for
+        // constraint checking) and is reported as its own leg. It never
+        // feeds the local verdict above: logicValidate ran on premises +
+        // conclusion only, so the optional question cannot alter it
+        // (Review 3, S-RS-2 — the invariance, pinned by test).
         const macro = await lensRun<Record<string, unknown>>('reasoning', 'run', {
           question: topic,
           topic,
-          mode: 'constraint_check',
+          mode: 'deductive',
           depth: 2,
         });
 
         if (macro.data.ok && macro.data.result) {
           setHlr(macro.data.result as Record<string, unknown>);
-        } else if (restJson && restJson.ok) {
-          setHlr(restJson);
         } else {
-          const err =
-            macro.data.error ||
-            (typeof restJson?.error === 'string' ? restJson.error : null) ||
-            'invalid_mode';
           setHlrNote(
-            `HLR rejected mode "constraint_check" (${err}). ` +
-            'Allowed modes: deductive, inductive, abductive, adversarial, analogical, temporal, counterfactual. ' +
-            'Contradiction / fallacy results above are the real constraint check.',
+            'The HLR engine leg did not complete on this run. ' +
+            'The contradiction and fallacy results above are the local constraint check and stand on their own.',
           );
         }
       }
@@ -179,8 +166,9 @@ export function ConstraintCheckPanel() {
           Run constraint check
         </button>
         <p className="text-[10px] text-zinc-500">
-          logicValidate + fallacyDetect always run on the premises. HLR <code className="text-violet-300">constraint_check</code> is
-          the same POST DriftAlertToast uses — if the engine rejects the mode, that rejection is shown.
+          logicValidate + fallacyDetect always run on the premises. The HLR engine also runs the question in
+          deductive mode and records a trace; its conclusion is reported below as its own leg, separate from
+          the local verdict, which the optional question never alters.
         </p>
       </aside>
 
@@ -238,9 +226,18 @@ export function ConstraintCheckPanel() {
               </p>
             )}
             {hlr && (
-              <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all text-[10px] text-violet-100/90">
-                {JSON.stringify(hlr, null, 2)}
-              </pre>
+              <div className="rounded border border-violet-500/25 bg-violet-500/5 p-2 text-[11px]">
+                <div className="uppercase tracking-wider text-violet-300/80">HLR engine — deductive leg</div>
+                {typeof hlr.synthesizedConclusion === 'string' && hlr.synthesizedConclusion && (
+                  <p className="mt-0.5 text-zinc-200">{hlr.synthesizedConclusion}</p>
+                )}
+                {typeof (hlr.evaluation as Record<string, unknown> | undefined)?.summary === 'string' && (
+                  <p className="mt-0.5 text-zinc-400">{String((hlr.evaluation as Record<string, unknown>).summary)}</p>
+                )}
+                {typeof hlr.traceId === 'string' && (
+                  <p className="mt-0.5 text-zinc-500">Trace recorded — open it in the Traces view for the full chain-by-chain record.</p>
+                )}
+              </div>
             )}
           </div>
         )}

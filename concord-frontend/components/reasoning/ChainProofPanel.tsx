@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Workflow, ArrowRight, CheckCircle2, AlertTriangle, Zap, Loader2, Search,
+  Workflow, ArrowRight, CheckCircle2, AlertTriangle, Zap, Loader2, Search, Trash2,
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -28,9 +28,55 @@ interface Chain {
   question: string;
   type?: string;
   steps?: string[];
+  stepCount?: number;
   conclusion?: { statement?: string; confidence?: number } | null;
   status?: string;
   createdAt?: string;
+}
+
+// Check verdicts read as sentences, never as protocol dumps (Review 3,
+// S-RS-3: a button that judges an argument either answers in user
+// language or is not there — the prior render JSON.stringify'd every
+// non-message result into the panel).
+function summarizeActionResult(
+  r: Record<string, unknown>,
+  premises: string[],
+  conclusionText: string,
+): string {
+  // logicValidate shape
+  if (typeof r.validity === 'string') {
+    const contra = Array.isArray(r.contradictions) ? r.contradictions.length : 0;
+    const base = `Logic: ${r.validity.replace(/-/g, ' ')} — term support ${typeof r.termSupport === 'number' ? r.termSupport : '—'}% across ${premises.length} step${premises.length === 1 ? '' : 's'}.`;
+    const contraLine = contra > 0 ? ` ${contra} contradiction${contra === 1 ? '' : 's'} found.` : '';
+    const rec = typeof r.recommendation === 'string' ? ` ${r.recommendation}` : '';
+    return base + contraLine + rec;
+  }
+  // fallacyDetect shape
+  if (typeof r.fallaciesDetected === 'number') {
+    const names = Array.isArray(r.fallacies)
+      ? r.fallacies.map((f) => String((f as Record<string, unknown>).fallacy || '')).filter(Boolean)
+      : [];
+    const assess = typeof r.overallAssessment === 'string' ? ` ${r.overallAssessment}` : '';
+    return names.length
+      ? `Fallacies: ${r.fallaciesDetected} detected (${names.join(', ')}).${assess}`
+      : `Fallacies: none detected.${assess}`;
+  }
+  // strengthAssessment / argumentMap shape — claim ids are the derived
+  // graph's (claim-root = the conclusion, claim-pN = step N), rendered
+  // back as the text they stand for.
+  if (r.strengthMap && typeof r.strengthMap === 'object') {
+    const label = (id: unknown): string => {
+      const s = String(id || '');
+      if (s === 'claim-root') return `the conclusion (“${conclusionText.slice(0, 60)}”)`;
+      const m = s.match(/^claim-p(\d+)$/);
+      if (m) return `step ${Number(m[1]) + 1} (“${(premises[Number(m[1])] || '').slice(0, 60)}”)`;
+      return s;
+    };
+    const sm = r.strengthMap as Record<string, { strength?: number }>;
+    const parts = Object.entries(sm).map(([id, v]) => `${label(id)}: ${typeof v.strength === 'number' ? v.strength : '—'}%`);
+    return `Strength by claim — ${parts.join(' · ')}. Strength is structural (supporters minus counter-claims around a 50 base), not a truth score.`;
+  }
+  return 'The check completed; its detailed output is in the chain trace.';
 }
 
 const CHAIN_TYPES: { value: ChainType; label: string; description: string }[] = [
@@ -51,6 +97,7 @@ export function ChainProofPanel() {
   const [newStepJustification, setNewStepJustification] = useState('');
   const [newConclusionStatement, setNewConclusionStatement] = useState('');
   const [domainActionResult, setDomainActionResult] = useState<Record<string, unknown> | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: chainsData, isError: isError2, error: error2, refetch: refetch2, isLoading: chainsLoading } = useQuery({
     queryKey: ['reasoning-chains'],
@@ -142,8 +189,27 @@ export function ChainProofPanel() {
     onError: (err) => console.error('concludeChain failed:', err instanceof Error ? err.message : err),
   });
 
+  const [confirmDeleteChain, setConfirmDeleteChain] = useState(false);
+  const deleteChain = useMutation({
+    mutationFn: () => {
+      if (!selectedChain) return Promise.reject('No chain selected');
+      return apiHelpers.reasoning.remove(selectedChain);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reasoning-chains'] });
+      setSelectedChain(null);
+      setConfirmDeleteChain(false);
+      setDomainActionResult(null);
+    },
+    onError: () => { setActionError('That delete did not complete. The chain is unchanged - try again.'); },
+  });
+
   const handleValidateLogic = useCallback(() => {
-    if (!selectedChain || chainPremises.length === 0) return;
+    if (!selectedChain || chainPremises.length === 0) {
+      setActionError('Select a chain with at least one step first - there is nothing to validate yet.');
+      return;
+    }
+    setActionError(null);
     const artifactId = chainArtifacts[0]?.id;
     if (!artifactId) return;
     runAction.mutate(
@@ -153,13 +219,17 @@ export function ChainProofPanel() {
           queryClient.invalidateQueries({ queryKey: ['reasoning-chains'] });
           setDomainActionResult((res as { result?: Record<string, unknown> })?.result ?? null);
         },
-        onError: (e) => { console.error('Action failed:', e); },
+        onError: () => { setActionError('That check did not complete. The chain is unchanged - try again.'); },
       },
     );
   }, [selectedChain, chainArtifacts, chainPremises, chainConclusionText, runAction, queryClient]);
 
   const handleCheckFallacies = useCallback(() => {
-    if (!selectedChain) return;
+    if (!selectedChain) {
+      setActionError('Select a chain first - there is nothing to check yet.');
+      return;
+    }
+    setActionError(null);
     const artifactId = chainArtifacts[0]?.id;
     if (!artifactId) return;
     const argumentText = [...chainPremises, chainConclusionText].filter(Boolean).join('. ');
@@ -169,13 +239,17 @@ export function ChainProofPanel() {
         onSuccess: (res) => {
           setDomainActionResult((res as { result?: Record<string, unknown> })?.result ?? null);
         },
-        onError: (e) => { console.error('Action failed:', e); },
+        onError: () => { setActionError('That check did not complete. The chain is unchanged - try again.'); },
       },
     );
   }, [selectedChain, chainArtifacts, chainPremises, chainConclusionText, runAction]);
 
   const handleAssessStrength = useCallback(() => {
-    if (!selectedChain || chainPremises.length === 0) return;
+    if (!selectedChain || chainPremises.length === 0) {
+      setActionError('Select a chain with at least one step first - there is nothing to assess yet.');
+      return;
+    }
+    setActionError(null);
     const artifactId = chainArtifacts[0]?.id;
     if (!artifactId) return;
     runAction.mutate(
@@ -184,7 +258,7 @@ export function ChainProofPanel() {
         onSuccess: (res) => {
           setDomainActionResult((res as { result?: Record<string, unknown> })?.result ?? null);
         },
-        onError: (e) => { console.error('Action failed:', e); },
+        onError: () => { setActionError('That check did not complete. The chain is unchanged - try again.'); },
       },
     );
   }, [selectedChain, chainArtifacts, chainPremises, chainConclusionText, runAction]);
@@ -239,7 +313,7 @@ export function ChainProofPanel() {
           {chains.map((chain) => (
             <button
               key={chain.id}
-              onClick={() => setSelectedChain(chain.id)}
+              onClick={() => { setSelectedChain(chain.id); setConfirmDeleteChain(false); }}
               className={cn(
                 'w-full text-left px-3 py-2 border-b border-zinc-800/80 hover:bg-violet-500/10',
                 selectedChain === chain.id && 'bg-violet-500/15 ring-1 ring-inset ring-violet-400/40',
@@ -250,9 +324,9 @@ export function ChainProofPanel() {
                 <span className="font-mono text-[10px] text-zinc-500">{chain.type || 'deductive'}</span>
                 <span className={cn(
                   'text-[10px] px-1.5 py-0.5 rounded',
-                  chain.conclusion ? 'bg-green-400/20 text-green-400' : 'bg-neon-blue/20 text-neon-blue',
+                  (chain.status === 'concluded' || chain.conclusion) ? 'bg-green-400/20 text-green-400' : 'bg-neon-blue/20 text-neon-blue',
                 )}>
-                  {chain.conclusion ? 'concluded' : 'open'}
+                  {(chain.status === 'concluded' || chain.conclusion) ? 'concluded' : 'open'}
                 </span>
               </div>
             </button>
@@ -292,12 +366,36 @@ export function ChainProofPanel() {
             </span>
           )}
         </div>
+        {selectedChain && (
+          <div className="w-full">
+            <button
+              onClick={() => {
+                if (confirmDeleteChain) deleteChain.mutate();
+                else setConfirmDeleteChain(true);
+              }}
+              disabled={deleteChain.isPending}
+              className={cn(ds.btnSmall, 'bg-red-400/10 text-red-400 border border-red-400/30 hover:bg-red-400/20')}
+            >
+              <Trash2 className="w-3.5 h-3.5" /> {deleteChain.isPending ? 'Deleting...' : confirmDeleteChain ? 'Confirm delete this chain?' : 'Delete chain'}
+            </button>
+            {confirmDeleteChain && !deleteChain.isPending && (
+              <button onClick={() => setConfirmDeleteChain(false)} className={cn(ds.btnSmall, 'ml-2 text-zinc-400')}>
+                Keep it
+              </button>
+            )}
+          </div>
+        )}
+        {actionError && (
+          <p role="alert" className="rounded border border-red-500/25 bg-red-500/5 p-2 text-[11px] text-red-200">
+            {actionError}
+          </p>
+        )}
         {domainActionResult && (
-          <pre className="whitespace-pre-wrap text-[10px] text-gray-300 font-mono max-h-32 overflow-y-auto rounded border border-zinc-800 p-2">
-            {'message' in domainActionResult
-              ? String(domainActionResult.message)
-              : JSON.stringify(domainActionResult, null, 2)}
-          </pre>
+          <div className="rounded border border-zinc-800 p-2 text-[11px] text-zinc-200">
+            {'message' in domainActionResult && typeof domainActionResult.message === 'string'
+              ? <p>{domainActionResult.message}</p>
+              : <p>{summarizeActionResult(domainActionResult, chainPremises, chainConclusionText)}</p>}
+          </div>
         )}
 
         {!selectedChain ? (
@@ -330,6 +428,9 @@ export function ChainProofPanel() {
                       <p className="text-[10px] text-gray-400 mt-0.5">because {step.justification as string}</p>
                     )}
                     {Boolean(step.type) && <span className="font-mono text-[10px] text-zinc-500">{step.type as string}</span>}
+                    {typeof step.confidence === 'number' && (
+                      <span className="ml-2 text-[10px] text-zinc-500">confidence {Math.round(step.confidence * 100)}%</span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -343,7 +444,7 @@ export function ChainProofPanel() {
                 <p className="text-sm mt-1 text-white">{(trace.conclusion as { statement?: string }).statement}</p>
                 {typeof (trace.conclusion as { confidence?: number })?.confidence === 'number' && (
                   <p className="text-xs text-green-300/70 mt-1">
-                    confidence {Math.round(((trace.conclusion as { confidence?: number }).confidence || 0) * 100)}%
+                    confidence {Math.round(((trace.conclusion as { confidence?: number }).confidence || 0) * 100)}% — the product of the step confidences above (each engine-assigned; 90% where unset)
                   </p>
                 )}
               </div>
