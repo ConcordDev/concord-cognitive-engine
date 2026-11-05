@@ -31,6 +31,11 @@ export function AnimationStudioSection() {
   const [templates, setTemplates] = useState<AnimTemplate[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
   const [form, setForm] = useState({ title: '', preset: 0, fps: 12 });
+  // F5 (unconfirmed-destructive): the gallery card's Delete used to
+  // fire anim-delete on a single click. The family's two-step
+  // applies (cf. Gallery F6 / game-design F5): the first click arms
+  // an in-place confirm; the delete call fires only from the confirm.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun('animation', 'anim-list', {});
@@ -82,6 +87,7 @@ export function AnimationStudioSection() {
 
   const del = async (id: string) => {
     await lensRun('animation', 'anim-delete', { id });
+    setConfirmDeleteId(null);
     if (open === id) setOpen(null);
     await refresh();
   };
@@ -157,7 +163,7 @@ export function AnimationStudioSection() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {animations.map((a) => (
                   <div key={a.id} className="group bg-zinc-900/70 border border-zinc-800 rounded-xl overflow-hidden">
-                    <button type="button" onClick={() => setOpen(a.id)}
+                    <button type="button" onClick={() => { setOpen(a.id); setConfirmDeleteId(null); }}
                       className="block w-full aspect-video bg-zinc-800 overflow-hidden">
                       {a.thumbnail ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
@@ -171,9 +177,13 @@ export function AnimationStudioSection() {
                         <p className="text-xs text-zinc-100 truncate">{a.title}</p>
                         <p className="text-[10px] text-zinc-400">{a.frameCount} frames · {a.fps} fps</p>
                       </div>
-                      <button aria-label="Delete" type="button" onClick={() => del(a.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {confirmDeleteId === a.id ? (
+                        <button type="button" onClick={() => del(a.id)} className="text-[11px] font-semibold text-rose-300 shrink-0">Delete?</button>
+                      ) : (
+                        <button aria-label={`Delete ${a.title}`} type="button" onClick={() => setConfirmDeleteId(a.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
