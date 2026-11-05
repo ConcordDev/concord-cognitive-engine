@@ -37,33 +37,54 @@ export default function registerCarpentryActions(registerLensAction) {
     const effectiveStrength = Math.round(baseStrength * mult);
     const useGlue = data.glued !== false;
     const glueBonus = useGlue ? 20 : 0;
-    return { ok: true, result: { jointType, species, baseStrength, speciesMultiplier: mult, glueBonus: useGlue ? "+20" : "none", effectiveStrength: effectiveStrength + glueBonus, rating: effectiveStrength + glueBonus >= 80 ? "excellent" : effectiveStrength + glueBonus >= 50 ? "good" : effectiveStrength + glueBonus >= 30 ? "moderate" : "weak", recommendation: effectiveStrength < 40 ? "Consider upgrading to a stronger joint type" : "Joint is appropriate for the application" } };
+    // The surface prints this score on a /100 scale; the raw formula
+    // (base × multiplier + glue) exceeds it for the strongest joints
+    // (mortise-tenon in oak glued = 128), so the score clamps to the
+    // scale it is stated on (F8, R5 full pass 2026-11-01).
+    const score = Math.min(100, effectiveStrength + glueBonus);
+    return { ok: true, result: { jointType, species, baseStrength, speciesMultiplier: mult, glueBonus: useGlue ? "+20" : "none", effectiveStrength: score, rating: score >= 80 ? "excellent" : score >= 50 ? "good" : score >= 30 ? "moderate" : "weak", recommendation: effectiveStrength < 40 ? "Consider upgrading to a stronger joint type" : "Joint is appropriate for the application" } };
   });
+
+  // The lens's wood reference table — one source for the selection guide
+  // and the species reference view. Hardness is Janka (lbf); density is
+  // the standard published figure at ~12% moisture content (kg/m³).
+  const WOOD_SPECIES = [
+    { name: "Pine", hardness: 380, densityKgM3: 510, cost: "low", indoor: true, outdoor: false, workability: "excellent", best: ["shelving", "framing", "painted-furniture"] },
+    { name: "Oak", hardness: 1290, densityKgM3: 720, cost: "medium", indoor: true, outdoor: true, workability: "good", best: ["furniture", "flooring", "cabinetry"] },
+    { name: "Maple", hardness: 1450, densityKgM3: 705, cost: "medium", indoor: true, outdoor: false, workability: "moderate", best: ["cutting-boards", "furniture", "flooring"] },
+    { name: "Walnut", hardness: 1010, densityKgM3: 640, cost: "high", indoor: true, outdoor: false, workability: "excellent", best: ["fine-furniture", "decorative", "turnings"] },
+    { name: "Cherry", hardness: 950, densityKgM3: 580, cost: "high", indoor: true, outdoor: false, workability: "excellent", best: ["fine-furniture", "cabinetry"] },
+    { name: "Cedar", hardness: 350, densityKgM3: 380, cost: "medium", indoor: true, outdoor: true, workability: "excellent", best: ["decking", "fencing", "outdoor-furniture"] },
+    { name: "Teak", hardness: 1155, densityKgM3: 655, cost: "high", indoor: true, outdoor: true, workability: "moderate", best: ["outdoor-furniture", "boat-building"] },
+    { name: "Poplar", hardness: 540, densityKgM3: 455, cost: "low", indoor: true, outdoor: false, workability: "excellent", best: ["painted-furniture", "trim", "drawers"] },
+  ];
+  const COST_RANK = { low: 1, medium: 2, high: 3 };
 
   registerLensAction("carpentry", "woodSelection", (ctx, artifact, _params) => {
     const data = artifact.data || {};
     const use = (data.application || data.use || "furniture").toLowerCase();
     const budget = (data.budget || "medium").toLowerCase();
     const indoor = data.indoor !== false;
-    const woods = [
-      { name: "Pine", hardness: 380, cost: "low", indoor: true, outdoor: false, workability: "excellent", best: ["shelving", "framing", "painted-furniture"] },
-      { name: "Oak", hardness: 1290, cost: "medium", indoor: true, outdoor: true, workability: "good", best: ["furniture", "flooring", "cabinetry"] },
-      { name: "Maple", hardness: 1450, cost: "medium", indoor: true, outdoor: false, workability: "moderate", best: ["cutting-boards", "furniture", "flooring"] },
-      { name: "Walnut", hardness: 1010, cost: "high", indoor: true, outdoor: false, workability: "excellent", best: ["fine-furniture", "decorative", "turnings"] },
-      { name: "Cherry", hardness: 950, cost: "high", indoor: true, outdoor: false, workability: "excellent", best: ["fine-furniture", "cabinetry"] },
-      { name: "Cedar", hardness: 350, cost: "medium", indoor: true, outdoor: true, workability: "excellent", best: ["decking", "fencing", "outdoor-furniture"] },
-      { name: "Teak", hardness: 1155, cost: "high", indoor: true, outdoor: true, workability: "moderate", best: ["outdoor-furniture", "boat-building"] },
-      { name: "Poplar", hardness: 540, cost: "low", indoor: true, outdoor: false, workability: "excellent", best: ["painted-furniture", "trim", "drawers"] },
-    ];
-    const suitable = woods.filter(w => {
+    // Recommendations respect the selected budget tier: a species whose
+    // cost tier sits above the budget is never recommended (F8 — Walnut,
+    // cost "high", was returned under a medium budget).
+    const budgetRank = COST_RANK[budget] ?? 2;
+    const suitable = WOOD_SPECIES.filter(w => {
       if (!indoor && !w.outdoor) return false;
-      if (budget === "low" && w.cost === "high") return false;
+      if ((COST_RANK[w.cost] ?? 2) > budgetRank) return false;
       return true;
     }).sort((a, b) => {
       const useMatch = (w) => w.best.some(b => use.includes(b) || b.includes(use)) ? 1 : 0;
       return useMatch(b) - useMatch(a);
     });
     return { ok: true, result: { application: use, environment: indoor ? "indoor" : "outdoor", budget, recommendations: suitable.slice(0, 4).map(w => ({ name: w.name, hardness: `${w.hardness} (Janka)`, cost: w.cost, workability: w.workability, bestFor: w.best.join(", ") })), topPick: suitable[0]?.name || "Oak" } };
+  });
+
+  // The species reference view's trade properties (F6): the same table
+  // the selection guide reads, so a species card can print the Janka
+  // hardness, density and workability a carpenter opens it for.
+  registerLensAction("carpentry", "speciesReference", (ctx, _artifact, _params) => {
+    return { ok: true, result: { species: WOOD_SPECIES.map(w => ({ name: w.name, janka: w.hardness, densityKgM3: w.densityKgM3, workability: w.workability, cost: w.cost, bestFor: w.best.join(", ") })) } };
   });
 
   registerLensAction("carpentry", "finishRecommendation", (ctx, artifact, _params) => {
@@ -99,6 +120,7 @@ export default function registerCarpentryActions(registerLensAction) {
     if (!(s.activeTimers instanceof Map)) s.activeTimers = new Map(); // userId -> Map<jobId, startMs>
     if (!(s.invoices instanceof Map)) s.invoices = new Map();      // userId -> Array<invoice>
     if (!(s.portalShares instanceof Map)) s.portalShares = new Map(); // token -> share
+    if (!(s.signatures instanceof Map)) s.signatures = new Map();  // userId -> Map<estimateId, signature>
     return s;
   }
   function saveCarpentry() {
@@ -405,6 +427,11 @@ export default function registerCarpentryActions(registerLensAction) {
       const entry = arr.find((e) => e.id === params.id);
       if (!entry) return { ok: false, error: "schedule entry not found" };
       if (params.status && ["scheduled", "dispatched", "done"].includes(params.status)) entry.status = params.status;
+      // Field editing (F5): a scheduled job's title, site address and
+      // linked job are editable, not just its status and times.
+      if (params.title != null) entry.title = cpClean(params.title, 160) || entry.title;
+      if (params.address != null) entry.address = cpClean(params.address, 300);
+      if (params.jobId != null) entry.jobId = cpClean(params.jobId, 120);
       if (params.date != null) entry.date = cpClean(params.date, 30) || entry.date;
       if (params.startTime != null) entry.startTime = cpClean(params.startTime, 8) || entry.startTime;
       if (params.endTime != null) entry.endTime = cpClean(params.endTime, 8) || entry.endTime;
@@ -595,7 +622,9 @@ export default function registerCarpentryActions(registerLensAction) {
         depositPct,
         depositDue: Math.round(total * (depositPct / 100) * 100) / 100,
         status: "issued",
-        signature: null, // estimate signed at quote time
+        // a quote signed before conversion carries its signature onto
+        // the invoice (F4); null only when the estimate was never signed
+        signature: s.signatures.get(userId)?.get(estimateId) ?? null,
         issuedAt: new Date().toISOString(),
         dueDate: cpClean(params.dueDate, 30) || "",
         paidAt: null,
@@ -624,6 +653,24 @@ export default function registerCarpentryActions(registerLensAction) {
           collected: Math.round(collected * 100) / 100,
         },
       };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // Exit path for an invoice (F7): invoices previously had no delete
+  // verb at any layer, so a mistaken or test invoice could never leave
+  // the register. Owner-scoped — invoices live in the caller's array.
+  registerLensAction("carpentry", "invoiceDelete", (ctx, _a, params = {}) => {
+    try {
+      const s = getCarpentryState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = cpArr(s.invoices, cpActor(ctx));
+      const i = arr.findIndex((inv) => inv.id === params.id);
+      if (i < 0) return { ok: false, error: "invoice not found" };
+      const [removed] = arr.splice(i, 1);
+      saveCarpentry();
+      return { ok: true, result: { deleted: removed.id, invoiceNumber: removed.invoiceNumber } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -662,6 +709,15 @@ export default function registerCarpentryActions(registerLensAction) {
         signedAt: new Date().toISOString(),
         ip: cpClean(params.ip, 60) || "",
       };
+      // Persist the signature against the estimate itself (F4): the shop
+      // signs the quote BEFORE converting it, and the old attach-only
+      // behaviour lost that signature irrecoverably — the converted
+      // invoice then printed "unsigned". estimateToInvoice applies the
+      // stored signature at conversion; signing after conversion still
+      // attaches to the existing invoice directly (below).
+      let userSigs = s.signatures.get(cpActor(ctx));
+      if (!(userSigs instanceof Map)) { userSigs = new Map(); s.signatures.set(cpActor(ctx), userSigs); }
+      userSigs.set(estimateId, signature);
       // attach to any invoice already converted from this estimate
       const invoices = cpArr(s.invoices, cpActor(ctx));
       for (const inv of invoices) {
@@ -750,6 +806,24 @@ export default function registerCarpentryActions(registerLensAction) {
       share.revokedAt = new Date().toISOString();
       saveCarpentry();
       return { ok: true, result: { token: share.token, status: share.status } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // Exit path for a portal entry (F7): revoke stops the link but the
+  // entry listed forever with no way to remove it. Owner-scoped like
+  // portalRevoke; removes the share entirely.
+  registerLensAction("carpentry", "portalDelete", (ctx, _a, params = {}) => {
+    try {
+      const s = getCarpentryState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const token = cpClean(params.token, 120);
+      const share = s.portalShares.get(token);
+      if (!share || share.ownerId !== cpActor(ctx)) return { ok: false, error: "portal not found" };
+      s.portalShares.delete(token);
+      saveCarpentry();
+      return { ok: true, result: { deleted: token } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
