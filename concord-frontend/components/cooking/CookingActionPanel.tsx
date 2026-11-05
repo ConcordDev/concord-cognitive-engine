@@ -21,7 +21,6 @@ import {
   PipeImporter,
   useRecallableAction,
   RecallSlot,
-  LoadFromSubstrate,
 } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
@@ -75,10 +74,17 @@ export function CookingActionPanel() {
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
-  // Recipe-box loader (S-CK2-6): the bench reads the member's recipe box
-  // (cooking.recipes-list), not only minted recipe DTUs.
+  // Bench recipe loader (S-CK2-6 + F7 remainder): ONE control over BOTH
+  // stores, each group labelled by its source. The first build put a
+  // box combobox + "Load" beside the pre-existing "Load recipe" DTU
+  // dropdown; at R3's re-pass the reviewer selected the account's box
+  // recipe and the record that landed was a minted DTU from the other
+  // store — a silent wrong record. Here the selected record IS the
+  // loaded record by construction: one selection, one Load, and the
+  // receipt names the record and its store.
   const [boxRecipes, setBoxRecipes] = useState<{ id: string; title: string; servings: number; ingredients: { name: string; qty: number | null; unit: string }[] }[]>([]);
-  const [boxPick, setBoxPick] = useState('');
+  const [dtuRecipes, setDtuRecipes] = useState<RecipeDtu[]>([]);
+  const [pick, setPick] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -86,21 +92,42 @@ export function CookingActionPanel() {
       try {
         const r = await lensRun({ domain: 'cooking', action: 'recipes-list', input: {} });
         if (!cancelled) setBoxRecipes((r.data?.result?.recipes || []) as typeof boxRecipes);
-      } catch { /* the DTU loader remains available */ }
+      } catch { /* the DTU group remains available */ }
+      try {
+        const r = await api.get('/api/dtus', { params: { tag: 'recipe', limit: 50 } });
+        const list = (r.data?.dtus ?? r.data?.items ?? []) as RecipeDtu[];
+        if (!cancelled) setDtuRecipes(list.filter((d) => d?.meta?.recipe?.ingredients?.length));
+      } catch { /* the recipe-box group remains available */ }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function loadFromBox() {
-    const r = boxRecipes.find((x) => x.id === boxPick);
-    if (!r) { err('Pick a recipe from your recipe box first.'); return; }
-    setRecipeName(r.title);
-    if (r.servings > 0) { setBaseServings(r.servings); setTargetServings(r.servings); }
-    setIngredients((r.ingredients || []).map((i) => ({
-      name: i.name ?? '', quantity: i.qty != null ? String(i.qty) : '', unit: i.unit || 'g', grams: '',
-    })));
-    ok(`Loaded "${r.title}" from your recipe box (${r.ingredients?.length ?? 0} ingredients).`);
+  function loadPicked() {
+    if (pick.startsWith('box:')) {
+      const r = boxRecipes.find((x) => `box:${x.id}` === pick);
+      if (!r) { err('That recipe is no longer in your recipe box — pick another.'); return; }
+      setRecipeName(r.title);
+      if (r.servings > 0) { setBaseServings(r.servings); setTargetServings(r.servings); }
+      setIngredients((r.ingredients || []).map((i) => ({
+        name: i.name ?? '', quantity: i.qty != null ? String(i.qty) : '', unit: i.unit || 'g', grams: '',
+      })));
+      ok(`Loaded "${r.title}" from your recipe box (${r.ingredients?.length ?? 0} ingredients).`);
+      return;
+    }
+    if (pick.startsWith('dtu:')) {
+      const d = dtuRecipes.find((x) => `dtu:${x.id}` === pick);
+      const r = d?.meta?.recipe;
+      if (!d || !r) { err('That recipe DTU is no longer available — pick another.'); return; }
+      if (r.name) setRecipeName(r.name);
+      if (typeof r.servings === 'number' && r.servings > 0) { setBaseServings(r.servings); setTargetServings(r.servings); }
+      setIngredients((r.ingredients ?? []).map((i) => ({
+        name: i.name ?? '', quantity: i.quantity ?? '', unit: i.unit ?? 'g', grams: i.grams ?? '',
+      })));
+      ok(`Loaded "${r.name ?? d.title ?? d.id}" from your recipe DTUs (${r.ingredients?.length ?? 0} ingredients).`);
+      return;
+    }
+    err('Pick a recipe to load first.');
   }
 
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
@@ -304,42 +331,26 @@ export function CookingActionPanel() {
             <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Ingredients ({ingredients.length})</label>
             <div className="flex items-center gap-1">
               <select
-                value={boxPick}
-                onChange={(e) => setBoxPick(e.target.value)}
-                aria-label="Recipe from your recipe box"
+                value={pick}
+                onChange={(e) => setPick(e.target.value)}
+                aria-label="Load a recipe into the bench"
                 className="max-w-[10rem] bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[11px] text-white"
               >
-                <option value="">Recipe box…</option>
-                {boxRecipes.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
+                <option value="">Load a recipe…</option>
+                {boxRecipes.length > 0 && (
+                  <optgroup label="Recipe box">
+                    {boxRecipes.map((r) => <option key={r.id} value={`box:${r.id}`}>{r.title}</option>)}
+                  </optgroup>
+                )}
+                {dtuRecipes.length > 0 && (
+                  <optgroup label="Recipe DTUs">
+                    {dtuRecipes.map((d) => <option key={d.id} value={`dtu:${d.id}`}>{d.title ?? d.meta?.recipe?.name ?? d.id}</option>)}
+                  </optgroup>
+                )}
               </select>
-              <button type="button" onClick={loadFromBox} disabled={!boxPick} className="px-2 py-1 text-[11px] rounded border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 disabled:opacity-40">
+              <button type="button" onClick={loadPicked} disabled={!pick} className="px-2 py-1 text-[11px] rounded border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 disabled:opacity-40">
                 Load
               </button>
-              <LoadFromSubstrate<RecipeDtu>
-                label="Load recipe"
-                compact
-                emptyHint="No recipe DTUs yet — mint one to populate."
-                fetcher={async () => {
-                  const r = await api.get('/api/dtus', { params: { tag: 'recipe', limit: 50 } });
-                  const list = (r.data?.dtus ?? r.data?.items ?? []) as RecipeDtu[];
-                  return list.filter((d) => d?.meta?.recipe?.ingredients?.length);
-                }}
-                describe={(d) => ({
-                  id: d.id,
-                  primary: d.title ?? d.meta?.recipe?.name ?? d.id,
-                  secondary: `${d.meta?.recipe?.ingredients?.length ?? 0} ingredients · ${d.meta?.recipe?.servings ?? '?'} servings`,
-                })}
-                onSelect={(d) => {
-                  const r = d.meta?.recipe;
-                  if (!r) { err('Selected DTU has no recipe meta.'); return; }
-                  if (r.name) setRecipeName(r.name);
-                  if (typeof r.servings === 'number' && r.servings > 0) { setBaseServings(r.servings); setTargetServings(r.servings); }
-                  setIngredients((r.ingredients ?? []).map((i) => ({
-                    name: i.name ?? '', quantity: i.quantity ?? '', unit: i.unit ?? 'g', grams: i.grams ?? '',
-                  })));
-                  ok(`Loaded recipe "${r.name ?? d.id.slice(0, 8)}" (${r.ingredients?.length ?? 0} ingredients).`);
-                }}
-              />
               <PipeImporter<IngRow[]> accept={['cooking.ingredientsImport']} onImport={(rows) => Array.isArray(rows) && setIngredients(rows)} compact />
             </div>
           </div>
