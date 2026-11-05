@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { FolderOpen, Plus, Save, Trash2 } from 'lucide-react';
+import { NumCell } from './NumCell';
 import { useEngineeringFea } from './EngineeringFeaProvider';
 
 /** Point loads + saved load cases — extracted from engineering page Loads tab. */
@@ -17,6 +19,7 @@ export function LoadsPanel() {
     applyLoadCase,
     deleteLoadCase,
   } = useEngineeringFea();
+  const [armedDelete, setArmedDelete] = useState<string | null>(null);
 
   return (
     <div className="panel p-4 space-y-3">
@@ -57,18 +60,35 @@ export function LoadsPanel() {
                 </td>
                 {(['Fx', 'Fy', 'Fz'] as const).map((f) => (
                   <td key={f} className="py-1 px-2 text-right">
-                    <input
+                    <NumCell
                       className="w-20 bg-black/30 border border-white/10 rounded px-1 text-right font-mono"
-                      value={l[f] ?? ''}
-                      placeholder="0"
-                      onChange={(e) => updateLoad(i, f, e.target.value)}
+                      value={l[f] ?? 0}
+                      ariaLabel={`Load ${i + 1} ${f}`}
+                      onCommit={(v) => updateLoad(i, f, String(v))}
                     />
                   </td>
                 ))}
                 <td className="py-1 px-1">
-                  <button onClick={() => removeLoad(i)} className="text-gray-600 hover:text-red-400" aria-label="Delete">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  {armedDelete === `load-${i}` ? (
+                    <button
+                      onClick={() => {
+                        setArmedDelete(null);
+                        removeLoad(i);
+                      }}
+                      className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 text-[10px] whitespace-nowrap"
+                      aria-label="Confirm delete load"
+                    >
+                      Delete?
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setArmedDelete(`load-${i}`)}
+                      className="text-gray-600 hover:text-red-400"
+                      aria-label="Delete load"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -118,13 +138,26 @@ export function LoadsPanel() {
                   >
                     Apply
                   </button>
-                  <button
-                    onClick={() => deleteLoadCase(lc.id)}
-                    className="text-gray-600 hover:text-red-400"
-                    aria-label="Delete load case"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {armedDelete === `lc-${lc.id}` ? (
+                    <button
+                      onClick={() => {
+                        setArmedDelete(null);
+                        void deleteLoadCase(lc.id);
+                      }}
+                      className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 text-[10px] whitespace-nowrap"
+                      aria-label={`Confirm delete load case ${lc.name}`}
+                    >
+                      Delete “{lc.name}”?
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setArmedDelete(`lc-${lc.id}`)}
+                      className="text-gray-600 hover:text-red-400"
+                      aria-label={`Delete load case ${lc.name}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

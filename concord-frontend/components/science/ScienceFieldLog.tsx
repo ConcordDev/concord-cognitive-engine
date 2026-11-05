@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MapPin, Plus, Trash2, Download, Layers } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { useLensState } from '@/hooks/useLensState';
 import { RunButton } from '@/components/science/ScienceWorkbench';
 
 interface ObsRow { date: string; observer: string; type: string; notes: string; lat: string; lon: string }
@@ -21,10 +22,22 @@ const emptyRow = (): ObsRow => ({ date: '', observer: '', type: '', notes: '', l
  * app/lenses/science/page.tsx had dead render blocks for their output
  * shapes but no button ever triggered them.
  */
+interface FieldLogDraft { rows?: ObsRow[]; radiusKm?: string }
+
 export function ScienceFieldLog() {
-  const [rows, setRows] = useState<ObsRow[]>([emptyRow()]);
+  // Draft persistence (S5): the log's rows ride the lens-state store, so
+  // they survive sub-tab switches and reloads like the Workbench dataset
+  // does, instead of resetting to one blank row on every visit.
+  const { restored, save: saveLensState } = useLensState('science');
+  const draft = restored?.customState?.fieldLogDraft as FieldLogDraft | undefined;
+  const [rows, setRows] = useState<ObsRow[]>(() => (Array.isArray(draft?.rows) && draft.rows.length ? draft.rows : [emptyRow()]));
   const [format, setFormat] = useState<'csv' | 'geojson'>('csv');
-  const [radiusKm, setRadiusKm] = useState('1');
+  const [radiusKm, setRadiusKm] = useState(() => draft?.radiusKm ?? '1');
+
+  useEffect(() => {
+    saveLensState({ customState: { ...(restored?.customState ?? {}), fieldLogDraft: { rows, radiusKm } } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, radiusKm]);
   const [busy, setBusy] = useState<'export' | 'cluster' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);

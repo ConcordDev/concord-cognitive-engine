@@ -29,7 +29,7 @@
  * macro the shape it actually reads, verified against `server/domains/science.js`.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FlaskConical, ShieldCheck, CheckCircle2, ListChecks, GitMerge, Eye,
   Sparkles, Send, Globe, Wand2, Plus, Trash2,
@@ -38,6 +38,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { useLensState } from '@/hooks/useLensState';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
@@ -82,26 +83,63 @@ interface SampleRow {
 }
 interface CustodyRow { transferredTo: string; receivedBy: string; date: string }
 
-export function ExperimentActionPanel() {
-  const [name, setName] = useState('');
-  const [protocol, setProtocol] = useState('');
-  const [samples, setSamples] = useState('');
-  const [instruments, setInstruments] = useState('');
-  const [dmRecipient, setDmRecipient] = useState('');
+// The bench's shipped example content. It stands AS VALUES on first load
+// (S3): the panel's checks run on the protocol the panel displays, instead
+// of the example living only in placeholder text over empty state, which
+// no action button could ever see.
+const SHIPPED_PROTOCOL = '1. Preparation: inoculate 5 mL LB+amp\n2. Execution: grow to OD600 = 0.6, induce with IPTG\n3. Data collection: read plate at 590nm\n4. Cleanup: autoclave waste';
+const SHIPPED_SAMPLES = 'S-001\nS-002';
+const SHIPPED_INSTRUMENTS = 'NanoDrop spectrophotometer';
 
-  const [calibRows, setCalibRows] = useState<CalibRow[]>([{ name: '', serial: '', calibrationDate: '', nextCalibration: '' }]);
-  const [safetyRows, setSafetyRows] = useState<SafetyRow[]>([{ desc: '', verified: false }]);
-  const [sampleRows, setSampleRows] = useState<SampleRow[]>([{ id: '', name: '', reqTemp: '', actualTemp: '', expiryDate: '', requiresGloves: false, glovesUsed: false, requiresSterile: false, sterileConfirmed: false }]);
-  const [custodySampleName, setCustodySampleName] = useState('');
-  const [custodyRows, setCustodyRows] = useState<CustodyRow[]>([{ transferredTo: '', receivedBy: '', date: '' }]);
+interface LabBenchDraft {
+  name?: string; protocol?: string; samples?: string; instruments?: string; dmRecipient?: string;
+  calibRows?: CalibRow[]; safetyRows?: SafetyRow[]; sampleRows?: SampleRow[];
+  custodySampleName?: string; custodyRows?: CustodyRow[];
+  calibrationResult?: MacroResult | null; protocolResult?: MacroResult | null;
+  auditResult?: MacroResult | null; custodyResult?: MacroResult | null;
+}
+
+export function ExperimentActionPanel() {
+  // Draft persistence (S5): the bench's form + check results ride the
+  // lens-state store, restored on mount and saved on change, so they
+  // survive reloads like the Workbench dataset does. Session artifacts
+  // (mint/publish ids, the vision read, the agent reply) are NOT
+  // persisted — they name acts of this session only.
+  const { restored, save: saveLensState } = useLensState('science');
+  const draft = restored?.customState?.labBenchDraft as LabBenchDraft | undefined;
+  const [name, setName] = useState(() => draft?.name ?? '');
+  const [protocol, setProtocol] = useState(() => draft?.protocol ?? SHIPPED_PROTOCOL);
+  const [samples, setSamples] = useState(() => draft?.samples ?? SHIPPED_SAMPLES);
+  const [instruments, setInstruments] = useState(() => draft?.instruments ?? SHIPPED_INSTRUMENTS);
+  const [dmRecipient, setDmRecipient] = useState(() => draft?.dmRecipient ?? '');
+
+  const [calibRows, setCalibRows] = useState<CalibRow[]>(() => (draft?.calibRows?.length ? draft.calibRows : [{ name: '', serial: '', calibrationDate: '', nextCalibration: '' }]));
+  const [safetyRows, setSafetyRows] = useState<SafetyRow[]>(() => (draft?.safetyRows?.length ? draft.safetyRows : [{ desc: '', verified: false }]));
+  const [sampleRows, setSampleRows] = useState<SampleRow[]>(() => (draft?.sampleRows?.length ? draft.sampleRows : [{ id: '', name: '', reqTemp: '', actualTemp: '', expiryDate: '', requiresGloves: false, glovesUsed: false, requiresSterile: false, sterileConfirmed: false }]));
+  const [custodySampleName, setCustodySampleName] = useState(() => draft?.custodySampleName ?? '');
+  const [custodyRows, setCustodyRows] = useState<CustodyRow[]>(() => (draft?.custodyRows?.length ? draft.custodyRows : [{ transferredTo: '', receivedBy: '', date: '' }]));
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
-  const [calibrationResult, setCalibrationResult] = useState<MacroResult | null>(null);
-  const [protocolResult, setProtocolResult] = useState<MacroResult | null>(null);
-  const [auditResult, setAuditResult] = useState<MacroResult | null>(null);
-  const [custodyResult, setCustodyResult] = useState<MacroResult | null>(null);
+  const [calibrationResult, setCalibrationResult] = useState<MacroResult | null>(() => draft?.calibrationResult ?? null);
+  const [protocolResult, setProtocolResult] = useState<MacroResult | null>(() => draft?.protocolResult ?? null);
+  const [auditResult, setAuditResult] = useState<MacroResult | null>(() => draft?.auditResult ?? null);
+  const [custodyResult, setCustodyResult] = useState<MacroResult | null>(() => draft?.custodyResult ?? null);
+
+  useEffect(() => {
+    saveLensState({
+      customState: {
+        ...(restored?.customState ?? {}),
+        labBenchDraft: {
+          name, protocol, samples, instruments, dmRecipient,
+          calibRows, safetyRows, sampleRows, custodySampleName, custodyRows,
+          calibrationResult, protocolResult, auditResult, custodyResult,
+        },
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, protocol, samples, instruments, dmRecipient, calibRows, safetyRows, sampleRows, custodySampleName, custodyRows, calibrationResult, protocolResult, auditResult, custodyResult]);
   const [visionResult, setVisionResult] = useState<string | null>(null);
   const [mintDtuId, setMintDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
@@ -131,7 +169,10 @@ export function ExperimentActionPanel() {
 
   const namedCalibRows = () => calibRows.filter(r => r.name.trim());
   const namedSampleRows = () => sampleRows.filter(r => r.id.trim() || r.name.trim());
-  const namedCustodyRows = () => custodyRows.filter(r => r.transferredTo.trim() && r.receivedBy.trim());
+  // A row carrying a transfer on either side is a transfer record: the
+  // chain the panel reports must count the rows the user rendered, not
+  // only the rows filled on both sides (S3 — the count matches its rows).
+  const namedCustodyRows = () => custodyRows.filter(r => r.transferredTo.trim() || r.receivedBy.trim());
 
   /* ---- calibration: the macro checks ONE piece of equipment at a time, so
      a multi-instrument check is N real calls, aggregated client-side. ---- */
@@ -192,7 +233,9 @@ export function ExperimentActionPanel() {
         };
         setProtocolResult(summary);
         pipe.publish('science.protocol', summary, { label: summary.status ?? 'protocol' });
-        ok('Protocol validated.');
+        // The receipt echoes the verdict (S3): a needs_revision result is
+        // not trailed by a success line claiming validation.
+        ok(rr.status === 'approved' ? 'Protocol validated.' : 'Protocol checked — needs revision (see the issues below).');
       } else err(r.error ?? 'protocol validate failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -238,7 +281,7 @@ export function ExperimentActionPanel() {
 
   async function actCustody() {
     const rows = namedCustodyRows();
-    if (!rows.length) { err('Add at least one transfer (transferred to + received by).'); return; }
+    if (!rows.length) { err('Add at least one transfer row.'); return; }
     setBusy('custody'); setFeedback(null);
     try {
       const r = await callMacro<{ intact: boolean; transfers: number; gaps: Array<{ position: number; expected: string; actual: string }> }>('chainOfCustody', {

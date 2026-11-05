@@ -269,7 +269,7 @@ describe('ContractorSuite — Certifications tab', () => {
     expect(within(mikeCard).getByText('(2)')).toBeInTheDocument();
   });
 
-  it('removing a certification calls cert-remove with the id, then reloads', async () => {
+  it('removing a certification confirms first, then calls cert-remove with the id and reloads', async () => {
     mockRoute({
       'cert-list': () => ok({ certifications: [CERT_VALID], roster: ['Mike Alvarez'], expiredCount: 0, expiringSoonCount: 0 }),
       'cert-remove': () => ok({ deleted: 'cert_1' }),
@@ -278,6 +278,11 @@ describe('ContractorSuite — Certifications tab', () => {
     await goToTab(/^Certifications$/);
     const removeBtn = await screen.findByLabelText('Remove OSHA 10-Hour Construction Safety certification for Mike Alvarez');
     fireEvent.click(removeBtn);
+    // F4: the first click only arms a confirmation naming the record —
+    // cert-remove has NOT run yet.
+    expect(await screen.findByText('Delete OSHA 10-Hour Construction Safety certification for Mike Alvarez?')).toBeInTheDocument();
+    expect(lensRun).not.toHaveBeenCalledWith('masonry', 'cert-remove', expect.anything());
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(lensRun).toHaveBeenCalledWith('masonry', 'cert-remove', { id: 'cert_1' }));
   });
 

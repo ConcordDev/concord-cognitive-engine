@@ -89,6 +89,8 @@ export function useConKayWorkspace(workspaceId: string | null) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [status, setStatus] = useState<SolveStatus>('loading');
   const [error, setError] = useState('');
+  /** The Models entry the open study belongs to (Save updates it in place). */
+  const [partId, setPartId] = useState<string | null>(null);
   /** No saved study for this workspace: the UI starts on "What do you want to build?". */
   const [fresh, setFresh] = useState(false);
   const startBeam = useCallback(() => setFresh(false), []);
@@ -133,6 +135,23 @@ export function useConKayWorkspace(workspaceId: string | null) {
       }
       : NEW_STUDY);
     setStatus('idle');
+    // Adopt the Models entry this study was saved as (same name and section),
+    // so Save keeps updating it in place across reloads. Best-effort: any
+    // mismatch simply leaves the study unlinked.
+    if (study) {
+      try {
+        const listed = await lensRun<{ parts: Array<{ id: string; name?: string; params?: Record<string, number>; material?: string | null }> }>('engineering', 'listParts', {});
+        const parts = listed.data?.ok === false ? [] : (listed.data?.result?.parts ?? []);
+        const mm = (v?: number) => Math.round((v ?? 0) * 1000 * 1000) / 1000;
+        const match = parts.filter((p) => p.name === study.name && p.params
+          && Math.abs(mm(p.params.length) - study.dims.length) < 1e-6
+          && Math.abs(mm(p.params.webThickness) - study.dims.webThickness) < 1e-6
+          && Math.abs(mm(p.params.flangeWidth) - study.dims.flangeWidth) < 1e-6);
+        setPartId(match.length === 1 ? match[0].id : null);
+      } catch { setPartId(null); }
+    } else {
+      setPartId(null);
+    }
     return study;
   }, [workspaceId]);
 
@@ -160,7 +179,9 @@ export function useConKayWorkspace(workspaceId: string | null) {
       setError(msg);
       return { error: msg };
     }
-    const full: BeamStudyResult = { ...res, workspaceId, dtuId: null };
+    // dtuId rides the solve response: the server carries a kept DTU over
+    // when the re-solve's inputs are identical to the kept solve's (F12a).
+    const full: BeamStudyResult = { ...res, workspaceId, dtuId: res.dtuId ?? null };
     setPrevious(resultRef.current);
     // Set now, not on the next render: "run fea and keep as dtu" keeps this
     // solve in the same turn.
@@ -191,20 +212,32 @@ export function useConKayWorkspace(workspaceId: string | null) {
     return nextModelName(preferredModelName(current ?? inputs.name, 'i-beam'), existing);
   }, [inputs.name]);
 
-  const saveModel = useCallback(async (nameOverride?: string): Promise<{ id: string; name: string } | { error: string }> => {
-    const listed = await lensRun<{ parts: Array<{ name?: string }> }>('engineering', 'listParts', {});
+  /**
+   * Save the open study to Models. With a linked part (opened from Models,
+   * saved before, or adopted on reload) this UPDATES that entry in place;
+   * otherwise it creates one — under exactly the name given. A name that
+   * belongs to a different model is refused loudly, never silently
+   * incremented (ConKay F3). `asCopy` forces a new entry (Save as copy).
+   */
+  const saveModel = useCallback(async (nameOverride?: string, opts?: { asCopy?: boolean }): Promise<{ id: string; name: string } | { error: string }> => {
+    const listed = await lensRun<{ parts: Array<{ id: string; name?: string }> }>('engineering', 'listParts', {});
     const existing = listed.data?.ok === false
       ? []
-      : (listed.data?.result?.parts ?? []).map((p) => String(p?.name || ''));
+      : (listed.data?.result?.parts ?? []).map((p) => ({ id: String(p?.id || ''), name: String(p?.name || '') }));
     const requested = nameOverride !== undefined ? nameOverride.trim() : preferredModelName(inputs.name, 'i-beam');
     if (!requested) return { error: 'A model name is required.' };
-    const name = nextModelName(requested, existing);
+    const linkId = opts?.asCopy ? null : partId;
+    const clash = existing.find((p) => p.name === requested && p.id !== linkId);
+    if (clash) {
+      return { error: `A model named “${requested}” already exists. Open it from Models to update it, or save under a different name.` };
+    }
     const fresh = inputsMatchResult(inputs, resultRef.current) ? resultRef.current : null;
     const snapshot = currentModelFromStudy(inputs, fresh);
     const r = await lensRun<{ part: { id: string; name: string } }>('engineering', 'savePart', {
+      ...(linkId ? { id: linkId } : {}),
       kind: 'i-beam',
       designType: 'i-beam',
-      name,
+      name: requested,
       material: inputs.materialId,
       params: snapshot.params,
       study: snapshot.study,
@@ -213,8 +246,28 @@ export function useConKayWorkspace(workspaceId: string | null) {
     });
     const part = r.data?.result?.part;
     if (r.data?.ok === false || !part?.id) return { error: r.data?.error || 'The part store refused this model.' };
+    setPartId(part.id);
     return { id: part.id, name: part.name };
-  }, [inputs]);
+  }, [inputs, partId]);
+
+  /** Start a fresh study in this workspace (ConKay F4): the template, unsolved, unlinked. */
+  const resetStudy = useCallback(() => {
+    setInputs(NEW_STUDY);
+    setResult(null);
+    setPrevious(null);
+    resultRef.current = null;
+    setPartId(null);
+    setFresh(false);
+    setStatus('idle');
+    setError('');
+  }, []);
+
+  /** Open a saved model as the study, linked so Save updates it in place. */
+  const openModel = useCallback((name: string, dims: BeamDims, materialId: string | null, id: string) => {
+    setInputs((s) => ({ ...s, name, dims, materialId: materialId || s.materialId }));
+    setPartId(id || null);
+    setFresh(false);
+  }, []);
 
   /** Create the report DTU, read it back, then attach it to the study. */
   const keepAsDtu = useCallback(async (): Promise<{ dtuId: string } | { error: string }> => {
@@ -238,7 +291,8 @@ export function useConKayWorkspace(workspaceId: string | null) {
 
   return {
     inputs, setInputs, result, previous, materials, status, error,
-    solve, sweep, saveModel, suggestName, keepAsDtu, reload,
+    solve, sweep, saveModel, suggestName, keepAsDtu, reload, resetStudy, openModel,
+    partId,
     fresh, startBeam,
     stale: Boolean(result) && !inputsMatchResult(inputs, result),
   };

@@ -43,7 +43,15 @@ export default function registerSpaceActions(registerLensAction) {
 
   registerLensAction("space", "orbitCalc", (ctx, artifact, _params) => { const data = artifact.data || {}; const altitude = parseFloat(data.altitudeKm) || 400; const radius = 6371 + altitude; const period = orbitalPeriodMinutes(altitude); const velocity = Math.sqrt(6.674e-11 * 5.972e24 / (radius * 1000)) / 1000; return { ok: true, result: { altitudeKm: altitude, orbitalRadiusKm: radius, periodMinutes: Math.round(period * 10) / 10, velocityKmS: Math.round(velocity * 100) / 100, orbitsPerDay: Math.round(1440 / period * 10) / 10, type: altitude < 2000 ? "LEO" : altitude < 35786 ? "MEO" : "GEO", escapeVelocity: `${Math.round(Math.sqrt(2) * velocity * 100) / 100} km/s` } }; });
   registerLensAction("space", "deltaVBudget", (ctx, artifact, _params) => { const maneuvers = artifact.data?.maneuvers || []; if (maneuvers.length === 0) return { ok: true, result: { message: "Add maneuvers with delta-V requirements." } }; const total = maneuvers.reduce((s,m) => s + (parseFloat(m.deltaV) || 0), 0); const analyzed = maneuvers.map(m => ({ maneuver: m.name || m.description, deltaV: parseFloat(m.deltaV) || 0, percentage: total > 0 ? Math.round((parseFloat(m.deltaV) || 0) / total * 100) : 0 })); return { ok: true, result: { maneuvers: analyzed, totalDeltaV: Math.round(total * 10) / 10, unit: "km/s", feasibility: total < 10 ? "achievable-with-chemical" : total < 50 ? "requires-efficient-propulsion" : "requires-advanced-propulsion" } }; });
-  registerLensAction("space", "launchWindow", (ctx, artifact, _params) => { const data = artifact.data || {}; const targetOrbit = (data.targetOrbit || "LEO").toUpperCase(); const latitude = parseFloat(data.launchLatitude) || 28.5; const inclination = parseFloat(data.inclination) || latitude; const windowsPerDay = targetOrbit === "GEO" ? 2 : targetOrbit === "LEO" ? Math.round(1440 / (2 * Math.PI * Math.sqrt(Math.pow(6771,3) / (6.674e-11 * 5.972e24)) / 60)) : 1; return { ok: true, result: { targetOrbit, launchLatitude: latitude, orbitalInclination: inclination, windowsPerDay, windowDuration: targetOrbit === "GEO" ? "~1 hour" : "5-10 minutes", nextWindowApprox: "Requires ephemeris data for precise calculation", inclinationPenalty: Math.abs(latitude - inclination) > 5 ? "Dogleg maneuver needed — additional fuel cost" : "Direct ascent possible" } }; });
+  registerLensAction("space", "launchWindow", (ctx, artifact, _params) => { const data = artifact.data || {}; const targetOrbit = (data.targetOrbit || "LEO").toUpperCase(); const latitude = parseFloat(data.launchLatitude) || 28.5; const inclination = parseFloat(data.inclination) || latitude;
+  // Windows/day is a plane-crossing ESTIMATE, never a computed count: a
+  // launch site rotates under a given orbit plane roughly twice a day (once
+  // per node crossing) — ~2 opportunities/day for LEO/MEO, ~1 for a GEO
+  // transfer window. The previous expression divided 1440 by a "period"
+  // computed with the radius in km against mu in m^3/s^2 and printed
+  // 492,728 (R2 space pass F4). Precise windows need ephemeris data, as
+  // nextWindowApprox states.
+  const windowsPerDay = targetOrbit === "GEO" ? 1 : 2; return { ok: true, result: { targetOrbit, launchLatitude: latitude, orbitalInclination: inclination, windowsPerDay, windowDuration: targetOrbit === "GEO" ? "~1 hour" : "5-10 minutes", nextWindowApprox: `Estimate: ~${windowsPerDay} ${windowsPerDay === 1 ? "opportunity" : "opportunities"} per day as the launch site rotates under the target orbit plane. Requires ephemeris data for precise calculation`, inclinationPenalty: Math.abs(latitude - inclination) > 5 ? "Dogleg maneuver needed — additional fuel cost" : "Direct ascent possible" } }; });
   registerLensAction("space", "reentryAnalysis", (ctx, artifact, _params) => { const data = artifact.data || {}; const mass = parseFloat(data.massKg) || 1000; const velocity = parseFloat(data.velocityKmS) || 7.8; const angle = parseFloat(data.reentryAngleDeg) || 6; const kineticEnergy = 0.5 * mass * Math.pow(velocity * 1000, 2); const peakG = angle > 3 ? Math.round(angle * 1.5 * 10) / 10 : Math.round(angle * 3 * 10) / 10; const peakTemp = Math.round(1000 + velocity * 200); return { ok: true, result: { massKg: mass, entryVelocity: `${velocity} km/s`, entryAngle: `${angle}°`, kineticEnergyGJ: Math.round(kineticEnergy / 1e9 * 10) / 10, peakDeceleration: `${peakG}g`, peakTemperature: `~${peakTemp}°C`, heatShieldRequired: peakTemp > 1500 ? "ablative" : "ceramic-tile", survivability: angle >= 1 && angle <= 10 ? "nominal-corridor" : angle < 1 ? "skip-off — too shallow" : "structural-failure — too steep" } }; });
 
   /**
@@ -683,8 +691,9 @@ export default function registerSpaceActions(registerLensAction) {
         const r = await fetch(`${SPACEX_BASE}/launches/upcoming`);
         if (!r.ok) throw new Error(`spacex ${r.status}`);
         const data = await r.json();
+        const nowS = Math.floor(Date.now() / 1000);
         const next = (data || [])
-          .filter((l) => l.date_unix)
+          .filter((l) => l.date_unix && l.date_unix >= nowS)
           .sort((a, b) => a.date_unix - b.date_unix)[0];
         if (!next) return { ok: true, result: { found: false } };
         const tMinusSeconds = next.date_unix - Math.floor(Date.now() / 1000);
@@ -707,13 +716,17 @@ export default function registerSpaceActions(registerLensAction) {
           },
         };
       }
-      const r = await fetch(`${LAUNCH_LIBRARY_BASE}/launch/upcoming/?limit=1&mode=detailed`);
+      const r = await fetch(`${LAUNCH_LIBRARY_BASE}/launch/upcoming/?limit=10&mode=detailed`);
       if (!r.ok) {
         if (r.status === 429) return { ok: false, error: "launch library rate limit exceeded" };
         throw new Error(`launch library ${r.status}`);
       }
       const data = await r.json();
-      const next = (data.results || [])[0];
+      // "Next launch" means the next FUTURE one: the upcoming feed can carry
+      // a launch whose NET is already past (in its window / held), and the
+      // countdown must roll past it, never settle on it (R2 space pass F6).
+      const nowS2 = Math.floor(Date.now() / 1000);
+      const next = (data.results || []).find((l) => l.net && Math.floor(new Date(l.net).getTime() / 1000) >= nowS2) || null;
       if (!next) return { ok: true, result: { found: false } };
       const netUnix = next.net ? Math.floor(new Date(next.net).getTime() / 1000) : null;
       const vidUrl = (next.vid_urls || []).find((v) => v.url)?.url || null;
@@ -744,16 +757,76 @@ export default function registerSpaceActions(registerLensAction) {
   });
 
   /**
-   * rocket-detail — Resolves a SpaceX rocket by id (e.g. from a launch's
-   * rocketId) or by name. Returns the full vehicle spec sheet. Free, no
-   * API key.
+   * rocket-detail — Vehicle spec sheets. Primary source is the SpaceX
+   * r-spacex API; when it is unreachable (it has been durably down — the
+   * R2 space pass saw 522 in both parts and no vehicle data ever), the
+   * handler falls back to Launch Library 2 launcher configurations so the
+   * Vehicles surface still returns real content, with the source labelled
+   * on every answer. Fields LL2 does not carry stay null and the UI
+   * renders "—" for them. Free, no API key.
    */
   registerLensAction("space", "rocket-detail", async (_ctx, _artifact, params = {}) => {
     const rocketId = spClean(params.rocketId, 60);
     const nameQuery = spClean(params.name, 80).toLowerCase();
+
+    const ll2Spec = (l) => {
+      const total = Number(l.total_launch_count) || 0;
+      const okN = Number(l.successful_launches) || 0;
+      const payloadWeights = [
+        l.leo_capacity != null ? { id: "leo", name: "LEO capacity", kg: Number(l.leo_capacity) } : null,
+        l.gto_capacity != null ? { id: "gto", name: "GTO capacity", kg: Number(l.gto_capacity) } : null,
+      ].filter(Boolean);
+      return {
+        found: true,
+        id: String(l.id),
+        name: l.full_name || l.name,
+        type: "rocket",
+        // LL2 carries no per-config active flag; leave unset (the UI shows
+        // its Active/Retired chip only when a boolean is present).
+        active: undefined,
+        stages: l.max_stage ?? null,
+        boosters: null,
+        costPerLaunchUsd: l.launch_cost != null ? Number(l.launch_cost) : null,
+        successRatePct: total > 0 ? Math.round((okN / total) * 100) : null,
+        firstFlight: l.maiden_flight || null,
+        country: l.manufacturer?.country_code || null,
+        company: l.manufacturer?.name || null,
+        heightMeters: l.length != null ? Number(l.length) : null,
+        diameterMeters: l.diameter != null ? Number(l.diameter) : null,
+        // LL2 launch_mass is in metric tonnes; the result shape is kg.
+        massKg: l.launch_mass != null ? Number(l.launch_mass) * 1000 : null,
+        payloadWeights,
+        description: l.description || null,
+        wikipedia: l.wiki_url || null,
+        flickrImages: l.image_url ? [l.image_url] : [],
+        source: "thespacedevs-launch-library",
+      };
+    };
+    const ll2Fallback = async () => {
+      const r = await fetch(`${LAUNCH_LIBRARY_BASE}/config/launcher/?limit=100`);
+      if (!r.ok) throw new Error(`launch library ${r.status}`);
+      const data = await r.json();
+      const all = data.results || [];
+      if (!rocketId && !nameQuery) {
+        return {
+          ok: true,
+          result: {
+            found: false,
+            fleet: all.map((x) => ({ id: String(x.id), name: x.full_name || x.name, active: undefined })),
+            source: "thespacedevs-launch-library",
+          },
+        };
+      }
+      const hit = nameQuery
+        ? all.find((x) => (x.full_name || x.name || "").toLowerCase().includes(nameQuery))
+        : all.find((x) => String(x.id) === rocketId);
+      if (!hit) return { ok: true, result: { found: false, source: "thespacedevs-launch-library" } };
+      return { ok: true, result: ll2Spec(hit) };
+    };
+
     try {
       let rocket = null;
-      if (rocketId) {
+      if (rocketId && !/^\d+$/.test(rocketId)) {
         const r = await fetch(`${SPACEX_BASE}/rockets/${encodeURIComponent(rocketId)}`);
         if (r.ok) rocket = await r.json();
       }
@@ -768,12 +841,16 @@ export default function registerSpaceActions(registerLensAction) {
             result: {
               found: false,
               fleet: (all || []).map((x) => ({ id: x.id, name: x.name, active: x.active })),
+              source: "spacexdata-api",
             },
           };
         }
         rocket = nameQuery
           ? (all || []).find((x) => (x.name || "").toLowerCase().includes(nameQuery))
           : (all || []).find((x) => x.id === rocketId);
+        // A numeric id is an LL2 fleet id (the picker echoes back whichever
+        // source served the fleet) — resolve it on the fallback source.
+        if (!rocket && /^\d+$/.test(rocketId)) return await ll2Fallback();
       }
       if (!rocket) return { ok: true, result: { found: false } };
       return {
@@ -806,16 +883,16 @@ export default function registerSpaceActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return { ok: false, error: `spacex unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      // SpaceX source unreachable — fall back to Launch Library 2 before
+      // declaring the surface dead (R2 space pass F7).
+      try {
+        return await ll2Fallback();
+      } catch {
+        return { ok: false, error: `spacex unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      }
     }
   });
 
-  /**
-   * sky-map — Planetarium / sky-map view. Pure-compute approximate
-   * geocentric positions of the visible planets (Mercury → Saturn) at the
-   * current instant using mean orbital elements, projected to the
-   * observer's alt/azimuth. No external API.
-   */
   registerLensAction("space", "sky-map", (_ctx, _artifact, params = {}) => {
   try {
     const lat = Number(params.latitude);
@@ -935,7 +1012,10 @@ export default function registerSpaceActions(registerLensAction) {
     const fOrbit = spClean(params.orbit, 60).toLowerCase();
     const fCountry = spClean(params.countryCode, 8).toUpperCase();
     try {
-      const r = await fetch(`${LAUNCH_LIBRARY_BASE}/launch/upcoming/?limit=${limit}&mode=list`);
+      // mode=detailed: list mode's sparse payload omits mission (the orbit
+      // facet) and trims provider/pad fields, so every facet read "Unknown"
+      // and the filters could filter nothing (R2 space pass F5).
+      const r = await fetch(`${LAUNCH_LIBRARY_BASE}/launch/upcoming/?limit=${limit}&mode=detailed`);
       if (!r.ok) {
         if (r.status === 429) return { ok: false, error: "launch library rate limit exceeded" };
         throw new Error(`launch library ${r.status}`);
@@ -984,6 +1064,15 @@ export default function registerSpaceActions(registerLensAction) {
    * or `count` for a random gallery. Uses keyless DEMO_KEY unless
    * NASA_API_KEY is set in the environment.
    */
+  // Last-good APOD payloads per request shape. The keyless DEMO_KEY quota
+  // (30 req/hr per IP) is exhausted almost permanently on a shared egress
+  // IP and NASA answers 500, so the lens's default imagery fetch failed in
+  // the open while the source itself was fine (R2 space pass F7). On an
+  // upstream failure the handler serves its last successful answer for the
+  // same request shape, LABELLED stale — the quote chain's degraded-answer
+  // idiom (domains/curated-free-apis.js). NASA_API_KEY remains the real
+  // cure and is named in the stale note.
+  const apodCache = new Map();
   registerLensAction("space", "apod", async (_ctx, _artifact, params = {}) => {
     const apiKey = process.env.NASA_API_KEY || "DEMO_KEY";
     const date = spClean(params.date, 12);
@@ -991,6 +1080,7 @@ export default function registerSpaceActions(registerLensAction) {
     let qs = `api_key=${encodeURIComponent(apiKey)}`;
     if (count > 0) qs += `&count=${count}`;
     else if (/^\d{4}-\d{2}-\d{2}$/.test(date)) qs += `&date=${date}`;
+    const cacheKey = count > 0 ? `count:${count}` : /^\d{4}-\d{2}-\d{2}$/.test(date) ? `date:${date}` : "today";
     try {
       const r = await fetch(`${NASA_API_BASE}/planetary/apod?${qs}`);
       if (!r.ok) throw new Error(`nasa apod ${r.status}`);
@@ -1005,11 +1095,21 @@ export default function registerSpaceActions(registerLensAction) {
         copyright: a.copyright || null,
       });
       const items = Array.isArray(data) ? data.map(mapOne) : [mapOne(data)];
-      return {
-        ok: true,
-        result: { items, count: items.length, usingDemoKey: apiKey === "DEMO_KEY", source: "nasa-apod" },
-      };
+      const result = { items, count: items.length, usingDemoKey: apiKey === "DEMO_KEY", source: "nasa-apod" };
+      apodCache.set(cacheKey, result);
+      return { ok: true, result };
     } catch (e) {
+      const cached = apodCache.get(cacheKey);
+      if (cached) {
+        return {
+          ok: true,
+          result: {
+            ...cached,
+            stale: true,
+            staleNote: "NASA's keyless image limit is exhausted right now — showing the last image this lens fetched. A server-side NASA_API_KEY gives the lens its own quota.",
+          },
+        };
+      }
       return { ok: false, error: `nasa apod unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });

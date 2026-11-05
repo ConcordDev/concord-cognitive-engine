@@ -103,6 +103,18 @@ describe("mentorship directory / discovery", () => {
     assert.equal(dir.ok, true);
     assert.equal(dir.result.count, 1);
     assert.ok(dir.result.skills.includes("rust"));
+    assert.equal(dir.result.mentors[0].hasAccount, true);
+  });
+
+  it("a profile with no user row is a dataset profile", () => {
+    call("mentor-register", ctxM, { name: "Ada", skills: ["rust"] });
+    const stranger = { actor: { userId: "dataset-row" }, userId: "dataset-row" };
+    call("mentor-register", stranger, { name: "Sample Row", skills: ["rust"] });
+    const dir = call("mentor-directory", ctxE, {});
+    const ada = dir.result.mentors.find((m) => m.name === "Ada");
+    const sample = dir.result.mentors.find((m) => m.name === "Sample Row");
+    assert.equal(ada.hasAccount, true);
+    assert.equal(sample.hasAccount, false);
   });
 
   it("mentor-directory filters by skill", () => {
@@ -357,6 +369,8 @@ describe("mentorship program report", () => {
     const r = call("program-report", ctxM, {});
     assert.equal(r.ok, true);
     assert.equal(r.result.mentors, 1);
+    assert.equal(r.result.ratedMentorCount, 0);
+    assert.equal(r.result.avgMentorRating, 0);
     assert.equal(r.result.activeMatches, 1);
     assert.equal(r.result.matchAcceptanceRate, 100);
     assert.ok(Array.isArray(r.result.cohort));
@@ -375,6 +389,18 @@ describe("mentorship program report", () => {
     const rM = call("program-report", ctxM, {});
     assert.equal(rM.result.goals.total, 2);
     assert.equal(rM.result.sessions.total, 1);
+  });
+
+  it("the mentor average is the mean of listed mentors who have a review", () => {
+    call("mentor-register", ctxM, { name: "Ada" });
+    call("mentor-register", ctxE, { name: "Bob" });
+    call("review-add", ctxE, { mentorId: "user_mentor", rating: 5, comment: "Clear" });
+    call("review-add", { actor: { userId: "user_other" }, userId: "user_other" }, {
+      mentorId: "user_mentor", rating: 3, comment: "Ok",
+    });
+    const r = call("program-report", ctxM, {});
+    assert.equal(r.result.ratedMentorCount, 1);
+    assert.equal(r.result.avgMentorRating, 4);
   });
 });
 

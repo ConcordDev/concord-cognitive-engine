@@ -38,7 +38,7 @@ vi.mock('socket.io-client', () => ({
 // Mirror the offline-db clock-sync mock the sibling socket test uses. The
 // grace-period paths under test never touch it, but keep the mock so no real
 // IndexedDB access can leak in.
-vi.mock('../offline/db', () => ({
+vi.mock('@/lib/offline/db', () => ({
   updateClockOffset: vi.fn(),
 }));
 

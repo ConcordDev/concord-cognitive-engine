@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ClipboardList, Loader2, Clock, User } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ConfirmDeleteButton, useDeleteSafety } from './DeleteSafety';
+import { requestDelete } from './delete-safety-store';
+import { notifyManufacturingMutated } from './mfg-events';
 
 export interface WorkOrder {
   id: string;
@@ -84,6 +87,7 @@ export function WorkOrderBoard() {
       const result = await load();
       setOrders(result.orders);
       setNotes(result.notes);
+      notifyManufacturingMutated();
     } catch (e) {
       setError(lensError(e, 'Could not create work order.'));
     } finally {
@@ -102,24 +106,72 @@ export function WorkOrderBoard() {
       const result = await load();
       setOrders(result.orders);
       setNotes(result.notes);
+      notifyManufacturingMutated();
     } catch (e) {
       setError(lensError(e, 'Could not update work order.'));
     }
   }
 
+  // Production recording is its own call ({ id, quantityProduced }) —
+  // deliberately separate from the status call above.
+  const [producedDraft, setProducedDraft] = useState<Record<string, string>>({});
+  async function recordProduction(o: WorkOrder) {
+    const raw = (producedDraft[o.id] ?? '').trim();
+    if (raw === '') return;
+    const qty = Number(raw);
+    if (!Number.isFinite(qty) || qty < 0) {
+      setError('Produced quantity must be a number ≥ 0.');
+      return;
+    }
+    setError(null);
+    try {
+      const res = await api.post('/api/lens/run', { domain: 'manufacturing', action: 'work-order-update', input: { id: o.id, quantityProduced: qty } });
+      if (res.data?.ok === false) {
+        setError(res.data.error || 'Could not record production.');
+        return;
+      }
+      setProducedDraft((prev) => { const next = { ...prev }; delete next[o.id]; return next; });
+      const result = await load();
+      setOrders(result.orders);
+      setNotes(result.notes);
+      notifyManufacturingMutated();
+    } catch (e) {
+      setError(lensError(e, 'Could not record production.'));
+    }
+  }
+
+  const { pendingKeys } = useDeleteSafety();
+  const visibleOrders = orders.filter((o) => !pendingKeys.includes(`work-order:${o.id}`));
+
+  function deleteOrder(o: WorkOrder) {
+    requestDelete({
+      key: `work-order:${o.id}`,
+      label: `${o.number} ${o.product}`,
+      commit: async () => {
+        const res = await api.post('/api/lens/run', { domain: 'manufacturing', action: 'work-order-delete', input: { id: o.id } });
+        if (res.data?.ok === false) throw new Error(res.data.error || 'Could not delete work order.');
+        const result = await load();
+        setOrders(result.orders);
+        setNotes(result.notes);
+        notifyManufacturingMutated();
+      },
+    });
+  }
+
   const byStatus = {
-    queued: orders.filter(o => o.status === 'queued'),
-    in_progress: orders.filter(o => o.status === 'in_progress'),
-    on_hold: orders.filter(o => o.status === 'on_hold'),
-    complete: orders.filter(o => o.status === 'complete'),
+    queued: visibleOrders.filter(o => o.status === 'queued'),
+    in_progress: visibleOrders.filter(o => o.status === 'in_progress'),
+    on_hold: visibleOrders.filter(o => o.status === 'on_hold'),
+    complete: visibleOrders.filter(o => o.status === 'complete'),
   };
+  const activeCount = visibleOrders.filter(o => o.status !== 'complete').length;
 
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <ClipboardList className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Work orders</span>
-        <span className="ml-auto text-[10px] text-gray-400">{orders.length} active</span>
+        <span className="ml-auto text-[10px] text-gray-400">{activeCount} active</span>
       </header>
       <form onSubmit={createOrder} className="px-3 py-2 border-b border-white/5 flex flex-wrap items-end gap-2">
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
@@ -194,6 +246,33 @@ export function WorkOrderBoard() {
                         {STATUSES.map((st) => <option key={st} value={st}>{st.replace(/_/g, ' ')}</option>)}
                       </select>
                     </label>
+                    <div className="mt-1.5 flex items-end gap-1">
+                      <label className="block flex-1 text-[9px] uppercase tracking-wider text-gray-500">
+                        Produced qty
+                        <input
+                          aria-label={`Produced quantity ${o.number}`}
+                          value={producedDraft[o.id] ?? ''}
+                          onChange={(e) => setProducedDraft((prev) => ({ ...prev, [o.id]: e.target.value }))}
+                          inputMode="numeric"
+                          placeholder={String(o.quantityProduced)}
+                          className="mt-0.5 w-full px-1 py-0.5 text-[10px] bg-[#0a0e17] border border-white/10 rounded text-white"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        aria-label={`Record production ${o.number}`}
+                        onClick={() => { void recordProduction(o); }}
+                        className="px-1.5 py-0.5 text-[10px] rounded bg-cyan-500/20 text-cyan-200 hover:bg-cyan-500/30"
+                      >
+                        Record
+                      </button>
+                      <ConfirmDeleteButton
+                        itemLabel={`${o.number} ${o.product}`}
+                        deleteTitle={`Delete work order ${o.number}`}
+                        onConfirm={() => deleteOrder(o)}
+                        className="px-1 py-0.5 text-gray-500 hover:text-rose-300"
+                      />
+                    </div>
                   </div>
                 );
               })}

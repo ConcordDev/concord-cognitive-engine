@@ -61,6 +61,7 @@ export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [scheduleFreq, setScheduleFreq] = useState('monthly');
   const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ status: 'active', annualPremium: '', deductible: '', renewalDate: '' });
   const [savingEdit, setSavingEdit] = useState(false);
@@ -130,6 +131,7 @@ export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated
   };
   const delPolicy = async (id: string) => {
     await lensRun('insurance', 'policy-delete', { id });
+    setConfirmId(null);
     if (selected?.id === id) setSelected(null);
     await refresh(); onChange();
   };
@@ -396,9 +398,18 @@ export function InsurancePoliciesPanel({ onChange, clients = [], onClientCreated
                   {p.insuredName ? ` · insured: ${p.insuredName}` : ''}
                 </p>
               </button>
-              <button aria-label="Delete" type="button" onClick={() => delPolicy(p.id)} className="text-zinc-600 hover:text-rose-400">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {confirmId === p.id ? (
+                <span className="inline-flex items-center gap-1">
+                  <button type="button" onClick={() => void delPolicy(p.id)}
+                    className="text-[11px] px-2 py-0.5 bg-rose-600/80 text-white rounded-lg">Delete policy?</button>
+                  <button type="button" onClick={() => setConfirmId(null)}
+                    className="text-[11px] px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded-lg">Keep</button>
+                </span>
+              ) : (
+                <button aria-label="Delete" type="button" onClick={() => setConfirmId(p.id)} className="text-zinc-600 hover:text-rose-400">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </li>
           ))}
         </ul>

@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Library, Play, Save, Trash2 } from 'lucide-react';
+import { Library, Play, Save } from 'lucide-react';
 import { ChartKit } from '@/components/viz';
 import {
   type WmEntity, type WmScenario, type WmSim,
-  btn, btnGhost, card, input, useTrajectoryChart, wmRun, WM_QUERY_KEYS,
+  btn, btnGhost, card, input, PerEntityTable, useTrajectoryChart, wmRun, WM_QUERY_KEYS,
 } from '@/components/worldmodel/wm-shared';
+import { ConfirmDeleteButton, useDeleteSafety } from '@/components/worldmodel/DeleteSafety';
+import { requestDelete } from '@/components/worldmodel/delete-safety-store';
 
 // ─── Library tab ────────────────────────────────────────────────────────
 export function LibraryPanel() {
@@ -31,18 +33,21 @@ export function LibraryPanel() {
     mutationFn: () => wmRun('save_scenario', { name, steps, growth, note, shocks: [] }),
     onSuccess: () => { setName(''); setNote(''); qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.scenarios }); },
   });
-  const del = useMutation({
-    mutationFn: (id: string) => wmRun('delete_scenario', { id }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.scenarios }),
+  // Scenario deletes run through the undo-window registry (S1).
+  const { pendingKeys } = useDeleteSafety();
+  const deleteScenario = (s: WmScenario) => requestDelete({
+    key: `scenario:${s.id}`,
+    label: s.name,
+    commit: async () => { await wmRun('delete_scenario', { id: s.id }); qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.scenarios }); },
   });
   const rerun = useMutation({
     mutationFn: (s: WmScenario) => wmRun<WmSim>('run_scenario', {
       name: s.name, steps: s.steps, growth: s.growth, shocks: s.shocks,
     }),
-    onSuccess: (sim) => { setLastRun(sim); qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.sims }); },
+    onSuccess: (sim) => { setLastRun(sim); qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.sims }); qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.status }); },
   });
   const chart = useTrajectoryChart(lastRun);
-  const list = scenarios.data?.scenarios ?? [];
+  const list = (scenarios.data?.scenarios ?? []).filter((s) => !pendingKeys.includes(`scenario:${s.id}`));
 
   return (
     <div className="space-y-4">
@@ -83,7 +88,13 @@ export function LibraryPanel() {
                   onClick={() => rerun.mutate(s)}>
                   <Play className="h-3 w-3" /> re-run
                 </button>
-                <button aria-label="Delete" className={btnGhost} onClick={() => del.mutate(s.id)}><Trash2 className="h-3 w-3" /></button>
+                <ConfirmDeleteButton
+                  itemLabel={s.name}
+                  deleteTitle="Delete scenario"
+                  consequence="Saved runs from it are kept."
+                  onConfirm={() => deleteScenario(s)}
+                  className={btnGhost}
+                />
               </li>
             ))}
           </ul>
@@ -96,6 +107,7 @@ export function LibraryPanel() {
             Re-run result · {lastRun.name} <span className="text-emerald-700">(total {lastRun.total})</span>
           </h3>
           <ChartKit kind="line" data={chart.data} xKey="step" series={chart.series} height={260} />
+          <PerEntityTable sim={lastRun} />
         </div>
       )}
     </div>

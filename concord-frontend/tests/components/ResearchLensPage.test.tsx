@@ -39,13 +39,11 @@ vi.mock('@/components/feedback/FeedbackWidget', () => ({ FeedbackWidget: () => n
 vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
 vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
-vi.mock('@/components/lens/LensFeaturePanel', () => ({ LensFeaturePanel: () => React.createElement('div', { 'data-testid': 'lens-feature-panel' }, 'features') }));
 vi.mock('@/components/feeds/LensFeedPanel', () => ({ LensFeedPanel: () => null }));
 vi.mock('@/components/lens/LiveFeed', () => ({ default: () => null, adaptToLiveFeedArticles: () => [] }));
 vi.mock('@/components/common/VisionAnalyzeButton', () => ({ VisionAnalyzeButton: () => null }));
 vi.mock('@/components/lens/PullToSubstrate', () => ({ PullToSubstrate: () => null }));
 vi.mock('@/components/lens/FeedBanner', () => ({ FeedBanner: () => null }));
-vi.mock('@/components/lens/UniversalActions', () => ({ UniversalActions: () => null }));
 vi.mock('@/components/common/EmptyState', () => ({ ErrorState: () => null }));
 // The page imports the NAMED export and renders <ResearchWorkbench embedded />
 // with no `open` prop (defaults to true) — the panel only mounts at all once

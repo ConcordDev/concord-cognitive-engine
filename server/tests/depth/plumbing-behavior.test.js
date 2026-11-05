@@ -37,10 +37,17 @@ describe("plumbing — calc actions (exact engineering values)", () => {
     assert.match(big.result.slopePerFoot, /^0\.125"/);              // >3" ⇒ 0.125
   });
 
-  it("fixtureCount: sums WSFU per IPC table and sizes the meter", async () => {
-    const r = await lensRun("plumbing", "fixtureCount", { data: { fixtures: [{ type: "toilet", count: 2 }, { type: "shower", count: 1 }] } });
+  it("fixtureCount: sums WSFU per IPC Table 709.1 and shows its basis", async () => {
+    const r = await lensRun("plumbing", "fixtureCount", { data: { fixtures: [{ type: "toilet", count: 2 }, { type: "lavatory", count: 1 }] } });
     assert.equal(r.ok, true);
-    assert.equal(r.result.totalWSFU, 7);   // toilet 2.5×2 + shower 2×1 = 7
+    // IPC Table 709.1 (private): flush-tank water closet 3, lavatory 1 → 7.
+    // (The prior pin — toilet 2.5x2 + shower 2 = 7 — encoded the wrong table
+    //  value; with it the live panel totalled 6 for this exact case against
+    //  the table it cites. Corrected with Review 4's F4 fix.)
+    assert.equal(r.result.totalWSFU, 7);
+    assert.equal(r.result.fixtures, 3);              // fixtures, not rows (was 2)
+    assert.equal(r.result.breakdown[0].wsfuEach, 3);
+    assert.equal(r.result.breakdown.reduce((s, b) => s + b.subtotal, 0), 7);
     assert.equal(r.result.meterSize, "3/4\"");
   });
 });
@@ -107,14 +114,18 @@ describe("plumbing — price book + estimating (wave 10 top-up)", () => {
     assert.equal(r.result.item.unit, "hr"); // labor default unit
   });
 
-  it("priceBookList: avgMarginPct is the mean markup across items", async () => {
+  it("priceBookList: avgMarkupPct is the mean markup; avgMarginPct is the true mean margin", async () => {
     // Fresh user so the three items above don't pollute the average.
+    // (The prior leg asserted avgMarginPct === the mean MARKUP — the F3
+    //  mislabel itself, priced by Review 4: a markup is not a margin.)
     const c2 = await depthCtx("plumbing-t10-pb-avg");
     await lensRun("plumbing", "priceItemAdd", { params: { name: "A", cost: 10, markupPct: 20 } }, c2);
     await lensRun("plumbing", "priceItemAdd", { params: { name: "B", cost: 10, markupPct: 40 } }, c2);
     const r = await lensRun("plumbing", "priceBookList", { params: {} }, c2);
     assert.equal(r.result.count, 2);
-    assert.equal(r.result.avgMarginPct, 30); // (20 + 40) / 2
+    assert.equal(r.result.avgMarkupPct, 30); // (20 + 40) / 2
+    // True margins: A (12-10)/12 = 16.7%, B (14-10)/14 = 28.6% → mean 22.6 → 23.
+    assert.equal(r.result.avgMarginPct, 23);
   });
 
   it("priceItemUpdate: recomputes price when cost/markup change", async () => {
@@ -822,5 +833,36 @@ describe("plumbing — municipal/AHJ inspections (dispatch-job-linked)", () => {
     } finally {
       globalThis._concordSTATE = savedState;
     }
+  });
+});
+
+describe("plumbing — tech workflow persistence + board marker (F5)", () => {
+  let ctx;
+  before(async () => { ctx = await depthCtx("plumbing-f5-wf"); });
+
+  it("workflow ticks persist across a fresh read, and dispatchBoard carries the marker", async () => {
+    const tech = await lensRun("plumbing", "techAdd", { params: { name: "Wanda" } }, ctx);
+    const job = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "Repipe", client: "Ng", techId: tech.result.tech.id, date: "2026-11-10" } }, ctx);
+    const assignmentId = job.result.assignment.id;
+    const boardRow = async () => {
+      const b = await lensRun("plumbing", "dispatchBoard", { params: {} }, ctx);
+      return [...b.result.lanes.flatMap((l) => l.assignments), ...b.result.unassigned].find((a) => a.id === assignmentId);
+    };
+    assert.equal((await boardRow()).workflow, null);   // not started — no probe needed
+    await lensRun("plumbing", "workflowStart", { params: { assignmentId } }, ctx);
+    await lensRun("plumbing", "workflowUpdate", { params: { assignmentId, checkIndex: 1, done: true } }, ctx);
+    const reread = await lensRun("plumbing", "workflowGet", { params: { assignmentId } }, ctx);
+    assert.equal(reread.result.workflow.checklist.filter((c) => c.done).length, 1);
+    assert.equal(reread.result.progress, 20);
+    assert.equal((await boardRow()).workflow.progress, 20);
+  });
+
+  it("workflowGet still refuses a stranger (anti-enumeration intact)", async () => {
+    const job = await lensRun("plumbing", "dispatchAssign", { params: { jobTitle: "Private job", client: "X" } }, ctx);
+    await lensRun("plumbing", "workflowStart", { params: { assignmentId: job.result.assignment.id } }, ctx);
+    const stranger = await depthCtx("plumbing-f5-stranger");
+    const r = await lensRun("plumbing", "workflowGet", { params: { assignmentId: job.result.assignment.id } }, stranger);
+    assert.equal(r.result.ok, false);
+    assert.match(r.result.error, /workflow_not_found/);
   });
 });

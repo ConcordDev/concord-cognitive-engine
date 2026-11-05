@@ -45,7 +45,7 @@ export function LegalDashboard({ onJumpTo }: { onJumpTo?: (n: ClioNav) => void }
     <div className="space-y-3">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Tile label="Open matters" value={String(data.openMatters)} icon={Briefcase} onClick={() => onJumpTo?.('matters')} />
-        <Tile label="Unbilled time" value={`$${data.unbilledTime.toLocaleString()}`} sub={`${data.unbilledHours.toFixed(1)} hrs`} icon={Timer} tone="amber" onClick={() => onJumpTo?.('time')} />
+        <Tile label="Unbilled time" value={`$${data.unbilledTime.toLocaleString()}`} sub={`${data.unbilledHours.toFixed(2)} hrs`} icon={Timer} tone="amber" onClick={() => onJumpTo?.('time')} />
         <Tile label="Open bills" value={`$${data.openInvTotal.toLocaleString()}`} sub={data.overdueInvoices > 0 ? `${data.overdueInvoices} overdue` : 'on track'} icon={FileText} tone={data.overdueInvoices > 0 ? 'negative' : 'amber'} onClick={() => onJumpTo?.('invoices')} />
         <Tile label="Trust balance" value={`$${data.trustBalance.toLocaleString()}`} icon={Scale} tone="positive" onClick={() => onJumpTo?.('trust')} />
       </div>

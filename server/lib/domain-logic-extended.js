@@ -1101,10 +1101,28 @@ EXTENDED_DOMAIN_RULES.set("database", {
 });
 
 // === Environment ===
+// Status vocabulary aligned to the page's real Status union (F2, Review 2
+// first pass 2026-10-31): FieldOpsPanel's Status is
+// active | monitoring | critical | remediation | closed | seasonal and every
+// create sends meta.status (default "active"). The old vocabulary
+// (draft/collecting/analyzed/published/archived) shared NO status with the
+// page, so validateArtifact rejected 100% of Site Manager creates with
+// validation_failed regardless of fields — the stale-vocabulary genus
+// domain-logic.js documents for services/security (audit #240). Transitions
+// are a complete graph: the editor is a free status dropdown with no
+// workflow gate. "capture" joins the types on the Quick Capture precedent:
+// a capture is an in-domain DTU creation (retail F10 shape).
 EXTENDED_DOMAIN_RULES.set("environment", {
-  types: ["assessment", "monitoring", "policy", "report", "impact-study"],
-  validStatuses: ["draft", "collecting", "analyzed", "published", "archived"],
-  transitions: { draft: ["collecting", "archived"], collecting: ["analyzed"], analyzed: ["published", "collecting"], published: ["archived"], archived: [] },
+  types: ["assessment", "monitoring", "policy", "report", "impact-study", "capture"],
+  validStatuses: ["active", "monitoring", "critical", "remediation", "closed", "seasonal"],
+  transitions: {
+    active: ["monitoring", "critical", "remediation", "closed", "seasonal"],
+    monitoring: ["active", "critical", "remediation", "closed", "seasonal"],
+    critical: ["active", "monitoring", "remediation", "closed", "seasonal"],
+    remediation: ["active", "monitoring", "critical", "closed", "seasonal"],
+    closed: ["active", "monitoring", "critical", "remediation", "seasonal"],
+    seasonal: ["active", "monitoring", "critical", "remediation", "closed"],
+  },
   requiredFields: { assessment: ["title"] },
   computedFields: (type, data) => { data.metricCount = (data.metrics || []).length; return data; },
   scoring: (type, data) => Math.round(((data.metrics || []).length > 0 ? 0.5 : 0.2) * 100) / 100,
@@ -1161,11 +1179,23 @@ EXTENDED_DOMAIN_RULES.set("fitness", {
 });
 
 // === Food ===
+// This rule was authored for a generic recipe/meal-plan/inventory
+// vocabulary that was never reconciled against the real frontend — the
+// same stale-vocabulary class fixed for trades/services/security.
+// FoodKitchenWorkbench's ArtifactType union is Recipe | MealPlan |
+// ShoppingItem | PantryItem | Menu | InventoryItem | Booking | Batch |
+// Shift and its Status union is prep | active | 86d | seasonal |
+// archived, so every dialog create in the lens failed validateArtifact:
+// Recipe/PantryItem/MealPlan on the status check (the form's default
+// status "prep" is not a rule status), Menu/InventoryItem/Booking/
+// Batch/Shift on the type check as well (no rule type, and Menu had no
+// create path at any layer). The rule now carries the frontend's real
+// vocabulary alongside the macro-era lowercase types and statuses.
 EXTENDED_DOMAIN_RULES.set("food", {
-  types: ["recipe", "meal-plan", "inventory", "nutrition", "review"],
-  validStatuses: ["draft", "tested", "published", "archived"],
+  types: ["recipe", "meal-plan", "inventory", "nutrition", "review", "Recipe", "MealPlan", "ShoppingItem", "PantryItem", "Menu", "InventoryItem", "Booking", "Batch", "Shift"],
+  validStatuses: ["draft", "tested", "published", "archived", "prep", "active", "86d", "seasonal"],
   transitions: { draft: ["tested", "archived"], tested: ["published", "draft"], published: ["archived"], archived: [] },
-  requiredFields: { recipe: ["title"] },
+  requiredFields: { recipe: ["title"], Recipe: ["name"], MealPlan: ["name"], ShoppingItem: ["name"], PantryItem: ["name"], Menu: ["name"], InventoryItem: ["name"], Booking: ["name"], Batch: ["name"], Shift: ["name"] },
   computedFields: (type, data) => { data.ingredientCount = (data.ingredients || []).length; data.totalCalories = (data.ingredients || []).reduce((s, i) => s + (i.calories || 0), 0); return data; },
   scoring: (type, data) => Math.round(((data.ingredients || []).length > 0 ? 0.5 : 0.2) * 100) / 100,
 });
@@ -1312,7 +1342,10 @@ EXTENDED_DOMAIN_RULES.set("music", {
 
 // === Nonprofit ===
 EXTENDED_DOMAIN_RULES.set("nonprofit", {
-  types: ["campaign", "donor", "grant", "volunteer", "report"],
+  // "capture" admitted on the retail/environment precedent: Quick Capture
+  // failed validation_failed here (the capture genus's eighth domain,
+  // cross-check #77(f)) because the rule admitted no capture type.
+  types: ["campaign", "donor", "grant", "volunteer", "report", "capture"],
   validStatuses: ["draft", "active", "funded", "completed", "archived"],
   transitions: { draft: ["active", "archived"], active: ["funded", "completed", "archived"], funded: ["completed", "archived"], completed: ["archived"], archived: [] },
   requiredFields: { campaign: ["title"] },
@@ -1342,7 +1375,12 @@ EXTENDED_DOMAIN_RULES.set("realestate", {
 
 // === Retail ===
 EXTENDED_DOMAIN_RULES.set("retail", {
-  types: ["product", "order", "inventory", "promotion", "return"],
+  // "capture" is the Quick Capture dialog's type (components/common/
+  // QuickCapture.tsx creates { type: "capture" } in the open lens). Ruled
+  // domains reject any type outside this list with validation_failed —
+  // Retail refused every capture (the capture genus's fifth domain) until
+  // the type the dialog actually sends was admitted here.
+  types: ["product", "order", "inventory", "promotion", "return", "capture"],
   validStatuses: ["draft", "active", "sold", "returned", "archived"],
   transitions: { draft: ["active", "archived"], active: ["sold", "archived"], sold: ["returned", "archived"], returned: ["archived"], archived: [] },
   requiredFields: { product: ["title"] },

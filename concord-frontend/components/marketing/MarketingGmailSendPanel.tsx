@@ -53,13 +53,34 @@ export function MarketingGmailSendPanel({ campaignId, campaignName }: { campaign
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SendResult | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
 
   const loadHistory = useCallback(async () => {
     const r = await lensRun('marketing', 'campaign-gmail-send-history', { campaignId });
     setHistory((r.data?.result as { sends?: HistoryEntry[] } | null)?.sends || []);
   }, [campaignId]);
 
+  // Name the connected account at the send surface (build(marketing) S2 —
+  // the Lead's F3(a) price: a live send names the connected account and the
+  // cap). The identity source already exists: the gmail domain's `profile`
+  // verb (getGmailProfile → the mailbox's own emailAddress). A failed
+  // profile read with a not-connected reason raises the same Connect
+  // affordance a failed send would, before a doomed send is attempted.
+  const loadAccount = useCallback(async () => {
+    try {
+      const r = await lensRun('gmail', 'profile');
+      const email = (r.data?.result as { profile?: { emailAddress?: string } } | null)?.profile?.emailAddress;
+      if (r.data?.ok && email) { setAccountEmail(email); return; }
+      const reason = r.data?.error || r.data?.reason || '';
+      if (NOT_CONNECTED_REASONS.has(reason)) setNotConnected(true);
+    } catch {
+      // A network failure naming no account: leave the surface as-is; the
+      // send attempt itself still prechecks and reports honestly.
+    }
+  }, []);
+
   useEffect(() => { void loadHistory(); }, [loadHistory]);
+  useEffect(() => { void loadAccount(); }, [loadAccount]);
   useEffect(() => { setSubject(campaignName); }, [campaignName]);
 
   const parsedRecipients = recipients
@@ -107,7 +128,8 @@ export function MarketingGmailSendPanel({ campaignId, campaignName }: { campaign
         <Mail className="w-3.5 h-3.5 text-emerald-400" /> Send via Gmail
       </h4>
       <p className="text-[11px] text-zinc-400">
-        Sends real email through your connected Gmail account — one message per
+        Sends real email through your connected Gmail account
+        {accountEmail ? <> (<span className="text-zinc-200">{accountEmail}</span>)</> : ''} — one message per
         recipient, capped at {RECIPIENT_CAP} per send. This is a low-volume,
         per-user send, not bulk delivery.
       </p>
@@ -175,16 +197,22 @@ export function MarketingGmailSendPanel({ campaignId, campaignName }: { campaign
         </div>
       )}
 
-      {history.length > 0 && (
-        <div data-testid="gmail-send-history" className="border-t border-zinc-800 pt-2 space-y-1">
-          <p className="text-[10px] text-zinc-500 flex items-center gap-1"><History className="w-3 h-3" /> Send history</p>
-          {history.slice(0, 5).map((h) => (
+      {/* The history block renders ALWAYS (build(marketing) S3 — the Lead's
+          F3(b) price): gating it on history.length hid the audit surface
+          until after a first send, which is why the first pass found "no
+          send-history view anywhere in the lens". */}
+      <div data-testid="gmail-send-history" className="border-t border-zinc-800 pt-2 space-y-1">
+        <p className="text-[10px] text-zinc-500 flex items-center gap-1"><History className="w-3 h-3" /> Send history</p>
+        {history.length === 0 ? (
+          <p className="text-[10px] text-zinc-500">No sends yet — this campaign has not been sent via Gmail.</p>
+        ) : (
+          history.slice(0, 5).map((h) => (
             <p key={h.id} className="text-[10px] text-zinc-500">
               {new Date(h.at).toLocaleString()} — {h.sent} sent{h.failed > 0 ? `, ${h.failed} failed` : ''}
             </p>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }
