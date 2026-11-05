@@ -251,7 +251,11 @@ describe("services — recurring + waitlist", () => {
     const b = call("waitlistAdd", ctxA, { client: "Bea" });
     const rm = call("waitlistRemove", ctxA, { id: b.result.entry.id });
     assert.equal(rm.ok, true);
-    assert.equal(rm.result.entry.status, "removed");
+    // F7/F9 contract (services full build): removal is REAL — the entry
+    // leaves the list and the counts, not a "removed" tombstone.
+    assert.equal(rm.result.removed, true);
+    const after = call("waitlistList", ctxA, {});
+    assert.ok(!after.result.waitlist.some((w) => w.id === b.result.entry.id));
   });
 
   it("orders the waitlist by priority", () => {
