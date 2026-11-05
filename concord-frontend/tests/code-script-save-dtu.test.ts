@@ -119,7 +119,7 @@ describe('panel wiring (source assertions)', () => {
     expect(panel).toContain('The script itself is saved; save again to retry the DTU.');
   });
   it('the link is persisted on the artifact and read back on open', () => {
-    expect(panel).toContain('await updateScript({ id: artifactId, data: { dtuId } })');
+    expect(panel).toContain('await updateScript(artifactId, { data: { dtuId } })');
     expect(panel).toContain('dtuId: data?.dtuId');
     expect(panel).toContain('...(tab.dtuId ? { dtuId: tab.dtuId } : {})');
   });

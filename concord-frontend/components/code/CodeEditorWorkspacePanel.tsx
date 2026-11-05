@@ -709,7 +709,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
       // both exist either way; a failed stamp is a warning, not a failure.
       if (dtuId && dtuId !== tab.dtuId && artifactId) {
         try {
-          await updateScript({ id: artifactId, data: { dtuId } });
+          await updateScript(artifactId, { data: { dtuId } });
         } catch {
           setSaveError('Saved — the script and its DTU both exist, but the link between them could not be recorded. Saving again from a reopened tab may create a second DTU copy.');
         }
