@@ -134,6 +134,16 @@ function buildArxivMacro(register, domain) {
     try {
       const xml = await fetchTextWithTimeout(req.url);
       const entries = parseArxivAtom(xml);
+      // F13 (ML pass; the shape is every arXiv lens's): an arXiv error
+      // page or a rate-limit body parses to zero entries, and the macro
+      // used to return that as a successful EMPTY feed — the panel then
+      // showed "no papers" under a REAL-data badge while Refresh moved
+      // only the timestamp. A category feed with no query ALWAYS has
+      // papers; zero entries there is a failed fetch, reported as one.
+      // A queried search may honestly return zero — that stays ok.
+      if (entries.length === 0 && !req.query) {
+        return { ok: false, reason: "arxiv_empty_feed", error: "arXiv returned no papers for this category feed" };
+      }
       return {
         ok: true,
         source: "arXiv",

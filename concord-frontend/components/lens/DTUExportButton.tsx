@@ -54,9 +54,32 @@ export function DTUExportButton({
           return;
         }
       }
+      // F14: the whole payload rides one POST, and a large lens state
+      // died at the server's body limit as a raw "status code 413"
+      // toast. Guard BEFORE the post: if the serialized payload is
+      // oversized and carries an items array (the lens-export shape
+      // built above), trim it progressively and MARK the export as
+      // partial with both counts — an honest partial .dtu beats a
+      // dead click.
+      let outPayload: unknown = payload;
+      try {
+        const items = (payload as { items?: unknown[] })?.items;
+        if (Array.isArray(items) && items.length > 0) {
+          let size = JSON.stringify(payload).length;
+          let kept = items.length;
+          while (size > 900_000 && kept > 1) {
+            kept = Math.floor(kept / 2);
+            outPayload = { ...(payload as Record<string, unknown>), items: items.slice(0, kept), truncated: true, exportedCount: kept, totalCount: items.length };
+            size = JSON.stringify(outPayload).length;
+          }
+          if ((outPayload as { truncated?: boolean })?.truncated) {
+            addToast({ type: 'info', message: `Large export — packaging the first ${kept} of ${items.length} items so the file stays within the size limit.` });
+          }
+        }
+      } catch { /* sizing is best-effort; the post below still runs */ }
       const response = await api.post(
         `/api/lens/${domain}/export-dtu`,
-        { data: payload, title: title || `${domain} export`, tags: tags || [domain, 'export'] },
+        { data: outPayload, title: title || `${domain} export`, tags: tags || [domain, 'export'] },
         { responseType: 'blob' }
       );
 
@@ -74,7 +97,14 @@ export function DTUExportButton({
       setExported(true);
       setTimeout(() => setExported(false), 2000);
     } catch (e) {
-      const message = e instanceof Error && e.message ? e.message : 'Export failed.';
+      // Errors reach the user in user language — never a raw HTTP
+      // status line ("Request failed with status code 413").
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      const message =
+        status === 413 ? 'Export too large — this lens’s data is bigger than a single .dtu file can hold. The JSON export (Export menu) has no such limit.'
+        : status === 401 || status === 403 ? 'Export needs you signed in — sign in and try again.'
+        : status !== undefined ? `Export failed — the server answered with an error (${status}). Nothing was downloaded.`
+        : 'Export failed — could not reach the server. Nothing was downloaded.';
       addToast({ type: 'error', message });
     } finally {
       setExporting(false);

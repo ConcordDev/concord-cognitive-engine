@@ -137,6 +137,139 @@ describe("ml.model-card", () => {
   });
 });
 
+describe("ml bench integrity (S-ML-3)", () => {
+  it("Evaluate refuses a length mismatch with BOTH counts named — no silent truncation (F4)", () => {
+    const r = call("modelEvaluate", ctxA, {
+      data: { predictions: ["a", "b", "a"], actuals: ["a", "b"] },
+    }, {});
+    assert.equal(r.ok, false);
+    assert.match(r.error, /length_mismatch/);
+    assert.match(r.error, /predictions has 3/);
+    assert.match(r.error, /actuals has 2/);
+  });
+
+  it("Evaluate results carry both input counts beside the figures (D1)", () => {
+    const r = call("modelEvaluate", ctxA, {
+      data: { predictions: ["a", "b"], actuals: ["a", "b"] },
+    }, {});
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.result.counts, { predictions: 2, actuals: 2 });
+    assert.equal(r.result.accuracy, 100);
+  });
+
+  it("experiment-log refuses an out-of-range accuracy and stores nothing (F6)", async () => {
+    const start = call("experiment-start", ctxA, { name: "range-check" });
+    const id = start.result.experiment.id;
+    const bad = call("experiment-log", ctxA, { experimentId: id, accuracy: 2 });
+    assert.equal(bad.ok, false);
+    assert.match(bad.error, /accuracy out of range/);
+    const list = call("experiment-list", ctxA, {});
+    const exp = list.result.experiments.find((e) => e.id === id);
+    assert.equal(exp.metrics.length, 0);
+    const good = call("experiment-log", ctxA, { experimentId: id, accuracy: 0.87 });
+    assert.equal(good.ok, true);
+  });
+
+  it("dataset-register refuses splits that do not sum to 1 (F6)", () => {
+    const r = call("dataset-register", ctxA, { name: "split-check", train: 0.9, val: 0.9, test: 0.9 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /splits must sum to 1/);
+  });
+
+  it("re-register updates the splits and a blank features field keeps the prior count (F6/F7)", () => {
+    const v1 = call("dataset-register", ctxA, { name: "keep-features", samples: 100, features: 12 });
+    assert.equal(v1.ok, true);
+    const v2 = call("dataset-register", ctxA, { name: "keep-features", train: 0.6, val: 0.2, test: 0.2 });
+    assert.equal(v2.ok, true);
+    assert.deepEqual(v2.result.dataset.splits, { train: 0.6, val: 0.2, test: 0.2 });
+    assert.equal(v2.result.dataset.versions[0].features, 12);
+    assert.equal(v2.result.dataset.versions[0].samples, 100);
+  });
+});
+
+describe("ml lifecycle completion (S-ML-4)", () => {
+  it("dataset-delete removes the caller's dataset and no one else's (F7)", () => {
+    const a = call("dataset-register", ctxA, { name: "to-delete" });
+    const id = a.result.dataset.id;
+    call("dataset-register", ctxB, { name: "to-delete" });
+    const wrong = call("dataset-delete", ctxB, { datasetId: id });
+    assert.equal(wrong.ok, false);
+    const r = call("dataset-delete", ctxA, { datasetId: id });
+    assert.equal(r.ok, true);
+    const list = call("dataset-list", ctxA, {});
+    assert.equal(list.result.datasets.some((d) => d.id === id), false);
+    const again = call("dataset-delete", ctxA, { datasetId: id });
+    assert.equal(again.ok, false);
+  });
+
+  it("deploy-delete removes the caller's deployment (F7)", async () => {
+    const c = call("deploy-create", ctxA, { modelId: "gpt2", name: "doomed" });
+    const id = c.result.deployment.id;
+    const r = call("deploy-delete", ctxA, { deploymentId: id });
+    assert.equal(r.ok, true);
+    const list = call("deploy-list", ctxA, {});
+    assert.equal(list.result.deployments.some((d) => d.id === id), false);
+  });
+});
+
+describe("ml.model-card (S-ML-5)", () => {
+  it("fetches the card with the RAW namespaced id (no %2F) and maps the files list (F9)", async () => {
+    let seenUrl;
+    globalThis.fetch = async (url) => {
+      seenUrl = url;
+      return { ok: true, status: 200, json: async () => ({ id: "openai-community/gpt2", pipeline_tag: "text-generation", library_name: "transformers", downloads: 10, likes: 2, tags: ["license:apache-2.0"], siblings: [{ rfilename: "config.json" }, { rfilename: "model.safetensors" }] }) };
+    };
+    const r = await call("model-card", ctxA, { modelId: "openai-community/gpt2" });
+    assert.equal(r.ok, true);
+    assert.ok(seenUrl.includes("api/models/openai-community/gpt2"), seenUrl);
+    assert.ok(!seenUrl.includes("%2F"), seenUrl);
+    assert.deepEqual(r.result.card.siblings, ["config.json", "model.safetensors"]);
+    assert.equal(r.result.card.license, "apache-2.0");
+  });
+
+  it("a missing model is named not found — not conflated with an unreachable hub (F9)", async () => {
+    globalThis.fetch = async () => { throw new Error("HTTP 404"); };
+    const r = await call("model-card", ctxA, { modelId: "nope/missing" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /model not found/);
+  });
+});
+
+describe("ml AutoML wiring (S-ML-9)", () => {
+  it("only tabular-classification is marked wired; the rest are guidance", () => {
+    const r = call("automl-templates", ctxA, {});
+    const byId = Object.fromEntries(r.result.templates.map((t) => [t.id, t.wired]));
+    assert.equal(byId["tabular-classification"], true);
+    assert.equal(byId["tabular-regression"], false);
+    assert.equal(byId["clustering"], false);
+  });
+
+  it("automl-run executes the configuration run over a registered dataset and tracks the experiment", () => {
+    const reg = call("dataset-register", ctxA, { name: "automl-data", samples: 2000, features: 20 });
+    const dsId = reg.result.dataset.id;
+    const r = call("automl-run", ctxA, { templateId: "tabular-classification", datasetId: dsId });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.run.profile.samples, 2000);
+    assert.equal(r.result.run.suggestion.nEstimators, 200);
+    assert.equal(r.result.run.steps.length, 3);
+    const list = call("experiment-list", ctxA, {});
+    const exp = list.result.experiments.find((e) => e.id === r.result.run.experimentId);
+    assert.ok(exp, "the tracked experiment exists");
+    assert.equal(exp.status, "completed");
+    assert.match(r.result.run.note, /does not train in-browser/);
+  });
+
+  it("automl-run refuses guidance templates and shapeless datasets honestly", () => {
+    const guidance = call("automl-run", ctxA, { templateId: "clustering", datasetId: "whatever" });
+    assert.equal(guidance.ok, false);
+    assert.match(guidance.error, /guidance only/);
+    const reg = call("dataset-register", ctxA, { name: "shapeless" });
+    const noShape = call("automl-run", ctxA, { templateId: "tabular-classification", datasetId: reg.result.dataset.id });
+    assert.equal(noShape.ok, false);
+    assert.match(noShape.error, /no recorded shape/);
+  });
+});
+
 describe("ml.playground-infer", () => {
   it("requires modelId + input", async () => {
     assert.equal((await call("playground-infer", ctxA, {})).ok, false);
@@ -152,6 +285,65 @@ describe("ml.playground-infer", () => {
     assert.equal(seen.init.headers.Authorization, "Bearer hf_test");
     assert.equal(typeof r.result.latencyMs, "number");
     assert.ok(Array.isArray(r.result.output));
+  });
+
+  it("S-ML-1: routes across providers — a refusing provider falls through, the receipt names the server", async () => {
+    const calls = [];
+    globalThis.fetch = async (url) => {
+      calls.push(url);
+      if (url.includes("huggingface.co/api/models/")) {
+        return { ok: true, status: 200, json: async () => ({ inferenceProviderMapping: { "hf-inference": {}, together: {} } }) };
+      }
+      if (url.includes("/hf-inference/")) return { ok: false, status: 400, json: async () => ({ error: "Model not supported by provider hf-inference" }) };
+      return { ok: true, status: 200, json: async () => ([{ generated_text: "hi" }]) };
+    };
+    const r = await call("playground-infer", { ...ctxA, hfToken: "hf_test" }, { modelId: "some/model", input: "hello" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.servedBy, "together");
+    assert.equal(r.result.attempts.length, 2);
+    assert.equal(r.result.attempts[0].provider, "hf-inference");
+    assert.equal(r.result.attempts[0].ok, false);
+    assert.match(r.result.attempts[0].error, /not supported/i);
+    assert.equal(r.result.attempts[1].ok, true);
+    assert.ok(calls.some((u) => u.includes("router.huggingface.co/together/models/some/model")));
+  });
+
+  it("S-ML-1: a model no provider serves is refused BEFORE the run, in plain language", async () => {
+    let routerCalled = false;
+    globalThis.fetch = async (url) => {
+      if (url.includes("router.huggingface.co")) routerCalled = true;
+      return { ok: true, status: 200, json: async () => ({ inferenceProviderMapping: {} }) };
+    };
+    const r = await call("playground-infer", { ...ctxA, hfToken: "hf_test" }, { modelId: "some/model", input: "hello" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /not servable: no hosted-inference provider serves/);
+    assert.equal(routerCalled, false);
+  });
+
+  it("S-ML-1: an unknown model id is named as not found before any run", async () => {
+    let routerCalled = false;
+    globalThis.fetch = async (url) => {
+      if (url.includes("router.huggingface.co")) routerCalled = true;
+      return { ok: false, status: 404, json: async () => ({}) };
+    };
+    const r = await call("playground-infer", { ...ctxA, hfToken: "hf_test" }, { modelId: "nope/missing", input: "hello" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /model not found/);
+    assert.equal(routerCalled, false);
+  });
+
+  it("S-ML-1: when every provider fails, the error shows its work (providers tried + attempts recorded)", async () => {
+    globalThis.fetch = async (url) => {
+      if (url.includes("huggingface.co/api/models/")) {
+        return { ok: true, status: 200, json: async () => ({ inferenceProviderMapping: { "hf-inference": {}, together: {} } }) };
+      }
+      return { ok: false, status: 503, json: async () => ({ error: "provider down" }) };
+    };
+    const r = await call("playground-infer", { ...ctxA, hfToken: "hf_test" }, { modelId: "some/model", input: "hello" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no provider could serve/);
+    assert.match(r.error, /hf-inference, together/);
+    assert.equal(r.attempts.length, 2);
   });
 
   it("without a Hugging Face token, inference is reported unavailable (no request made)", async () => {

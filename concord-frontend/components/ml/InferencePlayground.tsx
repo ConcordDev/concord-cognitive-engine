@@ -15,6 +15,8 @@ interface InferResult {
   output: unknown;
   latencyMs: number;
   source: string;
+  servedBy?: string;
+  attempts?: Array<{ provider: string; ok: boolean; error?: string }>;
 }
 
 export function InferencePlayground({ initialModel = '' }: { initialModel?: string }) {
@@ -63,7 +65,7 @@ export function InferencePlayground({ initialModel = '' }: { initialModel?: stri
           <TestTube className="w-4 h-4 text-neon-purple" /> Inference Playground
         </h3>
         <p className="text-xs text-gray-400">
-          Runs against the Hugging Face hosted Inference API. First call may cold-start the model.
+          Runs against Hugging Face hosted inference, routed across the providers that serve the model — if one provider won't serve it, the next is tried. Every run shows a receipt naming the provider that actually served it; a model no provider serves is refused before the run, with the reason.
         </p>
         <div>
           <label className="text-sm text-gray-400 block mb-1">Model ID</label>
@@ -101,9 +103,20 @@ export function InferencePlayground({ initialModel = '' }: { initialModel?: stri
         </h3>
         <div className="panel p-4 h-[340px] overflow-auto">
           {result ? (
-            <pre className="text-xs font-mono text-neon-green whitespace-pre-wrap">
-              {JSON.stringify(result.output, null, 2)}
-            </pre>
+            <>
+              <pre className="text-xs font-mono text-neon-green whitespace-pre-wrap">
+                {JSON.stringify(result.output, null, 2)}
+              </pre>
+              {result.servedBy && (
+                <p className="mt-3 border-t border-lattice-border pt-2 text-[11px] text-gray-400">
+                  Receipt: served by <span className="text-gray-200">{result.servedBy}</span>
+                  {' '}· {result.modelId} · {result.latencyMs}ms
+                  {result.attempts && result.attempts.length > 1
+                    ? ` · ${result.attempts.length} providers tried`
+                    : ''}
+                </p>
+              )}
+            </>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-400">
               <div className="text-center">
