@@ -1723,7 +1723,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     // Matters, time entries, contacts and invoices are the user's own
     // persisted records (server/domains/legal.js); case-law search hits the
     // real CourtListener API. DEMO rendered a "Demo" chip over all of it.
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: 'No matters opened.',
       caption: 'Open a matter, log time, bill it \u2014 saved to your account. Case-law search uses CourtListener; Westlaw / LexisNexis aren\u2019t connected (not supported yet).',
@@ -1734,6 +1734,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
         { caption: 'Practice: open a matter, log time entries, and see the real unbilled total on the matter.' },
         { caption: 'Case law searches CourtListener opinions. Westlaw / LexisNexis are not connected yet.' },
         { caption: 'Keep a matter report as a private DTU, then draft it in Thread. Nothing is filed or published.' },
+        { caption: 'Legal is the practice surface of the legal domain; the Law lens is its document surface (versions, redlines, e-signatures).' },
       ],
     },
   },

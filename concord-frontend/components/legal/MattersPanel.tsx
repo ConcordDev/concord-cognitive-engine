@@ -21,7 +21,7 @@ interface Matter {
 interface Detail {
   matter: Matter;
   parties: Contact[];
-  totals: { billed: number; unbilled: number; hours: number; trustBalance: number };
+  totals: { billed: number; unbilled: number; hours: number; unbilledHours?: number; trustBalance: number };
   time: Array<{ id: string; date: string; description: string; hours: number; amount: number; status: string }>;
   invoices: Array<{ id: string; number: string; total: number; status: string }>;
   documents: Array<{ id: string; name: string; status: string }>;
@@ -40,6 +40,7 @@ export function MattersPanel() {
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ name: '', clientName: '', matterType: 'litigation', hourlyRate: '', jurisdiction: '', court: '', caseNumber: '', billingType: 'hourly', description: '', partyIds: [] as string[] });
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [confirmingCloseId, setConfirmingCloseId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [editing, setEditing] = useState(false);
   const [editDraft, setEditDraft] = useState({ name: '', clientName: '', jurisdiction: '', court: '', caseNumber: '', hourlyRate: '', description: '', matterType: 'litigation', billingType: 'hourly', status: 'open' });
@@ -76,10 +77,13 @@ export function MattersPanel() {
   }
 
   async function close(id: string) {
-    if (!confirm('Close this matter?')) return;
     try {
-      await lensRun({ domain: 'legal', action: 'matters-close', input: { id } });
+      const r = await lensRun({ domain: 'legal', action: 'matters-close', input: { id } });
+      if (r.data?.ok === false) { showToast('error', r.data?.error || 'Could not close the matter.'); return; }
+      setConfirmingCloseId(null);
+      showToast('success', 'Matter closed.');
       await refresh();
+      if (activeId === id) await openDetail(id);
     } catch (e) { console.error('[Matters] close failed', e); }
   }
 
@@ -217,11 +221,17 @@ export function MattersPanel() {
                         {m.hourlyRate > 0 && <span> · ${m.hourlyRate}/hr</span>}
                       </div>
                     </div>
-                    {m.status !== 'closed' && (
-                      <button onClick={(e) => { e.stopPropagation(); close(m.id); }} className="p-1 rounded hover:bg-rose-500/20 text-rose-300 opacity-60 hover:opacity-100" title="Close matter">
+                    {m.status !== 'closed' && (confirmingCloseId === m.id ? (
+                      <span className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <span className="text-[10px] text-rose-200">Close “{m.name}”?</span>
+                        <button onClick={() => close(m.id)} className="px-1.5 py-0.5 rounded bg-rose-500/25 hover:bg-rose-500/40 text-rose-100 text-[10px]">Close</button>
+                        <button onClick={() => setConfirmingCloseId(null)} className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-gray-200 text-[10px]">Cancel</button>
+                      </span>
+                    ) : (
+                      <button onClick={(e) => { e.stopPropagation(); setConfirmingCloseId(m.id); }} className="p-1 rounded hover:bg-rose-500/20 text-rose-300 opacity-60 hover:opacity-100" title="Close matter">
                         <Archive className="w-3.5 h-3.5" />
                       </button>
-                    )}
+                    ))}
                     <ChevronRight className="w-3 h-3 text-gray-400" />
                   </li>
                 ))}
@@ -270,7 +280,7 @@ export function MattersPanel() {
             ) : (
               <>
                 <div className="grid grid-cols-4 gap-2 text-center">
-                  <Tile label="Unbilled" value={`$${detail.totals.unbilled.toLocaleString()}`} sub={`${detail.totals.hours.toFixed(1)} hrs`} tone="amber" />
+                  <Tile label="Unbilled" value={`$${detail.totals.unbilled.toLocaleString()}`} sub={`${(detail.totals.unbilledHours ?? detail.totals.hours).toFixed(2)} hrs`} tone="amber" />
                   <Tile label="Billed" value={`$${detail.totals.billed.toLocaleString()}`} tone="emerald" />
                   <Tile label="Trust" value={`$${detail.totals.trustBalance.toLocaleString()}`} tone="cyan" />
                   <Tile label="Docs" value={String(detail.documents.length)} sub={`${detail.events.length} events`} tone="gray" />
@@ -308,7 +318,7 @@ export function MattersPanel() {
                     <li key={t.id} className="flex items-center gap-2">
                       <span className="text-[10px] text-gray-400 font-mono w-20">{t.date}</span>
                       <span className="flex-1 truncate text-white">{t.description}</span>
-                      <span className="text-gray-400 font-mono">{t.hours.toFixed(1)}h</span>
+                      <span className="text-gray-400 font-mono">{t.hours.toFixed(2)}h</span>
                       <span className={cn('font-mono w-16 text-right', t.status === 'billed' ? 'text-gray-400' : 'text-amber-300')}>${t.amount.toFixed(0)}</span>
                     </li>
                   ))}

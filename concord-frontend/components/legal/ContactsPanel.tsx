@@ -21,6 +21,7 @@ const KINDS = ['client','opposing_party','opposing_counsel','witness','court','e
 
 export function ContactsPanel() {
   const [list, setList] = useState<Contact[]>([]);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [filterKind, setFilterKind] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -53,10 +54,12 @@ export function ContactsPanel() {
   }
 
   async function remove(id: string) {
-    if (!confirm('Delete this contact?')) return;
     try {
-      await lensRun({ domain: 'legal', action: 'contacts-delete', input: { id } });
+      const r = await lensRun({ domain: 'legal', action: 'contacts-delete', input: { id } });
+      if (r.data?.ok === false) { showToast('error', r.data?.error || 'Could not delete the contact.'); return; }
+      setConfirmingDeleteId(null);
       setList(prev => prev.filter(c => c.id !== id));
+      showToast('success', 'Contact deleted.');
     } catch (e) { console.error('[Contacts] delete failed', e); }
   }
 
@@ -205,9 +208,17 @@ export function ContactsPanel() {
                   <button aria-label="Edit" onClick={() => startEdit(c)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-amber-500/20 text-amber-300">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
-                  <button aria-label="Delete" onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {confirmingDeleteId === c.id ? (
+                    <span className="flex items-center gap-1 shrink-0">
+                      <span className="text-[10px] text-rose-200">Delete “{c.name}”?</span>
+                      <button onClick={() => remove(c.id)} className="px-1.5 py-0.5 rounded bg-rose-500/25 hover:bg-rose-500/40 text-rose-100 text-[10px]">Delete</button>
+                      <button onClick={() => setConfirmingDeleteId(null)} className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-gray-200 text-[10px]">Cancel</button>
+                    </span>
+                  ) : (
+                    <button aria-label="Delete" onClick={() => setConfirmingDeleteId(c.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
