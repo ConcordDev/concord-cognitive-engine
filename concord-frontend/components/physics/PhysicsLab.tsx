@@ -256,11 +256,18 @@ export function PhysicsLab() {
       });
       if (r.data.ok && r.data.result) {
         setScene((s) => ({ ...s, id: r.data.result!.scene.id }));
+        if (r.data.result.scene.shareCode) setShareCode(r.data.result.scene.shareCode);
         setStatus(`Saved "${scene.name}"`);
         await refreshScenes();
       } else {
         setStatus(`Save failed: ${r.data.error || 'unknown'}`);
       }
+    } catch (e) {
+      // A thrown round-trip is exactly how a save can persist server-side
+      // while the surface shows no receipt and a stale list: reconcile
+      // the list with the server either way, and say which happened.
+      await refreshScenes();
+      setStatus(`Save may not have completed: ${e instanceof Error ? e.message : 'request failed'} — the list above reflects the server.`);
     } finally {
       setBusy(null);
     }
@@ -273,6 +280,10 @@ export function PhysicsLab() {
       if (r.data.ok && r.data.result) {
         const sc = r.data.result.scene;
         setScene({ ...sc, settings: { ...defaultSettings(), ...sc.settings } });
+        // The share code is durable on the scene server-side — restore it
+        // onto the surface so it survives a reload (it previously lived
+        // only in this session's share action).
+        setShareCode(sc.shareCode || '');
         setSim(null);
         setSelectedId(null);
         setActiveModule(null);
@@ -283,12 +294,27 @@ export function PhysicsLab() {
     }
   }, []);
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   const deleteScene = useCallback(async (id: string) => {
-    await lensRun('physics', 'scene-delete', { id });
+    const target = savedScenes.find((s) => s.id === id);
+    setConfirmDeleteId(null);
+    try {
+      const r = await lensRun('physics', 'scene-delete', { id });
+      if (!r.data.ok) {
+        setStatus(`Delete failed: ${r.data.error || 'unknown'} — the list above reflects the server.`);
+        await refreshScenes();
+        return;
+      }
+    } catch (e) {
+      setStatus(`Delete may not have completed: ${e instanceof Error ? e.message : 'request failed'} — the list above reflects the server.`);
+      await refreshScenes();
+      return;
+    }
     if (scene.id === id) setScene(emptyScene());
     await refreshScenes();
-    setStatus('Scene deleted');
-  }, [scene.id, refreshScenes]);
+    setStatus(`Deleted "${target?.name || 'scene'}"`);
+  }, [scene.id, refreshScenes, savedScenes]);
 
   // ── Run simulation on the server ──
 
@@ -1034,25 +1060,49 @@ export function PhysicsLab() {
             </div>
             {savedScenes.length === 0 && <p className="text-[11px] text-zinc-400">No saved scenes yet.</p>}
             {savedScenes.map((s) => (
-              <div key={s.id} className="flex items-center justify-between text-[11px] group">
-                <button
-                  type="button"
-                  onClick={() => loadScene(s.id)}
-                  className="text-zinc-300 hover:text-cyan-300 truncate text-left flex-1"
-                >
-                  {s.name}{' '}
-                  <span className="text-zinc-600">
-                    ({s.bodyCount}b/{s.constraintCount}c)
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  aria-label="Delete scene"
-                  onClick={() => deleteScene(s.id)}
-                  className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+              <div key={s.id} className="text-[11px] group">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => loadScene(s.id)}
+                    className="text-zinc-300 hover:text-cyan-300 truncate text-left flex-1"
+                  >
+                    {s.name}{' '}
+                    <span className="text-zinc-600">
+                      ({s.bodyCount}b/{s.constraintCount}c)
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Delete scene"
+                    onClick={() => setConfirmDeleteId(s.id)}
+                    className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+                {s.shareCode && (
+                  <div className="text-[9px] font-mono text-fuchsia-300/70 truncate">share: {s.shareCode}</div>
+                )}
+                {confirmDeleteId === s.id && (
+                  <div className="mt-1 flex items-center gap-1.5 rounded border border-red-500/30 bg-red-500/10 px-2 py-1">
+                    <span className="flex-1 text-[10px] text-red-200">Delete “{s.name}”? This cannot be undone.</span>
+                    <button
+                      type="button"
+                      onClick={() => deleteScene(s.id)}
+                      className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] text-white hover:bg-red-500"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="rounded bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-200 hover:bg-zinc-600"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

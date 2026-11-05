@@ -64,6 +64,7 @@ describe("energy — pure-compute calc contracts (exact computed values)", () =>
     assert.equal(r.result.estimatedCost, null);
     assert.equal(r.result.afterTaxCredit, null);
     assert.equal(r.result.annualSavings, null);
+    assert.equal(r.result.savingsRateUsdPerKwh, null);
     assert.equal(r.result.paybackYears, null);
     assert.equal(r.result.recommendation, null);
     assert.equal(r.result.reason, "not_recorded");
@@ -80,6 +81,7 @@ describe("energy — pure-compute calc contracts (exact computed values)", () =>
     assert.equal(r.result.estimatedCost, 42560);      // round(15.2*2800)
     assert.equal(r.result.afterTaxCredit, 29792);     // round(42560*0.7)
     assert.equal(r.result.annualSavings, 1296);       // round(min(1824,900)*12*0.12)
+    assert.equal(r.result.savingsRateUsdPerKwh, 0.12); // the assumed rate the savings figure uses
     assert.equal(r.result.paybackYears, 23);          // round((42560*0.7)/1296*10)/10
     assert.equal(r.result.recommendation, "Solar can cover 100% of usage"); // coverage >= 100
   });

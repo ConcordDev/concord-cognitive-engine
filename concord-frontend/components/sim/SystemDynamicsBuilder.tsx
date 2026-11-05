@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { recordStudioRun, recordStudioModelSave } from '@/lib/sim/studio-activity';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -92,6 +93,7 @@ export function SystemDynamicsBuilder() {
     const r = await lensRun<SDResult>('sim', 'systemDynamics', { model, steps, dt });
     if (r.data.ok && r.data.result && !('message' in r.data.result)) {
       setResult(r.data.result);
+      recordStudioRun();
     } else {
       setResult(null);
       setError(r.data.error || 'Simulation returned no trajectory — check stocks and flow expressions.');
@@ -106,6 +108,7 @@ export function SystemDynamicsBuilder() {
     if (r.data.ok && r.data.result) {
       setModelId(r.data.result.id);
       void refreshSaved();
+      recordStudioModelSave();
     } else {
       setError(r.data.error || 'Save failed');
     }

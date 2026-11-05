@@ -25,7 +25,12 @@ interface SpaceflightArticle {
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
     const r = await api.post('/api/lens/run', { domain, name, input });
-    return r?.data as T;
+    // /api/lens/run wraps a macro's output under `result` (lens-run-http);
+    // these macros return their payload at their own top level, so the
+    // payload lives at body.result. Reading the body directly returned an
+    // empty panel forever (R2 space pass F8).
+    const body = r?.data as { result?: T } | T | undefined;
+    return ((body as { result?: T })?.result ?? body ?? null) as T | null;
   } catch {
     return null;
   }

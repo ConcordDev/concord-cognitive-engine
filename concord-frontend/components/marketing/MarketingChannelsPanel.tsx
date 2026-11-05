@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Radio, Users } from 'lucide-react';
+import { Loader2, Plus, Radio, Users, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/ui';
 
@@ -52,6 +52,15 @@ export function MarketingChannelsPanel() {
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setForm({ name: '', criteria: '', size: '' });
+    setError(null);
+    await refresh();
+  };
+
+  // Segment delete (build(marketing) S6 — Review 5 F6): the exit the
+  // segment-create surface never had, over the new segment-delete verb.
+  const delSegment = async (id: string) => {
+    const r = await lensRun('marketing', 'segment-delete', { id });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setError(null);
     await refresh();
   };
@@ -127,7 +136,12 @@ export function MarketingChannelsPanel() {
                   <p className="text-xs text-zinc-200">{s.name}</p>
                   {s.criteria && <p className="text-[10px] text-zinc-400">{s.criteria}</p>}
                 </div>
-                <span className="text-[11px] text-zinc-400 font-mono">{s.size.toLocaleString()}</span>
+                <span className="flex items-center gap-2">
+                  <span className="text-[11px] text-zinc-400 font-mono">{s.size.toLocaleString()}</span>
+                  <button aria-label="Delete segment" type="button" onClick={() => delSegment(s.id)} className="text-zinc-600 hover:text-rose-400">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </span>
               </li>
             ))}
           </ul>

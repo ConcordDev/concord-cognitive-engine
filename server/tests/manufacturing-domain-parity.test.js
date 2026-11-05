@@ -12,13 +12,16 @@ before(() => { registerManufacturingActions(register); });
 beforeEach(() => { globalThis._concordSTATE = { dtus: new Map() }; globalThis._concordSaveStateDebounced = () => {}; });
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 
-describe("manufacturing parity macros (real MES/SCADA feeds only)", () => {
-  it("oee-status returns empty + setup hint when no feed wired", () => {
+describe("manufacturing parity macros (board writes only — no external feeds)", () => {
+  it("oee-status returns empty + setup hint naming the board's own write", () => {
     const r = call("oee-status", ctxA, {});
     assert.equal(r.ok, true);
     assert.deepEqual(r.result.machines, []);
     assert.equal(r.result.source, "empty");
-    assert.match(r.result.notes, /MES|SCADA|OPC-UA|MQTT|MTConnect/);
+    // The hint names the real registered verb; it must not promise an
+    // MES/SCADA feed or protocol bridge that does not exist.
+    assert.match(r.result.notes, /machine-register/);
+    assert.doesNotMatch(r.result.notes, /Wire an|OPC-UA|MQTT|MTConnect/);
   });
 
   it("oee-status returns real machines when state is populated", () => {
@@ -35,15 +38,16 @@ describe("manufacturing parity macros (real MES/SCADA feeds only)", () => {
     assert.equal(r.result.source, "wired-feed");
   });
 
-  it("work-orders returns empty + setup hint when no ERP wired", () => {
+  it("work-orders returns empty + setup hint naming the board's own write", () => {
     const r = call("work-orders", ctxA, {});
     assert.equal(r.ok, true);
     assert.deepEqual(r.result.orders, []);
     assert.equal(r.result.source, "empty");
-    assert.match(r.result.notes, /ERP|Tulip|Plex|NetSuite/);
+    assert.match(r.result.notes, /work-order-create/);
+    assert.doesNotMatch(r.result.notes, /ERP|Tulip|Plex|NetSuite/);
   });
 
-  it("spc-chart returns empty + setup hint when no QA gauge feed wired", () => {
+  it("spc-chart returns empty + setup hint naming the board's own write", () => {
     const r = call("spc-chart", ctxA, { product: "Widget-001" });
     assert.equal(r.ok, true);
     assert.deepEqual(r.result.samples, []);
@@ -143,7 +147,11 @@ describe("manufacturing shop-floor execution suite (parity backlog)", () => {
     call("lot-register", ctxA, { lotNumber: "FG-1", material: "Pump", kind: "finished_good", parentLots: ["RM-1", "RM-2"] });
     const gen = call("lot-genealogy", ctxA, { lotNumber: "FG-1" });
     assert.equal(gen.ok, true);
-    assert.equal(gen.result.upstream.children.length, 2);
+    // Upstream is the forest of parent trees (RM-1, RM-2) — the lot itself
+    // is result.lot, never its own ancestor.
+    assert.equal(gen.result.upstream.length, 2);
+    assert.deepEqual(gen.result.upstream.map((n) => n.lotNumber).sort(), ["RM-1", "RM-2"]);
+    assert.ok(!JSON.stringify(gen.result.upstream).includes("FG-1"));
     const up = call("lot-genealogy", ctxA, { lotNumber: "RM-1" });
     assert.equal(up.result.downstream[0].lotNumber, "FG-1");
     assert.equal(call("lots-list", ctxA, { kind: "raw_material" }).result.count, 2);

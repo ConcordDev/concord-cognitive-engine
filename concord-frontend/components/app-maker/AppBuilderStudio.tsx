@@ -20,9 +20,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useAppMakerProject } from './AppMakerProjectContext';
 import {
   Plus, Trash2, Copy, Layers, Database, Workflow, Eye, Rocket,
-  Package, Plug, History, MousePointer2, Save, RefreshCw, ExternalLink,
+  Package, Plug, History, MousePointer2, Save, RefreshCw,
   CheckCircle, XCircle, Loader2, GripVertical, FileCode,
   Link2, Unlink, Store, GitBranch, AlertTriangle, Info,
 } from 'lucide-react';
@@ -80,6 +81,7 @@ export function AppBuilderStudio() {
   const [tab, setTab] = useState<Tab>('canvas');
   const [busy, setBusy] = useState<string | null>(null);
   const [newProjName, setNewProjName] = useState('');
+  const { setActiveProjectId } = useAppMakerProject();
 
   // ── helpers ──────────────────────────────────────────────────────
   const run = useCallback(async (name: string, params: Record<string, unknown>) => {
@@ -94,8 +96,15 @@ export function AppBuilderStudio() {
 
   const loadProject = useCallback(async (id: string) => {
     const d = await run('projectGet', { projectId: id });
-    if (d?.ok) { setProject((d.result as { project: Project }).project); setActiveId(id); }
-  }, [run]);
+    if (d?.ok) {
+      setProject((d.result as { project: Project }).project);
+      setActiveId(id);
+      // Publish which project is "open" so the Compute tab (a sibling panel
+      // that mounts separately — see page.tsx) can resolve a real spec
+      // instead of operating on a disconnected artifact. Fixes F4.
+      setActiveProjectId(id);
+    }
+  }, [run, setActiveProjectId]);
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
 
@@ -122,7 +131,7 @@ export function AppBuilderStudio() {
     setBusy('del');
     await run('projectDelete', { projectId: id });
     setBusy(null);
-    if (activeId === id) { setProject(null); setActiveId(null); }
+    if (activeId === id) { setProject(null); setActiveId(null); setActiveProjectId(null); }
     await loadProjects();
   };
 
@@ -162,7 +171,7 @@ export function AppBuilderStudio() {
               <span className="text-gray-400">
                 {p.pageCount}p · {p.tableCount}t · {p.workflowCount}w
               </span>
-              {p.deployment?.status === 'live' && <span className="text-green-400">live</span>}
+              {p.deployment?.status === 'snapshotted' && <span className="text-green-400" title="A version snapshot has been published; not hosted at a live URL">snapshotted</span>}
               <button onClick={() => duplicateProject(p.id)} title="Duplicate" className="text-gray-400 hover:text-neon-cyan">
                 <Copy className="w-3 h-3" />
               </button>
@@ -208,7 +217,7 @@ export function AppBuilderStudio() {
           {tab === 'library' && <ComponentLibraryPanel project={project} run={run} reload={() => loadProject(project.id)} />}
           {tab === 'quests' && <QuestGraphEditor project={project} run={run} reload={() => loadProject(project.id)} />}
           {tab === 'preview' && <LivePreview project={project} run={run} />}
-          {tab === 'deploy' && <DeployPanel project={project} run={run} reload={() => loadProject(project.id)} />}
+          {tab === 'deploy' && <DeployPanel project={project} run={run} reload={() => loadProject(project.id)} onViewPreview={() => setTab('preview')} />}
           {tab === 'versions' && <VersionHistory project={project} run={run} reload={() => loadProject(project.id)} />}
         </>
       )}
@@ -1451,7 +1460,7 @@ function LivePreview({ project, run }: { project: Project; run: RunFn }) {
 // ──────────────────────────────────────────────────────────────────
 // Deploy
 // ──────────────────────────────────────────────────────────────────
-function DeployPanel({ project, run, reload }: SubProps) {
+function DeployPanel({ project, run, reload, onViewPreview }: SubProps & { onViewPreview?: () => void }) {
   const [label, setLabel] = useState('');
   const [deploying, setDeploying] = useState(false);
   const [status, setStatus] = useState(project.deployment);
@@ -1476,10 +1485,11 @@ function DeployPanel({ project, run, reload }: SubProps) {
   return (
     <div className="space-y-3">
       <div className="panel p-4 space-y-3">
-        <p className="text-sm font-semibold flex items-center gap-1.5"><Rocket className="w-4 h-4 text-neon-purple" /> Deploy to hosted URL</p>
+        <p className="text-sm font-semibold flex items-center gap-1.5"><Rocket className="w-4 h-4 text-neon-purple" /> Publish snapshot</p>
         <p className="text-xs text-gray-400">
           Publishing snapshots the current project ({project.pages.length} pages, {project.dataModel.tables.length} tables,
-          {' '}{project.workflows.length} workflows) and assigns a stable hosted URL on apps.concord-os.org.
+          {' '}{project.workflows.length} workflows) into a restorable version. There is no hosted deployment yet — view the
+          published snapshot in the Preview tab.
         </p>
         <div className="flex items-center gap-2">
           <input
@@ -1494,33 +1504,29 @@ function DeployPanel({ project, run, reload }: SubProps) {
             className="bg-neon-purple/10 border border-neon-purple/30 text-neon-purple rounded px-4 py-1.5 text-sm flex items-center gap-1.5 disabled:opacity-40"
           >
             {deploying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
-            {deploying ? 'Deploying…' : 'Deploy'}
+            {deploying ? 'Publishing…' : 'Publish snapshot'}
           </button>
         </div>
       </div>
 
       <div className="panel p-4">
-        <p className="text-xs uppercase text-gray-400 mb-2">Deployment status</p>
-        {status?.status === 'live' && status.url ? (
+        <p className="text-xs uppercase text-gray-400 mb-2">Publish status</p>
+        {status?.status === 'snapshotted' ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <span className="w-2 h-2 rounded-full bg-green-400" />
-              <span className="text-green-400 font-medium">Live</span>
+              <span className="text-green-400 font-medium">Snapshot published</span>
               {status.deployedAt && <span className="text-xs text-gray-400">since {new Date(status.deployedAt).toLocaleString()}</span>}
             </div>
-            <a
-              href={status.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-neon-cyan hover:underline font-mono"
-            >
-              {status.url} <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+            <p className="text-xs text-gray-400">
+              Not hosted at a public URL — this build has no deployment infrastructure. The snapshot is viewable now in the{' '}
+              <button onClick={onViewPreview} className="text-neon-cyan hover:underline">Preview tab</button>.
+            </p>
           </div>
         ) : (
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <span className="w-2 h-2 rounded-full bg-gray-600" />
-            Not deployed yet
+            Not published yet
           </div>
         )}
       </div>

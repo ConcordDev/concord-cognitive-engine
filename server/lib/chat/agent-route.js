@@ -250,7 +250,7 @@ export function deterministicRouteReply(route, prompt, history = [], memoryBlock
 /**
  * Why this prompt should go through the agent tool loop, or null.
  * @param {{prevRoute?: string, prevReply?: string}} [opts]  agentRoute and text of the previous assistant turn
- * @returns {null | "web" | "dtu" | "compute" | "design" | "save" | "music" | "browse" | "action" | "lookup"}
+ * @returns {null | "web" | "dtu" | "compute" | "design" | "save" | "music" | "browse" | "action" | "lookup" | "general"}
  */
 export function chatAgentRoute(prompt, opts = {}) {
   const p = String(prompt || "").trim();
@@ -296,7 +296,20 @@ export function chatAgentRoute(prompt, opts = {}) {
   if ((opts?.prevRoute === "web" || opts?.prevRoute === "lookup") && p.split(/\s+/).length <= 3
     && !SMALLTALK_RE.test(p) && !ABOUT_ASSISTANT_RE.test(p) && contentWords(p).length >= 1) return opts.prevRoute;
   if (needsToolByDefault(p)) return "lookup";
+  // Everything else that is real work ("build me…", "work on…", "make a plan for…")
+  // goes through the tool loop too. The keyword lists above can't cover how people
+  // talk, and a miss meant a one-shot reply with no tools offered at all.
+  // CONCORD_CHAT_AGENT_DEFAULT=0 restores the old fall-through.
+  if (agentByDefault(p)) return "general";
   return null;
+}
+
+/** True when an unmatched prompt should still get the agent tool loop. */
+export function agentByDefault(prompt) {
+  if (String(process.env.CONCORD_CHAT_AGENT_DEFAULT || "1") === "0") return false;
+  const p = String(prompt || "").trim();
+  if (!p || SMALLTALK_RE.test(p) || ABOUT_ASSISTANT_RE.test(p) || CREATIVE_RE.test(p) || PERSONAL_RE.test(p)) return false;
+  return contentWords(p).length >= 2;
 }
 
 // Coding asks: Concord's code lens (code.build / test-generate / multi-file /
@@ -325,6 +338,7 @@ export function isCodeAsk(text) {
 
 const ROUTE_HINT = {
   long: "This is a big multi-step job. Call start_long_task with the user's goal in their own words (mode research, plan, code or general). Then tell the user the job id, that it keeps working in the background, and that the result will be posted here. Don't try to do the whole job in this reply.",
+  general: "Do the work, don't just describe it. Use your tools whenever they help: find_lens_actions then run_lens_action to make or change something in Concord as this user, web_search or browse_url for anything current or factual, run_compute for math, textbook_lookup for science and engineering facts, create_dtu to save, start_long_task for a big multi-step job. Chain several tool calls in this turn when the task needs it, then report what you did and what the tools returned. Answer directly without tools only when it is plainly conversation or opinion. Never claim you did something a tool did not return.",
   jobs: "The user is asking about their background jobs. Call check_long_task (with the job id if they gave one) and report only what it returned: status, tool steps, latest notes, and the result if it finished.",
   lookup: "If a CONCORD KNOWLEDGE note above answers it (or the user asks about a Concord DTU), answer from that note and name the DTU; no web_search needed. Otherwise answer this with a tool, not from memory. Facts, current events, prices, scores, products, how-to steps, recipes, places: call web_search first with a short query in the user's own words (no year unless they gave one; add news or latest for anything recent), then answer from its results with each item's link (you may explain the results in your own words). For news, lead with the newest dated items and name each outlet and date. For the game last night with no team named, report the ESPN finals the search returns across the major US leagues instead of asking which game. Textbook, science and engineering facts (material constants, physical laws, definitions, derivations), or any ask for a textbook or OpenStax source: call textbook_lookup first and answer from its passages with the book, section and link. The user's own Concord data, or making/doing something in Concord (tasks, calendar, notes, recipes, budgets, plans, music, designs): call find_lens_actions with the intent, then run_lens_action with the best match, as this user. If the tools return nothing useful, say so plainly before giving any general answer. When the question has several parts or the first results are thin, run two or three searches from different angles in the same turn, and browse_url the best source when its snippet does not answer the question.",
   web: "This request needs live web information: call web_search first and answer only from its results, with each item's link. For what a person or group is doing lately, put news in the query. Lead with the newest dated items and name each outlet and date; scores and prices come from the live feed rows (ESPN, Coinbase) when present. For a follow-up about a story already listed in this conversation, answer from that list (title, outlet, URL) and search again only if it is not there. When the question has several parts or the first results are thin, run two or three searches from different angles in the same turn, and browse_url the best source when its snippet does not answer the question.",

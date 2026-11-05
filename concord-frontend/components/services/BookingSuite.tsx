@@ -20,8 +20,10 @@ import {
   CalendarDays, Globe, CreditCard, Bell, Clock, UserCircle, Repeat,
   Plus, RefreshCw, X, Check, AlertTriangle, Trash2, ArrowUpRight,
 } from 'lucide-react';
-import { lensRun } from '@/lib/api/client';
+import { lensRun, api } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
+import { deskAppointmentAsBooking, type AppointmentData } from '@/components/services/services-model';
+import type { LensItem } from '@/lib/hooks/use-lens-data';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -94,6 +96,8 @@ interface WaitEntry {
   preferredDate: string | null;
   priority: string;
   status: string;
+  offeredSlot?: { date: string; time: string; staff?: string } | null;
+  bookingId?: string;
 }
 
 type SubTool = 'grid' | 'selfbook' | 'pos' | 'reminders' | 'shifts' | 'profiles' | 'recurring';
@@ -126,6 +130,7 @@ const GRID_CLOSE = 19 * 60;
 function BookingGrid() {
   const [date, setDate] = useState(todayKey());
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [deskBookings, setDeskBookings] = useState<Booking[]>([]);
   const [lanes, setLanes] = useState<string[]>([]);
   const [util, setUtil] = useState<Record<string, number>>({});
   const [err, setErr] = useState<string | null>(null);
@@ -136,6 +141,13 @@ function BookingGrid() {
     setBusy(true);
     const { result } = await svc<{ bookings: Booking[]; staffLanes: string[]; utilization: Record<string, number> }>('bookingGridList', { date: d });
     if (result) { setBookings(result.bookings); setLanes(result.staffLanes); setUtil(result.utilization); }
+    // The union: Desk appointments for this date render in the same grid,
+    // projected through services-model — one book, read from both sides.
+    try {
+      const { data } = await api.get('/api/lens/services?type=Appointment&limit=200');
+      const arts = ((data as { artifacts?: LensItem<AppointmentData>[] })?.artifacts || []);
+      setDeskBookings(arts.filter(a => a.data?.date === d && a.meta.status !== 'cancelled').map(a => deskAppointmentAsBooking(a)));
+    } catch { setDeskBookings([]); }
     setBusy(false);
   }, []);
 
@@ -163,7 +175,8 @@ function BookingGrid() {
   const slots: number[] = [];
   for (let t = GRID_OPEN; t < GRID_CLOSE; t += 30) slots.push(t);
   const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-  const laneList = lanes.length ? lanes : (form.staff.trim() ? [form.staff.trim()] : []);
+  const laneList = [...new Set([...lanes, ...deskBookings.map(b => b.staff)])];
+  if (laneList.length === 0 && form.staff.trim()) laneList.push(form.staff.trim());
 
   return (
     <div className="space-y-4">
@@ -208,8 +221,9 @@ function BookingGrid() {
                 <tr key={t} className="border-t border-lattice-border/40">
                   <td className="p-1.5 text-gray-400 sticky left-0 bg-lattice-surface">{fmt(t)}</td>
                   {laneList.map(s => {
-                    const b = bookings.find(x => x.staff === s && x.status !== 'cancelled' &&
-                      (() => { const [h, m] = x.time.split(':').map(Number); return h * 60 + m === t; })());
+                    const atSlot = (x: Booking) => x.staff === s && x.status !== 'cancelled' &&
+                      (() => { const [h, m] = x.time.split(':').map(Number); return h * 60 + m === t; })();
+                    const b = bookings.find(atSlot) || deskBookings.find(atSlot);
                     return (
                       <td key={s} className="p-1 align-top">
                         {b ? (
@@ -217,10 +231,14 @@ function BookingGrid() {
                             b.status === 'completed' ? 'bg-green-500/15 text-green-300' : 'bg-pink-500/15 text-pink-200')}>
                             <p className="font-semibold truncate">{b.client}</p>
                             <p className="text-gray-400 truncate">{b.service} · {b.duration}m</p>
-                            <div className="flex gap-1 mt-1">
-                              <button onClick={() => move(b.id, fmt(t + 30), s)} className="text-cyan-400 hover:underline" title="Move +30m"><ArrowUpRight className="w-3 h-3" /></button>
-                              <button onClick={() => cancel(b.id)} className="text-red-400 hover:underline" title="Cancel"><X className="w-3 h-3" /></button>
-                            </div>
+                            {b.source === 'desk' ? (
+                              <p className="text-[10px] text-purple-300 mt-1">Desk appointment — manage in the Desk view</p>
+                            ) : (
+                              <div className="flex gap-1 mt-1">
+                                <button onClick={() => move(b.id, fmt(t + 30), s)} className="text-cyan-400 hover:underline" title="Move +30m"><ArrowUpRight className="w-3 h-3" /></button>
+                                <button onClick={() => cancel(b.id)} className="text-red-400 hover:underline" title="Cancel"><X className="w-3 h-3" /></button>
+                              </div>
+                            )}
                           </div>
                         ) : null}
                       </td>
@@ -420,7 +438,7 @@ function POSPayments() {
           )}
         </div>
         <p className="text-[11px] text-gray-400">
-          Card charges use a real Stripe PaymentIntent when Stripe is configured server-side — you&apos;ll confirm the card below. Until configured, card sales are recorded as pay-on-site (no charge is made).
+          Card charges use a real Stripe PaymentIntent when a valid Stripe key is configured server-side — you&apos;ll confirm the card below. Until then, card sales are recorded as pay-on-site (no charge is made).
         </p>
         {!cardIntent && (
           <button onClick={capture} disabled={cardBusy} className={ds.btnPrimary}>
@@ -465,6 +483,7 @@ function POSPayments() {
             {p.status === 'captured' && (
               <button onClick={() => refund(p.id)} className="text-red-400 text-xs hover:underline">Refund</button>
             )}
+            <button aria-label="Delete payment record" onClick={async () => { const { error } = await svc<unknown>('paymentDelete', { id: p.id }); if (error) setErr(error); else load(); }} className="text-red-400 text-xs hover:underline"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
         ))}
         {payments.length === 0 && <p className={ds.textMuted}>No payments captured yet.</p>}
@@ -537,8 +556,12 @@ function Reminders() {
           <div key={r.id} className="flex items-center gap-3 p-2.5 rounded bg-lattice-elevated/40 text-sm">
             <span className={ds.badge(r.channel === 'sms' ? 'cyan-400' : 'purple-400')}>{r.channel}</span>
             <span className="flex-1 truncate">{r.client} — {r.body}</span>
+            {r.target
+              ? <span className="text-xs text-gray-400 truncate">→ {r.target}</span>
+              : <span className="text-xs text-red-400">no contact on file</span>}
             <span className={cn(ds.textMuted, 'text-xs')}>{r.sendAt.replace('T', ' ')}</span>
             <span className={ds.badge(r.status === 'queued' ? 'green-400' : r.status === 'failed' ? 'red-400' : 'blue-400')}>{r.status}</span>
+            <button aria-label="Delete reminder" onClick={async () => { const { error } = await svc<unknown>('reminderDelete', { id: r.id }); if (error) setErr(error); else load(); }} className="text-red-400 hover:text-red-300"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
         ))}
         {reminders.length === 0 && <p className={ds.textMuted}>No reminders scheduled.</p>}
@@ -712,12 +735,20 @@ function ClientProfiles() {
 
       <div className={ds.grid3}>
         {profiles.map(p => (
-          <button key={p.clientKey} onClick={() => view(p.clientKey)} className={cn(ds.panelHover, 'text-left')}>
-            <p className={ds.heading3}>{p.name}</p>
-            {p.phone && <p className={cn(ds.textMuted, 'text-xs')}>{p.phone}</p>}
-            {p.preferredProvider && <p className={cn(ds.textMuted, 'text-xs')}>Prefers: {p.preferredProvider}</p>}
-            {p.allergies && <p className="text-orange-400 text-xs"><AlertTriangle className="w-3 h-3 inline mr-1" />{p.allergies}</p>}
-          </button>
+          <div key={p.clientKey} className="relative">
+            <button onClick={() => view(p.clientKey)} className={cn(ds.panelHover, 'text-left w-full')}>
+              <p className={ds.heading3}>{p.name}</p>
+              {p.phone && <p className={cn(ds.textMuted, 'text-xs')}>{p.phone}</p>}
+              {p.preferredProvider && <p className={cn(ds.textMuted, 'text-xs')}>Prefers: {p.preferredProvider}</p>}
+              {p.allergies && <p className="text-orange-400 text-xs"><AlertTriangle className="w-3 h-3 inline mr-1" />{p.allergies}</p>}
+            </button>
+            <button aria-label={`Delete profile ${p.name}`} onClick={async () => {
+              const { error } = await svc<unknown>('clientProfileDelete', { clientKey: p.clientKey });
+              if (error) { setErr(error); return; }
+              if (history?.profile?.clientKey === p.clientKey) setHistory(null);
+              load();
+            }} className="absolute top-2 right-2 text-red-400 hover:text-red-300"><Trash2 className="w-3.5 h-3.5" /></button>
+          </div>
         ))}
         {profiles.length === 0 && <p className={ds.textMuted}>No client profiles yet.</p>}
       </div>
@@ -759,7 +790,16 @@ function ClientProfiles() {
 
 function RecurringWaitlist() {
   const [recForm, setRecForm] = useState({ client: '', service: '', staff: '', date: todayKey(), time: '10:00', duration: 60, frequency: 'weekly', occurrences: 4, price: 0 });
-  const [recResult, setRecResult] = useState<{ createdCount: number; skipped: { date: string; reason: string }[] } | null>(null);
+  const [recResult, setRecResult] = useState<{ seriesId?: string; createdCount: number; skipped: { date: string; reason: string }[] } | null>(null);
+  const [seriesMsg, setSeriesMsg] = useState<string | null>(null);
+
+  const cancelSeries = async () => {
+    if (!recResult?.seriesId) return;
+    const { result, error } = await svc<{ cancelled: number }>('recurringSeriesCancel', { seriesId: recResult.seriesId });
+    if (error) { setErr(error); return; }
+    setSeriesMsg(`Series cancelled — ${result?.cancelled ?? 0} upcoming booking(s) cancelled.`);
+    setRecResult(null);
+  };
   const [waitlist, setWaitlist] = useState<WaitEntry[]>([]);
   const [wlCounts, setWlCounts] = useState<Record<string, number>>({});
   const [wlForm, setWlForm] = useState({ client: '', service: '', staff: '', preferredDate: '', priority: 'normal' });
@@ -774,7 +814,7 @@ function RecurringWaitlist() {
   const createSeries = async () => {
     setErr(null); setRecResult(null);
     if (!recForm.client.trim()) { setErr('client required'); return; }
-    const { result, error } = await svc<{ createdCount: number; skipped: { date: string; reason: string }[] }>('recurringSeries', recForm);
+    const { result, error } = await svc<{ seriesId?: string; createdCount: number; skipped: { date: string; reason: string }[] }>('recurringSeries', recForm);
     if (!result) { setErr(error || 'series failed'); return; }
     setRecResult(result);
   };
@@ -788,9 +828,33 @@ function RecurringWaitlist() {
     loadWl();
   };
 
-  const promote = async (id: string) => {
-    const { error } = await svc<unknown>('waitlistPromote', { id, time: '11:00', duration: 60 });
-    if (error) setErr(error); else loadWl();
+  const [promoteFor, setPromoteFor] = useState<string | null>(null);
+  const [promoteSlot, setPromoteSlot] = useState({ date: '', time: '', duration: 60 });
+
+  const openPromote = (w: WaitEntry) => {
+    setErr(null);
+    setPromoteFor(w.id);
+    // Prefill only from real openings: the slot this entry was offered
+    // when a booking freed up, or the date the client asked for. Never
+    // a fabricated date/time — an entry with neither stays blank until
+    // the operator picks the actual slot.
+    setPromoteSlot({
+      date: w.offeredSlot?.date || w.preferredDate || '',
+      time: w.offeredSlot?.time || '',
+      duration: 60,
+    });
+  };
+
+  const confirmPromote = async (id: string) => {
+    setErr(null);
+    if (!promoteSlot.date || !promoteSlot.time) {
+      setErr('Pick the real date and time for this booking — a waitlist entry is only booked into a slot you choose.');
+      return;
+    }
+    const { error } = await svc<unknown>('waitlistPromote', { id, date: promoteSlot.date, time: promoteSlot.time, duration: promoteSlot.duration || 60 });
+    if (error) { setErr(error); return; }
+    setPromoteFor(null);
+    loadWl();
   };
   const removeWait = async (id: string) => {
     const { error } = await svc<unknown>('waitlistRemove', { id });
@@ -818,8 +882,12 @@ function RecurringWaitlist() {
           <p className="text-sm text-green-400">
             <Check className="w-4 h-4 inline mr-1" />Created {recResult.createdCount} bookings
             {recResult.skipped.length > 0 && `, skipped ${recResult.skipped.length} (conflict)`}
+            {recResult.seriesId && (
+              <button onClick={cancelSeries} className="ml-3 text-red-400 text-xs hover:underline">Cancel this series</button>
+            )}
           </p>
         )}
+        {seriesMsg && <p className="text-sm text-yellow-300">{seriesMsg}</p>}
       </div>
 
       <div className={cn(ds.panel, 'space-y-2')}>
@@ -845,15 +913,29 @@ function RecurringWaitlist() {
 
       <div className="space-y-1.5">
         {waitlist.map(w => (
-          <div key={w.id} className="flex items-center gap-3 p-2.5 rounded bg-lattice-elevated/40 text-sm">
-            <span className={ds.badge(w.priority === 'high' ? 'red-400' : w.priority === 'low' ? 'gray-400' : 'blue-400')}>{w.priority}</span>
-            <span className="flex-1 truncate">{w.client}{w.service ? ` — ${w.service}` : ''}</span>
-            <span className={ds.badge(w.status === 'booked' ? 'green-400' : w.status === 'offered' ? 'yellow-400' : 'gray-400')}>{w.status}</span>
-            {w.status === 'waiting' && (
-              <>
-                <button onClick={() => promote(w.id)} className="text-green-400 text-xs hover:underline">Promote</button>
-                <button aria-label="Delete" onClick={() => removeWait(w.id)} className="text-red-400 text-xs hover:underline"><Trash2 className="w-3.5 h-3.5" /></button>
-              </>
+          <div key={w.id} className="p-2.5 rounded bg-lattice-elevated/40 text-sm space-y-2">
+            <div className="flex items-center gap-3">
+              <span className={ds.badge(w.priority === 'high' ? 'red-400' : w.priority === 'low' ? 'gray-400' : 'blue-400')}>{w.priority}</span>
+              <span className="flex-1 truncate">{w.client}{w.service ? ` — ${w.service}` : ''}</span>
+              {w.status === 'offered' && w.offeredSlot && (
+                <span className="text-xs text-yellow-300">Offered {w.offeredSlot.date} at {w.offeredSlot.time}</span>
+              )}
+              <span className={ds.badge(w.status === 'booked' ? 'green-400' : w.status === 'offered' ? 'yellow-400' : 'gray-400')}>{w.status}</span>
+              {(w.status === 'waiting' || w.status === 'offered') && (
+                <>
+                  <button onClick={() => (promoteFor === w.id ? setPromoteFor(null) : openPromote(w))} className="text-green-400 text-xs hover:underline">Promote</button>
+                  <button aria-label="Delete" onClick={() => removeWait(w.id)} className="text-red-400 text-xs hover:underline"><Trash2 className="w-3.5 h-3.5" /></button>
+                </>
+              )}
+            </div>
+            {promoteFor === w.id && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <input type="date" className={cn(ds.input, 'w-auto')} value={promoteSlot.date} onChange={e => setPromoteSlot({ ...promoteSlot, date: e.target.value })} />
+                <input type="time" className={cn(ds.input, 'w-auto')} value={promoteSlot.time} onChange={e => setPromoteSlot({ ...promoteSlot, time: e.target.value })} />
+                <input type="number" className={cn(ds.input, 'w-24')} placeholder="Min" value={promoteSlot.duration || ''} onChange={e => setPromoteSlot({ ...promoteSlot, duration: parseInt(e.target.value) || 0 })} />
+                <button onClick={() => confirmPromote(w.id)} className={ds.btnPrimary}>Book this slot</button>
+                <span className="text-xs text-gray-400">Books only the slot you pick — nothing is invented.</span>
+              </div>
             )}
           </div>
         ))}

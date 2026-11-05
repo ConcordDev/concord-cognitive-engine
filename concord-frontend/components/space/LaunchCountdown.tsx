@@ -68,6 +68,17 @@ export function LaunchCountdown() {
     return () => clearInterval(id);
   }, []);
 
+  // Roll to the next launch: when the clock crosses zero on a found launch,
+  // refetch once for that launch so the countdown targets its successor
+  // instead of sitting on "Liftoff window reached." forever (F6).
+  const rolledForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (remaining <= 0 && data?.found && data.id && rolledForRef.current !== data.id) {
+      rolledForRef.current = data.id;
+      void fetchCountdown();
+    }
+  }, [remaining, data, fetchCountdown]);
+
   useEffect(() => () => {
     if (reminderRef.current) clearTimeout(reminderRef.current);
   }, []);
@@ -133,10 +144,14 @@ export function LaunchCountdown() {
         </div>
       )}
 
-      {error && (
+      {error && !data?.found && (
         <div className="flex items-center gap-2 text-xs text-rose-400 bg-rose-500/10 rounded-lg p-3">
           <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
         </div>
+      )}
+
+      {error && data?.found && (
+        <p className="text-[11px] text-zinc-500">Couldn’t refresh the countdown: {error}</p>
       )}
 
       {data && data.found && (

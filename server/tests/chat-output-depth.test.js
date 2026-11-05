@@ -35,7 +35,7 @@ describe("chat-reply-policy token and timeout helpers", () => {
   it("resolveChatMaxTokens uses new defaults and ceiling", () => {
     withEnv({}, () => {
       assert.equal(resolveChatMaxTokens({ verbosity: 0.5 }), 4096);
-      assert.equal(resolveChatMaxTokens({ env: "20000", verbosity: 0.5 }), 16384);
+      assert.equal(resolveChatMaxTokens({ env: "40000", verbosity: 0.5 }), 32768);
       assert.equal(resolveChatMaxTokens({ verbosity: 1 }), 5734); // 4096 * (0.6 + 0.8)
     });
   });

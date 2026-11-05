@@ -48,7 +48,7 @@ interface PipeSizeResult { flowRate?: string; velocity?: string; calculatedDiame
 interface WaterHeaterResult { household?: number; peakDemandGPM?: number; tankRecommendation?: string; tanklessRecommendation?: string; firstHourRating?: number; recommendation?: string }
 interface DrainSlopeResult { pipeSize?: string; length?: string; slopePerFoot?: string; totalDrop?: string; ipcCode?: string; tip?: string }
 interface Fixture { type: string; count: string }
-interface FixtureResult { fixtures?: number; totalWSFU?: number; meterSize?: string; supplyLine?: string; note?: string }
+interface FixtureResult { fixtures?: number; totalWSFU?: number; meterSize?: string; supplyLine?: string; note?: string; breakdown?: { type: string; count: number; wsfuEach: number; subtotal: number }[] }
 
 const NOMINAL_SIZES = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 const FIXTURE_TYPES = ['toilet', 'lavatory', 'bathtub', 'shower', 'kitchen-sink', 'dishwasher', 'washing-machine', 'hose-bib'];
@@ -364,6 +364,16 @@ function FixtureSupplyCalc() {
             <div className="rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1"><div className="text-[9px] text-blue-300">Meter</div><div className="font-mono text-blue-100">{result.meterSize}</div></div>
             <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Supply line</div><div className="font-mono text-cyan-200">{result.supplyLine}</div></div>
             {result.note && <div className="col-span-4 rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 font-mono text-[10px] text-zinc-400">{result.note}</div>}
+            {result.breakdown && result.breakdown.length > 0 && (
+              <div className="col-span-4 rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1.5">
+                <div className="mb-1 text-[9px] uppercase tracking-wider text-zinc-400">Per-fixture basis (IPC Table 709.1)</div>
+                <ul className="space-y-0.5 font-mono text-[10px] text-cyan-100/80">
+                  {result.breakdown.map((b, i) => (
+                    <li key={i} className="flex justify-between"><span>{b.type} × {b.count}</span><span>{b.wsfuEach} WSFU each = {b.subtotal}</span></li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </div>

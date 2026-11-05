@@ -88,7 +88,7 @@ function POSTab() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cartId, setCartId] = useState<string | null>(null);
   const [cart, setCart] = useState<{ lines: { sku: string; name: string; unitPrice: number; qty: number }[] } | null>(null);
-  const [totals, setTotals] = useState<{ subtotal: number; tax: number; total: number; itemCount: number } | null>(null);
+  const [totals, setTotals] = useState<{ subtotal: number; tax: number; total: number; itemCount: number; taxRate?: number; taxRateSource?: string } | null>(null);
   const [tenderAmount, setTenderAmount] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [cardIntent, setCardIntent] = useState<{ clientSecret: string; paymentIntentId: string; total: number } | null>(null);
@@ -130,7 +130,7 @@ function POSTab() {
   const computeTotal = async () => {
     if (!cartId) return;
     try {
-      const r = await lensRun({ domain: 'retail', action: 'cart-total', input: { cartId, taxRate: 8 } });
+      const r = await lensRun({ domain: 'retail', action: 'cart-total', input: { cartId } });
       setTotals(((r.data as { result?: typeof totals }).result) || null);
     } catch (e) { console.error(e); }
   };
@@ -142,7 +142,7 @@ function POSTab() {
     try {
       const r = await lensRun({
         domain: 'retail', action: 'cart-tender',
-        input: { cartId, taxRate: 8, tenders: [{ kind: 'cash', amount: Number(tenderAmount) }] },
+        input: { cartId, tenders: [{ kind: 'cash', amount: Number(tenderAmount) }] },
       });
       const data = r.data as { ok?: boolean; error?: string; result?: { order?: { number: string; change: number } } };
       if (data.ok) {
@@ -160,7 +160,7 @@ function POSTab() {
     try {
       const r = await lensRun({
         domain: 'retail', action: 'cart-create-payment-intent',
-        input: { cartId, taxRate: 8 },
+        input: { cartId },
       });
       const data = r.data as { ok?: boolean; error?: string; result?: { clientSecret: string; paymentIntentId: string; total: number } };
       if (data.ok && data.result) {
@@ -224,7 +224,7 @@ function POSTab() {
         {totals && (
           <div className="mt-2 border-t border-white/10 pt-2 text-xs space-y-0.5 font-mono tabular-nums">
             <div className="flex justify-between"><span className="text-gray-400">Subtotal</span><span>${totals.subtotal}</span></div>
-            <div className="flex justify-between"><span className="text-gray-400">Tax (8%)</span><span>${totals.tax}</span></div>
+            <div className="flex justify-between"><span className="text-gray-400">{totals.taxRateSource === 'none' ? 'Tax (no rate configured)' : `Tax (${totals.taxRate ?? 0}%)`}</span><span>${totals.tax}</span></div>
             <div className="flex justify-between font-bold text-lg"><span>Total</span><span className="text-rose-300">${totals.total}</span></div>
           </div>
         )}

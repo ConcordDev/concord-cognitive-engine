@@ -17,6 +17,22 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
 
+// accounts-connect fetches and validates the feed before it stores an account (F14),
+// and the test sandbox has no egress, so the account-lifecycle tests seed a
+// previously-validated account straight into the lens's per-user store.
+async function seedConnectedAccount(ctx, fields) {
+  await lensRun("calendar", "accounts-list", {}, ctx); // materialises calendarLens.connectedAccounts
+  const store = globalThis._concordSTATE.calendarLens.connectedAccounts;
+  const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+  if (!store.has(userId)) store.set(userId, []);
+  const id = `acct_seed_${Math.random().toString(36).slice(2, 10)}`;
+  store.get(userId).push({
+    id, provider: "ics", label: "Seeded feed", icsUrl: "https://example.com/seeded.ics", direction: "two-way",
+    lastSyncAt: null, lastSyncCount: 0, validatedEventCount: 0, connectedAt: new Date().toISOString(), ...fields,
+  });
+  return id;
+}
+
 describe("calendar — calc contracts (exact computed values, fixed dates)", () => {
   it("detectConflicts: overlapping events report exact overlap minutes; disjoint do not", async () => {
     const r = await lensRun("calendar", "detectConflicts", {
@@ -531,17 +547,22 @@ describe("calendar — accounts + sharing + invites (wave 16 top-up)", () => {
   let ctx;
   before(async () => { ctx = await depthCtx("calendar-t16-share"); });
 
-  it("accounts-connect → accounts-list → accounts-disconnect round-trip", async () => {
+  it("accounts-connect validates the feed first: under no-egress it refuses and stores nothing (F14)", async () => {
     const conn = await lensRun("calendar", "accounts-connect", {
       params: { provider: "google", label: "Personal GCal", icsUrl: "https://example.com/cal.ics", direction: "pull" },
     }, ctx);
-    assert.equal(conn.ok, true);
-    assert.equal(conn.result.account.provider, "google");
-    assert.equal(conn.result.account.direction, "pull");
-    const id = conn.result.account.id;
-
+    // accounts-connect fetches + parse-checks the feed BEFORE the account exists, so an
+    // unreachable URL can never become a "connected" account that only fails at Sync.
+    assert.equal(conn.result.ok, false);
+    assert.match(conn.result.error, /feed unreachable/);
     const list = await lensRun("calendar", "accounts-list", {}, ctx);
-    assert.ok(list.result.accounts.some((a) => a.id === id && a.label === "Personal GCal"));
+    assert.ok(!list.result.accounts.some((a) => a.label === "Personal GCal"));
+  });
+
+  it("accounts-list → accounts-disconnect round-trip on a validated account", async () => {
+    const id = await seedConnectedAccount(ctx, { provider: "google", label: "Personal GCal", direction: "pull" });
+    const list = await lensRun("calendar", "accounts-list", {}, ctx);
+    assert.ok(list.result.accounts.some((a) => a.id === id && a.label === "Personal GCal" && a.direction === "pull"));
 
     const disc = await lensRun("calendar", "accounts-disconnect", { params: { id } }, ctx);
     assert.equal(disc.ok, true);
@@ -549,6 +570,7 @@ describe("calendar — accounts + sharing + invites (wave 16 top-up)", () => {
     const after = await lensRun("calendar", "accounts-list", {}, ctx);
     assert.ok(!after.result.accounts.some((a) => a.id === id));
   });
+
 
   it("accounts-connect rejects a non-https icsUrl", async () => {
     const bad = await lensRun("calendar", "accounts-connect", {
@@ -930,11 +952,9 @@ describe("calendar — accounts-sync rejection + graceful no-egress feed branch 
   });
 
   it("a connected feed under no-egress takes the graceful 'feed unreachable' branch (no crash)", async () => {
-    const conn = await lensRun("calendar", "accounts-connect", {
-      params: { provider: "google", label: "Remote GCal", icsUrl: "https://example.com/remote.ics", direction: "pull" },
-    }, ctx);
-    assert.equal(conn.ok, true);
-    const accountId = conn.result.account.id;
+    // accounts-connect can't validate a feed under no-egress (F14), so seed an account
+    // as if it had been validated earlier, then let the feed become unreachable at Sync.
+    const accountId = await seedConnectedAccount(ctx, { provider: "google", label: "Remote GCal", icsUrl: "https://example.com/remote.ics", direction: "pull" });
 
     const sync = await lensRun("calendar", "accounts-sync", { params: { id: accountId } }, ctx);
     // No outbound feed is reachable from the test sandbox, so the macro takes one

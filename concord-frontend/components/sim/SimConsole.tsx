@@ -9,8 +9,9 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useStudioRunCount } from '@/lib/sim/studio-activity';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   Play, Sliders, Clock, Plus, Trash2, Copy, Download,
@@ -647,15 +648,38 @@ export function SimConsole() {
 
   const completedRuns = useMemo(() => runs.filter(r => r.status === 'completed'), [runs]);
 
+  // Studio's own persisted System Dynamics models (sim.listModels) — the real,
+  // server-backed count of models saved from the Studio tab. Queried here (not
+  // just inside SystemDynamicsBuilder) so the headline "Active Models" stat
+  // reflects Studio activity instead of only scenario modelType variety
+  // (sim.md F4: "the Studio's verified runs register in the headline they
+  // belong to").
+  const { data: studioModelsData } = useQuery({
+    queryKey: ['sim', 'studio-models'],
+    queryFn: async () => {
+      const r = await lensRun<{ models: Array<{ id: string }> }>('sim', 'listModels', {});
+      return r.data.ok && r.data.result ? r.data.result.models : [];
+    },
+    staleTime: 15000,
+  });
+  const studioModelCount = studioModelsData?.length || 0;
+  const studioRunCount = useStudioRunCount();
+
   // ── Dashboard stats ────────────────────────────────────────────────────────
+  // F4 fix: `backendSims` (the separate legacy /api/simulations system) no
+  // longer gets folded into the scenario/run counts it has nothing to do
+  // with — "Total Scenarios counts scenarios only" / "Runs Completed
+  // reflects completed runs". Studio's real activity (saved models + session
+  // run count) is folded into Active Models / Total Runs so the Studio tab
+  // is no longer invisible to the headline.
   const stats = useMemo(() => ({
-    totalScenarios: scenarios.length + backendSims.length,
-    runsCompleted: completedRuns.length + backendSims.length,
+    totalScenarios: scenarios.length,
+    runsCompleted: completedRuns.length,
     avgConvergence: completedRuns.length > 0
       ? (completedRuns.reduce((s, r) => s + (r.results?.stdDev || 0), 0) / completedRuns.length).toFixed(2)
       : '--',
-    activeModels: new Set(scenarios.map(s => s.modelType)).size || 0,
-  }), [scenarios, completedRuns, backendSims]);
+    activeModels: new Set(scenarios.map(s => s.modelType)).size + studioModelCount,
+  }), [scenarios, completedRuns, studioModelCount]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -1030,7 +1054,7 @@ export function SimConsole() {
             { label: 'Simulations', value: scenarios.length, icon: FlaskConical },
             { label: 'Avg Runtime', value: `${avgRuntime}s`, icon: Clock },
             { label: 'Success Rate', value: `${successRate}%`, icon: CheckCircle2 },
-            { label: 'Total Runs', value: runs.length, icon: Activity },
+            { label: 'Total Runs', value: runs.length + studioRunCount, icon: Activity },
           ].map((stat) => (
             <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
               <stat.icon className="w-5 h-5 text-purple-400 shrink-0" />

@@ -931,6 +931,23 @@ export default function registerEngineeringActions(registerLensAction) {
       const raw = params?.model ?? artifact?.data?.model;
       if (!raw || typeof raw !== 'object') return { ok: false, error: 'model required' };
       const model = cleanModel(raw);
+      // Reference integrity at the persistence boundary: a member, load
+      // or support pointing at a node that does not exist must never be
+      // stored silently — the solver throws on it, and the surface used
+      // to settle such references onto the first remaining node, so the
+      // stored model quietly became a different structure. Refuse with
+      // the dangling reference named; nothing is written.
+      const nodeIds = new Set(model.nodes.map((n) => n.id));
+      const dangling = [];
+      for (const mb of model.members) {
+        if (!nodeIds.has(mb.nodeI)) dangling.push(`member ${mb.id} → node ${mb.nodeI}`);
+        if (!nodeIds.has(mb.nodeJ)) dangling.push(`member ${mb.id} → node ${mb.nodeJ}`);
+      }
+      for (const l of model.loads) if (!nodeIds.has(l.nodeId)) dangling.push(`load → node ${l.nodeId}`);
+      for (const sp of model.supports) if (!nodeIds.has(sp.nodeId)) dangling.push(`support → node ${sp.nodeId}`);
+      if (dangling.length > 0) {
+        return { ok: false, error: `model has references to missing nodes: ${dangling.slice(0, 4).join('; ')}${dangling.length > 4 ? ` (+${dangling.length - 4} more)` : ''}` };
+      }
       const updatedAt = new Date().toISOString();
       s.models.set(egActor(ctx), { model, updatedAt });
       persist();
@@ -953,7 +970,7 @@ export default function registerEngineeringActions(registerLensAction) {
   // when the user ran it; the panels show the time they were computed.
   const WORKSPACE_KEYS = new Set([
     'calcs.structural', 'calcs.thermal', 'calcs.electrical', 'calcs.hydraulic',
-    'physics', 'bench',
+    'physics', 'bench', 'fea.latest',
   ]);
   const WORKSPACE_MAX_BYTES = 64 * 1024;
 
@@ -979,7 +996,11 @@ export default function registerEngineeringActions(registerLensAction) {
       if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, error: 'state object required' };
       let json;
       try { json = JSON.stringify(raw); } catch { return { ok: false, error: 'state is not serializable' }; }
-      if (json.length > WORKSPACE_MAX_BYTES) return { ok: false, error: `state too large (${json.length} bytes, max ${WORKSPACE_MAX_BYTES})` };
+      // The saved FEA result is a full solve record (per-node
+      // displacements, per-member stresses) and legitimately outgrows
+      // the panel-state cap; it gets its own bounded allowance.
+      const maxBytes = key === 'fea.latest' ? 512 * 1024 : WORKSPACE_MAX_BYTES;
+      if (json.length > maxBytes) return { ok: false, error: `state too large (${json.length} bytes, max ${maxBytes})` };
       const s = engState();
       if (!s) return { ok: false, error: 'state unavailable' };
       const userId = egActor(ctx);
@@ -1225,21 +1246,34 @@ export default function registerEngineeringActions(registerLensAction) {
       const updatedAt = new Date().toISOString();
       const s = engState();
       let jobId = null;
+      let keptDtuId = null;
       if (s) {
         const userId = egActor(ctx);
         const jobs = egList(s.jobs, userId);
         jobId = egId('sim');
         jobs.unshift({ id: jobId, name, type: 'fea-beam-study', status: 'completed', elapsedMs, summary: fea.summary, createdAt: updatedAt });
         if (jobs.length > 50) jobs.length = 50;
+        // Kept-state attaches to the STUDY, not the solve (ConKay F12a): the
+        // solver is deterministic, so a re-solve with identical inputs IS
+        // the solve the kept DTU records — carry its id over. Any input
+        // change starts unkept, as before.
+        const prev = s.beamStudies.get(beamStudyKey(ctx, data));
+        const requiredSf = summary.safetyCheck?.stated ? summary.safetyCheck.requiredSafetyFactor : null;
+        if (prev?.dtuId
+          && prev.material === matId && prev.support === study.support && prev.loadN === study.loadN
+          && (prev.requiredSafetyFactor ?? null) === requiredSf
+          && prev.dims && Object.keys(study.dims).every((k) => prev.dims[k] === study.dims[k])) {
+          keptDtuId = prev.dtuId;
+        }
         s.beamStudies.set(beamStudyKey(ctx, data), {
           workspaceId: egClean(data.workspaceId, 80) || null, name, dims: study.dims, material: matId, support: study.support, loadN: study.loadN,
-          requiredSafetyFactor: summary.safetyCheck?.stated ? summary.safetyCheck.requiredSafetyFactor : null,
+          requiredSafetyFactor: requiredSf,
           jobId, elapsedMs, summary, section: study.section, loadNode: study.loadNode,
-          utilizationByMember: result.utilizationByMember, analysisReceipt: study.analysisReceipt, dtuId: null, updatedAt,
+          utilizationByMember: result.utilizationByMember, analysisReceipt: study.analysisReceipt, dtuId: keptDtuId, updatedAt,
         });
         persist();
       }
-      return { ok: true, result: { jobId, name, updatedAt, ...result } };
+      return { ok: true, result: { jobId, name, updatedAt, ...result, dtuId: keptDtuId } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

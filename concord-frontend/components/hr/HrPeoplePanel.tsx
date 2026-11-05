@@ -14,6 +14,7 @@ import { ErrorState } from '@/components/ui';
 interface Employee {
   id: string; name: string; title: string | null; department: string;
   managerId: string | null; email: string | null; salary: number; employmentType: string; status: string;
+  hireDate?: string; terminationDate?: string | null;
 }
 interface OrgNode { id: string; name: string; title: string | null; department: string; reports: OrgNode[] }
 interface OnboardingTask { id: string; task: string; done: boolean }
@@ -33,12 +34,18 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
   const [docs, setDocs] = useState<HrDoc[]>([]);
   const [taskInput, setTaskInput] = useState('');
   const [docInput, setDocInput] = useState('');
+  const [terminated, setTerminated] = useState<Employee[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', department: '', email: '', salary: '', managerId: '' });
+  const [savedNote, setSavedNote] = useState<string | null>(null);
+  const [confirmOffboard, setConfirmOffboard] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [e, o] = await Promise.all([
+    const [e, o, all] = await Promise.all([
       lensRun('hr', 'employee-list', {}),
       lensRun('hr', 'org-chart', {}),
+      lensRun('hr', 'employee-list', { includeInactive: true }),
     ]);
     if (e.data?.ok === false || o.data?.ok === false) {
       setLoadError(e.data?.error || o.data?.error || 'Could not load employees.');
@@ -48,6 +55,7 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
     setLoadError(null);
     setEmployees(e.data?.result?.employees || []);
     setOrgChart(o.data?.result?.chart || []);
+    setTerminated(((all.data?.result?.employees as Employee[]) || []).filter((x) => x.status === 'terminated'));
     setLoading(false);
   }, []);
 
@@ -55,6 +63,9 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
 
   const openEmp = useCallback(async (emp: Employee) => {
     setSelected(emp);
+    setEditing(false);
+    setConfirmOffboard(false);
+    setSavedNote(null);
     const [o, d] = await Promise.all([
       lensRun('hr', 'onboarding-list', { employeeId: emp.id }),
       lensRun('hr', 'hr-document-list', { employeeId: emp.id }),
@@ -80,8 +91,42 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
     await refresh(); onChange();
   };
   const offboard = async (emp: Employee) => {
-    await lensRun('hr', 'employee-offboard', { id: emp.id });
+    const r = await lensRun('hr', 'employee-offboard', { id: emp.id });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Offboard failed'); return; }
+    setConfirmOffboard(false);
     if (selected?.id === emp.id) setSelected(null);
+    await refresh(); onChange();
+  };
+  const rehire = async (emp: Employee) => {
+    const r = await lensRun('hr', 'employee-offboard', { id: emp.id, rehire: true });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Rehire failed'); return; }
+    if (selected?.id === emp.id && r.data?.result?.employee) setSelected(r.data.result.employee as Employee);
+    setSavedNote(`${emp.name} is active again.`);
+    await refresh(); onChange();
+  };
+  const startEdit = (emp: Employee) => {
+    setEditForm({
+      title: emp.title || '', department: emp.department || '',
+      email: emp.email || '', salary: emp.salary ? String(emp.salary) : '',
+      managerId: emp.managerId || '',
+    });
+    setSavedNote(null);
+    setEditing(true);
+  };
+  const saveEdit = async (emp: Employee) => {
+    const r = await lensRun('hr', 'employee-update', {
+      id: emp.id,
+      title: editForm.title.trim(),
+      department: editForm.department.trim() || emp.department,
+      email: editForm.email.trim(),
+      salary: Number(editForm.salary) || 0,
+      managerId: editForm.managerId || null,
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Save failed'); return; }
+    setError(null);
+    setEditing(false);
+    if (r.data?.result?.employee) setSelected(r.data.result.employee as Employee);
+    setSavedNote('Employee record saved.');
     await refresh(); onChange();
   };
   const addTask = async () => {
@@ -119,9 +164,57 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
           <p className="text-xs text-zinc-400">
             {selected.title || 'No title'} · {selected.department} · {selected.employmentType.replace(/_/g, ' ')}
             {selected.salary > 0 ? ` · $${selected.salary.toLocaleString()}` : ''}
+            {selected.email ? ` · ${selected.email}` : ''}
           </p>
-          <button type="button" onClick={() => offboard(selected)}
-            className="mt-2 text-[11px] text-zinc-400 hover:text-rose-400">Offboard employee</button>
+          {selected.status === 'terminated' ? (
+            <>
+              <p className="mt-1 text-[11px] text-rose-300">
+                Terminated{selected.terminationDate ? ` ${selected.terminationDate}` : ''} — record retained.
+              </p>
+              <button type="button" onClick={() => rehire(selected)}
+                className="mt-2 text-[11px] px-2 py-1 rounded bg-emerald-700/30 text-emerald-300 hover:bg-emerald-700/50">Rehire</button>
+            </>
+          ) : editing ? (
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <input placeholder="Title" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input placeholder="Department" value={editForm.department} onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input placeholder="Email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <input placeholder="Salary" inputMode="numeric" value={editForm.salary} onChange={(e) => setEditForm({ ...editForm, salary: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              <select value={editForm.managerId} onChange={(e) => setEditForm({ ...editForm, managerId: e.target.value })}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+                <option value="">— no manager —</option>
+                {employees.filter((e) => e.id !== selected.id).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select>
+              <div className="flex gap-1.5">
+                <button type="button" onClick={() => saveEdit(selected)}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save changes</button>
+                <button type="button" onClick={() => setEditing(false)}
+                  className="px-2 py-1.5 text-xs text-zinc-400 hover:text-zinc-200">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 flex items-center gap-3">
+              <button type="button" onClick={() => startEdit(selected)}
+                className="text-[11px] px-2 py-1 rounded bg-zinc-800 text-zinc-200 hover:bg-zinc-700">Edit employee</button>
+              {confirmOffboard ? (
+                <span className="flex items-center gap-2 text-[11px]">
+                  <span className="text-zinc-300">Offboard {selected.name}? The record is retained and they can be rehired.</span>
+                  <button type="button" onClick={() => offboard(selected)}
+                    className="px-2 py-1 rounded bg-rose-600 text-white hover:bg-rose-500">Confirm offboard</button>
+                  <button type="button" onClick={() => setConfirmOffboard(false)}
+                    className="text-zinc-400 hover:text-zinc-200">Cancel</button>
+                </span>
+              ) : (
+                <button type="button" onClick={() => setConfirmOffboard(true)}
+                  className="text-[11px] text-zinc-400 hover:text-rose-400">Offboard employee</button>
+              )}
+            </div>
+          )}
+          {savedNote && <p className="mt-2 text-[11px] text-emerald-300">{savedNote}</p>}
         </div>
 
         {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
@@ -242,6 +335,30 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {view === 'list' && terminated.length > 0 && (
+        <section className="pt-2">
+          <h4 className="text-xs font-semibold text-zinc-300 mb-2">Former employees</h4>
+          <ul className="space-y-2">
+            {terminated.map((e) => (
+              <li key={e.id} className="flex items-center justify-between bg-zinc-900/40 border border-zinc-800/70 rounded-xl p-3">
+                <button type="button" onClick={() => openEmp(e)} className="flex items-center gap-2 text-left">
+                  <UserRound className="w-4 h-4 text-zinc-500 shrink-0" />
+                  <span>
+                    <span className="block text-sm font-semibold text-zinc-300">{e.name}</span>
+                    <span className="block text-[11px] text-zinc-500">
+                      {e.title || 'No title'} · {e.department}
+                      {e.terminationDate ? ` · terminated ${e.terminationDate}` : ''}
+                    </span>
+                  </span>
+                </button>
+                <button type="button" onClick={() => rehire(e)}
+                  className="text-[11px] px-2 py-1 rounded bg-emerald-700/30 text-emerald-300 hover:bg-emerald-700/50">Rehire</button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );

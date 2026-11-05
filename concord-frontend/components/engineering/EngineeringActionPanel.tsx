@@ -65,6 +65,7 @@ const BENCH_DEFAULTS = {
   forceN: '', areaMm2: '', yieldMpa: '',
   unitValue: '', unitFrom: 'mm', unitTo: 'in',
   tolResult: null as TolResult | null,
+  tolSig: '',
   stressResult: null as StressResult | null,
   unitResult: null as UnitResult | null,
   mintedDtuId: null as string | null,
@@ -75,12 +76,17 @@ type Bench = typeof BENCH_DEFAULTS;
 
 export function EngineeringActionPanel() {
   const [ws, setWs, wsSave] = useEngWorkspace('bench', BENCH_DEFAULTS);
-  const { tolParts, forceN, areaMm2, yieldMpa, unitValue, unitFrom, unitTo, tolResult, stressResult, unitResult, mintedDtuId, publishedDtuId, agentReply } = ws;
+  const { tolParts, forceN, areaMm2, yieldMpa, unitValue, unitFrom, unitTo, tolResult, tolSig, stressResult, unitResult, mintedDtuId, publishedDtuId, agentReply } = ws;
+  // The stack-up describes the parts it ran on; when a part is removed
+  // or edited afterwards, the result marks itself stale.
+  const tolSigOf = (parts: TolPartInput[]) =>
+    JSON.stringify(parts.filter((p) => p.name.trim().length > 0).map((p) => [p.name, p.nominal, p.tolerance]));
+  const tolStale = !!tolResult && tolSig !== '' && tolSig !== tolSigOf(tolParts);
   const put = <K extends keyof Bench>(k: K) => (v: Bench[K]) => setWs((s) => ({ ...s, [k]: v }));
   const setTolParts = (f: (p: TolPartInput[]) => TolPartInput[]) => setWs((s) => ({ ...s, tolParts: f(s.tolParts) }));
   const setForceN = put('forceN'); const setAreaMm2 = put('areaMm2'); const setYieldMpa = put('yieldMpa');
   const setUnitValue = put('unitValue'); const setUnitFrom = put('unitFrom'); const setUnitTo = put('unitTo');
-  const setTolResult = put('tolResult'); const setStressResult = put('stressResult'); const setUnitResult = put('unitResult');
+  const setTolResult = put('tolResult'); const setTolSig = put('tolSig'); const setStressResult = put('stressResult'); const setUnitResult = put('unitResult');
   const setMintedDtuId = put('mintedDtuId'); const setPublishedDtuId = put('publishedDtuId'); const setAgentReply = put('agentReply');
   const [recipient, setRecipient] = useState('');
 
@@ -110,7 +116,7 @@ export function EngineeringActionPanel() {
     setBusy('tol'); setFeedback(null);
     try {
       const r = await callMacro<TolResult>('toleranceAnalysis', { artifact: { data: { parts } } });
-      if (r.ok && r.result) { setTolResult(r.result); pipe.publish('engineering.tol', r.result, { label: `Stack ${r.result.stackUp.nominal}±${r.result.stackUp.worstCaseTolerance}` }); ok(`Stack ${r.result.stackUp.nominal} ±${r.result.stackUp.worstCaseTolerance}.`); } else err(r.error ?? 'tol failed');
+      if (r.ok && r.result) { setTolResult(r.result); setTolSig(tolSigOf(tolParts)); pipe.publish('engineering.tol', r.result, { label: `Stack ${r.result.stackUp.nominal}±${r.result.stackUp.worstCaseTolerance}` }); ok(`Stack ${r.result.stackUp.nominal} ±${r.result.stackUp.worstCaseTolerance}.`); } else err(r.error ?? 'tol failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actStress() {
@@ -137,7 +143,7 @@ export function EngineeringActionPanel() {
       const title = ['Engineering design', stressResult ? `SF ${stressResult.safetyFactor} ${stressResult.status}` : '', tolResult ? `stack ${tolResult.stackUp.nominal} ±${tolResult.stackUp.worstCaseTolerance}` : ''].filter(Boolean).join(' · ');
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title, tags: ['engineering', 'design'], source: 'engineering:design:mint', meta: { visibility: 'private', consent: { allowCitations: false }, eng: { tol: tolResult, stress: stressResult, unit: unitResult } } }, 'software', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('engineering.mintedDtuId', id, { label: `Design DTU ${id.slice(0, 8)}…` }); ok(`Design DTU ${id.slice(0, 8)}…`); } else err(dtuRefusal(r.data));
+      if (id) { setMintedDtuId(id); pipe.publish('engineering.mintedDtuId', id, { label: `Design DTU ${id}` }); ok(`Design DTU ${id}`); } else err(dtuRefusal(r.data));
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
@@ -170,7 +176,7 @@ export function EngineeringActionPanel() {
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
         return newId as string;
       });
-      if (id) { setPublishedDtuId(id); pipe.publish('engineering.publishedDtuId', id, { label: `Public eng analysis ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
+      if (id) { setPublishedDtuId(id); pipe.publish('engineering.publishedDtuId', id, { label: `Public eng analysis ${id}` }); ok(`Published ${id} · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -187,9 +193,9 @@ export function EngineeringActionPanel() {
     { id: 'tol' as ActionId, label: 'Tolerance', desc: 'WC + RSS + class', icon: Ruler, accent: '#3b82f6', handler: actTol },
     { id: 'stress' as ActionId, label: 'Stress', desc: 'yield × SF', icon: Activity, accent: '#ef4444', handler: actStress },
     { id: 'unit' as ActionId, label: 'Convert', desc: 'unitConvert', icon: Cog, accent: '#a855f7', handler: actUnit },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private design DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private design DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send eng review', icon: Send, accent: '#ec4899', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public analysis', icon: Globe, accent: '#15803d', handler: actPublish },
+    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : 'Public analysis', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Review', desc: 'AI review (needs the chat agent)', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
@@ -280,8 +286,13 @@ export function EngineeringActionPanel() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {tolResult && (
-          <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-44 overflow-y-auto">
+          <div className={`rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-44 overflow-y-auto ${tolStale ? 'opacity-60' : ''}`}>
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Tolerance stack-up</div>
+            {tolStale && (
+              <p role="alert" className="text-[10px] text-amber-300 mt-0.5">
+                Stale — the parts changed after this stack-up ran; run the check again for the current parts.
+              </p>
+            )}
             <div className="text-2xl font-bold text-blue-300">{tolResult.stackUp.nominal}<span className="text-xs text-zinc-400"> ±{tolResult.stackUp.worstCaseTolerance}</span></div>
             <div className="text-[10px] text-zinc-400">RSS ±{tolResult.stackUp.rssTolerance} · range {tolResult.stackUp.worstCaseMin}–{tolResult.stackUp.worstCaseMax}</div>
             {tolResult.parts.map((p, i) => <div key={i} className="text-[10px] text-zinc-400 mt-0.5"><span className="font-mono text-blue-200">{p.part}</span> {p.nominal} ±{p.tolerance} · {p.toleranceClass}</div>)}

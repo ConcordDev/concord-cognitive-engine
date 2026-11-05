@@ -35,8 +35,11 @@ interface FunnelResult { stages: FunnelStage[]; overallConversion: number; bigge
 interface Segment { segment: string; users: number; totalSpend: number; avgSpend: number; share: number }
 interface SegmentResult { totalUsers: number; segments: Segment[]; highValue?: string; pareto: string }
 
-// No seeded data — every input starts empty. Paste real campaign / A/B /
-// funnel / user JSON, or fill the ROI inputs from a live campaign.
+// Inputs start empty by design — nothing here is seeded as if it were the
+// user's own data. Each analyzer has a "Load example" button (build(marketing)
+// S7 — Review 5 F7): user-invoked, clearly sample data, editable in place,
+// and the example JSON matches the pinned server-test shapes so it runs
+// clean on the first try.
 export function MarketingActionPanel() {
   const [campaignName, setCampaignName] = useState('');
   const [spend, setSpend] = useState('');
@@ -60,6 +63,40 @@ export function MarketingActionPanel() {
 
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
+
+  // Example payloads (build(marketing) S7). Shapes pinned to the server
+  // tests, so each example computes on first run: A/B → Treatment wins
+  // +40% and significant; funnel → 6% overall, leak at Buy; segment → vip
+  // is the high-value group. They are sample data, never the user's.
+  const EXAMPLE_AB = JSON.stringify({
+    variants: [
+      { name: 'Control', visitors: 1000, conversions: 50 },
+      { name: 'Treatment', visitors: 1200, conversions: 84 },
+    ],
+  }, null, 2);
+  const EXAMPLE_FUNNEL = JSON.stringify({
+    stages: [
+      { name: 'Visit', count: 1000 },
+      { name: 'Cart', count: 300 },
+      { name: 'Buy', count: 60 },
+    ],
+  }, null, 2);
+  const EXAMPLE_USERS = JSON.stringify({
+    users: [
+      { segment: 'vip', spend: 500 },
+      { segment: 'vip', spend: 300 },
+      { segment: 'free', spend: 0 },
+      { segment: 'free', spend: 0 },
+    ],
+  }, null, 2);
+  const loadRoiExample = () => {
+    setCampaignName('Spring launch'); setSpend('1000'); setRevenue('4200');
+    setLeads('120'); setConversions('18');
+    ok('Example loaded — edit it freely, then run ROI.');
+  };
+  const loadAbExample = () => { setAbText(EXAMPLE_AB); ok('Example loaded — edit it freely, then run A/B.'); };
+  const loadFunnelExample = () => { setFunnelText(EXAMPLE_FUNNEL); ok('Example loaded — edit it freely, then run Funnel.'); };
+  const loadUsersExample = () => { setUsersText(EXAMPLE_USERS); ok('Example loaded — edit it freely, then run Segment.'); };
 
   const pipe = usePipe();
   const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
@@ -99,7 +136,9 @@ export function MarketingActionPanel() {
     try {
       const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Marketing — ${campaignName}`, tags: ['marketing', 'campaign', roiResult?.grade].filter((t): t is string => !!t), source: 'marketing:report:mint', meta: { visibility: 'private', consent: { allowCitations: false }, mkt: { roi: roiResult, ab: abResult, funnel: funnelResult, seg: segResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('marketing.mintedDtuId', id, { label: `Report DTU ${id.slice(0, 8)}…` }); ok(`Report DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      // The receipt carries the FULL DTU id (build(marketing) S7 — Review 5
+      // F7): a truncated id is not a receipt, it cannot be cited or pasted.
+      if (id) { setMintedDtuId(id); pipe.publish('marketing.mintedDtuId', id, { label: `Report DTU ${id}` }); ok(`Report DTU ${id}`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
@@ -133,7 +172,7 @@ export function MarketingActionPanel() {
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
         return newId as string;
       });
-      if (id) { setPublishedDtuId(id); pipe.publish('marketing.publishedDtuId', id, { label: `Public playbook ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
+      if (id) { setPublishedDtuId(id); pipe.publish('marketing.publishedDtuId', id, { label: `Public playbook ${id}` }); ok(`Published ${id} · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -151,9 +190,9 @@ export function MarketingActionPanel() {
     { id: 'ab' as ActionId, label: 'A/B', desc: 'abTestAnalysis', icon: FlaskConical, accent: '#a855f7', handler: actAb },
     { id: 'funnel' as ActionId, label: 'Funnel', desc: 'funnelOptimize', icon: Filter, accent: '#3b82f6', handler: actFunnel },
     { id: 'seg' as ActionId, label: 'Segment', desc: 'audienceSegment', icon: Users, accent: '#22c55e', handler: actSeg },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private report DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId || 'Private report DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send report', icon: Send, accent: '#ec4899', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon playbook', icon: Globe, accent: '#15803d', handler: actPublish },
+    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId || 'Anon playbook', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Play', desc: 'Agent: top play', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
@@ -177,6 +216,7 @@ export function MarketingActionPanel() {
             <input type="text" value={leads} onChange={(e) => setLeads(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Leads" />
             <input type="text" value={conversions} onChange={(e) => setConversions(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Conversions" />
           </div>
+          <button type="button" onClick={loadRoiExample} className="text-[10px] text-amber-400 hover:text-amber-300">Load example</button>
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white" placeholder="DM recipient" />
           <div className="flex items-center gap-2 flex-wrap">
             <RecallSlot ctl={dmRecall} />
@@ -184,13 +224,22 @@ export function MarketingActionPanel() {
           </div>
         </div>
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">A/B variants JSON</label>
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">A/B variants JSON</label>
+            <button type="button" onClick={loadAbExample} className="text-[10px] text-purple-400 hover:text-purple-300">Load example</button>
+          </div>
           <textarea value={abText} onChange={(e) => setAbText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Funnel JSON</label>
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Funnel JSON</label>
+            <button type="button" onClick={loadFunnelExample} className="text-[10px] text-blue-400 hover:text-blue-300">Load example</button>
+          </div>
           <textarea value={funnelText} onChange={(e) => setFunnelText(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
-          <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold mt-1 block">Users JSON</label>
+          <div className="flex items-center justify-between mt-1">
+            <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Users JSON</label>
+            <button type="button" onClick={loadUsersExample} className="text-[10px] text-green-400 hover:text-green-300">Load example</button>
+          </div>
           <textarea value={usersText} onChange={(e) => setUsersText(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
       </div>

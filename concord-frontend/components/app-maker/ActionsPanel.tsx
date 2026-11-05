@@ -12,19 +12,21 @@ import {
   Zap, Loader2, Code, Ruler, ClipboardCheck, AlertTriangle, BarChart3,
   XCircle, CheckCircle,
 } from 'lucide-react';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useAppMakerProject } from './AppMakerProjectContext';
+import {
+  projectToScaffoldSpec, projectToScreens, projectToWireframe,
+  type ComputeProject,
+} from '@/lib/app-maker/project-to-compute-input';
 
-export function ActionsPanel({
-  selectedTemplate = 'crm',
-  appBuildName = '',
-}: {
-  selectedTemplate?: string;
-  appBuildName?: string;
-} = {}) {
+const ARTIFACT_TITLE = 'Compute workspace (synced from Studio project)';
+
+export function ActionsPanel() {
   const runAction = useRunArtifact('app-maker');
   const { items: appmakerItems } = useLensData<Record<string, unknown>>('app-maker', 'app', { seed: [] });
+  const { activeProjectId } = useAppMakerProject();
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState<string | null>(null);
@@ -33,29 +35,54 @@ export function ActionsPanel({
   const handleAppmakerAction = async (action: string) => {
     setLastAction(action);
     setActionError(null);
-    let targetId = appmakerItems[0]?.id;
-    if (!targetId) {
-      try {
-        const created = await apiHelpers.lens.create('app-maker', {
-          type: 'app',
-          title: 'App Maker Workspace',
-          data: { template: selectedTemplate, name: appBuildName || 'Untitled App' },
-        });
-        targetId = created?.data?.artifact?.id;
-      } catch (e) {
-        console.error('[AppMaker] Failed to auto-create artifact:', e);
+
+    // Fixes F4: Compute actions must run against the project actually open
+    // in Studio, not a disconnected auto-created artifact. No project open
+    // is an honest stop, not a silent fabricate-and-run.
+    if (!activeProjectId) {
+      setActionResult(null);
+      setActionError('No project open. Open (or create) a project in the Studio tab first, then come back here.');
+      return;
+    }
+
+    setIsRunning(action);
+    try {
+      const projRes = await lensRun('app-maker', 'projectGet', { projectId: activeProjectId });
+      if (!projRes.data?.ok) {
         setActionResult(null);
-        setActionError(e instanceof Error ? e.message : 'Failed to create app workspace.');
+        setActionError(String(projRes.data?.error || 'Could not load the open project.'));
+        setIsRunning(null);
         return;
+      }
+      const project = (projRes.data.result as { project: ComputeProject }).project;
+      if (!project.pages || project.pages.length === 0) {
+        setActionResult(null);
+        setActionError('This project has no pages yet. Add one in Studio\'s Editor tab first.');
+        setIsRunning(null);
+        return;
+      }
+
+      const computeData: Record<string, unknown> = { projectId: project.id, projectName: project.name };
+      if (action === 'scaffoldApp') computeData.spec = projectToScaffoldSpec(project);
+      else if (action === 'uiComplexity') computeData.screens = projectToScreens(project);
+      else if (action === 'wireframeValidate') computeData.wireframe = projectToWireframe(project);
+
+      // Reuse a single workspace artifact per browser session (keyed by
+      // title) rather than minting a new one per run.
+      let targetId = appmakerItems.find((it) => (it as { title?: string }).title === ARTIFACT_TITLE)?.id as string | undefined;
+      if (!targetId) {
+        const created = await apiHelpers.lens.create('app-maker', { type: 'app', title: ARTIFACT_TITLE, data: computeData });
+        targetId = created?.data?.artifact?.id;
+      } else {
+        await apiHelpers.lens.update('app-maker', targetId, { data: computeData });
       }
       if (!targetId) {
         setActionResult(null);
-        setActionError('No app artifact found. Please create an app first.');
+        setActionError('Failed to sync the open project into a runnable workspace.');
+        setIsRunning(null);
         return;
       }
-    }
-    setIsRunning(action);
-    try {
+
       const res = await runAction.mutateAsync({ id: targetId, action });
       if (res.ok === false) {
         setActionResult(null);

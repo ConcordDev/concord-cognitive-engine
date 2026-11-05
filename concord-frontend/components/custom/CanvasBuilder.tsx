@@ -76,6 +76,16 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
   const [dirty, setDirty] = useState(false);
 
   const [preview, setPreview] = useState<{ widgets: PreviewWidget[]; issues: string[] } | null>(null);
+  // In-page forms replace every native dialog this surface used to open
+  // (window.prompt / window.confirm are invisible to whole classes of
+  // clients — the create/binding/wiring controls read as dead there).
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showBindingForm, setShowBindingForm] = useState(false);
+  const [bindingDraft, setBindingDraft] = useState({ kind: 'macro', name: '', domain: '', macro: '', url: '', resultPath: '' });
+  const [wiringDraft, setWiringDraft] = useState<{ widgetId: string; domain: string; macro: string; refreshWidgetId: string } | null>(null);
+  const [publishLabel, setPublishLabel] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -140,22 +150,32 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
     }
   }, [loadWirings]);
 
+  // The page's "New canvas" CTA and the N shortcut ask for the create
+  // dialog through this event (the builder owns the form).
+  useEffect(() => {
+    const open = () => setShowCreate(true);
+    window.addEventListener('concord:custom-new-canvas', open);
+    return () => window.removeEventListener('concord:custom-new-canvas', open);
+  }, []);
+
   // ── canvas CRUD ───────────────────────────────────────────────────────────
   const createCanvas = useCallback(async () => {
-    const name = window.prompt('New lens name?');
-    if (!name?.trim()) return;
+    const name = newName.trim();
+    if (!name) { flash('err', 'Name the lens first'); return; }
     setBusy(true);
-    const d = await call<{ canvas: Canvas }>('canvasCreate', { name: name.trim() });
+    const d = await call<{ canvas: Canvas }>('canvasCreate', { name });
     setBusy(false);
     if (d.ok && d.result) {
+      setShowCreate(false);
+      setNewName('');
       await loadCanvases();
       await openCanvas(d.result.canvas.id);
       flash('ok', `Created "${d.result.canvas.name}"`);
     } else flash('err', d.error || 'create failed');
-  }, [loadCanvases, openCanvas, flash]);
+  }, [newName, loadCanvases, openCanvas, flash]);
 
   const deleteCanvas = useCallback(async (cid: string) => {
-    if (!window.confirm('Delete this lens?')) return;
+    setConfirmDeleteId(null);
     const d = await call('canvasDelete', { canvasId: cid });
     if (d.ok) {
       if (activeId === cid) { setActiveId(null); setWidgets([]); }
@@ -237,25 +257,29 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
 
   // ── data-source bindings ──────────────────────────────────────────────────
   const createBinding = useCallback(async () => {
-    const kind = window.prompt('Binding kind — "macro" or "rest"?', 'macro');
-    if (!kind) return;
-    const name = window.prompt('Binding name?');
-    if (!name?.trim()) return;
+    const name = bindingDraft.name.trim();
+    if (!name) { flash('err', 'Name the data source first'); return; }
     let input: Record<string, unknown>;
-    if (kind === 'rest') {
-      const url = window.prompt('REST URL (https://…)?');
-      if (!url) return;
-      input = { kind: 'rest', name: name.trim(), url };
+    if (bindingDraft.kind === 'rest') {
+      const url = bindingDraft.url.trim();
+      if (!url) { flash('err', 'A REST source needs its URL'); return; }
+      input = { kind: 'rest', name, url };
     } else {
-      const domain = window.prompt('Macro domain? (e.g. weather)');
-      const macro = window.prompt('Macro name? (e.g. forecast)');
-      if (!domain || !macro) return;
-      input = { kind: 'macro', name: name.trim(), domain, macro };
+      const domain = bindingDraft.domain.trim();
+      const macro = bindingDraft.macro.trim();
+      if (!domain || !macro) { flash('err', 'A macro source needs a domain and a macro name'); return; }
+      input = { kind: 'macro', name, domain, macro };
     }
+    if (bindingDraft.resultPath.trim()) input.resultPath = bindingDraft.resultPath.trim();
     const d = await call('bindingCreate', input);
-    if (d.ok) { await loadBindings(); flash('ok', 'Binding created'); }
+    if (d.ok) {
+      setShowBindingForm(false);
+      setBindingDraft({ kind: 'macro', name: '', domain: '', macro: '', url: '', resultPath: '' });
+      await loadBindings();
+      flash('ok', 'Binding created');
+    }
     else flash('err', d.error || 'binding failed');
-  }, [loadBindings, flash]);
+  }, [bindingDraft, loadBindings, flash]);
 
   const deleteBinding = useCallback(async (id: string) => {
     const d = await call('bindingDelete', { bindingId: id });
@@ -275,20 +299,19 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
   }, [flash]);
 
   // ── event/action wiring ───────────────────────────────────────────────────
-  const createWiring = useCallback(async (sourceWidgetId: string) => {
-    if (!activeId) return;
-    const domain = window.prompt('Action — macro domain?');
-    const macro = window.prompt('Action — macro name?');
-    if (!domain || !macro) return;
-    const refresh = window.prompt('Refresh which widget id after? (optional)') || '';
+  const createWiring = useCallback(async () => {
+    if (!activeId || !wiringDraft) return;
+    const domain = wiringDraft.domain.trim();
+    const macro = wiringDraft.macro.trim();
+    if (!domain || !macro) { flash('err', 'An action needs a macro domain and name'); return; }
     const d = await call('wiringCreate', {
-      canvasId: activeId, sourceWidgetId, event: 'click',
+      canvasId: activeId, sourceWidgetId: wiringDraft.widgetId, event: 'click',
       action: { kind: 'macro', domain, macro },
-      refreshWidgetId: refresh || undefined,
+      refreshWidgetId: wiringDraft.refreshWidgetId || undefined,
     });
-    if (d.ok) { await loadWirings(activeId); flash('ok', 'Action wired'); }
+    if (d.ok) { setWiringDraft(null); await loadWirings(activeId); flash('ok', 'Action wired'); }
     else flash('err', d.error || 'wiring failed');
-  }, [activeId, loadWirings, flash]);
+  }, [activeId, wiringDraft, loadWirings, flash]);
 
   const deleteWiring = useCallback(async (id: string) => {
     if (!activeId) return;
@@ -298,13 +321,18 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
 
   // ── publish / unpublish ───────────────────────────────────────────────────
   const publishCanvas = useCallback(async () => {
+    if (!activeId || publishLabel === null) return;
+    const navLabel = publishLabel.trim() || active?.name;
+    const d = await call('publish', { canvasId: activeId, navLabel });
+    if (d.ok) { setPublishLabel(null); await loadPublished(); flash('ok', 'Marked published (listed under Published lenses here)'); }
+    else flash('err', d.error || 'publish failed');
+  }, [activeId, publishLabel, active, loadPublished, flash]);
+
+  const beginPublish = useCallback(() => {
     if (!activeId) return;
     if (dirty) { flash('err', 'Save the layout before publishing'); return; }
-    const navLabel = window.prompt('Nav label?', active?.name) || active?.name;
-    const d = await call('publish', { canvasId: activeId, navLabel });
-    if (d.ok) { await loadPublished(); flash('ok', 'Marked published (listed under Published lenses here)'); }
-    else flash('err', d.error || 'publish failed');
-  }, [activeId, dirty, active, loadPublished, flash]);
+    setPublishLabel(active?.name || '');
+  }, [activeId, dirty, active, flash]);
 
   const unpublishCanvas = useCallback(async (cid: string) => {
     const d = await call('unpublish', { canvasId: cid });
@@ -360,7 +388,7 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
           <MousePointer2 className="w-4 h-4" /> Visual Lens Builder
         </h3>
         <div className="flex items-center gap-2">
-          <button onClick={createCanvas} disabled={busy}
+          <button onClick={() => setShowCreate(true)} disabled={busy}
             className="btn-neon purple text-sm flex items-center gap-1">
             <Plus className="w-3.5 h-3.5" /> New Lens
           </button>
@@ -373,6 +401,21 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
         </div>
       </div>
 
+      {showCreate && (
+        <div className="panel p-3 flex flex-wrap items-center gap-2">
+          <label className="text-xs text-gray-400" htmlFor="custom-new-canvas-name">New lens name</label>
+          <input id="custom-new-canvas-name" autoFocus value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); createCanvas(); } }}
+            placeholder="e.g. Shift board"
+            className="input-lattice text-sm flex-1 min-w-[200px]" />
+          <button onClick={createCanvas} disabled={busy || !newName.trim()}
+            className="btn-neon purple text-sm disabled:opacity-40">Create lens</button>
+          <button onClick={() => { setShowCreate(false); setNewName(''); }}
+            className="btn-neon text-sm">Cancel</button>
+        </div>
+      )}
+
       <div className="grid grid-cols-12 gap-4">
         {/* ── Canvas list ──────────────────────────────────────────────────── */}
         <div className="col-span-12 lg:col-span-2 panel p-3 space-y-2">
@@ -380,17 +423,26 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
           {canvases.length === 0 && <p className="text-xs text-gray-400">No canvases yet.</p>}
           {canvases.map((c) => (
             <div key={c.id}
-              className={`group flex items-center justify-between rounded px-2 py-1.5 text-sm cursor-pointer ${
-                activeId === c.id ? 'bg-neon-purple/20 border border-neon-purple/40' : 'hover:bg-white/5'}`}
-              onClick={() => openCanvas(c.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-              <span className="truncate flex items-center gap-1">
-                {isPublished(c.id) && <Rocket className="w-3 h-3 text-emerald-400 shrink-0" />}
-                {c.name}
-              </span>
-              <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); deleteCanvas(c.id); }}
-                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              className={`group rounded px-2 py-1.5 text-sm ${
+                activeId === c.id ? 'bg-neon-purple/20 border border-neon-purple/40' : 'hover:bg-white/5'}`}>
+              <div className="flex items-center justify-between cursor-pointer"
+                onClick={() => openCanvas(c.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                <span className="truncate flex items-center gap-1">
+                  {isPublished(c.id) && <Rocket className="w-3 h-3 text-emerald-400 shrink-0" />}
+                  {c.name}
+                </span>
+                <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(c.id); }}
+                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              {confirmDeleteId === c.id && (
+                <div className="mt-1.5 flex items-center gap-1.5 text-xs">
+                  <span className="text-red-300">Delete “{c.name}”?</span>
+                  <button onClick={() => deleteCanvas(c.id)} className="rounded bg-red-500/20 px-1.5 py-0.5 text-red-200 hover:bg-red-500/30">Delete</button>
+                  <button onClick={() => setConfirmDeleteId(null)} className="rounded bg-white/5 px-1.5 py-0.5 text-gray-300 hover:bg-white/10">Keep</button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -434,13 +486,26 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
                     className="btn-neon text-xs flex items-center gap-1">
                     <Download className="w-3 h-3" /> Export
                   </button>
-                  <button onClick={publishCanvas}
+                  <button onClick={beginPublish}
                     className="btn-neon purple text-xs flex items-center gap-1">
                     <Rocket className="w-3 h-3" /> Publish
                   </button>
                 </div>
               )}
             </div>
+
+            {active && publishLabel !== null && (
+              <div className="mb-2 flex flex-wrap items-center gap-2 rounded border border-lattice-edge bg-lattice-deep p-2">
+                <label className="text-xs text-gray-400" htmlFor="custom-publish-label">Published label</label>
+                <input id="custom-publish-label" value={publishLabel}
+                  onChange={(e) => setPublishLabel(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); publishCanvas(); } }}
+                  className="input-lattice text-xs flex-1 min-w-[160px]" />
+                <span className="text-[10px] text-gray-500">Recorded under Published lenses here — not added to the main sidebar.</span>
+                <button onClick={publishCanvas} className="btn-neon purple text-xs">Publish</button>
+                <button onClick={() => setPublishLabel(null)} className="btn-neon text-xs">Cancel</button>
+              </div>
+            )}
 
             {!active ? (
               <div className="h-48 flex items-center justify-center text-gray-600 text-sm">
@@ -626,11 +691,43 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
                 )}
 
                 {/* event wiring for buttons */}
-                {sel.type === 'button' && (
-                  <button onClick={() => createWiring(sel.id)}
+                {sel.type === 'button' && wiringDraft?.widgetId !== sel.id && (
+                  <button onClick={() => setWiringDraft({ widgetId: sel.id, domain: '', macro: '', refreshWidgetId: '' })}
                     className="btn-neon text-xs w-full flex items-center justify-center gap-1 mt-1">
                     <Zap className="w-3 h-3" /> Wire click action
                   </button>
+                )}
+                {sel.type === 'button' && wiringDraft?.widgetId === sel.id && (
+                  <div className="mt-1 space-y-1.5 rounded border border-lattice-edge bg-lattice-deep p-2">
+                    <label className="block text-xs">
+                      <span className="text-gray-400">action macro domain</span>
+                      <input type="text" value={wiringDraft.domain} placeholder="e.g. productivity"
+                        onChange={(e) => setWiringDraft((d) => (d ? { ...d, domain: e.target.value } : d))}
+                        className="input-lattice w-full mt-0.5 text-xs" />
+                    </label>
+                    <label className="block text-xs">
+                      <span className="text-gray-400">action macro name</span>
+                      <input type="text" value={wiringDraft.macro} placeholder="e.g. task-add"
+                        onChange={(e) => setWiringDraft((d) => (d ? { ...d, macro: e.target.value } : d))}
+                        className="input-lattice w-full mt-0.5 text-xs" />
+                    </label>
+                    <label className="block text-xs">
+                      <span className="text-gray-400">refresh after (optional)</span>
+                      <select value={wiringDraft.refreshWidgetId}
+                        onChange={(e) => setWiringDraft((d) => (d ? { ...d, refreshWidgetId: e.target.value } : d))}
+                        className="input-lattice w-full mt-0.5 text-xs">
+                        <option value="">— none —</option>
+                        {widgets.filter((w) => w.id !== sel.id).map((w) => {
+                          const wd = palette.find((c) => c.type === w.type);
+                          return <option key={w.id} value={w.id}>{String(w.props.title || w.props.label || wd?.label || w.type)}</option>;
+                        })}
+                      </select>
+                    </label>
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      <button onClick={createWiring} className="btn-neon purple text-xs">Wire action</button>
+                      <button onClick={() => setWiringDraft(null)} className="btn-neon text-xs">Cancel</button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -640,10 +737,62 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
           <div className="panel p-3">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs uppercase tracking-wider text-gray-400">Data Sources</p>
-              <button aria-label="Add" onClick={createBinding} className="text-neon-purple hover:text-white">
+              <button aria-label="Add" onClick={() => setShowBindingForm((s) => !s)} className="text-neon-purple hover:text-white">
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
+            {showBindingForm && (
+              <div className="mb-2 space-y-1.5 rounded border border-lattice-edge bg-lattice-deep p-2">
+                <label className="block text-xs">
+                  <span className="text-gray-400">kind</span>
+                  <select value={bindingDraft.kind}
+                    onChange={(e) => setBindingDraft((d) => ({ ...d, kind: e.target.value }))}
+                    className="input-lattice w-full mt-0.5 text-xs">
+                    <option value="macro">macro</option>
+                    <option value="rest">rest</option>
+                  </select>
+                </label>
+                <label className="block text-xs">
+                  <span className="text-gray-400">name</span>
+                  <input type="text" value={bindingDraft.name} placeholder="e.g. Weather forecast"
+                    onChange={(e) => setBindingDraft((d) => ({ ...d, name: e.target.value }))}
+                    className="input-lattice w-full mt-0.5 text-xs" />
+                </label>
+                {bindingDraft.kind === 'macro' ? (
+                  <>
+                    <label className="block text-xs">
+                      <span className="text-gray-400">macro domain</span>
+                      <input type="text" value={bindingDraft.domain} placeholder="e.g. weather"
+                        onChange={(e) => setBindingDraft((d) => ({ ...d, domain: e.target.value }))}
+                        className="input-lattice w-full mt-0.5 text-xs" />
+                    </label>
+                    <label className="block text-xs">
+                      <span className="text-gray-400">macro name</span>
+                      <input type="text" value={bindingDraft.macro} placeholder="e.g. forecast"
+                        onChange={(e) => setBindingDraft((d) => ({ ...d, macro: e.target.value }))}
+                        className="input-lattice w-full mt-0.5 text-xs" />
+                    </label>
+                  </>
+                ) : (
+                  <label className="block text-xs">
+                    <span className="text-gray-400">REST URL</span>
+                    <input type="text" value={bindingDraft.url} placeholder="https://…"
+                      onChange={(e) => setBindingDraft((d) => ({ ...d, url: e.target.value }))}
+                      className="input-lattice w-full mt-0.5 text-xs" />
+                  </label>
+                )}
+                <label className="block text-xs">
+                  <span className="text-gray-400">result path (optional)</span>
+                  <input type="text" value={bindingDraft.resultPath}
+                    onChange={(e) => setBindingDraft((d) => ({ ...d, resultPath: e.target.value }))}
+                    className="input-lattice w-full mt-0.5 text-xs" />
+                </label>
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <button onClick={createBinding} className="btn-neon purple text-xs">Create binding</button>
+                  <button onClick={() => setShowBindingForm(false)} className="btn-neon text-xs">Cancel</button>
+                </div>
+              </div>
+            )}
             {bindings.length === 0 && <p className="text-xs text-gray-400">No bindings yet.</p>}
             {bindings.map((b) => (
               <div key={b.id} className="group flex items-center justify-between text-xs py-1">

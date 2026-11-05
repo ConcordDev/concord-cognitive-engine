@@ -231,6 +231,7 @@ export default function registerFitnessActions(registerLensAction) {
       "workouts", "recoveryEntries", "activityEntries",
       "activities", "routes", "goals", "gear", "hrvSamples",
       "segments", "segmentEfforts", "clubs", "challenges",
+      "feedLibrary",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -255,6 +256,13 @@ export default function registerFitnessActions(registerLensAction) {
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const w = params.workout;
     if (!w || typeof w !== "object") return { ok: false, error: "workout payload required" };
+    // F5: an empty session is not a workout. The Log logger's Finish used
+    // to accept a session with zero exercises and persist "0 exercises ·
+    // 0 sets" as a logged workout; refuse it at the store so no caller
+    // can write one.
+    if (!Array.isArray(w.exercises) || w.exercises.length === 0) {
+      return { ok: false, error: "workout has no exercises — add at least one exercise before finishing" };
+    }
     if (!state.workouts.has(userId)) state.workouts.set(userId, []);
     state.workouts.get(userId).push(w);
     saveStateIfAvailable();
@@ -395,6 +403,43 @@ export default function registerFitnessActions(registerLensAction) {
 });
 
   /**
+   * recovery-log — the manual write path recovery-history's empty note
+   * has always named ("POST entries to fitness.recovery-log to
+   * populate"). It did not exist: a member with no wearable was promised
+   * a manual log that no action backed (F12). This registers it. The row
+   * lands in the same recoveryEntries store wearable-sync writes,
+   * upserted by date; a fresh row is labelled source "manual" so it is
+   * never mistaken for a device reading. Sleep hours are the one
+   * required field — the member always knows them; every other metric
+   * is stored only when actually supplied (never defaulted into being).
+   */
+  registerLensAction("fitness", "recovery-log", (ctx, _a, params = {}) => {
+  try {
+    const state = getFitState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const date = fday(params.date) || fday(new Date().toISOString());
+    const sleepHours = Math.round(fnum(params.sleepHours) * 100) / 100;
+    if (!(sleepHours > 0)) return { ok: false, error: "sleepHours must be > 0 — log at least the night's sleep duration" };
+    if (!(state.recoveryEntries instanceof Map)) state.recoveryEntries = new Map();
+    const rows = flistB(state.recoveryEntries, userId);
+    const ex = rows.find((r) => r.date === date);
+    const row = ex || { date };
+    row.sleepHours = sleepHours;
+    const opt = (key, val, hi) => { const n = fnum(val); if (n > 0) row[key] = Math.min(hi, n); };
+    opt("recoveryScore", params.recoveryScore, 100);
+    opt("restingHr", params.restingHr, 220);
+    opt("hrv", params.hrv, 500);
+    opt("sleepQualityPct", params.sleepQualityPct, 100);
+    opt("strain", params.strain, 21);
+    if (!ex) { row.source = "manual"; rows.push(row); }
+    row.manualLoggedAt = new Date().toISOString();
+    saveStateIfAvailable();
+    return { ok: true, result: { entry: row, created: !ex } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  /**
    * activity-summary — Reads from STATE.fitnessLens.activityEntries,
    * populated by real device integrations or fitness.activity-log macro.
    * No synthesized Apple Fitness-style rings.
@@ -431,18 +476,100 @@ export default function registerFitnessActions(registerLensAction) {
         standGoal: Math.max(1, Math.round(fnum(d.standGoal, DEFAULT_STAND_GOAL))),
         steps: Math.max(0, Math.round(fnum(d.steps))),
         stepsGoal: Math.max(1, Math.round(fnum(d.stepsGoal, DEFAULT_STEPS_GOAL))),
+        source: d.source || "device",
         raw: d,
       }));
+    // F4: the rings used to read ONLY device/manual rows, so a member who
+    // logged workouts in the Log view and activities in the Training Hub
+    // all week still saw "No activity data yet." Merge exercise minutes
+    // derived from those real logs for days that have no stored row:
+    // Hub activities contribute their recorded duration; finished Log
+    // workouts contribute their start→finish span. Stored rows always
+    // win (no double-counting), and only exercise minutes are derived —
+    // Move / Stand / Steps stay 0 on derived days rather than being
+    // invented. Derived days are labelled source "logged".
+    const byDate = new Map(days.map((d) => [d.date, d]));
+    const derivedMin = new Map();
+    const addDerived = (dateStr, min) => {
+      if (!dateStr || !(min > 0)) return;
+      const t = new Date(dateStr + "T00:00:00Z").getTime();
+      if (isNaN(t) || t < cutoff) return;
+      derivedMin.set(dateStr, (derivedMin.get(dateStr) || 0) + min);
+    };
+    for (const a of state.activities?.get(userId) || []) {
+      addDerived(fday(a.date), Math.round(fnum(a.durationSec) / 60));
+    }
+    for (const w of state.workouts?.get(userId) || []) {
+      const start = new Date(w.startedAt || "").getTime();
+      const end = new Date(w.finishedAt || "").getTime();
+      if (isNaN(start) || isNaN(end) || end <= start) continue;
+      addDerived(new Date(end).toISOString().slice(0, 10), Math.round((end - start) / 60000));
+    }
+    let derivedDays = 0;
+    for (const [dateStr, min] of derivedMin) {
+      if (byDate.has(dateStr)) continue;
+      derivedDays++;
+      byDate.set(dateStr, {
+        date: dateStr,
+        moveCalories: 0, moveGoal: DEFAULT_MOVE_GOAL,
+        exerciseMinutes: min, exerciseGoal: DEFAULT_EXERCISE_GOAL,
+        standHours: 0, standGoal: DEFAULT_STAND_GOAL,
+        steps: 0, stepsGoal: DEFAULT_STEPS_GOAL,
+        source: "logged",
+        raw: null,
+      });
+    }
+    const merged = [...byDate.values()].sort((a, b) => String(a.date).localeCompare(String(b.date)));
     return {
       ok: true,
       result: {
-        days,
-        source: days.length === 0 ? "empty" : "device",
-        notes: days.length === 0
+        days: merged,
+        source: merged.length === 0 ? "empty" : days.length === 0 ? "logged" : "device",
+        notes: merged.length === 0
           ? "No activity data logged. Connect a wearable (Apple Watch, Fitbit, Garmin) or POST entries to fitness.activity-log to populate."
-          : null,
+          : derivedDays > 0 && days.length === 0
+            ? "Exercise minutes derived from your logged workouts and Training Hub activities. Connect a wearable or log manually for Move, Stand and Steps."
+            : null,
       },
     };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  /**
+   * activity-log — the manual write path activity-summary's note has
+   * always named ("POST entries to fitness.activity-log to populate").
+   * It did not exist (F12's sibling gap; F4's dead view was read-only
+   * for anyone without a wearable). This registers it: one row per
+   * date upserted into the activityEntries store wearable-sync writes
+   * and activity-summary reads, labelled source "manual". At least one
+   * real metric is required — an all-empty log is refused rather than
+   * stored as a fabricated zero day.
+   */
+  registerLensAction("fitness", "activity-log", (ctx, _a, params = {}) => {
+  try {
+    const state = getFitState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const date = fday(params.date) || fday(new Date().toISOString());
+    const exerciseMinutes = Math.max(0, Math.round(fnum(params.exerciseMinutes)));
+    const activeCalories = Math.max(0, Math.round(fnum(params.activeCalories ?? params.moveCalories)));
+    const steps = Math.max(0, Math.round(fnum(params.steps)));
+    const standHours = Math.max(0, Math.round(fnum(params.standHours) * 10) / 10);
+    if (exerciseMinutes <= 0 && activeCalories <= 0 && steps <= 0 && standHours <= 0) {
+      return { ok: false, error: "log at least one metric (exerciseMinutes, activeCalories, steps or standHours)" };
+    }
+    if (!(state.activityEntries instanceof Map)) state.activityEntries = new Map();
+    const rows = flistB(state.activityEntries, userId);
+    const ex = rows.find((r) => r.date === date);
+    const row = ex || { date };
+    if (exerciseMinutes > 0) row.exerciseMinutes = exerciseMinutes;
+    if (activeCalories > 0) row.activeCalories = activeCalories;
+    if (steps > 0) row.steps = steps;
+    if (standHours > 0) row.standHours = standHours;
+    if (!ex) { row.source = "manual"; rows.push(row); }
+    row.manualLoggedAt = new Date().toISOString();
+    saveStateIfAvailable();
+    return { ok: true, result: { entry: row, created: !ex } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -2287,9 +2414,62 @@ Generate the plan.`;
 
   // feed — ingest real exercises from the open wger workout database as
   // visible DTUs. Free public API, no key.
+  //
+  // F14 (completed by the feed-library fix): the listing contract is the
+  // STORED library, not the pull response. Three facts the first build
+  // missed, all verified live (R3 re-pass + re-check, 2026-11-04):
+  //  (1) the wger v2 list payload carries name: null — real names and
+  //      descriptions live in exerciseinfo/<id> translations;
+  //  (2) the seen set is corpus-level (one shared domain state), so the
+  //      only reachable pull state for most batches is "already seen" —
+  //      the seen form must carry names + full DTU ids too;
+  //  (3) a listing held in the pull response dies on reload — the batch
+  //      must be recorded durably at ingest (feedLibrary, a Map in the
+  //      domain state, revived by getFitState like every other store)
+  //      and read back through fitness.feed-library.
+  // Legacy batches (ingested before the library existed) heal at their
+  // next pull: the name always resolves from exerciseinfo, and the DTU
+  // id is recovered from the corpus by the meta.exerciseId the ingest
+  // stamped at create time.
+  async function wgerExerciseInfo(ex) {
+    try {
+      const r = await fetch(`https://wger.de/api/v2/exerciseinfo/${ex.id}/?format=json`);
+      if (!r.ok) return { name: null, desc: "" };
+      const info = await r.json();
+      const trs = Array.isArray(info?.translations) ? info.translations : [];
+      const tr = trs.find((t) => t?.language === 2) || trs[0];
+      const name = typeof tr?.name === "string" && tr.name.trim() ? tr.name.trim() : null;
+      const desc = String(tr?.description || "").replace(/<[^>]+>/g, "").trim();
+      return { name, desc };
+    } catch { return { name: null, desc: "" }; }
+  }
+
+  async function recoverFeedDtuId(ctx, ex, name) {
+    // Best-effort recovery for a pre-library ingest: the create call
+    // stamped meta.exerciseId, so a corpus search can find the DTU.
+    try {
+      for (const q of [name, `Exercise ${ex.id}`]) {
+        if (!q) continue;
+        const res = await ctx.macro.run("dtu", "search", { q, limit: 25 });
+        const dtus = Array.isArray(res?.dtus) ? res.dtus : [];
+        const hit = dtus.find((d) => d?.meta?.exerciseId === ex.id)
+          || dtus.find((d) => d?.title === `Exercise: ${name}` || d?.title === `Exercise: Exercise ${ex.id}`);
+        if (hit?.id) return hit.id;
+      }
+    } catch { /* recovery is best-effort; the name still heals */ }
+    return null;
+  }
+
+  function feedLibraryList(s) {
+    return [...(s.feedLibrary?.values() || [])]
+      .map((e) => ({ name: e.name, dtuId: e.dtuId ?? null, exerciseId: e.exerciseId }))
+      .sort((a, b) => a.exerciseId - b.exerciseId);
+  }
+
   registerLensAction("fitness", "feed", async (ctx, _a, params = {}) => {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    if (!(s.feedLibrary instanceof Map)) s.feedLibrary = new Map();
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
     const offset = (new Date().getDate() * limit) % 200;
     try {
@@ -2298,27 +2478,69 @@ Generate the plan.`;
       const data = await r.json();
       const exercises = (Array.isArray(data?.results) ? data.results : []).slice(0, limit);
       let ingested = 0, skipped = 0; const dtuIds = [];
+      const surfaced = [];
       for (const ex of exercises) {
-        const id = `wger_${ex.uuid || ex.id}`;
-        if (s.feedSeen.has(id)) { skipped++; continue; }
-        const name = ex.name || `Exercise ${ex.id}`;
-        const desc = String(ex.description || "").replace(/<[^>]+>/g, "").trim();
-        const title = `Exercise: ${name}`;
-        const res = await ctx.macro.run("dtu", "create", {
-          title,
-          creti: `${title}\n\n${desc || "An exercise from the wger open workout database."}`.slice(0, 3000),
-          tags: ["fitness", "feed", "exercise", "wger"],
-          source: "wger-feed",
-          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
-          meta: { exerciseId: ex.id, uuid: ex.uuid, name },
-        });
-        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+        const key = `wger_${ex.uuid || ex.id}`;
+        const info = await wgerExerciseInfo(ex);
+        const name = info.name || (typeof ex.name === "string" && ex.name.trim() ? ex.name.trim() : `Exercise ${ex.id}`);
+        let entry = s.feedLibrary.get(key) || null;
+        // fresh = never ingested anywhere (not in the library, not in
+        // the legacy seen set). Anything else is the seen form — the
+        // only state most pulls can reach, so it carries full data.
+        const fresh = !entry && !s.feedSeen.has(key);
+        let created = false;
+        if (!entry) entry = { exerciseId: ex.id, uuid: ex.uuid || null, name, dtuId: null };
+        if (fresh || entry.pendingCreate) {
+          const title = `Exercise: ${name}`;
+          const res = await ctx.macro.run("dtu", "create", {
+            title,
+            creti: `${title}\n\n${info.desc || "An exercise from the wger open workout database."}`.slice(0, 3000),
+            tags: ["fitness", "feed", "exercise", "wger"],
+            source: "wger-feed",
+            visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
+            meta: { exerciseId: ex.id, uuid: ex.uuid, name },
+          });
+          if (res?.ok && res.dtu) {
+            entry.dtuId = res.dtu.id; entry.pendingCreate = false;
+            created = true; ingested++; dtuIds.push(res.dtu.id);
+          } else if (fresh) {
+            // Create failed transiently: remember to retry the create
+            // (not the recovery) on the next sighting.
+            entry.pendingCreate = true;
+          }
+        }
+        if (!created) skipped++;
+        // Heal the stored record on every sighting: real name from
+        // exerciseinfo (replacing any fallback label), and the DTU id
+        // for a legacy entry (ingested before the library existed) via
+        // corpus recovery on the meta.exerciseId stamped at create.
+        if (info.name) entry.name = info.name;
+        if (!entry.dtuId && !entry.pendingCreate) entry.dtuId = await recoverFeedDtuId(ctx, ex, entry.name);
+        s.feedLibrary.set(key, entry);
+        if (entry.dtuId) s.feedSeen.add(key);
+        surfaced.push({ name: entry.name, dtuId: entry.dtuId ?? null, fresh });
+      }
+      // Bound the library (batches land daily; oldest drop first).
+      while (s.feedLibrary.size > 500) {
+        const oldest = s.feedLibrary.keys().next().value;
+        if (oldest === undefined) break;
+        s.feedLibrary.delete(oldest);
       }
       saveStateIfAvailable();
-      return { ok: true, result: { ingested, skipped, source: "wger-exercises", dtuIds } };
+      return { ok: true, result: { ingested, skipped, source: "wger-exercises", dtuIds, exercises: surfaced, library: feedLibraryList(s) } };
     } catch (e) {
       return { ok: false, error: `wger unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // feed-library — the stored wger batch listing (names + full DTU
+  // ids), read from domain state: no fetch, no ingest. This is what
+  // the lens's feed panel renders on mount, so the listing persists
+  // across reload exactly as stored.
+  registerLensAction("fitness", "feed-library", async (ctx, _a, _params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedLibrary instanceof Map)) s.feedLibrary = new Map();
+    return { ok: true, result: { source: "wger-exercises", items: feedLibraryList(s) } };
   });
 };
 
