@@ -11,6 +11,8 @@
 // form the Lead compilation's census flag records for this lens.
 import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { getLensManifest } from '@/lib/lenses/manifest';
 import { useDepthBadge } from '@/hooks/useDepthBadge';
 
@@ -33,6 +35,15 @@ describe('Sub-Worlds declaration (F1)', () => {
     const badge = renderHook(() => useDepthBadge('sub-worlds')).result.current;
     expect(badge?.caption).toContain('Repos view is a live GitHub search');
     expect(badge?.caption).toContain('not polled from an external source');
+  });
+
+  it('the integration registry agrees (both key spellings REAL_LIVE, liveFromSubstrate)', () => {
+    const reg = readFileSync(join(__dirname, '../../server/lib/integration-registry.js'), 'utf8');
+    for (const key of ['"sub-worlds":', 'sub_worlds:']) {
+      const line = reg.split('\n').find((l) => l.includes(key));
+      expect(line, key).toContain('TIER.REAL_LIVE');
+      expect(line, key).toContain('liveFromSubstrate: true');
+    }
   });
 
   it('a control lens keeps its own declaration (aviation stays Real / REAL_FREE)', () => {
