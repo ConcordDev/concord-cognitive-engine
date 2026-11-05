@@ -157,7 +157,10 @@ export function FieldMonitoringPanel() {
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
             <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Footprints className="h-3 w-3" />Trail maintenance priority</div>
             {!trail && <div className="text-[11px] text-zinc-400">Run to prioritize.</div>}
-            {trail && trail.prioritized && (
+            {trail && (!trail.prioritized || trail.prioritized.length === 0) && (
+              <div className="text-[11px] text-zinc-400">No trails to prioritize — add a named trail row above (the shipped row starts unnamed, and unnamed rows are not scored) and run again.</div>
+            )}
+            {trail && trail.prioritized && trail.prioritized.length > 0 && (
               <ul className="space-y-1">
                 {trail.prioritized.map((t, i) => (
                   <li key={i} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950/60 px-2 py-1 text-[11px]">

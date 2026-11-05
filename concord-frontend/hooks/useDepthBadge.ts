@@ -94,6 +94,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Real execution: the calculators run against published masonry spec tables and your suite records are saved in your own workspace. No external feed is polled.',
   },
   /**
+   * Environment is two halves under one tier: per-user records (sites,
+   * samples, the GHG inventory) kept live in the workspace, plus live
+   * open data (Open-Meteo air quality, USGS, GBIF). The generic REAL_LIVE
+   * line ("polled live from an external source") describes only the
+   * second half, so the caption names both.
+   */
+  environment: {
+    label: 'Live workspace + open data',
+    caption: 'Your sites, samples and GHG inventory, kept live in your workspace — plus live open data: Open-Meteo air quality, USGS water and GBIF species records.',
+  },
+  /**
    * Housing's substrate is the member's own persistent world state —
    * land claims and houses live in the platform database, owner-gated
    * in the lib (PROBE-BLOCKED at the then-missing claim surface in
