@@ -53,9 +53,9 @@ async function courtlistenerGet(pathAndQuery) {
   if (!r.ok) {
     let message;
     if (r.status === 429) message = "Case law search is busy — CourtListener's rate limit was reached. Try again shortly.";
-    else if (r.status === 401 || r.status === 403) message = token
+    else if (r.status === 401 || r.status === 403) {message = token
       ? "Case law is unavailable — the configured CourtListener access was refused."
-      : "Case law search is unavailable — CourtListener now requires an account key for search, and none is configured here.";
+      : "Case law search is unavailable — CourtListener now requires an account key for search, and none is configured here.";}
     else message = "Case law is unavailable right now — CourtListener returned an error. Try again shortly.";
     const err = new Error(message);
     err.unavailable = true;
