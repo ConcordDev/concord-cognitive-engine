@@ -44,6 +44,20 @@
 //    `think` itself is left alone. CONCORD_OLLAMA_THINK=1 restores the model
 //    default everywhere.
 //
+// 4. Reasoning-effort models (the gpt-oss family) ignore think:false.
+//    They cannot switch reasoning off; a boolean `think` is dropped and the
+//    model reasons at its default effort, so think:false never took effect.
+//    Measured 2026-11-04: num_predict 64 with think:false returned content ""
+//    and 245 chars of thinking (done_reason "length"); think:"low" answered
+//    in 18 tokens. Live, 44 of 245 background calls failed with
+//    "empty_answer: model only produced thinking", which opened the
+//    background breaker, and chat follow-ups that came back empty fell
+//    through to the raw tool-results reply. For these models a request with
+//    think:false (or no think while thinking is off by default) is sent
+//    think:"low". think:true keeps the model's default effort, and an
+//    explicit level string is kept. CONCORD_GPT_OSS_THINK=low|medium|high
+//    picks the level; CONCORD_GPT_OSS_THINK=model leaves requests untouched.
+//
 // Pinned by tests/ollama-request-guard.test.js.
 
 const OLLAMA_PATHS = new Set(["/api/chat", "/api/generate", "/api/embed", "/api/embeddings"]);
@@ -51,6 +65,21 @@ const GENERATION_PATHS = new Set(["/api/chat", "/api/generate"]);
 
 export function thinkingDisabled(env = process.env) {
   return String(env.CONCORD_OLLAMA_THINK ?? "0") !== "1";
+}
+
+const REASONING_LEVELS = new Set(["low", "medium", "high"]);
+const REASONING_EFFORT_MODEL_RE = /(?:^|[/:])gpt-oss(?:[:\-_.]|$)/i;
+
+/** True for models that take a reasoning level instead of a think on/off switch. */
+export function usesReasoningLevels(model) {
+  return typeof model === "string" && REASONING_EFFORT_MODEL_RE.test(model.trim());
+}
+
+/** The level sent instead of think:false to a reasoning-effort model, or null to leave requests alone. */
+export function reasoningLevelFor(env = process.env) {
+  const v = String(env.CONCORD_GPT_OSS_THINK ?? "low").trim().toLowerCase();
+  if (v === "model" || v === "off" || v === "0") return null;
+  return REASONING_LEVELS.has(v) ? v : "low";
 }
 
 function positiveInt(v) {
@@ -110,7 +139,7 @@ export function buildContextMap(brains, env = process.env) {
 }
 
 /** Returns the rewritten body string, or null when nothing should change. */
-export function guardBody(bodyText, { threads = null, ctxForModel = null, disableThink = false } = {}) {
+export function guardBody(bodyText, { threads = null, ctxForModel = null, disableThink = false, reasoningLevel = null } = {}) {
   if (typeof bodyText !== "string") return null;
   let body;
   try { body = JSON.parse(bodyText); } catch { return null; }
@@ -120,9 +149,15 @@ export function guardBody(bodyText, { threads = null, ctxForModel = null, disabl
   if (threads && options.num_thread == null) { options.num_thread = threads; changed = true; }
   const pinned = ctxForModel && typeof body.model === "string" ? ctxForModel.get(body.model) : null;
   if (pinned && options.num_ctx !== pinned) { options.num_ctx = pinned; changed = true; }
-  const thinkOff = disableThink && body.think === undefined;
-  if (thinkOff) changed = true;
-  return changed ? JSON.stringify({ ...body, ...(thinkOff ? { think: false } : {}), options }) : null;
+  let think;
+  if (reasoningLevel && usesReasoningLevels(body.model) && (body.think === false || (disableThink && body.think === undefined))) {
+    // think:false is a no-op for these models; ask for the lowest effort instead.
+    think = reasoningLevel;
+  } else if (disableThink && body.think === undefined) {
+    think = false;
+  }
+  if (think !== undefined) changed = true;
+  return changed ? JSON.stringify({ ...body, ...(think !== undefined ? { think } : {}), options }) : null;
 }
 
 let _installed = null;
@@ -137,10 +172,11 @@ export function installOllamaRequestGuard(brains, env = process.env) {
   const ctx = buildContextMap(brains, env);
   const origins = new Set(Object.values(brains || {}).flatMap(originsOf));
   const disableThink = thinkingDisabled(env);
-  if (_installed) { Object.assign(_installed, { threads, ctx, origins, disableThink }); return { threads, ctx }; }
-  if ((threads.size === 0 && ctx.size === 0 && !disableThink) || typeof globalThis.fetch !== "function") return { threads, ctx };
+  const reasoningLevel = reasoningLevelFor(env);
+  if (_installed) { Object.assign(_installed, { threads, ctx, origins, disableThink, reasoningLevel }); return { threads, ctx }; }
+  if ((threads.size === 0 && ctx.size === 0 && !disableThink && !reasoningLevel) || typeof globalThis.fetch !== "function") return { threads, ctx };
   const inner = globalThis.fetch;
-  const state = { threads, ctx, origins, disableThink };
+  const state = { threads, ctx, origins, disableThink, reasoningLevel };
   globalThis.fetch = function ollamaGuardedFetch(input, init) {
     try {
       const raw = typeof input === "string" ? input : input instanceof URL ? input.href : null;
@@ -152,6 +188,7 @@ export function installOllamaRequestGuard(brains, env = process.env) {
             threads: state.threads.get(u.origin),
             ctxForModel: state.ctx,
             disableThink: state.disableThink && GENERATION_PATHS.has(pathname),
+            reasoningLevel: GENERATION_PATHS.has(pathname) ? state.reasoningLevel : null,
           });
           if (next) return inner.call(this, input, { ...init, body: next });
         }

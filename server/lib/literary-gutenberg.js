@@ -57,7 +57,7 @@ export function stripGutenbergBoilerplate(text) {
   return t.trim();
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms) => new Promise((r) => { setTimeout(r, ms); });
 
 export async function fetchGutenbergText(id, { fetchImpl = globalThis.fetch, timeoutMs = 30000, attempts = 3, backoffMs = 1000 } = {}) {
   for (const url of gutenbergUrlsFor(id)) {
@@ -134,7 +134,7 @@ export function createGutenbergIngest({
           summary.failed++;
           summary.works.push({ gutenbergId: w.gutenbergId, title: w.title, status: "failed", error: String(e?.message || e) });
         }
-        await new Promise((r) => setImmediate(r)); // yield between works
+        await new Promise((r) => { setImmediate(r); }); // yield between works
       }
     } finally {
       summary.finishedAt = now();

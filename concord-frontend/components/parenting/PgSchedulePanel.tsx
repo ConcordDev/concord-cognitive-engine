@@ -22,6 +22,8 @@ interface Schedule {
   ageMonths: number;
   wakeWindow: { min: number; typical: number; max: number };
   learnedNapMin: number;
+  napSampleCount: number;
+  napBasis: 'logged' | 'age';
   napsPerDay: number;
   napsLogged: number;
   schedule: ScheduleSlot[];
@@ -67,7 +69,12 @@ export function PgSchedulePanel({ childId }: { childId: string }) {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <Stat label="Wake window" value={`${sched.wakeWindow.typical}m`} />
-        <Stat label="Typical nap" value={`${sched.learnedNapMin}m`} />
+        <Stat
+          label={sched.napBasis === 'logged'
+            ? `Typical nap · ${sched.napSampleCount} nap${sched.napSampleCount === 1 ? '' : 's'}`
+            : 'Typical nap · age estimate'}
+          value={`${sched.learnedNapMin}m`}
+        />
         <Stat label="Naps left" value={Math.max(0, sched.napsPerDay - sched.napsLogged)} />
       </div>
 

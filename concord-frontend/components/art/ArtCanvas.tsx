@@ -25,6 +25,9 @@ interface El {
   id?: string; kind?: string; tool: string; color: string; size?: number; opacity: number;
   points?: number[][]; x?: number; y?: number; w?: number; h?: number;
   filled?: boolean; content?: string; fontSize?: number; pressure?: boolean;
+  // Vector shapes (chat drawings): closed/filled polygons with straight
+  // edges (smooth: false) and an optional outline colour.
+  closed?: boolean; smooth?: boolean; lineColor?: string;
 }
 interface Layer { id: string; name: string; visible: boolean; opacity: number; blendMode: string; locked?: boolean; clipped?: boolean; strokes: El[] }
 interface Artwork { id: string; title: string; width: number; height: number; background: string; layers: Layer[] }
@@ -53,13 +56,18 @@ function drawElement(c: CanvasRenderingContext2D, el: El, w: number, h: number) 
     c.fillRect(0, 0, w, h);
   } else if (el.kind === 'rect') {
     c.lineWidth = el.size || 4;
-    if (el.filled) c.fillRect(el.x!, el.y!, el.w!, el.h!);
-    else c.strokeRect(el.x!, el.y!, el.w!, el.h!);
+    if (el.filled) {
+      c.fillRect(el.x!, el.y!, el.w!, el.h!);
+      if (el.lineColor) { c.strokeStyle = el.lineColor; c.strokeRect(el.x!, el.y!, el.w!, el.h!); }
+    } else c.strokeRect(el.x!, el.y!, el.w!, el.h!);
   } else if (el.kind === 'ellipse') {
     c.lineWidth = el.size || 4;
     c.beginPath();
     c.ellipse(el.x! + el.w! / 2, el.y! + el.h! / 2, Math.abs(el.w!) / 2, Math.abs(el.h!) / 2, 0, 0, Math.PI * 2);
-    if (el.filled) c.fill(); else c.stroke();
+    if (el.filled) {
+      c.fill();
+      if (el.lineColor) { c.strokeStyle = el.lineColor; c.stroke(); }
+    } else c.stroke();
   } else if (el.kind === 'text') {
     c.font = `${el.fontSize || 32}px sans-serif`;
     c.textBaseline = 'alphabetic';
@@ -88,6 +96,16 @@ function drawElement(c: CanvasRenderingContext2D, el: El, w: number, h: number) 
           c.lineTo(p1[0], p1[1]);
           c.stroke();
         }
+      } else if (el.smooth === false || el.closed || el.filled) {
+        // Vector polygon / polyline: straight edges, optionally closed and filled.
+        c.beginPath();
+        c.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
+        if (el.closed) c.closePath();
+        if (el.filled) {
+          c.fill();
+          if (el.lineColor) { c.strokeStyle = el.lineColor; c.stroke(); }
+        } else c.stroke();
       } else {
         c.beginPath();
         c.moveTo(pts[0][0], pts[0][1]);
