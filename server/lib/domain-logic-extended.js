@@ -1222,7 +1222,11 @@ EXTENDED_DOMAIN_RULES.set("game", {
 
 // === Government ===
 EXTENDED_DOMAIN_RULES.set("government", {
-  types: ["policy", "regulation", "permit", "report", "public-comment"],
+  // "capture" admitted on the retail/environment precedent: Quick Capture
+  // mints type "capture" through the shared capture path; without it this
+  // rule rejects every capture as validation_failed (Government F5 — the
+  // capture genus's ninth failing domain, closed at registry by #78(e)).
+  types: ["policy", "regulation", "permit", "report", "public-comment", "capture"],
   validStatuses: ["draft", "proposed", "public-comment", "enacted", "repealed", "archived"],
   transitions: { draft: ["proposed", "archived"], proposed: ["public-comment", "draft"], "public-comment": ["enacted", "proposed"], enacted: ["repealed", "archived"], repealed: ["archived"], archived: [] },
   requiredFields: { policy: ["title"] },

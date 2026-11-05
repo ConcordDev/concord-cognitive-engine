@@ -13,6 +13,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
+import { LocalRecordNotice } from './LocalRecordNotice';
 import {
   Landmark,
   FileCheck,
@@ -607,6 +608,25 @@ export function CaseOpsPanel({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>(surface === 'dashboard' ? 'dashboard' : 'library');
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [syncedSurface, setSyncedSurface] = useState(surface);
+  const [syncedType, setSyncedType] = useState(artifactType);
+
+  // F11 (Review 2 first pass): `view` initialized ONCE from the `surface`
+  // prop and never re-synced — page.tsx renders this same component
+  // instance for the overview and for every case view, so navigating
+  // Caseload → Case files → Court kept rendering the dashboard summary
+  // instead of the Court list; the list only appeared via the dashboard's
+  // "New Case" quick action (which calls setView directly). Re-sync the
+  // view whenever the surface or case type changes, using React's
+  // render-phase adjustment pattern for prop-derived state resets.
+  if (syncedSurface !== surface || syncedType !== artifactType) {
+    setSyncedSurface(surface);
+    setSyncedType(artifactType);
+    setView(surface === 'dashboard' ? 'dashboard' : 'library');
+    setDetailId(null);
+    setConfirmDeleteId(null);
+  }
   const [showActionPanel, setShowActionPanel] = useState(false);
 
   const [formTitle, setFormTitle] = useState('');
@@ -2519,6 +2539,9 @@ export function CaseOpsPanel({
           </div>
         )}
 
+        <LocalRecordNotice>
+          Local record only — this case file lives in your Concord workspace. Nothing in it is filed with, sent to, or acted on by any court, agency, or authority.
+        </LocalRecordNotice>
         {currentType === 'Permit' && renderPermitDetail()}
         {currentType === 'Project' && renderProjectDetail()}
         {currentType === 'Violation' && renderViolationDetail()}
@@ -2735,10 +2758,19 @@ export function CaseOpsPanel({
             className={cn(ds.btnDanger, ds.btnSmall)}
             onClick={(e) => {
               e.stopPropagation();
-              handleDelete(item.id);
+              // F6 (canonical finding): the card Delete fired remove(id)
+              // immediately — the walk deleted a probe CourtCase with no
+              // confirmation. Two-step, the fleet pattern: first click
+              // arms, second click deletes.
+              if (confirmDeleteId === item.id) {
+                setConfirmDeleteId(null);
+                handleDelete(item.id);
+              } else {
+                setConfirmDeleteId(item.id);
+              }
             }}
           >
-            <Trash2 className="w-3.5 h-3.5" /> Delete
+            <Trash2 className="w-3.5 h-3.5" /> {confirmDeleteId === item.id ? 'Confirm delete?' : 'Delete'}
           </button>
           <div className="flex-1" />
           <span className={cn(ds.textMuted, 'text-xs')}>
@@ -2777,10 +2809,13 @@ export function CaseOpsPanel({
     );
     const budgetUtilization =
       totalProjectBudget > 0 ? Math.round((totalProjectSpent / totalProjectBudget) * 100) : 0;
-    const pendingRecordRequests = allRecords.filter((i) => {
-      const d = i.data as unknown as Record<string, unknown>;
-      return d.requestType && ['draft', 'proposed', 'public-comment'].includes(i.meta.status);
-    }).length;
+    // S4(ii): the old filter also required data.requestType, which a filed
+    // Record need not carry — the walk's filed record had none, so this
+    // headline read 0 while its own subtext counted 1 total record.
+    // Count by status alone, the same basis as the subtext.
+    const pendingRecordRequests = allRecords.filter((i) =>
+      ['draft', 'proposed', 'public-comment'].includes(i.meta.status)
+    ).length;
     const emergencyReadiness =
       allEmergency.length > 0
         ? Math.round(
@@ -2805,6 +2840,13 @@ export function CaseOpsPanel({
     );
     const totalCourtFees = allCourt.reduce(
       (s, i) => s + (((i.data as unknown as Record<string, unknown>).feesOwed as number) || 0),
+      0
+    );
+    // S4(i): a court case's fineAmount (the walk's $250) was summed
+    // NOWHERE — Revenue silently dropped court fines. It is a revenue
+    // component of its own, printed as its own row below.
+    const totalCourtFines = allCourt.reduce(
+      (s, i) => s + (((i.data as unknown as Record<string, unknown>).fineAmount as number) || 0),
       0
     );
 
@@ -2892,7 +2934,7 @@ export function CaseOpsPanel({
               <DollarSign className="w-5 h-5 text-green-400" />
               <span className={ds.textMuted}>Revenue Overview</span>
             </div>
-            <p className={ds.heading2}>{formatCurrency(totalFees + totalFines + totalCourtFees)}</p>
+            <p className={ds.heading2}>{formatCurrency(totalFees + totalFines + totalCourtFees + totalCourtFines)}</p>
             <div className="mt-2 space-y-1">
               <div className="flex justify-between">
                 <span className={cn(ds.textMuted, 'text-xs')}>Permit Fees</span>
@@ -2905,6 +2947,10 @@ export function CaseOpsPanel({
               <div className="flex justify-between">
                 <span className={cn(ds.textMuted, 'text-xs')}>Court Fees</span>
                 <span className="text-xs text-white">{formatCurrency(totalCourtFees)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className={cn(ds.textMuted, 'text-xs')}>Court Fines</span>
+                <span className="text-xs text-white">{formatCurrency(totalCourtFines)}</span>
               </div>
             </div>
           </div>
@@ -2943,8 +2989,11 @@ export function CaseOpsPanel({
               </h3>
             </div>
             <div className="mt-3 space-y-3">
+              {/* S4(iii): 'draft' included — a created project stands at
+                  'draft', and the old filter rendered "No active
+                  projects." verbatim over the standing project. */}
               {allProjects
-                .filter((p) => ['proposed', 'public-comment'].includes(p.meta.status))
+                .filter((p) => ['draft', 'proposed', 'public-comment'].includes(p.meta.status))
                 .slice(0, 4)
                 .map((proj) => {
                   const pd = proj.data as unknown as Record<string, unknown>;
@@ -2970,7 +3019,7 @@ export function CaseOpsPanel({
                     </div>
                   );
                 })}
-              {allProjects.filter((p) => ['proposed', 'public-comment'].includes(p.meta.status)).length === 0 && (
+              {allProjects.filter((p) => ['draft', 'proposed', 'public-comment'].includes(p.meta.status)).length === 0 && (
                 <p className={ds.textMuted}>No active projects.</p>
               )}
             </div>

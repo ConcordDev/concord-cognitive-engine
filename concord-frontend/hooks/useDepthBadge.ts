@@ -199,6 +199,20 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace data: campaigns, donors, volunteers and pages are your live records; 990 research data is ProPublica’s open-access IRS dataset.',
   },
+  /**
+   * Government declared REAL_FREE ("Real but static / open-access
+   * dataset") over a live write layer — the probe CourtCase persisted
+   * and moved the Caseload counts (Review 2's first pass, F1: the
+   * declaration contradicted itself four ways). The lens's own records
+   * are per-user workspace records on this server; its external reads
+   * (Congress.gov bills and members, USAspending, data.gov, NWS) are
+   * live public sources. Nothing in the lens files with any authority,
+   * and the caption says so — the S2 half of the declaration.
+   */
+  government: {
+    label: 'Live',
+    caption: 'Live: your caseload, permits, records and FOIA drafts are your own workspace records on this server, and bills, members, spending, datasets and alerts are read live from Congress.gov, USAspending, data.gov and NWS. Nothing here is an official government service, and nothing you enter is filed with any authority.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
