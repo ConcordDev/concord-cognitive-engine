@@ -8,7 +8,7 @@
  * list with no lens scoping, so every App Maker project rendered here
  * too, unlabelled, next to real makes. It now reads/writes its own
  * domain (maker.list/create/update/delete, server/domains/maker.js,
- * migration 496) — there is nothing foreign left to show.
+ * migration 497) — there is nothing foreign left to show.
  *
  * Review F2/F3 (name-only shell, no edit/rename/delete): a make now
  * carries one body field (`spec`, free text — the review's floor is

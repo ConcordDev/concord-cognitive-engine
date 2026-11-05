@@ -1,6 +1,6 @@
 // server/tests/maker-domain.test.js
 //
-// Behavioral tests for server/domains/maker.js (migration 496). Review
+// Behavioral tests for server/domains/maker.js (migration 497). Review
 // findings F2/F3 (a make now carries a spec and a real edit/delete
 // lifecycle) and F5 (the bench no longer shares app-maker's store — these
 // macros read/write their own table, owner-scoped).
