@@ -12,6 +12,14 @@ import { ChevronUp, ChevronDown, Trash2, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Block, BlockData, Cursor } from './types';
 import { highlightCode } from './syntax';
+import { ConfirmDeleteButton } from './DeleteSafety';
+
+/** The name a block's delete confirmation carries: its own text,
+ *  trimmed, or its type for text-less blocks (divider, table…). */
+export function blockDeleteLabel(block: Block): string {
+  const text = (block.text || '').trim();
+  return text ? text.slice(0, 40) : `${block.type.replace('_', ' ')} block`;
+}
 
 const CODE_LANGUAGES = [
   'plain', 'javascript', 'typescript', 'python', 'rust', 'go',
@@ -37,6 +45,7 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
   const [text, setText] = useState(block.text);
   useEffect(() => { setText(block.text); }, [block.text]);
   const commit = () => { if (text !== block.text) onChange({ text }); };
+  const deleteLabel = blockDeleteLabel(block);
 
   const presenceRail = cursors.length > 0 && (
     <span className="absolute -left-2 top-0 bottom-0 flex flex-col gap-0.5">
@@ -52,7 +61,7 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
       <div className="group relative flex items-center gap-1">
         {presenceRail}
         <hr className="flex-1 border-zinc-700" />
-        <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} />
+        <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} deleteItemLabel={deleteLabel} />
       </div>
     );
   }
@@ -67,7 +76,7 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
             className="bg-zinc-950 border border-zinc-800 rounded text-[10px] text-zinc-300 px-1 py-0.5">
             {CODE_LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
-          <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} inline />
+          <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} deleteItemLabel={deleteLabel} inline />
         </div>
         <div className="relative font-mono text-xs bg-zinc-950 rounded border border-zinc-800">
           <pre aria-hidden className="px-2 py-1.5 whitespace-pre-wrap break-words pointer-events-none"
@@ -95,7 +104,7 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
           className="bg-zinc-950/60 border border-zinc-700 rounded text-[10px] px-1 py-0.5 self-start">
           {CALLOUT_TONES.map(t => <option key={t.id} value={t.id}>{t.id}</option>)}
         </select>
-        <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} />
+        <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} deleteItemLabel={deleteLabel} />
       </div>
     );
   }
@@ -112,7 +121,7 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
           </button>
           <textarea value={text} onFocus={onFocus} onChange={e => setText(e.target.value)} onBlur={commit} rows={1}
             placeholder="Toggle summary…" className="flex-1 bg-transparent resize-none focus:outline-none text-sm font-medium text-zinc-200" />
-          <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} />
+          <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} deleteItemLabel={deleteLabel} />
         </div>
         {open && (
           <div className="ml-5 mt-1 pl-2 border-l border-zinc-800 text-[11px] text-zinc-400">
@@ -139,7 +148,7 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
           <input value={url} onChange={e => onChange({ data: { ...block.data, url: e.target.value } })}
             onFocus={onFocus} placeholder="https://…"
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200 px-1.5 py-0.5" />
-          <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} inline />
+          <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} deleteItemLabel={deleteLabel} inline />
         </div>
         {url && kind === 'image' && (
           /* eslint-disable-next-line @next/next/no-img-element */
@@ -180,7 +189,7 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
           <div className="flex items-center gap-1">
             <button onClick={addRow} className="text-[10px] text-zinc-400 hover:text-zinc-100 border border-zinc-800 rounded px-1">+ row</button>
             <button onClick={addCol} className="text-[10px] text-zinc-400 hover:text-zinc-100 border border-zinc-800 rounded px-1">+ col</button>
-            <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} inline />
+            <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} deleteItemLabel={deleteLabel} inline />
           </div>
         </div>
         <table className="w-full text-xs border-collapse">
@@ -232,19 +241,29 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
         placeholder={`Type ${block.type.replace('_', ' ')}…`}
         className={cn('flex-1 bg-transparent resize-none focus:outline-none focus:bg-zinc-800/40 rounded px-1',
           cls[block.type] || cls.paragraph, block.type === 'todo' && block.checked && 'line-through text-zinc-400')} />
-      <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} />
+      <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} deleteItemLabel={deleteLabel} />
     </div>
   );
 }
 
-function RowControls({ onDelete, onUp, onDown, inline }: {
-  onDelete: () => void; onUp: () => void; onDown: () => void; inline?: boolean;
+function RowControls({ onDelete, onUp, onDown, deleteItemLabel, inline }: {
+  onDelete: () => void; onUp: () => void; onDown: () => void;
+  deleteItemLabel: string; inline?: boolean;
 }) {
+  // Block delete carries S1's safeguard (Lead's ruling: the policy
+  // extends to blocks): the trash control swaps inline to a named
+  // confirm step, and confirming registers the deferred-commit Undo
+  // window in DocsWorkspace — it no longer deletes on the click.
+  // While the confirm step is open the controls stay visible (the
+  // hover-reveal must not hide a pending decision).
+  const [confirming, setConfirming] = useState(false);
   return (
-    <div className={cn('flex items-center', !inline && 'opacity-0 group-hover:opacity-100')}>
+    <div className={cn('flex items-center', !inline && !confirming && 'opacity-0 group-hover:opacity-100')}>
       <button onClick={onUp} title="Move up" className="text-zinc-600 hover:text-zinc-300"><ChevronUp className="w-3 h-3" /></button>
       <button onClick={onDown} title="Move down" className="text-zinc-600 hover:text-zinc-300"><ChevronDown className="w-3 h-3" /></button>
-      <button onClick={onDelete} title="Delete block" className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+      <ConfirmDeleteButton itemLabel={deleteItemLabel} deleteTitle="Delete block"
+        onConfirm={onDelete} onConfirmingChange={setConfirming}
+        className="text-zinc-600 hover:text-rose-400" iconClassName="w-3 h-3" />
     </div>
   );
 }
