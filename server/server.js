@@ -18470,8 +18470,44 @@ register("metalearning", "list_strategies", (ctx, _input = {}) => {
   enforceEthosInvariant("metalearning_list");
   ensureMetaLearningSystem();
   const strategies = Array.from(ctx.state.metaLearning.strategies.values())
-    .map(s => ({ id: s.id, name: s.name, domain: s.domain, uses: s.uses, avgPerformance: s.avgPerformance }));
+    .map(s => ({
+      id: s.id, name: s.name, domain: s.domain,
+      uses: s.uses, successes: s.successes, failures: s.failures,
+      // Derived from the counts at read time, so a strategy recorded
+      // under the old rule also reads true; null until the first
+      // outcome — the surface renders "no outcomes yet", not a figure.
+      avgPerformance: s.uses ? Math.round((s.successes / s.uses) * 10000) / 10000 : null,
+      parameters: s.parameters,
+      createdAt: s.createdAt,
+    }));
   return { ok: true, strategies };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: true });
+
+register("metalearning", "delete_strategy", (ctx, input = {}) => {
+  try {
+  enforceEthosInvariant("metalearning_strategy_delete");
+  ensureMetaLearningSystem();
+  const strategyId = String(input.strategyId || "");
+  const strategy = ctx.state.metaLearning.strategies.get(strategyId);
+  if (!strategy) return { ok: false, error: "Strategy not found" };
+  ctx.state.metaLearning.strategies.delete(strategyId);
+  // Its outcome history goes with it — orphaned rows would keep
+  // feeding adaptation windows for a strategy that no longer exists.
+  // The adaptation log keeps its name-snapshot entries as history.
+  const before = ctx.state.metaLearning.performance.length;
+  ctx.state.metaLearning.performance = ctx.state.metaLearning.performance.filter(p => p.strategyId !== strategyId);
+  saveStateDebounced();
+  return { ok: true, deleted: strategyId, name: strategy.name, outcomesRemoved: before - ctx.state.metaLearning.performance.length };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: false });
+
+register("metalearning", "list_curricula", (ctx, _input = {}) => {
+  try {
+  enforceEthosInvariant("metalearning_curricula_list");
+  ensureMetaLearningSystem();
+  const curricula = ctx.state.metaLearning.curriculum.slice(-50).slice().reverse();
+  return { ok: true, curricula, total: curricula.length };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
@@ -84997,11 +85033,18 @@ function defineLearningStrategy(input = {}) {
       consolidationThreshold: clamp(Number(input.consolidationThreshold || 0.7), 0.1, 1)
     },
 
-    // Performance tracking
+    // Performance tracking. S-META-1: there is no performance figure
+    // before the first outcome — avgPerformance stays null until
+    // recordStrategyOutcome derives it as the success rate
+    // (successes / uses) from the counts below. (It was seeded 0.5
+    // and then averaged per-outcome scores the surface sent —
+    // 0.85 per success, 0.25 per failure — so the card displayed a
+    // mean of undisclosed constants wearing the label "avg
+    // performance", at 0 outcomes a bare seed.)
     uses: 0,
     successes: 0,
     failures: 0,
-    avgPerformance: 0.5,
+    avgPerformance: null,
 
     createdAt: nowISO(),
     updatedAt: nowISO()
@@ -85025,8 +85068,12 @@ function recordStrategyOutcome(strategyId, outcome) {
   if (success) strategy.successes++;
   else strategy.failures++;
 
-  // Update running average
-  strategy.avgPerformance = (strategy.avgPerformance * (strategy.uses - 1) + performance) / strategy.uses;
+  // S-META-1: the displayed figure is the success rate, recomputed
+  // from the counts on every outcome so it can always be
+  // hand-checked against them. The per-outcome performance score
+  // still lands in the history below, where adaptStrategy uses it
+  // as an internal tuning signal — it no longer feeds the figure.
+  strategy.avgPerformance = strategy.successes / strategy.uses;
   strategy.updatedAt = nowISO();
 
   // Record in performance history
@@ -85049,7 +85096,7 @@ function recordStrategyOutcome(strategyId, outcome) {
   }
 
   saveStateDebounced();
-  return { ok: true, strategy, newAvgPerformance: strategy.avgPerformance };
+  return { ok: true, strategy, newAvgPerformance: strategy.avgPerformance, successRate: strategy.avgPerformance };
 }
 
 // Adapt strategy parameters based on performance
@@ -85067,51 +85114,86 @@ function adaptStrategy(strategyId) {
     .filter(p => p.strategyId === strategyId)
     .slice(-cfg.performanceWindow);
 
+  // S-META-3: an adaptation pass always answers with its working —
+  // what it counted, what rule it applied, and either the changes it
+  // made (before → after, every tuned parameter) or the reason it
+  // made none. (Before this, a below-threshold pass returned a
+  // message the surface never rendered — a silent no-op — and the
+  // firing condition was nowhere stated.)
   if (recent.length < cfg.minSamples) {
-    return { ok: true, message: "Insufficient data for adaptation" };
+    return {
+      ok: true,
+      adapted: false,
+      reason: "needs_data",
+      outcomesCounted: recent.length,
+      requiredCount: cfg.minSamples,
+      message: `Adaptation needs at least ${cfg.minSamples} recorded outcomes to read a trend — this strategy has ${recent.length}. No parameters changed.`,
+    };
   }
 
   const recentAvg = recent.reduce((sum, p) => sum + p.performance, 0) / recent.length;
   const successRate = recent.filter(p => p.success).length / recent.length;
+  const changes = [];
+  const tune = (parameter, to, describe) => {
+    const from = strategy.parameters[parameter];
+    if (from === to) return;
+    strategy.parameters[parameter] = to;
+    changes.push({ parameter, from, to });
+    adaptations.push(describe(from, to));
+  };
 
-  // Adapt based on performance
+  // Adapt based on performance. All three parameters the surface
+  // names are tuned here — learning rate included (it never was).
   if (recentAvg < 0.4) {
-    // Poor performance: increase exploration, decrease batch size
-    const oldExploration = strategy.parameters.explorationRate;
-    strategy.parameters.explorationRate = clamp(oldExploration + cfg.adaptationRate, 0, 0.5);
-    adaptations.push(`Increased exploration from ${oldExploration.toFixed(2)} to ${strategy.parameters.explorationRate.toFixed(2)}`);
-
-    const oldBatch = strategy.parameters.batchSize;
-    strategy.parameters.batchSize = Math.max(1, oldBatch - 1);
-    adaptations.push(`Decreased batch size from ${oldBatch} to ${strategy.parameters.batchSize}`);
+    // Poor performance: explore more, smaller batches, faster updates
+    tune("explorationRate", clamp(strategy.parameters.explorationRate + cfg.adaptationRate, 0, 0.5),
+      (f, t) => `Increased exploration from ${f.toFixed(2)} to ${t.toFixed(2)}`);
+    tune("batchSize", Math.max(1, strategy.parameters.batchSize - 1),
+      (f, t) => `Decreased batch size from ${f} to ${t}`);
+    tune("learningRate", clamp(strategy.parameters.learningRate + cfg.adaptationRate / 2, 0.01, 1),
+      (f, t) => `Increased learning rate from ${f.toFixed(2)} to ${t.toFixed(2)}`);
   } else if (recentAvg > 0.7 && successRate > 0.8) {
-    // Good performance: decrease exploration, can increase batch
-    const oldExploration = strategy.parameters.explorationRate;
-    strategy.parameters.explorationRate = clamp(oldExploration - cfg.adaptationRate, 0.05, 1);
-    adaptations.push(`Decreased exploration from ${oldExploration.toFixed(2)} to ${strategy.parameters.explorationRate.toFixed(2)}`);
+    // Good performance: exploit what works, steadier updates
+    tune("explorationRate", clamp(strategy.parameters.explorationRate - cfg.adaptationRate, 0.05, 1),
+      (f, t) => `Decreased exploration from ${f.toFixed(2)} to ${t.toFixed(2)}`);
+    tune("learningRate", clamp(strategy.parameters.learningRate - cfg.adaptationRate / 2, 0.01, 1),
+      (f, t) => `Decreased learning rate from ${f.toFixed(2)} to ${t.toFixed(2)}`);
 
     STATE.metaLearning.stats.performanceImprovements++;
   }
 
-  if (adaptations.length > 0) {
-    STATE.metaLearning.adaptations.push({
-      strategyId,
-      strategyName: strategy.name,
-      adaptations,
-      triggerPerformance: recentAvg,
-      adaptedAt: nowISO()
-    });
-    STATE.metaLearning.stats.strategiesAdapted++;
-    strategy.updatedAt = nowISO();
+  if (changes.length === 0) {
+    return {
+      ok: true,
+      adapted: false,
+      reason: "in_band",
+      outcomesCounted: recent.length,
+      recentAvg: Math.round(recentAvg * 10000) / 10000,
+      successRate: Math.round(successRate * 10000) / 10000,
+      message: `No adaptation: recent performance (${recentAvg.toFixed(2)} average, ${(successRate * 100).toFixed(0)}% success over the last ${recent.length} outcomes) is inside the healthy band. Adaptation fires below 0.40 average, or above 0.70 with a success rate over 80%.`,
+    };
+  }
 
-    // Cap adaptations
-    if (STATE.metaLearning.adaptations.length > 200) {
-      STATE.metaLearning.adaptations = STATE.metaLearning.adaptations.slice(-200);
-    }
+  STATE.metaLearning.adaptations.push({
+    strategyId,
+    strategyName: strategy.name,
+    adaptations,
+    changes,
+    triggerPerformance: recentAvg,
+    triggerSuccessRate: Math.round(successRate * 10000) / 10000,
+    outcomesCounted: recent.length,
+    adaptedAt: nowISO()
+  });
+  STATE.metaLearning.stats.strategiesAdapted++;
+  strategy.updatedAt = nowISO();
+
+  // Cap adaptations
+  if (STATE.metaLearning.adaptations.length > 200) {
+    STATE.metaLearning.adaptations = STATE.metaLearning.adaptations.slice(-200);
   }
 
   saveStateDebounced();
-  return { ok: true, adaptations, newParameters: strategy.parameters };
+  return { ok: true, adapted: true, adaptations, changes, newParameters: strategy.parameters, outcomesCounted: recent.length };
 }
 
 // Generate a curriculum (learning sequence) for a topic
@@ -85132,21 +85214,33 @@ function generateCurriculum(topic, input = {}) {
     return aScore - bScore;  // Start with simpler, more relevant
   });
 
-  // Build curriculum
-  const steps = sorted.slice(0, maxSteps).map((dtu, i) => ({
+  // Build curriculum. Steps are existing corpus DTUs — deduped by
+  // id (the same material appeared twice in one curriculum) — and
+  // the object says what it is: assembled from the corpus, ordered
+  // foundational → advanced. The surface renders the steps as a
+  // readable plan with this provenance attached (S-META-2).
+  const seen = new Set();
+  const deduped = sorted.filter((dtu) => {
+    if (!dtu.dtuId || seen.has(dtu.dtuId)) return false;
+    seen.add(dtu.dtuId);
+    return true;
+  });
+  const steps = deduped.slice(0, maxSteps).map((dtu, i, arr) => ({
     order: i + 1,
     dtuId: dtu.dtuId,
     title: dtu.title,
-    difficulty: i / maxSteps,  // Increases through curriculum
+    difficulty: i / Math.max(1, arr.length),  // Increases through curriculum
     rationale: i === 0 ? "Start with fundamentals" :
-               i < maxSteps / 3 ? "Build foundational understanding" :
-               i < 2 * maxSteps / 3 ? "Develop intermediate knowledge" :
+               i < arr.length / 3 ? "Build foundational understanding" :
+               i < 2 * arr.length / 3 ? "Develop intermediate knowledge" :
                "Advanced integration"
   }));
 
   const curriculum = {
     id: uid("curr"),
     topic,
+    source: "corpus",
+    provenance: `Assembled from ${steps.length} DTU${steps.length === 1 ? "" : "s"} in the platform corpus matching "${topic}", ordered from foundational to advanced. Steps are existing material, not newly written lessons.`,
     steps,
     estimatedEffort: steps.length * 0.5,  // Rough estimate in hours
     prerequisites: [],
@@ -85169,16 +85263,25 @@ function generateCurriculum(topic, input = {}) {
 function getBestStrategy(domain) {
   ensureMetaLearningSystem();
 
+  const rate = (s) => (s.uses ? s.successes / s.uses : 0);
   const strategies = Array.from(STATE.metaLearning.strategies.values())
     .filter(s => s.domain === domain || s.domain === "general")
     .filter(s => s.uses >= 3)  // Enough data
-    .sort((a, b) => b.avgPerformance - a.avgPerformance);
+    // Ranked by the success rate (S-META-1's figure); ties go to the
+    // earliest created — the rule is stated in the result's basis.
+    .sort((a, b) => (rate(b) - rate(a)) || String(a.createdAt).localeCompare(String(b.createdAt)));
 
   if (strategies.length === 0) {
     return { ok: true, strategy: null, message: "No strategies with sufficient data for this domain" };
   }
 
-  return { ok: true, strategy: strategies[0], alternatives: strategies.slice(1, 3) };
+  const best = strategies[0];
+  return {
+    ok: true,
+    strategy: { ...best, avgPerformance: Math.round(rate(best) * 10000) / 10000 },
+    alternatives: strategies.slice(1, 3),
+    basis: "Highest success rate among strategies with 3+ outcomes; ties go to the earliest created.",
+  };
 }
 
 // ===== END META-LEARNING SYSTEM =====

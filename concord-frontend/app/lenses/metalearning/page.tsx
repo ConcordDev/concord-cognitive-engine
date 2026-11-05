@@ -64,6 +64,14 @@ export default function MetalearningLensPage() {
   useLensIdentity('metalearning');
   const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('metalearning');
   const [active, setActive] = useState<MlView>('strategies');
+  // F18: visited views stay mounted (hidden) so in-progress work —
+  // a half-typed strategy name, a journal draft — survives a view
+  // switch instead of dying with the unmount.
+  const [visited, setVisited] = useState<MlView[]>(['strategies']);
+  const goTo = (v: MlView) => {
+    setActive(v);
+    setVisited((prev) => (prev.includes(v) ? prev : [...prev, v]));
+  };
 
   useLensCommand(
     TABS.map((t) => ({
@@ -71,7 +79,7 @@ export default function MetalearningLensPage() {
       keys: t.keys,
       description: t.label,
       category: 'navigation' as const,
-      action: () => setActive(t.id),
+      action: () => goTo(t.id),
     })),
     { lensId: 'metalearning' },
   );
@@ -108,7 +116,7 @@ export default function MetalearningLensPage() {
               <button
                 key={v.id}
                 type="button"
-                onClick={() => setActive(v.id)}
+                onClick={() => goTo(v.id)}
                 aria-current={on ? 'page' : undefined}
                 className={cn(
                   'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
@@ -124,18 +132,56 @@ export default function MetalearningLensPage() {
         </nav>
 
         <main id="metalearning-main">
-          <div key={active}>
-              {active === 'strategies' && <StrategiesDeskPanel />}
-              {active === 'spaced' && <div className="panel p-4"><SpacedRepetitionPanel /></div>}
-              {active === 'plan' && <div className="panel p-4"><LearningPlanPanel /></div>}
-              {active === 'techniques' && <div className="panel p-4"><TechniqueLibraryPanel /></div>}
-              {active === 'progress' && <div className="panel p-4"><ProgressAnalyticsPanel /></div>}
-              {active === 'goals' && <div className="panel p-4"><GoalTrackerPanel /></div>}
-              {active === 'experiments' && <div className="panel p-4"><StrategyExperimentPanel /></div>}
-              {active === 'journal' && <div className="panel p-4"><StudyJournalPanel /></div>}
-              {active === 'analysis' && <AnalysisPanel />}
-              {active === 'feed' && <ResearchFeedPanel />}
-          </div>
+          {visited.includes('strategies') && (
+            <section hidden={active !== 'strategies'} aria-hidden={active !== 'strategies'}>
+              <StrategiesDeskPanel />
+            </section>
+          )}
+          {visited.includes('spaced') && (
+            <section hidden={active !== 'spaced'} aria-hidden={active !== 'spaced'}>
+              <div className="panel p-4"><SpacedRepetitionPanel /></div>
+            </section>
+          )}
+          {visited.includes('plan') && (
+            <section hidden={active !== 'plan'} aria-hidden={active !== 'plan'}>
+              <div className="panel p-4"><LearningPlanPanel /></div>
+            </section>
+          )}
+          {visited.includes('techniques') && (
+            <section hidden={active !== 'techniques'} aria-hidden={active !== 'techniques'}>
+              <div className="panel p-4"><TechniqueLibraryPanel /></div>
+            </section>
+          )}
+          {visited.includes('progress') && (
+            <section hidden={active !== 'progress'} aria-hidden={active !== 'progress'}>
+              <div className="panel p-4"><ProgressAnalyticsPanel /></div>
+            </section>
+          )}
+          {visited.includes('goals') && (
+            <section hidden={active !== 'goals'} aria-hidden={active !== 'goals'}>
+              <div className="panel p-4"><GoalTrackerPanel /></div>
+            </section>
+          )}
+          {visited.includes('experiments') && (
+            <section hidden={active !== 'experiments'} aria-hidden={active !== 'experiments'}>
+              <div className="panel p-4"><StrategyExperimentPanel /></div>
+            </section>
+          )}
+          {visited.includes('journal') && (
+            <section hidden={active !== 'journal'} aria-hidden={active !== 'journal'}>
+              <div className="panel p-4"><StudyJournalPanel /></div>
+            </section>
+          )}
+          {visited.includes('analysis') && (
+            <section hidden={active !== 'analysis'} aria-hidden={active !== 'analysis'}>
+              <AnalysisPanel />
+            </section>
+          )}
+          {visited.includes('feed') && (
+            <section hidden={active !== 'feed'} aria-hidden={active !== 'feed'}>
+              <ResearchFeedPanel />
+            </section>
+          )}
         </main>
 
         <ConnectiveTissueBar lensId="metalearning" />
@@ -143,7 +189,7 @@ export default function MetalearningLensPage() {
 
         <button
           type="button"
-          onClick={() => setActive('spaced')}
+          onClick={() => goTo('spaced')}
           title="Start spaced practice"
           className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
         >

@@ -1072,6 +1072,14 @@ export default function registerDomainRoutes(app, {
     const out = await runMacro("metalearning", "curriculum", req.body, makeCtx(req));
     return res.json(out);
   }));
+  app.get("/api/metalearning/curricula", asyncHandler(async (req, res) => {
+    const out = await runMacro("metalearning", "list_curricula", {}, makeCtx(req));
+    return res.json(out);
+  }));
+  app.delete("/api/metalearning/strategies/:strategyId", asyncHandler(async (req, res) => {
+    const out = await runMacro("metalearning", "delete_strategy", { strategyId: req.params.strategyId }, makeCtx(req));
+    return res.json(out);
+  }));
   app.get("/api/metalearning/adaptations", asyncHandler(async (req, res) => {
     const out = await runMacro("metalearning", "adaptations", {}, makeCtx(req));
     return res.json(out);

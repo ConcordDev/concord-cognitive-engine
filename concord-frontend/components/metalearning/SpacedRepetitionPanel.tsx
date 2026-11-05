@@ -44,6 +44,7 @@ export function SpacedRepetitionPanel() {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -95,11 +96,30 @@ export function SpacedRepetitionPanel() {
     try {
       const { data: r } = await lensRun<any>('metalearning', 'srsDeleteCard', { cardId });
       if (r?.ok === false) { setErr(r.error || 'Delete failed'); return; }
+      setConfirmDeleteId(null);
       await refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Delete failed');
     } finally { setBusy(null); }
   };
+
+  // Two-step delete (F12): the first click arms an in-place confirm
+  // naming the card; only the confirm calls the delete. Used by both
+  // the due list and the UPCOMING list (graded cards included, F11).
+  const deleteControl = (id: string, front: string) => (
+    confirmDeleteId === id ? (
+      <button onClick={() => remove(id)} disabled={busy === id}
+        className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/25 hover:bg-red-500/35 text-red-300 disabled:opacity-50 flex-shrink-0"
+        title={`Confirm delete — removes the card "${front}"`}>
+        Delete?
+      </button>
+    ) : (
+      <button aria-label={`Delete card ${front}`} onClick={() => setConfirmDeleteId(id)} disabled={busy === id}
+        className="text-gray-600 hover:text-red-400 disabled:opacity-50 flex-shrink-0">
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    )
+  );
 
   return (
     <div className="space-y-4">
@@ -155,10 +175,7 @@ export function SpacedRepetitionPanel() {
                     {(c.overdueDays ?? 0) > 0 && ` · ${c.overdueDays}d overdue`}
                   </p>
                 </div>
-                <button aria-label="Delete" onClick={() => remove(c.id)} disabled={busy === c.id}
-                  className="text-gray-600 hover:text-red-400 disabled:opacity-50">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {deleteControl(c.id, c.front)}
               </div>
               {revealed[c.id] ? (
                 <>
@@ -191,9 +208,10 @@ export function SpacedRepetitionPanel() {
           </p>
           <div className="space-y-1 max-h-32 overflow-y-auto">
             {upcoming.map((u) => (
-              <div key={u.id} className="flex justify-between text-xs text-gray-400">
-                <span className="truncate">{u.front}</span>
-                <span className="text-gray-600 flex-shrink-0 ml-2">in {u.dueInDays}d</span>
+              <div key={u.id} className="flex justify-between items-center text-xs text-gray-400 gap-2">
+                <span className="truncate flex-1">{u.front}</span>
+                <span className="text-gray-600 flex-shrink-0">in {u.dueInDays}d</span>
+                {deleteControl(u.id, u.front)}
               </div>
             ))}
           </div>

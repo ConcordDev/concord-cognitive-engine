@@ -1615,6 +1615,9 @@ export const apiHelpers = {
     curriculum: (data: { topic: string }) =>
       api.post('/api/metalearning/curriculum', data),
     adaptations: () => api.get('/api/metalearning/adaptations'),
+    curricula: () => api.get('/api/metalearning/curricula'),
+    deleteStrategy: (strategyId: string) =>
+      api.delete(`/api/metalearning/strategies/${strategyId}`),
   },
 
   // Reasoning chains — field names match the real backend contract
