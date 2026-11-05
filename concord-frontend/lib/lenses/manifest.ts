@@ -2113,7 +2113,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['scaleRecipe', 'mealPlan', 'shoppingList', 'nutritionCalc', 'substitutions', 'pairings'],
     category: 'lifestyle',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: 'No recipes saved.',
       caption: 'Author or import a recipe; scale, plan meals, generate shopping lists. Nutrition pulls from USDA FoodData (real numbers).',
