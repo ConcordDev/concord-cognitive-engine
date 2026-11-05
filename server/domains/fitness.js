@@ -2445,8 +2445,14 @@ Generate the plan.`;
   }
 
   async function recoverFeedDtuId(ctx, ex, name) {
-    // Best-effort recovery for a pre-library ingest: the create call
-    // stamped meta.exerciseId, so a corpus search can find the DTU.
+    // Last-resort recovery for a pre-library ingest, via corpus search
+    // on the meta.exerciseId stamped at create. NOTE (re-check #2,
+    // 2026-11-05): on prod this returned nothing adoptable for any of
+    // the 10 legacy rows — search is ranking/scale-bound (25-result
+    // cap) and degrades with the embedding service, so it cannot be
+    // the primary channel. The deterministic channel is the corpus
+    // scan below; search stays only as a fallback for a store the
+    // scan cannot see.
     try {
       for (const q of [name, `Exercise ${ex.id}`]) {
         if (!q) continue;
@@ -2458,6 +2464,38 @@ Generate the plan.`;
       }
     } catch { /* recovery is best-effort; the name still heals */ }
     return null;
+  }
+
+  // Deterministic id recovery: the corpus itself is the record of
+  // what the feed ingested. One scan of the DTU store indexes every
+  // wger-feed DTU by the meta.exerciseId its ingest stamped (domains
+  // read STATE.dtus directly — the all.js pattern). No dependence on
+  // search ranking, corpus scale, or the embedding service.
+  function feedCorpusIndex() {
+    const byExercise = new Map();
+    const STATE = globalThis._concordSTATE;
+    if (!STATE?.dtus?.values) return byExercise;
+    for (const d of STATE.dtus.values()) {
+      const exId = d?.meta?.exerciseId;
+      if (typeof exId === "number" && typeof d?.id === "string"
+        && (d?.source === "wger-feed" || (Array.isArray(d?.tags) && d.tags.includes("wger")))) {
+        if (!byExercise.has(exId)) byExercise.set(exId, d.id); // earliest wins
+      }
+    }
+    return byExercise;
+  }
+
+  // Adopt ids for every library entry that lacks one, from the corpus
+  // index. Returns how many entries were healed.
+  function adoptFeedIdsFromCorpus(s, index = feedCorpusIndex()) {
+    let adopted = 0;
+    for (const entry of s.feedLibrary.values()) {
+      if (!entry.dtuId && index.has(entry.exerciseId)) {
+        entry.dtuId = index.get(entry.exerciseId);
+        adopted++;
+      }
+    }
+    return adopted;
   }
 
   function feedLibraryList(s) {
@@ -2479,6 +2517,7 @@ Generate the plan.`;
       const exercises = (Array.isArray(data?.results) ? data.results : []).slice(0, limit);
       let ingested = 0, skipped = 0; const dtuIds = [];
       const surfaced = [];
+      let corpusIndex = null; // built lazily, only if a legacy entry needs an id
       for (const ex of exercises) {
         const key = `wger_${ex.uuid || ex.id}`;
         const info = await wgerExerciseInfo(ex);
@@ -2512,10 +2551,13 @@ Generate the plan.`;
         if (!created) skipped++;
         // Heal the stored record on every sighting: real name from
         // exerciseinfo (replacing any fallback label), and the DTU id
-        // for a legacy entry (ingested before the library existed) via
-        // corpus recovery on the meta.exerciseId stamped at create.
+        // for a legacy entry (ingested before the library existed) —
+        // corpus scan first (deterministic), search only as fallback.
         if (info.name) entry.name = info.name;
-        if (!entry.dtuId && !entry.pendingCreate) entry.dtuId = await recoverFeedDtuId(ctx, ex, entry.name);
+        if (!entry.dtuId && !entry.pendingCreate) {
+          if (!corpusIndex) corpusIndex = feedCorpusIndex();
+          entry.dtuId = corpusIndex.get(ex.id) ?? await recoverFeedDtuId(ctx, ex, entry.name);
+        }
         s.feedLibrary.set(key, entry);
         if (entry.dtuId) s.feedSeen.add(key);
         surfaced.push({ name: entry.name, dtuId: entry.dtuId ?? null, fresh });
@@ -2540,6 +2582,12 @@ Generate the plan.`;
   registerLensAction("fitness", "feed-library", async (ctx, _a, _params = {}) => {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.feedLibrary instanceof Map)) s.feedLibrary = new Map();
+    // Reconcile on read: any entry still missing its DTU id adopts it
+    // from the corpus index (deterministic scan — see feedCorpusIndex),
+    // so the stored listing carries ids even before the next pull.
+    if ([...s.feedLibrary.values()].some((e) => !e.dtuId)) {
+      if (adoptFeedIdsFromCorpus(s) > 0) saveStateIfAvailable();
+    }
     return { ok: true, result: { source: "wger-exercises", items: feedLibraryList(s) } };
   });
 };
