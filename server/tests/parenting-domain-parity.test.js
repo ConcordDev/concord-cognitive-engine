@@ -4,7 +4,7 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerParentingActions from "../domains/parenting.js";
+import registerParentingActions, { pgPercentileLabel } from "../domains/parenting.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -32,6 +32,11 @@ function newChild(ctx, months = 6, sex = "boy") {
   return r.result.child.id;
 }
 
+// A sleep that has already ended. `endedAgoMin` keeps the end off "now".
+function completedStart(durationMin, endedAgoMin = 2) {
+  return new Date(Date.now() - (durationMin + endedAgoMin) * 60000).toISOString();
+}
+
 describe("parenting.child-*", () => {
   it("adds, lists with age, deletes; isolates per user", () => {
     const id = newChild(ctxA, 12);
@@ -45,6 +50,73 @@ describe("parenting.child-*", () => {
 
   it("rejects a bad birth date", () => {
     assert.equal(call("child-add", ctxA, { name: "X", birthDate: "not-a-date" }).ok, false);
+  });
+
+  it("shows completed months, not the partial month counted in full", () => {
+    let child = null;
+    for (let days = Math.floor(31.4 * 30.4375); days < Math.ceil(32.2 * 30.4375); days++) {
+      const birthDate = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+      const id = call("child-add", ctxA, { name: "Ada", birthDate, sex: "girl" }).result.child.id;
+      const listed = call("child-list", ctxA, {}).result.children.find((c) => c.id === id);
+      const frac = listed.ageMonths - Math.floor(listed.ageMonths);
+      if (frac >= 0.5) {
+        child = listed;
+        break;
+      }
+      call("child-delete", ctxA, { id });
+    }
+    assert.ok(child, "expected a birth date whose age has a half-month fraction");
+    const whole = Math.floor(child.ageMonths);
+    const years = Math.floor(whole / 12);
+    const months = whole % 12;
+    assert.ok(Math.round(child.ageMonths % 12) !== months);
+    assert.equal(child.ageDisplay, `${years}y ${months}m · ${child.ageMonths} months`);
+    assert.ok(child.ageMonths > whole && child.ageMonths < whole + 1);
+  });
+});
+
+describe("parenting immunizations", () => {
+  it("keeps a received vaccine on the child and checks the full list", () => {
+    const id = newChild(ctxA, 32);
+    const recorded = call("immunization-record", ctxA, { childId: id, vaccine: "MMR", received: true });
+    assert.equal(recorded.ok, true);
+    assert.deepEqual(recorded.result.vaccinesReceived, ["MMR"]);
+    const listed = call("child-list", ctxA, {});
+    assert.deepEqual(listed.result.children[0].vaccinesReceived, ["MMR"]);
+    assert.equal(call("child-list", ctxB, {}).result.children.length, 0);
+    assert.equal(call("immunization-record", ctxB, { childId: id, vaccine: "DTaP", received: true }).error, "child not found");
+
+    const check = call("immunizationTracker", ctxA, { childId: id, vaccinations: "DTaP" });
+    assert.equal(check.ok, true);
+    assert.ok(check.result.ageMonths >= 31 && check.result.ageMonths <= 33);
+    const rows = check.result.immunizations;
+    assert.equal(rows.length, 10);
+    for (const name of ["DTaP", "IPV (Polio)", "MMR", "Varicella"]) {
+      assert.ok(rows.some((r) => r.vaccine === name), name);
+    }
+    const mmr = rows.find((r) => r.vaccine === "MMR");
+    assert.equal(mmr.received, true);
+    assert.equal(mmr.status, "completed");
+    const dtap = rows.find((r) => r.vaccine === "DTaP");
+    assert.equal(dtap.received, false);
+    assert.equal(dtap.status, "overdue");
+    const flu = rows.find((r) => r.vaccine === "Influenza");
+    assert.equal(flu.status, "annual");
+    assert.equal(check.result.summary.overdue, rows.filter((r) => r.status === "overdue").length);
+    assert.ok(check.result.action.startsWith(`${check.result.summary.overdue} critical`));
+
+    const cleared = call("immunization-record", ctxA, { childId: id, vaccine: "MMR", received: false });
+    assert.deepEqual(cleared.result.vaccinesReceived, []);
+    assert.equal(call("immunization-record", ctxA, { childId: id, vaccine: "Not a vaccine", received: true }).error, "invalid_input");
+    assert.deepEqual(call("child-list", ctxA, {}).result.children[0].vaccinesReceived, []);
+  });
+
+  it("reads years and months on a generic check", () => {
+    const r = call("immunizationTracker", ctxA, { childAge: "2y 8m", vaccinations: "" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.ageMonths, 32);
+    assert.equal(r.result.immunizations.length, 10);
+    assert.equal(r.result.immunizations.find((row) => row.vaccine === "MMR").status, "overdue");
   });
 });
 
@@ -68,12 +140,59 @@ describe("parenting.feed-*", () => {
 describe("parenting.sleep-* and sweet-spot", () => {
   it("logs sleep and computes today's totals", () => {
     const id = newChild(ctxA);
-    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 60 });
-    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 45 });
+    const naps = [
+      { durationMin: 60, startAt: completedStart(60) },
+      { durationMin: 45, startAt: completedStart(45) },
+    ];
+    for (const nap of naps) {
+      const logged = call("sleep-log", ctxA, { childId: id, type: "nap", ...nap });
+      assert.equal(logged.ok, true);
+      assert.equal(logged.result.entry.startAt, nap.startAt);
+      assert.equal(
+        logged.result.entry.endAt,
+        new Date(Date.parse(nap.startAt) + nap.durationMin * 60000).toISOString(),
+      );
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const todayNaps = naps.filter((n) => n.startAt.slice(0, 10) === today);
     const stats = call("sleep-stats", ctxA, { childId: id });
-    assert.equal(stats.result.sleepMinToday, 105);
-    assert.equal(stats.result.napsToday, 2);
+    assert.equal(stats.result.sleepMinToday, todayNaps.reduce((a, n) => a + n.durationMin, 0));
+    assert.equal(stats.result.napsToday, todayNaps.length);
     assert.equal(stats.result.longestStretchMin, 60);
+  });
+
+  it("does not invent a start or store a nap that has not ended", () => {
+    const id = newChild(ctxA);
+    const missing = call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 90 });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.error, "invalid_input");
+    assert.equal(missing.field, "startAt");
+    const ahead = call("sleep-log", ctxA, {
+      childId: id, type: "nap", durationMin: 90, startAt: new Date().toISOString(),
+    });
+    assert.equal(ahead.ok, false);
+    assert.equal(ahead.error, "invalid_input");
+    assert.equal(ahead.field, "endAt");
+    assert.equal(ahead.reason, "end_in_future");
+    const futureStart = call("sleep-log", ctxA, {
+      childId: id, durationMin: 10, startAt: new Date(Date.now() + 60 * 60000).toISOString(),
+    });
+    assert.equal(futureStart.ok, false);
+    assert.equal(futureStart.field, "startAt");
+    assert.equal(futureStart.reason, "start_in_future");
+    const garbage = call("sleep-log", ctxA, {
+      childId: id, durationMin: "nope", startAt: completedStart(10),
+    });
+    assert.equal(garbage.ok, false);
+    assert.equal(garbage.field, "durationMin");
+    const startAt = completedStart(30);
+    const mismatch = call("sleep-log", ctxA, {
+      childId: id, durationMin: 30, startAt,
+      endAt: new Date(Date.parse(startAt) + 10 * 60000).toISOString(),
+    });
+    assert.equal(mismatch.ok, false);
+    assert.equal(mismatch.field, "endAt");
+    assert.equal(call("sleep-history", ctxA, { childId: id }).result.count, 0);
   });
 
   it("sweet-spot predicts a nap window from last wake + age wake window", () => {
@@ -119,6 +238,26 @@ describe("parenting.growth-*", () => {
     // 12-month boy at the WHO median should land near the 50th percentile.
     assert.ok(r.result.weight.percentile >= 40 && r.result.weight.percentile <= 60);
     assert.ok(r.result.height.percentile >= 40 && r.result.height.percentile <= 60);
+    assert.equal(r.result.weight.percentileLabel, pgPercentileLabel(r.result.weight.percentile));
+    assert.equal(r.result.height.percentileLabel, pgPercentileLabel(r.result.height.percentile));
+  });
+
+  it("writes 3rd, not 3th, and keeps 11th", () => {
+    for (const [n, label] of [
+      [1, "1st"], [2, "2nd"], [3, "3rd"], [4, "4th"],
+      [11, "11th"], [12, "12th"], [13, "13th"],
+      [21, "21st"], [22, "22nd"], [23, "23rd"], [50, "50th"],
+    ]) {
+      assert.equal(pgPercentileLabel(n), label);
+    }
+    const id = newChild(ctxA, 12, "boy");
+    call("growth-log", ctxA, { childId: id, heightCm: 70, date: "2026-01-15" });
+    const chart = call("growth-chart", ctxA, { childId: id, metric: "height" });
+    assert.equal(chart.ok, true);
+    assert.equal(chart.result.measurements.length, 1);
+    const row = chart.result.measurements[0];
+    assert.equal(row.percentileLabel, pgPercentileLabel(row.percentile));
+    assert.equal(row.percentileLabel.endsWith("th") && row.percentile % 10 === 3 && row.percentile % 100 !== 13, false);
   });
 
   it("rejects an empty growth measurement", () => {
@@ -155,6 +294,28 @@ describe("parenting.milestone-*", () => {
     const id = newChild(ctxA);
     assert.equal(call("milestone-record", ctxA, { childId: id, milestoneId: "zzz" }).ok, false);
   });
+
+  it("milestoneCheck reads the stored record and ignores a blank form", () => {
+    const id = newChild(ctxA, 30);
+    call("milestone-record", ctxA, { childId: id, milestoneId: "cdc_0", achieved: true });
+    call("milestone-record", ctxA, { childId: id, milestoneId: "cdc_1", achieved: true });
+    const r = call("milestoneCheck", ctxA, { childId: id, milestones: [], childAge: "2y 6m" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.basis, "record");
+    assert.equal(r.result.eligibleCount, 36);
+    assert.equal(r.result.achievedCount, 2);
+    assert.equal(r.result.overallCompletionRate, undefined);
+    assert.equal(call("milestoneCheck", ctxB, { childId: id }).ok, false);
+  });
+
+  it("milestoneCheck without a child is an age table, not a record", () => {
+    const r = call("milestoneCheck", ctxA, { childAge: "2y 3m", milestones: [] });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.basis, "age-table");
+    assert.equal(r.result.ageMonths, 27);
+    assert.equal(r.result.overallCompletionRate, 0);
+    assert.match(r.result.note, /not a child's milestone record/i);
+  });
 });
 
 describe("parenting.medicine / activity / timeline / dashboard", () => {
@@ -168,10 +329,12 @@ describe("parenting.medicine / activity / timeline / dashboard", () => {
 
   it("day-timeline merges all event types for a date", () => {
     const id = newChild(ctxA);
-    call("feed-log", ctxA, { childId: id, kind: "bottle", amountMl: 100 });
-    call("diaper-log", ctxA, { childId: id, kind: "wet" });
-    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 30 });
-    const r = call("day-timeline", ctxA, { childId: id });
+    const startAt = new Date(Date.now() - 90 * 1000).toISOString();
+    const date = startAt.slice(0, 10);
+    call("feed-log", ctxA, { childId: id, kind: "bottle", amountMl: 100, at: startAt });
+    call("diaper-log", ctxA, { childId: id, kind: "wet", at: startAt });
+    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 1, startAt });
+    const r = call("day-timeline", ctxA, { childId: id, date });
     assert.equal(r.result.count, 3);
   });
 
@@ -199,8 +362,19 @@ describe("parenting.sleep-schedule (predictor)", () => {
     assert.equal(r.ok, true);
     assert.ok(Array.isArray(r.result.schedule));
     assert.ok(r.result.schedule.some((sl) => sl.kind === "bedtime"));
-    assert.ok(r.result.learnedNapMin > 0);
+    assert.equal(r.result.learnedNapMin, 30);
+    assert.equal(r.result.napSampleCount, 1);
+    assert.equal(r.result.napBasis, "logged");
     assert.ok(r.result.wakeWindow.typical > 0);
+  });
+
+  it("names an age estimate when no nap is logged", () => {
+    const id = newChild(ctxA, 8);
+    const r = call("sleep-schedule", ctxA, { childId: id });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.napSampleCount, 0);
+    assert.equal(r.result.napBasis, "age");
+    assert.equal(r.result.learnedNapMin, 90);
   });
 
   it("rejects an unknown child", () => {
@@ -314,7 +488,7 @@ describe("parenting.caregiver-* (multi-caregiver sync)", () => {
     assert.equal(call("feed-log", ctxStranger, { childId: id, kind: "bottle" }).ok, false);
     assert.equal(call("feed-history", ctxStranger, { childId: id }).result.count, 0);
 
-    assert.equal(call("sleep-log", ctxHelper, { childId: id, type: "nap", durationMin: 30 }).ok, true);
+    assert.equal(call("sleep-log", ctxHelper, { childId: id, type: "nap", durationMin: 30, startAt: completedStart(30) }).ok, true);
     assert.equal(call("sleep-history", ctxA, { childId: id }).result.count, 1);
     const timer = call("timer-start", ctxHelper, { childId: id, kind: "nursing", side: "left" });
     assert.equal(timer.ok, true);
@@ -457,18 +631,77 @@ describe("parenting.trends-insights", () => {
   it("summarizes weekly feeds/sleep/diapers", () => {
     const id = newChild(ctxA, 6);
     call("feed-log", ctxA, { childId: id, kind: "bottle", amountMl: 120 });
-    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 90 });
+    call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 90, startAt: completedStart(90) });
     call("diaper-log", ctxA, { childId: id, kind: "wet" });
     const r = call("trends-insights", ctxA, { childId: id, days: 7 });
     assert.equal(r.ok, true);
     assert.equal(r.result.days, 7);
-    assert.equal(r.result.daily.length, 7);
-    assert.ok(r.result.daysWithData >= 1);
+    assert.equal(r.result.daysWithData, 1);
+    assert.equal(r.result.sleepTrend, null);
+    assert.equal(r.result.averages.feedsPerDay, 1);
+    assert.equal(r.result.averages.sleepMinPerDay, 90);
+    assert.equal(r.result.averages.diapersPerDay, 1);
+    const createdDay = call("child-list", ctxA, {}).result.children.find((c) => c.id === id).createdAt.slice(0, 10);
+    assert.ok(r.result.daily.every((d) => d.date >= createdDay));
+    assert.equal(r.result.daily.length, 1);
     assert.ok(Array.isArray(r.result.anomalies));
+  });
+
+  it("keeps a backfilled log and omits empty days before the profile", () => {
+    const id = newChild(ctxA, 6);
+    const past = new Date(Date.now() - 3 * 86400000).toISOString();
+    const pastDay = past.slice(0, 10);
+    const older = new Date(Date.now() - 5 * 86400000).toISOString().slice(0, 10);
+    call("feed-log", ctxA, { childId: id, kind: "bottle", amountMl: 80, at: past });
+    const r = call("trends-insights", ctxA, { childId: id, days: 7 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.daysWithData, 1);
+    assert.equal(r.result.sleepTrend, null);
+    const dates = r.result.daily.map((d) => d.date);
+    assert.ok(dates.includes(pastDay));
+    assert.equal(dates.includes(older), false);
+    const createdDay = call("child-list", ctxA, {}).result.children.find((c) => c.id === id).createdAt.slice(0, 10);
+    assert.ok(dates.includes(createdDay));
+  });
+
+  it("names a sleep trend only after four logged days", () => {
+    const id = newChild(ctxA, 6);
+    for (let i = 0; i < 4; i++) {
+      const day = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 60, startAt: `${day}T12:00:00.000Z` });
+    }
+    const r = call("trends-insights", ctxA, { childId: id, days: 7 });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.daysWithData >= 4);
+    assert.equal(r.result.sleepTrend, "steady");
+    assert.equal(r.result.averages.sleepMinPerDay, 60);
   });
 
   it("rejects an unknown child", () => {
     assert.equal(call("trends-insights", ctxA, { childId: "nope" }).ok, false);
+  });
+});
+
+describe("parenting.event-list when label", () => {
+  it("labels a timed event and keeps the stored ISO", () => {
+    const add = call("event-add", ctxA, { title: "Soccer practice", startAt: "2026-11-08T10:00", endAt: "2026-11-08T11:30", category: "activity" });
+    assert.equal(add.ok, true);
+    assert.equal(add.result.event.startAt, "2026-11-08T10:00");
+    const list = call("event-list", ctxA, {});
+    const ev = list.result.events.find((e) => e.id === add.result.event.id);
+    assert.equal(ev.startAt, "2026-11-08T10:00");
+    assert.equal(ev.whenLabel, "Sun, Nov 8, 2026, 10:00 AM");
+    assert.equal(ev.endLabel, "Sun, Nov 8, 2026, 11:30 AM");
+    assert.equal(list.result.nextUp.whenLabel, "Sun, Nov 8, 2026, 10:00 AM");
+  });
+
+  it("labels an all-day event without a clock time", () => {
+    const add = call("event-add", ctxA, { title: "School closed", startAt: "2026-11-08", category: "school" });
+    assert.equal(add.ok, true);
+    const ev = call("event-list", ctxA, {}).result.events.find((e) => e.id === add.result.event.id);
+    assert.equal(ev.startAt, "2026-11-08");
+    assert.equal(ev.whenLabel, "Sun, Nov 8, 2026");
+    assert.equal(ev.endLabel, null);
   });
 });
 

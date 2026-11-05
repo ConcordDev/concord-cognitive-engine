@@ -152,7 +152,7 @@ function AgricultureFarmDesk() {
           <ActionResultPanel />
 
           <LensFeedPanel lensId="agriculture" />
-          <LensFeedButton domain="agriculture" label="Live crop-yield feed" />
+          <LensFeedButton domain="agriculture" label="Crop-yield feed — World Bank data" />
         </div>
       </NorthStarFrame>
 

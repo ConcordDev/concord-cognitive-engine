@@ -7,6 +7,7 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerVeterinaryActions from "../domains/veterinary.js";
+import { collectLensExport } from "../lib/lens-export.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -58,6 +59,44 @@ describe("veterinary — clinical calculators", () => {
     assert.equal(r.result.status, "ADVISORY");
     assert.ok(r.result.vaccines.length >= 3);
     assert.equal(r.result.vaccines.some((v) => v.vaccine === "DHPP"), true);
+  });
+
+  it("vaccineSchedule and weightCheck read a patient chart, and stay generic without one", () => {
+    const generic = call("vaccineSchedule", ctxA, { data: { species: "dog", age: 2 } }, {});
+    assert.equal(generic.result.scope, "generic");
+    assert.equal(generic.result.vaccines.find((v) => v.vaccine === "Rabies").due, "due-or-overdue");
+
+    const pat = call("patient-add", ctxA, {}, { name: "Rex", species: "dog", ageYears: 4 }).result.patient;
+    call("vaccine-record", ctxA, {}, { patientId: pat.id, vaccine: "Rabies", date: "2026-11-03", nextDue: "2027-11-03" });
+    call("vaccine-record", ctxA, {}, { patientId: pat.id, vaccine: "DHPP", date: "2026-11-03" });
+    const chart = call("vaccineSchedule", ctxA, { data: { patientId: pat.id, species: "cat", age: 1 } }, {});
+    assert.equal(chart.result.scope, "patient");
+    assert.equal(chart.result.species, "dog");
+    assert.equal(chart.result.ageMonths, 48);
+    const rabies = chart.result.vaccines.find((v) => v.vaccine === "Rabies");
+    assert.equal(rabies.due, "recorded, due 2027-11-03");
+    assert.equal(rabies.fromChart, true);
+    const dhpp = chart.result.vaccines.find((v) => v.vaccine === "DHPP");
+    assert.match(dhpp.due, /^recorded /);
+    assert.equal(dhpp.due.includes("due-or-overdue"), false);
+    const bordetella = chart.result.vaccines.find((v) => v.vaccine === "Bordetella");
+    assert.equal(bordetella.due, "due-or-overdue");
+    assert.equal(bordetella.fromChart, false);
+
+    const typed = call("weightCheck", ctxA, { data: { species: "cat", weight: 22 } }, {});
+    assert.equal(typed.result.scope, "generic");
+    assert.equal(typed.result.weightSource, "typed");
+    assert.equal(typed.result.status, "overweight");
+    const heavy = call("patient-add", ctxA, {}, { name: "Otis", species: "cat", weightLbs: 22 }).result.patient;
+    const fromChart = call("weightCheck", ctxA, { data: { patientId: heavy.id, species: "dog", weight: 10 } }, {});
+    assert.equal(fromChart.result.scope, "patient");
+    assert.equal(fromChart.result.weightSource, "record");
+    assert.equal(fromChart.result.species, "cat");
+    assert.equal(fromChart.result.currentWeight, 22);
+    assert.equal(fromChart.result.status, "overweight");
+    const missing = call("weightCheck", ctxA, { data: { patientId: pat.id } }, {});
+    assert.equal(missing.result.status, "NOT_COMPUTED");
+    assert.equal(missing.result.scope, "patient");
   });
 
   it("vaccineSchedule does not invent a dog, an age, or a dog table for another species", () => {
@@ -148,6 +187,27 @@ describe("veterinary — patient records substrate", () => {
     assert.equal(titled.result.patient.species, "dog");
   });
 
+  it("patient-add keeps a recorded age and weight and leaves a blank one unrecorded", () => {
+    const rec = call("patient-add", ctxA, {}, { name: "Rex", species: "dog", ageYears: 4, weightLbs: 12 });
+    assert.equal(rec.ok, true);
+    assert.equal(rec.result.patient.ageYears, 4);
+    assert.equal(rec.result.patient.weightLbs, 12);
+    const listed = call("patient-list", ctxA, {}, {}).result.patients[0];
+    assert.equal(listed.ageYears, 4);
+    assert.equal(listed.weightLbs, 12);
+    const blank = call("patient-add", ctxA, {}, { name: "Miso", species: "cat" });
+    assert.equal(blank.result.patient.ageYears, null);
+    assert.equal(blank.result.patient.weightLbs, null);
+    const zero = call("patient-add", ctxA, {}, { name: "Zero", species: "dog", ageYears: 0, weightLbs: 0 });
+    assert.equal(zero.result.patient.ageYears, 0);
+    assert.equal(zero.result.patient.weightLbs, 0);
+    const bad = call("patient-add", ctxA, {}, { name: "Bad", species: "dog", weightLbs: -3 });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "invalid_input");
+    assert.equal(bad.field, "weightLbs");
+    assert.equal(call("patient-list", ctxA, {}, {}).result.count, 3);
+  });
+
   it("patient-add / patient-list / patient-delete round-trip", () => {
     const add = call("patient-add", ctxA, {}, { name: "Rex", species: "dog", owner: "Jane Doe" });
     assert.equal(add.ok, true);
@@ -158,6 +218,54 @@ describe("veterinary — patient records substrate", () => {
     const del = call("patient-delete", ctxA, {}, { id: add.result.patient.id });
     assert.equal(del.ok, true);
     assert.equal(call("patient-list", ctxA, {}, {}).result.count, 0);
+  });
+
+  it("patient-update corrects the chart and leaves omitted fields stored", () => {
+    const pat = call("patient-add", ctxA, {}, {
+      name: "Rex", species: "dog", owner: "Jane", breed: "lab", ageYears: 4, weightLbs: 40,
+    }).result.patient;
+    const updated = call("patient-update", ctxA, {}, { id: pat.id, owner: "Joan", breed: "collie" });
+    assert.equal(updated.ok, true);
+    assert.equal(updated.result.patient.owner, "Joan");
+    assert.equal(updated.result.patient.breed, "collie");
+    assert.equal(updated.result.patient.name, "Rex");
+    assert.equal(updated.result.patient.species, "dog");
+    assert.equal(updated.result.patient.ageYears, 4);
+    assert.equal(updated.result.patient.weightLbs, 40);
+    const zero = call("patient-update", ctxA, {}, { id: pat.id, ageYears: 0, weightLbs: 0 });
+    assert.equal(zero.result.patient.ageYears, 0);
+    assert.equal(zero.result.patient.weightLbs, 0);
+    const bad = call("patient-update", ctxA, {}, { id: pat.id, species: "salt" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "invalid_input");
+    assert.equal(bad.field, "species");
+    const still = call("patient-list", ctxA, {}, {}).result.patients[0];
+    assert.equal(still.species, "dog");
+    assert.equal(still.owner, "Joan");
+    const other = call("patient-update", { actor: { userId: "vet_user_b" }, userId: "vet_user_b" }, {}, { id: pat.id, owner: "Thief" });
+    assert.equal(other.ok, false);
+    assert.equal(call("patient-list", ctxA, {}, {}).result.patients[0].owner, "Joan");
+    assert.equal(call("patient-update", ctxA, {}, { id: pat.id, name: "   " }).ok, false);
+    assert.equal(call("patient-list", ctxA, {}, {}).result.patients[0].name, "Rex");
+  });
+
+  it("visit-delete and vaccine-delete remove one sub-record and leave the patient", () => {
+    const pat = call("patient-add", ctxA, {}, { name: "Bella", species: "cat" }).result.patient;
+    const v1 = call("visit-log", ctxA, {}, { patientId: pat.id, kind: "dental", cost: 400 }).result.visit;
+    const v2 = call("visit-log", ctxA, {}, { patientId: pat.id, kind: "checkup", cost: 50 }).result.visit;
+    const vac = call("vaccine-record", ctxA, {}, { patientId: pat.id, vaccine: "Rabies", nextDue: "2027-01-01" }).result.record;
+    assert.equal(call("visit-delete", ctxA, {}, { patientId: pat.id, id: v1.id }).ok, true);
+    const listed = call("patient-list", ctxA, {}, {}).result.patients[0];
+    assert.equal(listed.visits.length, 1);
+    assert.equal(listed.visits[0].id, v2.id);
+    assert.equal(listed.vaccinations.length, 1);
+    assert.equal(call("vaccine-delete", ctxA, {}, { patientId: pat.id, id: vac.id }).ok, true);
+    const after = call("patient-list", ctxA, {}, {}).result;
+    assert.equal(after.count, 1);
+    assert.equal(after.patients[0].vaccinations.length, 0);
+    assert.equal(call("visit-delete", ctxA, {}, { patientId: pat.id, id: v1.id }).ok, false);
+    assert.equal(call("visit-delete", { actor: { userId: "vet_user_b" } }, {}, { patientId: pat.id, id: v2.id }).ok, false);
+    assert.equal(call("patient-list", ctxA, {}, {}).result.patients[0].visits.length, 1);
   });
 
   it("visit-log appends to a patient", () => {
@@ -295,23 +403,47 @@ describe("veterinary — SOAP charting", () => {
     assert.equal(l.result.count, 1);
     assert.equal(l.result.notes[0].assessment, "infection");
   });
+
+  it("soap-delete removes one note and does not cross accounts", () => {
+    const drop = call("soap-chart", ctxA, {}, { patientName: "Rex", subjective: "cough" }).result.note;
+    const keep = call("soap-chart", ctxA, {}, { patientName: "Rex", subjective: "fine" }).result.note;
+    assert.equal(call("soap-delete", ctxA, {}, { id: drop.id }).ok, true);
+    const listed = call("soap-list", ctxA, {}, {});
+    assert.equal(listed.result.count, 1);
+    assert.equal(listed.result.notes[0].id, keep.id);
+    assert.equal(call("soap-delete", ctxA, {}, { id: drop.id }).ok, false);
+    assert.equal(call("soap-delete", { actor: { userId: "vet_user_b" } }, {}, { id: keep.id }).ok, false);
+    assert.equal(call("soap-list", ctxA, {}, {}).result.count, 1);
+  });
 });
 
 describe("veterinary — prescriptions & refills", () => {
   it("prescription-add / list / refill", () => {
+    const pat = call("patient-add", ctxA, {}, { name: "Rex", species: "dog" }).result.patient;
+    const namedOnly = call("prescription-add", ctxA, {}, { drug: "Amoxicillin", patientName: "Rex" });
+    assert.equal(namedOnly.ok, false);
+    assert.equal(namedOnly.error, "invalid_input");
+    assert.equal(namedOnly.field, "patientId");
+    assert.equal(call("prescription-list", ctxA, {}, {}).result.count, 0);
+    const other = call("prescription-add", { actor: { userId: "vet_user_b" }, userId: "vet_user_b" }, {}, { drug: "Amoxicillin", patientId: pat.id });
+    assert.equal(other.ok, false);
+    assert.equal(other.error, "patient not found");
     const rx = call("prescription-add", ctxA, {}, {
-      drug: "Amoxicillin", patientName: "Rex", dosage: "250mg", refills: 2,
+      drug: "Amoxicillin", patientId: pat.id, patientName: "Not Rex", dosage: "250mg", refills: 2,
     });
     assert.equal(rx.ok, true);
+    assert.equal(rx.result.prescription.patientId, pat.id);
+    assert.equal(rx.result.prescription.patientName, "Rex");
     assert.equal(rx.result.prescription.refillsRemaining, 2);
     const r1 = call("prescription-refill", ctxA, {}, { id: rx.result.prescription.id });
     assert.equal(r1.result.prescription.refillsRemaining, 1);
     call("prescription-refill", ctxA, {}, { id: rx.result.prescription.id });
     const exhausted = call("prescription-refill", ctxA, {}, { id: rx.result.prescription.id });
     assert.equal(exhausted.ok, false);
-    const l = call("prescription-list", ctxA, {}, {});
+    const l = call("prescription-list", ctxA, {}, { patientId: pat.id });
     assert.equal(l.ok, true);
     assert.equal(l.result.count, 1);
+    assert.equal(l.result.prescriptions[0].drug, "Amoxicillin");
   });
 });
 
@@ -348,6 +480,43 @@ describe("veterinary — lab/imaging results", () => {
     const d = call("lab-delete", ctxA, {}, { id: a.result.labResult.id });
     assert.equal(d.ok, true);
     assert.equal(call("lab-list", ctxA, {}, {}).result.count, 0);
+  });
+});
+
+describe("veterinary — chart export", () => {
+  it("includes the caller's patient and visit, and not another account's chart", async () => {
+    const pat = call("patient-add", ctxA, {}, { name: "Rex", species: "dog" }).result.patient;
+    call("visit-log", ctxA, {}, { patientId: pat.id, kind: "checkup", cost: 55 });
+    call("patient-add", { actor: { userId: "vet_user_b" }, userId: "vet_user_b" }, {}, { name: "Other", species: "cat" });
+    call("lab-attach", ctxA, {}, { patientName: "Rex", patientId: pat.id, kind: "bloodwork" });
+    const runMacro = async () => ({ ok: true, artifacts: [] });
+    const out = await collectLensExport({ runMacro, domain: "veterinary", ctx: ctxA });
+    assert.equal(out.ok, true);
+    assert.equal(out.stateBacked, true);
+    const rex = out.artifacts.find((a) => a.type === "patient" && a.title === "Rex");
+    assert.ok(rex);
+    assert.equal(rex.data.visits.length, 1);
+    assert.equal(rex.data.visits[0].kind, "checkup");
+    assert.equal(out.artifacts.some((a) => a.title === "Other"), false);
+    const lab = out.artifacts.find((a) => a.type === "lab" && a.title === "Rex");
+    assert.ok(lab);
+    assert.equal(lab.data.kind, "bloodwork");
+    const other = await collectLensExport({
+      runMacro,
+      domain: "veterinary",
+      ctx: { actor: { userId: "vet_user_b" }, userId: "vet_user_b" },
+    });
+    assert.equal(other.artifacts.some((a) => a.title === "Rex"), false);
+    assert.equal(other.artifacts.some((a) => a.title === "Other"), true);
+    assert.equal(other.artifacts.some((a) => a.type === "lab"), false);
+    const empty = await collectLensExport({
+      runMacro,
+      domain: "veterinary",
+      ctx: { actor: { userId: "vet_user_c" }, userId: "vet_user_c" },
+    });
+    assert.equal(empty.ok, true);
+    assert.equal(empty.stateBacked, true);
+    assert.equal(empty.artifacts.length, 0);
   });
 });
 

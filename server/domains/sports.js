@@ -4,8 +4,13 @@
 // team analysis) plus real free APIs (TheSportsDB for team / league /
 // fixture lookups, ESPN scoreboard for live scores).
 //
-// TheSportsDB free dev key "3"; production may set SPORTSDB_API_KEY.
+// TheSportsDB retired the public key "3" (it now answers 403). "123" is the
+// published test key. SPORTSDB_API_KEY still overrides it.
 // ESPN's public scoreboard endpoint is unkeyed (rate-limited).
+const SPORTSDB_TEST_KEY = "123";
+function sportsDbKey() {
+  return process.env.SPORTSDB_API_KEY || SPORTSDB_TEST_KEY;
+}
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
@@ -13,6 +18,9 @@ import { cachedFetchJson } from "../lib/external-fetch.js";
 const SPORTSDB_BASE = "https://www.thesportsdb.com/api/v1/json";
 const ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports";
 const ESPN_SITE = "https://site.api.espn.com/apis/site/v2/sports";
+// The site/v2 standings path answers 404. The v2 sports API still returns
+// conference groups with standings.entries.
+const ESPN_V2 = "https://site.api.espn.com/apis/v2/sports";
 
 // ESPN sport-slug → API path. Shared by scoreboard, schedule, news,
 // game-summary, standings, roster macros.
@@ -33,24 +41,132 @@ function espnPathFor(sport, league) {
 
 import { advisory } from "../lib/lens-inputs.js";
 
+// performanceStats and trainingPlan read artifact.data when a caller
+// passes { data }, and the third argument when a lens action passes the
+// body there. Production sets both. Keys on the artifact win.
+function sportsCalcInput(artifact, params) {
+  const fromArtifact = artifact && artifact.data && typeof artifact.data === "object" ? artifact.data : {};
+  const fromParams = params && typeof params === "object" ? params : {};
+  return { ...fromParams, ...fromArtifact };
+}
+
+// "Recovery" stays capital-sensitive: "Active recovery" is moderate.
+// "Easy" is low. A name that says easy is not labelled moderate.
+function sessionIntensity(workout) {
+  if (workout.includes("Rest") || workout.includes("Recovery")) return "low";
+  if (workout.includes("Easy")) return "low";
+  if (workout.includes("HIIT") || workout.includes("Interval")) return "high";
+  return "moderate";
+}
+
+// Rest takes none of the requested hours. The other sessions split the
+// hours in whole cents so the durations add back up to the request.
+function assignDurations(schedule, weeklyHours) {
+  const hours = Number(weeklyHours);
+  if (!Number.isFinite(hours) || hours <= 0) {
+    return schedule.map((s) => ({ ...s, durationHours: null }));
+  }
+  const trainable = [];
+  schedule.forEach((s, i) => {
+    if (!s.workout.includes("Rest")) trainable.push(i);
+  });
+  if (trainable.length === 0) {
+    return schedule.map((s) => ({ ...s, durationHours: null }));
+  }
+  const out = schedule.map((s) => ({
+    ...s,
+    durationHours: s.workout.includes("Rest") ? 0 : null,
+  }));
+  const totalCents = Math.round(hours * 100);
+  const base = Math.floor(totalCents / trainable.length);
+  let leftover = totalCents - base * trainable.length;
+  for (const i of trainable) {
+    const cents = base + (leftover > 0 ? 1 : 0);
+    if (leftover > 0) leftover -= 1;
+    out[i] = { ...out[i], durationHours: cents / 100 };
+  }
+  return out;
+}
+
 export default function registerSportsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
-  registerLensAction("sports", "performanceStats", (ctx, artifact, _params) => { const stats = artifact.data?.stats || []; if (stats.length === 0) return { ok: true, result: { message: "Add performance statistics to analyze." } }; const values = stats.map(s => parseFloat(s.value) || 0); const avg = values.reduce((s,v)=>s+v,0)/values.length; const best = Math.max(...values); const worst = Math.min(...values); const recent5 = values.slice(-5); const trend = recent5.length >= 2 ? (recent5[recent5.length-1] > recent5[0] ? "improving" : "declining") : "insufficient"; return { ok: true, result: { metric: stats[0]?.metric || "performance", average: Math.round(avg*100)/100, best, worst, trend, recentAvg: Math.round(recent5.reduce((s,v)=>s+v,0)/recent5.length*100)/100, consistency: Math.round(Math.sqrt(values.reduce((s,v)=>s+Math.pow(v-avg,2),0)/values.length)*100)/100, dataPoints: values.length } }; });
-  registerLensAction("sports", "trainingPlan", advisory("template plan; not individualised coaching", (ctx, artifact, _params) => { const data = artifact.data || {}; const sport = (data.sport || "general").toLowerCase(); const level = (data.level || "intermediate").toLowerCase(); const daysPerWeek = parseInt(data.daysPerWeek) || 4; const plans = { running: ["Easy run", "Tempo run", "Intervals", "Long run", "Rest", "Cross-train", "Easy run"], swimming: ["Technique drills", "Speed sets", "Endurance", "Recovery", "Rest", "Open water", "Drills"], cycling: ["Base ride", "Hill repeats", "Tempo", "Long ride", "Rest", "Recovery spin", "Group ride"], general: ["Strength", "Cardio", "HIIT", "Active recovery", "Rest", "Flexibility", "Sport-specific"] }; const template = plans[sport] || plans.general; const schedule = template.slice(0, daysPerWeek).map((workout, i) => ({ day: i+1, workout, intensity: workout.includes("Rest") || workout.includes("Recovery") ? "low" : workout.includes("HIIT") || workout.includes("Interval") ? "high" : "moderate" })); return { ok: true, result: { sport, level, daysPerWeek, schedule, weeklyStructure: { hard: schedule.filter(s => s.intensity === "high").length, moderate: schedule.filter(s => s.intensity === "moderate").length, easy: schedule.filter(s => s.intensity === "low").length }, principle: "Follow 80/20 rule: 80% easy, 20% hard" } }; }));
+  registerLensAction("sports", "performanceStats", (ctx, artifact, params) => {
+    const data = sportsCalcInput(artifact, params);
+    const stats = Array.isArray(data.stats) ? data.stats : [];
+    if (stats.length === 0) return { ok: true, result: { message: "Add performance statistics to analyze." } };
+    const values = stats.map(s => parseFloat(s.value) || 0);
+    const avg = values.reduce((s, v) => s + v, 0) / values.length;
+    // Higher is better unless the caller says a smaller number is the
+    // better one (a 5K time). Guessing from the metric name would
+    // mislabel a score that happens to fall.
+    const lowerIsBetter = data.lowerIsBetter === true;
+    const best = lowerIsBetter ? Math.min(...values) : Math.max(...values);
+    const worst = lowerIsBetter ? Math.max(...values) : Math.min(...values);
+    const recent5 = values.slice(-5);
+    let trend = "insufficient";
+    if (recent5.length >= 2) {
+      const last = recent5[recent5.length - 1];
+      const first = recent5[0];
+      const improved = lowerIsBetter ? last < first : last > first;
+      trend = improved ? "improving" : "declining";
+    }
+    return { ok: true, result: {
+      metric: stats[0]?.metric || "performance",
+      direction: lowerIsBetter ? "lower" : "higher",
+      average: Math.round(avg * 100) / 100,
+      best, worst, trend,
+      recentAvg: Math.round(recent5.reduce((s, v) => s + v, 0) / recent5.length * 100) / 100,
+      consistency: Math.round(Math.sqrt(values.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / values.length) * 100) / 100,
+      dataPoints: values.length,
+    } };
+  });
+  registerLensAction("sports", "trainingPlan", advisory("template plan; not individualised coaching", (ctx, artifact, params) => {
+    const data = sportsCalcInput(artifact, params);
+    const sport = (data.sport || "general").toLowerCase();
+    const level = (data.level || "intermediate").toLowerCase();
+    const daysPerWeek = parseInt(data.daysPerWeek) || 4;
+    const plans = {
+      running: ["Easy run", "Tempo run", "Intervals", "Long run", "Rest", "Cross-train", "Easy run"],
+      swimming: ["Technique drills", "Speed sets", "Endurance", "Recovery", "Rest", "Open water", "Drills"],
+      cycling: ["Base ride", "Hill repeats", "Tempo", "Long ride", "Rest", "Recovery spin", "Group ride"],
+      general: ["Strength", "Cardio", "HIIT", "Active recovery", "Rest", "Flexibility", "Sport-specific"],
+    };
+    const template = plans[sport] || plans.general;
+    const drafted = template.slice(0, daysPerWeek).map((workout, i) => ({
+      day: i + 1, workout, intensity: sessionIntensity(workout),
+    }));
+    const schedule = assignDurations(drafted, data.weeklyHours);
+    const weeklyStructure = {
+      hard: schedule.filter(s => s.intensity === "high").length,
+      moderate: schedule.filter(s => s.intensity === "moderate").length,
+      easy: schedule.filter(s => s.intensity === "low").length,
+    };
+    const hoursApplied = schedule.some((row) => typeof row.durationHours === "number" && row.durationHours > 0);
+    const durationSum = Math.round(schedule.reduce((s, row) => s + (typeof row.durationHours === "number" ? row.durationHours : 0), 0) * 100) / 100;
+    const mix = `${weeklyStructure.easy} low, ${weeklyStructure.moderate} moderate, ${weeklyStructure.hard} hard`;
+    // The mix sentence is the sessions on this plan. It does not claim
+    // an 80/20 split the sessions do not have.
+    const principle = hoursApplied
+      ? `${mix}. Durations total ${durationSum} h.`
+      : `${mix}. No weekly hours were requested.`;
+    return { ok: true, result: {
+      sport, level, daysPerWeek, schedule, weeklyStructure, principle,
+      weeklyHours: hoursApplied ? durationSum : null,
+    } };
+  }));
   registerLensAction("sports", "injuryRisk", advisory("rule-of-thumb load heuristic; not a validated injury-risk model", (ctx, artifact, _params) => { const data = artifact.data || {}; const trainingLoad = parseFloat(data.weeklyHours) || 0; const _rd = parseInt(data.restDaysPerWeek); const restDays = Number.isFinite(_rd) ? _rd : 2; const previousInjuries = parseInt(data.previousInjuries) || 0; const age = parseInt(data.age) || 25; const sleep = parseFloat(data.sleepHours) || 7; let risk = 20; if (trainingLoad > 15) risk += 20; if (restDays < 1) risk += 25; if (previousInjuries > 2) risk += 15; if (age > 40) risk += 10; if (sleep < 6) risk += 15; risk = Math.min(100, risk); return { ok: true, result: { riskScore: risk, riskLevel: risk >= 60 ? "high" : risk >= 35 ? "moderate" : "low", factors: { trainingLoad, restDays, previousInjuries, age, sleepHours: sleep }, recommendations: risk >= 40 ? [restDays < 2 ? "Add rest days" : null, sleep < 7 ? "Prioritize 7-9 hours sleep" : null, trainingLoad > 12 ? "Reduce training volume 10-20%" : null, "Include proper warm-up and cool-down"].filter(Boolean) : ["Continue current training — risk is manageable"] } }; }));
   registerLensAction("sports", "teamAnalysis", (ctx, artifact, _params) => { const players = artifact.data?.players || []; if (players.length === 0) return { ok: true, result: { message: "Add players with stats to analyze team." } }; const avgAge = Math.round(players.reduce((s,p) => s + (parseInt(p.age) || 25), 0) / players.length * 10) / 10; const positions = {}; for (const p of players) { const pos = p.position || "utility"; positions[pos] = (positions[pos] || 0) + 1; } const avgRating = Math.round(players.reduce((s,p) => s + (parseFloat(p.rating) || 50), 0) / players.length * 10) / 10; return { ok: true, result: { rosterSize: players.length, avgAge, avgRating, positions, topPerformer: players.sort((a,b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0))[0]?.name, teamStrength: avgRating >= 70 ? "elite" : avgRating >= 50 ? "competitive" : "developing" } }; });
 
   // ── Real-data macros (TheSportsDB + ESPN scoreboard) ──
 
   /**
-   * team-lookup — TheSportsDB team search. Free dev tier (key "3"),
-   * SPORTSDB_API_KEY env for production.
+   * team-lookup — TheSportsDB team search. Test key, or SPORTSDB_API_KEY.
    * params: { name: string }
    */
   registerLensAction("sports", "team-lookup", async (_ctx, _artifact, params = {}) => {
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
-    const apiKey = process.env.SPORTSDB_API_KEY || "3";
+    const apiKey = sportsDbKey();
     try {
       const r = await fetch(`${SPORTSDB_BASE}/${encodeURIComponent(apiKey)}/searchteams.php?t=${encodeURIComponent(name)}`);
       if (!r.ok) throw new Error(`thesportsdb ${r.status}`);
@@ -77,7 +193,7 @@ export default function registerSportsActions(registerLensAction) {
         result: { teams, count: teams.length, query: name, source: "thesportsdb" },
       };
     } catch (e) {
-      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: "thesportsdb is unavailable right now." };
     }
   });
 
@@ -88,7 +204,7 @@ export default function registerSportsActions(registerLensAction) {
   registerLensAction("sports", "league-table", async (_ctx, _artifact, params = {}) => {
     const leagueId = String(params.leagueId || "").trim();
     if (!leagueId) return { ok: false, error: "leagueId required (TheSportsDB league ID, e.g. '4328' for EPL)" };
-    const apiKey = process.env.SPORTSDB_API_KEY || "3";
+    const apiKey = sportsDbKey();
     const season = params.season ? `&s=${encodeURIComponent(String(params.season))}` : "";
     try {
       const r = await fetch(`${SPORTSDB_BASE}/${encodeURIComponent(apiKey)}/lookuptable.php?l=${encodeURIComponent(leagueId)}${season}`);
@@ -113,7 +229,7 @@ export default function registerSportsActions(registerLensAction) {
         result: { table, leagueId, season: params.season || "current", source: "thesportsdb" },
       };
     } catch (e) {
-      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: "thesportsdb is unavailable right now." };
     }
   });
 
@@ -320,12 +436,21 @@ export default function registerSportsActions(registerLensAction) {
 
   registerLensAction("sports", "game-delete", (ctx, _a, params = {}) => {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = s.games.get(spAid(ctx)) || [];
+    const userId = spAid(ctx);
+    const arr = s.games.get(userId) || [];
     const i = arr.findIndex((g) => g.id === params.id);
     if (i < 0) return { ok: false, error: "game not found" };
     arr.splice(i, 1);
+    const gameId = String(params.id);
+    const preds = s.predictions.get(userId) || [];
+    const keptPreds = preds.filter((p) => p.gameId !== gameId);
+    const predictionsRemoved = preds.length - keptPreds.length;
+    if (predictionsRemoved) s.predictions.set(userId, keptPreds);
+    const wl = s.watchlist.get(userId) || [];
+    const wi = wl.indexOf(gameId);
+    if (wi >= 0) wl.splice(wi, 1);
     saveSportsState();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: params.id, predictionsRemoved } };
   });
 
   // ── Predictions (Pick'em) ───────────────────────────────────────────
@@ -472,6 +597,47 @@ export default function registerSportsActions(registerLensAction) {
     return { ok: true, result: { athletes: s.athletes.get(spAid(ctx)) || [] } };
   });
 
+  registerLensAction("sports", "athlete-remove", (ctx, _a, params = {}) => {
+    const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = spAid(ctx);
+    const id = String(params.id || "");
+    const arr = s.athletes.get(userId) || [];
+    const i = arr.findIndex((a) => a.id === id);
+    if (i < 0) return { ok: false, error: "athlete not found" };
+    arr.splice(i, 1);
+    const lines = s.athleteStats.get(userId) || [];
+    const kept = lines.filter((x) => x.athleteId !== id);
+    const statLinesRemoved = lines.length - kept.length;
+    if (statLinesRemoved) s.athleteStats.set(userId, kept);
+    saveSportsState();
+    return { ok: true, result: { deleted: id, statLinesRemoved } };
+  });
+
+  // Training sessions live as sports/TrainingLog artifacts, not in sportsLens.
+  registerLensAction("sports", "training-delete", (ctx, _a, params = {}) => {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE?.lensArtifacts) return { ok: false, error: "STATE unavailable" };
+    const id = spClean(params.id, 80);
+    if (!id) return { ok: false, error: "id required" };
+    const artifact = STATE.lensArtifacts.get(id);
+    if (!artifact || artifact.domain !== "sports" || artifact.type !== "TrainingLog") {
+      return { ok: false, error: "session not found" };
+    }
+    const userId = spAid(ctx);
+    const owner = artifact.ownerId || artifact.createdBy || artifact.createdByUser || null;
+    if (!owner || owner !== userId) {
+      return { ok: false, error: "unauthorized: you can only delete your own artifacts" };
+    }
+    STATE.lensArtifacts.delete(id);
+    const indexed = STATE.lensDomainIndex?.get?.("sports");
+    if (indexed) {
+      indexed.delete(id);
+      if (indexed.size === 0) STATE.lensDomainIndex.delete("sports");
+    }
+    saveSportsState();
+    return { ok: true, result: { deleted: id } };
+  });
+
   registerLensAction("sports", "athlete-stat-log", (ctx, _a, params = {}) => {
   try {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -560,7 +726,7 @@ export default function registerSportsActions(registerLensAction) {
 });
 
   // feed — ingest real recent sports fixtures from TheSportsDB as
-  // visible DTUs. Free public API (public test key "3").
+  // visible DTUs. Uses the same published test key as the other lookups.
   registerLensAction("sports", "feed", async (ctx, _a, params = {}) => {
     const s = getSportsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
@@ -569,8 +735,8 @@ export default function registerSportsActions(registerLensAction) {
     const leagues = ["4328", "4387", "4391", "4424", "4380"];
     const league = leagues[new Date().getDate() % leagues.length];
     try {
-      const r = await fetch(`https://www.thesportsdb.com/api/v1/json/3/eventspastleague.php?id=${league}`);
-      if (!r.ok) return { ok: false, error: `thesportsdb ${r.status}` };
+      const r = await fetch(`https://www.thesportsdb.com/api/v1/json/${encodeURIComponent(sportsDbKey())}/eventspastleague.php?id=${league}`);
+      if (!r.ok) return { ok: false, error: "thesportsdb is unavailable right now." };
       const data = await r.json();
       const events = (Array.isArray(data?.events) ? data.events : []).slice(0, limit);
       let ingested = 0, skipped = 0; const dtuIds = [];
@@ -593,7 +759,7 @@ export default function registerSportsActions(registerLensAction) {
       saveSportsState();
       return { ok: true, result: { ingested, skipped, source: "thesportsdb-fixtures", dtuIds } };
     } catch (e) {
-      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: "thesportsdb is unavailable right now." };
     }
   });
 
@@ -721,7 +887,7 @@ export default function registerSportsActions(registerLensAction) {
     if (!path) return { ok: false, error: `unsupported sport (try: ${Object.keys(ESPN_SPORT_PATH).join(", ")}, soccer)` };
     try {
       const data = await cachedFetchJson(
-        `${ESPN_SITE}/${path}/standings?level=3`, { ttlMs: 600_000 },
+        `${ESPN_V2}/${path}/standings`, { ttlMs: 600_000 },
       );
       const groups = [];
       const walk = (node) => {
@@ -757,7 +923,7 @@ export default function registerSportsActions(registerLensAction) {
         result: { groups, groupCount: groups.length, sport: String(params.sport).toLowerCase(), source: "espn-standings" },
       };
     } catch (e) {
-      return { ok: false, error: `espn unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: "espn standings are unavailable right now." };
     }
   });
 
@@ -793,7 +959,7 @@ export default function registerSportsActions(registerLensAction) {
   registerLensAction("sports", "team-roster", async (_ctx, _a, params = {}) => {
     const teamId = String(params.teamId || "").trim();
     if (!teamId) return { ok: false, error: "teamId required (from team-lookup)" };
-    const apiKey = process.env.SPORTSDB_API_KEY || "3";
+    const apiKey = sportsDbKey();
     try {
       const data = await cachedFetchJson(
         `${SPORTSDB_BASE}/${encodeURIComponent(apiKey)}/lookup_all_players.php?id=${encodeURIComponent(teamId)}`,
@@ -816,7 +982,7 @@ export default function registerSportsActions(registerLensAction) {
         result: { players, count: players.length, teamId, source: "thesportsdb" },
       };
     } catch (e) {
-      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: "thesportsdb is unavailable right now." };
     }
   });
 
@@ -825,7 +991,7 @@ export default function registerSportsActions(registerLensAction) {
   registerLensAction("sports", "player-lookup", async (_ctx, _a, params = {}) => {
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "player name required" };
-    const apiKey = process.env.SPORTSDB_API_KEY || "3";
+    const apiKey = sportsDbKey();
     try {
       const data = await cachedFetchJson(
         `${SPORTSDB_BASE}/${encodeURIComponent(apiKey)}/searchplayers.php?p=${encodeURIComponent(name)}`,
@@ -848,7 +1014,7 @@ export default function registerSportsActions(registerLensAction) {
         result: { players, count: players.length, query: name, source: "thesportsdb" },
       };
     } catch (e) {
-      return { ok: false, error: `thesportsdb unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: "thesportsdb is unavailable right now." };
     }
   });
 
@@ -1013,12 +1179,17 @@ export default function registerSportsActions(registerLensAction) {
     }
     const elapsed = Math.min(1, ((period - 1) + clockFrac) / periodsTotal);
     const remaining = Math.max(0.0001, 1 - elapsed);
-    // Margin, adjusted by home-field, scaled by remaining time. The
-    // closer to the end, the more a lead "locks in" the result.
+    // Margin plus home-field. 0.12 is the opening scale: a tied game
+    // with the default 2.5 home edge is 57.4%. Dividing by sqrt(time
+    // left) makes the same lead more certain later, without the old
+    // extra steepness that turned a 5-point lead with about 35% left
+    // into 99.7%. A lead past 8 adjusted points picks up a late lock
+    // so a 20-point lead with a quarter left still reads as certain.
     const adjMargin = (homeScore - awayScore) + homeField;
-    // Logistic curve: scale steepens as the game progresses.
-    const steepness = 0.12 + 0.55 * (1 - remaining);
-    const z = adjMargin * steepness / Math.sqrt(remaining);
+    const base = adjMargin * 0.12 / Math.sqrt(remaining);
+    const excess = Math.max(0, Math.abs(adjMargin) - 8);
+    const lock = Math.sign(adjMargin) * 0.02 * excess * excess * (1 - remaining);
+    const z = base + lock;
     const homeWinPct = Math.round((1 / (1 + Math.exp(-z))) * 1000) / 10;
     const leader = homeScore > awayScore ? "home" : awayScore > homeScore ? "away" : "tied";
     return {
@@ -1032,7 +1203,7 @@ export default function registerSportsActions(registerLensAction) {
         favored: homeWinPct >= 50 ? "home" : "away",
         confidence: Math.abs(homeWinPct - 50) >= 35 ? "high"
           : Math.abs(homeWinPct - 50) >= 15 ? "moderate" : "tossup",
-        model: "logistic-margin-time (pure-compute, illustrative)",
+        model: "logistic margin over sqrt(time left); leads past 8 points lock in late (pure-compute, illustrative)",
       },
     };
   });

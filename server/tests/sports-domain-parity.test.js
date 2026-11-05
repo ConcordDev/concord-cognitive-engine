@@ -116,6 +116,19 @@ describe("sports.espn-standings", () => {
     assert.equal(r.result.groups[0].teams[0].wins, 55);
     assert.equal(r.result.groups[0].teams[0].streak, "W3");
   });
+
+  it("reads the v2 standings path and hides a raw status code", async () => {
+    let url = "";
+    globalThis.fetch = async (u) => {
+      url = String(u);
+      return { ok: false, status: 404, json: async () => ({ message: "not found" }) };
+    };
+    const r = await call("espn-standings", ctxA, { sport: "nba" });
+    assert.match(url, /site\.api\.espn\.com\/apis\/v2\/sports\/basketball\/nba\/standings$/);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "espn standings are unavailable right now.");
+    assert.equal(/\bHTTP\b|404/.test(r.error), false);
+  });
 });
 
 describe("sports.espn-news", () => {
@@ -154,6 +167,19 @@ describe("sports.team-roster (TheSportsDB)", () => {
     assert.equal(r.result.players[0].name, "Star Forward");
     assert.equal(r.result.players[0].number, "23");
   });
+
+  it("calls the published test key and hides a raw refusal", async () => {
+    let url = "";
+    globalThis.fetch = async (u) => {
+      url = String(u);
+      return { ok: false, status: 403, json: async () => ({}) };
+    };
+    const r = await call("team-roster", ctxA, { teamId: "134867" });
+    assert.match(url, /\/json\/123\/lookup_all_players\.php\?id=134867/);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "thesportsdb is unavailable right now.");
+    assert.equal(/403|HTTP/.test(r.error), false);
+  });
 });
 
 describe("sports.player-lookup (TheSportsDB)", () => {
@@ -171,6 +197,14 @@ describe("sports.player-lookup (TheSportsDB)", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.players[0].name, "LeBron James");
     assert.equal(r.result.players[0].team, "Lakers");
+  });
+
+  it("hides a raw refusal", async () => {
+    globalThis.fetch = async () => ({ ok: false, status: 403, json: async () => ({}) });
+    const r = await call("player-lookup", ctxA, { name: "LeBron" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "thesportsdb is unavailable right now.");
+    assert.equal(/403|HTTP/.test(r.error), false);
   });
 });
 
@@ -234,5 +268,93 @@ describe("sports.win-probability (pure-compute)", () => {
     const r = call("win-probability", ctxA, { homeScore: 50, awayScore: 50, period: 1, periodsTotal: 4, homeField: false });
     assert.equal(r.result.leader, "tied");
     assert.ok(Math.abs(r.result.homeWinPct - 50) < 5);
+  });
+
+  it("keeps the opening home edge and a late 20-point lead", () => {
+    const tied = call("win-probability", ctxA, { homeScore: 0, awayScore: 0, period: 1, periodsTotal: 4 });
+    assert.equal(tied.result.homeWinPct, 57.4);
+    assert.equal(tied.result.awayWinPct, 42.6);
+    assert.equal(tied.result.confidence, "tossup");
+    const blow = call("win-probability", ctxA, { homeScore: 30, awayScore: 10, period: 4, periodsTotal: 4 });
+    assert.equal(blow.result.homeWinPct, 100);
+    assert.equal(blow.result.margin, 20);
+    assert.equal(blow.result.confidence, "high");
+    const mid = call("win-probability", ctxA, { homeScore: 10, awayScore: 7, period: 2, periodsTotal: 4, clock: "6:00" });
+    assert.equal(mid.result.elapsedFraction, 0.375);
+  });
+
+  it("a 5-point lead with about 35% left stays inside 65-85", () => {
+    const r = call("win-probability", ctxA, {
+      homeScore: 50, awayScore: 45, period: 3, periodsTotal: 4, clock: "05:00",
+    });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.homeWinPct >= 65 && r.result.homeWinPct <= 85, `home ${r.result.homeWinPct}`);
+    assert.equal(r.result.favored, "home");
+    assert.equal(r.result.confidence, "moderate");
+    assert.equal(Math.round(r.result.homeWinPct + r.result.awayWinPct), 100);
+  });
+});
+
+describe("sports.performanceStats", () => {
+  it("a faster 5K is a better time and an improving trend", () => {
+    const r = call("performanceStats", ctxA, {
+      stats: [{ value: 22.5 }, { value: 22.1 }, { value: 21.8 }, { value: 21.5 }],
+      lowerIsBetter: true,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.best, 21.5);
+    assert.equal(r.result.worst, 22.5);
+    assert.equal(r.result.trend, "improving");
+    assert.equal(r.result.direction, "lower");
+    assert.equal(r.result.average, 21.98);
+    assert.equal(r.result.consistency, 0.37);
+  });
+
+  it("a falling points series stays declining when higher is better", () => {
+    const r = call("performanceStats", ctxA, {
+      stats: [{ metric: "points", value: 50 }, { value: 40 }, { value: 30 }],
+    });
+    assert.equal(r.result.metric, "points");
+    assert.equal(r.result.direction, "higher");
+    assert.equal(r.result.best, 50);
+    assert.equal(r.result.worst, 30);
+    assert.equal(r.result.trend, "declining");
+    assert.equal(r.result.average, 40);
+  });
+});
+
+describe("sports.trainingPlan", () => {
+  it("durations add up to the requested week and the mix matches the sessions", () => {
+    const r = call("trainingPlan", ctxA, {
+      sport: "running", level: "advanced", daysPerWeek: 3, weeklyHours: 5,
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.schedule.length, 3);
+    assert.equal(r.result.schedule[0].workout, "Easy run");
+    assert.equal(r.result.schedule[0].intensity, "low");
+    assert.equal(r.result.schedule[2].workout, "Intervals");
+    assert.equal(r.result.schedule[2].intensity, "high");
+    const sum = r.result.schedule.reduce((s, row) => s + row.durationHours, 0);
+    assert.equal(Math.round(sum * 100) / 100, 5);
+    assert.equal(r.result.weeklyHours, 5);
+    assert.equal(r.result.principle.includes("80/20"), false);
+    assert.equal(r.result.principle, "1 low, 1 moderate, 1 hard. Durations total 5 h.");
+  });
+
+  it("an unknown sport keeps the general week and does not invent hours", () => {
+    const r = call("trainingPlan", ctxA, { sport: "curling", daysPerWeek: 7 });
+    assert.equal(r.result.sport, "curling");
+    assert.equal(r.result.schedule.length, 7);
+    assert.equal(r.result.schedule[2].workout, "HIIT");
+    assert.equal(r.result.schedule[2].intensity, "high");
+    assert.equal(r.result.schedule[3].intensity, "moderate");
+    assert.equal(r.result.schedule[4].workout, "Rest");
+    assert.equal(r.result.schedule[4].intensity, "low");
+    assert.equal(r.result.weeklyStructure.hard, 1);
+    assert.equal(r.result.weeklyStructure.easy, 1);
+    assert.equal(r.result.weeklyStructure.moderate, 5);
+    assert.equal(r.result.weeklyHours, null);
+    assert.ok(r.result.schedule.every((row) => row.durationHours === null));
+    assert.equal(r.result.principle.includes("80/20"), false);
   });
 });

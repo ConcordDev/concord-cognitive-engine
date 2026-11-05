@@ -93,6 +93,31 @@ describe('veterinary calculators send flat lensRun input', () => {
     });
   });
 
+  it('a blank weight is not sent as 0', async () => {
+    render(<CalculatorsPanel />);
+    fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+    expect(await screen.findByText('Weight not recorded')).toBeInTheDocument();
+    expect(lensRunMock.mock.calls.filter((c) => c[1] === 'weightCheck')).toHaveLength(0);
+  });
+
+  it('a chosen patient sends only patientId', async () => {
+    lensRunMock.mockImplementation(async (_domain: string, name: string) => {
+      if (name === 'patient-list') {
+        return { data: { ok: true, error: null, result: { patients: [{ id: 'p1', name: 'Rex', species: 'dog' }] } } };
+      }
+      return { data: { ok: true, error: null, result: { status: 'ADVISORY', scope: 'patient', vaccines: [] } } };
+    });
+    render(<CalculatorsPanel />);
+    const pickers = await screen.findAllByLabelText('Patient');
+    fireEvent.change(pickers[1], { target: { value: 'p1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Build schedule' }));
+
+    await waitFor(() => {
+      expect(lensRunMock).toHaveBeenCalledWith('veterinary', 'vaccineSchedule', { patientId: 'p1' });
+    });
+  });
+
   it('vaccineSchedule sends species and age without a data wrapper', async () => {
     render(<CalculatorsPanel />);
     fireEvent.click(screen.getByRole('button', { name: 'Build schedule' }));
@@ -107,13 +132,18 @@ describe('veterinary calculators send flat lensRun input', () => {
 
   it('no calculator call nests its fields under data', async () => {
     render(<CalculatorsPanel />);
+    fireEvent.change(screen.getByPlaceholderText('lbs'), { target: { value: '25' } });
     fireEvent.click(screen.getByRole('button', { name: 'Assess' }));
     fireEvent.click(screen.getByRole('button', { name: 'Check' }));
     fireEvent.click(screen.getByRole('button', { name: 'Build schedule' }));
     fireEvent.click(screen.getByRole('button', { name: 'Estimate' }));
 
-    await waitFor(() => expect(lensRunMock).toHaveBeenCalledTimes(4));
-    for (const [, , input] of lensRunMock.mock.calls) {
+    await waitFor(() => {
+      const calcCalls = lensRunMock.mock.calls.filter((c) => c[1] !== 'patient-list');
+      expect(calcCalls).toHaveLength(4);
+    });
+    for (const [, name, input] of lensRunMock.mock.calls) {
+      if (name === 'patient-list') continue;
       expect(input).not.toHaveProperty('data');
     }
   });

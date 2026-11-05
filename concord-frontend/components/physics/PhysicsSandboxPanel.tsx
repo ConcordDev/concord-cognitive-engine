@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useUIStore } from '@/store/ui';
 
 // Physics body types
 interface Vector2D {
@@ -261,6 +262,7 @@ export function PhysicsSandboxPanel() {
   });
 
   // UI state
+  const [simName, setSimName] = useState('');
   const [tool, setTool] = useState<Tool>('select');
   const [selectedBody, setSelectedBody] = useState<string | null>(null);
   const [selectedConstraint, setSelectedConstraint] = useState<string | null>(null);
@@ -965,6 +967,7 @@ export function PhysicsSandboxPanel() {
   };
 
   // Export/Import
+  const addToast = useUIStore((s) => s.addToast);
   const exportSimulation = () => {
     const data = { bodies, constraints, forceFields, settings };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -972,8 +975,14 @@ export function PhysicsSandboxPanel() {
     const a = document.createElement('a');
     a.href = url;
     a.download = 'physics-simulation.json';
+    // The anchor must be attached for the click to download in every
+    // browser (the codebase's export buttons all append first); an
+    // unattached click was a silent no-op in the walked environment.
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    addToast({ type: 'success', message: `Exported ${bodies.length} bodies to physics-simulation.json` });
   };
 
   const importSimulation = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -988,8 +997,9 @@ export function PhysicsSandboxPanel() {
         if (data.constraints) setConstraints(data.constraints);
         if (data.forceFields) setForceFields(data.forceFields);
         if (data.settings) setSettings(s => ({ ...s, ...data.settings }));
-      } catch (err) {
-        console.error('Failed to import simulation:', err);
+        addToast({ type: 'success', message: `Imported ${file.name}` });
+      } catch {
+        addToast({ type: 'error', message: `Could not import ${file.name} — it is not a valid simulation file.` });
       }
     };
     reader.readAsText(file);
@@ -1505,16 +1515,35 @@ export function PhysicsSandboxPanel() {
 
           {/* Saved Simulations */}
           <div className="panel p-4 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <h3 className="font-semibold">Saved Simulations ({savedSims.length})</h3>
-              <button
-                onClick={() => saveSim({ title: `Sim ${new Date().toLocaleTimeString()}`, data: { bodies, constraints, forceFields, settings } as unknown as Record<string, unknown> })}
-                className="text-xs px-2 py-1 bg-neon-purple/20 text-neon-purple rounded hover:bg-neon-purple/30 flex items-center gap-1"
-                disabled={bodies.length === 0}
-              >
-                <Download className="w-3 h-3" /> Save
-              </button>
+              <div className="flex items-center gap-1">
+                <input
+                  value={simName}
+                  onChange={(e) => setSimName(e.target.value)}
+                  placeholder="Name this sim"
+                  aria-label="Simulation name"
+                  className="w-32 px-2 py-1 text-xs bg-black/40 border border-white/10 rounded text-zinc-100"
+                />
+                <button
+                  onClick={async () => {
+                    const title = simName.trim() || `Sim ${new Date().toLocaleTimeString()}`;
+                    try {
+                      await saveSim({ title, data: { bodies, constraints, forceFields, settings } as unknown as Record<string, unknown> });
+                      addToast({ type: 'success', message: `Saved "${title}" — click it here to restore it.` });
+                      setSimName('');
+                    } catch {
+                      addToast({ type: 'error', message: `Could not save "${title}".` });
+                    }
+                  }}
+                  className="text-xs px-2 py-1 bg-neon-purple/20 text-neon-purple rounded hover:bg-neon-purple/30 flex items-center gap-1"
+                  disabled={bodies.length === 0}
+                >
+                  <Download className="w-3 h-3" /> Save
+                </button>
+              </div>
             </div>
+            <p className="text-[11px] text-gray-500">Click a saved simulation to restore it into the sandbox.</p>
             <div className="space-y-1 max-h-48 overflow-auto">
               {savedSims.map(sim => (
                 <div
@@ -1526,6 +1555,7 @@ export function PhysicsSandboxPanel() {
                     if (d.constraints) setConstraints(d.constraints as Constraint[]);
                     if (d.forceFields) setForceFields(d.forceFields as ForceField[]);
                     if (d.settings) setSettings(d.settings as SimSettings);
+                    addToast({ type: 'success', message: `Restored "${sim.title}"` });
                   }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <span className="text-gray-300 truncate">{sim.title}</span>
                   <button

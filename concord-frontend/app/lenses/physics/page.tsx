@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useState, type ComponentType } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Atom, FlaskConical, Calculator, BookOpen } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
@@ -20,6 +20,32 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { lensRun } from '@/lib/api/client';
+
+/**
+ * The ↓.dtu export's payload, loaded at click time: the user's own
+ * saved scenes (full scene data, capped). The button previously
+ * received the realtime feed payload, whose size the export request
+ * rejected with a raw HTTP 413. Returns {} when the user has no saved
+ * scenes, so the refusal stays honest.
+ */
+async function preparePhysicsExport(): Promise<unknown> {
+  try {
+    const list = await lensRun<{ scenes: { id: string }[] }>('physics', 'scene-list', {});
+    const summaries = list.data?.result?.scenes || [];
+    if (summaries.length === 0) return {};
+    const scenes: unknown[] = [];
+    for (const s of summaries.slice(0, 20)) {
+      const g = await lensRun<{ scene: unknown }>('physics', 'scene-get', { id: s.id });
+      if (g.data?.ok && g.data.result?.scene) scenes.push(g.data.result.scene);
+    }
+    return scenes.length > 0
+      ? { source: 'physics-lens-export', exportedAt: new Date().toISOString(), scenes }
+      : {};
+  } catch {
+    return {};
+  }
+}
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import { PhysicsLabPanel } from '@/components/physics/PhysicsLabPanel';
@@ -49,6 +75,14 @@ export default function PhysicsLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('physics');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<PhysicsView>('lab');
+  // Views stay mounted once visited (the sandbox excepted — see the
+  // render), so switching views cannot silently discard an in-flight
+  // solve, a panel's results, or the Lab's unsaved scene (F10).
+  const [visited, setVisited] = useState<ReadonlySet<PhysicsView>>(new Set(['lab']));
+  const go = (v: PhysicsView) => {
+    setActive(v);
+    setVisited((prev) => (prev.has(v) ? prev : new Set(prev).add(v)));
+  };
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -56,12 +90,11 @@ export default function PhysicsLensPage() {
       keys: v.keys,
       description: `${v.label} — ${v.hint}`,
       category: 'navigation' as const,
-      action: () => setActive(v.id),
+      action: () => go(v.id),
     })),
     { lensId: 'physics' },
   );
 
-  const Panel = PANELS[active];
   const motionProps = useMemo(
     () => (reduceMotion
       ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
@@ -85,7 +118,7 @@ export default function PhysicsLensPage() {
         actions={
           <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="physics" data={realtimeData || {}} compact />
+            <DTUExportButton domain="physics" data={{}} compact prepare={preparePhysicsExport} />
             {realtimeAlerts.length > 0 && (
               <span className="rounded bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-400">
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
@@ -95,15 +128,24 @@ export default function PhysicsLensPage() {
         }
         tabs={VIEWS}
         activeTab={active}
-        onTab={(id) => setActive(id as PhysicsView)}
+        onTab={(id) => go(id as PhysicsView)}
         tabsLabel="Physics views"
-        cta={{ label: 'Open the lab', icon: FlaskConical, onClick: () => setActive('lab'), title: 'Open the scene lab (1)' }}
+        cta={{ label: 'Open the lab', icon: FlaskConical, onClick: () => go('lab'), title: 'Open the scene lab (1)' }}
       >
-        <AnimatePresence mode="wait">
-          <motion.div key={active} {...motionProps}>
-            <Panel />
+        {VIEWS.filter((v) => v.id !== 'sandbox' && visited.has(v.id)).map((v) => {
+          const P = PANELS[v.id];
+          const isActive = v.id === active;
+          return (
+            <motion.div key={v.id} {...(isActive ? motionProps : { initial: false as const })} className={isActive ? '' : 'hidden'}>
+              <P />
+            </motion.div>
+          );
+        })}
+        {active === 'sandbox' && (
+          <motion.div key="sandbox" {...motionProps}>
+            <PhysicsSandboxPanel />
           </motion.div>
-        </AnimatePresence>
+        )}
 
         <LiveFeed
           articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}

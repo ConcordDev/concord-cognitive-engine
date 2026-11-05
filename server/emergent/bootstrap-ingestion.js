@@ -307,9 +307,11 @@ function assignTier(dtu) {
 
 // ── Step 5: Scope Assignment ────────────────────────────────────────────────
 
-// All seed DTUs go into global scope (Lane B — public epistemic record)
-function assignScope() {
-  return "global";
+// Seed DTUs default to global scope (Lane B — public epistemic record).
+// Founder seed content is loaded with opts.seedCustody (scope "user", private,
+// owned by FOUNDER_USER_ID) and is then never global.
+function assignScope(custody) {
+  return custody?.scope || "global";
 }
 
 // ── Step 6: Tag + Domain Extraction ─────────────────────────────────────────
@@ -525,7 +527,7 @@ function generateEdges(dtus) {
   const rootId = "dtu_root_fixed_point";
   if (dtuMap.has(rootId)) {
     for (const dtu of dtus) {
-      if (dtu.id !== rootId && dtu.lineage?.parents?.length === 0 && dtu.tier === "hyper") {
+      if (dtu.id !== rootId && dtu.lineage?.parents?.length === 0 && (dtu.tier === "hyper" || dtu.meta?.seedTier === "hyper")) {
         addEdge(rootId, dtu.id, "derives", 0.95, "root_to_axiom");
       }
     }
@@ -622,6 +624,7 @@ function renderHumanDTU(dtu) {
  */
 export function runBootstrapIngestion(STATE, rawSeeds, opts = {}) {
   const log = opts.log || (() => {});
+  const seedCustody = opts.seedCustody || null;
   const dryRun = opts.dryRun || false;
   const startTime = Date.now();
 
@@ -678,12 +681,26 @@ export function runBootstrapIngestion(STATE, rawSeeds, opts = {}) {
       normalized.stability = scores.stability;
       stats.scored++;
 
-      // Step 4: Tier assignment
-      normalized.tier = assignTier(normalized);
+      // Step 4: Tier assignment. Custody-stamped (founder) seeds are never
+      // promoted to mega/hyper at load: the structural tier is kept in
+      // meta.seedTier for the edge pass, and the stored tier stays regular.
+      const structuralTier = assignTier(normalized);
+      if (seedCustody) {
+        normalized.meta = { ...(normalized.meta || {}), seedTier: structuralTier };
+        normalized.tier = "regular";
+      } else {
+        normalized.tier = structuralTier;
+      }
       stats.tiered[normalized.tier] = (stats.tiered[normalized.tier] || 0) + 1;
 
       // Step 5: Scope assignment
-      normalized.scope = assignScope();
+      normalized.scope = assignScope(seedCustody);
+      if (seedCustody) {
+        normalized.visibility = seedCustody.visibility;
+        normalized.ownerId = seedCustody.ownerId;
+        normalized.author = seedCustody.ownerId;
+        normalized.seedOrigin = true;
+      }
       stats.scoped++;
 
       // Step 6a: Domain extraction
