@@ -30,35 +30,44 @@ function NumberField({
   inputRef?: (el: HTMLInputElement | null) => void;
 }) {
   const [text, setText] = useState(String(value));
+  const [rejected, setRejected] = useState('');
   // Follow outside changes (a chat edit, opening a model) — the
   // "adjust state while rendering" pattern, not an effect.
   const [seen, setSeen] = useState(value);
   if (seen !== value) { setSeen(value); setText(String(value)); }
   const commit = () => {
     const n = Number(text);
-    if (Number.isFinite(n) && n > 0 && n !== value) onCommit(n);
-    else setText(String(value));
+    if (Number.isFinite(n) && n > 0 && n !== value) { setRejected(''); onCommit(n); }
+    else if (Number.isFinite(n) && n === value) { setRejected(''); setText(String(value)); }
+    else {
+      // A rejected input is announced, never silently reverted (ConKay F14).
+      setRejected(`“${text.trim() || 'blank'}” is not a positive number — kept ${value}.`);
+      setText(String(value));
+    }
   };
   return (
-    <label htmlFor={id} className="flex items-center justify-between gap-2 py-0.5">
-      <span className="min-w-0 truncate text-xs text-slate-300" title={title}>
-        <span className="font-mono text-sky-200">{label}</span> <span className="text-[10px] text-slate-400">{title}</span>
-      </span>
-      <span className="flex items-center gap-1">
-        <input
-          id={id}
-          ref={inputRef}
-          aria-label={`${label} ${title}`}
-          inputMode="decimal"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
-          className="w-16 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-right font-mono text-xs text-slate-100 focus:border-sky-400/60 focus:outline-none"
-        />
-        <span className="w-6 text-[10px] text-slate-400">{unit}</span>
-      </span>
-    </label>
+    <div className="py-0.5">
+      <label htmlFor={id} className="flex items-center justify-between gap-2">
+        <span className="min-w-0 truncate text-xs text-slate-300" title={title}>
+          <span className="font-mono text-sky-200">{label}</span> <span className="text-[10px] text-slate-400">{title}</span>
+        </span>
+        <span className="flex items-center gap-1">
+          <input
+            id={id}
+            ref={inputRef}
+            aria-label={`${label} ${title}`}
+            inputMode="decimal"
+            value={text}
+            onChange={(e) => { setText(e.target.value); if (rejected) setRejected(''); }}
+            onBlur={commit}
+            onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
+            className="w-16 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-right font-mono text-xs text-slate-100 focus:border-sky-400/60 focus:outline-none"
+          />
+          <span className="w-6 text-[10px] text-slate-400">{unit}</span>
+        </span>
+      </label>
+      {rejected && <p role="alert" className="mt-0.5 text-right text-[10px] text-amber-300">{rejected}</p>}
+    </div>
   );
 }
 
@@ -69,6 +78,24 @@ export const ParameterPanel = forwardRef<ParameterPanelHandle, Props>(function P
   }), []);
 
   const setDim = (k: keyof BeamDims, v: number) => onChange({ ...inputs, dims: { ...inputs.dims, [k]: v } });
+
+  const [sfText, setSfText] = useState(inputs.requiredSafetyFactor != null ? String(inputs.requiredSafetyFactor) : '');
+  const [sfRejected, setSfRejected] = useState('');
+  const [sfSeen, setSfSeen] = useState(inputs.requiredSafetyFactor ?? null);
+  if (sfSeen !== (inputs.requiredSafetyFactor ?? null)) {
+    setSfSeen(inputs.requiredSafetyFactor ?? null);
+    setSfText(inputs.requiredSafetyFactor != null ? String(inputs.requiredSafetyFactor) : '');
+  }
+  const commitSf = () => {
+    const t = sfText.trim();
+    if (t === '') { setSfRejected(''); if (inputs.requiredSafetyFactor != null) onChange({ ...inputs, requiredSafetyFactor: null }); return; }
+    const n = Number(t);
+    if (Number.isFinite(n) && n > 0) { setSfRejected(''); onChange({ ...inputs, requiredSafetyFactor: n }); }
+    else {
+      setSfRejected(`“${t}” is not a positive number — kept ${inputs.requiredSafetyFactor ?? 'unset'}.`);
+      setSfText(inputs.requiredSafetyFactor != null ? String(inputs.requiredSafetyFactor) : '');
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -93,6 +120,32 @@ export const ParameterPanel = forwardRef<ParameterPanelHandle, Props>(function P
           value={Math.round((inputs.loadN / 1000) * 1000) / 1000}
           onCommit={(v) => onChange({ ...inputs, loadN: v * 1000 })}
         />
+        {/* The required-SF criterion is study state with a visible control
+            (ConKay F12b): set it here, clear it here — it used to persist
+            from a chat prompt with no way to remove it. */}
+        <div className="flex items-center justify-between gap-2 py-0.5">
+          <span className="min-w-0 truncate text-xs text-slate-300">
+            <span className="font-mono text-sky-200">SF</span> <span className="text-[10px] text-slate-400">required safety factor</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <input
+              id="conkay-required-sf"
+              aria-label="Required safety factor"
+              inputMode="decimal"
+              placeholder="—"
+              value={sfText}
+              onChange={(e) => setSfText(e.target.value)}
+              onBlur={commitSf}
+              onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
+              className="w-16 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-right font-mono text-xs text-slate-100 focus:border-sky-400/60 focus:outline-none"
+            />
+            {inputs.requiredSafetyFactor != null && (
+              <button type="button" onClick={() => { setSfText(''); onChange({ ...inputs, requiredSafetyFactor: null }); }} aria-label="Clear required safety factor" title="Clear required safety factor" className="w-6 text-[11px] text-slate-400 hover:text-slate-200">×</button>
+            )}
+            {inputs.requiredSafetyFactor == null && <span className="w-6" aria-hidden />}
+          </span>
+        </div>
+        {sfRejected && <p role="alert" className="text-right text-[10px] text-amber-300">{sfRejected}</p>}
       </div>
       <label className="block">
         <span className="sr-only">Support</span>

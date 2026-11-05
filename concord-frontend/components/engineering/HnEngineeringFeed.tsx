@@ -35,6 +35,10 @@ const SORTS = [
 export function HnEngineeringFeed() {
   const [query, setQuery] = useState(QUERIES[0].id);
   const [sort, setSort] = useState<typeof SORTS[number]['id']>('search');
+  // The feed's DTU save surfaces the full id of the record it made,
+  // scoped to the topic/sort it was saved under — a save for one topic
+  // never presents itself as another topic's record.
+  const [savedFeed, setSavedFeed] = useState<{ id: string; query: string; sort: string } | null>(null);
 
   const hits = useQuery({
     queryKey: ['hn-eng', query, sort],
@@ -77,7 +81,13 @@ export function HnEngineeringFeed() {
               content={list.slice(0, 20).map((h, i) => `${i + 1}. [${h.points || 0}↑ · ${h.num_comments || 0}💬] ${h.title || h.story_title}\n   ${h.url || h.story_url || `https://news.ycombinator.com/item?id=${h.objectID}`}`).join('\n\n')}
               extraTags={['engineering', 'hn', 'hackernews', query]}
               rawData={{ query, sort, hits: list }}
+              onSaved={(id) => setSavedFeed({ id, query, sort })}
             />
+          )}
+          {savedFeed && savedFeed.query === query && savedFeed.sort === sort && (
+            <span className="font-mono text-[10px] text-cyan-300" title="The DTU this save created">
+              {savedFeed.id}
+            </span>
           )}
         </div>
       </header>

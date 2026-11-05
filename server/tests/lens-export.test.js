@@ -104,4 +104,31 @@ describe("lens-export (Q79)", () => {
     assert.equal(out.sources.stateRecords, 2);
     delete globalThis._concordSTATE;
   });
+
+  it("poetry provider: the caller's poem text appears in the export; another user's does not (D5)", async () => {
+    _clearLensExportProvidersForTests();
+    globalThis._concordSTATE = {
+      poetryLens: {
+        poems: new Map([
+          ["u1", [{ id: "pm1", title: "Door poem", body: "the hinge held", form: "free-verse", status: "draft", tags: [], createdAt: "2026-11-01T00:00:00Z", updatedAt: "2026-11-01T00:00:00Z" }]],
+          ["u2", [{ id: "pm2", title: "Secret poem", body: "never shared", form: "free-verse", status: "draft", tags: [], createdAt: "2026-11-01T00:00:00Z", updatedAt: "2026-11-01T00:00:00Z" }]],
+        ]),
+      },
+    };
+    const { default: registerPoetryActions } = await import("../domains/poetry.js");
+    registerPoetryActions(() => {});
+    assert.equal(hasLensExportProvider("poetry"), true);
+
+    const out = await collectLensExport({
+      runMacro: listMacro([]),
+      domain: "poetry",
+      ctx: { actor: { userId: "u1" } },
+    });
+    assert.equal(out.ok, true);
+    const serialized = JSON.stringify(out.artifacts);
+    assert.ok(serialized.includes("the hinge held"), "the caller's own poem text appears in the exported rows");
+    assert.ok(!serialized.includes("never shared"), "another user's poem never leaks into the caller's export");
+    assert.equal(out.sources.stateRecords, 1);
+    delete globalThis._concordSTATE;
+  });
 });

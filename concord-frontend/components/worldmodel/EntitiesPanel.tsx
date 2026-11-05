@@ -6,9 +6,11 @@ import { Boxes, FileSearch, Loader2, Pencil, Plus, Save, Trash2 } from 'lucide-r
 import { DTUPickerModal } from '@/components/dtu/DTUPickerModal';
 import type { DTU } from '@/lib/api/generated-types';
 import {
-  type WmEntity, type WmType, type WmTypeField,
+  type WmEntity, type WmRelation, type WmType, type WmTypeField,
   btn, btnGhost, card, input, invalidateWorldModel, wmRun, WM_QUERY_KEYS,
 } from '@/components/worldmodel/wm-shared';
+import { ConfirmDeleteButton, useDeleteSafety } from '@/components/worldmodel/DeleteSafety';
+import { requestDelete } from '@/components/worldmodel/delete-safety-store';
 
 // ─── Entities tab ───────────────────────────────────────────────────────
 export function EntitiesPanel() {
@@ -21,8 +23,14 @@ export function EntitiesPanel() {
     queryKey: WM_QUERY_KEYS.types,
     queryFn: () => wmRun<{ types: WmType[] }>('list_entity_types'),
   });
-  const entities = entitiesQ.data?.entities ?? [];
-  const types = typesQ.data?.types ?? [];
+  const relationsQ = useQuery({
+    queryKey: WM_QUERY_KEYS.relations,
+    queryFn: () => wmRun<{ relations: WmRelation[] }>('wm_list_relations'),
+  });
+  const { pendingKeys } = useDeleteSafety();
+  const entities = (entitiesQ.data?.entities ?? []).filter((e) => !pendingKeys.includes(`entity:${e.id}`));
+  const allRelations = relationsQ.data?.relations ?? [];
+  const types = (typesQ.data?.types ?? []).filter((t) => !pendingKeys.includes(`type:${t.name}`));
   const loading = entitiesQ.isLoading;
   const onChanged = () => invalidateWorldModel(qc);
   const [name, setName] = useState('');
@@ -54,18 +62,24 @@ export function EntitiesPanel() {
     },
     onError: (e) => setErr((e as Error).message),
   });
-  const del = useMutation({
-    mutationFn: (id: string) => wmRun('wm_delete_entity', { id }),
-    onSuccess: onChanged,
-  });
   const defineType = useMutation({
     mutationFn: () => wmRun('define_entity_type', { name: typeName, fields: typeFields }),
     onSuccess: () => { setTypeName(''); onChanged(); },
   });
-  const delType = useMutation({
-    mutationFn: (n: string) => wmRun('delete_entity_type', { name: n }),
-    onSuccess: onChanged,
+  // Deletes run through the undo-window registry (S1): the confirm step
+  // states the consequence, the item leaves the view at once, and the
+  // macro fires only when the window lapses without an Undo.
+  const deleteEntity = (e: WmEntity) => requestDelete({
+    key: `entity:${e.id}`,
+    label: e.name,
+    commit: async () => { await wmRun('wm_delete_entity', { id: e.id }); onChanged(); },
   });
+  const deleteType = (t: WmType) => requestDelete({
+    key: `type:${t.name}`,
+    label: t.name,
+    commit: async () => { await wmRun('delete_entity_type', { name: t.name }); onChanged(); },
+  });
+  const relationCountFor = (id: string) => allRelations.filter((r) => r.from === id || r.to === id).length;
 
   const editEntity = entities.find((e) => e.id === editId) ?? null;
 
@@ -137,7 +151,15 @@ export function EntitiesPanel() {
               <li key={t.name} className="flex items-center gap-2 rounded border border-emerald-900/30 bg-black/30 px-2 py-1.5 text-xs">
                 <span className="font-mono text-emerald-300">{t.name}</span>
                 <span className="text-emerald-700">{t.fields.map((f) => `${f.key}:${f.kind}`).join(', ') || 'no fields'}</span>
-                <button aria-label="Delete" className={`${btnGhost} ml-auto`} onClick={() => delType.mutate(t.name)}><Trash2 className="h-3 w-3" /></button>
+                <span className="ml-auto">
+                  <ConfirmDeleteButton
+                    itemLabel={t.name}
+                    deleteTitle="Delete entity type"
+                    consequence="Entities of this type keep their values; the schema's field coercion stops applying."
+                    onConfirm={() => deleteType(t)}
+                    className={btnGhost}
+                  />
+                </span>
               </li>
             ))}
           </ul>
@@ -162,7 +184,15 @@ export function EntitiesPanel() {
               <button className={`${btnGhost} ml-auto`} onClick={() => setEditId(editId === e.id ? null : e.id)}>
                 <Pencil className="h-3 w-3" /> attrs
               </button>
-              <button aria-label="Delete" className={btnGhost} onClick={() => del.mutate(e.id)}><Trash2 className="h-3 w-3" /></button>
+              <ConfirmDeleteButton
+                itemLabel={e.name}
+                deleteTitle="Delete entity"
+                consequence={relationCountFor(e.id) > 0
+                  ? `This also deletes its ${relationCountFor(e.id)} relation${relationCountFor(e.id) === 1 ? '' : 's'}. Snapshots and saved runs keep their own copies.`
+                  : 'It has no relations. Snapshots and saved runs keep their own copies.'}
+                onConfirm={() => deleteEntity(e)}
+                className={btnGhost}
+              />
             </div>
             {editId === e.id && editEntity && (
               <AttrEditor entity={editEntity} types={types} onSaved={() => { setEditId(null); onChanged(); }} />

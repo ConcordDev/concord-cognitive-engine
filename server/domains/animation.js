@@ -89,9 +89,17 @@ export default function registerAnimationActions(registerLensAction) {
       try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
     }
   }
-  // animationLens is not in the shared snapshot key list. The title of a
-  // shot is written to animation_shots so a process restart can list it.
-  // Callers with no table (unit stubs) keep the in-memory path.
+  // animationLens IS in the shared snapshot key list (server/lib/
+  // lens-state-persistence.js LENS_STATE_KEYS), so a full shot's frames,
+  // layers, strokes, and audio tracks already survive a process restart
+  // through the generic Map/Set-aware serialize/hydrate walk (verified:
+  // serializeLensState -> hydrateLensState round-trips a nested
+  // projects Map with frame/layer/stroke content intact). The title is
+  // ALSO written to animation_shots as a second, SQL-backed record so the
+  // shot list survives even a restore path that only replays the SQL
+  // tables (not the JSON state snapshot) and so another lens can read a
+  // shot's title without touching the animation Map. Callers with no
+  // table (unit stubs) keep the in-memory path for the title.
   function animDb(ctx) {
     return ctx?.db || globalThis._concordSTATE?.db || null;
   }

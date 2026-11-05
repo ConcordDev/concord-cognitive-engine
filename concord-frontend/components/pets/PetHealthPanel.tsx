@@ -64,6 +64,7 @@ export function PetHealthPanel({ petId, onChange }: { petId: string; onChange: (
     await refresh(); onChange();
   };
   const delVaccine = async (id: string) => { await lensRun('pets', 'vaccine-delete', { petId, id }); await refresh(); onChange(); };
+  const delVisit = async (id: string) => { await lensRun('pets', 'vet-visit-delete', { petId, id }); await refresh(); onChange(); };
 
   const addMed = async () => {
     if (!med.name.trim()) { setError('Medication name is required.'); return; }
@@ -200,9 +201,14 @@ export function PetHealthPanel({ petId, onChange }: { petId: string; onChange: (
           <ul className="space-y-1">
             {visits.map((v) => (
               <li key={v.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-zinc-200">{v.reason}</span>
-                  <span className="text-[11px] text-zinc-400">{v.date}{v.cost > 0 ? ` · $${v.cost}` : ''}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-[11px] text-zinc-400">{v.date}{v.cost > 0 ? ` · $${v.cost}` : ''}</span>
+                    <button aria-label={`Delete ${v.reason}`} type="button" onClick={() => delVisit(v.id)} className="text-zinc-600 hover:text-rose-400">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
                 </div>
                 {v.diagnosis && <p className="text-[10px] text-zinc-400 mt-0.5">{v.diagnosis}</p>}
               </li>

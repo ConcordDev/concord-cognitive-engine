@@ -30,6 +30,8 @@ import { LibraryPanel } from '@/components/worldmodel/LibraryPanel';
 import { IngestPanel } from '@/components/worldmodel/IngestPanel';
 import { WorldModelArxiv } from '@/components/worldmodel/WorldModelArxiv';
 import { invalidateWorldModel, wmRun, WM_QUERY_KEYS } from '@/components/worldmodel/wm-shared';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { DeleteReceiptToast } from '@/components/worldmodel/DeleteSafety';
 
 type WmView =
   | 'graph'
@@ -126,14 +128,42 @@ export default function WorldmodelLensPage() {
           <div className="min-w-0">
             <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">World Model</h1>
           </div>
-          {stats && (
-            <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 pt-3 text-[13px] text-zinc-500">
-              <span>{stats.entities ?? 0} entities</span>
-              <span>{stats.relations ?? 0} relations</span>
-              <span>{stats.simulations ?? 0} sims</span>
-              <span>{stats.snapshots ?? 0} snapshots</span>
-            </div>
-          )}
+          <div className="flex shrink-0 flex-wrap items-center gap-3 pt-3">
+            {stats && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-zinc-500">
+                <span>{stats.entities ?? 0} entities</span>
+                <span>{stats.relations ?? 0} relations</span>
+                <span>{stats.simulations ?? 0} sims</span>
+                <span>{stats.snapshots ?? 0} snapshots</span>
+              </div>
+            )}
+            {/* S4: this lens omitted the ↓.dtu control entirely. It now
+                exports the lens's OWN records (entities, relations,
+                snapshots, scenarios, sim summaries) loaded at click
+                time; an actually-empty world still gets the honest
+                "no saved data" answer. */}
+            <DTUExportButton domain="worldmodel" data={{}} compact prepare={async () => {
+              const grab = async <T,>(p: Promise<T>): Promise<T | null> => { try { return await p; } catch { return null; } };
+              const [ents, rels, snaps, scens, sims] = await Promise.all([
+                grab(wmRun<{ entities: unknown[] }>('wm_list_entities')),
+                grab(wmRun<{ relations: unknown[] }>('wm_list_relations')),
+                grab(wmRun<{ snapshots: unknown[] }>('list_snapshots_full')),
+                grab(wmRun<{ scenarios: unknown[] }>('list_scenarios')),
+                grab(wmRun<{ simulations: unknown[] }>('list_sims')),
+              ]);
+              const record = {
+                entities: ents?.entities ?? [],
+                relations: rels?.relations ?? [],
+                snapshots: snaps?.snapshots ?? [],
+                scenarios: scens?.scenarios ?? [],
+                simulations: sims?.simulations ?? [],
+              };
+              const total = record.entities.length + record.relations.length + record.snapshots.length
+                + record.scenarios.length + record.simulations.length;
+              if (total === 0) return {};
+              return { source: 'worldmodel-lens-records', exportedAt: new Date().toISOString(), ...record };
+            }} />
+          </div>
         </div>
 
         <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Worldmodel sections">
@@ -188,6 +218,8 @@ export default function WorldmodelLensPage() {
         </section>
 
         <CrossLensRecentsPanel lensId="worldmodel" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
+
+        <DeleteReceiptToast />
 
         <button
           type="button"

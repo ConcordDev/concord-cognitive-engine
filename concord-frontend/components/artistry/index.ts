@@ -3,6 +3,7 @@ export { ArtistryFeed } from './ArtistryFeed';
 export { CrossPostModal } from './CrossPostModal';
 export type { CrossPostData } from './CrossPostModal';
 export { ProjectStudio } from './ProjectStudio';
+export { StudyCanvas } from './StudyCanvas';
 export { PortfolioProfile } from './PortfolioProfile';
 export { CommunityNetwork } from './CommunityNetwork';
 export { ArtistryNotifications } from './ArtistryNotifications';

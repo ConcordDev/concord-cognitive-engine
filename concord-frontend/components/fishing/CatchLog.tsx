@@ -3,8 +3,15 @@
 // components/fishing/CatchLog.tsx
 //
 // The player's real catch history — `fishing.catches`, which reads
-// `player_inventory WHERE item_type='raw_fish'`. Every row is a real minted
+// `player_inventory WHERE item_type='raw_fish'`. Every row is a real
 // inventory item from a completed reel, not a synthetic log.
+//
+// F3 (fishing.md): this log is currently the ONLY surface for a caught
+// fish — it is not (yet) a DTU findable via My Vault / the DTU Browser
+// elsewhere in the platform. The empty-state copy below is intentionally
+// scoped to what's true today rather than promising cross-lens
+// discoverability that doesn't exist. Full DTU-ification of raw_fish is
+// tracked as a larger follow-up, not done in this pass.
 
 import { Trophy } from 'lucide-react';
 import { DataTable, EmptyState, ErrorState, Skeleton } from '@/components/ui';
@@ -12,7 +19,7 @@ import type { DataTableColumn } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
 import { formatRelativeTime } from '@/lib/utils';
-import { QUALITY_TIER_COLORS, parseCatchMeta, qualityTier, type CatchRow } from './types';
+import { QUALITY_TIER_COLORS, RARITY_COLORS, parseCatchMeta, qualityTier, type CatchRow } from './types';
 
 interface CatchLogProps {
   catches: CatchRow[];
@@ -23,14 +30,76 @@ interface CatchLogProps {
   /** Row id that was just minted this session — gets a brief highlight. */
   justCaughtId: string | null;
   density: 'compact' | 'comfortable';
+  /** F5 fix: `fishing.catches` doesn't store rarity/mass on the inventory
+   *  row (only `item_id` — the raw_fish:<speciesId> key); this lets the
+   *  parent join the already-fetched species catalog so rarity/mass stop
+   *  being catalog-only columns and show up on the actual log too. */
+  speciesById?: Map<string, { rarity?: string; mass?: number }>;
 }
 
-export function CatchLog({ catches, loading, reason, onRetry, justCaughtId, density }: CatchLogProps) {
+export function CatchLog({ catches, loading, reason, onRetry, justCaughtId, density, speciesById }: CatchLogProps) {
   const columns: DataTableColumn<CatchRow>[] = [
     {
       id: 'fish',
       header: 'Catch',
-      accessor: (c) => <span className="text-gray-100">{c.item_name || c.item_id}</span>,
+      accessor: (c) => (
+        <span className="text-gray-100">
+          {c.item_name || c.item_id}
+          {(c.quantity ?? 1) > 1 && (
+            <span className="ml-1.5 rounded bg-zinc-800 px-1 py-0.5 text-[10px] text-zinc-400">
+              ×{c.quantity}
+            </span>
+          )}
+        </span>
+      ),
+      sortValue: (c) => c.item_name || c.item_id,
+      sortable: true,
+    },
+    ...(speciesById
+      ? [
+          {
+            id: 'rarity',
+            header: 'Rarity',
+            accessor: (c: CatchRow) => {
+              const species = speciesById.get(c.item_id.replace(/^raw_fish:/, ''));
+              if (!species?.rarity) return <span className="text-gray-600">—</span>;
+              return (
+                <span
+                  className={cn(
+                    'inline-flex rounded border px-1.5 py-0.5 text-[10px] font-medium capitalize',
+                    RARITY_COLORS[species.rarity] || 'text-zinc-400 bg-zinc-800 border-zinc-700',
+                  )}
+                >
+                  {species.rarity}
+                </span>
+              );
+            },
+          } satisfies DataTableColumn<CatchRow>,
+          {
+            id: 'mass',
+            header: 'Mass',
+            accessor: (c: CatchRow) => {
+              const species = speciesById.get(c.item_id.replace(/^raw_fish:/, ''));
+              return species?.mass != null ? `${species.mass} kg` : <span className="text-gray-600">—</span>;
+            },
+            align: 'right' as const,
+            monospace: true,
+          } satisfies DataTableColumn<CatchRow>,
+        ]
+      : []),
+    {
+      id: 'fish',
+      header: 'Catch',
+      accessor: (c) => (
+        <span className="text-gray-100">
+          {c.item_name || c.item_id}
+          {(c.quantity ?? 1) > 1 && (
+            <span className="ml-1.5 rounded bg-zinc-800 px-1 py-0.5 text-[10px] text-zinc-400">
+              ×{c.quantity}
+            </span>
+          )}
+        </span>
+      ),
       sortValue: (c) => c.item_name || c.item_id,
       sortable: true,
     },
@@ -109,7 +178,7 @@ export function CatchLog({ catches, loading, reason, onRetry, justCaughtId, dens
         <EmptyState
           icon={<Trophy className="h-5 w-5" aria-hidden="true" />}
           title="No catches yet."
-          description="Cast a line to start your log — every landed fish is minted into your inventory as raw_fish."
+          description="Cast a line to start your log — every landed fish is saved here as a raw_fish item in your account's inventory. (This log is the item's only surface today — it isn't yet a DTU findable in your Vault.)"
           compact
         />
       )}

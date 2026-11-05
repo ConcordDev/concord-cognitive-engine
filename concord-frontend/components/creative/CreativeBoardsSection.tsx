@@ -10,6 +10,7 @@ import { LayoutDashboard, Plus, Loader2, Trash2, Copy } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/ui';
 import { CreativeBoard } from './CreativeBoard';
+import { notifyCreativeDashboardDirty } from '@/lib/creative/dashboard-bus';
 
 interface BoardMeta { id: string; title: string; cardCount: number }
 interface Template { id: string; name: string; description: string }
@@ -22,6 +23,7 @@ export function CreativeBoardsSection() {
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [b, t] = await Promise.all([
@@ -48,24 +50,29 @@ export function CreativeBoardsSection() {
     setTitle('');
     setError(null);
     await refresh();
+    notifyCreativeDashboardDirty();
     if (r.data?.result?.board?.id) setOpen(r.data.result.board.id);
   };
 
   const fromTemplate = async (templateId: string) => {
     const r = await lensRun('creative', 'board-from-template', { templateId });
     await refresh();
+    notifyCreativeDashboardDirty();
     if (r.data?.result?.board?.id) setOpen(r.data.result.board.id);
   };
 
   const dupBoard = async (id: string) => {
     await lensRun('creative', 'board-duplicate', { id });
     await refresh();
+    notifyCreativeDashboardDirty();
   };
 
   const delBoard = async (id: string) => {
     await lensRun('creative', 'board-delete', { id });
     if (open === id) setOpen(null);
+    setConfirmDeleteId(null);
     await refresh();
+    notifyCreativeDashboardDirty();
   };
 
   return (
@@ -125,9 +132,16 @@ export function CreativeBoardsSection() {
                         <Copy className="w-3 h-3" /> Duplicate
                       </button>
                       <div className="flex-1" />
-                      <button aria-label="Delete" type="button" onClick={() => delBoard(b.id)} className="text-zinc-600 hover:text-rose-400">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {confirmDeleteId === b.id ? (
+                        <>
+                          <button type="button" onClick={() => delBoard(b.id)} className="text-[10px] font-medium text-rose-400 hover:text-rose-300">Confirm delete</button>
+                          <button type="button" onClick={() => setConfirmDeleteId(null)} className="text-[10px] text-zinc-500 hover:text-zinc-300">Cancel</button>
+                        </>
+                      ) : (
+                        <button aria-label="Delete" type="button" onClick={() => setConfirmDeleteId(b.id)} className="text-zinc-600 hover:text-rose-400">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

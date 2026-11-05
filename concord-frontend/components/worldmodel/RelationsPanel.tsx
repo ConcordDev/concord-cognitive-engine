@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { GitFork, Loader2, Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { GitFork, Loader2, Pencil, Plus, Save } from 'lucide-react';
 import {
   type WmEntity, type WmRelation,
   btn, btnGhost, card, input, invalidateWorldModel, wmRun, WM_QUERY_KEYS,
 } from '@/components/worldmodel/wm-shared';
+import { ConfirmDeleteButton, useDeleteSafety } from '@/components/worldmodel/DeleteSafety';
+import { requestDelete } from '@/components/worldmodel/delete-safety-store';
 
 // ─── Relations tab ──────────────────────────────────────────────────────
 export function RelationsPanel() {
@@ -20,7 +22,8 @@ export function RelationsPanel() {
     queryFn: () => wmRun<{ relations: WmRelation[] }>('wm_list_relations'),
   });
   const entities = entitiesQ.data?.entities ?? [];
-  const relations = relationsQ.data?.relations ?? [];
+  const { pendingKeys } = useDeleteSafety();
+  const relations = (relationsQ.data?.relations ?? []).filter((r) => !pendingKeys.includes(`relation:${r.id}`));
   const loading = relationsQ.isLoading;
   const entityName = (id: string) => entities.find((e) => e.id === id)?.name ?? id;
   const onChanged = () => invalidateWorldModel(qc);
@@ -39,9 +42,12 @@ export function RelationsPanel() {
     mutationFn: (p: { id: string; type: string; weight: number }) => wmRun('update_relation', p),
     onSuccess: onChanged,
   });
-  const del = useMutation({
-    mutationFn: (id: string) => wmRun('delete_relation', { id }),
-    onSuccess: onChanged,
+  // Deletes run through the undo-window registry (S1), like the other
+  // substrate deletes in this lens.
+  const deleteRelation = (r: WmRelation) => requestDelete({
+    key: `relation:${r.id}`,
+    label: `${entityName(r.from)} → ${entityName(r.to)}`,
+    commit: async () => { await wmRun('delete_relation', { id: r.id }); onChanged(); },
   });
 
   return (
@@ -80,7 +86,7 @@ export function RelationsPanel() {
       <ul className="space-y-1">
         {relations.map((r) => (
           <RelationRow key={r.id} relation={r} entityName={entityName}
-            onUpdate={(p) => update.mutate(p)} onDelete={() => del.mutate(r.id)} />
+            onUpdate={(p) => update.mutate(p)} onDelete={() => deleteRelation(r)} />
         ))}
       </ul>
     </div>
@@ -125,7 +131,12 @@ function RelationRow({
       ) : (
         <>
           <button aria-label="Edit" className={`${btnGhost} ml-auto`} onClick={() => setEdit(true)}><Pencil className="h-3 w-3" /></button>
-          <button aria-label="Delete" className={btnGhost} onClick={onDelete}><Trash2 className="h-3 w-3" /></button>
+          <ConfirmDeleteButton
+            itemLabel={`${entityName(relation.from)} → ${entityName(relation.to)}`}
+            deleteTitle="Delete relation"
+            onConfirm={onDelete}
+            className={btnGhost}
+          />
         </>
       )}
     </li>

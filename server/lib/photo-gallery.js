@@ -31,15 +31,29 @@ async function _writeBlob(dataUrl, blobPath) {
     // Async fs — a ≤5 MB PNG write must not block the event loop.
     await _ensureDir(path.dirname(blobPath));
     await fsp.writeFile(blobPath, buf);
-    return { ok: true, bytes: buf.byteLength };
+    return { ok: true, bytes: buf.byteLength, ...pngDimensions(buf) };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
 }
 
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/**
+ * Real dimensions from the PNG's own IHDR chunk — never derived/guessed.
+ * IHDR is always the first chunk: signature (8) + length (4) + "IHDR" (4),
+ * then width (4, big-endian) and height (4, big-endian). Returns {} (no
+ * fabricated 0x0) if the buffer doesn't look like a PNG this reads.
+ */
+function pngDimensions(buf) {
+  if (!Buffer.isBuffer(buf) || buf.length < 24 || !buf.subarray(0, 8).equals(PNG_SIGNATURE)) return {};
+  if (buf.toString("ascii", 12, 16) !== "IHDR") return {};
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
+
 export async function savePhoto(db, userId, opts = {}) {
   if (!db || !userId) return { ok: false, error: "missing_inputs" };
-  const { worldId, dataUrl, caption, visibility = "private" } = opts;
+  const { worldId, dataUrl, caption, visibility = "private", originalFilename } = opts;
   if (!dataUrl) return { ok: false, error: "missing_dataUrl" };
   if (!["private", "friends", "public"].includes(visibility)) {
     return { ok: false, error: "invalid_visibility" };
@@ -49,15 +63,20 @@ export async function savePhoto(db, userId, opts = {}) {
   const blobPath = path.join(PHOTO_DIR, `${id}.png`);
   const blob = await _writeBlob(dataUrl, blobPath);
   if (!blob.ok) return blob;
+  // Truncate so an absurd client-supplied name can't bloat a row forever.
+  const filename = typeof originalFilename === "string" ? originalFilename.slice(0, 255) : null;
 
   try {
     db.prepare(`
       INSERT INTO user_photos
-        (id, user_id, world_id, caption, blob_path, visibility)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(id, userId, worldId || null, caption || null, blobPath, visibility);
+        (id, user_id, world_id, caption, blob_path, visibility, width, height, size_bytes, original_filename)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id, userId, worldId || null, caption || null, blobPath, visibility,
+      blob.width ?? null, blob.height ?? null, blob.bytes ?? null, filename,
+    );
     logger.info?.("photo-gallery", "saved", { id, userId, bytes: blob.bytes });
-    return { ok: true, id, blobPath, bytes: blob.bytes };
+    return { ok: true, id, blobPath, bytes: blob.bytes, width: blob.width, height: blob.height };
   } catch (err) {
     // Rollback the blob.
     await fsp.unlink(blobPath).catch(() => { /* ignore */ });
@@ -65,36 +84,72 @@ export async function savePhoto(db, userId, opts = {}) {
   }
 }
 
-/** Mint a kind='photo' DTU so the royalty cascade can fire. */
+/**
+ * Mint a kind='photo' DTU so the royalty cascade can fire and the photo is
+ * actually findable in the DTU Browser (My Vault + Global Library).
+ *
+ * Earlier builds `INSERT INTO dtus (...)` — a legacy SQL table nothing else
+ * in the platform reads. The DTU Browser (`dtu.list`/`dtu.get`) resolves
+ * against the live in-memory substrate, `STATE.dtus` (a Map), via
+ * `userVisibleDTUs()`/`dtusArray()`. Writing only the SQL row minted a
+ * record the owner could never find under any scope — a claimed object with
+ * no findable id. This mints into the real substrate instead, in the same
+ * shape `mountArtifactUploadRoutes` uses for a real findable upload DTU
+ * (lib/artifact-upload-routes.js), so `ownerId`/`domain`/`visibility` match
+ * what `dtu.list`'s "mine" and scope filters actually check.
+ */
 export function sharePhoto(db, photoId, opts = {}) {
   if (!db || !photoId) return { ok: false, error: "missing_inputs" };
+  const STATE = opts.STATE || globalThis.STATE || null;
+  if (!STATE?.dtus) return { ok: false, error: "dtu_store_unavailable" };
   try {
     const p = db.prepare(`SELECT * FROM user_photos WHERE id = ?`).get(photoId);
     if (!p) return { ok: false, error: "no_photo" };
     if (p.dtu_id) return { ok: true, dtuId: p.dtu_id, alreadyShared: true };
 
     const dtuId = `dtu_photo_${crypto.randomBytes(6).toString("hex")}`;
-    // The public flip and the dtu_id stamp are one write. If the dtus insert
-    // does not land, the photo stays private and dtu_id stays null.
-    const publish = db.transaction(() => {
-      db.prepare(`
-        INSERT INTO dtus (id, title, type, creator_id, created_at, body_json)
-        VALUES (?, ?, 'photo', ?, unixepoch(), ?)
-      `).run(
-        dtuId,
-        p.caption || `Photo ${photoId}`,
-        p.user_id,
-        JSON.stringify({ source_photo_id: photoId, blob_path: p.blob_path }),
-      );
+    const nowIso = new Date().toISOString();
+    const title = p.caption || `Photo ${photoId}`;
+    const dtu = {
+      id: dtuId,
+      tier: "regular",
+      scope: "global",
+      visibility: "public",
+      domain: "photos",
+      title,
+      ownerId: p.user_id,
+      createdBy: p.user_id,
+      authorId: p.user_id,
+      human: { summary: title, bullets: [] },
+      core: { definitions: [], claims: [], examples: [] },
+      machine: { kind: "photo", verifier: { format: "image/png" } },
+      artifact: { type: "image", url: `/api/photos/${photoId}/image`, sourcePhotoId: photoId },
+      lineage: { parents: [], children: [] },
+      authority: { score: 0.5 },
+      meta: {
+        createdBy: p.user_id,
+        ownerId: p.user_id,
+        lens: "photos",
+        type: "photo",
+        tags: ["photos"],
+        createdAt: nowIso,
+        sourcePhotoId: photoId,
+      },
+      createdAt: nowIso,
+    };
+
+    // The public flip and the dtu_id stamp are one write. If it doesn't land,
+    // the photo stays private, dtu_id stays null, and nothing is minted.
+    try {
       db.prepare(`UPDATE user_photos SET dtu_id = ?, visibility = 'public' WHERE id = ?`)
         .run(dtuId, photoId);
-    });
-    try {
-      publish();
     } catch (err) {
-      logger.debug?.("photo-gallery", "dtu_insert_failed", { error: err?.message });
-      return { ok: false, error: "dtu_insert_failed" };
+      logger.debug?.("photo-gallery", "share_update_failed", { error: err?.message });
+      return { ok: false, error: "share_update_failed" };
     }
+    // Mint into the real substrate only after the SQL half lands, so a crash
+    // between the two steps never leaves a dangling, unreferenced DTU.
+    STATE.dtus.set(dtuId, dtu);
     return { ok: true, dtuId };
   } catch (err) {
     return { ok: false, error: err?.message };

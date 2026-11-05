@@ -56,8 +56,14 @@ export function BomPanel() {
   const [buildQty, setBuildQty] = useState(1);
   const [overheadRate, setOverheadRate] = useState(0.15);
   const [result, setResult] = useState<BomRollup | null>(null);
+  const [resultSig, setResultSig] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // A result describes the inputs that produced it. When the items,
+  // build qty or overhead change afterwards, the figures are stale and
+  // say so in the open instead of standing as current numbers.
+  const inputsSig = JSON.stringify({ items, buildQty, overheadRate });
+  const resultStale = result !== null && resultSig !== inputsSig;
 
   const addRow = () => setItems((i) => [...i, { ...BLANK }]);
   const removeRow = (idx: number) =>
@@ -82,8 +88,10 @@ export function BomPanel() {
       buildQty,
       overheadRate,
     });
-    if (r.data.ok && r.data.result) setResult(r.data.result);
-    else setError(r.data.error || 'BOM rollup failed');
+    if (r.data.ok && r.data.result) {
+      setResult(r.data.result);
+      setResultSig(JSON.stringify({ items, buildQty, overheadRate }));
+    } else setError(r.data.error || 'BOM rollup failed');
     setLoading(false);
   }, [items, buildQty, overheadRate]);
 
@@ -214,7 +222,13 @@ export function BomPanel() {
       {/* Rollup result */}
       {result && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {resultStale && (
+            <p role="alert" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              Stale — the items, build quantity or overhead changed after this roll-up was computed. The
+              figures below describe the earlier inputs; roll up again for the current ones.
+            </p>
+          )}
+          <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 ${resultStale ? 'opacity-50' : ''}`}>
             <div className="panel p-3 text-center">
               <p className="text-xs text-gray-400">Material Cost</p>
               <p className="text-lg font-mono font-bold text-neon-cyan">
@@ -244,7 +258,7 @@ export function BomPanel() {
           </div>
 
           {/* Supplier links table */}
-          <div className="panel p-4">
+          <div className={`panel p-4 ${resultStale ? 'opacity-50' : ''}`}>
             <h3 className="font-semibold text-sm mb-2">
               Procurement · {result.rollup.procurementLeadDays} day lead
             </h3>

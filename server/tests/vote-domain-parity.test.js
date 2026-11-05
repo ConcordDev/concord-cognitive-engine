@@ -246,7 +246,7 @@ describe("vote.poll-results", () => {
     const id = c.result.poll.id;
     call("cast-ballot", ctxB, {}, { pollId: id, choice: "A" });
     const r1 = call("poll-results", ctxA, {}, { pollId: id });
-    assert.equal(r1.result.resolution.outcome, "failed"); // quorum not met (1/2)
+    assert.equal(r1.result.resolution.outcome, "unresolved"); // quorum not met (1/2) — S1: an unmet quorum is an unresolved state, not a failed outcome
     call("cast-ballot", ctxC, {}, { pollId: id, choice: "A" });
     const r2 = call("poll-results", ctxA, {}, { pollId: id });
     assert.equal(r2.result.resolution.quorumMet, true);

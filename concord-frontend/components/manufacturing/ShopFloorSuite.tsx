@@ -12,6 +12,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
+import { ConfirmDeleteButton, useDeleteSafety } from './DeleteSafety';
+import { requestDelete } from './delete-safety-store';
+import { notifyManufacturingMutated } from './mfg-events';
 import {
   ClipboardCheck, Cpu, CalendarRange, GitBranch, Siren, AlertOctagon,
   Wrench, Boxes, Plus, RefreshCw, CheckCircle2, X, ChevronRight,
@@ -56,8 +59,16 @@ function Field({ name, value, onChange, type = 'text', placeholder }: {
   );
 }
 
+const READ_ACTIONS = new Set([
+  'work-instructions-list', 'iot-machine-state', 'schedule-gantt',
+  'lots-list', 'lot-genealogy', 'andon-board', 'ncr-list',
+  'maintenance-schedule', 'inventory-status',
+]);
+
 async function run<T = any>(action: string, params: Record<string, unknown> = {}) {
   const r = await lensRun<T>('manufacturing', action, params);
+  // F8: a successful write invalidates the page's header KPIs.
+  if (r.data?.ok && !READ_ACTIONS.has(action)) notifyManufacturingMutated();
   return r.data;
 }
 
@@ -94,6 +105,20 @@ function WorkInstructionsTab() {
   const completeStep = async (instructionSetId: string, stepIndex: number, completed: boolean) => {
     const d = await run('work-instruction-step-complete', { instructionSetId, stepIndex, completed });
     if (d.ok) load();
+  };
+
+  const { pendingKeys } = useDeleteSafety();
+  const visibleSets = sets.filter((s) => !pendingKeys.includes(`instruction-set:${s.id}`));
+  const deleteSet = (set: any) => {
+    requestDelete({
+      key: `instruction-set:${set.id}`,
+      label: set.title,
+      commit: async () => {
+        const d = await run('work-instruction-delete', { instructionSetId: set.id });
+        if (!d.ok) throw new Error(d.error || 'Could not delete instruction set.');
+        load();
+      },
+    });
   };
 
   return (
@@ -154,10 +179,10 @@ function WorkInstructionsTab() {
         </div>
       )}
 
-      {sets.length === 0 ? (
+      {visibleSets.length === 0 ? (
         <p className="text-sm text-zinc-400">No work instruction sets yet. Create one to guide operators step-by-step.</p>
       ) : (
-        sets.map((set) => {
+        visibleSets.map((set) => {
           const done = set.steps.filter((s: any) => s.completed).length;
           const pct = Math.round((done / set.steps.length) * 100);
           return (
@@ -167,7 +192,15 @@ function WorkInstructionsTab() {
                   <p className="font-semibold text-zinc-100">{set.title}</p>
                   <p className="text-xs text-zinc-400">Rev {set.revision} · {set.product || 'no product'}</p>
                 </div>
-                <span className="text-sm font-mono text-amber-400">{pct}%</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-mono text-amber-400">{pct}%</span>
+                  <ConfirmDeleteButton
+                    itemLabel={set.title}
+                    deleteTitle={`Delete instruction set ${set.title}`}
+                    onConfirm={() => deleteSet(set)}
+                    className="text-zinc-500 hover:text-rose-300"
+                  />
+                </div>
               </div>
               <div className="my-2 h-1.5 overflow-hidden rounded-full bg-zinc-800">
                 <div className="h-full rounded-full bg-amber-500" style={{ width: `${pct}%` }} />
@@ -243,7 +276,7 @@ function IoTTab() {
       </div>
 
       <div className={card}>
-        <p className="mb-2 text-xs font-medium text-zinc-400">Ingest live machine reading (OPC-UA / MQTT Sparkplug B bridge)</p>
+        <p className="mb-2 text-xs font-medium text-zinc-400">Log a machine reading (manual entry — the readings you type in here are what the OEE board derives from)</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <label className={label}>Machine state</label>
@@ -275,7 +308,7 @@ function IoTTab() {
               { k: 'State', v: state.currentState },
               { k: 'Uptime', v: `${state.uptimePct}%` },
               { k: 'Latest cycles', v: state.latestCycleCount },
-              { k: 'Cycles in window', v: state.cyclesInWindow },
+              { k: 'Cycles in window', v: state.cyclesInWindow ?? '—' },
             ].map((m) => (
               <div key={m.k} className={card}>
                 <p className="text-xs text-zinc-400">{m.k}</p>
@@ -339,7 +372,20 @@ function SchedulingTab() {
     if (d.ok) load();
   };
 
-  const jobs: any[] = gantt?.jobs || [];
+  const { pendingKeys } = useDeleteSafety();
+  const deleteJob = (job: any) => {
+    requestDelete({
+      key: `schedule-job:${job.id}`,
+      label: job.name,
+      commit: async () => {
+        const d = await run('schedule-job-delete', { jobId: job.id });
+        if (!d.ok) throw new Error(d.error || 'Could not delete schedule job.');
+        load();
+      },
+    });
+  };
+
+  const jobs: any[] = (gantt?.jobs || []).filter((j: any) => !pendingKeys.includes(`schedule-job:${j.id}`));
   const resources: string[] = gantt?.resources || [];
   const minStart = jobs.length ? Math.min(...jobs.map((j) => Date.parse(j.startAt))) : 0;
   const maxEnd = jobs.length ? Math.max(...jobs.map((j) => Date.parse(j.endAt))) : 1;
@@ -414,7 +460,7 @@ function SchedulingTab() {
               <thead>
                 <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
                   <th className="pb-2">Job</th><th className="pb-2">Resource</th><th className="pb-2">Start</th>
-                  <th className="pb-2">End</th><th className="pb-2">Status</th><th className="pb-2">Move</th>
+                  <th className="pb-2">End</th><th className="pb-2">Status</th><th className="pb-2">Move</th><th className="pb-2">Delete</th>
                 </tr>
               </thead>
               <tbody>
@@ -437,6 +483,14 @@ function SchedulingTab() {
                       >
                         {['Line A', 'Line B', 'Line C', 'CNC Cell', 'Weld Bay'].map((r) => <option key={r}>{r}</option>)}
                       </select>
+                    </td>
+                    <td className="py-1.5">
+                      <ConfirmDeleteButton
+                        itemLabel={j.name}
+                        deleteTitle={`Delete schedule job ${j.name}`}
+                        onConfirm={() => deleteJob(j)}
+                        className="text-zinc-500 hover:text-rose-300"
+                      />
                     </td>
                   </tr>
                 ))}
@@ -501,6 +555,20 @@ function TraceabilityTab() {
     if (d.ok) setGenealogy(d.result);
   };
 
+  const { pendingKeys } = useDeleteSafety();
+  const visibleLots = lots.filter((l) => !pendingKeys.includes(`lot:${l.lotNumber}`));
+  const deleteLot = (lot: any) => {
+    requestDelete({
+      key: `lot:${lot.lotNumber}`,
+      label: lot.lotNumber,
+      commit: async () => {
+        const d = await run('lot-delete', { lotNumber: lot.lotNumber });
+        if (!d.ok) throw new Error(d.error || 'Could not delete lot.');
+        load();
+      },
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className={card}>
@@ -527,19 +595,19 @@ function TraceabilityTab() {
       </div>
 
       <div className={card}>
-        <p className="mb-2 text-xs font-medium text-zinc-400">Lots ({lots.length})</p>
-        {lots.length === 0 ? (
+        <p className="mb-2 text-xs font-medium text-zinc-400">Lots ({visibleLots.length})</p>
+        {visibleLots.length === 0 ? (
           <p className="text-sm text-zinc-400">No lots registered.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
                 <th className="pb-2">Lot</th><th className="pb-2">Material</th><th className="pb-2">Kind</th>
-                <th className="pb-2">Qty</th><th className="pb-2">Trace</th>
+                <th className="pb-2">Qty</th><th className="pb-2">Trace</th><th className="pb-2">Delete</th>
               </tr>
             </thead>
             <tbody>
-              {lots.map((l) => (
+              {visibleLots.map((l) => (
                 <tr key={l.id} className="border-b border-zinc-800/50">
                   <td className="py-1.5 font-mono text-amber-400">{l.lotNumber}</td>
                   <td className="py-1.5 text-zinc-300">{l.material}</td>
@@ -549,6 +617,15 @@ function TraceabilityTab() {
                     <button className={btnGhost} onClick={() => trace(l.lotNumber)}>
                       <GitBranch className="h-3.5 w-3.5" /> Genealogy
                     </button>
+                  </td>
+                  <td className="py-1.5">
+                    <ConfirmDeleteButton
+                      itemLabel={l.lotNumber}
+                      deleteTitle={`Delete lot ${l.lotNumber}`}
+                      consequence="Other lots keep their parent references to it."
+                      onConfirm={() => deleteLot(l)}
+                      className="text-zinc-500 hover:text-rose-300"
+                    />
                   </td>
                 </tr>
               ))}
@@ -566,7 +643,7 @@ function TraceabilityTab() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="mb-1 text-xs font-medium text-zinc-400">Upstream (what it came from)</p>
-              {genealogy.upstream ? <GenealogyTree nodes={[genealogy.upstream]} /> : <p className="text-xs text-zinc-400">No upstream lots.</p>}
+              {genealogy.upstream?.length > 0 ? <GenealogyTree nodes={genealogy.upstream} /> : <p className="text-xs text-zinc-400">No upstream lots.</p>}
             </div>
             <div>
               <p className="mb-1 text-xs font-medium text-zinc-400">Downstream (what consumed it)</p>
@@ -605,10 +682,23 @@ function AndonTab() {
     if (d.ok) load();
   };
 
+  const { pendingKeys } = useDeleteSafety();
+  const deleteAlert = (a: any) => {
+    requestDelete({
+      key: `andon:${a.id}`,
+      label: a.reason,
+      commit: async () => {
+        const d = await run('andon-delete', { alertId: a.id });
+        if (!d.ok) throw new Error(d.error || 'Could not delete andon alert.');
+        load();
+      },
+    });
+  };
+
   const sevColor: Record<string, string> = {
     low: 'text-zinc-400', medium: 'text-amber-400', high: 'text-orange-400', critical: 'text-rose-400',
   };
-  const alerts: any[] = board?.alerts || [];
+  const alerts: any[] = (board?.alerts || []).filter((a: any) => !pendingKeys.includes(`andon:${a.id}`));
 
   return (
     <div className="space-y-4">
@@ -662,6 +752,12 @@ function AndonTab() {
                 </span>
                 {a.status === 'open' && <button className={btnGhost} onClick={() => update(a.id, 'acknowledge')}>Acknowledge</button>}
                 {a.status !== 'resolved' && <button className={btnPrimary} onClick={() => update(a.id, 'resolve')}>Resolve</button>}
+                <ConfirmDeleteButton
+                  itemLabel={a.reason}
+                  deleteTitle={`Delete andon alert ${a.reason}`}
+                  onConfirm={() => deleteAlert(a)}
+                  className="text-zinc-500 hover:text-rose-300"
+                />
               </div>
             </div>
             {a.responseSeconds != null && <p className="mt-1 text-xs text-emerald-400">Resolved in {a.responseSeconds}s</p>}
@@ -702,6 +798,20 @@ function NCRTab() {
     if (d.ok) load();
   };
 
+  const { pendingKeys } = useDeleteSafety();
+  const visibleNcrs = ncrs.filter((n) => !pendingKeys.includes(`ncr:${n.id}`));
+  const deleteNcr = (n: any) => {
+    requestDelete({
+      key: `ncr:${n.id}`,
+      label: `${n.number} ${n.title}`,
+      commit: async () => {
+        const d = await run('ncr-delete', { ncrId: n.id });
+        if (!d.ok) throw new Error(d.error || 'Could not delete NCR.');
+        load();
+      },
+    });
+  };
+
   const STAGES = ['open', 'investigation', 'capa', 'verification', 'closed'];
 
   return (
@@ -726,10 +836,10 @@ function NCRTab() {
         </button>
       </div>
 
-      {ncrs.length === 0 ? (
+      {visibleNcrs.length === 0 ? (
         <p className="text-sm text-zinc-400">No non-conformance reports.</p>
       ) : (
-        ncrs.map((n) => {
+        visibleNcrs.map((n) => {
           const c = capa[n.id] || { rootCause: n.rootCause || '', correctiveAction: n.correctiveAction || '', preventiveAction: n.preventiveAction || '' };
           const stageIdx = STAGES.indexOf(n.stage);
           return (
@@ -739,7 +849,15 @@ function NCRTab() {
                   <p className="font-semibold text-zinc-100">{n.number} · {n.title}</p>
                   <p className="text-xs text-zinc-400">{n.product || 'no product'} · {n.defectType} · {n.severity} · {n.quantityAffected} affected</p>
                 </div>
-                <span className={`rounded px-2 py-0.5 text-[10px] uppercase ${n.stage === 'closed' ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-300'}`}>{n.stage}</span>
+                <div className="flex items-center gap-2">
+                  <span className={`rounded px-2 py-0.5 text-[10px] uppercase ${n.stage === 'closed' ? 'bg-emerald-950 text-emerald-300' : 'bg-amber-950 text-amber-300'}`}>{n.stage}</span>
+                  <ConfirmDeleteButton
+                    itemLabel={`${n.number} ${n.title}`}
+                    deleteTitle={`Delete NCR ${n.number}`}
+                    onConfirm={() => deleteNcr(n)}
+                    className="text-zinc-500 hover:text-rose-300"
+                  />
+                </div>
               </div>
               <div className="my-2 flex gap-1">
                 {STAGES.map((st, i) => (
@@ -792,11 +910,32 @@ function MaintenanceTab() {
   };
 
   const complete = async (planId: string) => {
-    const d = await run('maintenance-complete', { planId });
-    if (d.ok) load();
+    // S5: this leg used to swallow every failure — no error, no reload —
+    // so any refusal read as a dead button. Surface it like create does.
+    setErr('');
+    try {
+      const d = await run('maintenance-complete', { planId });
+      if (!d.ok) { setErr(d.error || 'Could not mark done.'); return; }
+      load();
+    } catch (e) {
+      setErr(String((e as Error)?.message || e));
+    }
   };
 
-  const plans: any[] = sched?.plans || [];
+  const { pendingKeys } = useDeleteSafety();
+  const deletePlan = (p: any) => {
+    requestDelete({
+      key: `maintenance-plan:${p.id}`,
+      label: p.task,
+      commit: async () => {
+        const d = await run('maintenance-plan-delete', { planId: p.id });
+        if (!d.ok) throw new Error(d.error || 'Could not delete maintenance plan.');
+        load();
+      },
+    });
+  };
+
+  const plans: any[] = (sched?.plans || []).filter((p: any) => !pendingKeys.includes(`maintenance-plan:${p.id}`));
   const stateColor: Record<string, string> = {
     overdue: 'text-rose-400', due_soon: 'text-amber-400', scheduled: 'text-emerald-400',
   };
@@ -833,7 +972,7 @@ function MaintenanceTab() {
             <thead>
               <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
                 <th className="pb-2">Machine</th><th className="pb-2">Task</th><th className="pb-2">Interval</th>
-                <th className="pb-2">Next due</th><th className="pb-2">Status</th><th className="pb-2">Action</th>
+                <th className="pb-2">Next due</th><th className="pb-2">Status</th><th className="pb-2">Action</th><th className="pb-2">Delete</th>
               </tr>
             </thead>
             <tbody>
@@ -848,6 +987,14 @@ function MaintenanceTab() {
                     <button className={btnGhost} onClick={() => complete(p.id)}>
                       <CheckCircle2 className="h-3.5 w-3.5" /> Mark done
                     </button>
+                  </td>
+                  <td className="py-1.5">
+                    <ConfirmDeleteButton
+                      itemLabel={p.task}
+                      deleteTitle={`Delete maintenance plan ${p.task}`}
+                      onConfirm={() => deletePlan(p)}
+                      className="text-zinc-500 hover:text-rose-300"
+                    />
                   </td>
                 </tr>
               ))}
@@ -896,7 +1043,20 @@ function InventoryTab() {
     load();
   };
 
-  const items: any[] = status?.items || [];
+  const { pendingKeys } = useDeleteSafety();
+  const deleteItem = (it: any) => {
+    requestDelete({
+      key: `inventory:${it.sku}`,
+      label: it.sku,
+      commit: async () => {
+        const d = await run('inventory-delete', { sku: it.sku });
+        if (!d.ok) throw new Error(d.error || 'Could not delete inventory item.');
+        load();
+      },
+    });
+  };
+
+  const items: any[] = (status?.items || []).filter((it: any) => !pendingKeys.includes(`inventory:${it.sku}`));
 
   return (
     <div className="space-y-4">
@@ -939,7 +1099,7 @@ function InventoryTab() {
 
       {status && (
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className={card}><p className="text-xs text-zinc-400">Total value</p><p className="text-lg font-bold text-zinc-100">${status.totalValue?.toLocaleString()}</p></div>
+          <div className={card}><p className="text-xs text-zinc-400">Total value (on-hand basis)</p><p className="text-lg font-bold text-zinc-100">${status.totalValue?.toLocaleString()}</p></div>
           <div className={card}><p className="text-xs text-zinc-400">Below reorder</p><p className={`text-lg font-bold ${status.belowReorderCount > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{status.belowReorderCount}</p></div>
           <div className={card}><p className="text-xs text-zinc-400">WIP items</p><p className="text-lg font-bold text-zinc-100">{status.wipCount}</p></div>
         </div>
@@ -954,7 +1114,7 @@ function InventoryTab() {
               <tr className="border-b border-zinc-800 text-left text-xs text-zinc-400">
                 <th className="pb-2">SKU</th><th className="pb-2">Name</th><th className="pb-2">Kind</th>
                 <th className="pb-2">On hand</th><th className="pb-2">Allocated</th><th className="pb-2">Available</th>
-                <th className="pb-2">Value</th><th className="pb-2">WO</th>
+                <th className="pb-2">Value (on hand)</th><th className="pb-2">WO</th><th className="pb-2">Delete</th>
               </tr>
             </thead>
             <tbody>
@@ -968,6 +1128,14 @@ function InventoryTab() {
                   <td className={`py-1.5 ${it.belowReorder ? 'text-rose-400' : 'text-emerald-400'}`}>{it.available}</td>
                   <td className="py-1.5 text-zinc-400">${it.value?.toLocaleString()}</td>
                   <td className="py-1.5 text-zinc-400">{it.workOrderId || '—'}</td>
+                  <td className="py-1.5">
+                    <ConfirmDeleteButton
+                      itemLabel={it.sku}
+                      deleteTitle={`Delete inventory item ${it.sku}`}
+                      onConfirm={() => deleteItem(it)}
+                      className="text-zinc-500 hover:text-rose-300"
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>

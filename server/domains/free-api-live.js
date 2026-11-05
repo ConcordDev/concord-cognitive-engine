@@ -193,7 +193,16 @@ export default function registerFreeApiLiveMacros(register) {
       const foods = (data.foods || []).map(f => {
         const nutrients = (f.foodNutrients || []).reduce((acc, n) => {
           // Common nutrient names. KCal=Energy, g for macros.
-          if (n.nutrientName === "Energy") acc.kcalPer100g = n.value;
+          // FDC returns TWO "Energy" nutrients per food — one in KCAL and
+          // one in kJ. Only the kcal entry is kcal; taking whichever came
+          // last rendered kJ values as kcal for a class of foods (potato
+          // flour: 357 kcal shown as its 1490 kJ). Unit-aware pick.
+          if (n.nutrientName === "Energy") {
+            const u = String(n.unitName || "").toLowerCase();
+            // Skip a named non-kcal unit (kJ); a unitless Energy is
+            // kcal by the FDC search payload's convention.
+            if (u === "" || u === "kcal") acc.kcalPer100g = n.value;
+          }
           else if (n.nutrientName === "Protein") acc.proteinG = n.value;
           else if (n.nutrientName === "Total lipid (fat)") acc.fatG = n.value;
           else if (n.nutrientName === "Carbohydrate, by difference") acc.carbsG = n.value;

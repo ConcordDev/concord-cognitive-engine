@@ -96,6 +96,8 @@ describe("defense lens — registration of the driven macros", () => {
       "personnel-upsert", "personnel-delete", "personnel-roster",
       "supply-request", "supply-advance", "supply-delete", "supply-board",
       "comms-post", "comms-ack", "comms-delete", "comms-log",
+      // S3: the domain event feed the Live feed view drives
+      "activity-feed",
     ];
     for (const m of driven) {
       assert.equal(typeof ACTIONS.get(m), "function", `missing defense.${m}`);
@@ -409,5 +411,113 @@ describe("defense lens — STATE-backed validation rejection", () => {
     assert.equal(board.result.highestSeverity, "critical");
     assert.equal(board.result.bySeverity.critical, 1);
     assert.equal(board.result.bySeverity.low, 1);
+  });
+});
+
+/* ───── S3: activity-feed — the feed reads the events the lens itself produces ───── */
+
+const ctxB = { actor: { userId: "cmdr_b", id: "cmdr_b" }, userId: "cmdr_b" };
+
+describe("defense lens — activity-feed (S3)", () => {
+  it("derives events from every store the lens writes, newest first", () => {
+    call("asset-upsert", ctxA, { designation: "FEED-TRUCK-1", readiness: 80 });
+    const task = call("mission-task-add", ctxA, { name: "FEED-TASK-1" }).result.task;
+    call("mission-task-update", ctxA, { id: task.id, status: "in_progress" });
+    const threat = call("threat-add", ctxA, { name: "FEED-THREAT-1", severity: "low" }).result.threat;
+    call("threat-escalate", ctxA, { id: threat.id });
+    const supply = call("supply-request", ctxA, { item: "FEED-FUEL", quantity: 40 }).result.request;
+    call("supply-advance", ctxA, { id: supply.id });
+    call("personnel-upsert", ctxA, { name: "FEED-PERSON-1" });
+    const msg = call("comms-post", ctxA, { channel: "FEED-CH", body: "synthetic check" }).result.message;
+    call("comms-ack", ctxA, { id: msg.id });
+    call("cop-add", ctxA, { kind: "operation", label: "FEED-MARKER-1", lat: 41.7, lon: -73.9 });
+
+    const feed = call("activity-feed", ctxA, {});
+    assert.equal(feed.ok, true);
+    const texts = feed.result.events.map((e) => e.text);
+    // Every store the lens writes shows up in its own feed.
+    assert.ok(texts.some((t) => t === "Asset added — FEED-TRUCK-1"), texts.join(" | "));
+    assert.ok(texts.some((t) => t.startsWith("Mission task added — FEED-TASK-1")), texts.join(" | "));
+    assert.ok(texts.some((t) => t === "Mission task in progress — FEED-TASK-1"), texts.join(" | "));
+    assert.ok(texts.some((t) => t === "Threat added — FEED-THREAT-1 (low)"), texts.join(" | "));
+    assert.ok(texts.some((t) => t === "Threat escalated — FEED-THREAT-1 (medium)"), texts.join(" | "));
+    assert.ok(texts.some((t) => t === "Supply requested — FEED-FUEL ×40"), texts.join(" | "));
+    assert.ok(texts.some((t) => t === "Supply approved — FEED-FUEL ×40"), texts.join(" | "));
+    assert.ok(texts.some((t) => t === "Personnel added — FEED-PERSON-1"), texts.join(" | "));
+    assert.ok(texts.some((t) => t === "Comms post on FEED-CH — cmdr_a"), texts.join(" | "));
+    assert.ok(texts.some((t) => t === "Comms acknowledged on FEED-CH — cmdr_a"), texts.join(" | "));
+    assert.ok(texts.some((t) => t === "Map marker plotted — FEED-MARKER-1"), texts.join(" | "));
+    // Newest first: timestamps never increase down the list.
+    const ats = feed.result.events.map((e) => e.at);
+    assert.deepEqual(ats, [...ats].sort().reverse());
+    assert.equal(feed.result.total, feed.result.events.length);
+  });
+
+  it("orders by event time, not by store (an older asset sorts below a newer task)", () => {
+    const asset = call("asset-upsert", ctxA, { designation: "OLD-ASSET" }).result.asset;
+    const task = call("mission-task-add", ctxA, { name: "NEW-TASK" }).result.task;
+    const s = globalThis._concordSTATE.defenseLens;
+    for (const a of s.assets.get("cmdr_a").values()) if (a.id === asset.id) { a.createdAt = "2026-01-01T00:00:00.000Z"; a.updatedAt = a.createdAt; }
+    for (const t of s.tasks.get("cmdr_a").values()) if (t.id === task.id) { t.createdAt = "2026-06-01T00:00:00.000Z"; t.updatedAt = t.createdAt; }
+    const feed = call("activity-feed", ctxA, {});
+    assert.equal(feed.result.events[0].text, "Mission task added — NEW-TASK");
+    assert.equal(feed.result.events[feed.result.events.length - 1].text, "Asset added — OLD-ASSET");
+  });
+
+  it("is per-user: another commander sees none of these events", () => {
+    call("asset-upsert", ctxA, { designation: "A-ONLY-ASSET" });
+    const feedB = call("activity-feed", ctxB, {});
+    assert.equal(feedB.ok, true);
+    assert.equal(feedB.result.total, 0);
+    assert.deepEqual(feedB.result.events, []);
+  });
+
+  it("clamps the limit and reports the pre-slice total", () => {
+    for (let i = 0; i < 5; i++) call("personnel-upsert", ctxA, { name: `P-${i}` });
+    const feed = call("activity-feed", ctxA, { limit: 2 });
+    assert.equal(feed.result.events.length, 2);
+    assert.equal(feed.result.total, 5);
+    const clampedLow = call("activity-feed", ctxA, { limit: 0 });
+    assert.equal(clampedLow.result.events.length, 1); // clamps up to 1
+    const clampedHigh = call("activity-feed", ctxA, { limit: 9999 });
+    assert.equal(clampedHigh.result.events.length, 5); // clamps down to 100 — all 5 fit
+  });
+
+  it("fails soft when STATE is unavailable", () => {
+    globalThis._concordSTATE = undefined;
+    const feed = call("activity-feed", ctxA, {});
+    assert.equal(feed.ok, false);
+    assert.equal(feed.error, "STATE unavailable");
+  });
+});
+
+/* ───── C2: cop-map totals + unmapped — counts count the registry, unmapped are named ───── */
+
+describe("defense lens — cop-map totals + unmapped (C2)", () => {
+  it("counts registry rows in totals while markers stay mapped-only, and names the unmapped", () => {
+    call("asset-upsert", ctxA, { designation: "MAPPED-TRUCK", lat: 41.7, lon: -73.9 });
+    call("asset-upsert", ctxA, { designation: "UNMAPPED-TRUCK" }); // no coordinates — the editor's own shape
+    call("threat-add", ctxA, { name: "UNMAPPED-THREAT" }); // no coordinates
+    call("cop-add", ctxA, { kind: "operation", label: "PLOT-1", lat: 41.7, lon: -73.9 });
+
+    const map = call("cop-map", ctxA, {});
+    assert.equal(map.ok, true);
+    // Marker semantics unchanged: only geolocated records + explicit markers plot.
+    assert.equal(map.result.count, 2);
+    // Totals count the registry, not the map.
+    assert.deepEqual(map.result.totals, { asset: 2, threat: 1, operation: 1 });
+    // The unmapped are named, not silently absent.
+    assert.deepEqual(map.result.unmapped.assets, [
+      { id: map.result.unmapped.assets[0].id, label: "UNMAPPED-TRUCK" },
+    ]);
+    assert.equal(map.result.unmapped.threats.length, 1);
+    assert.equal(map.result.unmapped.threats[0].label, "UNMAPPED-THREAT");
+  });
+
+  it("an empty registry reports zero totals and empty unmapped lists", () => {
+    const map = call("cop-map", ctxA, {});
+    assert.equal(map.ok, true);
+    assert.deepEqual(map.result.totals, { asset: 0, threat: 0, operation: 0 });
+    assert.deepEqual(map.result.unmapped, { assets: [], threats: [] });
   });
 });

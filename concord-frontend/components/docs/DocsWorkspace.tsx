@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { setDocsWorkspaceSnapshot } from './docsSession';
 import { requestDelete } from './delete-safety-store';
 import { ConfirmDeleteButton, DeleteReceiptToast, useDeleteSafety } from './DeleteSafety';
-import { BlockEditorRow } from './BlockEditorRow';
+import { BlockEditorRow, blockDeleteLabel } from './BlockEditorRow';
 import { TemplatePicker } from './TemplatePicker';
 import { VersionHistoryPanel } from './VersionHistoryPanel';
 import { CommentsPanel } from './CommentsPanel';
@@ -185,10 +185,29 @@ export function DocsWorkspace() {
     await lensRun('docs', 'block-update', { pageId: active.id, blockId, ...patch });
     await reloadActive();
   }
-  async function deleteBlock(blockId: string) {
+  // Block delete rides the same safeguard as page/database deletes
+  // (S1 follow-up; the Lead's ruling that S1's confirmation policy
+  // extends to block-level delete — uniform coverage for
+  // user-authored content, the deferred-commit Undo window as the
+  // proportionate form). A confirmed block delete registers with the
+  // registry: the block leaves the editor at once (the pending
+  // filter at render) and the block-delete macro runs only when the
+  // window lapses; Undo cancels it outright.
+  function deleteBlock(blockId: string) {
     if (!active) return;
-    await lensRun('docs', 'block-delete', { pageId: active.id, blockId });
-    await reloadActive();
+    const pageId = active.id;
+    const block = active.blocks.find((b) => b.id === blockId);
+    requestDelete({
+      key: `block:${pageId}:${blockId}`,
+      label: block ? blockDeleteLabel(block) : 'block',
+      commit: async () => {
+        const r = await lensRun('docs', 'block-delete', { pageId, blockId });
+        await reloadActive();
+        if (r.data && r.data.ok === false) {
+          throw new Error(String(r.data.error || 'block-delete failed'));
+        }
+      },
+    });
   }
   async function reorderBlock(blockId: string, direction: 'up' | 'down') {
     if (!active) return;
@@ -334,15 +353,17 @@ export function DocsWorkspace() {
               </div>
 
               <div className="space-y-1">
-                {active.blocks.map(b => (
-                  <BlockEditorRow key={b.id} block={b}
-                    cursors={presence.cursors.filter(c => c.blockId === b.id)}
-                    onChange={(patch) => updateBlock(b.id, patch)}
-                    onDelete={() => deleteBlock(b.id)}
-                    onUp={() => reorderBlock(b.id, 'up')}
-                    onDown={() => reorderBlock(b.id, 'down')}
-                    onFocus={() => presence.ping(b.id)} />
-                ))}
+                {active.blocks
+                  .filter(b => !pendingKeys.includes(`block:${active.id}:${b.id}`))
+                  .map(b => (
+                    <BlockEditorRow key={b.id} block={b}
+                      cursors={presence.cursors.filter(c => c.blockId === b.id)}
+                      onChange={(patch) => updateBlock(b.id, patch)}
+                      onDelete={() => deleteBlock(b.id)}
+                      onUp={() => reorderBlock(b.id, 'up')}
+                      onDown={() => reorderBlock(b.id, 'down')}
+                      onFocus={() => presence.ping(b.id)} />
+                  ))}
                 {active.blocks.length === 0 && (
                   <p className="text-[11px] text-zinc-400 italic py-2">Empty page — add a block below.</p>
                 )}
@@ -433,7 +454,7 @@ function PageTreeNode({ page, depth, activeId, childrenOf, onOpen, onAddChild, o
         onDragEnd={() => { dragRef.current = false; }}
         className={cn('group flex items-center gap-1 rounded px-1.5 py-1 hover:bg-zinc-800', activeId === page.id && 'bg-zinc-800')}
         style={{ paddingLeft: `${6 + depth * 12}px` }}>
-        <button onClick={() => onOpen(page.id)} className="flex-1 text-left text-xs text-zinc-300 truncate">
+        <button onClick={() => onOpen(page.id)} className="flex-1 min-w-0 text-left text-xs text-zinc-300 truncate">
           {page.icon} {page.title}
         </button>
         {page.parentId && (

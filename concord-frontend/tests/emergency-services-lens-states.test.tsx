@@ -68,6 +68,26 @@ describe('Emergency Services north-star workspace', () => {
     expect(getByText('Open the board')).toBeInTheDocument();
   });
 
+  it('stands the limitation copy at the door, ahead of the invitation (S1/F2)', async () => {
+    lensRun.mockReturnValue(response());
+    const { getByText } = render(<EmergencyServicesLensPage />);
+
+    // The not-an-emergency statement and the direction to real
+    // emergency services render in the un-opened (door) state — the
+    // state a person in an actual emergency would land on.
+    await waitFor(() => expect(getByText('No call on the board.')).toBeInTheDocument());
+    expect(getByText(/Not an emergency service\./)).toBeInTheDocument();
+    expect(getByText(/call 911 now/)).toBeInTheDocument();
+  });
+
+  it('keeps the limitation copy standing once the board is open (S1/F2)', async () => {
+    lensRun.mockReturnValue(response(ACTIVE_DASHBOARD));
+    const { getByText, getByTestId } = render(<EmergencyServicesLensPage />);
+
+    await waitFor(() => expect(getByTestId('cad-console')).toBeInTheDocument());
+    expect(getByText(/Not an emergency service\./)).toBeInTheDocument();
+  });
+
   it('shows loading and a retryable board error instead of an empty success state', async () => {
     let fail = true;
     lensRun.mockImplementation(() => fail

@@ -218,11 +218,11 @@ test("runAgentLoop returns the GPU image and does not ask the brain", async () =
   }
 });
 
-test("runAgentLoop says the GPU is offline without calling the brain when the gen server is down", async () => {
+test("runAgentLoop draws on the Art lens instead when the gen server is down", async () => {
   const saved = { gen: process.env.CONCORD_GEN_URL, force: process.env.CONCORD_FORCE_POLLINATIONS };
   process.env.CONCORD_GEN_URL = "http://127.0.0.1:9";
   process.env.CONCORD_FORCE_POLLINATIONS = "1";
-  let brainCalled = false;
+  const brainSlots = [];
   try {
     const result = await runAgentLoop({
       db: { prepare() { throw new Error("db should not be touched"); } },
@@ -233,16 +233,21 @@ test("runAgentLoop says the GPU is offline without calling the brain when the ge
       opts: {
         shadowContext: false,
         actionMemory: false,
-        brainChat: async () => {
-          brainCalled = true;
+        // The brain is only asked to compose the drawing — never for a chat reply.
+        brainChat: async ({ slot }) => {
+          brainSlots.push(slot);
           return { ok: true, text: "Try DALL-E 3 or Stable Diffusion." };
         },
       },
     });
-    assert.equal(brainCalled, false);
-    assert.equal(result.answer, "GPU image generation is offline");
-    assert.deepEqual(result.artifacts, []);
-    assert.equal(result.toolCalls[0].ok, false);
+    assert.ok(brainSlots.every((s) => s === "conscious"));
+    assert.match(result.answer, /GPU is offline/);
+    assert.ok(!/dall-?e|stable diffusion|midjourney/i.test(result.answer));
+    assert.equal(result.turns, 0);
+    assert.equal(result.toolCalls[0].tool, "art_draw");
+    assert.equal(result.toolCalls[0].fellBackFrom, "generate_image");
+    assert.equal(result.artifacts[0].kind, "image");
+    assert.match(result.artifacts[0].url, /^data:image\/svg\+xml;base64,/);
     assert.notEqual(result.toolCalls[0].error, "macro_uncaught_throw");
   } finally {
     if (saved.gen === undefined) delete process.env.CONCORD_GEN_URL; else process.env.CONCORD_GEN_URL = saved.gen;

@@ -501,6 +501,16 @@ export default function registerArtistryActions(registerLensAction) {
       "SELECT id, title, created_at, updated_at FROM artistry_studies WHERE user_id = ? ORDER BY updated_at DESC",
     ).all(artAid(ctx));
   }
+  // projectView looks up a project by id alone — the caller may be
+  // viewing someone else's study, so the owner-scoped readStudyRows()
+  // above can't be used to hydrate a cross-owner persisted-only row.
+  function readStudyRowById(ctx, id) {
+    const db = artDb(ctx);
+    if (!studiesReady(db) || !id) return null;
+    return db.prepare(
+      "SELECT id, user_id, title, created_at, updated_at FROM artistry_studies WHERE id = ?",
+    ).get(String(id)) || null;
+  }
   const artId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const artNow = () => new Date().toISOString();
   const artAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
@@ -509,6 +519,44 @@ export default function registerArtistryActions(registerLensAction) {
   const artClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
   const artArr = (v) => (Array.isArray(v) ? v : []);
   const artList = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
+
+  // projectView/projectUpdate/projectDelete all look a project up by id
+  // in the in-memory s.projects bucket before acting on it. A project
+  // that was only ever written to artistry_studies (created in an
+  // earlier process, or restored after a restart) is real and listed by
+  // projectList (which already merges readStudyRows as a title-only
+  // row), but was never hydrated into the in-memory list those three
+  // macros searched — so opening, renaming, or deleting a persisted-only
+  // study 404'd as "project_not_found" even though projectList showed
+  // it, breaking the reopen/rename/delete lifecycle lens-reviews/
+  // artistry.md F3 requires. Hydrate on first touch, same title-only
+  // shape projectList already builds for a persisted-only row (matches
+  // the poetry.ensurePoem / filmstudios.ensureProject pattern).
+  function ensureProject(ctx, s, userId, id) {
+    const list = artList(s.projects, userId);
+    const mem = list.find((x) => x.id === id);
+    if (mem) return mem;
+    const row = readStudyRows(ctx).find((item) => item.id === id);
+    if (!row || typeof row.title !== "string" || !row.title.trim()) return null;
+    const project = {
+      id: row.id,
+      userId,
+      title: row.title,
+      description: "",
+      discipline: "illustration",
+      tools: [],
+      tags: [],
+      images: [],
+      processSteps: [],
+      coverUrl: "",
+      published: true,
+      views: 0,
+      createdAt: row.created_at || "",
+      updatedAt: row.updated_at || "",
+    };
+    list.push(project);
+    return project;
+  }
 
   // Shared project-owner lookup — projectId alone doesn't reveal which
   // per-user bucket of s.projects it lives in (same scan projectView
@@ -619,8 +667,7 @@ export default function registerArtistryActions(registerLensAction) {
       if (!s) return { ok: false, error: "state_unavailable" };
       const p = params || {};
       const uid = artAid(ctx);
-      const list = artList(s.projects, uid);
-      const proj = list.find((x) => x.id === p.projectId);
+      const proj = ensureProject(ctx, s, uid, p.projectId);
       if (!proj) return { ok: false, error: "project_not_found" };
       const previousTitle = proj.title;
       const previousUpdated = proj.updatedAt;
@@ -662,16 +709,16 @@ export default function registerArtistryActions(registerLensAction) {
       const s = getArtState();
       if (!s) return { ok: false, error: "state_unavailable" };
       const uid = artAid(ctx);
-      const list = artList(s.projects, uid);
       const projectId = (params || {}).projectId || (params || {}).id;
-      const idx = list.findIndex((x) => x.id === projectId);
-      if (idx === -1) return { ok: false, error: "project_not_found" };
+      if (!ensureProject(ctx, s, uid, projectId)) return { ok: false, error: "project_not_found" };
+      const list = artList(s.projects, uid);
       try {
         deleteStudyRow(ctx, projectId);
       } catch (e) {
         return { ok: false, error: "study_not_saved", detail: String(e?.message || e) };
       }
-      list.splice(idx, 1);
+      const idx = list.findIndex((x) => x.id === projectId);
+      if (idx >= 0) list.splice(idx, 1);
       saveArtState();
       return { ok: true, result: { deleted: true } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -728,6 +775,33 @@ export default function registerArtistryActions(registerLensAction) {
       for (const [, list] of s.projects) {
         const proj = list.find((x) => x.id === p.projectId);
         if (proj) { found = proj; break; }
+      }
+      if (!found) {
+        // Persisted-only study (created in an earlier process, or
+        // restored after a restart) — hydrate it the same title-only
+        // shape projectList/ensureProject already build, regardless of
+        // which user owns it, so reopening a study still works post-
+        // restart (lens-reviews/artistry.md F3).
+        const row = readStudyRowById(ctx, p.projectId);
+        if (row && typeof row.title === "string" && row.title.trim()) {
+          found = {
+            id: row.id,
+            userId: row.user_id,
+            title: row.title,
+            description: "",
+            discipline: "illustration",
+            tools: [],
+            tags: [],
+            images: [],
+            processSteps: [],
+            coverUrl: "",
+            published: true,
+            views: 0,
+            createdAt: row.created_at || "",
+            updatedAt: row.updated_at || "",
+          };
+          artList(s.projects, row.user_id).push(found);
+        }
       }
       if (!found) return { ok: false, error: "project_not_found" };
       const viewer = artAid(ctx);

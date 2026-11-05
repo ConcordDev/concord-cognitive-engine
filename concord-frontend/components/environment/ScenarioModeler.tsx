@@ -280,21 +280,21 @@ export function ScenarioModeler() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <ResTile
                 label="Baseline"
-                value={`${result.baselineTonnes.toFixed(0)} t`}
+                value={fmtTonnes(result.baselineTonnes)}
               />
               <ResTile
                 label={`${result.baseYear + result.horizonYears} BAU`}
-                value={`${result.finalYearBusinessAsUsual.toFixed(0)} t`}
+                value={fmtTonnes(result.finalYearBusinessAsUsual)}
                 tone="rose"
               />
               <ResTile
                 label={`${result.baseYear + result.horizonYears} with projects`}
-                value={`${result.finalYearWithProjects.toFixed(0)} t`}
+                value={fmtTonnes(result.finalYearWithProjects)}
                 tone="emerald"
               />
               <ResTile
                 label="Total avoided"
-                value={`${result.totalAvoidedTonnes.toFixed(0)} t`}
+                value={fmtTonnes(result.totalAvoidedTonnes)}
                 tone="violet"
               />
             </div>
@@ -332,6 +332,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </label>
   );
+}
+
+/**
+ * Tonnes at the model's own precision (F4): scenario-model rounds to 2 dp
+ * server-side, so the cards render up to 2 dp, trimmed — a sub-tonne
+ * inventory reads "0.1 t", never the "0 t" the old toFixed(0) produced
+ * beside a chart drawing the same 0.10.
+ */
+function fmtTonnes(v: number): string {
+  return `${Number(v.toFixed(2))} t`;
 }
 
 function ResTile({

@@ -9,6 +9,7 @@
 
 import { useCallback, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { recordStudioRun } from '@/lib/sim/studio-activity';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -93,6 +94,7 @@ export function AgentBasedRunner() {
     const r = await lensRun<ABMResult>('sim', 'agentBased', params);
     if (r.data.ok && r.data.result) {
       setResult(r.data.result);
+      recordStudioRun();
     } else {
       setResult(null);
       setError(r.data.error || 'Agent simulation failed.');

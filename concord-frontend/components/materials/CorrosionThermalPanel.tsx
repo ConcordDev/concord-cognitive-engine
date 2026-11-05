@@ -13,7 +13,7 @@ import { Cog, Droplet, Thermometer } from 'lucide-react';
 import { CalcPanel } from '@/components/lens-primitives/CalcPanel';
 
 interface CorrosionInput { name: string; category: 'metal' | 'polymer' | 'ceramic' | 'composite' | 'semiconductor' | 'biomaterial'; environment: 'indoor' | 'outdoor' | 'marine' | 'chemical' | 'industrial' | 'underground'; temperature: number | ''; humidity: number | '' }
-interface ThermalInput { thermalConductivity: number; meltingPoint: number; thermalExpansion: number; operatingTemp: number | ''; application: string }
+interface ThermalInput { thermalConductivity: number | ''; meltingPoint: number | ''; thermalExpansion: number | ''; operatingTemp: number | ''; application: string }
 interface CorrosionResult {
   material?: string;
   corrosionResistance?: number | null;
@@ -29,17 +29,22 @@ interface ThermalResult {
   status?: string;
   missingInputs?: string[];
   message?: string;
-  thermalClass?: string;
+  thermalClass?: string | null;
   /** Server reports the margin as a "NN%" string in `safetyMargin`; numeric form accepted too. */
-  safetyMargin?: string;
+  safetyMargin?: string | null;
   safetyMarginPercent?: number | null;
   isSafe?: boolean | null;
-  suitability?: Record<string, string>;
+  suitability?: Record<string, string | null>;
   warnings?: string[];
   recommendations?: string[];
 }
 
-const MISSING_INPUT_LABELS: Record<string, string> = { operatingTemp: 'operating temperature' };
+const MISSING_INPUT_LABELS: Record<string, string> = {
+  operatingTemp: 'operating temperature',
+  thermalConductivity: 'thermal conductivity',
+  meltingPoint: 'melting point',
+  thermalExpansion: 'thermal expansion',
+};
 
 /** The safety margin as a finite number, or null when the server did not compute one. */
 function marginPercentOf(t: ThermalResult): number | null {
@@ -47,12 +52,23 @@ function marginPercentOf(t: ThermalResult): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Why the thermal analysis has no verdict, or null when it has one. */
-function thermalNotRecorded(t: ThermalResult): string | null {
-  if (t.status !== 'NOT_COMPUTED' && marginPercentOf(t) !== null) return null;
+/** Names of properties the server did not record, for the absence line. */
+function thermalAbsenceLine(t: ThermalResult): string | null {
   const missing = (t.missingInputs ?? []).map((k) => MISSING_INPUT_LABELS[k] ?? k);
   if (missing.length) return `Not recorded: ${missing.join(', ')}`;
-  return t.message || 'Not recorded';
+  return t.message || null;
+}
+
+/**
+ * The whole thermal card is withheld when operating temperature is missing,
+ * or when nothing else was recorded. A recorded class with a missing melt
+ * still renders, and the absence line sits beside it.
+ */
+function thermalNotRecorded(t: ThermalResult): string | null {
+  if (t.status === 'NOT_COMPUTED' || (marginPercentOf(t) === null && !t.thermalClass)) {
+    return thermalAbsenceLine(t) || 'Not recorded';
+  }
+  return null;
 }
 
 /** SAFE / AT-RISK only when there is a real margin and a real verdict. */
@@ -81,7 +97,7 @@ const suitColour = (s?: string) => {
 
 export function CorrosionThermalPanel() {
   const [corrosion, setCorrosion] = useState<CorrosionInput>({ name: '', category: 'metal', environment: 'indoor', temperature: '', humidity: '' });
-  const [thermal, setThermal] = useState<ThermalInput>({ thermalConductivity: 0, meltingPoint: 0, thermalExpansion: 0, operatingTemp: '', application: 'general' });
+  const [thermal, setThermal] = useState<ThermalInput>({ thermalConductivity: '', meltingPoint: '', thermalExpansion: '', operatingTemp: '', application: 'general' });
 
   return (
     <CalcPanel<CorrosionResult, ThermalResult>
@@ -120,17 +136,25 @@ export function CorrosionThermalPanel() {
       }}
       right={{
         macro: 'thermalAnalysis',
-        buildArtifact: () => ({ data: thermal }),
+        buildArtifact: () => {
+          const data: Record<string, number | string> = {};
+          (['thermalConductivity', 'meltingPoint', 'thermalExpansion', 'operatingTemp'] as const).forEach((key) => {
+            const value = thermal[key];
+            if (typeof value === 'number' && Number.isFinite(value)) data[key] = value;
+          });
+          if (thermal.application) data.application = thermal.application;
+          return { data };
+        },
         render: (
           <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
             <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Thermometer className="h-3 w-3" />Thermal inputs</div>
             <div className="grid grid-cols-2 gap-2">
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Thermal cond. (W/mK)</span>
-                <input type="number" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={thermal.thermalConductivity} onChange={(e) => setThermal({ ...thermal, thermalConductivity: Number(e.target.value) || 0 })} /></label>
+                <input type="number" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={thermal.thermalConductivity} onChange={(e) => setThermal({ ...thermal, thermalConductivity: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Melting point (°C)</span>
-                <input type="number" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={thermal.meltingPoint} onChange={(e) => setThermal({ ...thermal, meltingPoint: Number(e.target.value) || 0 })} /></label>
+                <input type="number" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={thermal.meltingPoint} onChange={(e) => setThermal({ ...thermal, meltingPoint: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Thermal exp. (µm/m·K)</span>
-                <input type="number" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={thermal.thermalExpansion} onChange={(e) => setThermal({ ...thermal, thermalExpansion: Number(e.target.value) || 0 })} /></label>
+                <input type="number" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={thermal.thermalExpansion} onChange={(e) => setThermal({ ...thermal, thermalExpansion: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
               <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Operating temp (°C)</span>
                 <input type="number" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={thermal.operatingTemp} onChange={(e) => setThermal({ ...thermal, operatingTemp: e.target.value === '' ? '' : Number(e.target.value) })} /></label>
               <label className="block col-span-2"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Application</span>
@@ -182,16 +206,17 @@ export function CorrosionThermalPanel() {
             )}
             {thermResult && !thermalNotRecorded(thermResult) && (
               <div className="space-y-2 text-[11px]">
-                <div className={`inline-block rounded px-2 py-0.5 text-[10px] font-mono ${thermResult.thermalClass === 'excellent-conductor' ? 'bg-orange-500/20 text-orange-200' : 'bg-zinc-800 text-zinc-300'}`}>{thermResult.thermalClass}</div>
+                <div className={`inline-block rounded px-2 py-0.5 text-[10px] font-mono ${thermResult.thermalClass === 'excellent-conductor' ? 'bg-orange-500/20 text-orange-200' : 'bg-zinc-800 text-zinc-300'}`}>{thermResult.thermalClass || '—'}</div>
                 <div className={`text-[10px] ${thermalVerdict(thermResult) === 'SAFE' ? 'text-emerald-300' : thermalVerdict(thermResult) === 'AT-RISK' ? 'text-rose-300' : 'text-zinc-400'}`}>
-                  Safety margin: {marginPercentOf(thermResult)}%{thermalVerdict(thermResult) && ` — ${thermalVerdict(thermResult)}`}
+                  Safety margin: {marginPercentOf(thermResult) == null ? '—' : `${marginPercentOf(thermResult)}%`}{thermalVerdict(thermResult) ? ` — ${thermalVerdict(thermResult)}` : ''}
                 </div>
+                {thermalAbsenceLine(thermResult) && <p className="text-zinc-400">{thermalAbsenceLine(thermResult)}</p>}
                 {thermResult.suitability && (
                   <div className="grid grid-cols-2 gap-1">
                     {Object.entries(thermResult.suitability).map(([k, v]) => (
                       <div key={k} className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1">
                         <div className="text-[9px] text-zinc-400">{k}</div>
-                        <div className={`font-mono ${suitColour(v)}`}>{v}</div>
+                        <div className={`font-mono ${suitColour(v ?? undefined)}`}>{v || 'not recorded'}</div>
                       </div>
                     ))}
                   </div>
@@ -214,7 +239,7 @@ export function CorrosionThermalPanel() {
           const verdict = thermalVerdict(therm);
           const thermalLines = notRecorded
             ? `  ${notRecorded}`
-            : `  Class: ${therm.thermalClass}\n  Safety margin: ${marginPercentOf(therm)}%${verdict ? ` (${verdict})` : ''}\n  Suitability:\n${Object.entries(therm.suitability || {}).map(([k, v]) => `    ${k}: ${v}`).join('\n')}\n${(therm.warnings || []).map((w) => `  ⚠ ${w}`).join('\n')}`;
+            : `  Class: ${therm.thermalClass || 'not recorded'}\n  Safety margin: ${marginPercentOf(therm) == null ? 'not recorded' : `${marginPercentOf(therm)}%`}${verdict ? ` (${verdict})` : ''}\n  Suitability:\n${Object.entries(therm.suitability || {}).map(([k, v]) => `    ${k}: ${v || 'not recorded'}`).join('\n')}\n${(therm.warnings || []).map((w) => `  ⚠ ${w}`).join('\n')}`;
           return `Corrosion (${corrosion.name} in ${corrosion.environment}):\n  Resistance: ${cor.corrosionResistance ?? '—'}/100 (${cor.riskLevel ?? '—'})\n  Estimated life: ${cor.estimatedLifespan ?? '—'}\n${(cor.protectionMethods || []).map((r) => `  • ${r}`).join('\n')}\n\nThermal (operating ${thermal.operatingTemp === '' ? '—' : thermal.operatingTemp}°C, app=${thermal.application}):\n${thermalLines}`;
         },
         tags: () => ['materials', corrosion.category, corrosion.environment],

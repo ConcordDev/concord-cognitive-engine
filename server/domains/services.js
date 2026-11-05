@@ -384,9 +384,23 @@ export default function registerServicesActions(registerLensAction) {
       if (booking.status === "cancelled") return { ok: true, unchanged: true, result: { booking, promotedFromWaitlist: null } };
       booking.status = "cancelled";
       booking.cancelledAt = new Date().toISOString();
-      // Promote first matching waitlist entry into the freed slot.
       const wl = svcList(s.waitlist, userId);
-      const next = wl.find(w => w.status === "waiting" &&
+      // If this booking came FROM the waitlist, its entry goes back to
+      // waiting — otherwise the entry reads "booked" forever over a
+      // cancelled booking and the waitlist counters never reconcile.
+      // The reverted entry is not re-offered the slot it just lost.
+      let revertedId = null;
+      if (booking.waitlistId) {
+        const src = wl.find(w => w.id === booking.waitlistId);
+        if (src && src.status === "booked" && src.bookingId === booking.id) {
+          src.status = "waiting";
+          delete src.bookingId;
+          delete src.promotedAt;
+          revertedId = src.id;
+        }
+      }
+      // Promote first matching waitlist entry into the freed slot.
+      const next = wl.find(w => w.status === "waiting" && w.id !== revertedId &&
         (!w.service || w.service === booking.service));
       let promoted = null;
       if (next) {
@@ -414,16 +428,34 @@ export default function registerServicesActions(registerLensAction) {
         ? p.staff.map(String)
         : ["Any"];
       const booked = svcList(s.bookings, userId).filter(b => b.date === date && b.status !== "cancelled");
+      // Staff-blindness fix (F10): when shifts are recorded for the date,
+      // slots live inside shift windows — a named staff member's slots
+      // inside their own shifts; "Any" inside the union of the day's
+      // shifts. With no shifts recorded, business hours apply as before
+      // (shifts are optional planning, never a silent zero-book).
+      const shiftsToday = svcList(s.shifts, userId).filter(sh => sh.date === date && sh.status !== "cancelled");
+      const windowsFor = (staff) => {
+        if (staff === "Any") {
+          return shiftsToday.length
+            ? shiftsToday.map(sh => [sh.startMin, sh.endMin])
+            : [[openMin, closeMin]];
+        }
+        const own = shiftsToday.filter(sh => sh.staff === staff);
+        return own.length ? own.map(sh => [sh.startMin, sh.endMin]) : [[openMin, closeMin]];
+      };
       const slots = [];
       for (const staff of staffList) {
+        const windows = windowsFor(staff);
         for (let t = openMin; t + duration <= closeMin; t += 30) {
+          const inWindow = windows.some(([w0, w1]) => t >= w0 && t + duration <= w1);
+          if (!inWindow) continue;
           const clash = booked.find(b =>
             (staff === "Any" || b.staff === staff) &&
             t < b.startMin + b.duration && t + duration > b.startMin);
           if (!clash) slots.push({ staff, date, time: hhmmFromMins(t), duration });
         }
       }
-      return { ok: true, result: { date, duration, slots, count: slots.length } };
+      return { ok: true, result: { date, duration, slots, count: slots.length, shiftAware: shiftsToday.length > 0 } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -537,9 +569,9 @@ export default function registerServicesActions(registerLensAction) {
           const bk = svcList(s.bookings, userId).find(b => b.id === payment.bookingId);
           if (bk) bk.pendingPaymentId = payment.id;
         }
-        const note = process.env.STRIPE_SECRET_KEY
-          ? "Stripe is configured — for a real card charge, use services.bookingCreatePaymentIntent + bookingConfirmPayment (Stripe Elements) instead. This entry records the booking without charge; collect payment on site, or use the card-intent flow to actually charge the card."
-          : "Card processing not configured — booking recorded without charge. Configure Stripe to enable payments.";
+        const note = stripeConfigured()
+          ? "A Stripe key is present on the server, but this entry records the booking without charge — collect payment on site, or complete the card checkout to charge the card."
+          : "Card processing is not configured on the server — booking recorded without charge. Add a valid Stripe secret key to enable card payments.";
         return {
           ok: true,
           result: { authStatus: "unprovisioned", booked: true, paymentStatus: "pay_on_site", payment, note },
@@ -589,6 +621,25 @@ export default function registerServicesActions(registerLensAction) {
   // stripe_not_configured error and the paymentCapture pay-on-site path
   // above remains the fallback.
 
+  // "Configured" means a key is present AND shaped like a real Stripe
+  // secret key. A placeholder string in the env must never read as
+  // configured (the F4 claim: the note below once asserted "Stripe is
+  // configured" over a key Stripe rejects). Validity itself is proven
+  // only by Stripe — a rejection is reported as unavailability in plain
+  // language, and Stripe's raw error (which can quote key material) is
+  // never relayed to the user.
+  function stripeConfigured() {
+    const k = process.env.STRIPE_SECRET_KEY || "";
+    return /^(sk|rk)_(live|test)_[A-Za-z0-9]{4,}$/.test(k);
+  }
+  function stripeFailure(e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/401|invalid api key|unauthenticated/i.test(msg)) {
+      return "card payments are unavailable — the server's Stripe key was rejected; no charge was made";
+    }
+    return "card payments are unavailable right now; no charge was made";
+  }
+
   async function stripePostServices(path, formBody) {
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
@@ -623,7 +674,7 @@ export default function registerServicesActions(registerLensAction) {
       const s = svcStore();
       const userId = svcActor(ctx);
       const p = params || {};
-      if (!process.env.STRIPE_SECRET_KEY) {
+      if (!stripeConfigured()) {
         return { ok: false, error: "stripe_not_configured" };
       }
       const totals = calcPaymentTotals(p);
@@ -685,7 +736,7 @@ export default function registerServicesActions(registerLensAction) {
           },
         };
       } catch (e) {
-        return { ok: false, error: `stripe payment-intent creation failed: ${e instanceof Error ? e.message : String(e)}` };
+        return { ok: false, error: stripeFailure(e) };
       }
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
@@ -695,7 +746,7 @@ export default function registerServicesActions(registerLensAction) {
       const s = svcStore();
       const userId = svcActor(ctx);
       const p = params || {};
-      if (!process.env.STRIPE_SECRET_KEY) {
+      if (!stripeConfigured()) {
         return { ok: false, error: "stripe_not_configured" };
       }
       const paymentIntentId = String(p.paymentIntentId || "");
@@ -714,7 +765,7 @@ export default function registerServicesActions(registerLensAction) {
       try {
         pi = await stripeGetServices(`/payment_intents/${paymentIntentId}`);
       } catch (e) {
-        return { ok: false, error: `stripe payment-intent fetch failed: ${e instanceof Error ? e.message : String(e)}` };
+        return { ok: false, error: stripeFailure(e) };
       }
       if (pi.status !== "succeeded") {
         return { ok: false, error: `payment not succeeded (status=${pi.status}); cannot mark paid` };
@@ -768,6 +819,18 @@ export default function registerServicesActions(registerLensAction) {
       const byMethod = {};
       for (const x of captured) byMethod[x.method] = Math.round(((byMethod[x.method] || 0) + x.total) * 100) / 100;
       return { ok: true, result: { payments: list, count: list.length, gross, tips, byMethod } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("services", "paymentDelete", (ctx, artifact, params) => {
+    try {
+      const s = svcStore();
+      const userId = svcActor(ctx);
+      const list = svcList(s.payments, userId);
+      const idx = list.findIndex(x => x.id === (params || {}).id);
+      if (idx < 0) return { ok: false, error: "payment not found" };
+      const [payment] = list.splice(idx, 1);
+      return { ok: true, result: { removed: true, id: payment.id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -834,6 +897,18 @@ export default function registerServicesActions(registerLensAction) {
       const counts = { scheduled: 0, queued: 0, failed: 0 };
       for (const r of list) counts[r.status] = (counts[r.status] || 0) + 1;
       return { ok: true, result: { reminders: list, count: list.length, counts } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("services", "reminderDelete", (ctx, artifact, params) => {
+    try {
+      const s = svcStore();
+      const userId = svcActor(ctx);
+      const list = svcList(s.reminders, userId);
+      const idx = list.findIndex(r => r.id === (params || {}).id);
+      if (idx < 0) return { ok: false, error: "reminder not found" };
+      const [reminder] = list.splice(idx, 1);
+      return { ok: true, result: { removed: true, id: reminder.id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -1002,6 +1077,20 @@ export default function registerServicesActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  registerLensAction("services", "clientProfileDelete", (ctx, artifact, params) => {
+    try {
+      const s = svcStore();
+      const userId = svcActor(ctx);
+      const p = params || {};
+      const key = String(p.clientKey || p.client || "").trim().toLowerCase();
+      if (!key) return { ok: false, error: "clientKey required" };
+      const profiles = s.profiles.get(userId);
+      if (!profiles || !profiles.has(key)) return { ok: false, error: "profile not found" };
+      profiles.delete(key);
+      return { ok: true, result: { removed: true, clientKey: key } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   /* ---- 7. Recurring appointments + waitlist ----------------------- */
 
   registerLensAction("services", "recurringSeries", (ctx, artifact, params) => {
@@ -1049,6 +1138,26 @@ export default function registerServicesActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  registerLensAction("services", "recurringSeriesCancel", (ctx, artifact, params) => {
+    try {
+      const s = svcStore();
+      const userId = svcActor(ctx);
+      const seriesId = String((params || {}).seriesId || "");
+      if (!seriesId) return { ok: false, error: "seriesId required" };
+      const list = svcList(s.bookings, userId);
+      let cancelled = 0;
+      for (const b of list) {
+        if (b.seriesId === seriesId && b.status !== "cancelled" && b.status !== "completed") {
+          b.status = "cancelled";
+          b.cancelledAt = new Date().toISOString();
+          cancelled++;
+        }
+      }
+      if (cancelled === 0) return { ok: false, error: "no active bookings found for this series" };
+      return { ok: true, result: { seriesId, cancelled } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   registerLensAction("services", "waitlistAdd", (ctx, artifact, params) => {
     try {
       const s = svcStore();
@@ -1077,10 +1186,12 @@ export default function registerServicesActions(registerLensAction) {
       const s = svcStore();
       const userId = svcActor(ctx);
       const order = { high: 0, normal: 1, low: 2 };
-      const list = svcList(s.waitlist, userId).slice()
+      // Legacy tombstones (status "removed" from the old soft-delete)
+      // are not entries anymore — neither listed nor counted.
+      const list = svcList(s.waitlist, userId).filter(w => w.status !== "removed")
         .sort((a, b) => (order[a.priority] - order[b.priority]) ||
           (a.createdAt || "").localeCompare(b.createdAt || ""));
-      const counts = { waiting: 0, offered: 0, booked: 0, removed: 0 };
+      const counts = { waiting: 0, offered: 0, booked: 0 };
       for (const w of list) counts[w.status] = (counts[w.status] || 0) + 1;
       return { ok: true, result: { waitlist: list, count: list.length, counts } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
@@ -1126,11 +1237,13 @@ export default function registerServicesActions(registerLensAction) {
     try {
       const s = svcStore();
       const userId = svcActor(ctx);
-      const entry = svcList(s.waitlist, userId).find(w => w.id === (params || {}).id);
-      if (!entry) return { ok: false, error: "waitlist entry not found" };
-      entry.status = "removed";
-      entry.removedAt = new Date().toISOString();
-      return { ok: true, result: { entry } };
+      const list = svcList(s.waitlist, userId);
+      const idx = list.findIndex(w => w.id === (params || {}).id);
+      if (idx < 0) return { ok: false, error: "waitlist entry not found" };
+      // A real removal, not a tombstone: the entry leaves the list and
+      // every counter derived from it.
+      const [entry] = list.splice(idx, 1);
+      return { ok: true, result: { removed: true, id: entry.id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 };

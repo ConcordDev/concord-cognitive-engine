@@ -54,6 +54,16 @@ export function InsuranceWalletSection() {
   useEffect(() => { void refreshDash(); }, [refreshDash]);
   useEffect(() => { void refreshClients(clientQuery); }, [clientQuery, refreshClients]);
 
+  // A mutation inside any panel (a policy saved, a claim filed) changes the
+  // client directory's aggregates too — the client-list enrichment counts
+  // policies/claims per client — so the panels' change signal refreshes the
+  // directory beside the dashboard. Without this the Clients card printed
+  // the mount-time snapshot ("0 policies / 0 claims") until a reload (F2).
+  const handleDataChange = useCallback(() => {
+    void refreshDash();
+    void refreshClients();
+  }, [refreshDash, refreshClients]);
+
   const handleClientCreated = useCallback((client: ClientRecord) => {
     setClients((prev) => (prev.some((c) => c.id === client.id) ? prev : [...prev, client]));
   }, []);
@@ -95,12 +105,12 @@ export function InsuranceWalletSection() {
 
       <div className="p-4">
         {tab === 'policies' && (
-          <InsurancePoliciesPanel onChange={refreshDash} clients={clients} onClientCreated={handleClientCreated} />
+          <InsurancePoliciesPanel onChange={handleDataChange} clients={clients} onClientCreated={handleClientCreated} />
         )}
         {tab === 'claims' && (
-          <InsuranceClaimsPanel onChange={refreshDash} clients={clients} onClientCreated={handleClientCreated} />
+          <InsuranceClaimsPanel onChange={handleDataChange} clients={clients} onClientCreated={handleClientCreated} />
         )}
-        {tab === 'vault' && <InsuranceVaultPanel onChange={refreshDash} />}
+        {tab === 'vault' && <InsuranceVaultPanel onChange={handleDataChange} />}
         {tab === 'clients' && (
           <InsuranceClientsPanel
             clients={clients}

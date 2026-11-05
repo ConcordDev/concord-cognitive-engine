@@ -40,17 +40,30 @@ interface PremiumHistoryResult { history?: PremiumHistoryEntry[]; averageChangeP
 
 interface Policy { type: string; premium: number; expiryDate: string; policyNumber: string; holder?: string; commissionRate?: number; tier?: string }
 
+// The one parser contract for every book tool (F3, priced once): a book is
+// an array of policies, or an object with a policies array and an optional
+// claims array. Anything else is refused as invalid — the tools no longer
+// run over an unvalidated shape and silently compute on garbage.
 function makePolicies(jsonText: string): { policies: Policy[]; claims: { status: string; amount: number }[] } | null {
   try {
     const parsed = JSON.parse(jsonText);
     if (Array.isArray(parsed)) return { policies: parsed as Policy[], claims: [] };
-    return parsed;
+    if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { policies?: unknown }).policies)) {
+      const book = parsed as { policies: Policy[]; claims?: unknown };
+      return { policies: book.policies, claims: Array.isArray(book.claims) ? (book.claims as { status: string; amount: number }[]) : [] };
+    }
+    return null;
   } catch { return null; }
 }
 
-// No seeded book — paste real policies/claims JSON.
+// The sample book ships as the field's VALUE, not only its placeholder —
+// the panel's own example must run unedited (loss ratio 266.67% and
+// commission $144 on this book), where a placeholder-only sample left the
+// state empty and every tool answered "Invalid book JSON." (F3).
+const SAMPLE_BOOK = '{"policies":[{"type":"auto","premium":1200,"expiryDate":"2026-08-01","policyNumber":"POL-1","commissionRate":12,"tier":"standard"}],"claims":[{"status":"paid","amount":3200,"dateOfLoss":"2026-05-01"}]}';
+
 export function InsuranceActionPanel() {
-  const [bookText, setBookText] = useState('');
+  const [bookText, setBookText] = useState(SAMPLE_BOOK);
   const [riskTitle, setRiskTitle] = useState('');
   const [probability, setProbability] = useState('');
   const [impact, setImpact] = useState('');
@@ -218,7 +231,7 @@ export function InsuranceActionPanel() {
         <div className="md:col-span-2">
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Book (JSON · policies + claims)</label>
           <textarea value={bookText} onChange={(e) => setBookText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono mt-1"
-            placeholder={'{"policies":[{"type":"auto","premium":1200,"expiryDate":"2026-08-01","policyNumber":"POL-1","commissionRate":12,"tier":"standard"}],"claims":[{"status":"paid","amount":3200,"dateOfLoss":"2026-05-01"}]}'} />
+            placeholder="Book JSON — an array of policies, or { policies: [...], claims: [...] } (a sample book is prefilled; replace it with your own)" />
         </div>
         <div className="space-y-2">
           <input type="text" value={riskTitle} onChange={(e) => setRiskTitle(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Risk title" />

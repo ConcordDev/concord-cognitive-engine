@@ -772,6 +772,11 @@ async function commitFeedDTU(item, feedSource) {
     title: (item.title || "Untitled Feed Item").slice(0, 200),
     tier: "regular",
     scope: "global", // Feed DTUs are public data, always global scope
+    // Feed content belongs to no user: system-owned and public, so it lists
+    // in the shared feed and never reads as a member's private DTU.
+    ownerId: "system",
+    visibility: "public",
+    creatorType: "feed_ingestion",
     tags: uniqueTags,
     source: attribution, // Universal source attribution object
     core: {
