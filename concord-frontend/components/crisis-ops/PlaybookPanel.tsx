@@ -29,7 +29,7 @@ export function PlaybookPanel({
   crisisId,
   crisisType,
 }: {
-  crisisId: string;
+  crisisId?: string;
   crisisType: string;
 }) {
   const [pb, setPb] = useState<PlaybookResult | null>(null);
@@ -46,6 +46,7 @@ export function PlaybookPanel({
   useEffect(() => { load(); }, [load]);
 
   const toggle = useCallback(async (step: Step) => {
+    if (!crisisId) return; // progress is per-crisis; the library view is read-only
     setBusy(step.id);
     const r = await lensRun('crisis', 'playbook_step', {
       crisisId, stepId: step.id, done: !step.done,
@@ -85,10 +86,17 @@ export function PlaybookPanel({
         </div>
       )}
 
+      {!crisisId && !loading && pb && (
+        <p className="text-[11px] text-zinc-500">
+          Read-only in the library — step tracking attaches to a crisis. Select or declare one and its playbook opens in the command deck, checkable step by step.
+        </p>
+      )}
+
       {!loading && pb && (
         <ul className="space-y-1.5">
           {pb.steps.map((s) => (
             <li key={s.id}>
+              {crisisId ? (
               <button
                 type="button"
                 disabled={busy === s.id}
@@ -107,6 +115,15 @@ export function PlaybookPanel({
                   {s.label}
                 </span>
               </button>
+              ) : (
+              <div className="flex w-full items-start gap-2 rounded-lg border border-white/10 bg-white/5 p-2.5 text-left text-sm text-zinc-200">
+                <Square className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+                <span>
+                  <span className="mr-1.5 font-mono text-[10px] opacity-50">{s.order}.</span>
+                  {s.label}
+                </span>
+              </div>
+              )}
             </li>
           ))}
         </ul>

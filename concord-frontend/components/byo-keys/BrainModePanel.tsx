@@ -47,7 +47,12 @@ interface Props {
 }
 
 export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
-  const [mode, setMode] = useState<BrainMode>('private');
+  // null = not known yet (still loading, or the read failed). This used to
+  // default to 'private', so a slow/failed read rendered "Private" for an
+  // account that was really High Power — and choose('private') then
+  // no-op'd because it already believed Private was active, so the user's
+  // tap never reached set_brain_mode.
+  const [mode, setMode] = useState<BrainMode | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,8 +72,8 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
       if (typeof r.data.result.highPowerAllowed === 'boolean') setHighPowerAllowed(r.data.result.highPowerAllowed);
       onModeChange?.(r.data.result.brainMode);
       setError(null);
-    } else if (r.data && r.data.ok === false) {
-      setError(String(r.data.error || 'failed to load brain mode'));
+    } else {
+      setError(String(r.data?.error || 'failed to load brain mode'));
     }
     setLoaded(true);
     // onModeChange intentionally excluded from deps -- parents that pass
@@ -77,6 +82,22 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // The mode is account-wide, so a change made on another device or tab
+  // (Settings on the laptop, chat pill on the phone) must show up here
+  // too — re-read when this tab regains focus instead of trusting the
+  // value fetched at mount.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onFocus = () => { void refresh(); };
+    const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [refresh]);
 
   const commit = async (next: BrainMode) => {
     setBusy(true);
@@ -92,7 +113,10 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
   };
 
   const choose = (next: BrainMode) => {
-    if (next === mode || busy) return;
+    // Only skip when the server-confirmed mode already matches. With an
+    // unknown mode, choosing Private always writes (Private is the safe,
+    // idempotent choice).
+    if (busy || next === mode) return;
     if (next === 'high_power' && !highPowerAllowed) return;
     if (next === 'high_power') {
       setConfirmHighPower(true);
@@ -107,10 +131,14 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
   };
 
   const isPrivate = mode === 'private';
+  const isHighPower = mode === 'high_power';
 
   if (compact) {
+    // Unknown mode: the pill offers Private (a tap writes it) rather than
+    // pretending the account is already Private.
     const next: BrainMode = isPrivate ? 'high_power' : 'private';
     const canToggle = next === 'private' || highPowerAllowed;
+    const label = isPrivate ? 'Private' : isHighPower ? 'High Power' : 'Mode?';
     return (
       <div className="relative">
         <button
@@ -118,19 +146,27 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
           data-testid="brain-mode-panel"
           onClick={() => canToggle && choose(next)}
           disabled={busy || !canToggle}
+          data-mode={mode || 'unknown'}
+          aria-label={`Brain mode: ${label}`}
           title={
             isPrivate
               ? 'Private — every response from Concord’s own brains; nothing leaves. Tap to switch to High Power.'
-              : 'High Power — messages may go to Google/Mistral/Groq. Tap to switch back to Private.'
+              : isHighPower
+              ? 'High Power — messages may go to Google/Mistral/Groq. Tap to switch back to Private.'
+              : 'Brain mode could not be read. Tap to set Private.'
           }
           className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-sm font-medium transition-colors disabled:opacity-60 ${
             isPrivate
               ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:border-emerald-500/70'
-              : 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-500/70'
+              : isHighPower
+              ? 'border-amber-500/40 bg-amber-500/10 text-amber-300 hover:border-amber-500/70'
+              : 'border-zinc-600 bg-zinc-800/60 text-zinc-300 hover:border-zinc-400'
           }`}
         >
-          {isPrivate ? <ShieldCheck className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-          <span className="hidden sm:inline">{isPrivate ? 'Private' : 'High Power'}</span>
+          {isHighPower ? <Zap className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+          {/* Always visible — on phones this used to be icon-only, so a
+              High Power account never saw the words "High Power". */}
+          <span data-testid="brain-mode-pill-label" className="text-xs sm:text-sm">{label}</span>
         </button>
         {confirmHighPower && (
           <div
@@ -177,10 +213,10 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
           <span
             data-testid="brain-mode-current"
             className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-              isPrivate ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'
+              isPrivate ? 'bg-emerald-500/15 text-emerald-300' : isHighPower ? 'bg-amber-500/15 text-amber-300' : 'bg-zinc-700/40 text-zinc-300'
             }`}
           >
-            {isPrivate ? 'PRIVATE' : 'HIGH POWER'}
+            {isPrivate ? 'PRIVATE' : isHighPower ? 'HIGH POWER' : 'UNKNOWN'}
           </span>
         )}
       </div>
@@ -222,17 +258,17 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
           type="button"
           onClick={() => choose('high_power')}
           disabled={busy || !highPowerAllowed}
-          aria-pressed={!isPrivate}
+          aria-pressed={isHighPower}
           data-testid="brain-mode-select-high-power"
           className={`text-left rounded-lg border p-3 transition-all disabled:opacity-60 ${
-            !isPrivate
+            isHighPower
               ? 'border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/30'
               : 'border-zinc-800 bg-zinc-950 hover:border-amber-500/30'
           }`}
         >
           <div className="flex items-center justify-between mb-1.5">
             <Zap className="w-4 h-4 text-amber-400" />
-            {!isPrivate && (
+            {isHighPower && (
               <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wide text-amber-400">
                 <Check className="w-3 h-3" /> Active
               </span>
@@ -286,7 +322,7 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
         </div>
       )}
 
-      {!isPrivate && (
+      {isHighPower && (
         <p className="mt-3 text-[11px] text-amber-400/80">
           The 5 slot cards below are consulted first — your own BYO key for a slot always takes priority
           over the platform-funded fallback.

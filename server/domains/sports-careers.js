@@ -3,7 +3,7 @@
 // Phase II Wave 17 — sports careers + leagues domain macros.
 
 import {
-  openLeague, addTeam, addRosterMember, listTeamsInLeague,
+  openLeague, addTeam, addRosterMember, listTeamsInLeague, listLeagues,
   ensureCareer, requestTryout,
   scheduleMatch, playMatch, tickLeagues,
   advanceCareerStage, recordMatchOutcome, retireCareer,
@@ -33,6 +33,12 @@ export default function registerSportsMacros(register) {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     return { ok: true, teams: listTeamsInLeague(db, String(input?.leagueId || "")) };
+  });
+
+  register("sports_careers", "leagues", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    return { ok: true, leagues: listLeagues(db, String(input?.worldId || "concordia-hub")) };
   });
 
   register("sports_careers", "request_tryout", async (ctx, input = {}) => {
