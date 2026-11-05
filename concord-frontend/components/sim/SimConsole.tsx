@@ -248,6 +248,21 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+// useLensData's `create()` resolves the raw POST /api/lens/:domain response
+// body — `{ ok, artifact }` — not the artifact itself. Reading `.id` straight
+// off that envelope is always undefined (the real id lives one level deeper,
+// at `.artifact.id`), so any caller that skips this unwrap silently falls
+// back to a client-only id that was never persisted server-side; every
+// following update against it 404s "not found" (F3). Exported for direct
+// unit coverage of the extraction logic.
+export function extractRunArtifactId(
+  created: unknown,
+  fallbackId: string,
+): string {
+  const id = (created as { artifact?: { id?: string } } | undefined)?.artifact?.id;
+  return id || fallbackId;
+}
+
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
@@ -697,12 +712,12 @@ export function SimConsole() {
       errorCount: 0,
       iterations,
     };
-    const artifact = await createRunArtifact({
+    const created = await createRunArtifact({
       title: `Run: ${scenario.name}`,
       data: newRun as unknown as Partial<SimRun>,
       meta: { tags: ['run', scenario.modelType], status: 'running' },
     });
-    const artifactId = artifact?.id || runId;
+    const artifactId = extractRunArtifactId(created, runId);
     setActiveTab('runs');
 
     try {
