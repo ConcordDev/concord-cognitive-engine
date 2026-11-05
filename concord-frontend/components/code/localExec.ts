@@ -34,6 +34,53 @@ export function isPythonLanguage(language: string | null | undefined): boolean {
   return PYTHON_LANGUAGES.has(String(language || '').trim().toLowerCase());
 }
 
+/** The languages a member can pick for a tab — exactly the locally runnable set. */
+export const RUNNABLE_LANGUAGE_OPTIONS: { id: string; label: string }[] = [
+  { id: 'javascript', label: 'JavaScript' },
+  { id: 'typescript', label: 'TypeScript' },
+  { id: 'python', label: 'Python' },
+];
+
+const FILENAME_LANGUAGES: Record<string, string> = {
+  py: 'python',
+  js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript',
+  ts: 'typescript', tsx: 'typescript', mts: 'typescript', cts: 'typescript',
+};
+
+/** The language a filename's extension names, or null when it names none. */
+export function languageForFilename(name: string | null | undefined): string | null {
+  const m = /\.([A-Za-z0-9]+)$/.exec(String(name || '').trim());
+  if (!m) return null;
+  return FILENAME_LANGUAGES[m[1].toLowerCase()] ?? null;
+}
+
+/**
+ * The language a tab actually runs as (F1-Python, PR #1707 re-review).
+ *
+ * Until this resolver existed, every creation/open default in the chain was
+ * 'javascript' and no surface could set anything else — so a file NAMED .py
+ * ran as JavaScript and wore a JS error. The rules, in order:
+ *  1. A language the member explicitly chose (the toolbar selector, persisted
+ *     as languageChosen) always wins.
+ *  2. A stored NON-default language wins — it could only have been set
+ *     deliberately (API/snippet creation carries an explicit language).
+ *  3. A stored chain default (absent / 'javascript' / 'plaintext' / 'text')
+ *     yields to the filename's extension — those stored values are defaults
+ *     the old chain stamped, never choices.
+ *  4. Otherwise the stored/default value, normalised.
+ */
+export function resolveTabLanguage(
+  name: string | null | undefined,
+  stored: string | null | undefined,
+  languageChosen?: boolean,
+): string {
+  const s = String(stored || '').trim().toLowerCase();
+  if (languageChosen && s) return s;
+  const CHAIN_DEFAULTS = new Set(['', 'javascript', 'plaintext', 'text']);
+  if (!CHAIN_DEFAULTS.has(s)) return s;
+  return languageForFilename(name) ?? (s || 'javascript');
+}
+
 /** Languages this build can actually run locally. Exactly the advertised set. */
 export function isLocallyRunnable(language: string | null | undefined): boolean {
   const lang = String(language || '').trim().toLowerCase();
