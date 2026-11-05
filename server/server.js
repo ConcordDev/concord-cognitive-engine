@@ -2094,7 +2094,7 @@ import {
 } from "./plugins/loader.js";
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
 import { configureWriteSpill, waitForWriteQuiet, replaySpill, spilledIsNewer, spillStats } from "./lib/shutdown-write-gate.js";
-import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus } from "./lib/dtu-ownership.js";
+import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus, founderSeedCustody, stampFounderSeed } from "./lib/dtu-ownership.js";
 import { dtuReadDenial, credibilityAdminDenial, collabParticipantDenial } from "./lib/dtu-macro-guards.js";
 import { exportableDtus, exportBulkDenial } from "./lib/export-filter.js";
 import { dtuImportDecision, importAuthDenial, stampImportedDtu } from "./lib/dtu-import-guard.js";
@@ -14532,6 +14532,14 @@ function auditSeedLineage() {
 
 async function seedIfEmpty() {
   if (STATE.dtus.size > 0) return { ok:true, seeded:false, reason:"already_has_dtus" };
+  // Founder seed content is private to the founder account. With no
+  // FOUNDER_USER_ID there is no owner to give it to, so nothing is seeded
+  // (never a shared global/public fallback).
+  const seedCustody = founderSeedCustody();
+  if (!seedCustody) {
+    structuredLog("warn", "seed_skipped_no_founder", { reason: "FOUNDER_USER_ID is not set" });
+    return { ok:false, seeded:false, reason:"founder_user_id_unset" };
+  }
   const seeds = await tryLoadSeedDTUs();
   if (!seeds.length) return { ok:false, seeded:false, error: SEED_INFO.error || "no seeds" };
 
@@ -14539,6 +14547,7 @@ async function seedIfEmpty() {
   // Instead of basic toOptionADTU() conversion, run the full ingestion pipeline
   // which normalizes, hashes, scores, tiers, scopes, tags, and generates edges.
   const ingestionResult = runBootstrapIngestion(STATE, seeds, {
+    seedCustody,
     log: (type, msg, meta) => {
       structuredLog("info", `bootstrap.${type}`, { message: msg, ...meta });
     },
@@ -14557,7 +14566,7 @@ async function seedIfEmpty() {
       ok: true,
       seeded: true,
       count: ingestionResult.stats.registered,
-      scope: "global",
+      scope: seedCustody.scope,
       ingestion: ingestionResult.stats,
     };
   }
@@ -14569,14 +14578,14 @@ async function seedIfEmpty() {
   });
   let n=0;
   for (const s of seeds) {
-    s.scope = "global";
-    const d = toOptionADTU(s);
+    const d = stampFounderSeed(toOptionADTU(s), seedCustody);
+    d.tier = "regular";
     STATE.dtus.set(d.id, d);
     n++;
   }
   saveStateDebounced();
-  log("seed", "Seeded DTUs via fallback path into Global scope", { count:n, scope:"global" });
-  return { ok:true, seeded:true, count:n, scope:"global", fallback:true };
+  log("seed", "Seeded DTUs via fallback path as founder-private content", { count:n, scope:seedCustody.scope });
+  return { ok:true, seeded:true, count:n, scope:seedCustody.scope, fallback:true };
 }
 await seedIfEmpty();
 seedGenesisRealityAnchor();
