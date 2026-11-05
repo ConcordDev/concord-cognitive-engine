@@ -337,3 +337,37 @@ describe("education lens — generateReportCard (cumulative GPA + honor roll)", 
     assert.equal(math.credits, 3);
   });
 });
+
+describe("education lens — bench-last (grade and progress survive a remount)", () => {
+  it("stores the computed grade and progress for the account, and a later failure does not erase them", () => {
+    globalThis._concordSTATE = { educationLens: {} };
+    const grade = call("gradeCalculation", ctxA, wrap({
+      students: [{ studentId: "s1", name: "Alice", grades: [{ category: "hw", score: 90, maxScore: 100 }] }],
+      weightScheme: [{ category: "hw", weight: 100 }],
+    }));
+    assert.equal(grade.result.classStats.average, 90);
+    const bad = call("gradeCalculation", ctxA, wrap({ students: 123 }));
+    assert.equal(bad.ok, false);
+    const prog = call("progressTrack", ctxA, wrap({
+      requirements: [{ requirementId: "r1", name: "Core", requiredUnits: 10 }],
+      completions: [{ requirementId: "r1", completedUnits: 4 }],
+    }));
+    assert.equal(prog.result.overallCompletionPct, 40);
+    const noted = call("bench-note-mint", ctxA, { dtuId: "dtu_class" });
+    assert.equal(noted.ok, true);
+    const blank = call("bench-note-mint", ctxA, { dtuId: "  " });
+    assert.equal(blank.ok, false);
+    const last = call("bench-last", ctxA, {});
+    assert.equal(last.ok, true);
+    assert.equal(last.result.grade.classStats.average, 90);
+    assert.equal(last.result.grade.students[0].letterGrade, "A-");
+    assert.equal(last.result.prog.overallCompletionPct, 40);
+    assert.equal(last.result.prog.completedRequirements, 0);
+    assert.equal(last.result.prog.remainingRequirements, 1);
+    assert.equal(last.result.mintedDtuId, "dtu_class");
+    const other = call("bench-last", { actor: { userId: "user_b" }, userId: "user_b" }, {});
+    assert.equal(other.result.grade, null);
+    assert.equal(other.result.prog, null);
+    assert.equal(other.result.mintedDtuId, null);
+  });
+});
