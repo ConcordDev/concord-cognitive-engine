@@ -102,3 +102,37 @@ describe("registerResearchLiveMacros", () => {
     assert.ok(keys.length >= 7, `expected ≥7 categories, got ${keys.length}`);
   });
 });
+
+describe("live_arxiv empty-feed honesty (F13)", () => {
+  const macros = new Map();
+  registerResearchLiveMacros((domain, name, fn) => macros.set(`${domain}.${name}`, fn));
+  const EMPTY_FEED = `<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom"></feed>`;
+  const realFetch = globalThis.fetch;
+
+  it("a category feed returning zero papers is a FAILED fetch, not a successful empty feed", async () => {
+    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => EMPTY_FEED });
+    try {
+      const r = await macros.get("ml.live_arxiv")({}, {});
+      assert.equal(r.ok, false);
+      assert.equal(r.reason, "arxiv_empty_feed");
+    } finally { globalThis.fetch = realFetch; }
+  });
+
+  it("a queried search may honestly return zero", async () => {
+    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => EMPTY_FEED });
+    try {
+      const r = await macros.get("ml.live_arxiv")({}, { query: "zzzznonsense" });
+      assert.equal(r.ok, true);
+      assert.equal(r.total, 0);
+    } finally { globalThis.fetch = realFetch; }
+  });
+
+  it("a populated feed still returns its papers", async () => {
+    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => MINIMAL_FEED });
+    try {
+      const r = await macros.get("ml.live_arxiv")({}, {});
+      assert.equal(r.ok, true);
+      assert.equal(r.papers.length, 2);
+    } finally { globalThis.fetch = realFetch; }
+  });
+});

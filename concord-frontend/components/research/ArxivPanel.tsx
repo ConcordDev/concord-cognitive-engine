@@ -91,7 +91,16 @@ export function ArxivPanel({ domain, title, limit = 15, className }: ArxivPanelP
           {title || `arXiv · ${domain}`}
           {category && <span className="ml-2 text-[10px] font-mono text-zinc-400">cat:{category}</span>}
         </h3>
-        <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
+        {/* The badge states the feed's actual condition: REAL data only
+            when papers are in hand; a failed or empty feed says so
+            instead of wearing the badge over nothing (F13). */}
+        {error ? (
+          <span className="text-[10px] text-rose-400 font-mono">feed unavailable</span>
+        ) : papers.length > 0 ? (
+          <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
+        ) : (
+          <span className="text-[10px] text-zinc-500 font-mono">{loading ? 'loading…' : 'no papers'}</span>
+        )}
         <button
           type="button"
           onClick={() => void fetchData(query.trim() || undefined)}

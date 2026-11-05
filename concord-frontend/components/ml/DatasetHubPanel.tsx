@@ -57,6 +57,18 @@ export function DatasetHubPanel() {
     setLoading(false);
   }, []);
 
+  // S-ML-4 (F7/F8): datasets can be deleted — with a confirmation, in
+  // the panel's own two-step form (no native dialogs). First click
+  // arms, second deletes; deleting also settles the list in place.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const deleteDataset = async (ds: MyDataset) => {
+    if (confirmDeleteId !== ds.id) { setConfirmDeleteId(ds.id); return; }
+    setConfirmDeleteId(null);
+    const r = await lensRun('ml', 'dataset-delete', { datasetId: ds.id });
+    if (r.data?.ok) setMine(prev => prev.filter(d => d.id !== ds.id));
+    else setError(r.data?.error || 'Failed to delete dataset');
+  };
+
   useEffect(() => { if (mode === 'hub') loadHub(); else loadMine(); }, [mode, loadHub, loadMine]);
 
   return (
@@ -164,6 +176,14 @@ export function DatasetHubPanel() {
                     <span>Train {Math.round(ds.splits.train * 100)}%</span>
                     <span>Val {Math.round(ds.splits.val * 100)}%</span>
                     <span>Test {Math.round(ds.splits.test * 100)}%</span>
+                  </div>
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      onClick={() => deleteDataset(ds)}
+                      className={`text-xs px-2 py-1 rounded ${confirmDeleteId === ds.id ? 'bg-red-500/20 text-red-300' : 'text-gray-400 hover:text-red-300'}`}
+                    >
+                      {confirmDeleteId === ds.id ? `Delete “${ds.name}”? Click again to confirm` : 'Delete'}
+                    </button>
                   </div>
                 </div>
               );
