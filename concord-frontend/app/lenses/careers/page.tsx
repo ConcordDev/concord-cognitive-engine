@@ -51,14 +51,27 @@ import { useUIStore } from '@/store/ui';
 import { EmployerBrowser } from '@/components/careers/EmployerBrowser';
 import { ReputationGate, type ReputationInfo } from '@/components/careers/ReputationGate';
 import { CareerLadderPath } from '@/components/careers/CareerLadderPath';
+import { SportsCareerPanel } from '@/components/careers/SportsCareerPanel';
 
 interface Track { id: string; category: string; activity: string; branch: string[] }
 interface CareerProgress { tier: number; xp: number; highestTier: number; shifts: number }
 interface WorkResult {
   ok: boolean; trackId?: string; tier?: number; performanceScore?: number; wage?: number; xp?: number; paid?: boolean; reason?: string;
   progress?: CareerProgress; promotion?: { tier: number; title: string } | null; nextTierXp?: number | null;
-  retryAt?: number;
+  retryAt?: number; cooldownSeconds?: number; retryAfterSeconds?: number; sparksBalance?: number;
 }
+// careers.progress — the per-track record plus the account-wide shift rule
+// and the sparks balance, stated by the server (never hard-coded here).
+interface ProgressResult {
+  ok: boolean; progress?: CareerProgress;
+  sparksBalance?: number; cooldownSeconds?: number; nextShiftAt?: number | null;
+}
+
+const formatCooldown = (seconds: number): string => {
+  if (seconds % 3600 === 0) return `${seconds / 3600} hour${seconds === 3600 ? '' : 's'}`;
+  if (seconds % 60 === 0) return `${seconds / 60} minutes`;
+  return `${seconds} seconds`;
+};
 // server/lib/professions.js#tierInfo — one rung of a track's 10-tier ladder.
 interface TierInfo {
   tier: number; title: string; skillGate: number; wageBase: number;
@@ -97,6 +110,9 @@ export default function CareersLens() {
   const [ladder, setLadder] = useState<TierInfo[]>([]);
   const [ladderLoading, setLadderLoading] = useState(false);
   const [reputation, setReputation] = useState<ReputationInfo | null>(null);
+  const [sparksBalance, setSparksBalance] = useState<number | null>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
+  const [nextShiftAt, setNextShiftAt] = useState<number | null>(null);
   const addToast = useUIStore((s) => s.addToast);
 
   const refresh = useCallback(async () => {
@@ -136,8 +152,13 @@ export default function CareersLens() {
 
   const loadProgress = useCallback(async (trackId: string) => {
     try {
-      const r = (await lensRun<{ ok: boolean; progress?: CareerProgress }>('careers', 'progress', { trackId })).data.result;
+      const r = (await lensRun<ProgressResult>('careers', 'progress', { trackId })).data.result;
       setProgress(r?.ok && r.progress ? r.progress : null);
+      if (r?.ok) {
+        setSparksBalance(typeof r.sparksBalance === 'number' ? r.sparksBalance : null);
+        setCooldownSeconds(typeof r.cooldownSeconds === 'number' ? r.cooldownSeconds : null);
+        setNextShiftAt(typeof r.nextShiftAt === 'number' ? r.nextShiftAt : null);
+      }
     } catch { setProgress(null); }
   }, []);
   useEffect(() => { if (state === 'ready' && selected) void Promise.resolve().then(() => loadProgress(selected)); }, [state, selected, loadProgress]);
@@ -159,6 +180,8 @@ export default function CareersLens() {
       setLast(r);
       if (r?.ok) {
         if (r.progress) setProgress(r.progress);
+        if (typeof r.sparksBalance === 'number') setSparksBalance(r.sparksBalance);
+        void loadProgress(selected);
         setNote(`Worked a ${selected} shift — earned ${r.wage} sparks (+${r.xp} XP).`);
         addToast({ type: 'success', message: `Shift complete — earned ${r.wage} sparks (+${r.xp} XP).`, duration: 2500 });
         if (r.promotion) addToast({ type: 'success', message: `Promoted to tier ${r.promotion.tier}: ${r.promotion.title}`, duration: 4000 });
@@ -168,20 +191,27 @@ export default function CareersLens() {
           setContracts(c?.contracts || []);
         } catch { /* non-fatal */ }
       } else if (r?.reason === 'shift_cooldown' && r.retryAt) {
+        // A designed wait, worded as one — with the rule's own numbers:
+        // the opening time and how long the wait is.
         const at = new Date(r.retryAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-        setNote(`You've already worked a paid shift. Next one opens at ${at}.`);
+        const wait = typeof r.retryAfterSeconds === 'number'
+          ? ` — about ${Math.max(1, Math.round(r.retryAfterSeconds / 60))} minute${Math.round(r.retryAfterSeconds / 60) === 1 ? '' : 's'} from now`
+          : '';
+        setNote(`One paid shift per ${typeof r.cooldownSeconds === 'number' ? formatCooldown(r.cooldownSeconds) : 'cooldown'} across all tracks. Next one opens at ${at}${wait}.`);
         addToast({ type: 'info', message: `Next paid shift opens at ${at}.` });
+        setNextShiftAt(r.retryAt);
+        if (typeof r.cooldownSeconds === 'number') setCooldownSeconds(r.cooldownSeconds);
       } else {
-        setNote(`Couldn't work: ${r?.reason || 'failed'}`);
-        addToast({ type: 'error', message: `Shift could not be worked: ${r?.reason || 'failed'}.` });
+        setNote(`Couldn't work: ${r?.reason || 'the shift did not go through'}`);
+        addToast({ type: 'error', message: `Shift could not be worked: ${r?.reason || 'the shift did not go through'}.` });
       }
     } catch {
-      setNote('Shift failed.');
-      addToast({ type: 'error', message: 'Shift request failed — please try again.' });
+      setNote('The shift request did not go through.');
+      addToast({ type: 'error', message: 'Shift request did not go through — please try again.' });
     } finally {
       setWorking(false);
     }
-  }, [selected, addToast]);
+  }, [selected, addToast, loadProgress]);
 
   const onShiftButton = useCallback(() => {
     if (working) return;
@@ -232,7 +262,7 @@ export default function CareersLens() {
     <NorthStarFrame
       lensId="careers"
       crumb="Careers"
-      subtitle="Jobs and sports run on one engine: play a shift, climb a ten-tier ladder, and negotiate contracts with real employers."
+      subtitle="Jobs and sports run on one engine: play a shift, climb a ten-tier ladder, and negotiate contracts with employers across the world."
       actions={
         <button onClick={() => void refresh()} className="rounded-full border border-white/10 p-2 text-zinc-400 transition-colors hover:text-white" aria-label="Refresh careers" title="Refresh">
           <RefreshCw className="w-4 h-4" aria-hidden="true" />
@@ -308,6 +338,16 @@ export default function CareersLens() {
                   ? 'Stop the marker inside the shaded zone. Closer to the centre is a better shift.'
                   : 'Start a shift, then stop the marker in the centre. Accuracy is your shift skill.'}
               </p>
+              <p className="mt-1 text-[11px] text-gray-500">
+                {sparksBalance !== null && (
+                  <>Balance: <span className="text-amber-200 tabular-nums">{sparksBalance} sparks</span>{cooldownSeconds !== null ? ' · ' : ''}</>
+                )}
+                {cooldownSeconds !== null && (cooldownSeconds > 0
+                  ? (nextShiftAt && nextShiftAt > Date.now()
+                    ? <>One paid shift per {formatCooldown(cooldownSeconds)} across all tracks · next opens {new Date(nextShiftAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.</>
+                    : <>One paid shift per {formatCooldown(cooldownSeconds)} across all tracks.</>)
+                  : 'Paid shifts are not rate-limited on this server.')}
+              </p>
             </div>
             {last?.ok && (
               <p className="mt-2 text-xs text-gray-300">
@@ -343,20 +383,28 @@ export default function CareersLens() {
                         <span className="text-gray-100 truncate">{t.title}</span>
                         {t.isBranchPoint && <GitBranch className="w-3 h-3 text-sky-300 shrink-0" aria-label="Branch point" />}
                         {t.isMastery && <Star className="w-3 h-3 text-amber-300 shrink-0" aria-label="Mastery tier" />}
-                        {gated && <Lock className="w-3 h-3 text-red-400 shrink-0" aria-label={`Gated by reputation — requires more than ${reputation?.reputation} reputation`} />}
+                        {gated && <Lock className="w-3 h-3 text-red-400 shrink-0" aria-label={`Contract-gated by reputation — your contracts reach tier ${reputation?.gateTier}`} />}
                       </span>
                       <span className="text-gray-400 shrink-0 tabular-nums">gate {t.skillGate} · {t.wageBase} sparks/shift</span>
                     </li>
                   );
                 })}
               </ol>
+              <p className="mt-2 text-[11px] text-gray-500">
+                Two different rules, kept apart: climbing this ladder is promotion, earned with XP (the gate column).
+                The lock marks <span className="text-gray-400">contract</span> hireability, which runs on reputation —
+                your reach and its next rung are in My reputation below.
+              </p>
               </>
             )}
           </section>
 
           {/* Reputation (checklist item 7) + Employer discovery (checklist item 6) */}
           <ReputationGate trackId={selected} onLoaded={setReputation} />
-          <EmployerBrowser trackId={selected} onContractProposed={() => void refreshContracts()} />
+          <EmployerBrowser trackId={selected} gateTier={reputation?.gateTier ?? null} onContractProposed={() => void refreshContracts()} />
+
+          {/* Sports — the sports_careers domain, surfaced in this lens */}
+          <SportsCareerPanel />
 
           {/* Taxonomy */}
           <section className="rounded-2xl border border-white/10 bg-[#111] p-4" aria-label="Professions">

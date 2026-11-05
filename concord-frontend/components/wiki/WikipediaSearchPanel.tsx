@@ -10,7 +10,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Globe2, RefreshCw, AlertTriangle, ExternalLink, Search } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface WikiResult {
@@ -23,12 +23,17 @@ interface WikiResult {
   lang: string;
 }
 
-async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
+async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<{ data: T | null; error: string | null }> {
   try {
-    const r = await api.post('/api/lens/run', { domain, name, input });
-    return r?.data as T;
+    const r = await lensRun({ domain, name, input });
+    // Go through lensRun like the sibling research panels: it unwraps
+    // the { ok, result } envelope, so the handler's return value rides
+    // at data.result and a refusal's reason at data.error. Posting raw
+    // and reading the handler's fields (results) off the envelope
+    // rendered every successful search as "No Wikipedia matches."
+    return { data: (r?.data?.result ?? null) as T | null, error: r?.data?.error ?? null };
   } catch {
-    return null;
+    return { data: null, error: null };
   }
 }
 
@@ -53,13 +58,13 @@ export function WikipediaSearchPanel({ domain, title, initialQuery = '', classNa
     }
     setLoading(true);
     setError(null);
-    const r = await runMacro<{ ok: boolean; results?: WikiResult[]; fetchedAt?: number; reason?: string }>(
+    const { data: r, error: runError } = await runMacro<{ ok: boolean; results?: WikiResult[]; fetchedAt?: number; reason?: string }>(
       domain, 'live_wiki_search', { query: q, limit: 10 },
     );
     if (r?.ok) {
       setResults(r.results || []);
       setUpdatedAt(r.fetchedAt || Math.floor(Date.now() / 1000));
-    } else setError(r?.reason || 'fetch_failed');
+    } else setError(r?.reason || runError || 'fetch_failed');
     setLoading(false);
   }, [domain]);
 

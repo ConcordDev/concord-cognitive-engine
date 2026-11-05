@@ -29,12 +29,13 @@ const STATUS_COLOR: Record<string, string> = {
  * FleetManager — multi-robot management surface. Wires
  * robotics.fleetList / fleetRegister / fleetUpdate / fleetRemove.
  */
-export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow) => void; selectedId?: string | null }) {
+export function FleetManager({ onSelect, selectedId, onFleetChange }: { onSelect?: (r: RobotRow) => void; selectedId?: string | null; onFleetChange?: () => void }) {
   const [robots, setRobots] = useState<RobotRow[]>([]);
   const [counts, setCounts] = useState({ total: 0, online: 0, running: 0, errors: 0 });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState('arm');
   const [capWh, setCapWh] = useState('50');
@@ -73,13 +74,21 @@ export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow
 
   const register = async () => {
     if (!name.trim()) { setErr('Robot name required'); return; }
-    setBusy('register'); setErr(null);
+    setBusy('register'); setErr(null); setNotice(null);
+    const registeredName = name.trim();
     const r = await lensRun('robotics', 'fleetRegister', {
-      name: name.trim(), type,
+      name: registeredName, type,
       batteryCapacityWh: parseFloat(capWh) || 50,
       powerDrawW: parseFloat(drawW) || 35,
     });
-    if (r.data?.ok) { setName(''); await load(); }
+    if (r.data?.ok) {
+      setNotice(`Registered "${registeredName}" (${type}) — it is in the fleet list below, and Telemetry, Teleop and Sensor Logs are now unlocked.`);
+      setName('');
+      await load();
+      // The page gates Telemetry/Teleop/Sensor Logs on its own fleet state;
+      // without this notification the gate stays stale until a full reload.
+      onFleetChange?.();
+    }
     else setErr(r.data?.error || 'Register failed');
     setBusy(null);
   };
@@ -87,7 +96,7 @@ export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow
   const updateStatus = async (robotId: string, status: string) => {
     setBusy(robotId); setErr(null);
     const r = await lensRun('robotics', 'fleetUpdate', { robotId, status });
-    if (r.data?.ok) await load();
+    if (r.data?.ok) { await load(); onFleetChange?.(); }
     else setErr(r.data?.error || 'Update failed');
     setBusy(null);
   };
@@ -95,7 +104,7 @@ export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow
   const remove = async (robotId: string) => {
     setBusy(robotId); setErr(null);
     const r = await lensRun('robotics', 'fleetRemove', { robotId });
-    if (r.data?.ok) await load();
+    if (r.data?.ok) { await load(); onFleetChange?.(); }
     else setErr(r.data?.error || 'Remove failed');
     setBusy(null);
   };
@@ -146,6 +155,8 @@ export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow
       </div>
 
       {err && !loadFailed && !loading && <p className="text-xs text-red-400">{err}</p>}
+
+      {notice && <p className="text-xs text-emerald-300">{notice}</p>}
 
       {loading ? (
         <div role="status" aria-live="polite" className="flex items-center justify-center gap-2 py-6 text-neon-cyan">

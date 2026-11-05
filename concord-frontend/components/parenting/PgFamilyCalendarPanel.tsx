@@ -21,6 +21,8 @@ interface FamilyEvent {
   title: string;
   startAt: string;
   endAt: string | null;
+  whenLabel?: string;
+  endLabel?: string | null;
   allDay: boolean;
   childId: string | null;
   category: string;
@@ -33,6 +35,12 @@ interface EventList {
   nextUp: FamilyEvent | null;
 }
 interface Child { id: string; name: string; ageDisplay: string }
+
+function eventWhen(e: FamilyEvent) {
+  const start = e.whenLabel || e.startAt;
+  if (!e.endAt) return start;
+  return `${start} → ${e.endLabel || e.endAt}`;
+}
 
 const CATEGORIES = ['activity', 'school', 'medical', 'travel', 'other'] as const;
 const CATEGORY_COLOR: Record<string, string> = {
@@ -166,7 +174,7 @@ export function PgFamilyCalendarPanel() {
           <p className="text-[10px] text-sky-300 uppercase tracking-wide">Next up</p>
           <p className="text-sm font-bold text-zinc-100 mt-0.5">{data.nextUp.title}</p>
           <p className="text-[11px] text-zinc-400">
-            {data.nextUp.startAt}{childName(data.nextUp.childId) ? ` · ${childName(data.nextUp.childId)}` : ' · family-wide'}
+            {eventWhen(data.nextUp)}{childName(data.nextUp.childId) ? ` · ${childName(data.nextUp.childId)}` : ' · family-wide'}
           </p>
         </div>
       )}
@@ -274,7 +282,7 @@ export function PgFamilyCalendarPanel() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-zinc-200">{e.title}</p>
                     <p className="text-[10px] text-zinc-400">
-                      {e.startAt}{e.endAt ? ` → ${e.endAt}` : ''}
+                      {eventWhen(e)}
                       {e.location ? ` · ${e.location}` : ''}
                       {cName ? (
                         <span className="inline-flex items-center gap-0.5 ml-1"><Users className="w-2.5 h-2.5" /> {cName}</span>
