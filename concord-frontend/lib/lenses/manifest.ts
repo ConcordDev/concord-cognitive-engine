@@ -1868,7 +1868,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'geojson', 'kml'],
     actions: ['populationTrend', 'complianceCheck', 'trailCondition', 'diversionRate', 'sampleChainOfCustody', 'emissionsCalc', 'habitatAssess', 'impactForecast'],
     category: 'government',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Environmental monitoring.",
       caption: "Sites, species, surveys, samples \u2014 population trends, compliance, habitat assessment.",
