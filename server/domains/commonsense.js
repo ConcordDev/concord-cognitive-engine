@@ -6,6 +6,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 const CONCEPTNET_BASE = "https://api.conceptnet.io";
 
@@ -1455,13 +1456,36 @@ export default function registerCommonsenseActions(registerLensAction) {
       exception,
       createdAt: row.created_at || row.createdAt || "",
       updatedAt: row.updated_at || row.updatedAt || "",
+      flagged: row.flagged === 1 || row.flagged === true,
+      findingAt: row.finding_at || row.findingAt || "",
+      exceptionAt: row.exception_at || row.exceptionAt || "",
     };
+  }
+  function checkSchema(db) {
+    // Which provenance columns (migration 498) this DB carries. A DB
+    // still at migration 465 reads and writes the base shape; the flag
+    // action names its own unavailability instead of failing silently.
+    const none = { flagged: false, findingAt: false, exceptionAt: false };
+    if (!checksReady(db)) return none;
+    try {
+      const cols = new Set(db.prepare("PRAGMA table_info(commonsense_checks)").all().map((c) => c.name));
+      return { flagged: cols.has("flagged"), findingAt: cols.has("finding_at"), exceptionAt: cols.has("exception_at") };
+    } catch (_e) {
+      return none;
+    }
   }
   function readCheckRows(ctx, userId) {
     const db = checkDb(ctx);
     if (!checksReady(db)) return [];
+    const schema = checkSchema(db);
+    const extra = [
+      ...(schema.flagged ? ["flagged"] : []),
+      ...(schema.findingAt ? ["finding_at"] : []),
+      ...(schema.exceptionAt ? ["exception_at"] : []),
+    ];
+    const columns = ["id", "question", "finding", "exception", "created_at", "updated_at", ...extra].join(", ");
     return db.prepare(
-      "SELECT id, question, finding, exception, created_at, updated_at FROM commonsense_checks WHERE user_id = ? ORDER BY created_at ASC, id ASC",
+      `SELECT ${columns} FROM commonsense_checks WHERE user_id = ? ORDER BY created_at ASC, id ASC`,
     ).all(userId);
   }
   function writeCheckRow(ctx, userId, check) {
@@ -1471,15 +1495,31 @@ export default function registerCommonsenseActions(registerLensAction) {
       err.code = "check_not_saved";
       throw err;
     }
+    const schema = checkSchema(db);
+    const extraCols = [
+      ...(schema.flagged ? ["flagged"] : []),
+      ...(schema.findingAt ? ["finding_at"] : []),
+      ...(schema.exceptionAt ? ["exception_at"] : []),
+    ];
+    const extraVals = [
+      ...(schema.flagged ? [check.flagged ? 1 : 0] : []),
+      ...(schema.findingAt ? [check.findingAt || null] : []),
+      ...(schema.exceptionAt ? [check.exceptionAt || null] : []),
+    ];
+    const allCols = ["id", "user_id", "question", "finding", "exception", "created_at", "updated_at", ...extraCols];
+    const updates = [
+      "question = excluded.question",
+      "finding = excluded.finding",
+      "exception = excluded.exception",
+      "updated_at = excluded.updated_at",
+      ...extraCols.map((c) => `${c} = excluded.${c}`),
+    ];
     db.prepare(`
       INSERT INTO commonsense_checks
-        (id, user_id, question, finding, exception, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+        (${allCols.join(", ")})
+      VALUES (${allCols.map(() => "?").join(", ")})
       ON CONFLICT(id) DO UPDATE SET
-        question = excluded.question,
-        finding = excluded.finding,
-        exception = excluded.exception,
-        updated_at = excluded.updated_at
+        ${updates.join(",\n        ")}
     `).run(
       check.id,
       userId,
@@ -1488,6 +1528,7 @@ export default function registerCommonsenseActions(registerLensAction) {
       check.exception,
       check.createdAt,
       check.updatedAt,
+      ...extraVals,
     );
   }
   function hydrateChecks(ctx, userId) {
@@ -1523,6 +1564,19 @@ export default function registerCommonsenseActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const question = checkClean(params.question, 4000);
       if (!question) return { ok: false, error: "question required" };
+      // S-CS-2: a verbatim re-ask offers the standing entry instead of
+      // silently duplicating it. The read is advisory — if the store
+      // cannot be read, the write path below owns the real error.
+      const normQ = (q) => q.trim().replace(/\s+/g, " ").toLowerCase();
+      let existing = null;
+      try {
+        existing = orderedChecks(ctx, userId).find((item) => normQ(item.question) === normQ(question)) || null;
+      } catch (_e) {
+        existing = null;
+      }
+      if (existing) {
+        return { ok: true, result: { checkId: existing.id, check: checkFace(existing), duplicate: true } };
+      }
       const now = checkNow();
       const check = {
         id: checkId(),
@@ -1531,6 +1585,9 @@ export default function registerCommonsenseActions(registerLensAction) {
         exception: null,
         createdAt: now,
         updatedAt: now,
+        flagged: false,
+        findingAt: "",
+        exceptionAt: "",
       };
       const bucket = checkBucket(userId);
       bucket.push(check);
@@ -1574,6 +1631,11 @@ export default function registerCommonsenseActions(registerLensAction) {
             question: check.question,
             finding: check.finding,
             exception: check.exception,
+            createdAt: check.createdAt || "",
+            updatedAt: check.updatedAt || "",
+            findingAt: check.findingAt || "",
+            exceptionAt: check.exceptionAt || "",
+            flagged: !!check.flagged,
           },
         },
       };
@@ -1594,16 +1656,70 @@ export default function registerCommonsenseActions(registerLensAction) {
       if (!check) return { ok: false, error: "check_not_found" };
       const previous = check.finding;
       const previousAt = check.updatedAt;
+      const previousFindingAt = check.findingAt;
+      const now = checkNow();
       check.finding = finding;
-      check.updatedAt = checkNow();
+      check.updatedAt = now;
+      check.findingAt = now;
       try {
         writeCheckRow(ctx, userId, check);
       } catch (err) {
         check.finding = previous;
         check.updatedAt = previousAt;
+        check.findingAt = previousFindingAt;
         return { ok: false, error: "check_not_saved", detail: String(err?.message || err) };
       }
       return { ok: true, result: { checkId: check.id, check: checkFace(check) } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("commonsense", "check-flag", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = checkActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = checkClean(params.id || params.checkId, 80);
+      if (!id) return { ok: false, error: "missing_check_id" };
+      const check = findCheck(ctx, userId, id);
+      if (!check) return { ok: false, error: "check_not_found" };
+      if (!check.finding) return { ok: false, error: "nothing_to_dispute" };
+      const db = checkDb(ctx);
+      if (!checkSchema(db).flagged) return { ok: false, error: "flag_not_available" };
+      const flagged = params.flagged === true || params.flagged === 1 || params.flagged === "true";
+      const previous = check.flagged;
+      const previousAt = check.updatedAt;
+      check.flagged = flagged;
+      check.updatedAt = checkNow();
+      try {
+        writeCheckRow(ctx, userId, check);
+      } catch (err) {
+        check.flagged = previous;
+        check.updatedAt = previousAt;
+        return { ok: false, error: "check_not_saved", detail: String(err?.message || err) };
+      }
+      return { ok: true, result: { checkId: check.id, flagged: !!check.flagged } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("commonsense", "check-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = checkActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = checkClean(params.id || params.checkId, 80);
+      if (!id) return { ok: false, error: "missing_check_id" };
+      const check = findCheck(ctx, userId, id);
+      if (!check) return { ok: false, error: "check_not_found" };
+      const db = checkDb(ctx);
+      if (checksReady(db)) {
+        db.prepare("DELETE FROM commonsense_checks WHERE id = ? AND user_id = ?").run(id, userId);
+      }
+      const bucket = checkBucket(userId);
+      const idx = bucket.findIndex((item) => item.id === id);
+      if (idx >= 0) bucket.splice(idx, 1);
+      return { ok: true, result: { deleted: true, checkId: id, remaining: orderedChecks(ctx, userId).length } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -1621,18 +1737,39 @@ export default function registerCommonsenseActions(registerLensAction) {
       if (!check) return { ok: false, error: "check_not_found" };
       const previous = check.exception;
       const previousAt = check.updatedAt;
+      const previousExceptionAt = check.exceptionAt;
+      const now = checkNow();
       check.exception = exception;
-      check.updatedAt = checkNow();
+      check.updatedAt = now;
+      check.exceptionAt = now;
       try {
         writeCheckRow(ctx, userId, check);
       } catch (err) {
         check.exception = previous;
         check.updatedAt = previousAt;
+        check.exceptionAt = previousExceptionAt;
         return { ok: false, error: "check_not_saved", detail: String(err?.message || err) };
       }
       return { ok: true, result: { checkId: check.id, check: checkFace(check) } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
+  });
+
+  // S-CS-4 (export leg): the thread is the family's most DTU-shaped
+  // content — user-authored assertions — and its own lens carried no
+  // export path at all. The provider returns the CALLER's checks only.
+  registerLensExportProvider("commonsense", (ctx) => {
+    const userId = checkActor(ctx);
+    if (!userId) return [];
+    return orderedChecks(ctx, userId).map((check) => ({
+      type: "check",
+      title: check.question,
+      finding: check.finding || "",
+      exception: check.exception || "",
+      flagged: !!check.flagged,
+      statedAt: check.findingAt || check.updatedAt || check.createdAt || "",
+      createdAt: check.createdAt || "",
+    }));
   });
 }
