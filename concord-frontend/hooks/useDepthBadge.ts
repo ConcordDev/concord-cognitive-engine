@@ -91,6 +91,21 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Real account + world state: vehicles you spawn are persisted and shared with the 3D world, not demo data.',
   },
   /**
+   * Deities is the census's badge-only pole: the Explore panel carries a
+   * "wikipedia REST · live" SOURCE badge for its feed, which is not a
+   * lens declaration (the gate record's own census rule). The pantheon
+   * itself is player-composed religion — other players' creations, kept
+   * as live records in the platform store — so over this content the
+   * declaration is a trust statement: not authored content, not
+   * simulation, and not polled from Wikipedia either; only the Explore
+   * panel reads from there. The generic REAL_LIVE caption would blur
+   * exactly that distinction, so the caption carries it.
+   */
+  deities: {
+    label: 'Live',
+    caption: 'Deities here are composed by players and kept as live records in the platform store — the pantheon is other players’ creations, not authored or simulated content. The Explore panel reads live from Wikipedia, badged there.',
+  },
+  /**
    * Retail's store is the account's own live store — products, orders and
    * stock are the merchant's real records. The generic REAL_FREE line
    * ("static / open-access dataset") was false about the machinery in both
