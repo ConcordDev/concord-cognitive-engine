@@ -25,6 +25,18 @@ const GRADE_COLOR: Record<string, string> = {
   'needs work': 'text-amber-300', poor: 'text-rose-300',
 };
 
+// The headings field accepts what the user actually has (build(marketing)
+// S8 — Review 5 F8): a count, or the headings themselves pasted one per
+// line. The old field ran Number(text) || 0, so pasted heading TEXT
+// silently audited as zero headings and failed the check on input the
+// user never meant as a number. The derivation is shown live in the form.
+function parseHeadingCount(raw: string): number {
+  const t = raw.trim();
+  if (!t) return 0;
+  if (/^\d+$/.test(t)) return parseInt(t, 10);
+  return t.split(/\r?\n/).filter((l) => l.trim().length > 0).length;
+}
+
 export function MarketingSEOPanel() {
   const [audits, setAudits] = useState<SeoAudit[]>([]);
   const [avgScore, setAvgScore] = useState(0);
@@ -38,7 +50,7 @@ export function MarketingSEOPanel() {
   const [title, setTitle] = useState('');
   const [metaDescription, setMetaDescription] = useState('');
   const [bodyText, setBodyText] = useState('');
-  const [headingCount, setHeadingCount] = useState('');
+  const [headingsText, setHeadingsText] = useState('');
   const [imageCount, setImageCount] = useState('');
   const [imagesWithAlt, setImagesWithAlt] = useState('');
 
@@ -64,14 +76,14 @@ export function MarketingSEOPanel() {
     const r = await lensRun('marketing', 'seo-audit', {
       url: url.trim(), keyword: keyword.trim(), title: title.trim(),
       metaDescription: metaDescription.trim(), bodyText,
-      headingCount: Number(headingCount) || 0,
+      headingCount: parseHeadingCount(headingsText),
       imageCount: Number(imageCount) || 0,
       imagesWithAlt: Number(imagesWithAlt) || 0,
     });
     setBusy(false);
     if (r.data?.ok === false) { setError(r.data?.error || 'Audit failed'); return; }
     setUrl(''); setKeyword(''); setTitle(''); setMetaDescription('');
-    setBodyText(''); setHeadingCount(''); setImageCount(''); setImagesWithAlt('');
+    setBodyText(''); setHeadingsText(''); setImageCount(''); setImagesWithAlt('');
     await refresh();
   };
 
@@ -112,9 +124,15 @@ export function MarketingSEOPanel() {
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100" />
         <textarea value={bodyText} onChange={(e) => setBodyText(e.target.value)} rows={4}
           placeholder="Page body text (paste the visible content)" className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <input value={headingCount} onChange={(e) => setHeadingCount(e.target.value)} inputMode="numeric" placeholder="Headings"
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100" />
+        <div>
+          <textarea value={headingsText} onChange={(e) => setHeadingsText(e.target.value)} rows={2}
+            placeholder="Headings — enter a count (e.g. 6), or paste the page's headings, one per line"
+            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100" />
+          {headingsText.trim() && (
+            <p className="text-[10px] text-zinc-500 mt-1">Counts as {parseHeadingCount(headingsText)} headings.</p>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
           <input value={imageCount} onChange={(e) => setImageCount(e.target.value)} inputMode="numeric" placeholder="Images"
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100" />
           <input value={imagesWithAlt} onChange={(e) => setImagesWithAlt(e.target.value)} inputMode="numeric" placeholder="Images w/ alt"
