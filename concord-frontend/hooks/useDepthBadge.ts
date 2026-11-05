@@ -59,6 +59,19 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
   /**
+   * Ghost Tracker's residues are the world's real drift events, read
+   * live from the world's drift_alerts state — not an external feed, so
+   * the generic REAL_LIVE caption ("polled live from an external
+   * source") is false here. The caption answers the question this lens
+   * most needs answered (Review 4's compilation): whether an empty
+   * plane means a healthy world, an unconnected tracker, or a
+   * simulation.
+   */
+  'ghost-tracker': {
+    label: 'Live',
+    caption: 'Live: residues are the world\'s real drift events, read from live world state as they occur — an empty plane means the world is quiet right now, not a simulation or a dead feed. Your hunts, dossiers and confront history are your own records.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic

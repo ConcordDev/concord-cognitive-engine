@@ -5464,7 +5464,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // call lensRun('ghost-hunt', …) directly. The macro keys below point at the REAL
   // ghost-hunt verbs; `create` mints the Spectral Dossier DTU (the lens's
   // persistent artifact + dtu-exhaust path).
-  { domain: 'ghost-tracker', label: 'Ghost Tracker', artifacts: ['drift_alert', 'ghost_residue'], macros: { list: 'ghost-hunt.residues', get: 'ghost-hunt.detail', create: 'ghost-hunt.create', run: 'ghost-hunt.confront', export: 'ghost-hunt.history' }, exports: ['json'], actions: ['residues', 'detail', 'progress', 'advance', 'confront', 'history', 'leaderboard', 'create'], category: 'knowledge' },
+  { domain: 'ghost-tracker', label: 'Ghost Tracker', artifacts: ['drift_alert', 'ghost_residue'], macros: { list: 'ghost-hunt.residues', get: 'ghost-hunt.detail', create: 'ghost-hunt.create', run: 'ghost-hunt.confront', export: 'ghost-hunt.history' }, exports: ['json'], actions: ['residues', 'detail', 'progress', 'advance', 'confront', 'history', 'leaderboard', 'create'], category: 'knowledge', dataTier: 'REAL_LIVE' },
   // Phase 5 — cross-lens multi-step workflow session index.
   // Real sessions.* macros (registerSessionsMacros, canonical register convention
   // → reachable via /api/lens/run AND runMacro). The prior `lens.sessions.*` macro
