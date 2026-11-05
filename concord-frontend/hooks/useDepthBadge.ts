@@ -199,6 +199,20 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace data: campaigns, donors, volunteers and pages are your live records; 990 research data is ProPublica’s open-access IRS dataset.',
   },
+  /**
+   * Insurance's book — clients, policies, claims and certificates — is
+   * the account's own data, persisted server-side, and its tools compute
+   * over that book (Review 5's first pass: PROBE-LIVE over a live store;
+   * the re-pass on PR #2210 failed F1 alone — a Simulated banner beside
+   * the LIVE badge). The generic REAL_LIVE line ("polled live from an
+   * external source") would claim a carrier feed this lens does not
+   * poll — Quote Shopping refuses to invent quotes precisely because
+   * there is none — so the caption names the actual substrate.
+   */
+  insurance: {
+    label: 'Live',
+    caption: 'Live: your clients, policies, claims and certificates are your own records, saved in your workspace as you work, and the tools compute over your book. Carrier reference data is static, and no live carrier quotes are polled.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {

@@ -2042,7 +2042,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'acord'],
     actions: ['coverageGap', 'premiumHistory', 'claimStatus', 'riskScore', 'renewalForecast', 'benefitComparison', 'fraudIndicator', 'lossRunReport'],
     category: 'finance',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Insurance + risk.",
       caption: "Policies, claims, benefits, renewals \u2014 modelled over your own records; no carrier feed is connected.",
