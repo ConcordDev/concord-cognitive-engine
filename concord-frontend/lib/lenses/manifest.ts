@@ -1845,7 +1845,12 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['scheduleOptimize', 'bomCost', 'oeeCalculate', 'safetyRate', 'defectTrend', 'maintenancePredict', 'batchTrace', 'capacityPlan'],
     category: 'operations',
-    dataTier: 'SIM_GRADE_A',
+    // The shop floor is the user's own persisted per-user workspace
+    // (server/domains/manufacturing.js — machines, work orders, lots,
+    // SPC samples in STATE), not a simulation — same tier as the other
+    // user-data lenses. SIM_GRADE_A rendered a false "Simulated" banner
+    // over a live workspace whose numbers the first-pass walk verified.
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Manufacturing ops.",
       caption: "Work orders, BOM, QC, machines, safety \u2014 schedule, cost, OEE, defect trend.",

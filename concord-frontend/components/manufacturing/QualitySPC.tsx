@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { TrendingUp, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api/client';
+import { notifyManufacturingMutated } from './mfg-events';
 
 // Mirrors the REAL handler contract (server/domains/manufacturing.js#spc-chart).
 // On the empty path the handler returns only { product, samples:[], source,
@@ -19,6 +20,10 @@ export interface SPCResult {
   cpk?: number;
   ppm?: number;
   inControl?: boolean;
+  /** 'samples' when the samples carry a real spec; 'derived' when the
+   *  shown spec is the data-derived ±3σ control range (Cpk then reads
+   *  1.00 by construction, not as a measurement). */
+  specSource?: 'samples' | 'derived';
   source?: string;
   notes?: string;
 }
@@ -38,6 +43,8 @@ export function QualitySPC() {
   const [product, setProduct] = useState('');
   const [value, setValue] = useState('');
   const [subgroup, setSubgroup] = useState('');
+  const [upperSpec, setUpperSpec] = useState('');
+  const [lowerSpec, setLowerSpec] = useState('');
   // Bumps on each chart read and each logged sample so a slower chart
   // response cannot overwrite a sample that was just logged.
   const requestGen = useRef(0);
@@ -79,12 +86,17 @@ export function QualitySPC() {
         value: value.trim(),
       };
       if (subgroup.trim() !== '') input.subgroup = subgroup.trim();
+      if (upperSpec.trim() !== '' && lowerSpec.trim() !== '') {
+        input.upperSpec = upperSpec.trim();
+        input.lowerSpec = lowerSpec.trim();
+      }
       const res = await api.post('/api/lens/run', { domain: 'manufacturing', action: 'spc-sample-log', input });
       if (res.data?.ok === false) {
         setError(res.data.error || 'Could not log sample.');
         return;
       }
       setValue('');
+      notifyManufacturingMutated();
       const gen = ++requestGen.current;
       const chart = await load(product);
       if (gen === requestGen.current) {
@@ -127,6 +139,14 @@ export function QualitySPC() {
           Subgroup
           <input value={subgroup} onChange={(e) => setSubgroup(e.target.value)} className={fieldCls} />
         </label>
+        <label className="text-[10px] uppercase tracking-wider text-gray-500">
+          Upper spec (optional)
+          <input value={upperSpec} onChange={(e) => setUpperSpec(e.target.value)} inputMode="decimal" className={fieldCls} />
+        </label>
+        <label className="text-[10px] uppercase tracking-wider text-gray-500">
+          Lower spec (optional)
+          <input value={lowerSpec} onChange={(e) => setLowerSpec(e.target.value)} inputMode="decimal" className={fieldCls} />
+        </label>
         <button type="submit" disabled={saving} className="px-2 py-1 text-[10px] uppercase tracking-wider font-semibold rounded bg-cyan-500/20 text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-50">
           {saving ? 'Logging…' : 'Log sample'}
         </button>
@@ -162,7 +182,15 @@ export function QualitySPC() {
             </div>
           </div>
           <div className="px-4 pb-4">
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">{data.product} — spec {(data.lowerSpec ?? 0).toFixed(3)}–{(data.upperSpec ?? 0).toFixed(3)}</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">
+              {data.product} — mean {(data.centerLine ?? 0).toFixed(3)} · control limits {(data.lowerControl ?? 0).toFixed(3)}–{(data.upperControl ?? 0).toFixed(3)} (mean ± 3σ)
+              {data.specSource === 'samples' && (
+                <span className="block normal-case tracking-normal text-gray-500">Spec {(data.lowerSpec ?? 0).toFixed(3)}–{(data.upperSpec ?? 0).toFixed(3)} — from the logged samples.</span>
+              )}
+              {data.specSource === 'derived' && (
+                <span className="block normal-case tracking-normal text-gray-500">No spec on record — the control limits above are what is shown as the range, and Cpk against them reads 1.00 by construction. Log samples with a spec to measure Cpk.</span>
+              )}
+            </div>
             <svg viewBox="0 0 400 120" className="w-full h-32 bg-[#0a0e17] border border-white/10 rounded">
               {(() => {
                 const margin = 4;
