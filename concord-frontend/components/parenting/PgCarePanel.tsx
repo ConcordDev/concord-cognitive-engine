@@ -11,16 +11,17 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
-  Loader2, Milk, Baby, Activity, Pill, Droplets, ClipboardList,
+  Loader2, Milk, Baby, Activity, Pill, Droplets, ClipboardList, Moon,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 
-type SubTab = 'feeding' | 'diapers' | 'activities' | 'medicine' | 'pumping';
+type SubTab = 'feeding' | 'diapers' | 'sleep' | 'activities' | 'medicine' | 'pumping';
 const SUBS: { id: SubTab; label: string; icon: typeof Milk }[] = [
   { id: 'feeding', label: 'Feeding', icon: Milk },
   { id: 'diapers', label: 'Diapers', icon: Baby },
+  { id: 'sleep', label: 'Sleep', icon: Moon },
   { id: 'activities', label: 'Activities', icon: Activity },
   { id: 'medicine', label: 'Medicine', icon: Pill },
   { id: 'pumping', label: 'Pumping', icon: Droplets },
@@ -126,6 +127,79 @@ function DiapersView({ childId }: { childId: string }) {
         empty="No diapers logged in the last 7 days."
         render={(e: DiaperEntry) => <span className="text-xs text-zinc-200 capitalize">{e.kind}</span>}
       />
+    </div>
+  );
+}
+
+// ── Sleep ──────────────────────────────────────────────────────────────
+// The Sleep tab is the write. This category reads that same record.
+// A duration-only form here would store a window that has not ended.
+interface SleepEntry { id: string; type: string; durationMin: number; startAt: string; endAt: string }
+interface SleepStats { sleepMinToday: number; napsToday: number; longestStretchMin: number; avgDailyMin: number }
+
+function sleepClock(iso: string) {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return iso;
+  return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function SleepView({ childId }: { childId: string }) {
+  const [entries, setEntries] = useState<SleepEntry[]>([]);
+  const [stats, setStats] = useState<SleepStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    const [h, s] = await Promise.all([
+      lensRun('parenting', 'sleep-history', { childId, days: 7 }),
+      lensRun('parenting', 'sleep-stats', { childId }),
+    ]);
+    if (h.data?.ok === false || s.data?.ok === false) {
+      setLoadError(h.data?.error || s.data?.error || 'Could not load sleep.');
+      setLoading(false);
+      return;
+    }
+    setLoadError(null);
+    setEntries(h.data?.result?.entries || []);
+    setStats((s.data?.result as SleepStats | null) || null);
+    setLoading(false);
+  }, [childId]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  if (loading) return <PanelLoading />;
+  if (loadError) return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} variant="inline" /></div>;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-zinc-400">
+        Naps and night sleep are logged on the Sleep tab. This list is that record.
+      </p>
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <Stat label="Sleep min today" value={stats.sleepMinToday} />
+          <Stat label="Naps today" value={stats.napsToday} />
+          <Stat label="Longest stretch" value={`${stats.longestStretchMin}m`} />
+          <Stat label="7d avg min" value={stats.avgDailyMin} />
+        </div>
+      )}
+      {entries.length === 0 ? (
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No sleep logged in the last 7 days.</p>
+      ) : (
+        <ul className="space-y-1">
+          {entries.map((e) => (
+            <li key={e.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
+              <span className="text-xs text-zinc-200 capitalize">
+                {e.type}{e.durationMin ? ` · ${e.durationMin}m` : ''}
+              </span>
+              <span className="text-[10px] text-zinc-400 font-mono">
+                {sleepClock(e.startAt)}–{sleepClock(e.endAt)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -366,6 +440,7 @@ export function PgCarePanel({ childId }: { childId: string }) {
       </nav>
       {sub === 'feeding' && <FeedingView childId={childId} />}
       {sub === 'diapers' && <DiapersView childId={childId} />}
+      {sub === 'sleep' && <SleepView childId={childId} />}
       {sub === 'activities' && <ActivitiesView childId={childId} />}
       {sub === 'medicine' && <MedicineView childId={childId} />}
       {sub === 'pumping' && <PumpingView />}

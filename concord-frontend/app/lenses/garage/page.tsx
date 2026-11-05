@@ -65,6 +65,7 @@ interface Vehicle {
   kind: string;
   owner_kind: string;
   owner_id?: string;
+  ownerDisplay?: string;
   capacity: number;
   fare_cc: number;
   pos_x?: number;
@@ -161,6 +162,17 @@ export default function GarageLensPage() {
     if (typeof window !== 'undefined') localStorage.setItem('concordia:activeWorldId', next);
   }, [worldIdDraft]);
 
+  // F2: a despawn really did commit server-side (despawnVehicle is
+  // transactional and owner-gated) by the time this fires — drop the
+  // vehicle from BOTH local lists so World total, per-kind counts, seats,
+  // and My fleet count all reconcile downward immediately, and clear the
+  // selection since the inspector just closed itself.
+  const handleDespawned = useCallback((vehicleId: string) => {
+    setWorldFleet((prev) => (prev ? prev.filter((v) => v.id !== vehicleId) : prev));
+    setMyFleet((prev) => (prev ? prev.filter((v) => v.id !== vehicleId) : prev));
+    setSelectedVehicleId(null);
+  }, []);
+
   const spawn = useCallback(async () => {
     const result = await spawnFeedback.dispatch('garage', 'spawn', {
       worldId,
@@ -205,8 +217,13 @@ export default function GarageLensPage() {
       id: 'owner',
       header: 'Owner',
       monospace: true,
-      accessor: (v) => `${v.owner_kind}${v.owner_id ? `:${v.owner_id.slice(0, 8)}` : ''}`,
-      sortValue: (v) => v.owner_kind,
+      // F3: "My fleet" rows carry ownerDisplay (the account's real display
+      // identity, resolved server-side) — render that instead of the raw
+      // owner_id fragment. The World table never receives owner_id at all
+      // (listVehiclesInWorld omits it), so it correctly falls through to
+      // the generic owner_kind label there.
+      accessor: (v) => v.ownerDisplay || `${v.owner_kind}${v.owner_id ? `:${v.owner_id.slice(0, 8)}` : ''}`,
+      sortValue: (v) => v.ownerDisplay || v.owner_kind,
       sortable: true,
     },
     {
@@ -367,6 +384,10 @@ export default function GarageLensPage() {
             canal_taxi needs an authored route and isn&rsquo;t free-spawnable — it&rsquo;s listed in the
             filter below because it can still exist in the world.
           </p>
+          <p className={cn(ds.caption, 'mt-1')}>
+            Every kind spawns at the world origin (0, 0) — including boats, which don&rsquo;t yet
+            land on water automatically. Drive it from there once you&rsquo;re in the world.
+          </p>
         </div>
 
         {/* Fleet tabs */}
@@ -452,6 +473,7 @@ export default function GarageLensPage() {
             <VehicleInspectorPanel
               vehicleId={selectedVehicleId}
               onClose={() => setSelectedVehicleId(null)}
+              onDespawned={handleDespawned}
             />
           )}
         </div>

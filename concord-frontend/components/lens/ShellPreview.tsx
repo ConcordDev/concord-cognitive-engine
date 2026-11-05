@@ -313,17 +313,38 @@ function RetailPreview() {
   const [loading, setLoading] = useState(true);
   const [series, setSeries] = useState<number[]>([]);
   const [nav, setNav] = useState<'home' | 'orders' | 'products' | 'customers' | 'analytics' | 'discounts' | 'shipping' | 'settings'>('home');
+  // The nav views' real data (F9): products, customers, discounts, shipping
+  // zones and the storefront record itself, fetched alongside the summary.
+  const [lists, setLists] = useState<{
+    products: Array<{ sku: string; name: string; price: number; stock: number }>;
+    customers: Array<{ id: string; name: string; email: string; orderCount: number; totalSpent: number }>;
+    discounts: Array<{ id: string; code: string; kind: string; value: number; usageCount: number; active: boolean }>;
+    shippingZones: Array<{ id: string; name: string; countries: string[]; rate?: number }>;
+    storefront: { name: string; slug: string | null; published: boolean } | null;
+  }>({ products: [], customers: [], discounts: [], shippingZones: [], storefront: null });
   useEffect(() => {
     (async () => {
       try {
-        const [s, o, r] = await Promise.all([
+        const [s, o, r, pl, cl, dl, zl, sf] = await Promise.all([
           lensRun({ domain: 'retail', action: 'analytics-summary', input: {} }).catch(() => null),
           lensRun({ domain: 'retail', action: 'orders-list', input: {} }).catch(() => null),
           lensRun({ domain: 'retail', action: 'analytics-revenue-by-day', input: { days: 7 } }).catch(() => null),
+          lensRun({ domain: 'retail', action: 'product-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'retail', action: 'customers-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'retail', action: 'discounts-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'retail', action: 'shipping-zones-list', input: {} }).catch(() => null),
+          lensRun({ domain: 'retail', action: 'storefront-get', input: {} }).catch(() => null),
         ]);
         setD((s?.data?.result as Record<string, unknown>) || {});
         setOrders(((o?.data?.result?.orders || []) as Array<Record<string, unknown>>).slice(0, 8));
         setSeries(((r?.data?.result?.series || []) as Array<{ revenue: number }>).map(p => Number(p.revenue) || 0));
+        setLists({
+          products: (pl?.data?.result?.products || []) as typeof lists.products,
+          customers: (cl?.data?.result?.customers || []) as typeof lists.customers,
+          discounts: (dl?.data?.result?.discounts || []) as typeof lists.discounts,
+          shippingZones: (zl?.data?.result?.zones || []) as typeof lists.shippingZones,
+          storefront: (sf?.data?.result?.storefront || null) as typeof lists.storefront,
+        });
       } catch { /* empty state */ }
       finally { setLoading(false); }
     })();
@@ -339,12 +360,25 @@ function RetailPreview() {
       conversionRate={undefined}
       visitors={undefined}
       revenue7dSeries={series}
+      products={lists.products}
+      customers={lists.customers}
+      discounts={lists.discounts}
+      shippingZones={lists.shippingZones}
+      storefront={lists.storefront}
       recentOrders={orders.map(o => ({
         id: String(o.id || ''),
         number: String(o.number || ''),
         customer: undefined,
-        total: Number(o.total) || 0,
-        status: (((o.status as string) || 'paid') === 'paid' ? 'paid' : 'pending') as 'paid' | 'pending' | 'refunded' | 'fulfilled',
+        // A refunded order's row shows what the store kept, on the same
+        // net-of-refunds basis as every sales figure (S2).
+        total: Math.max(0, (Number(o.total) || 0) - (Number(o.refundedAmount) || 0)),
+        status: ((): 'paid' | 'pending' | 'refunded' | 'fulfilled' => {
+          const st = String(o.status || 'paid');
+          if (st === 'refunded' || st === 'partially_refunded') return 'refunded';
+          if (st === 'fulfilled') return 'fulfilled';
+          if (st === 'paid') return 'paid';
+          return 'pending';
+        })(),
         itemCount: Array.isArray(o.lines) ? (o.lines as unknown[]).length : 0,
         timestamp: String(o.completedAt || new Date().toISOString()),
       }))}

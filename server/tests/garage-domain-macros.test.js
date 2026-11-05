@@ -65,7 +65,7 @@ describe("garage domain macros", () => {
   beforeEach(() => { db = freshDb(); macros = collectMacros(); });
 
   it("registers the full read + write surface", () => {
-    for (const name of ["list", "mine", "get", "spawn", "create", "mount", "dismount", "move"]) {
+    for (const name of ["list", "mine", "get", "spawn", "create", "mount", "dismount", "move", "despawn"]) {
       assert.equal(typeof macros.get(name), "function", `missing macro: ${name}`);
     }
   });
@@ -99,6 +99,18 @@ describe("garage domain macros", () => {
     assert.equal(got.vehicle.id, spawn.vehicleId);
     assert.equal(got.vehicle.capacity, 4);
     assert.equal(got.occupants, 0);
+    // (F3) the owner's own inspector gets a resolved display identity, not
+    // just the raw owner_id the row stores.
+    assert.equal(got.vehicle.isMine, true);
+    assert.ok(typeof got.vehicle.ownerDisplay === "string" && got.vehicle.ownerDisplay.length > 0);
+
+    // A different actor sees owner_id stripped and no ownerDisplay stamped —
+    // the field only exists for the owner's own view, never leaked to others.
+    const gotOther = await macros.get("get")(ctxFor(db, "stranger"), { vehicleId: spawn.vehicleId });
+    assert.equal(gotOther.ok, true);
+    assert.equal(gotOther.vehicle.isMine, false);
+    assert.equal(gotOther.vehicle.owner_id, undefined);
+    assert.equal(gotOther.vehicle.ownerDisplay, undefined);
   });
 
   it("mine scopes to the calling player's owned fleet only", async () => {
@@ -110,6 +122,11 @@ describe("garage domain macros", () => {
     assert.equal(mineA.ok, true);
     assert.equal(mineA.vehicles.length, 2, "alice owns exactly two");
     assert.ok(mineA.vehicles.every((v) => v.owner_id === "alice"));
+    // (F3) every "My fleet" row carries a resolved display identity, not just
+    // the raw owner_id — the test DB has no `users` table, so this exercises
+    // resolveUserDisplay's honest fallback (the id-prefix), proving the field
+    // is always populated rather than silently undefined.
+    assert.ok(mineA.vehicles.every((v) => typeof v.ownerDisplay === "string" && v.ownerDisplay.length > 0));
 
     const mineB = await macros.get("mine")(ctxFor(db, "bob"), { worldId: "concordia-hub" });
     assert.equal(mineB.vehicles.length, 1);
@@ -194,5 +211,38 @@ describe("garage domain macros", () => {
     assert.ok(getVehicle(db, out.vehicleId), "create must persist a real vehicle");
     const mine = await macros.get("mine")(ctxFor(db, "maker"), { worldId: "concordia-hub" });
     assert.equal(mine.vehicles.length, 1);
+  });
+
+  it("despawn (F2) really deletes the row and reconciles both list surfaces downward", async () => {
+    const a = await macros.get("spawn")(ctxFor(db, "fleet-owner"), { worldId: "concordia-hub", kind: "cart" });
+    const b = await macros.get("spawn")(ctxFor(db, "fleet-owner"), { worldId: "concordia-hub", kind: "boat" });
+
+    const before = await macros.get("list")(ctxFor(db, "fleet-owner"), { worldId: "concordia-hub" });
+    assert.equal(before.vehicles.length, 2);
+
+    // A non-owner cannot despawn it — the row survives.
+    const denied = await macros.get("despawn")(ctxFor(db, "intruder"), { vehicleId: a.vehicleId });
+    assert.equal(denied.ok, false);
+    assert.equal(denied.reason, "not_authorized");
+    assert.ok(getVehicle(db, a.vehicleId), "denied despawn must not remove the row");
+
+    // The owner despawns their own vehicle.
+    const out = await macros.get("despawn")(ctxFor(db, "fleet-owner"), { vehicleId: a.vehicleId });
+    assert.equal(out.ok, true);
+    assert.equal(out.action, "despawned");
+    assert.equal(out.vehicleId, a.vehicleId);
+
+    // It's really gone — not soft-deleted, not still listed.
+    assert.equal(getVehicle(db, a.vehicleId), null);
+    const after = await macros.get("list")(ctxFor(db, "fleet-owner"), { worldId: "concordia-hub" });
+    assert.equal(after.vehicles.length, 1, "world fleet reconciles downward by exactly one");
+    assert.equal(after.vehicles[0].id, b.vehicleId);
+
+    const mineAfter = await macros.get("mine")(ctxFor(db, "fleet-owner"), { worldId: "concordia-hub" });
+    assert.equal(mineAfter.vehicles.length, 1, "my fleet reconciles downward too");
+
+    // despawning an already-gone vehicle is an honest miss, not a silent ok.
+    const again = await macros.get("despawn")(ctxFor(db, "fleet-owner"), { vehicleId: a.vehicleId });
+    assert.equal(again.ok, false);
   });
 });

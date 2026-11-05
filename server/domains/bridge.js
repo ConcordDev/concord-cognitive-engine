@@ -13,7 +13,28 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerBridgeActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("bridge", "connectionHealth", (ctx, artifact, _params) => {
-    const connections = artifact.data?.connections || [];
+    let connections = artifact?.data?.connections || [];
+    if (connections.length === 0) {
+      // No connection artifact carries data — derive from the Federation
+      // Console's own state (S1): each registered peer is a connection,
+      // scored from its recorded flows (mean duration as latency, flow
+      // success rate as uptime, failed share as the error rate).
+      const s = bridgeState();
+      const userId = aid(ctx);
+      const peers = listFor(s.peers, userId);
+      const flows = listFor(s.flows, userId);
+      connections = peers.map(p => {
+        const pf = flows.filter(f => f.peerId === p.id);
+        const total = pf.length;
+        const failed = pf.filter(f => f.status === "failed").length;
+        return {
+          name: p.name, source: p.name, target: p.region,
+          latencyMs: total > 0 ? Math.round(pf.reduce((sum, f) => sum + (f.durationMs || 0), 0) / total) : 0,
+          uptimePercent: total > 0 ? Math.round(((total - failed) / total) * 1000) / 10 : 100,
+          errorRate: total > 0 ? failed / total : 0,
+        };
+      });
+    }
     if (connections.length === 0) return { ok: true, result: { message: "Add bridge connections to monitor health." } };
     const analyzed = connections.map(c => {
       const latency = parseFloat(c.latencyMs) || 0;
@@ -26,7 +47,12 @@ export default function registerBridgeActions(registerLensAction) {
   });
 
   registerLensAction("bridge", "dataMapping", (ctx, artifact, _params) => {
-    const mappings = artifact.data?.mappings || [];
+    let mappings = artifact?.data?.mappings || [];
+    if (mappings.length === 0) {
+      // Console-state fallback (S1): the console's field mappings carry the
+      // same source/target/transform/dataType shape the analyzer reads.
+      mappings = listFor(bridgeState().mappings, aid(ctx));
+    }
     if (mappings.length === 0) return { ok: true, result: { message: "Define field mappings between source and target systems." } };
     const analyzed = mappings.map(m => ({ sourceField: m.source, targetField: m.target, transform: m.transform || "direct", dataType: m.dataType || "string", required: m.required || false, valid: !!(m.source && m.target) }));
     const valid = analyzed.filter(m => m.valid).length;
@@ -34,8 +60,19 @@ export default function registerBridgeActions(registerLensAction) {
   });
 
   registerLensAction("bridge", "syncStatus", (ctx, artifact, _params) => {
-    const syncs = artifact.data?.syncs || [];
-    const lastSync = artifact.data?.lastSync ? new Date(artifact.data.lastSync) : null;
+    let syncs = artifact?.data?.syncs || [];
+    let lastSyncRaw = artifact?.data?.lastSync || null;
+    if (syncs.length === 0) {
+      // Console-state fallback (S1): recorded flows ARE the syncs — a failed
+      // flow's records are its errors; the latest flow is the last sync.
+      const flows = listFor(bridgeState().flows, aid(ctx));
+      syncs = flows.map(f => ({
+        recordsProcessed: f.records,
+        errors: f.status === "failed" ? f.records : 0,
+      }));
+      if (!lastSyncRaw && flows.length > 0) lastSyncRaw = flows[flows.length - 1].at;
+    }
+    const lastSync = lastSyncRaw ? new Date(lastSyncRaw) : null;
     const now = new Date();
     const minutesSinceSync = lastSync ? (now.getTime() - lastSync.getTime()) / 60000 : Infinity;
     const syncHealth = minutesSinceSync < 5 ? "real-time" : minutesSinceSync < 60 ? "recent" : minutesSinceSync < 1440 ? "stale" : "disconnected";
@@ -45,7 +82,12 @@ export default function registerBridgeActions(registerLensAction) {
   });
 
   registerLensAction("bridge", "throughputAnalysis", (ctx, artifact, _params) => {
-    const metrics = artifact.data?.throughputMetrics || [];
+    let metrics = artifact?.data?.throughputMetrics || [];
+    if (metrics.length === 0) {
+      // Console-state fallback (S1): the console's throughput samples carry
+      // the rps values this analyzer reads.
+      metrics = listFor(bridgeState().throughput, aid(ctx));
+    }
     if (metrics.length === 0) return { ok: true, result: { message: "Add throughput metrics to analyze bridge performance." } };
     const values = metrics.map(m => parseFloat(m.recordsPerSecond || m.rps) || 0);
     const avg = values.reduce((s, v) => s + v, 0) / values.length;
@@ -136,8 +178,23 @@ export default function registerBridgeActions(registerLensAction) {
       const [removed] = peers.splice(idx, 1);
       const sched = s.schedules.get(userId);
       if (sched) sched.delete(removed.id);
+      // The peer's recorded flows and throughput samples go with it (F2):
+      // flows that outlive their peer point at a peer that no longer exists
+      // and inflate the console's counters permanently. The count is
+      // returned so the surface can state what the delete did.
+      const flows = listFor(s.flows, userId);
+      let flowsRemoved = 0;
+      for (let i = flows.length - 1; i >= 0; i--) {
+        if (flows[i].peerId === removed.id) { flows.splice(i, 1); flowsRemoved++; }
+      }
+      if (flowsRemoved > 0) {
+        const tp = listFor(s.throughput, userId);
+        for (let i = tp.length - 1; i >= 0; i--) {
+          if (tp[i].peerId === removed.id) tp.splice(i, 1);
+        }
+      }
       saveState();
-      return { ok: true, result: { removed: removed.id, totalPeers: peers.length } };
+      return { ok: true, result: { removed: removed.id, totalPeers: peers.length, flowsRemoved } };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
@@ -273,6 +330,37 @@ export default function registerBridgeActions(registerLensAction) {
           flow,
           recovered: flow.status === "succeeded",
           attempts: flow.attempts,
+        },
+      };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // Delete one recorded flow (F2). Its throughput samples go with it —
+  // matched on the exact stamps recordFlow/flowReplay pushed — so the
+  // throughput panel and the flow counters agree after a delete.
+  registerLensAction("bridge", "flowRemove", (ctx, _a, params = {}) => {
+    try {
+      const s = bridgeState();
+      const userId = aid(ctx);
+      const flows = listFor(s.flows, userId);
+      const idx = flows.findIndex(f => f.id === params.flowId);
+      if (idx === -1) return { ok: false, error: "flow not found" };
+      const [removed] = flows.splice(idx, 1);
+      const tp = listFor(s.throughput, userId);
+      const stamps = new Set([removed.at, removed.replayedAt].filter(Boolean));
+      for (let i = tp.length - 1; i >= 0; i--) {
+        if (tp[i].peerId === removed.peerId && tp[i].rps === removed.rps && stamps.has(tp[i].ts)) {
+          tp.splice(i, 1);
+        }
+      }
+      saveState();
+      return {
+        ok: true,
+        result: {
+          removed: removed.id,
+          totalFlows: flows.length,
+          failed: flows.filter(f => f.status === "failed").length,
+          succeeded: flows.filter(f => f.status === "succeeded").length,
         },
       };
     } catch (e) { return { ok: false, error: e.message }; }

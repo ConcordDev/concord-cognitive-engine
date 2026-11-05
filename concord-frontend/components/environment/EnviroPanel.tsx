@@ -139,9 +139,22 @@ interface SuperfundSite { siteId: string; siteName: string; npListStatus: string
 function SuperfundSearch() {
   const [state, setState] = useState('CA');
   const [sites, setSites] = useState<SuperfundSite[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searched, setSearched] = useState(false);
   const search = useMutation({
     mutationFn: async () => callMacro<{ sites: SuperfundSite[] }>('epa-superfund-search', { state }),
-    onSuccess: (env) => { if (env.ok && env.result) setSites(env.result.sites); else setSites([]); },
+    onSuccess: (env) => {
+      setSearched(true);
+      if (env.ok && env.result) {
+        setSites(env.result.sites);
+        setSearchError(null);
+      } else {
+        // Silence is not a response shape (F6): the handler's real reason
+        // (e.g. the upstream table's retirement) reaches the user.
+        setSites([]);
+        setSearchError(env.error || 'Superfund search failed.');
+      }
+    },
   });
   return (
     <div className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3 space-y-2">
@@ -153,6 +166,12 @@ function SuperfundSearch() {
           {search.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Search'}
         </button>
       </div>
+      {searchError && (
+        <div className="text-[11px] text-rose-300">Superfund search unavailable: {searchError}</div>
+      )}
+      {searched && !searchError && sites.length === 0 && (
+        <div className="text-[11px] text-zinc-400">No Superfund sites found for {state}.</div>
+      )}
       <div className="space-y-1 max-h-64 overflow-y-auto">
         {sites.map((s) => (
           <div key={s.siteId} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-[11px]">

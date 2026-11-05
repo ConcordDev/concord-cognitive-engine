@@ -14,8 +14,8 @@ export default function registerSupplychainActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("supplychain", "leadTimeAnalysis", (ctx, artifact, _params) => { const orders = artifact.data?.orders || []; if (orders.length === 0) return { ok: true, result: { message: "Add orders with dates to analyze lead times." } }; const leadTimes = orders.map(o => { const ordered = new Date(o.orderDate || o.created); const received = o.receivedDate ? new Date(o.receivedDate) : null; const days = received ? Math.ceil((received.getTime() - ordered.getTime()) / 86400000) : null; return { order: o.id || o.name, supplier: o.supplier, leadTimeDays: days, status: received ? "delivered" : "pending" }; }).filter(o => o.leadTimeDays !== null); const avg = leadTimes.length > 0 ? Math.round(leadTimes.reduce((s,o) => s + o.leadTimeDays, 0) / leadTimes.length) : 0; return { ok: true, result: { ordersAnalyzed: leadTimes.length, avgLeadTimeDays: avg, minDays: Math.min(...leadTimes.map(o => o.leadTimeDays)), maxDays: Math.max(...leadTimes.map(o => o.leadTimeDays)), reliability: avg <= 7 ? "excellent" : avg <= 14 ? "good" : avg <= 30 ? "acceptable" : "poor" } }; });
   registerLensAction("supplychain", "inventoryOptimize", (ctx, artifact, _params) => { const items = artifact.data?.items || []; if (items.length === 0) return { ok: true, result: { message: "Add inventory items to optimize." } }; const analyzed = items.map(i => { const _r = needNums(i, ["dailyDemand>0", "leadTimeDays>=0", "currentStock>=0", "orderCost>0", "holdingCost>0"]); if (_r.missing.length) return { item: i?.name, status: "NOT_COMPUTED", missingInputs: _r.missing }; const demand = _r.values.dailyDemand; const leadTime = Math.trunc(_r.values.leadTimeDays); const current = Math.trunc(_r.values.currentStock); const safetyStock = Math.ceil(demand * leadTime * 0.5); const reorderPoint = Math.ceil(demand * leadTime + safetyStock); const eoq = Math.round(Math.sqrt(2 * demand * 365 * (parseFloat(i.orderCost) || 50) / (parseFloat(i.holdingCost) || 5))); return { item: i.name, currentStock: current, reorderPoint, safetyStock, eoq, daysOfStock: demand > 0 ? Math.round(current / demand) : 999, needsReorder: current <= reorderPoint }; }); return { ok: true, result: { items: analyzed, needsReorder: analyzed.filter(i => i.needsReorder).length, totalItems: analyzed.length, notComputed: analyzed.filter(i => i.status === "NOT_COMPUTED").length, method: "EOQ = √(2·D·S/H) (Harris 1913); safety stock = 0.5·d·L (rule of thumb, not service-level based)" } }; });
-  registerLensAction("supplychain", "supplierScore", (ctx, artifact, _params) => { const suppliers = artifact.data?.suppliers || []; if (suppliers.length === 0) return { ok: true, result: { message: "Add suppliers to score." } }; const scored = suppliers.map(s => { const _r = needNums(s, ["qualityScore", "onTimePercent", "priceCompetitiveness", "responsiveness"]); if (_r.missing.length) return { supplier: s?.name, status: "NOT_COMPUTED", missingInputs: _r.missing, totalScore: null, tier: null }; const quality = _r.values.qualityScore; const delivery = _r.values.onTimePercent; const price = _r.values.priceCompetitiveness; const responsiveness = _r.values.responsiveness; const total = Math.round(quality * 0.3 + delivery * 0.3 + price * 0.2 + responsiveness * 0.2); return { supplier: s.name, quality, delivery, price, responsiveness, totalScore: total, tier: total >= 85 ? "preferred" : total >= 70 ? "approved" : total >= 50 ? "conditional" : "at-risk" }; }).sort((a,b) => (b.totalScore ?? -Infinity) - (a.totalScore ?? -Infinity)); return { ok: true, result: { suppliers: scored, topSupplier: scored.find(x => x.totalScore !== null)?.supplier, atRisk: scored.filter(s => s.tier === "at-risk").length } }; });
-  registerLensAction("supplychain", "demandForecast", (ctx, artifact, _params) => { const history = artifact.data?.history || []; if (history.length < 3) return { ok: true, result: { message: "Need 3+ data points to forecast." } }; const values = history.map(h => parseFloat(h.demand || h.value) || 0); const n = values.length; const avg = values.reduce((s,v)=>s+v,0)/n; const trend = (values[n-1] - values[0]) / n; const forecast = [1,2,3].map(p => ({ period: `+${p}`, predicted: Math.round(avg + trend * (n + p - 1)), confidence: p === 1 ? "high" : p === 2 ? "medium" : "low" })); return { ok: true, result: { historicalPeriods: n, avgDemand: Math.round(avg), trend: trend > 0.5 ? "increasing" : trend < -0.5 ? "decreasing" : "stable", forecast } }; });
+  registerLensAction("supplychain", "supplierScore", (ctx, artifact, _params) => { const suppliers = artifact.data?.suppliers || []; if (suppliers.length === 0) return { ok: true, result: { message: "Add suppliers to score." } }; const WEIGHTS = { qualityScore: 0.3, onTimePercent: 0.3, priceCompetitiveness: 0.2, responsiveness: 0.2 }; const scored = suppliers.map(s => { const present = {}; let wsum = 0; for (const [k, w] of Object.entries(WEIGHTS)) { const v = optNum(s?.[k]); if (v !== null) { present[k] = v; wsum += w; } } const missingInputs = Object.keys(WEIGHTS).filter(k => !(k in present)); if (wsum === 0) return { supplier: s?.name, status: "NOT_COMPUTED", missingInputs, scoredOn: [], totalScore: null, tier: null }; let acc = 0; for (const [k, v] of Object.entries(present)) acc += v * WEIGHTS[k]; const total = Math.round(acc / wsum); return { supplier: s.name, quality: present.qualityScore ?? null, delivery: present.onTimePercent ?? null, price: present.priceCompetitiveness ?? null, responsiveness: present.responsiveness ?? null, scoredOn: Object.keys(present), missingInputs, totalScore: total, tier: total >= 85 ? "preferred" : total >= 70 ? "approved" : total >= 50 ? "conditional" : "at-risk" }; }).sort((a,b) => (b.totalScore ?? -Infinity) - (a.totalScore ?? -Infinity)); return { ok: true, result: { suppliers: scored, topSupplier: scored.find(x => x.totalScore !== null)?.supplier ?? null, atRisk: scored.filter(s => s.tier === "at-risk").length, method: "Weighted score over the metrics supplied for each supplier (quality 30 · on-time 30 · price 20 · responsiveness 20); when a metric is absent the weights renormalize over the metrics present, and scoredOn names them." } }; });
+  registerLensAction("supplychain", "demandForecast", (ctx, artifact, params) => { const history = artifact.data?.history || []; if (history.length < 3) return { ok: true, result: { message: "Need 3+ data points to forecast." } }; const values = history.map(h => parseFloat(h.demand || h.value) || 0); const n = values.length; const avg = values.reduce((s,v)=>s+v,0)/n; const alpha = Math.min(0.95, Math.max(0.05, optNum(params?.alpha) ?? optNum(artifact.data?.alpha) ?? 0.3)); let level = values[0]; let errSum = 0, errCnt = 0; for (let i = 1; i < n; i++) { if (values[i] !== 0) { errSum += Math.abs((values[i] - level) / values[i]); errCnt++; } level = alpha * values[i] + (1 - alpha) * level; } const mape = errCnt > 0 ? Math.round((errSum / errCnt) * 1000) / 10 : 0; const trendSlope = (values[n-1] - values[0]) / n; const predicted = Math.max(0, Math.round(level)); const forecast = [1,2,3].map(p => ({ period: `+${p}`, predicted, confidence: p === 1 ? "high" : p === 2 ? "medium" : "low" })); return { ok: true, result: { historicalPeriods: n, avgDemand: Math.round(avg), trend: trendSlope > 0.5 ? "increasing" : trendSlope < -0.5 ? "decreasing" : "stable", method: "simple-exponential-smoothing", alpha, mapePct: mape, accuracy: mape <= 10 ? "excellent" : mape <= 20 ? "good" : mape <= 35 ? "fair" : "poor", forecast } }; });
 
   // ─── Supply-chain planning substrate (per-user, STATE-backed) ────────
   // Powers the SAP-IBP-parity workbench: live shipment tracking, supply
@@ -31,6 +31,7 @@ export default function registerSupplychainActions(registerLensAction) {
     if (!(s.network instanceof Map)) s.network = new Map();       // userId -> { nodes:[], edges:[] }
     if (!(s.scenarios instanceof Map)) s.scenarios = new Map();   // userId -> Array<scenario>
     if (!(s.workOrders instanceof Map)) s.workOrders = new Map(); // userId -> Array<workOrder>
+    if (!(s.exceptionScans instanceof Map)) s.exceptionScans = new Map(); // scopeKey -> last persisted inventory/supplier scan (exceptionLatest)
     return s;
   }
   function scSave() {
@@ -427,6 +428,18 @@ export default function registerSupplychainActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // ── 2b. Saved network, raw — the editors reload what networkSet saved ─
+  registerLensAction("supplychain", "networkGet", (ctx, _artifact, params) => {
+    try {
+      const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
+      const scope = scScope(ctx, params, null);
+      if (!scope.ok) return scope;
+      const stored = s.network.get(scope.key);
+      const net = stored || { nodes: [], edges: [] };
+      return { ok: true, result: { nodes: net.nodes, edges: net.edges, saved: !!stored } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   // ── 3. Multi-echelon inventory optimization across warehouses ────────
   registerLensAction("supplychain", "multiEchelonOptimize", (ctx, _artifact, params) => {
     try {
@@ -525,7 +538,9 @@ export default function registerSupplychainActions(registerLensAction) {
           demandDuringLead: Math.round(demandDuringLead),
           projectedStockoutUnits: Math.round(stockoutUnits),
           daysToStockout,
-          replenishCost: Math.round(demandDuringLead * effCost),
+          // Replenishing covers the projected stockout, not the whole lead
+          // period's demand — price the units that actually run out.
+          replenishCost: Math.round(stockoutUnits * effCost),
           stocksOut: stockoutUnits > 0,
         };
       };
@@ -651,10 +666,16 @@ export default function registerSupplychainActions(registerLensAction) {
       const inventory = Array.isArray(params?.inventory) ? params.inventory : [];
       for (const it of inventory) {
         const cur = scNum(it?.currentStock);
-        const rop = scNum(it?.reorderPoint, scNum(it?.dailyDemand) * scNum(it?.leadTimeDays, 7));
+        // A row without a reorder point derives one by the inventory
+        // optimizer's disclosed rule — demand during lead + 0.5·d·L safety
+        // stock (d·L × 1.5) — never a silent second model.
+        const ropDerived = it?.reorderPoint == null || !Number.isFinite(Number(it.reorderPoint));
+        const rop = ropDerived
+          ? Math.ceil(scNum(it?.dailyDemand) * scNum(it?.leadTimeDays, 7) * 1.5)
+          : Number(it.reorderPoint);
         const dd = scNum(it?.dailyDemand);
         if (cur <= 0) alerts.push({ id: scId("alx"), severity: "critical", kind: "stockout", subject: scClean(it?.name) || "item", message: `${scClean(it?.name) || "Item"} is out of stock`, detail: dd > 0 ? `${dd}/day demand unmet` : "" });
-        else if (rop > 0 && cur <= rop) alerts.push({ id: scId("alx"), severity: "warning", kind: "low_stock", subject: scClean(it?.name) || "item", message: `${scClean(it?.name) || "Item"} below reorder point`, detail: `${cur} on hand vs ROP ${rop}` });
+        else if (rop > 0 && cur <= rop) alerts.push({ id: scId("alx"), severity: "warning", kind: "low_stock", subject: scClean(it?.name) || "item", message: `${scClean(it?.name) || "Item"} below reorder point`, detail: ropDerived ? `${cur} on hand vs ROP ${rop} (derived: demand × lead × 1.5)` : `${cur} on hand vs ROP ${rop}` });
       }
       // Late / exception shipments from STATE.
       for (const sh of scArr(s, s.shipments, scope.key)) {
@@ -675,20 +696,69 @@ export default function registerSupplychainActions(registerLensAction) {
       }
       const order = { critical: 0, warning: 1, info: 2 };
       alerts.sort((a, b) => (order[a.severity] ?? 3) - (order[b.severity] ?? 3));
+      const critical = alerts.filter(a => a.severity === "critical").length;
+      const warning = alerts.filter(a => a.severity === "warning").length;
+      // On request, persist the inventory/supplier half of this scan so the
+      // control tower (exceptionLatest) shows the same exception system the
+      // Planner computed — scan results used to die inside the scan panel.
+      // Shipment/PO alerts stay live from STATE and are never snapshotted.
+      if (params?.persist === true) {
+        const scannedKinds = ["stockout", "low_stock", "at_risk_supplier"];
+        const scannedAlerts = alerts.filter(a => scannedKinds.includes(a.kind));
+        s.exceptionScans.set(scope.key, {
+          scannedAt: now,
+          alerts: scannedAlerts,
+          critical: scannedAlerts.filter(a => a.severity === "critical").length,
+          warning: scannedAlerts.filter(a => a.severity === "warning").length,
+          inventoryRows: inventory.length,
+          supplierRows: suppliers.length,
+        });
+        scSave();
+      }
       return {
         ok: true,
         result: {
           alerts,
-          critical: alerts.filter(a => a.severity === "critical").length,
-          warning: alerts.filter(a => a.severity === "warning").length,
+          critical,
+          warning,
           byKind: alerts.reduce((m, a) => { m[a.kind] = (m[a.kind] || 0) + 1; return m; }, {}),
+          ropModel: "A supplied reorder point is used as given; a row without one derives ROP = daily demand × lead time × 1.5 (0.5 safety factor — the inventory optimizer's rule).",
         },
       };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // The tower's read of the last persisted inventory/supplier scan (see
+  // exceptionScan's persist). Returns scan: null until a scan is persisted.
+  registerLensAction("supplychain", "exceptionLatest", (ctx, _artifact, params) => {
+    try {
+      const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
+      const scope = scScope(ctx, params, null);
+      if (!scope.ok) return scope;
+      return { ok: true, result: { scan: s.exceptionScans.get(scope.key) || null } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   // ── 7. Order → PO → receipt workflow automation ─────────────────────
   const WO_STAGES = ["requisition", "approved", "ordered", "shipped", "received", "closed"];
+  // PO numbers are unique across every scope (personal + each org): the old
+  // per-scope counter made every store's first PO "PO-1000", so a team PO
+  // and a personal PO shared a number. The sequence lives on the lens
+  // state, seeded from the highest number already issued so existing
+  // stores keep their numbers and no number is ever reissued.
+  function nextPoNumber(s) {
+    if (typeof s.poSeq !== "number") {
+      s.poSeq = 999;
+      for (const arr of s.workOrders.values()) {
+        for (const wo of arr) {
+          const m = /^PO-(\d+)$/.exec(wo?.poNumber || "");
+          if (m) s.poSeq = Math.max(s.poSeq, Number(m[1]));
+        }
+      }
+    }
+    s.poSeq += 1;
+    return `PO-${s.poSeq}`;
+  }
   registerLensAction("supplychain", "workOrderCreate", (ctx, _artifact, params) => {
     try {
       const s = scState(); if (!s) return { ok: false, error: "state unavailable" };
@@ -700,9 +770,10 @@ export default function registerSupplychainActions(registerLensAction) {
       const now = Date.now();
       const wo = {
         id: scId("wo"),
-        poNumber: scClean(params?.poNumber) || `PO-${1000 + arr.length}`,
+        poNumber: scClean(params?.poNumber) || nextPoNumber(s),
         item: scClean(params?.item) || "Item",
         supplier: scClean(params?.supplier),
+        category: scClean(params?.category),
         quantity: qty, unitCost, totalCost: Math.round(qty * unitCost * 100) / 100,
         stage: "requisition",
         createdAt: now,

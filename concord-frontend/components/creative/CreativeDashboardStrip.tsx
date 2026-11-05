@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/ui';
+import { onCreativeDashboardDirty } from '@/lib/creative/dashboard-bus';
 
 interface Stats {
   boards: number; cards: number; openTasks: number; doneTasks: number;
@@ -79,6 +80,10 @@ export function CreativeDashboardStrip() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  // Re-settle on any mutation elsewhere in the lens (boards, review assets,
+  // call sheets, deliverables, calendar, proof links) instead of only on
+  // mount — closes the "right on reload, stale mid-session" gap.
+  useEffect(() => onCreativeDashboardDirty(() => { void refresh(); }), [refresh]);
 
   if (loading) {
     return (

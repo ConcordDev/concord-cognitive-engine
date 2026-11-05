@@ -32,6 +32,10 @@ export interface PhotoDetail {
   dtu_id: string | null;
   visibility: string;
   blob_path?: string;
+  width: number | null;
+  height: number | null;
+  size_bytes: number | null;
+  original_filename: string | null;
 }
 
 interface PhotoLightboxModalProps {
@@ -46,6 +50,13 @@ function formatTakenAt(ts: number): string {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
+}
+
+function formatBytes(n: number | null): string {
+  if (!n || !Number.isFinite(n)) return 'unknown';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function PhotoLightboxModal({ photoId, onClose }: PhotoLightboxModalProps) {
@@ -128,12 +139,31 @@ export function PhotoLightboxModal({ photoId, onClose }: PhotoLightboxModalProps
                 {photo.visibility}
               </dd>
             </div>
+            <div>
+              <dt className={ds.textMuted}>Dimensions</dt>
+              <dd className="text-gray-200">
+                {photo.width && photo.height ? `${photo.width} × ${photo.height}px` : 'unknown'}
+              </dd>
+            </div>
+            <div>
+              <dt className={ds.textMuted}>File</dt>
+              <dd className="text-gray-200">PNG &middot; {formatBytes(photo.size_bytes)}</dd>
+            </div>
+            {photo.original_filename ? (
+              <div className="col-span-2">
+                <dt className={ds.textMuted}>Original filename</dt>
+                <dd className="truncate text-gray-200">{photo.original_filename}</dd>
+              </div>
+            ) : null}
           </dl>
 
           {photo.dtu_id ? (
             <div className="flex items-center gap-1.5 rounded-lg border border-emerald-700/40 bg-emerald-950/20 p-2.5 text-xs text-emerald-200">
               <Sparkles className="h-3 w-3" aria-hidden="true" />
-              DTU minted &middot; royalty active
+              <span>
+                DTU minted &middot; royalty active &middot;{' '}
+                <code className="rounded bg-emerald-900/40 px-1 py-0.5 text-[11px]">{photo.dtu_id}</code>
+              </span>
             </div>
           ) : (
             <p className="text-xs text-slate-500">Not shared yet — no DTU minted.</p>

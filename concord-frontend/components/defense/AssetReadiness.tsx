@@ -8,7 +8,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChartKit } from '@/components/viz';
 import { lensRun } from '@/lib/api/client';
-import { Plus, Trash2, Loader2, Crosshair, Edit2, X } from 'lucide-react';
+import { Plus, Loader2, Crosshair, Edit2, X } from 'lucide-react';
+import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface DefAsset {
   id: string;
@@ -78,6 +79,7 @@ export function AssetReadiness() {
   const [rollup, setRollup] = useState<AssetRollupResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState<AssetForm | null>(null);
 
@@ -134,11 +136,14 @@ export function AssetReadiness() {
     setBusy(false);
   }, [form, refresh]);
 
-  const remove = useCallback(async (id: string) => {
+  const remove = useCallback(async (asset: DefAsset) => {
     setBusy(true);
-    const r = await lensRun('defense', 'asset-delete', { id });
+    setNotice(null);
+    setError(null);
+    const r = await lensRun('defense', 'asset-delete', { id: asset.id });
     if (r.data?.ok) {
-      setAssets((prev) => prev.filter((p) => p.id !== id));
+      setAssets((prev) => prev.filter((p) => p.id !== asset.id));
+      setNotice(`Deleted asset — ${asset.designation}`);
       await refresh();
     } else {
       setError(r.data?.error || 'Failed to delete asset');
@@ -167,6 +172,12 @@ export function AssetReadiness() {
       {error && (
         <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-400">
           {error}
+        </div>
+      )}
+
+      {notice && (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400">
+          {notice}
         </div>
       )}
 
@@ -271,14 +282,12 @@ export function AssetReadiness() {
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={() => remove(a.id)}
+                    <ConfirmDeleteButton
+                      ariaLabel="Delete asset"
+                      itemLabel={`asset "${a.designation}"`}
                       disabled={busy}
-                      aria-label="Delete asset"
-                      className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                      onConfirm={() => remove(a)}
+                    />
                   </div>
                 </div>
               ))}

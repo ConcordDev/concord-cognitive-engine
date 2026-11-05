@@ -387,13 +387,22 @@ export default function registerRealEstateActions(registerLensAction) {
       const headers = acsData[0];
       const row = acsData[1];
       const get = (name) => row[headers.indexOf(name)];
-      const medianIncome = Number(get("B19013_001E"));
-      const totalPop = Number(get("B01003_001E"));
-      const medianAge = Number(get("B01002_001E"));
-      const bachelorsCount = Number(get("B15003_022E"));
-      const ownerOcc = Number(get("B25003_002E"));
-      const renterOcc = Number(get("B25003_003E"));
-      const totalHousing = ownerOcc + renterOcc;
+      // F5: the Census encodes "not available" as large negative
+      // sentinels (-666666666 and kin). A sentinel is not a statistic:
+      // normalize it to null so every measure follows the one
+      // convention (null renders as no figure / "—"). Median age used
+      // to pass the raw sentinel through and print as data.
+      const acsNum = (name) => {
+        const n = Number(get(name));
+        return Number.isFinite(n) && n > -666666666 ? n : null;
+      };
+      const medianIncome = acsNum("B19013_001E");
+      const totalPop = acsNum("B01003_001E");
+      const medianAge = acsNum("B01002_001E");
+      const bachelorsCount = acsNum("B15003_022E");
+      const ownerOcc = acsNum("B25003_002E");
+      const renterOcc = acsNum("B25003_003E");
+      const totalHousing = ownerOcc != null && renterOcc != null ? ownerOcc + renterOcc : null;
       return {
         ok: true,
         result: {
@@ -405,7 +414,7 @@ export default function registerRealEstateActions(registerLensAction) {
             totalPopulation: totalPop,
             medianAge,
             bachelorsOrHigherCount: bachelorsCount,
-            bachelorsOrHigherPct: totalPop > 0 ? Math.round((bachelorsCount / totalPop) * 10000) / 100 : null,
+            bachelorsOrHigherPct: totalPop != null && totalPop > 0 && bachelorsCount != null ? Math.round((bachelorsCount / totalPop) * 10000) / 100 : null,
           },
           economics: {
             medianHouseholdIncome: medianIncome,
@@ -652,7 +661,11 @@ export default function registerRealEstateActions(registerLensAction) {
     const baseValue = sqft * zipMedian * conditionMult * ageDepreciation * bedBathBoost * (1 + lotPremium);
     const lowEstimate = baseValue * 0.92;
     const highEstimate = baseValue * 1.08;
-    const errorPct = 0.02;
+    // F3: the printed confidence must be the delivered spread. The
+    // bounds above are ±8%; this field said 0.02 and the surface
+    // printed "±2%" over a ±8% range — the label overstated the
+    // precision 4× on a figure people act on. 0.08 is the truth.
+    const errorPct = 0.08;
     const monthlyRent = Math.round(baseValue * 0.005);
     return {
       ok: true,
@@ -958,23 +971,28 @@ export default function registerRealEstateActions(registerLensAction) {
     const listing = ensureREBucket(s, "listings", userId).find(l => l.id === id);
     if (!listing) return { ok: false, error: "listing not found" };
     let score = 50;
-    if (listing.daysOnMarket < 3) score += 25;
-    else if (listing.daysOnMarket < 7) score += 15;
-    else if (listing.daysOnMarket > 30) score -= 15;
-    else if (listing.daysOnMarket > 60) score -= 25;
+    // F6: the score's basis travels with it — the surface prints the
+    // breakdown, so a fresh listing's 75 reads as what it is (a
+    // freshness bonus over the base), not as market heat.
+    const basis = { base: 50, marketAge: 0, priceDrop: 0, tours: 0, favourite: 0 };
+    if (listing.daysOnMarket < 3) { score += 25; basis.marketAge = 25; }
+    else if (listing.daysOnMarket < 7) { score += 15; basis.marketAge = 15; }
+    else if (listing.daysOnMarket > 30) { score -= 15; basis.marketAge = -15; }
+    else if (listing.daysOnMarket > 60) { score -= 25; basis.marketAge = -25; }
     const hist = listing.priceHistory || [];
     if (hist.length >= 2) {
       const first = hist[0].price;
       const last = hist[hist.length - 1].price;
-      if (last < first) score -= 10;
+      if (last < first) { score -= 10; basis.priceDrop = -10; }
     }
     const tours = ensureREBucket(s, "tours", userId).filter(t => t.listingId === id);
-    score += Math.min(20, tours.length * 5);
+    basis.tours = Math.min(20, tours.length * 5);
+    score += basis.tours;
     const favIds = ensureREBucket(s, "favourites", userId);
-    if (favIds.includes(id)) score += 5;
+    if (favIds.includes(id)) { score += 5; basis.favourite = 5; }
     score = Math.max(0, Math.min(100, score));
     const tag = score >= 80 ? "🔥 Very hot" : score >= 65 ? "🔥 Hot" : score >= 45 ? "Warm" : "Cooling";
-    return { ok: true, result: { listingId: id, score, tag, daysOnMarket: listing.daysOnMarket, tourCount: tours.length } };
+    return { ok: true, result: { listingId: id, score, tag, daysOnMarket: listing.daysOnMarket, tourCount: tours.length, basis } };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -1671,5 +1689,42 @@ export default function registerRealEstateActions(registerLensAction) {
       if (censusKey) msg = msg.split(censusKey).join("[redacted]").split(encodeURIComponent(censusKey)).join("[redacted]");
       return { ok: false, error: `census unreachable: ${msg}`, reason: "upstream_unavailable" };
     }
+  });
+
+  // feed-items — F4: the ingested feed DTUs, readable in the lens.
+  // The pull above stores real Census ACS median home values as
+  // public DTUs, but nothing in the lens could view one and no panel
+  // named the source ("unverifiable by construction" — Review 5).
+  // This reads the ingested DTUs back and names the source.
+  registerLensAction("realestate", "feed-items", async (ctx, _a, _params = {}) => {
+    const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const source = "US Census Bureau — American Community Survey 1-Year, variable B25077_001E (median owner-occupied home value by state)";
+    const run = ctx?.macro?.run;
+    if (typeof run !== "function") return { ok: false, error: "macro unavailable" };
+    const ids = s.feedSeen instanceof Set ? Array.from(s.feedSeen) : [];
+    const items = [];
+    for (const id of ids) {
+      try {
+        const res = await run("dtu", "get", { id });
+        const dtu = res?.dtu;
+        if (!dtu) continue;
+        const meta = dtu.meta || {};
+        let medianValue = Number(meta.medianValue);
+        if (!Number.isFinite(medianValue)) {
+          const text = String(dtu.creti || dtu.content || dtu.body || "");
+          const m = text.match(/home value: \$([\d,]+)/i);
+          medianValue = m ? Number(m[1].replace(/,/g, "")) : NaN;
+        }
+        items.push({
+          id,
+          title: dtu.title || id,
+          state: meta.state || null,
+          medianValue: Number.isFinite(medianValue) ? medianValue : null,
+          year: meta.year || 2023,
+        });
+      } catch { /* a missing DTU is skipped, never fatal */ }
+    }
+    items.sort((a, b) => String(a.state || a.title).localeCompare(String(b.state || b.title)));
+    return { ok: true, result: { items, source } };
   });
 };

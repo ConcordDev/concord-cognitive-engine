@@ -152,16 +152,17 @@ describe("app-maker — live preview", () => {
 });
 
 describe("app-maker — deploy", () => {
-  it("publishes to a hosted URL and reports status", async () => {
+  it("publishes a version snapshot and reports status honestly (no fabricated hosted URL)", async () => {
     const proj = await freshProject();
     const pub = await call("deployPublish", ctx, { projectId: proj.id });
     assert.equal(pub.ok, true);
-    assert.equal(pub.result.deployment.status, "live");
-    assert.match(pub.result.deployment.url, /^https:\/\/.*apps\.concord-os\.org$/);
+    assert.equal(pub.result.deployment.status, "snapshotted");
+    assert.equal(pub.result.deployment.url, null);
 
     const status = await call("deployStatus", ctx, { projectId: proj.id });
     assert.equal(status.ok, true);
-    assert.equal(status.result.deployment.status, "live");
+    assert.equal(status.result.deployment.status, "snapshotted");
+    assert.equal(status.result.deployment.url, null);
   });
 });
 
