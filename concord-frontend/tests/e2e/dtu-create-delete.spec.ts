@@ -77,7 +77,8 @@ test.describe('DTU browser create and delete', () => {
     await dialog.getByRole('button', { name: 'Create DTU' }).click();
 
     await expect(page.getByText('Reload note')).toBeVisible();
-    await expect(page.getByText('Showing 1–1 of 1')).toBeVisible();
+    // The count renders in both the header strip and the footer pager.
+    await expect(page.getByText('Showing 1–1 of 1').first()).toBeVisible();
 
     await page.getByRole('button', { name: 'More options' }).click();
     const deleted = page.waitForRequest((req) => req.method() === 'DELETE' && req.url().includes('/api/dtus/dtu-e2e-1'));

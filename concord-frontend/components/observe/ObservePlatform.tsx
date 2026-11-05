@@ -293,8 +293,9 @@ function LogsTab() {
       <div className={cardCls}>
         <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold mb-1">Ingest logs (LEVEL service message)</div>
         <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={3}
-          className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] font-mono text-zinc-100 resize-none"
+          className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-[11px] font-mono text-zinc-100 placeholder:text-zinc-600 placeholder:italic resize-none"
           placeholder="ERROR api request timeout after 30s" />
+        <div className="text-[10px] text-zinc-500 mt-0.5">The greyed italic text is a format sample — this box starts empty; Ingest reads only what you type.</div>
         <div className="mt-1.5"><button className={btnCls} disabled={busy} onClick={ingest}><Plus className="w-3 h-3" /> Ingest</button></div>
         <Notice n={notice} />
       </div>
@@ -583,10 +584,20 @@ function SyntheticsTab() {
         <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-2">Checks ({checks.length})</div>
         <div className="space-y-1">
           {checks.length === 0 && <div className="text-[11px] text-zinc-400">No synthetic checks yet.</div>}
-          {checks.map((c) => (
+          {checks.map((c) => {
+            const last = Array.isArray(c.history) && c.history.length > 0 ? c.history[c.history.length - 1] : null;
+            return (
             <div key={c.id} className="flex items-center gap-2 px-2 py-1.5 rounded bg-zinc-900/60">
-              <span className={`w-2 h-2 rounded-full ${c.status === 'up' ? 'bg-emerald-500' : c.status === 'down' ? 'bg-rose-500' : 'bg-zinc-600'}`} />
-              <span className="text-[11px] text-zinc-200 truncate flex-1">{c.name}</span>
+              <span className={`w-2 h-2 rounded-full shrink-0 ${c.status === 'up' ? 'bg-emerald-500' : c.status === 'down' ? 'bg-rose-500' : 'bg-zinc-600'}`} />
+              <span className="flex-1 min-w-0">
+                <span className="block text-[11px] text-zinc-200 truncate">{c.name}</span>
+                <span className="block text-[10px] text-zinc-500 truncate font-mono">{c.url}</span>
+                <span className="block text-[10px] text-zinc-400">
+                  {c.lastRun
+                    ? <>last: <span className={last?.ok ? 'text-emerald-400' : 'text-rose-400'}>{c.status}</span>{last ? <> · HTTP {last.statusCode || '—'}{last.error ? ` · ${last.error}` : ''} · {last.latencyMs}ms</> : ''} · {new Date(c.lastRun).toLocaleString()}</>
+                    : 'not run yet'}
+                </span>
+              </span>
               <span className="text-[10px] text-zinc-400">{c.method} · every {c.intervalMinutes}m</span>
               {c.uptimePct != null && <span className="text-[10px] text-cyan-400">{c.uptimePct}% up</span>}
               <button onClick={() => runCheck(c.id)} disabled={busy === c.id} className="text-cyan-400 hover:text-cyan-300">
@@ -594,7 +605,8 @@ function SyntheticsTab() {
               </button>
               <button aria-label="Delete" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -606,7 +618,7 @@ function OnCallTab() {
   const [status, setStatus] = useState<any>(null);
   const [person, setPerson] = useState('');
   const [routeName, setRouteName] = useState('');
-  const [channel, setChannel] = useState('dm');
+  const [channel, setChannel] = useState('webhook');
   const [target, setTarget] = useState('');
   const [minSeverity, setMinSeverity] = useState('sev3');
   const [pageSeverity, setPageSeverity] = useState('sev2');
@@ -672,7 +684,7 @@ function OnCallTab() {
           <div className="flex flex-wrap gap-2">
             <input className={`${inputCls} w-24`} value={routeName} onChange={(e) => setRouteName(e.target.value)} placeholder="name" />
             <select className={inputCls} value={channel} onChange={(e) => setChannel(e.target.value)}>
-              {['dm', 'email', 'webhook', 'sms'].map((c) => <option key={c} value={c}>{c}</option>)}
+              {['webhook'].map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
             <input className={`${inputCls} flex-1 min-w-[120px]`} value={target} onChange={(e) => setTarget(e.target.value)} placeholder="target" />
             <select className={inputCls} value={minSeverity} onChange={(e) => setMinSeverity(e.target.value)}>
@@ -680,9 +692,10 @@ function OnCallTab() {
             </select>
             <button aria-label="Add" className={btnCls} disabled={busy} onClick={addRoute}><Plus className="w-3 h-3" /></button>
           </div>
+          <div className="text-[10px] text-zinc-500 mt-1">Webhook is the channel the pager delivers today. DM, email and SMS are not connected yet, so they are not offered here until they are.</div>
           <div className="mt-2 space-y-0.5">
             {(status?.routes || []).map((r: any) => (
-              <div key={r.id} className="text-[11px] text-zinc-400">{r.name} · {r.channel} → {r.target} (≥{r.minSeverity})</div>
+              <div key={r.id} className="text-[11px] text-zinc-400">{r.name} · {r.channel} → {r.target} (≥{r.minSeverity}){r.channel !== 'webhook' && <span className="text-amber-500/80"> · not connected — pages are recorded, not delivered</span>}</div>
             ))}
           </div>
         </div>
