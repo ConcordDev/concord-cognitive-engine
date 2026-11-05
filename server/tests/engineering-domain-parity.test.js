@@ -253,3 +253,44 @@ describe('engineering.partStl — real binary STL for fabrication', () => {
     assert.equal(call('partStl', {}, {}, { kind: 'box', scale: -1 }).ok, false);
   });
 });
+
+describe('engineering model-save reference integrity (S-EN-1) + fea.latest workspace (S-EN-4)', () => {
+  it('refuses to store a model whose member references a missing node, naming it', () => {
+    const broken = {
+      nodes: [{ id: 'N1', x: 0, y: 0, z: 0 }, { id: 'N3', x: 120, y: 0, z: 0 }],
+      members: [{ id: 'M1', nodeI: 'N1', nodeJ: 'N2', area: 10, momentI: 100, elasticModulus: 29e6, allowableStress: 21600 }],
+      loads: [{ nodeId: 'N2', Fy: -10 }],
+      supports: [{ nodeId: 'N1', type: 'fixed', fixedDOF: ['x', 'y', 'z', 'rx', 'ry', 'rz'] }],
+    };
+    const r = call('model-save', ctx, {}, { model: broken });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /member M1 → node N2/);
+    assert.match(r.error, /load → node N2/);
+    // nothing was stored
+    assert.equal(call('model-get', ctx).result.model, null);
+  });
+  it('stores a consistent model and round-trips it, pinned/roller supports intact', () => {
+    const good = {
+      nodes: [{ id: 'N1', x: 0, y: 0, z: 0 }, { id: 'N2', x: 60, y: 0, z: 0 }],
+      members: [{ id: 'M1', nodeI: 'N1', nodeJ: 'N2', area: 10, momentI: 100, elasticModulus: 29e6, allowableStress: 21600 }],
+      loads: [{ nodeId: 'N2', Fy: -10 }],
+      supports: [
+        { nodeId: 'N1', type: 'pinned', fixedDOF: ['x', 'y', 'z'] },
+        { nodeId: 'N2', type: 'roller', fixedDOF: ['y'] },
+      ],
+    };
+    const r = call('model-save', ctx, {}, { model: good });
+    assert.equal(r.ok, true);
+    const got = call('model-get', ctx).result.model;
+    assert.deepEqual(got.supports.map((s) => s.type), ['pinned', 'roller']);
+    assert.deepEqual(got.supports[1].fixedDOF, ['y']);
+  });
+  it('workspace accepts the fea.latest key and round-trips a result blob', () => {
+    const state = { result: { summary: { allPass: true, maxUtilization: 0.5 } }, modelSignature: '{"nodes":2}', savedAt: '2026-11-03T00:00:00.000Z' };
+    const w = call('workspace-save', ctx, {}, { key: 'fea.latest', state });
+    assert.equal(w.ok, true);
+    const g = call('workspace-get', ctx, {}, { key: 'fea.latest' });
+    assert.equal(g.result.state.modelSignature, '{"nodes":2}');
+    assert.equal(g.result.state.result.summary.allPass, true);
+  });
+});

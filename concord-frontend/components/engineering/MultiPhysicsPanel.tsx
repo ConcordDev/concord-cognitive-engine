@@ -154,7 +154,7 @@ async function run<T>(action: string, input: Record<string, unknown>, set: (r: R
   }
 }
 
-type Stamped<T> = { value: T; at: string; model?: string } | null;
+type Stamped<T> = { value: T; at: string; model?: string; inputs?: string } | null;
 const PHYSICS_DEFAULTS = {
   deltaT: 40, material: 'steel-a36',
   velocity: 30, dirDeg: 0, cd: 1.2, area: 0.05,
@@ -228,6 +228,12 @@ export function MultiPhysicsPanel() {
     }
   };
 
+  const elsSig = (xs: CircuitEl[]) => JSON.stringify(xs.map((e) => [e.id, e.type, e.nodeA, e.nodeB, e.value]));
+  // The circuit solution describes the elements + ground it solved.
+  // When those change afterwards (the emptied builder included), the
+  // solution marks itself stale instead of standing as current.
+  const circuitStale =
+    !!ws.circuit && typeof ws.circuit.inputs === 'string' && ws.circuit.inputs !== `${elsSig(els)}|${ground}`;
   const circuitNodes = Array.from(new Set(els.flatMap((e) => [e.nodeA, e.nodeB]).filter(Boolean))).map((id) => ({ id }));
   const updEl = (i: number, patch: Partial<CircuitEl>) => setEls((xs) => xs.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const prefix: Record<ElType, string> = { resistor: 'R', voltage_source: 'V', current_source: 'I' };
@@ -361,10 +367,16 @@ export function MultiPhysicsPanel() {
               <input value={ground} onChange={(e) => setGround(e.target.value)} className="w-16 rounded-lg border border-white/10 bg-black/30 px-2 py-1 font-mono text-xs" />
             </label>
           </div>
-          <div className="mt-3"><RunButton onClick={() => void run<CircuitResult>('circuitSolve', { model: { nodes: circuitNodes, elements: els, groundNodeId: ground } }, setCircuitRun, stamp('circuit', false))} loading={circuit.loading} disabled={els.length === 0}>Solve circuit</RunButton></div>
+          <div className="mt-3"><RunButton onClick={() => void run<CircuitResult>('circuitSolve', { model: { nodes: circuitNodes, elements: els, groundNodeId: ground } }, setCircuitRun, (value) => setWs((s) => ({ ...s, circuit: { value, at: new Date().toISOString(), inputs: `${elsSig(els)}|${ground}` } })))} loading={circuit.loading} disabled={els.length === 0}>Solve circuit</RunButton></div>
           <Err msg={circuit.error} />
+          {circuit.result && circuitStale && (
+            <p role="alert" className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              Stale — the circuit elements or ground changed after this solution was computed. It describes
+              the earlier circuit; solve again for the current one.
+            </p>
+          )}
           {circuit.result && (
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className={`mt-3 grid gap-3 sm:grid-cols-2 ${circuitStale ? 'opacity-50' : ''}`}>
               <div>
                 <p className="mb-1 text-[11px] uppercase tracking-wider text-zinc-500">Node voltages</p>
                 {Object.entries(circuit.result.nodeVoltages).map(([k, v]) => <p key={k} className="font-mono text-xs text-zinc-200">{k}: {fmt(v)} V</p>)}
