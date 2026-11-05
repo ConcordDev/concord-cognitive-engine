@@ -58,7 +58,13 @@ export function PublicGistGallery() {
         </div>
       </header>
       {gists.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub gists unavailable right now — nothing is being shown in their place.</div>}
-      {gists.data?.stale && !gists.isError && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub gists{gists.data.fetchedAt ? ` from ${new Date(gists.data.fetchedAt).toLocaleString()}` : ''} — live refresh is rate-limited.</div>}
+      {/* The freshness of what is on screen is ALWAYS stated — cached or
+          live — so no session shows a silently stale list. */}
+      {gists.data && !gists.isError && gists.data.fetchedAt != null && (gists.data.stale ? (
+        <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub gists from {new Date(gists.data.fetchedAt).toLocaleString()} — live refresh is rate-limited.</div>
+      ) : (
+        <div className="rounded border border-zinc-700/40 bg-zinc-800/30 px-3 py-2 text-xs text-zinc-400">Fetched {new Date(gists.data.fetchedAt).toLocaleString()} via the Concord server cache.</div>
+      ))}
       {gists.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {(rows || []).map((g) => {
