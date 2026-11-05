@@ -91,6 +91,24 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Real account + world state: vehicles you spawn are persisted and shared with the 3D world, not demo data.',
   },
   /**
+   * Goddess is the family row whose declaration is written AGAINST a
+   * determination (the compilation joins S1 to A1): the composer
+   * (server/lib/goddess-broadcaster.js) is real composition — the
+   * tone bands on the world's ecosystem score, the body varies with
+   * refusal-field strength and drift kind, all three inputs read from
+   * live world machinery and persisted with each dispatch. The flat
+   * archive of record is that composer faithfully reporting a
+   * dead-flat world, not a constant emitter — so the tier is
+   * REAL_LIVE (the integration registry already reads it so), and
+   * the caption states the consequence a reader needs: a quiet
+   * world reads quiet. No cadence is asserted here; the "composed
+   * hourly" reconciliation (A2) is the pass's live leg.
+   */
+  goddess: {
+    label: 'Live',
+    caption: 'Broadcasts are composed live from this world’s own signals — ecosystem score, refusal-field strength, and drift events — and each dispatch is recorded with the inputs it was composed from. A quiet world reads quiet: identical dispatches mean the signals have not moved, not that the feed is simulated.',
+  },
+  /**
    * Retail's store is the account's own live store — products, orders and
    * stock are the merchant's real records. The generic REAL_FREE line
    * ("static / open-access dataset") was false about the machinery in both
