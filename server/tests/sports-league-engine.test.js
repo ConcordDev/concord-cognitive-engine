@@ -4,7 +4,7 @@ import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import {
-  openLeague, addTeam, addRosterMember, listTeamsInLeague,
+  openLeague, addTeam, addRosterMember, listTeamsInLeague, listLeagues,
   ensureCareer, requestTryout,
   scheduleMatch, playMatch, tickLeagues,
   advanceCareerStage, recordMatchOutcome, retireCareer,
@@ -210,5 +210,26 @@ describe("sports domain macros", () => {
   it("rejects no_user on request_tryout", async () => {
     const r = await call("request_tryout", { actor: { userId: null }, userId: null, db }, { leagueId: "x" });
     assert.equal(r.ok, false);
+  });
+
+  it("leagues lists a world's leagues with team counts (the discovery read the Careers surface needs)", async () => {
+    const a = openLeague(db, { worldId: "w1", name: "Hoops", sportKind: "basketball" });
+    const b = openLeague(db, { worldId: "w1", name: "Pitch", sportKind: "soccer" });
+    openLeague(db, { worldId: "w2", name: "Elsewhere", sportKind: "racing" });
+    addTeam(db, a.leagueId, "Lakers", 80);
+    addTeam(db, a.leagueId, "Knicks", 50);
+
+    const lib = listLeagues(db, "w1");
+    assert.deepEqual(lib.map((l) => l.id), [a.leagueId, b.leagueId], "only w1's leagues, founding order");
+    assert.equal(lib[0].team_count, 2);
+    assert.equal(lib[1].team_count, 0);
+    assert.deepEqual(listLeagues(db, "no_such_world"), []);
+    assert.deepEqual(listLeagues(null, "w1"), []);
+
+    const viaMacro = await call("leagues", { db }, { worldId: "w1" });
+    assert.equal(viaMacro.ok, true);
+    assert.deepEqual(viaMacro.leagues.map((l) => l.id), [a.leagueId, b.leagueId]);
+    const dflt = await call("leagues", { db }, {});
+    assert.equal(dflt.ok, true, "the macro defaults to concordia-hub like its siblings");
   });
 });

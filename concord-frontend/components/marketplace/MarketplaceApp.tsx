@@ -116,7 +116,7 @@ export function MarketplaceApp() {
     <>
 
       <DepthBadge lensId="marketplace" size="sm" className="ml-2" />
-      <div className="lens-marketplace relative min-h-full space-y-5 px-8 pb-28 pt-6" data-lens-theme="marketplace">
+      <div className="lens-marketplace relative min-h-full space-y-5 px-4 pb-28 pt-6 sm:px-6 lg:px-8" data-lens-theme="marketplace">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Marketplace</h1>
