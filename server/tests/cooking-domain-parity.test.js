@@ -300,9 +300,15 @@ describe("cooking — 2026 parity macros", () => {
     call("recipes-create", ctxCk, { title: "R1", tags: ["vegan"] });
     call("recipes-create", ctxCk, { title: "R2", tags: ["vegan"] });
     call("recipes-create", ctxCk, { title: "R3" });
+    // S-CK2-3 contract: the default call PREVIEWS (persists nothing);
+    // applying the reviewed assignment list fills the week.
     const r = await call("ai-meal-plan", ctxCk, { days: 7, slots: ["dinner"] });
     assert.equal(r.ok, true);
     assert.equal(r.result.assigned.length, 7);
+    const before = call("meal-plan-get", ctxCk, { start: r.result.assigned[0].date, end: r.result.assigned[6].date });
+    assert.equal(before.result.entries.length, 0);
+    const applied = await call("ai-meal-plan", ctxCk, { assignments: r.result.assigned });
+    assert.equal(applied.ok, true);
     const got = call("meal-plan-get", ctxCk, { start: r.result.assigned[0].date, end: r.result.assigned[6].date });
     assert.equal(got.result.entries.length, 7);
   });

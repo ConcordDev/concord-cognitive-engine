@@ -123,6 +123,7 @@ export default function PhotosLensPage() {
   const [query, setQuery] = useState('');
   const [editId, setEditId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [albums, setAlbums] = useState<Album[] | null>(null);
   const [albumMenuFor, setAlbumMenuFor] = useState<string | null>(null);
   const [openAlbum, setOpenAlbum] = useState<{ album: Album; ids: string[] } | null>(null);
@@ -177,7 +178,7 @@ export default function PhotosLensPage() {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dataUrl, caption, visibility: 'private' }),
+            body: JSON.stringify({ dataUrl, caption, visibility: 'private', originalFilename: file.name }),
           });
           const body = await readJson(response);
           if (!response.ok || !body.ok || !body.id) {
@@ -216,7 +217,7 @@ export default function PhotosLensPage() {
         throw new Error('Shared, but the frame did not read the DTU back.');
       }
       applyPull(rows);
-      addToast({ type: 'success', message: 'Photo shared — DTU minted', duration: 2500 });
+      addToast({ type: 'success', message: `Photo published — DTU ${body.dtuId} minted, royalty active`, duration: 3500 });
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Could not share photo';
       setActionError(message);
@@ -233,6 +234,7 @@ export default function PhotosLensPage() {
       const rows = await pull();
       if (rows.some((row) => row.id === id)) throw new Error('Delete did not leave the frame.');
       applyPull(rows);
+      setDeleteConfirmId((current) => (current === id ? null : current));
       addToast({ type: 'success', message: 'Photo deleted', duration: 2500 });
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Could not delete photo';
@@ -546,7 +548,10 @@ export default function PhotosLensPage() {
                               <span className="block truncate text-[14px] text-zinc-100">{name}</span>
                             )}
                             {frame.dtu_id ? (
-                              <p className="mt-1 text-[11px] text-zinc-500">DTU minted · royalty active</p>
+                              <p className="mt-1 truncate text-[11px] text-zinc-500">
+                                DTU minted &middot; royalty active &middot;{' '}
+                                <code className="text-zinc-400">{frame.dtu_id}</code>
+                              </p>
                             ) : null}
                             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[12px]">
                               {editId !== frame.id && (
@@ -563,10 +568,11 @@ export default function PhotosLensPage() {
                                 <button
                                   type="button"
                                   onClick={() => void share(frame.id)}
-                                  aria-label={`Share photo ${name}`}
+                                  aria-label={`Publish photo ${name} — mints a DTU and makes it public`}
+                                  title="Mints a DTU and makes this photo public"
                                   className="text-zinc-300 underline"
                                 >
-                                  Share
+                                  Publish
                                 </button>
                               )}
                               {view === 'albums' && openAlbum ? (
@@ -589,14 +595,36 @@ export default function PhotosLensPage() {
                                   Album
                                 </button>
                               )}
-                              <button
-                                type="button"
-                                onClick={() => void remove(frame.id)}
-                                aria-label={`Delete photo ${name}`}
-                                className="text-zinc-500 underline"
-                              >
-                                Delete
-                              </button>
+                              {deleteConfirmId === frame.id ? (
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="text-zinc-500">Delete &ldquo;{name}&rdquo;?</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => void remove(frame.id)}
+                                    aria-label={`Confirm delete photo ${name}`}
+                                    className="text-rose-400 underline"
+                                  >
+                                    Confirm
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeleteConfirmId(null)}
+                                    aria-label="Cancel delete"
+                                    className="text-zinc-400 underline"
+                                  >
+                                    Cancel
+                                  </button>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirmId(frame.id)}
+                                  aria-label={`Delete photo ${name}`}
+                                  className="text-zinc-500 underline"
+                                >
+                                  Delete
+                                </button>
+                              )}
                             </div>
                             {albumMenuFor === frame.id && (
                               <div role="menu" aria-label="Albums" className="absolute left-2 right-2 top-full z-20 mt-1 rounded-lg border border-white/10 bg-zinc-900 p-1 text-[13px] shadow-lg">

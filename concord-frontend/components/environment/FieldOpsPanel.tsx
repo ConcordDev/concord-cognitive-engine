@@ -394,6 +394,25 @@ const seedData: Record<
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The server's specific validation text from a failed save (F2's second
+ * half): the 422 body carries validateArtifact's errors — e.g. Invalid
+ * status "draft" for domain "environment". Valid statuses: … — and a bare
+ * "validation failed" is the one output this desk never shows again.
+ */
+function serverErrorText(e: unknown): string {
+  const holder = e as {
+    response?: { data?: { errors?: unknown; error?: unknown } };
+    data?: { errors?: unknown; error?: unknown };
+  };
+  const body = holder?.response?.data ?? holder?.data;
+  if (body && Array.isArray(body.errors) && body.errors.length > 0) {
+    return body.errors.map(String).join(' ');
+  }
+  if (body && typeof body.error === 'string' && body.error) return body.error;
+  return e instanceof Error ? e.message : 'Save failed.';
+}
+
 export type FieldOpsKind = ModeTab;
 
 export function FieldOpsPanel({
@@ -422,6 +441,7 @@ export function FieldOpsPanel({
   const [formTitle, setFormTitle] = useState('');
   const [formStatus, setFormStatus] = useState<Status>('active');
   const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const currentType = MODE_TABS.find((t) => t.id === mode)!.artifactType;
 
@@ -488,6 +508,7 @@ export function FieldOpsPanel({
     setFormTitle('');
     setFormStatus('active');
     setFormData({});
+    setSaveError(null);
     setShowEditor(true);
   }, []);
 
@@ -496,17 +517,24 @@ export function FieldOpsPanel({
     setFormTitle(item.title);
     setFormStatus((item.meta.status as Status) || 'active');
     setFormData(item.data as unknown as Record<string, unknown>);
+    setSaveError(null);
     setShowEditor(true);
   }, []);
 
   const handleSave = async () => {
     const payload = { title: formTitle, data: formData, meta: { status: formStatus } };
-    if (editingId) {
-      await update(editingId, payload);
-    } else {
-      await create(payload);
+    try {
+      if (editingId) {
+        await update(editingId, payload);
+      } else {
+        await create(payload);
+      }
+      setSaveError(null);
+      setShowEditor(false);
+    } catch (e) {
+      // The dialog keeps its values and names what failed, in words.
+      setSaveError(serverErrorText(e));
     }
-    setShowEditor(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -3448,6 +3476,11 @@ export function FieldOpsPanel({
                 </div>
                 {renderFormFields()}
               </div>
+              {saveError && (
+                <div className="px-6 py-3 border-t border-lattice-border text-xs text-rose-300">
+                  {saveError}
+                </div>
+              )}
               <div className="p-6 border-t border-lattice-border flex items-center justify-between">
                 <div>
                   {editingId && (

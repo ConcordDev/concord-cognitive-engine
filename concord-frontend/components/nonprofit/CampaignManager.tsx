@@ -44,8 +44,12 @@ export function CampaignManager() {
     setForm({ name: '', goal: '', deadline: '' });
     await refresh();
   }
+  // F3: campaign delete was single-click and silent on a fundraising
+  // record. It now takes the fleet's two-step confirm in place.
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
   async function delCampaign(id: string) {
     await lensRun('nonprofit', 'campaign-delete', { id });
+    setConfirmingDelete(null);
     if (active === id) setActive(null);
     await refresh();
   }
@@ -105,7 +109,7 @@ export function CampaignManager() {
             <div className="group flex items-center gap-2">
               <button onClick={() => setActive(active === c.id ? null : c.id)} className="text-left min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{c.name}</p>
-                <p className="text-[10px] text-zinc-400">${c.raised.toLocaleString()} raised · {c.progressPct}% of goal · {c.donorCount} donors · {c.status}</p>
+                <p className="text-[10px] text-zinc-400">${c.raised.toLocaleString()} raised · {c.progressPct}%{c.goal > 0 ? ` of $${c.goal.toLocaleString()} goal` : ' of goal'} · {c.donorCount} donors · {c.status}</p>
                 {c.goal > 0 && (
                   <div className="mt-1 h-1 bg-zinc-800 rounded overflow-hidden">
                     <div className="h-full bg-rose-500" style={{ width: `${Math.min(100, c.progressPct)}%` }} />
@@ -113,7 +117,14 @@ export function CampaignManager() {
                 )}
               </button>
               <button aria-label="Edit" onClick={() => startEdit(c)} className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200"><Pencil className="w-3 h-3" /></button>
-              <button aria-label="Delete" onClick={() => delCampaign(c.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              {confirmingDelete === c.id ? (
+                <span className="flex items-center gap-1">
+                  <button aria-label="Confirm delete" onClick={() => delCampaign(c.id)} className="px-1.5 py-0.5 rounded bg-rose-600/30 text-rose-200 hover:bg-rose-600/50 text-[10px]">Delete?</button>
+                  <button aria-label="Keep campaign" onClick={() => setConfirmingDelete(null)} className="px-1.5 py-0.5 rounded bg-zinc-700/40 text-zinc-300 text-[10px]">Keep</button>
+                </span>
+              ) : (
+                <button aria-label="Delete" onClick={() => setConfirmingDelete(c.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              )}
             </div>
             {editing === c.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800 flex flex-wrap gap-1.5 items-center">

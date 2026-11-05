@@ -67,6 +67,13 @@ export const TEMPLATES: { id: string; label: string }[] = [
   { id: 'superposition', label: 'Superposition' },
 ];
 
+/** The page's "New circuit" CTA (and the N command) ask the mounted
+ * ComposerPanel for a fresh circuit via this window event; when the
+ * panel is not mounted (Research view active), the page also sets the
+ * sessionStorage flag below and the panel consumes it on mount. */
+export const QUANTUM_NEW_CIRCUIT_EVENT = 'concord:quantum-new-circuit';
+export const QUANTUM_NEW_CIRCUIT_PENDING_KEY = 'quantum:new-circuit-pending';
+
 export type QuantumView = 'composer' | 'research';
 export const QUANTUM_VIEWS: { id: QuantumView; label: string }[] = [
   { id: 'composer', label: 'Composer' },

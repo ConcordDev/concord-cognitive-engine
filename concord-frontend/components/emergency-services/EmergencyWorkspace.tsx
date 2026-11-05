@@ -8,6 +8,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { cn } from '@/lib/utils';
+import { LimitationNotice } from '@/components/lens/LimitationNotice';
 import { AgencyMutualAidPanel } from './AgencyMutualAidPanel';
 import { CADConsole } from './CADConsole';
 import { EmergencyServicesActionPanel } from './EmergencyServicesActionPanel';
@@ -101,6 +102,11 @@ export function EmergencyWorkspace() {
           </p>
         )}
       </header>
+
+      {/* S1 — the limitation copy, at the door: the notice stands under
+          the header in every state of this workspace (the un-opened
+          board included), ahead of the invitation to open it. */}
+      <LimitationNotice register="emergency" className="mt-4" />
 
       {loading ? (
         <div role="status" aria-live="polite" className="flex min-h-[60vh] items-center justify-center gap-2 text-sm text-zinc-500">

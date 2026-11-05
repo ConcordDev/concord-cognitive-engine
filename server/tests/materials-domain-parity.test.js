@@ -63,6 +63,26 @@ describe("materials.corrosionRisk", () => {
     assert.equal(omitted.result.corrosionResistance, null);
     assert.deepEqual(omitted.result.unavailable, ["category", "environment"]);
   });
+
+  it("scores a card environment and refuses a name that is not on the card", () => {
+    // metal 40 + titanium 35 + indoor 0 = 75. Indoor is on the card and has no extra penalty.
+    const indoor = run({ material: "titanium", category: "metal", environment: "Indoor", temperature: 25, humidity: 50 });
+    assert.equal(indoor.ok, true);
+    assert.equal(indoor.result.corrosionResistance, 75);
+    assert.equal(indoor.result.riskLevel, "moderate");
+    assert.equal(indoor.result.environment, "indoor");
+
+    const industrial = run({ material: "titanium", category: "metal", environment: "industrial", temperature: 25, humidity: 50 });
+    assert.equal(industrial.result.corrosionResistance, 75);
+
+    const offCard = run({ material: "titanium", category: "metal", environment: "salt", temperature: 25, humidity: 50 });
+    assert.equal(offCard.ok, true);
+    assert.equal(offCard.result.corrosionResistance, null);
+    assert.equal(offCard.result.riskLevel, null);
+    assert.equal(offCard.result.reason, "not_recorded");
+    assert.deepEqual(offCard.result.unavailable, ["environment"]);
+    assert.equal(offCard.result.environment, "salt");
+  });
 });
 
 describe("materials.ashby-plot", () => {

@@ -3,6 +3,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { finiteOrNull, badNumber } from "../lib/finite-input.js";
 import { measuredPercent } from "../lib/measured-rate.js";
+import { stripeSecretKey } from "../lib/stripe.js";
 
 // Cap on a single gift card's face value (USD).
 const GIFT_CARD_MAX = 10000;
@@ -989,6 +990,33 @@ export default function registerRetailActions(registerLensAction) {
 
   // ── Cart + checkout ──
 
+  // ── The store's tax rate — ONE source for every total (S2/F3) ──────
+  // Resolution: an explicit caller taxRate is an override; otherwise the
+  // merchant's configured rate (the store-default rate, or the single
+  // configured rate when only one exists); otherwise 0. The terminal and
+  // the workbench used to hardcode two different rates (8.875 / 8) and the
+  // configured rate drove nothing — now the configuration IS the source,
+  // and every totals response names the rate it used and where it came from.
+  function resolveTaxRate(s, userId, params) {
+    const explicit = params?.taxRate;
+    if (explicit != null && explicit !== "" && Number.isFinite(Number(explicit))) {
+      return { rate: Math.max(0, Math.min(50, Number(explicit))), source: "override" };
+    }
+    const rates = ensureRetailBucket(s, "taxRates", userId);
+    const configured = rates.find(r => r.isDefault) || (rates.length === 1 ? rates[0] : null);
+    if (configured) return { rate: Math.max(0, Math.min(50, Number(configured.ratePct) || 0)), source: "configured" };
+    return { rate: 0, source: "none" };
+  }
+
+  // A discount code's use is counted when a sale REDEEMS it (an order is
+  // created), never when it is merely applied to a cart (F8).
+  function redeemAppliedDiscount(s, userId, cart) {
+    const code = cart?.appliedDiscountCode;
+    if (!code) return;
+    const discount = ensureRetailBucket(s, "discounts", userId).find(d => d.code === code);
+    if (discount) discount.usageCount = (Number(discount.usageCount) || 0) + 1;
+  }
+
   registerLensAction("retail", "cart-open", (ctx, _artifact, _params = {}) => {
     const s = getRetailState();
     if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1027,7 +1055,7 @@ export default function registerRetailActions(registerLensAction) {
     const cartId = String(params.cartId || "");
     const cart = s.carts.get(userId)?.get(cartId);
     if (!cart) return { ok: false, error: "cart not found" };
-    const taxRate = Number(params.taxRate) || 0;
+    const { rate: taxRate, source: taxRateSource } = resolveTaxRate(s, userId, params);
     const subtotal = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
     const discount = (subtotal * cart.discountPercent) / 100;
     const subtotalAfterDiscount = subtotal - discount;
@@ -1040,6 +1068,8 @@ export default function registerRetailActions(registerLensAction) {
         discount: Math.round(discount * 100) / 100,
         subtotalAfterDiscount: Math.round(subtotalAfterDiscount * 100) / 100,
         tax: Math.round(tax * 100) / 100,
+        taxRate,
+        taxRateSource,
         total: Math.round(total * 100) / 100,
         lineCount: cart.lines.length,
         itemCount: cart.lines.reduce((s, l) => s + l.qty, 0),
@@ -1056,7 +1086,7 @@ export default function registerRetailActions(registerLensAction) {
     const cart = s.carts.get(userId)?.get(cartId);
     if (!cart) return { ok: false, error: "cart not found" };
     if (cart.lines.length === 0) return { ok: false, error: "cart is empty" };
-    const taxRate = Number(params.taxRate) || 0;
+    const { rate: taxRate, source: taxRateSource } = resolveTaxRate(s, userId, params);
     const tenders = Array.isArray(params.tenders) ? params.tenders : [];
     if (tenders.length === 0) return { ok: false, error: "tenders required (e.g. [{kind:'cash', amount:100}])" };
     // Compute total
@@ -1087,10 +1117,15 @@ export default function registerRetailActions(registerLensAction) {
       tendered: Math.round(tendered * 100) / 100,
       change,
       completedAt: nowIsoRet(),
+      status: "paid",
+      refundedAmount: 0,
+      taxRate,
+      taxRateSource,
     };
     seq.order++;
     if (!s.orders.has(userId)) s.orders.set(userId, []);
     s.orders.get(userId).unshift(order);
+    redeemAppliedDiscount(s, userId, cart);
     s.carts.get(userId).delete(cartId);
     saveRetailState();
     return { ok: true, result: { order } };
@@ -1114,7 +1149,13 @@ export default function registerRetailActions(registerLensAction) {
     const threshold = Number(params.threshold) || 5;
     const map = s.products.get(userId);
     if (!map) return { ok: true, result: { lowStock: [] } };
-    const lowStock = Array.from(map.values()).filter((p) => p.stock <= threshold).sort((a, b) => a.stock - b.stock);
+    const lowStock = Array.from(map.values())
+      .filter((p) => p.stock <= threshold)
+      .sort((a, b) => a.stock - b.stock)
+      // atThreshold marks stock sitting exactly AT the reorder point, so
+      // surfaces can say "at reorder point" instead of crying low stock
+      // over a product stocked exactly to its point.
+      .map((p) => ({ ...p, atThreshold: p.stock === threshold }));
     return { ok: true, result: { lowStock, threshold } };
   });
 
@@ -1135,9 +1176,20 @@ export default function registerRetailActions(registerLensAction) {
   // Per "everything must be real": no synthesized auth codes,
   // no skip-the-network fast path. STRIPE_SECRET_KEY env required.
 
+  // Card payments are unavailable until a VALID Stripe secret is configured.
+  // stripeSecretKey() (server/lib/stripe.js) returns "" for missing or
+  // placeholder keys — those must never be sent to Stripe. Callers translate
+  // CARD_UNAVAILABLE into product words; the provider's raw error text is
+  // never user copy.
+  const CARD_UNAVAILABLE = "Card payments aren't available for this store right now. Cash tender still works.";
+  function retailStripeKey() {
+    const key = stripeSecretKey();
+    if (!key) { const e = new Error("card_unavailable"); e.code = "card_unavailable"; throw e; }
+    return key;
+  }
+
   async function stripePostRetail(path, formBody) {
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
+    const stripeKey = retailStripeKey();
     const url = `https://api.stripe.com/v1${path}`;
     const body = new URLSearchParams(formBody).toString();
     const r = await fetch(url, {
@@ -1150,17 +1202,16 @@ export default function registerRetailActions(registerLensAction) {
       body,
     });
     const data = await r.json();
-    if (!r.ok) throw new Error(`stripe ${path} ${r.status}: ${data?.error?.message || "unknown"}`);
+    if (!r.ok) { const e = new Error("card_unavailable"); e.code = "card_unavailable"; throw e; }
     return data;
   }
 
   async function stripeGetRetail(path) {
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
+    const stripeKey = retailStripeKey();
     const url = `https://api.stripe.com/v1${path}`;
     const r = await fetch(url, { headers: { Authorization: `Bearer ${stripeKey}` } });
     const data = await r.json();
-    if (!r.ok) throw new Error(`stripe ${path} ${r.status}: ${data?.error?.message || "unknown"}`);
+    if (!r.ok) { const e = new Error("card_unavailable"); e.code = "card_unavailable"; throw e; }
     return data;
   }
 
@@ -1172,10 +1223,10 @@ export default function registerRetailActions(registerLensAction) {
     const cart = s.carts.get(userId)?.get(cartId);
     if (!cart) return { ok: false, error: "cart not found" };
     if (cart.lines.length === 0) return { ok: false, error: "cart is empty" };
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return { ok: false, error: "Stripe not configured. Set STRIPE_SECRET_KEY env to enable card tenders." };
+    if (!stripeSecretKey()) {
+      return { ok: false, error: CARD_UNAVAILABLE };
     }
-    const taxRate = Number(params.taxRate) || 0;
+    const { rate: taxRate, source: taxRateSource } = resolveTaxRate(s, userId, params);
     const subtotal = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
     const discount = (subtotal * cart.discountPercent) / 100;
     const subtotalAfter = subtotal - discount;
@@ -1214,10 +1265,12 @@ export default function registerRetailActions(registerLensAction) {
           subtotal: Math.round(subtotalAfter * 100) / 100,
           tax: Math.round(tax * 100) / 100,
           status: pi.status,
+          taxRate,
+          taxRateSource,
         },
       };
     } catch (e) {
-      return { ok: false, error: `stripe payment-intent creation failed: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: CARD_UNAVAILABLE };
     }
   });
 
@@ -1228,8 +1281,8 @@ export default function registerRetailActions(registerLensAction) {
     const cartId = String(params.cartId || "");
     const cart = s.carts.get(userId)?.get(cartId);
     if (!cart) return { ok: false, error: "cart not found" };
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return { ok: false, error: "Stripe not configured." };
+    if (!stripeSecretKey()) {
+      return { ok: false, error: CARD_UNAVAILABLE };
     }
     const paymentIntentId = String(params.paymentIntentId || cart.pendingPaymentIntentId || "");
     if (!paymentIntentId) return { ok: false, error: "paymentIntentId required" };
@@ -1242,7 +1295,7 @@ export default function registerRetailActions(registerLensAction) {
     try {
       pi = await stripeGetRetail(`/payment_intents/${paymentIntentId}`);
     } catch (e) {
-      return { ok: false, error: `stripe payment-intent fetch failed: ${e instanceof Error ? e.message : String(e)}` };
+      return { ok: false, error: CARD_UNAVAILABLE };
     }
     if (pi.status !== "succeeded") {
       return { ok: false, error: `payment not succeeded (status=${pi.status}); cannot capture order` };
@@ -1278,12 +1331,15 @@ export default function registerRetailActions(registerLensAction) {
       change: 0,
       stripePaymentIntentId: paymentIntentId,
       stripePaymentStatus: pi.status,
+      status: "paid",
+      refundedAmount: 0,
       completedAt: nowIsoRet(),
       paidVia: "stripe",
     };
     seq.order++;
     if (!s.orders.has(userId)) s.orders.set(userId, []);
     s.orders.get(userId).unshift(order);
+    redeemAppliedDiscount(s, userId, cart);
     s.carts.get(userId).delete(cartId);
     saveRetailState();
     return { ok: true, result: { order } };
@@ -1359,7 +1415,10 @@ export default function registerRetailActions(registerLensAction) {
       repeat: customers.filter(c => c.orderCount >= 2 && c.orderCount < 5),
       vip: customers.filter(c => c.totalSpent >= 1000 || c.orderCount >= 5),
       atRisk: customers.filter(c => c.lastOrderAt && (now - new Date(c.lastOrderAt).getTime()) > 90 * day && c.orderCount > 0),
-      dormant: customers.filter(c => !c.lastOrderAt || (now - new Date(c.lastOrderAt).getTime()) > 180 * day),
+      // Dormant means "was active, then went quiet" — a customer who has
+      // never ordered is New, not dormant (the two chips double-counted
+      // every brand-new customer before this).
+      dormant: customers.filter(c => c.lastOrderAt && (now - new Date(c.lastOrderAt).getTime()) > 180 * day),
       marketing: customers.filter(c => c.acceptsMarketing),
     };
     return {
@@ -1450,7 +1509,10 @@ export default function registerRetailActions(registerLensAction) {
       cart.freeShipping = true;
     }
     cart.appliedDiscountCode = code;
-    discount.usageCount++;
+    // F8: applying a code to a cart does NOT consume a use — the use is
+    // counted at redemption, when an order is created from this cart
+    // (redeemAppliedDiscount in cart-tender / cart-confirm-paid-with-intent).
+    // An abandoned cart therefore burns nothing.
     saveRetailState();
     return { ok: true, result: { cart, discountAmount: Math.round(discountAmount * 100) / 100 } };
   });
@@ -1591,6 +1653,12 @@ export default function registerRetailActions(registerLensAction) {
     } else {
       rates.push({ id: nextRetailId("tax"), region, ratePct, createdAt: nowIsoRet() });
     }
+    // The store-default rate is the one the register charges (resolveTaxRate).
+    // Setting isDefault designates this region's rate and clears the others;
+    // with a single configured rate no designation is needed.
+    if (params.isDefault === true) {
+      for (const r of rates) r.isDefault = r.region === region;
+    }
     saveRetailState();
     return { ok: true, result: { rates } };
   });
@@ -1681,7 +1749,7 @@ export default function registerRetailActions(registerLensAction) {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const orderId = String(params.orderId || "");
-    const amount = Math.max(0, Number(params.amount) || 0);
+    const amount = Math.round(Math.max(0, Number(params.amount) || 0) * 100) / 100;
     const reason = String(params.reason || "customer_request");
     const restock = params.restock !== false;
     if (!orderId || amount <= 0) return { ok: false, error: "orderId and amount required" };
@@ -1696,6 +1764,11 @@ export default function registerRetailActions(registerLensAction) {
       processedAt: nowIsoRet(),
     };
     ensureRetailBucket(s, "refunds", userId).push(refund);
+    // F4: the refund lands ON the order — its status and refundedAmount move,
+    // so every figure computed from orders (both panels, revenue-by-day)
+    // sees the refund. A fully refunded order no longer reads "paid".
+    order.refundedAmount = Math.round(((Number(order.refundedAmount) || 0) + amount) * 100) / 100;
+    order.status = order.refundedAmount + 0.01 >= order.total ? "refunded" : "partially_refunded";
     if (restock) {
       for (const line of order.lines) {
         const product = s.products.get(userId)?.get(line.sku);
@@ -1855,6 +1928,12 @@ export default function registerRetailActions(registerLensAction) {
     return { ok: true, result: { transfer } };
   });
 
+  // ONE definition of a sale's value everywhere (S2/F5): the order total
+  // NET of refunds, tax included. Both panels read these actions, so they
+  // cannot disagree; the basis travels with the numbers as `salesBasis`.
+  const SALES_BASIS = "Order totals, tax included, net of refunds";
+  const netOrderValue = (o) => Math.round(((Number(o?.total) || 0) - (Number(o?.refundedAmount) || 0)) * 100) / 100;
+
   // ── Sales analytics ───────────────────────────────────────────
 
   registerLensAction("retail", "analytics-revenue-by-day", (ctx, _a, params = {}) => {
@@ -1876,7 +1955,7 @@ export default function registerRetailActions(registerLensAction) {
       const date = new Date(order.completedAt).toISOString().slice(0, 10);
       const entry = byDay.get(date);
       if (entry) {
-        entry.revenue = Math.round((entry.revenue + order.total) * 100) / 100;
+        entry.revenue = Math.round((entry.revenue + netOrderValue(order)) * 100) / 100;
         entry.orderCount++;
       }
     }
@@ -1887,6 +1966,7 @@ export default function registerRetailActions(registerLensAction) {
       ok: true,
       result: {
         series, days,
+        salesBasis: SALES_BASIS,
         totalRevenue: Math.round(totalRevenue * 100) / 100,
         totalOrders,
         avgOrderValue: totalOrders > 0 ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0,
@@ -1924,7 +2004,7 @@ export default function registerRetailActions(registerLensAction) {
     const customers = ensureRetailBucket(s, "customers", userId);
     const products = s.products.get(userId);
     const productCount = products ? products.size : 0;
-    const totalRevenue = orders.reduce((s, o) => s + o.total, 0);
+    const totalRevenue = orders.reduce((s, o) => s + netOrderValue(o), 0);
     const day = 86400000;
     const now = Date.now();
     const ordersToday = orders.filter(o => (now - new Date(o.completedAt).getTime()) < day);
@@ -1933,12 +2013,13 @@ export default function registerRetailActions(registerLensAction) {
     return {
       ok: true,
       result: {
+        salesBasis: SALES_BASIS,
         totalRevenue: Math.round(totalRevenue * 100) / 100,
         totalOrders: orders.length,
         ordersToday: ordersToday.length,
-        revenueToday: Math.round(ordersToday.reduce((s, o) => s + o.total, 0) * 100) / 100,
-        revenue7d: Math.round(orders7d.reduce((s, o) => s + o.total, 0) * 100) / 100,
-        revenue30d: Math.round(orders30d.reduce((s, o) => s + o.total, 0) * 100) / 100,
+        revenueToday: Math.round(ordersToday.reduce((s, o) => s + netOrderValue(o), 0) * 100) / 100,
+        revenue7d: Math.round(orders7d.reduce((s, o) => s + netOrderValue(o), 0) * 100) / 100,
+        revenue30d: Math.round(orders30d.reduce((s, o) => s + netOrderValue(o), 0) * 100) / 100,
         avgOrderValue: orders.length > 0 ? Math.round((totalRevenue / orders.length) * 100) / 100 : 0,
         productCount,
         customerCount: customers.length,
@@ -1973,13 +2054,32 @@ export default function registerRetailActions(registerLensAction) {
           visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
           meta: { code: p.code, name: p.product_name, brands: p.brands },
         });
-        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); }
+        if (res?.ok && res.dtu) {
+          ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id);
+          // Record the ingestion in the lens's own store so the items are
+          // FINDABLE here (before this, ingested DTUs were visible nowhere
+          // in the lens — the feed worked and its output vanished).
+          const items = ensureRetailBucket(s, "feedItems", retailActor(ctx));
+          if (!items.some((it) => it.code === p.code)) {
+            items.unshift({ dtuId: res.dtu.id, code: p.code, name: p.product_name, brands: p.brands || "", source: "openbeautyfacts-products", ingestedAt: nowIsoRet() });
+          }
+        }
       }
       saveRetailState();
       return { ok: true, result: { ingested, skipped, source: "openbeautyfacts-products", dtuIds } };
+
     } catch (e) {
       return { ok: false, error: `openbeautyfacts unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // feed-items — the products this store's feed pulls have ingested, as
+  // recorded at ingestion time. This is what makes the feed's output
+  // visible inside the lens (each item is a DTU in the library).
+  registerLensAction("retail", "feed-items", (ctx, _a, _p = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const items = ensureRetailBucket(s, "feedItems", retailActor(ctx));
+    return { ok: true, result: { items: items.slice(0, 50), count: items.length } };
   });
 
   // ════════════════════════════════════════════════════════════════════
@@ -2127,6 +2227,8 @@ export default function registerRetailActions(registerLensAction) {
       buyerName, buyerEmail,
       fulfillmentStatus: "unfulfilled",
       completedAt: nowIsoRet(),
+      status: "paid",
+      refundedAmount: 0,
     };
     seq.order++;
     if (!s.orders.has(userId)) s.orders.set(userId, []);

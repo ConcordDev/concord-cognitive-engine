@@ -31,6 +31,7 @@ import {
   despawnVehicle,
 } from "../lib/world-vehicles.js";
 import { actorId as authzActorId, isAdmin } from "../lib/lens-authz.js";
+import { resolveUserDisplay } from "../lib/friend-presence.js";
 
 function actorId(ctx) {
   return authzActorId(ctx);
@@ -98,6 +99,11 @@ export default function registerGarageMacros(register) {
         ? db.prepare(`SELECT ${cols} FROM world_vehicles WHERE world_id = ? AND owner_kind = 'player' AND owner_id = ? AND kind = ? ORDER BY created_at DESC LIMIT 200`)
         : db.prepare(`SELECT ${cols} FROM world_vehicles WHERE world_id = ? AND owner_kind = 'player' AND owner_id = ? ORDER BY created_at DESC LIMIT 200`);
       const vehicles = kind ? stmt.all(worldId, userId, kind) : stmt.all(worldId, userId);
+      // F3: every row here is owned by the SAME caller, so resolve the
+      // display name once and stamp it — "My fleet" should read the
+      // account's real display identity, not a raw owner_id fragment.
+      const displayName = resolveUserDisplay(db, [userId])[userId]?.displayName || userId.slice(0, 8);
+      for (const v of vehicles) v.ownerDisplay = displayName;
       return { ok: true, worldId, vehicles };
     } catch (e) {
       return { ok: true, worldId, vehicles: [], reason: e?.message };
@@ -114,9 +120,18 @@ export default function registerGarageMacros(register) {
     if (!input.vehicleId) return { ok: false, reason: "no_vehicle_id" };
     const vehicle = getVehicle(db, String(input.vehicleId));
     if (!vehicle) return { ok: false, reason: "vehicle_not_found" };
+    const projected = projectVehicle(vehicle, actorId(ctx));
+    // F3: the inspector is the one surface that can legitimately show the
+    // owner (the player's own vehicle, isMine:true) — resolve the raw
+    // owner_id to the account's real display identity instead of leaving a
+    // raw UUID fragment for the user to read.
+    if (projected.isMine && projected.owner_kind === "player" && projected.owner_id) {
+      projected.ownerDisplay = resolveUserDisplay(db, [projected.owner_id])[projected.owner_id]?.displayName
+        || projected.owner_id.slice(0, 8);
+    }
     return {
       ok: true,
-      vehicle: projectVehicle(vehicle, actorId(ctx)),
+      vehicle: projected,
       occupants: occupantCount(db, String(input.vehicleId)),
     };
   }, { note: "get one vehicle by id (with live occupant count)" });

@@ -55,7 +55,7 @@ describe("sports.team-lookup (TheSportsDB)", () => {
     };
     const r = await call("sports.team-lookup", ctxA, { name: "Arsenal" });
     assert.equal(r.ok, true);
-    assert.match(capturedUrl, /thesportsdb\.com\/api\/v1\/json\/3\/searchteams/);
+    assert.match(capturedUrl, /thesportsdb\.com\/api\/v1\/json\/123\/searchteams/);
     assert.equal(r.result.teams[0].name, "Arsenal");
     assert.equal(r.result.teams[0].formedYear, 1886);
     assert.equal(r.result.source, "thesportsdb");

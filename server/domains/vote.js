@@ -211,9 +211,18 @@ export default function registerVoteActions(registerLensAction) {
     const gallagherLabel = gallagherIndex < 2 ? "highly proportional" : gallagherIndex < 5 ? "moderately proportional" : gallagherIndex < 10 ? "disproportional" : "highly disproportional";
 
     // --- Majority criterion check ---
-    // If a candidate has > 50% first-choice votes, they should win
+    // If a candidate has > 50% first-choice votes, they should win. The
+    // winner judged against is the one this toolkit itself reports: the
+    // seat leader when seat data was supplied, otherwise the plurality
+    // winner of these same ballots (F2 — judging against an absent seat
+    // table made every majority holder "not the winner"). The verdict
+    // names the winner it judged against.
     const majorityCandidate = candidates.find(c => voteShares[c] > 0.5);
-    const declaredWinner = Object.entries(results).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    const pluralityWinner = candidates.length > 0
+      ? [...candidates].sort((a, b) => (firstChoice[b] || 0) - (firstChoice[a] || 0))[0]
+      : null;
+    const seatWinner = Object.entries(results).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    const declaredWinner = seatWinner || pluralityWinner;
     const majorityCriterionMet = !majorityCandidate || majorityCandidate === declaredWinner;
 
     // --- Strategic voting detection ---
@@ -287,9 +296,12 @@ export default function registerVoteActions(registerLensAction) {
         gallagherLabel: Object.keys(results).length > 0 ? gallagherLabel : null,
         majorityCriterion: {
           majorityCandidate,
+          judgedAgainst: declaredWinner,
           met: majorityCriterionMet,
           detail: majorityCandidate
-            ? (majorityCriterionMet ? `${majorityCandidate} has majority and wins — criterion met` : `${majorityCandidate} has majority but did not win — criterion VIOLATED`)
+            ? (majorityCriterionMet
+              ? `${majorityCandidate} has majority and wins (judged against ${declaredWinner}, the ${seatWinner ? "seat leader" : "plurality winner"}) — criterion met`
+              : `${majorityCandidate} has majority but did not win (judged against ${declaredWinner}) — criterion VIOLATED`)
             : "No candidate has a majority of first-choice votes",
         },
         strategicVoting: {
@@ -552,6 +564,16 @@ export default function registerVoteActions(registerLensAction) {
     const method = poll.method;
     const r = vtround;
 
+    // Winner decision shared by the simple methods (F1/F4): an empty tally
+    // has NO winner (the first option at 0 votes is not an outcome), and an
+    // equal top tally is a TIE, never a silent win for the first option.
+    function decide(ranking, key) {
+      if (ballots.length === 0 || ranking.length === 0) return { winner: null, tied: [] };
+      const top = ranking[0][key];
+      const tied = ranking.filter((row) => row[key] === top).map((row) => row.option);
+      return tied.length > 1 ? { winner: null, tied } : { winner: ranking[0].option, tied: [] };
+    }
+
     if (method === "plurality") {
       const count = {};
       for (const o of opts) count[o] = 0;
@@ -563,7 +585,8 @@ export default function registerVoteActions(registerLensAction) {
       const ranking = Object.entries(count)
         .map(([option, votes]) => ({ option, votes: r(votes), share: r(totalW > 0 ? votes / totalW : 0) }))
         .sort((a, b) => b.votes - a.votes);
-      return { method, ranking, winner: ranking[0]?.option || null, totalWeight: r(totalW), rounds: null };
+      const { winner, tied } = decide(ranking, "votes");
+      return { method, ranking, winner, tied, totalWeight: r(totalW), rounds: null };
     }
 
     if (method === "approval") {
@@ -576,7 +599,8 @@ export default function registerVoteActions(registerLensAction) {
       const ranking = Object.entries(count)
         .map(([option, votes]) => ({ option, votes: r(votes), share: r(totalW > 0 ? votes / totalW : 0) }))
         .sort((a, b) => b.votes - a.votes);
-      return { method, ranking, winner: ranking[0]?.option || null, totalWeight: r(totalW), rounds: null };
+      const { winner, tied } = decide(ranking, "votes");
+      return { method, ranking, winner, tied, totalWeight: r(totalW), rounds: null };
     }
 
     if (method === "score") {
@@ -590,7 +614,8 @@ export default function registerVoteActions(registerLensAction) {
       const ranking = opts
         .map((option) => ({ option, total: r(sum[option]), avg: r(n[option] > 0 ? sum[option] / n[option] : 0) }))
         .sort((a, b) => b.total - a.total);
-      return { method, ranking, winner: ranking[0]?.option || null, totalWeight: null, rounds: null };
+      const { winner, tied } = decide(ranking, "total");
+      return { method, ranking, winner, tied, totalWeight: null, rounds: null };
     }
 
     if (method === "quadratic") {
@@ -608,14 +633,20 @@ export default function registerVoteActions(registerLensAction) {
       const ranking = opts
         .map((option) => ({ option, effectiveVotes: r(sum[option]) }))
         .sort((a, b) => b.effectiveVotes - a.effectiveVotes);
-      return { method, ranking, winner: ranking[0]?.option || null, totalWeight: null, rounds: null };
+      const { winner, tied } = decide(ranking, "effectiveVotes");
+      return { method, ranking, winner, tied, totalWeight: null, rounds: null };
     }
 
     // method === "ranked" — Instant-Runoff Voting (IRV)
+    if (ballots.length === 0) {
+      const ranking = opts.map((option) => ({ option, votes: 0, share: 0 }));
+      return { method, ranking, winner: null, tied: [], totalWeight: null, rounds: [] };
+    }
     let remaining = [...opts];
     const rounds = [];
     let working = ballots.map((b) => ({ rankings: (b.rankings || []).slice(), weight: b.weight }));
     let winner = null;
+    let tied = [];
     let guard = 0;
     while (remaining.length > 0 && guard++ < 64) {
       const count = {};
@@ -631,12 +662,18 @@ export default function registerVoteActions(registerLensAction) {
       rounds.push({ round: rounds.length + 1, tally, exhausted: r(ballots.reduce((s, b) => s + b.weight, 0) - totalW) });
       if (tally.length === 0) break;
       if (tally[0].share > 0.5 || remaining.length === 1) { winner = tally[0].option; break; }
+      // Final pair deadlocked on equal votes: a tie, not an option-order
+      // elimination (F4's shape in IRV form).
+      if (tally.length >= 2 && remaining.length === 2 && tally[0].votes === tally[1].votes) {
+        tied = [tally[0].option, tally[1].option];
+        break;
+      }
       // eliminate lowest
       const lowest = tally[tally.length - 1].option;
       remaining = remaining.filter((o) => o !== lowest);
     }
     const finalRanking = (rounds[rounds.length - 1]?.tally || []);
-    return { method, ranking: finalRanking, winner, totalWeight: null, rounds };
+    return { method, ranking: finalRanking, winner, tied, totalWeight: null, rounds };
   }
 
   // resolve pass/fail against the poll's quorum + threshold rules
@@ -647,9 +684,17 @@ export default function registerVoteActions(registerLensAction) {
     const winner = tally.winner;
     let outcome = "pending";
     let detail = "";
-    if (!quorumMet) {
-      outcome = "failed";
-      detail = `Quorum not met: ${totalBallots}/${quorum} ballots.`;
+    if (totalBallots === 0) {
+      // F1: an empty tally manufactures no decision — no PASSED, no winner.
+      outcome = "unresolved";
+      detail = "No ballots cast — this poll has no outcome.";
+    } else if (!quorumMet) {
+      outcome = "unresolved";
+      detail = `Quorum not met: ${totalBallots}/${quorum} ballots — no outcome.`;
+    } else if (Array.isArray(tally.tied) && tally.tied.length > 1) {
+      // F4: an equal top tally is a tie, stated — never awarded by order.
+      outcome = "tied";
+      detail = `${tally.tied.join(" and ")} are tied under ${poll.method} voting — no winner.`;
     } else if (poll.passThreshold != null && winner) {
       // for plurality/approval/score, winner must clear the support threshold
       const top = tally.ranking[0];
@@ -698,7 +743,12 @@ export default function registerVoteActions(registerLensAction) {
       method,
       options,
       owner: vtaid(ctx),
-      ownerLabel: vtclean(params.ownerLabel, 80) || "Anonymous",
+      // Creator attribution (F6): an explicit label wins, then the actor's
+      // own display name / username (the fleet pattern) — "Anonymous" is
+      // only for a caller no identity can be established for.
+      ownerLabel: vtclean(params.ownerLabel, 80)
+        || vtclean(ctx?.actor?.displayName || ctx?.actor?.username || "", 80)
+        || "Anonymous",
       createdAt: vtnow(),
       opensAt: params.opensAt ? new Date(params.opensAt).toISOString() : null,
       deadline,

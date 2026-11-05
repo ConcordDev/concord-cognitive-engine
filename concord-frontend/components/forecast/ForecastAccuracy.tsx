@@ -5,6 +5,12 @@
  * forecast composed nearest its 24h target window. Both sides are real
  * persisted rows; nothing is synthesized. Needs >=2 persisted forecasts
  * spanning a window to score anything.
+ *
+ * Named for what it measures (S4b, on the handler read): this is a
+ * CONSISTENCY measure — a forecast against the model's own later forecast —
+ * not verification against observed weather. No realized-state observation
+ * enters the loop; the samples derive on read from the persisted archive
+ * and grow as forecasts are composed. The visible copy says so.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -32,10 +38,12 @@ interface AccuracyResult {
   comparisons: Comparison[];
 }
 
-export function ForecastAccuracy({ worldId }: { worldId: string }) {
+export function ForecastAccuracy({ worldId, refreshKey = 0 }: { worldId: string; refreshKey?: number }) {
   const [result, setResult] = useState<AccuracyResult | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // refreshKey: the page's compose version — a fresh compose re-reads the
+  // comparison set in session (F2).
   const load = useCallback(async () => {
     setLoading(true);
     const r = await lensRun<AccuracyResult>('forecast', 'accuracy', { worldId, limit: 30 });
@@ -45,16 +53,16 @@ export function ForecastAccuracy({ worldId }: { worldId: string }) {
       setResult(null);
     }
     setLoading(false);
-  }, [worldId]);
+  }, [worldId, refreshKey]);
 
   useEffect(() => { void load(); }, [load]);
 
-  if (loading) return <p className="text-xs text-zinc-400">Scoring past forecasts…</p>;
+  if (loading) return <p className="text-xs text-zinc-400">Comparing past forecasts…</p>;
 
   if (!result || result.summary.sample_count === 0) {
     return (
       <p className="py-8 text-center text-xs italic text-zinc-400">
-        No data yet — accuracy needs at least two persisted forecasts spanning a 24h window.
+        No data yet — consistency needs at least two persisted forecasts spanning a 24h window.
         Compose forecasts over time to build the comparison set.
       </p>
     );
@@ -64,19 +72,25 @@ export function ForecastAccuracy({ worldId }: { worldId: string }) {
 
   return (
     <div className="space-y-3">
+      <p className="text-[11px] leading-relaxed text-zinc-400">
+        Consistency, not verification: each forecast is compared with the forecast
+        composed nearest its 24h target window — the model&apos;s own later forecast,
+        not observed weather. Samples derive on read from the persisted archive, so
+        this set grows as forecasts are composed.
+      </p>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">Samples</div>
           <div className="mt-0.5 font-mono text-lg text-zinc-100">{summary.sample_count}</div>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Kind hit-rate</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Kind agreement</div>
           <div className="mt-0.5 font-mono text-lg text-emerald-300">
             {summary.kind_accuracy !== null ? `${(summary.kind_accuracy * 100).toFixed(0)}%` : '—'}
           </div>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Mean temp error</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Mean temp drift</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">
             {summary.mean_temp_error_c !== null ? `${summary.mean_temp_error_c}°C` : '—'}
           </div>
@@ -97,7 +111,7 @@ export function ForecastAccuracy({ worldId }: { worldId: string }) {
                 <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${
                   c.kind_hit ? 'bg-emerald-500/15 text-emerald-300' : 'bg-rose-500/15 text-rose-300'
                 }`}>
-                  {c.kind_hit ? 'kind hit' : 'kind miss'}
+                  {c.kind_hit ? 'agrees' : 'diverges'}
                 </span>
               )}
             </div>
@@ -109,7 +123,7 @@ export function ForecastAccuracy({ worldId }: { worldId: string }) {
               </span>
               {c.temp_abs_error_c !== null && (
                 <span className="text-zinc-400">
-                  temp err: <span className="font-mono text-amber-300">{c.temp_abs_error_c}°C</span>
+                  temp drift: <span className="font-mono text-amber-300">{c.temp_abs_error_c}°C</span>
                   <span className="text-zinc-600"> ({c.predicted_temp_c}° → {c.realized_temp_c}°)</span>
                 </span>
               )}

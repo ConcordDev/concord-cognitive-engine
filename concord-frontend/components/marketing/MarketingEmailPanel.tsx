@@ -30,6 +30,7 @@ export function MarketingEmailPanel() {
   const [editing, setEditing] = useState<EmailDoc | null>(null);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [lastSend, setLastSend] = useState<{ status?: string; note?: string; delivered?: number; recipients?: number } | null>(null);
 
   // editor form
   const [fName, setFName] = useState('');
@@ -110,6 +111,11 @@ export function MarketingEmailPanel() {
     const r = await lensRun('marketing', 'email-send', { id: sendTarget, recipients: list });
     setBusy(false);
     if (r.data?.ok === false) { setError(r.data?.error || 'Send failed'); return; }
+    // Surface the server's honest outcome (build(marketing) S2): email-send
+    // reports exactly what happened — delivered, or queued_no_provider with
+    // "nothing was sent" — and this panel used to swallow the result,
+    // closing the modal as if every send had delivered.
+    setLastSend((r.data?.result || null) as { status?: string; note?: string; delivered?: number; recipients?: number } | null);
     setSendTarget(null); setRecipients('');
     await refresh();
   };
@@ -125,6 +131,15 @@ export function MarketingEmailPanel() {
   return (
     <div className="space-y-4">
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
+
+      {lastSend && (
+        <div className="text-xs text-zinc-300 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
+          <span className="font-semibold">Last send: {lastSend.status || 'done'}</span>
+          {typeof lastSend.delivered === 'number' && typeof lastSend.recipients === 'number'
+            ? ` — ${lastSend.delivered} delivered of ${lastSend.recipients} recipients` : ''}
+          {lastSend.note ? <span className="block text-[11px] text-zinc-400 mt-0.5">{lastSend.note}</span> : null}
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
@@ -242,7 +257,7 @@ export function MarketingEmailPanel() {
           <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
             onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h4 className="text-sm font-semibold text-white">Send email</h4>
-            <p className="text-[11px] text-zinc-400">One recipient per line (or comma-separated).</p>
+            <p className="text-[11px] text-zinc-400">One recipient per line (or comma-separated). Delivery runs through the configured email provider — if none is configured, the email is recorded as queued and nothing is sent. The outcome is shown in this panel after sending.</p>
             <textarea value={recipients} onChange={(e) => setRecipients(e.target.value)} rows={5}
               placeholder="recipient@example.com" className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 font-mono" />
             <div className="flex justify-end gap-2">

@@ -171,14 +171,17 @@ describe("law.citation-graph (CourtListener opinions-cited)", () => {
     globalThis.fetch = async () => ({ ok: false, status: 429, json: async () => ({}) });
     const r = await call("citation-graph", ctxA, { opinionId: 1 });
     assert.equal(r.ok, false);
-    assert.match(r.error, /rate limit.*COURTLISTENER_API_TOKEN/);
+    assert.match(r.error, /rate limit/);
+    assert.doesNotMatch(r.error, /COURTLISTENER_API_TOKEN/);
+    assert.equal(r.unavailable, true);
   });
 
   it("honest failure on network error (unreachable) — never fabricates a citation list", async () => {
     globalThis.fetch = async () => { throw new Error("getaddrinfo ENOTFOUND"); };
     const r = await call("citation-graph", ctxA, { opinionId: 1 });
     assert.equal(r.ok, false);
-    assert.match(r.error, /courtlistener unreachable/);
+    assert.match(r.error, /unavailable/);
+    assert.doesNotMatch(r.error, /unreachable|courtlistener \d/);
   });
 
   it("clamps limit to [1, 50] (0/falsy limit degrades to the default 20, same as the sibling macros)", async () => {

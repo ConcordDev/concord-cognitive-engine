@@ -18,9 +18,21 @@ interface PlanRow { consultantId: string; name: string; role: string; weeklyCapa
 interface Allocation { id: string; consultantId: string; engagementId: string; week: string; hours: number; consultantName: string; engagementName: string }
 interface EngagementOption { id: string; name: string }
 
+// The current ISO week as a real default value (e.g. 2026-W21) — the field
+// must never show an example that reads as a value while actually empty.
+function currentIsoWeek(): string {
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
 export function StaffingPlanner({ engagements }: { engagements: EngagementOption[] }) {
   const [cForm, setCForm] = useState({ name: '', role: '', weeklyCapacity: '', costRate: '' });
-  const [aForm, setAForm] = useState({ consultantId: '', engagementId: '', week: '', hours: '' });
+  const [aForm, setAForm] = useState(() => ({ consultantId: '', engagementId: '', week: currentIsoWeek(), hours: '' }));
   const [error, setError] = useState('');
 
   const { data, isLoading, isError, error: loadError, refetch } = useQuery({
@@ -59,7 +71,7 @@ export function StaffingPlanner({ engagements }: { engagements: EngagementOption
       week: aForm.week.trim(), hours: Number(aForm.hours),
     });
     if (!r.data?.ok) { setError(r.data?.error || 'Allocation failed'); return; }
-    setAForm({ consultantId: '', engagementId: '', week: '', hours: '' });
+    setAForm({ consultantId: '', engagementId: '', week: currentIsoWeek(), hours: '' });
     await refetch();
   }
   async function delAllocation(id: string) {
@@ -110,7 +122,7 @@ export function StaffingPlanner({ engagements }: { engagements: EngagementOption
           <option value="">Engagement…</option>
           {engagements.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
-        <input value={aForm.week} onChange={e => setAForm({ ...aForm, week: e.target.value })} placeholder="2026-W21"
+        <input value={aForm.week} onChange={e => setAForm({ ...aForm, week: e.target.value })} placeholder="week (YYYY-Www)" aria-label="Week"
           className="w-24 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={aForm.hours} onChange={e => setAForm({ ...aForm, hours: e.target.value })} placeholder="hours"
           className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
@@ -162,7 +174,7 @@ export function StaffingPlanner({ engagements }: { engagements: EngagementOption
           <ul className="space-y-1">
             {allocations.map(a => (
               <li key={a.id} className="group flex items-center gap-2 text-[11px] text-zinc-300">
-                <span className="flex-1 truncate">{a.consultantName} → {a.engagementName} · {a.week} · {a.hours}h</span>
+                <span className="flex-1 truncate">{a.consultantName} → {a.engagementName}{engagements.some(e => e.id === a.engagementId) ? '' : ' (deleted engagement)'} · {a.week} · {a.hours}h</span>
                 <button onClick={() => delAllocation(a.id)} aria-label="Remove allocation"
                   className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>

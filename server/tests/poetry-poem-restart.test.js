@@ -72,6 +72,43 @@ describe("poetry poem restart", () => {
     assert.equal(list.result.count, 0);
   });
 
+  it("poem-update finds a persisted-only poem after the in-memory lens is dropped", () => {
+    const created = call("poem-create", ctx, { title: "Hinge", body: "the hinge held" });
+    const id = created.result.poem.id;
+    globalThis._concordSTATE = { db, poetryLens: {} };
+    const updated = call("poem-update", ctx, { id, body: "the hinge held\nand then it did not" });
+    assert.equal(updated.ok, true);
+    assert.equal(updated.result.poem.body, "the hinge held\nand then it did not");
+    const row = db.prepare("SELECT body FROM poetry_poems WHERE id = ?").get(id);
+    assert.equal(row.body, "the hinge held\nand then it did not");
+  });
+
+  it("poem-delete finds and removes a persisted-only poem after the in-memory lens is dropped", () => {
+    const created = call("poem-create", ctx, { title: "Hinge two", body: "x" });
+    const id = created.result.poem.id;
+    globalThis._concordSTATE = { db, poetryLens: {} };
+    const deleted = call("poem-delete", ctx, { id });
+    assert.equal(deleted.ok, true);
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM poetry_poems").get().n, 0);
+    const list = call("poem-list", ctx, {});
+    assert.equal(list.result.count, 0);
+  });
+
+  it("poem-analyze finds a persisted-only poem after the in-memory lens is dropped", () => {
+    const created = call("poem-create", ctx, { title: "Hinge three", body: "one line\ntwo line" });
+    const id = created.result.poem.id;
+    globalThis._concordSTATE = { db, poetryLens: {} };
+    const analyzed = call("poem-analyze", ctx, { id });
+    assert.equal(analyzed.ok, true);
+    assert.equal(analyzed.result.analysis.lineCount, 2);
+  });
+
+  it("poem-update on an id nobody owns still 404s, not a crash", () => {
+    const updated = call("poem-update", ctx, { id: "pm_never_existed", body: "x" });
+    assert.equal(updated.ok, false);
+    assert.equal(updated.error, "poem not found");
+  });
+
   it("down drops the table", () => {
     down(db);
     assert.equal(
