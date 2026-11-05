@@ -52,6 +52,7 @@ import {
   Armchair,
 } from 'lucide-react';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
+import { OperationsBudgetPanel } from './OperationsBudgetPanel';
 
 /** Adapts the bespoke SvgIcon (name-prop API) to the lucide-icon-component
  *  shape (`className`-prop, no `name`) this file's tab/type tables expect. */
@@ -458,6 +459,12 @@ export function EventsWorkbench({
   const [eventsLoading, setEventsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<{ message: string } | null>(null);
+  const [statedBudget, setStatedBudget] = useState<{
+    statedBudgeted: number;
+    statedActual: number;
+    statedNet: number;
+    formula: string;
+  } | null>(null);
 
   const fetchEventsReal = useCallback(async (): Promise<LensItem[]> => {
     const listRes = await lensRun({ domain: 'events', action: 'event-list', input: {} });
@@ -481,6 +488,23 @@ export function EventsWorkbench({
     setError(null);
     try {
       setEvents(await fetchEventsReal());
+      const dash = await lensRun({ domain: 'events', action: 'events-dashboard', input: {} });
+      if (dash.data.ok === false) throw new Error(dash.data.error || 'Failed to load dashboard');
+      const result = (dash.data.result || {}) as {
+        statedBudgeted?: number;
+        statedActual?: number;
+        statedNet?: number;
+        formula?: string;
+      };
+      const statedBudgeted = Number(result.statedBudgeted);
+      const statedActual = Number(result.statedActual);
+      const statedNet = Number(result.statedNet);
+      setStatedBudget({
+        statedBudgeted: Number.isFinite(statedBudgeted) ? statedBudgeted : 0,
+        statedActual: Number.isFinite(statedActual) ? statedActual : 0,
+        statedNet: Number.isFinite(statedNet) ? statedNet : 0,
+        formula: result.formula || 'Budgeted − Actual = Net',
+      });
     } catch (e) {
       setIsError(true);
       setError({ message: e instanceof Error ? e.message : 'Failed to load events' });
@@ -555,7 +579,7 @@ export function EventsWorkbench({
     create: createBudget,
     update: updateBudget,
     remove: removeBudget,
-  } = useLensData('events', 'Budget', { seed: EMPTY_DATA.Budget, enabled: mode === 'budget' || mode === 'dashboard' });
+  } = useLensData('events', 'Budget', { seed: EMPTY_DATA.Budget, enabled: mode === 'dashboard' });
   const {
     items: tickets,
     isLoading: ticketsLoading,
@@ -986,7 +1010,7 @@ export function EventsWorkbench({
     }
   };
 
-  if (isLoading) {
+  if (isLoading && mode !== 'budget') {
     return (
       <div className="flex items-center justify-center h-full p-8" role="status" aria-live="polite" aria-busy="true">
         <div className="text-center space-y-3">
@@ -998,7 +1022,7 @@ export function EventsWorkbench({
     );
   }
 
-  if (isError) {
+  if (isError && mode !== 'budget') {
     return (
       <div className="flex items-center justify-center h-full p-8" role="alert" aria-live="assertive">
         <ErrorState error={error?.message} onRetry={refetch} />
@@ -1119,18 +1143,12 @@ export function EventsWorkbench({
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className={ds.textMuted}>Net Position</span>
-              {(() => {
-                const net =
-                  dashMetrics.revenueMonth + dashMetrics.sponsorTotal - dashMetrics.budgetTotal;
-                return (
-                  <span
-                    className={cn('font-semibold', net >= 0 ? 'text-green-400' : 'text-red-400')}
-                  >
-                    {fmtCurrency(net)}
-                  </span>
-                );
-              })()}
+              <span className={ds.textMuted}>{statedBudget?.formula || 'Budgeted − Actual = Net'}</span>
+              <span className={cn('font-semibold', (statedBudget?.statedNet ?? 0) >= 0 ? 'text-green-400' : 'text-red-400')}>
+                {statedBudget
+                  ? `${fmtCurrency(statedBudget.statedBudgeted)} − ${fmtCurrency(statedBudget.statedActual)} = ${fmtCurrency(statedBudget.statedNet)}`
+                  : '—'}
+              </span>
             </div>
           </div>
         </div>
@@ -2149,235 +2167,6 @@ export function EventsWorkbench({
   );
 
   // ---------------------------------------------------------------------------
-  // Render: Budget
-  // ---------------------------------------------------------------------------
-  const renderBudget = () => (
-    <div className="space-y-4">
-      {filtered.length === 0 ? (
-        <div className="text-center py-12">
-          <DollarSign className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-          <p className={ds.textMuted}>No budgets found</p>
-          <button onClick={openCreate} className={cn(ds.btnGhost, 'mt-3')}>
-            <Plus className="w-4 h-4" /> Create budget
-          </button>
-        </div>
-      ) : (
-        filtered.map((item) => {
-          const d = item.data as Record<string, unknown>;
-          const categories = parseJsonSafe<
-            Array<{ name: string; budgeted: number; actual: number; notes: string }>
-          >(d.categories, []);
-          const sponsorships = parseJsonSafe<
-            Array<{ sponsor: string; amount: number; tier: string }>
-          >(d.sponsorships, []);
-          const totalBudgeted = categories.reduce((s, c) => s + c.budgeted, 0);
-          const totalActual = categories.reduce((s, c) => s + c.actual, 0);
-          const totalSponsors = sponsorships.reduce((s, sp) => s + sp.amount, 0);
-          const attendees = Number(d.attendeeCount || 1);
-          const perAttendee = attendees > 0 ? totalActual / attendees : 0;
-          const overallBudget = Number(d.totalBudget || 0);
-          const st = item.meta?.status as string;
-
-          return (
-            <div key={item.id} className={ds.panel}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <DollarSign className="w-6 h-6 text-green-400" />
-                  <div>
-                    <h3 className={ds.heading3}>{item.title}</h3>
-                    <p className={ds.textMuted}>
-                      {String(d.eventName || '')} -- {attendees.toLocaleString()} attendees
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={ds.badge(STATUS_COLORS[st] || 'gray-400')}>{st}</span>
-                  <button onClick={() => openEdit(item.id)} className={ds.btnGhost} aria-label="Edit">
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => removeBudget(item.id)}
-                    className={cn(ds.btnGhost, 'hover:text-red-400')}
-                  aria-label="Delete">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Summary cards */}
-              <div className={ds.grid4}>
-                <div className="p-3 bg-lattice-elevated rounded-lg">
-                  <p className={ds.textMuted}>Total Budget</p>
-                  <p className="text-lg font-bold">{fmtCurrency(overallBudget)}</p>
-                </div>
-                <div className="p-3 bg-lattice-elevated rounded-lg">
-                  <p className={ds.textMuted}>Total Spent</p>
-                  <p
-                    className={cn(
-                      'text-lg font-bold',
-                      totalActual > overallBudget ? 'text-red-400' : 'text-white'
-                    )}
-                  >
-                    {fmtCurrency(totalActual)}
-                  </p>
-                </div>
-                <div className="p-3 bg-lattice-elevated rounded-lg">
-                  <p className={ds.textMuted}>Sponsorship Revenue</p>
-                  <p className="text-lg font-bold text-green-400">{fmtCurrency(totalSponsors)}</p>
-                </div>
-                <div className="p-3 bg-lattice-elevated rounded-lg">
-                  <p className={ds.textMuted}>Cost Per Attendee</p>
-                  <p className="text-lg font-bold">{fmtCurrency(perAttendee)}</p>
-                </div>
-              </div>
-
-              {/* Budget utilization bar */}
-              <div className="mt-4 mb-4">
-                <p className={cn(ds.textMuted, 'mb-1')}>Budget Utilization</p>
-                <ProgressBar
-                  value={totalActual}
-                  max={overallBudget}
-                  color={totalActual > overallBudget ? 'red-400' : 'green-400'}
-                />
-              </div>
-
-              {/* Category breakdown */}
-              <div className="overflow-x-auto mb-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-gray-400 border-b border-lattice-border">
-                      <th className="pb-2 pr-4">Category</th>
-                      <th className="pb-2 pr-4 text-right">Budgeted</th>
-                      <th className="pb-2 pr-4 text-right">Actual</th>
-                      <th className="pb-2 pr-4 text-right">Variance</th>
-                      <th className="pb-2 pr-4">Usage</th>
-                      <th className="pb-2">Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-lattice-border">
-                    {categories.map((cat, i) => {
-                      const variance = cat.budgeted - cat.actual;
-                      const usage = pct(cat.actual, cat.budgeted);
-                      return (
-                        <tr key={i} className="text-gray-300">
-                          <td className="py-2 pr-4 font-medium capitalize">{cat.name}</td>
-                          <td className="py-2 pr-4 text-right">{fmtCurrency(cat.budgeted)}</td>
-                          <td className="py-2 pr-4 text-right">{fmtCurrency(cat.actual)}</td>
-                          <td
-                            className={cn(
-                              'py-2 pr-4 text-right font-medium',
-                              variance >= 0 ? 'text-green-400' : 'text-red-400'
-                            )}
-                          >
-                            {variance >= 0 ? '+' : ''}
-                            {fmtCurrency(variance)}
-                          </td>
-                          <td className="py-2 pr-4 w-32">
-                            <div className="w-full h-1.5 bg-lattice-elevated rounded-full overflow-hidden">
-                              <div
-                                className={cn(
-                                  'h-full rounded-full',
-                                  usage > 100 ? 'bg-red-400' : 'bg-neon-cyan'
-                                )}
-                                style={{ width: `${Math.min(120, usage)}%` }}
-                              />
-                            </div>
-                          </td>
-                          <td className="py-2 text-xs text-gray-400">{cat.notes}</td>
-                        </tr>
-                      );
-                    })}
-                    <tr className="text-white font-semibold border-t-2 border-lattice-border">
-                      <td className="py-2 pr-4">Total</td>
-                      <td className="py-2 pr-4 text-right">{fmtCurrency(totalBudgeted)}</td>
-                      <td className="py-2 pr-4 text-right">{fmtCurrency(totalActual)}</td>
-                      <td
-                        className={cn(
-                          'py-2 pr-4 text-right',
-                          totalBudgeted - totalActual >= 0 ? 'text-green-400' : 'text-red-400'
-                        )}
-                      >
-                        {totalBudgeted - totalActual >= 0 ? '+' : ''}
-                        {fmtCurrency(totalBudgeted - totalActual)}
-                      </td>
-                      <td className="py-2 pr-4" />
-                      <td className="py-2" />
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Sponsorships */}
-              {sponsorships.length > 0 && (
-                <div>
-                  <h4 className={cn(ds.heading3, 'text-base mb-2 flex items-center gap-2')}>
-                    <Crown className="w-4 h-4 text-amber-400" /> Sponsorships
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {sponsorships.map((sp, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between p-2 bg-lattice-elevated rounded-lg"
-                      >
-                        <div>
-                          <p className="text-sm font-medium">{sp.sponsor}</p>
-                          <p className="text-xs text-gray-400">{sp.tier}</p>
-                        </div>
-                        <span className="text-sm font-semibold text-green-400">
-                          {fmtCurrency(sp.amount)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* P&L summary */}
-              <div className="mt-4 p-3 bg-lattice-elevated rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-400">Profit / Loss</span>
-                  {(() => {
-                    const evtRevenue = events.find((e) => e.title === d.eventName);
-                    const rev =
-                      Number((evtRevenue?.data as Record<string, unknown>)?.revenue || 0) +
-                      totalSponsors;
-                    const pl = rev - totalActual;
-                    return (
-                      <div className="text-right">
-                        <p className="text-xs text-gray-400">
-                          Revenue: {fmtCurrency(rev)} - Costs: {fmtCurrency(totalActual)}
-                        </p>
-                        <p
-                          className={cn(
-                            'text-lg font-bold',
-                            pl >= 0 ? 'text-green-400' : 'text-red-400'
-                          )}
-                        >
-                          {pl >= 0 ? '+' : ''}
-                          {fmtCurrency(pl)}
-                        </p>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              {/* Line-item budget reconciliation (budget-line-add/budget-summary) and the
-                  quick budgetReconcile calculator both live in Event Operations' Budget /
-                  Production tabs, keyed to a STATE-backed event. */}
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-lattice-border">
-                <button onClick={jumpToEventOps} className={cn(ds.btnSecondary, ds.btnSmall)}>
-                  <PieChart className="w-4 h-4" /> Reconcile in Event Operations
-                </button>
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-
-  // ---------------------------------------------------------------------------
   // Render: Tickets
   // ---------------------------------------------------------------------------
   const renderTickets = () => {
@@ -2645,7 +2434,7 @@ export function EventsWorkbench({
       case 'runofshow':
         return renderRunOfShow();
       case 'budget':
-        return renderBudget();
+        return <OperationsBudgetPanel />;
       case 'tickets':
         return renderTickets();
       case 'guests':
@@ -2657,7 +2446,7 @@ export function EventsWorkbench({
 
   return (
     <div className="space-y-4">
-      {mode !== 'dashboard' && (
+      {mode !== 'dashboard' && mode !== 'budget' && (
         <div className="flex justify-end">
           <button onClick={openCreate} className={ds.btnPrimary}>
             <Plus className="w-4 h-4" /> New{' '}
@@ -2705,8 +2494,8 @@ export function EventsWorkbench({
       </div>
       )}
 
-      {/* Filters (non-dashboard) */}
-      {mode !== 'dashboard' && (
+      {/* Filters. The Budget view reads the Host lines, not this artifact list. */}
+      {mode !== 'dashboard' && mode !== 'budget' && (
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -2766,7 +2555,7 @@ export function EventsWorkbench({
       )}
 
       {/* Loading */}
-      {isLoading ? (
+      {isLoading && mode !== 'budget' ? (
         <div className="text-center py-12">
           <p className={ds.textMuted}>Loading event data...</p>
         </div>
