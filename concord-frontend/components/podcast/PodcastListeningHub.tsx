@@ -19,6 +19,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { PodcastStreamPlayer } from './PodcastStreamPlayer';
 import { PodcastTranscriptPanel } from './PodcastTranscriptPanel';
+import { notifyPodcastChanged, onPodcastChanged } from './podcast-events';
 
 interface Show {
   id: string; title: string; author: string | null; category: string;
@@ -108,6 +109,12 @@ export function PodcastListeningHub() {
 
   useEffect(() => { void loadAll(); }, [loadAll]);
 
+  // Settle in-session when a sibling section mutates the shared store
+  // (an iTunes add, a Browse subscribe, a dashboard-side change) — the
+  // show list, the Sync positions and the speed readout re-read here
+  // instead of waiting for a reload.
+  useEffect(() => onPodcastChanged(() => { void loadAll(); }), [loadAll]);
+
   const flash = useCallback((msg: string) => {
     setNotice(msg);
     setTimeout(() => setNotice(null), 3500);
@@ -135,6 +142,7 @@ export function PodcastListeningHub() {
       setFeedDraft({ title: '', feedUrl: '' });
       flash(`Ingested ${ingested.data.result?.ingested ?? 0} episodes from feed`);
       await loadAll();
+      notifyPodcastChanged();
     } else {
       setError(ingested.data?.error || 'Feed could not be parsed');
     }
@@ -147,6 +155,7 @@ export function PodcastListeningHub() {
     if (r.data?.ok) {
       flash(`Refreshed — ${r.data.result?.ingested ?? 0} episodes`);
       await loadAll();
+      notifyPodcastChanged();
       if (openShowId === showId) await openShow(showId);
     } else {
       setError(r.data?.error || 'Refresh failed');
@@ -167,6 +176,7 @@ export function PodcastListeningHub() {
     await lensRun('podcast', 'show-subscribe', { id: showId });
     setBusy(null);
     await loadAll();
+    notifyPodcastChanged();
   }, [loadAll]);
 
   // ── Smart download rules ──
@@ -175,13 +185,14 @@ export function PodcastListeningHub() {
     await lensRun('podcast', 'download-rule-set', { showId, autoDownload, keepRecent });
     setBusy(null);
     await loadAll();
+    notifyPodcastChanged();
   }, [loadAll]);
 
   const runRules = useCallback(async () => {
     setBusy('runRules'); setError(null);
     const r = await lensRun<{ added: number; pruned: number }>('podcast', 'download-rule-run', {});
     setBusy(null);
-    if (r.data?.ok) flash(`Smart download: +${r.data.result?.added ?? 0} downloaded, ${r.data.result?.pruned ?? 0} pruned`);
+    if (r.data?.ok) { flash(`Smart download: +${r.data.result?.added ?? 0} downloaded, ${r.data.result?.pruned ?? 0} pruned`); notifyPodcastChanged(); }
     else setError(r.data?.error || 'Rule run failed');
   }, [flash]);
 
@@ -257,7 +268,7 @@ export function PodcastListeningHub() {
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-zinc-100 truncate">{sh.title}</p>
                             <p className="text-[10px] text-zinc-400 truncate">
-                              {sh.episodeCount} episodes
+                              {sh.episodeCount} episode{sh.episodeCount === 1 ? '' : 's'}
                               {sh.feedUrl ? ' · RSS linked' : ' · no feed'}
                               {sh.lastRefreshedAt && ` · refreshed ${new Date(sh.lastRefreshedAt).toLocaleDateString()}`}
                             </p>
@@ -311,7 +322,7 @@ export function PodcastListeningHub() {
                                         episodeId={ep.id}
                                         deviceLabel={device}
                                         onClose={() => setStreamEpisodeId(null)}
-                                        onProgress={loadAll}
+                                        onProgress={() => { void loadAll(); notifyPodcastChanged(); }}
                                       />
                                     </div>
                                   )}
@@ -433,7 +444,7 @@ export function PodcastListeningHub() {
                       <li key={sh.id} className="flex items-center gap-3 bg-zinc-900/70 border border-zinc-800 rounded-xl px-3 py-2.5">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-zinc-100 truncate">{sh.title}</p>
-                          <p className="text-[10px] text-zinc-400">{sh.episodeCount} episodes available</p>
+                          <p className="text-[10px] text-zinc-400">{sh.episodeCount} episode{sh.episodeCount === 1 ? '' : 's'} available</p>
                         </div>
                         <label className="flex items-center gap-1.5 text-[11px] text-zinc-400 shrink-0">
                           Keep

@@ -10,6 +10,7 @@ import { Loader2, Play, Check, ListPlus, ListX, ArrowUp, ArrowDown, Gauge } from
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { notifyPodcastChanged } from './podcast-events';
 
 interface Episode {
   id: string; title: string; showTitle: string; durationSec: number;
@@ -28,14 +29,17 @@ function EpisodeCard({ ep, onChange, queueControls }: {
   const listen = async () => {
     await lensRun('podcast', 'playback-update', { episodeId: ep.id, positionSec: Math.min(ep.durationSec, ep.positionSec + 300) });
     onChange();
+    notifyPodcastChanged();
   };
   const done = async () => {
     await lensRun('podcast', 'episode-mark-played', { episodeId: ep.id, unplayed: ep.played });
     onChange();
+    notifyPodcastChanged();
   };
   const queue = async () => {
     await lensRun('podcast', ep.inQueue ? 'queue-remove' : 'queue-add', { episodeId: ep.id });
     onChange();
+    notifyPodcastChanged();
   };
 
   return (
@@ -114,10 +118,12 @@ export function PodcastListenPanel({ onChange }: { onChange: () => void }) {
   const changeSpeed = async (v: number) => {
     setSpeed(v);
     await lensRun('podcast', 'playback-speed-set', { speed: v });
+    notifyPodcastChanged();
   };
   const reorder = async (episodeId: string, direction: string) => {
     await lensRun('podcast', 'queue-reorder', { episodeId, direction });
     await refresh();
+    notifyPodcastChanged();
   };
 
   if (loading) {
