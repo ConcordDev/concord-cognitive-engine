@@ -23,6 +23,7 @@ import {
   ShieldAlert, ShieldCheck, FileText,
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
+import { joinParts } from '@/lib/utils';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface VinData {
@@ -128,7 +129,7 @@ export function VehicleHistory() {
                 compact
                 apiSource="concord-auto-vehicle-history"
                 title={`${vinData?.year ?? ''} ${vinData?.make ?? ''} ${vinData?.model ?? ''} VIN ${vin} — ${recalls.length} recalls · ${overdueCount} overdue services`}
-                content={`VIN: ${vin}\nVehicle: ${vinData?.year} ${vinData?.make} ${vinData?.model} ${vinData?.trim || ''}\nEngine: ${vinData?.engine || 'unknown'}\nOdometer: ${odometer.toLocaleString()} mi\n\nRecalls (${recalls.length}):\n${recalls.map((r) => `  [${r.recallDate || 'undated'}] ${r.component} — ${r.summary}`).join('\n') || '  None'}\n\nMaintenance (${overdueCount} overdue, ${upcomingCount} upcoming):\n${(schedule?.services || []).filter((i) => i.status !== 'ok').map((i) => `  ${i.status === 'due-now' ? '⚠' : '○'} ${i.service} (${i.milesUntilDue} mi)`).join('\n') || '  All caught up'}`}
+                content={`VIN: ${vin}\nVehicle: ${joinParts([vinData?.year, vinData?.make, vinData?.model, vinData?.trim])}\nEngine: ${vinData?.engine || 'unknown'}\nOdometer: ${odometer.toLocaleString()} mi\n\nRecalls (${recalls.length}):\n${recalls.map((r) => `  [${r.recallDate || 'undated'}] ${r.component} — ${r.summary}`).join('\n') || '  None'}\n\nMaintenance (${overdueCount} overdue, ${upcomingCount} upcoming):\n${(schedule?.services || []).filter((i) => i.status !== 'ok').map((i) => `  ${i.status === 'due-now' ? '⚠' : '○'} ${i.service} (${i.milesUntilDue} mi)`).join('\n') || '  All caught up'}`}
                 extraTags={['automotive', 'vin', vinData?.make?.toLowerCase() || 'unknown']}
                 rawData={{ vin, odometer, vinData, recalls, schedule }}
               />
