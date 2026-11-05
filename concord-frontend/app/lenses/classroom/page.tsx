@@ -19,6 +19,23 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenLibrarySearch } from '@/components/classroom/OpenLibrarySearch';
 import { ClassroomWorkspace } from '@/components/classroom/ClassroomWorkspace';
+import { cohortStillListed, parseClassroomCohort } from '@/components/classroom/quiz-attempt';
+
+const COHORT_SCOPE_KEY = 'classroom-active-cohort';
+
+function readStoredCohort(): number | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try { return parseClassroomCohort(sessionStorage.getItem(COHORT_SCOPE_KEY)); }
+  catch { return null; }
+}
+
+function writeStoredCohort(id: number | null) {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    if (id == null) sessionStorage.removeItem(COHORT_SCOPE_KEY);
+    else sessionStorage.setItem(COHORT_SCOPE_KEY, String(id));
+  } catch { /* storage blocked */ }
+}
 
 interface Cohort {
   id: number;
@@ -127,9 +144,18 @@ export default function ClassroomPage() {
     const r = await macro('classroom', 'list_cohorts');
     setLoading(false);
     if (r?.ok) {
-      setTeaching(r.teaching || []);
-      setStudying(r.studying || []);
+      const teachingRows = r.teaching || [];
+      const studyingRows = r.studying || [];
+      setTeaching(teachingRows);
+      setStudying(studyingRows);
       setLoadError(null);
+      const ids = [...teachingRows, ...studyingRows].map((c) => c.id);
+      const stored = readStoredCohort();
+      setActiveCohort((cur) => {
+        const next = cohortStillListed(cur ?? stored, ids);
+        if (next !== stored) writeStoredCohort(next);
+        return next;
+      });
     } else {
       // null (swallowed fetch failure) or { ok:false } → surface, don't silently blank.
       setLoadError(r?.error || r?.reason || 'Could not reach the classroom service.');
@@ -175,7 +201,7 @@ export default function ClassroomPage() {
   const archive = async (cohortId: number) => {
     const r = await macro('classroom', 'archive_cohort', { cohortId });
     if (r?.ok) {
-      if (activeCohort === cohortId) setActiveCohort(null);
+      if (activeCohort === cohortId) { setActiveCohort(null); writeStoredCohort(null); }
       noteOk('✓ Cohort archived');
       await refresh();
     } else noteRefusal('list', r);
@@ -184,7 +210,7 @@ export default function ClassroomPage() {
   const leave = async (cohortId: number) => {
     const r = await macro('classroom', 'leave_cohort', { cohortId });
     if (r?.ok) {
-      if (activeCohort === cohortId) setActiveCohort(null);
+      if (activeCohort === cohortId) { setActiveCohort(null); writeStoredCohort(null); }
       noteOk('✓ Left the cohort');
       await refresh();
     } else noteRefusal('list', r);
@@ -198,7 +224,11 @@ export default function ClassroomPage() {
     <li key={c.id} className="flex items-center gap-2">
       <button
         type="button"
-        onClick={() => setActiveCohort(activeCohort === c.id ? null : c.id)}
+        onClick={() => {
+          const next = activeCohort === c.id ? null : c.id;
+          setActiveCohort(next);
+          writeStoredCohort(next);
+        }}
         className={cn(
           'flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-[13px] transition-colors',
           activeCohort === c.id ? 'border-teal-400/40 bg-teal-400/10' : 'border-white/10 bg-white/[0.02] hover:border-white/20',
