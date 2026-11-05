@@ -42,6 +42,7 @@ interface SyncRun {
   id: string; pipelineId: string; pipelineName: string; startedAt: string;
   finishedAt: string; mode: string; status: string;
   rowsRead: number; rowsProcessed: number; rowsWritten: number; rowsQuarantined: number;
+  rowsSkippedDuplicates?: number; destinationRows?: number | null;
   errors?: any[];
 }
 
@@ -67,6 +68,7 @@ export function EtlWorkbench() {
   // selection
   const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
   const [dryRun, setDryRun] = useState<any>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ kind: 'connector' | 'pipeline'; id: string } | null>(null);
   const [drift, setDrift] = useState<Record<string, any>>({});
   const [due, setDue] = useState<any[]>([]);
 
@@ -161,10 +163,17 @@ export function EtlWorkbench() {
     URL.revokeObjectURL(url);
   }, []);
 
-  const removeConnector = useCallback(async (id: string) => {
-    await run('connector-delete', { id });
+  const removeConnector = useCallback(async (c: Connector) => {
+    // Two-step confirm (F12): the first click arms, naming the connector;
+    // only the armed click deletes.
+    if (!confirmDelete || confirmDelete.kind !== 'connector' || confirmDelete.id !== c.id) {
+      setConfirmDelete({ kind: 'connector', id: c.id });
+      return;
+    }
+    setConfirmDelete(null);
+    await run('connector-delete', { id: c.id });
     loadConnectors();
-  }, [loadConnectors]);
+  }, [confirmDelete, loadConnectors]);
 
   const checkDrift = useCallback(async (id: string) => {
     setBusy('drift:' + id);
@@ -190,18 +199,35 @@ export function EtlWorkbench() {
     } else { flash('Pipeline creation failed'); }
   }, [pName, pSource, pDest, flash, loadPipelines]);
 
-  const removePipeline = useCallback(async (id: string) => {
-    await run('pipeline-delete', { id });
-    if (selectedPipeline === id) setSelectedPipeline(null);
+  const removePipeline = useCallback(async (p: Pipeline) => {
+    // Two-step confirm (F12), and the dry-run preview derived from this
+    // pipeline dies with it (F6: results must not survive their inputs).
+    if (!confirmDelete || confirmDelete.kind !== 'pipeline' || confirmDelete.id !== p.id) {
+      setConfirmDelete({ kind: 'pipeline', id: p.id });
+      return;
+    }
+    setConfirmDelete(null);
+    await run('pipeline-delete', { id: p.id });
+    if (selectedPipeline === p.id) setSelectedPipeline(null);
+    setDryRun((d: any) => (d && d.pipelineId === p.id ? null : d));
     loadPipelines();
-  }, [selectedPipeline, loadPipelines]);
+  }, [confirmDelete, selectedPipeline, loadPipelines]);
 
   const runSync = useCallback(async (id: string, mode?: string) => {
     setBusy('sync:' + id);
     const r = await run<{ run: SyncRun }>('run-sync', { pipelineId: id, ...(mode ? { mode } : {}) });
     setBusy(null);
     if (r) {
-      flash(`Sync ${r.run.status}: ${r.run.rowsWritten} written, ${r.run.rowsQuarantined} quarantined`);
+      // The D1 receipt, in the dry-run's shape: read / written / skipped /
+      // quarantined, the destination's distinct count, and the run id.
+      const run = r.run;
+      flash(
+        `Sync ${run.status}: ${run.rowsRead} read, ${run.rowsWritten} written` +
+        `${run.rowsSkippedDuplicates ? `, ${run.rowsSkippedDuplicates} already at destination (skipped)` : ''}` +
+        `, ${run.rowsQuarantined} quarantined` +
+        `${run.destinationRows != null ? ` · ${run.destinationRows} rows at destination` : ''}` +
+        ` · run ${run.id}`,
+      );
       loadRuns(); loadPipelines(); loadConnectors(); loadDue();
     } else { flash('Sync failed'); }
   }, [flash, loadRuns, loadPipelines, loadConnectors, loadDue]);
@@ -234,7 +260,7 @@ export function EtlWorkbench() {
       label: `${r.pipelineName} · ${r.rowsWritten}→`,
       time: r.finishedAt,
       tone: r.status === 'success' ? 'good' : r.status === 'failed' ? 'bad' : 'warn',
-      detail: `${r.mode} sync — ${r.rowsProcessed} processed, ${r.rowsQuarantined} quarantined`,
+      detail: `${r.mode} sync — ${r.rowsProcessed} processed, ${r.rowsQuarantined} quarantined${r.rowsSkippedDuplicates ? `, ${r.rowsSkippedDuplicates} duplicates skipped` : ''}`,
     })),
     [runs],
   );
@@ -323,9 +349,15 @@ export function EtlWorkbench() {
                       <button onClick={() => checkDrift(c.id)} disabled={busy === 'drift:' + c.id} title="Schema drift" className="p-1 rounded hover:bg-white/10 text-gray-400">
                         <RefreshCw className={`w-3 h-3 ${busy === 'drift:' + c.id ? 'animate-spin' : ''}`} />
                       </button>
-                      <button aria-label="Delete" onClick={() => removeConnector(c.id)} className="p-1 rounded hover:bg-rose-500/20 text-rose-400">
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      {confirmDelete?.kind === 'connector' && confirmDelete.id === c.id ? (
+                        <button onClick={() => removeConnector(c)} title={`Delete connector "${c.name}" and its stored rows`} className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px]">
+                          Delete “{c.name}”?
+                        </button>
+                      ) : (
+                        <button aria-label={`Delete connector ${c.name}`} onClick={() => removeConnector(c)} className="p-1 rounded hover:bg-rose-500/20 text-rose-400">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   </div>
                   <p className="text-gray-400">
@@ -392,9 +424,15 @@ export function EtlWorkbench() {
                   <span className="font-medium">{p.name}</span>
                   <div className="flex items-center gap-1">
                     <span className="text-[9px] px-1 rounded bg-white/5 text-gray-400">{p.schedule?.mode || 'manual'}</span>
-                    <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); removePipeline(p.id); }} className="p-1 rounded hover:bg-rose-500/20 text-rose-400">
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                    {confirmDelete?.kind === 'pipeline' && confirmDelete.id === p.id ? (
+                      <button onClick={(e) => { e.stopPropagation(); removePipeline(p); }} title={`Delete pipeline "${p.name}" and its configuration`} className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px]">
+                        Delete “{p.name}”?
+                      </button>
+                    ) : (
+                      <button aria-label={`Delete pipeline ${p.name}`} onClick={(e) => { e.stopPropagation(); removePipeline(p); }} className="p-1 rounded hover:bg-rose-500/20 text-rose-400">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
                 <p className="text-gray-400">
@@ -440,6 +478,9 @@ export function EtlWorkbench() {
             {dryRun.sampled}/{dryRun.totalSourceRows} rows sampled —
             <span className="text-emerald-400"> {dryRun.wouldPass} would commit</span>,
             <span className="text-amber-400"> {dryRun.wouldQuarantine} would quarantine</span>.
+            {dryRun.wouldQuarantine === 0 && dryRun.wouldPass === dryRun.sampled && dryRun.sampled > 0 && (
+              <span className="text-emerald-400"> Clean run.</span>
+            )}
             Output columns: {(dryRun.outputColumns || []).join(', ') || '—'}
           </p>
           <div className="space-y-1 max-h-64 overflow-y-auto">
@@ -489,7 +530,11 @@ export function EtlWorkbench() {
                   </div>
                   <div className="text-right">
                     <span className={`px-1.5 py-0.5 rounded text-[10px] border ${STATUS_TONE[r.status] || 'text-gray-400 border-gray-600'}`}>{r.status}</span>
-                    <p className="text-gray-400 mt-0.5">{r.rowsWritten} ✓ / {r.rowsQuarantined} ⚠</p>
+                    <p className="text-gray-400 mt-0.5">
+                      {r.rowsWritten} ✓ / {r.rowsQuarantined} ⚠
+                      {r.rowsSkippedDuplicates ? ` / ${r.rowsSkippedDuplicates} already there` : ''}
+                      {r.destinationRows != null ? ` · ${r.destinationRows} at destination` : ''}
+                    </p>
                   </div>
                 </div>
               ))}
