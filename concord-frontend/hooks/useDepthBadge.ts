@@ -136,6 +136,18 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Live workspace: your listings, tours and notes are your real persistent records in Concord, and the tools work on them. The home-value feed is real too — US Census Bureau American Community Survey data, named at the feed.',
   },
   /**
+   * Legal's matters, time, trust accounts and documents are the user's
+   * own, saved server-side, and its case-law search queries the real
+   * CourtListener API. The generic REAL_FREE line ("static / open-access
+   * dataset") was false for this lens (gate record G1; the determination
+   * probe persisted its matter across reload) — the caption states what
+   * is live.
+   */
+  legal: {
+    label: 'Live',
+    caption: 'Live: your matters, time, trust accounts and documents are saved in your own workspace, and case law searches CourtListener.',
+  },
+  /**
    * Housing's substrate is the member's own persistent world state —
    * land claims and houses live in the platform database, owner-gated
    * in the lib (PROBE-BLOCKED at the then-missing claim surface in

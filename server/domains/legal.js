@@ -10,7 +10,7 @@
 // to CURATION because the primary source (state rules of civil procedure)
 // is real public-domain legal text, just not aggregated behind a free API.
 import { guardAnonWrites } from "../lib/lens-authz.js";
-import { getProcedureForState, listProcedureStateSummaries } from "../lib/court-procedure-reference.js";
+import { getProcedureForState, listProcedureStates, listProcedureStateSummaries } from "../lib/court-procedure-reference.js";
 import { createHash } from "node:crypto";
 import { moneyOrNull, badNumber } from "../lib/finite-input.js";
 import { measuredPercent } from "../lib/measured-rate.js";
@@ -70,14 +70,41 @@ export default function registerLegalActions(registerLensAction) {
     const client = artifact.data?.client || '';
     const opposingParty = artifact.data?.opposingParty || '';
     const conflicts = [];
-    if (params.checkAgainst) {
-      for (const name of params.checkAgainst) {
-        if (parties.includes(name) || client === name || opposingParty === name) {
-          conflicts.push({ name, conflictType: 'direct_party', caseId: artifact.id });
+    const names = Array.isArray(params.checkAgainst) ? params.checkAgainst.map(String).filter(Boolean) : [];
+    for (const name of names) {
+      if (parties.includes(name) || client === name || opposingParty === name) {
+        conflicts.push({ name, conflictType: 'direct_party', caseId: artifact.id });
+      }
+    }
+    // Workspace search (LG-S6): the check previously read ONLY the names
+    // supplied with the artifact, so it printed CLEAR over records it
+    // never looked at — the Contacts conflict search found the same name
+    // in the workspace in the same sitting (R5 full pass, F7). It now
+    // searches the caller's contacts + matters with conflict-search's
+    // matching, and the result names its scope either way.
+    const s = getLegalState();
+    if (s && names.length) {
+      const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+      const contacts = s.contacts instanceof Map ? (s.contacts.get(userId) || []) : [];
+      const matters = s.matters instanceof Map ? (s.matters.get(userId) || []) : [];
+      for (const name of names) {
+        const q = name.toLowerCase();
+        for (const c of contacts) {
+          const hay = `${c.name || ''} ${c.organization || ''} ${c.email || ''}`.toLowerCase();
+          if (hay.includes(q)) {
+            const related = matters.filter(m => (m.partyIds || []).includes(c.id) || m.clientId === c.id || (m.clientName || '').toLowerCase().includes((c.name || '').toLowerCase()));
+            conflicts.push({ name, conflictType: 'workspace_contact', detail: `contact ${c.number || c.id}${related.length ? ` · in ${related.map(m => m.number || m.name).join(', ')}` : ''}` });
+          }
+        }
+        for (const m of matters) {
+          const hay = `${m.name || ''} ${m.clientName || ''} ${m.caseNumber || ''}`.toLowerCase();
+          if (hay.includes(q)) {
+            conflicts.push({ name, conflictType: 'workspace_matter', detail: `matter ${m.number || m.id} (${m.name})` });
+          }
         }
       }
     }
-    return { ok: true, result: { conflicts, hasConflict: conflicts.length > 0, checkedAt: new Date().toISOString() } };
+    return { ok: true, result: { conflicts, hasConflict: conflicts.length > 0, scope: 'workspace contacts + matters, plus the names supplied with this check', checkedAt: new Date().toISOString() } };
   });
 
   registerLensAction("legal", "caseSummary", (ctx, artifact, _params) => {
@@ -326,10 +353,12 @@ Reading perspective: ${perspective}. Decision-support, NOT legal advice.`;
     }
   });
 
-  registerLensAction("legal", "case-list", (ctx, _artifact, _params = {}) => {
+  registerLensAction("legal", "case-list", (ctx, _artifact, params = {}) => {
     const state = getLegalState(); if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
-    return { ok: true, result: { cases: state.cases.get(userId) || [] } };
+    let cases = state.cases.get(userId) || [];
+    if (params.matterId) cases = cases.filter(c => c.matterId === String(params.matterId));
+    return { ok: true, result: { cases } };
   });
 
   registerLensAction("legal", "case-add", (ctx, _artifact, params = {}) => {
@@ -339,6 +368,16 @@ Reading perspective: ${perspective}. Decision-support, NOT legal advice.`;
     const caption = String(params.caption || "").trim();
     const caseNumber = String(params.caseNumber || "").trim();
     if (!caption || !caseNumber) return { ok: false, error: "caption and caseNumber required" };
+    // Optional matter link (LG-S6): the docket and the matter file were
+    // two record systems that never met (R5 full pass, F8). A supplied
+    // matterId must resolve to one of the caller's matters — no dangling
+    // links.
+    let matterId = null;
+    if (params.matterId) {
+      const matters = state.matters instanceof Map ? (state.matters.get(userId) || []) : [];
+      if (!matters.some(m => m.id === String(params.matterId))) return { ok: false, error: "matter not found" };
+      matterId = String(params.matterId);
+    }
     if (!state.cases.has(userId)) state.cases.set(userId, []);
     const c = {
       id: `case_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -347,6 +386,7 @@ Reading perspective: ${perspective}. Decision-support, NOT legal advice.`;
       jurisdiction: String(params.jurisdiction || ""),
       filedAt: params.filedAt || new Date().toISOString().slice(0, 10),
       status: "active",
+      matterId,
       matterType: ["civil", "criminal", "family", "probate", "corporate", "admin"].includes(params.matterType) ? params.matterType : "civil",
       events: [{ date: new Date().toISOString().slice(0, 10), kind: "filed", description: "Case opened" }],
     };
@@ -376,7 +416,13 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
       if (!caveats.some(c => /not legal advice|consult.*attorney/i.test(String(c)))) {
         caveats.unshift("This is not legal advice. Consult a licensed attorney in your jurisdiction for a binding answer.");
       }
-      return { ok: true, result: { answer: String(parsed.answer), jurisdiction, citations: Array.isArray(parsed.citations) ? parsed.citations.slice(0, 8) : [], caveats } };
+      const citations = verifyLegalCitations(
+        Array.isArray(parsed.citations) ? parsed.citations.slice(0, 8) : [],
+        String(parsed.answer),
+        jurisdiction,
+        caveats,
+      );
+      return { ok: true, result: { answer: String(parsed.answer), jurisdiction, citations, caveats } };
     } catch (e) {
       return { ok: true, result: { answer: `Error: ${e?.message || "unknown"}. Consult an attorney.`, jurisdiction, citations: [], caveats: ["AI request failed."] } };
     }
@@ -493,8 +539,10 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     const totalBilled = time.filter(t => t.status === 'billed').reduce((sum, t) => sum + (t.amount || 0), 0);
     const totalUnbilled = time.filter(t => t.status === 'unbilled').reduce((sum, t) => sum + (t.amount || 0), 0);
     const totalHours = time.reduce((sum, t) => sum + (t.hours || 0), 0);
+    const unbilledHours = time.filter(t => t.status === 'unbilled').reduce((sum, t) => sum + (t.hours || 0), 0);
     const invoices = ensureBucket(s.invoices, userId).filter(i => i.matterId === id);
     const documents = ensureBucket(s.documents, userId).filter(d => d.matterId === id);
+    const linkedCases = (s.cases instanceof Map ? (s.cases.get(userId) || []) : []).filter(c => c.matterId === id);
     const trustBalance = (() => {
       const txns = ensureBucket(s.trustTxns, userId).filter(t => t.matterId === id);
       return txns.reduce((sum, t) => sum + (t.kind === 'deposit' ? t.amount : -t.amount), 0);
@@ -508,8 +556,9 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
         time,
         invoices,
         documents,
+        cases: linkedCases,
         events,
-        totals: { billed: totalBilled, unbilled: totalUnbilled, hours: totalHours, trustBalance },
+        totals: { billed: totalBilled, unbilled: totalUnbilled, hours: totalHours, unbilledHours, trustBalance },
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1244,7 +1293,29 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
       'frap-4-notice-appeal':     { days: 30, name: "FRAP 4(a)(1)(A) — Notice of appeal (civil)" },
       'us-statute-limitations-tort': { days: 365 * 2, name: "Generic 2-year tort SOL (state-specific)" },
     };
-    if (!RULES[rule]) return { ok: false, error: `unknown rule. Supported: ${Object.keys(RULES).join(', ')}` };
+    // State response-time rules (LG-S5), sourced live from the lens's own
+    // procedure reference: a state is offered only where the reference
+    // carries a "Time to respond/answer/appear" rule with a stated day
+    // count — correcting the reference corrects this calculator. (PA's
+    // entry speaks to subsequent pleadings, so it is not offered as a
+    // response rule.) Before this, the library was federal-only in a lens
+    // whose Procedure Reference leads with state rules (R5 full pass, F4).
+    const stateRules = {};
+    for (const entry of listProcedureStates()) {
+      const refRule = (entry.rules || []).find((r) => /time to (respond|answer|appear)/i.test(r.topic || ""));
+      const days = refRule ? Number((String(refRule.summary || "").match(/(\d+)\s*days/) || [])[1]) : NaN;
+      if (refRule && Number.isFinite(days)) {
+        stateRules[`${entry.stateCode.toLowerCase()}-response`] = {
+          days,
+          name: `${refRule.citation} — ${refRule.topic} (${entry.state})`,
+          citation: refRule.citation,
+          state: entry.state,
+          disclaimer: entry.disclaimer,
+        };
+      }
+    }
+    const ALL_RULES = { ...RULES, ...stateRules };
+    if (!ALL_RULES[rule]) return { ok: false, error: `unknown rule. Supported: ${Object.keys(ALL_RULES).join(', ')}` };
     const start = new Date(trigger);
     if (isNaN(start.getTime())) return { ok: false, error: "triggerDate invalid" };
     // Federal holidays (FRCP 6(a)(6)(A)).
@@ -1262,22 +1333,29 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
       nthWeekday(year, 10, 4, 4),                                                             // Thanksgiving 4th Thu Nov
     ].filter(Boolean));
     let d = new Date(start);
-    d.setUTCDate(d.getUTCDate() + RULES[rule].days);
+    d.setUTCDate(d.getUTCDate() + ALL_RULES[rule].days);
     // FRCP 6(a)(1)(C): roll to next business day if deadline lands on weekend/holiday.
     while (d.getUTCDay() === 0 || d.getUTCDay() === 6 || holidays.has(d.toISOString().slice(0, 10))) {
       d.setUTCDate(d.getUTCDate() + 1);
     }
+    const stateRule = stateRules[rule] || null;
     return {
       ok: true,
       result: {
         rule,
-        ruleName: RULES[rule].name,
-        jurisdiction,
+        ruleName: ALL_RULES[rule].name,
+        jurisdiction: stateRule ? stateRule.state : jurisdiction,
         triggerDate: trigger,
-        rawDeadline: new Date(new Date(trigger).getTime() + RULES[rule].days * 86_400_000).toISOString().slice(0, 10),
+        rawDeadline: new Date(new Date(trigger).getTime() + ALL_RULES[rule].days * 86_400_000).toISOString().slice(0, 10),
         adjustedDeadline: d.toISOString().slice(0, 10),
-        rolledForward: d.toISOString().slice(0, 10) !== new Date(new Date(trigger).getTime() + RULES[rule].days * 86_400_000).toISOString().slice(0, 10),
-        days: RULES[rule].days,
+        rolledForward: d.toISOString().slice(0, 10) !== new Date(new Date(trigger).getTime() + ALL_RULES[rule].days * 86_400_000).toISOString().slice(0, 10),
+        days: ALL_RULES[rule].days,
+        ...(stateRule ? {
+          citation: stateRule.citation,
+          state: stateRule.state,
+          disclaimer: stateRule.disclaimer,
+          countingNote: "Counted in calendar days with a weekend/holiday roll-forward. State counting rules and service-method additions vary — see the disclaimer.",
+        } : {}),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1813,6 +1891,11 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
       const mt = time.filter(t => t.matterId === m.id);
       const worked = mt.filter(t => t.status !== 'non_billable').reduce((sum, t) => sum + (t.amount || 0), 0);
       const billed = invoices.filter(i => i.matterId === m.id).reduce((sum, i) => sum + (i.subtotal || 0), 0);
+      // What clients were actually invoiced, tax included — the basis a
+      // payment settles. Collection was previously measured against the
+      // subtotal alone while payments arrive gross, printing 108% on an
+      // exactly-settled invoice (R5 full pass, F7).
+      const billedTotal = invoices.filter(i => i.matterId === m.id).reduce((sum, i) => sum + (Number.isFinite(i.total) ? i.total : (i.subtotal || 0) + (i.tax || 0)), 0);
       const collected = payments.filter(p => p.matterId === m.id).reduce((sum, p) => sum + p.amount, 0);
       const budget = s.budgets.get(`${userId}::${m.id}`) || null;
       return {
@@ -1821,15 +1904,19 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
         status: m.status,
         worked: Math.round(worked * 100) / 100,
         billed: Math.round(billed * 100) / 100,
+        billedTotal: Math.round(billedTotal * 100) / 100,
+        billedBasis: 'subtotal (fees, before tax)',
         collected: Math.round(collected * 100) / 100,
         realizationRate: worked > 0 ? Math.round((billed / worked) * 1000) / 1000 : null,
-        collectionRate: billed > 0 ? Math.round((collected / billed) * 1000) / 1000 : null,
+        collectionRate: billedTotal > 0 ? Math.round((collected / billedTotal) * 1000) / 1000 : null,
+        collectionBasis: 'collected / invoiced total (incl. tax)',
         budgetAmount: budget ? budget.budgetAmount : null,
         overBudget: budget && budget.budgetAmount > 0 ? worked > budget.budgetAmount : false,
       };
     });
     const totWorked = rows.reduce((sum, r) => sum + r.worked, 0);
     const totBilled = rows.reduce((sum, r) => sum + r.billed, 0);
+    const totBilledTotal = rows.reduce((sum, r) => sum + r.billedTotal, 0);
     const totCollected = rows.reduce((sum, r) => sum + r.collected, 0);
     return {
       ok: true,
@@ -1838,9 +1925,10 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
         totals: {
           worked: Math.round(totWorked * 100) / 100,
           billed: Math.round(totBilled * 100) / 100,
+          billedTotal: Math.round(totBilledTotal * 100) / 100,
           collected: Math.round(totCollected * 100) / 100,
           firmRealizationRate: totWorked > 0 ? Math.round((totBilled / totWorked) * 1000) / 1000 : null,
-          firmCollectionRate: totBilled > 0 ? Math.round((totCollected / totBilled) * 1000) / 1000 : null,
+          firmCollectionRate: totBilledTotal > 0 ? Math.round((totCollected / totBilledTotal) * 1000) / 1000 : null,
           mattersOverBudget: rows.filter(r => r.overBudget).length,
         },
       },
@@ -1920,6 +2008,80 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 };
+
+// ── Citation verification for legal-question (LG-S3) ──────────────────
+// legal-question's answers are LLM-drafted; their citations used to pass
+// through verbatim — the walked Q1 answer was numerically right and cited
+// CCP §416.10 for the §412.20 proposition (R5 full pass, F3: a research
+// surface is worse with a wrong cite than none). Citations are now checked
+// against the lens's own authored procedure reference
+// (content/court-procedure-reference.json, via getProcedureForState):
+//   · a citation whose section matches a reference entry is marked
+//     verification: "reference";
+//   · a citation offered for the reference's response-time proposition
+//     carrying a different section of the same code is corrected to the
+//     reference citation, marked corrected: true, and the correction is
+//     disclosed in the caveats;
+//   · a citation naming the state's code but absent from the reference
+//     subset is marked verification: "unverified" and caveated once;
+//   · anything outside the reference's coverage is verification: null —
+//     returned unchecked, never laundered into a verified claim.
+function verifyLegalCitations(citations, answerText, jurisdiction, caveats) {
+  // The Q&A surface sends jurisdictions as "US-CA" (and bare "CA" there
+  // means Canada) — resolve only the US-<state> form and plain state
+  // names/codes against the reference; anything else stays unchecked.
+  const usState = /^US-([A-Z]{2})$/i.exec(String(jurisdiction || "").trim());
+  const entry = getProcedureForState(usState ? usState[1] : jurisdiction);
+  if (!entry) return citations.map((c) => ({ ...c, verification: null }));
+  const refSections = new Map();
+  for (const rule of entry.rules || []) {
+    // A citation may carry a section list ("§§ 415.10, 415.20") — index
+    // every section it names. Section numbers may end in a letter (§437c).
+    const list = (String(rule.citation || "").match(/§§?\s*((?:[0-9]+(?:\.[0-9]+)?[a-z]?)(?:\s*,\s*[0-9]+(?:\.[0-9]+)?[a-z]?)*)/) || [])[1];
+    if (list) for (const s of list.split(",").map((x) => x.trim()).filter(Boolean)) refSections.set(s, rule);
+  }
+  const responseRule = (entry.rules || []).find((r) => /time to respond/i.test(r.topic || ""));
+  const responseSection = responseRule
+    ? (String(responseRule.citation).match(/§§?\s*([0-9]+(?:\.[0-9]+)?[a-z]?)/) || [])[1]
+    : null;
+  const answerStatesResponseWindow =
+    /\d+\s*(?:calendar\s*)?days[^.]{0,100}?(respond|answer|responsive pleading)/i.test(answerText) ||
+    /(respond|answer)[^.]{0,100}?\d+\s*(?:calendar\s*)?days/i.test(answerText);
+  const codeHints = [entry.state, entry.stateCode, "Civil Procedure", "Civ. Proc", "CCP"];
+  let corrected = false;
+  let sawUnverified = false;
+  const out = citations.map((c) => {
+    const cit = { ...c };
+    // The LLM may give the section as a bare number ("416.10") or only
+    // inside the title ("… § 416.10") — accept both shapes.
+    const bareSection = String(cit.section || "").replace(/^§§?\s*/, "").trim();
+    const sec = (/^[0-9]+(?:\.[0-9]+)?[a-z]?$/i.test(bareSection) ? bareSection : null)
+      || (String(cit.title || "").match(/§\s*([0-9]+(?:\.[0-9]+)?[a-z]?)/i)?.[1] || null);
+    const namesStateCode = codeHints.some((h) => h && String(cit.title || "").toLowerCase().includes(String(h).toLowerCase()));
+    if (sec && refSections.has(sec)) {
+      cit.verification = "reference";
+    } else if (sec && namesStateCode && answerStatesResponseWindow && responseSection && sec !== responseSection) {
+      cit.section = responseSection;
+      cit.title = responseRule.citation;
+      cit.verification = "reference";
+      cit.corrected = true;
+      corrected = true;
+    } else if (namesStateCode) {
+      cit.verification = "unverified";
+      sawUnverified = true;
+    } else {
+      cit.verification = null;
+    }
+    return cit;
+  });
+  if (corrected) {
+    caveats.push(`A citation was corrected against the procedure reference: ${responseRule.citation} governs the time to respond in ${entry.state}.`);
+  }
+  if (sawUnverified) {
+    caveats.push("Some citations could not be verified against the lens's reference sources — verify each cite before relying on it.");
+  }
+  return out;
+}
 
 function extractJsonLegal(text) {
   if (!text) return null;
