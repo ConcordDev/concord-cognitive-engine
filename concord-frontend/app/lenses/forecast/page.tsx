@@ -47,7 +47,7 @@ const TABS: Array<{ id: Tab; label: string; keys: string; icon: typeof Sun }> = 
   { id: 'multiday', label: 'Multi-day', keys: '2', icon: CalendarDays },
   { id: 'hourly', label: 'Hourly', keys: '3', icon: Clock },
   { id: 'regional', label: 'Per-district', keys: '4', icon: MapPin },
-  { id: 'accuracy', label: 'Accuracy', keys: '5', icon: Target },
+  { id: 'accuracy', label: 'Consistency', keys: '5', icon: Target },
   { id: 'archive', label: 'Archive', keys: '6', icon: Archive },
   { id: 'alerts', label: 'Alerts', keys: '7', icon: Bell },
 ];
@@ -61,6 +61,11 @@ export default function ForecastPage() {
   const [error, setError] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
   const [tab, setTab] = useState<Tab>('now');
+  // Bumped on every successful compose. The sibling panels fetch once on
+  // mount, so without this signal a view mounted before a compose keeps
+  // rendering the previous forecast until a reload (F2) — the version is
+  // their re-read key, so one compose re-reads across every view.
+  const [forecastVersion, setForecastVersion] = useState(0);
 
   // The forecast.* macros return their payload at the top level
   // ({ ok, worldId, forecast }); lensRun unwraps the { ok, result } envelope so
@@ -88,6 +93,7 @@ export default function ForecastPage() {
     const r = await lensRun<{ ok: boolean; forecast: Forecast | null }>('forecast', 'compose', { worldId, persist: true });
     if (r.data?.ok && r.data.result?.ok) {
       setForecast(r.data.result.forecast || null);
+      setForecastVersion((v) => v + 1);
     } else if (r.data?.error) {
       setError(r.data.error);
     }
@@ -100,7 +106,7 @@ export default function ForecastPage() {
       { id: 'tab-multiday', keys: '2', description: 'Multi-day outlook', category: 'navigation', action: () => setTab('multiday') },
       { id: 'tab-hourly', keys: '3', description: 'Hourly breakdown', category: 'navigation', action: () => setTab('hourly') },
       { id: 'tab-regional', keys: '4', description: 'Per-district forecast', category: 'navigation', action: () => setTab('regional') },
-      { id: 'tab-accuracy', keys: '5', description: 'Forecast accuracy', category: 'navigation', action: () => setTab('accuracy') },
+      { id: 'tab-accuracy', keys: '5', description: 'Forecast consistency', category: 'navigation', action: () => setTab('accuracy') },
       { id: 'tab-archive', keys: '6', description: 'Historical archive', category: 'navigation', action: () => setTab('archive') },
       { id: 'tab-alerts', keys: '7', description: 'Alert subscriptions', category: 'navigation', action: () => setTab('alerts') },
       { id: 'compose-fresh', keys: 'c', description: 'Compose fresh forecast', category: 'actions', action: () => { void composeFresh(); } },
@@ -177,7 +183,7 @@ export default function ForecastPage() {
               {forecast.weather && (
                 <section className="bg-[#111] border border-cyan-700/40 rounded-2xl p-5">
                   <h2 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">Weather</h2>
-                  <p className="text-zinc-100">{forecast.weather.kind}{forecast.weather.temperature_c !== null ? ` · ${forecast.weather.temperature_c}°C` : ''}{forecast.weather.humidity_pct != null ? ` · ${forecast.weather.humidity_pct}% humidity` : ''}</p>
+                  <p className="text-zinc-100">{forecast.weather.kind}{forecast.weather.temperature_c !== null ? ` · ${forecast.weather.temperature_c.toFixed(1)}°C` : ''}{forecast.weather.humidity_pct != null ? ` · ${Math.round(forecast.weather.humidity_pct)}% humidity` : ''}</p>
                   <p className="text-[10px] text-zinc-400 font-mono mt-1">confidence {(forecast.weather.confidence * 100).toFixed(0)}%</p>
                 </section>
               )}
@@ -230,35 +236,35 @@ export default function ForecastPage() {
         {tab === 'multiday' && (
           <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-cyan-300">Multi-day outlook</h2>
-            <MultiDayOutlook worldId={worldId} />
+            <MultiDayOutlook worldId={worldId} refreshKey={forecastVersion} />
           </section>
         )}
 
         {tab === 'hourly' && (
           <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-300">Hourly breakdown</h2>
-            <HourlyBreakdown worldId={worldId} />
+            <HourlyBreakdown worldId={worldId} refreshKey={forecastVersion} />
           </section>
         )}
 
         {tab === 'regional' && (
           <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-emerald-300">Per-district forecast</h2>
-            <RegionalForecast worldId={worldId} />
+            <RegionalForecast worldId={worldId} refreshKey={forecastVersion} />
           </section>
         )}
 
         {tab === 'accuracy' && (
           <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
-            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-purple-300">Forecast accuracy</h2>
-            <ForecastAccuracy worldId={worldId} />
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-purple-300">Forecast consistency</h2>
+            <ForecastAccuracy worldId={worldId} refreshKey={forecastVersion} />
           </section>
         )}
 
         {tab === 'archive' && (
           <section className="rounded-2xl border border-white/10 bg-[#111] p-5">
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-300">Historical archive</h2>
-            <ForecastArchive worldId={worldId} />
+            <ForecastArchive worldId={worldId} refreshKey={forecastVersion} />
           </section>
         )}
 
