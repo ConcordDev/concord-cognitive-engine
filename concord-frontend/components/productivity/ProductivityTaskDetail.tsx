@@ -19,17 +19,21 @@ interface Subtask {
   priority: number;
   dueDate: string | null;
 }
-interface Comment { id: string; body: string; authorId: string; createdAt: string }
+interface Comment { id: string; body: string; authorId: string; authorName?: string | null; authorUsername?: string | null; createdAt: string }
 interface TaskDetail {
   id: string;
   content: string;
   priority: number;
   dueDate: string | null;
+  projectId?: string | null;
+  labels?: string[];
   assigneeId: string | null;
+  assigneeName?: string | null;
   subtasks: Subtask[];
   comments?: Comment[];
   recurring: string | null;
 }
+interface ProjectOption { id: string; name: string }
 
 const PRIORITY_COLOR: Record<number, string> = {
   1: 'text-rose-400', 2: 'text-amber-400', 3: 'text-sky-400', 4: 'text-zinc-400',
@@ -94,12 +98,19 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
   const [recurKind, setRecurKind] = useState<RecurKind>('none');
   const [recurN, setRecurN] = useState(3);
   const [savingRecur, setSavingRecur] = useState(false);
+  // F2: task editing — task-update has always been registered; the
+  // detail view simply never wired it for the core fields.
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ content: '', priority: '4', dueDate: '', projectId: '', labels: '' });
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [d, c] = await Promise.all([
+    const [d, c, p] = await Promise.all([
       lensRun('productivity', 'task-detail', { id: taskId }),
       lensRun('productivity', 'task-comments', { taskId }),
+      lensRun('productivity', 'project-list', {}),
     ]);
     if (d.data?.ok === false || c.data?.ok === false) {
       setLoadError(d.data?.error || c.data?.error || 'Could not load this task.');
@@ -109,13 +120,44 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
     setLoadError(null);
     const t = (d.data?.result?.task as TaskDetail | undefined) || null;
     setTask(t);
-    setAssignee(t?.assigneeId || '');
+    setAssignee(t?.assigneeName || t?.assigneeId || '');
+    setProjects(((p.data?.result?.projects as ProjectOption[] | undefined) || []).map((x) => ({ id: x.id, name: x.name })));
     const { kind, n } = kindFromBackendValue(t?.recurring ?? null);
     setRecurKind(kind);
     setRecurN(n);
     setComments(c.data?.result?.comments || []);
     setLoading(false);
   }, [taskId]);
+
+  const startEdit = () => {
+    if (!task) return;
+    setEditForm({
+      content: task.content,
+      priority: String(task.priority),
+      dueDate: task.dueDate || '',
+      projectId: task.projectId || '',
+      labels: (task.labels || []).join(', '),
+    });
+    setEditing(true);
+  };
+  const saveEdit = async () => {
+    if (!editForm.content.trim()) { setError('Task title is required.'); return; }
+    setSavingEdit(true);
+    const r = await lensRun('productivity', 'task-update', {
+      id: taskId,
+      content: editForm.content.trim(),
+      priority: Number(editForm.priority) || 4,
+      dueDate: editForm.dueDate || null,
+      projectId: editForm.projectId || null,
+      labels: editForm.labels.split(',').map((l) => l.trim()).filter(Boolean),
+    });
+    setSavingEdit(false);
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed to save changes.'); return; }
+    setError(null);
+    setEditing(false);
+    await refresh();
+    onChange();
+  };
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -158,7 +200,9 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
     await refresh();
   };
   const assign = async () => {
-    await lensRun('productivity', 'task-assign', { taskId, assigneeId: assignee.trim() || undefined });
+    const r = await lensRun('productivity', 'task-assign', { taskId, assigneeId: assignee.trim() || undefined });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Assign failed.'); return; }
+    setError(null);
     await refresh();
     onChange();
   };
@@ -186,13 +230,57 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
     <div className="space-y-3">
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
-      <div>
-        <p className="text-sm font-semibold text-zinc-100">{task.content}</p>
-        <p className="text-[11px] text-zinc-400">
-          <span className={PRIORITY_COLOR[task.priority]}>P{task.priority}</span>
-          {task.dueDate && <span className="ml-2">{task.dueDate}</span>}
-        </p>
-      </div>
+      {!editing ? (
+        <div className="flex items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-zinc-100">{task.content}</p>
+            <p className="text-[11px] text-zinc-400">
+              <span className={PRIORITY_COLOR[task.priority]}>P{task.priority}</span>
+              {task.dueDate && <span className="ml-2">{task.dueDate}</span>}
+              {(task.labels || []).length > 0 && <span className="ml-2">{(task.labels || []).map((l) => `#${l}`).join(' ')}</span>}
+            </p>
+          </div>
+          <button type="button" onClick={startEdit}
+            className="px-2.5 py-1 text-[11px] font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg shrink-0">
+            Edit task
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+          <input value={editForm.content} onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+            aria-label="Task title"
+            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
+          <div className="grid grid-cols-2 gap-2">
+            <select value={editForm.priority} onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
+              aria-label="Priority"
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+              {[1, 2, 3, 4].map((p) => <option key={p} value={p}>Priority {p}</option>)}
+            </select>
+            <input type="date" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
+              aria-label="Due date"
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            <select value={editForm.projectId} onChange={(e) => setEditForm({ ...editForm, projectId: e.target.value })}
+              aria-label="Project"
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+              <option value="">No project</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <input value={editForm.labels} onChange={(e) => setEditForm({ ...editForm, labels: e.target.value })}
+              placeholder="Labels (comma)" aria-label="Labels"
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={saveEdit} disabled={savingEdit}
+              className="px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-lg">
+              {savingEdit ? 'Saving…' : 'Save changes'}
+            </button>
+            <button type="button" onClick={() => setEditing(false)}
+              className="px-3 py-1.5 text-xs text-zinc-300 hover:text-white rounded-lg">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Recurrence — structured picker, not free-text NLP. Options are exactly
           the patterns the backend's normRecurring accepts, so every write
@@ -246,7 +334,7 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
       {/* Assignee */}
       <div className="flex gap-2 items-center">
         <UserPlus className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-        <input placeholder="Assignee user id" value={assignee} onChange={(e) => setAssignee(e.target.value)}
+        <input placeholder="Assignee — @username or profile name" value={assignee} onChange={(e) => setAssignee(e.target.value)}
           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
         <button type="button" onClick={assign}
           className="px-3 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
@@ -307,7 +395,13 @@ export function ProductivityTaskDetail({ taskId, onChange }: { taskId: string; o
         {comments.map((c) => (
           <div key={c.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1.5">
             <p className="text-xs text-zinc-200">{c.body}</p>
-            <p className="text-[10px] text-zinc-400">{c.authorId} · {c.createdAt.slice(0, 16).replace('T', ' ')}</p>
+            {/* F6: authors render by name (server-resolved), times in the
+                viewer's timezone — never a raw user id + UTC slice. */}
+            <p className="text-[10px] text-zinc-400">
+              {c.authorName || (c.authorUsername ? `@${c.authorUsername}` : 'Unknown author')}
+              {' · '}
+              {new Date(c.createdAt).toLocaleString()}
+            </p>
           </div>
         ))}
         <div className="flex gap-2">
