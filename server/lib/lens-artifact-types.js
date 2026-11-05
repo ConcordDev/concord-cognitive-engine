@@ -49,7 +49,7 @@ export const FRONTEND_ARTIFACT_TYPES = {
   "lock": ["lock-event"],
   "market": ["data"],
   "marketplace": ["listing"],
-  "math": ["expression"],
+  "math": ["expression", "formula"],
   "music": ["artist", "session-arrangement"],
   "paper": ["citation", "evidence", "experiment", "hypothesis", "project"],
   "realestate": ["artifact"],
