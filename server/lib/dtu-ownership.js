@@ -32,6 +32,32 @@ const SYSTEM_OWNER_IDS = new Set(["system", "concord_system", "oracle_system"]);
 const PUBLIC_VISIBILITIES = new Set(["public", "marketplace", "published"]);
 const CLOSED_VISIBILITIES = new Set(["private", "internal"]);
 const ASSIGNABLE_VISIBILITIES = new Set(["private", "internal", "public", "marketplace"]);
+// Scopes an admin custody write may set. "system" and the regional/national
+// federation scopes are deliberately not assignable here.
+const ASSIGNABLE_SCOPES = new Set(["user", "personal", "local", "global"]);
+
+/**
+ * Custody for founder seed content: scope "user", visibility "private",
+ * owned by the founder account named in FOUNDER_USER_ID. Returns null when
+ * that env var is unset: callers must then skip seeding, never fall back to a
+ * shared (global/public) stamp.
+ */
+export function founderSeedCustody(env = process.env) {
+  const ownerId = stringField(env?.FOUNDER_USER_ID);
+  if (!ownerId || ownerId === "anon" || SYSTEM_OWNER_IDS.has(ownerId)) return null;
+  return { ownerId, scope: "user", visibility: "private" };
+}
+
+/** Stamp founder seed custody onto a seed DTU (in place) and return it. */
+export function stampFounderSeed(dtu, custody) {
+  if (!dtu || !custody) return dtu;
+  dtu.scope = custody.scope;
+  dtu.visibility = custody.visibility;
+  dtu.ownerId = custody.ownerId;
+  dtu.author = custody.ownerId;
+  dtu.seedOrigin = true;
+  return dtu;
+}
 
 const PUBLIC_SUMMARY_KINDS = new Set([
   "system_summary",
@@ -142,6 +168,16 @@ export function isNamedPublicSystemContent(dtu) {
 
   if (type === "news" || type.startsWith("news:") || type === "feed_item" || type === "news_feed" || type === "rss") return true;
   if (source.startsWith("rss:") || source.startsWith("hn:") || source.startsWith("wikipedia:") || source.startsWith("feed:")) return true;
+  // Feed-manager DTUs carry meta.via/meta.feedId, and their source is an
+  // attribution object ({via, url, ...}), not a string. Only for ownerless
+  // rows: a user-created DTU that happens to cite a URL is never "system
+  // content".
+  if (isSystemOrOwnerless(dtu)) {
+    if (dtu.meta?.via === "feed-manager" || stringField(dtu.meta?.feedId)) return true;
+    if (dtu.source && typeof dtu.source === "object" && !Array.isArray(dtu.source)) {
+      if (dtu.source.via === "feed-manager" || stringField(dtu.source.url)) return true;
+    }
+  }
   if (tags.includes("news") || tags.includes("news-feed") || tags.includes("news_feed") || tags.includes("feed_item")) return true;
 
   if (PUBLIC_SUMMARY_KINDS.has(type) || PUBLIC_SUMMARY_KINDS.has(source)) return true;
@@ -344,8 +380,9 @@ export function assignDtuCustody(store, input = {}, ctx, opts = {}) {
   const dryRun = input.dryRun === true || input.dryRun === "true" || input.dryRun === 1;
   const hasVisibility = input.visibility !== undefined && input.visibility !== null;
   const hasOwner = input.owner !== undefined && input.owner !== null;
-  if (!hasVisibility && !hasOwner) {
-    return { ok: false, status: 400, code: "VALIDATION_ERROR", error: "visibility or owner required" };
+  const hasScope = input.scope !== undefined && input.scope !== null;
+  if (!hasVisibility && !hasOwner && !hasScope) {
+    return { ok: false, status: 400, code: "VALIDATION_ERROR", error: "visibility, owner or scope required" };
   }
 
   let visibility = null;
@@ -353,6 +390,14 @@ export function assignDtuCustody(store, input = {}, ctx, opts = {}) {
     visibility = String(input.visibility);
     if (!ASSIGNABLE_VISIBILITIES.has(visibility)) {
       return { ok: false, status: 400, code: "VALIDATION_ERROR", error: "invalid visibility" };
+    }
+  }
+
+  let scope = null;
+  if (hasScope) {
+    scope = String(input.scope);
+    if (!ASSIGNABLE_SCOPES.has(scope)) {
+      return { ok: false, status: 400, code: "VALIDATION_ERROR", error: "invalid scope" };
     }
   }
 
@@ -374,10 +419,11 @@ export function assignDtuCustody(store, input = {}, ctx, opts = {}) {
       results.push({ id, ok: false, error: "not_found" });
       continue;
     }
-    const before = { ownerId: existing.ownerId || null, visibility: existing.visibility || null };
+    const before = { ownerId: existing.ownerId || null, visibility: existing.visibility || null, scope: existing.scope || null };
     const after = {
       ownerId: owner || existing.ownerId || null,
       visibility: visibility || existing.visibility || null,
+      scope: scope || existing.scope || null,
     };
     if (dryRun) {
       results.push({ id, ok: true, dryRun: true, before, after });
@@ -386,6 +432,7 @@ export function assignDtuCustody(store, input = {}, ctx, opts = {}) {
     const updated = { ...existing, updatedAt: now };
     if (owner) updated.ownerId = owner;
     if (visibility) updated.visibility = visibility;
+    if (scope) updated.scope = scope;
     if (persist) persist(updated);
     else if (typeof store.set === "function") store.set(id, updated);
     results.push({ id, ok: true, before, after });
@@ -396,6 +443,7 @@ export function assignDtuCustody(store, input = {}, ctx, opts = {}) {
     logAudit(actor.userId, action, idCheck.ids.join(","), {
       visibility,
       owner,
+      scope,
       dryRun,
       count: idCheck.ids.length,
       updated: results.filter((r) => r.ok).length,
@@ -407,6 +455,7 @@ export function assignDtuCustody(store, input = {}, ctx, opts = {}) {
     dryRun,
     visibility,
     owner,
+    scope,
     results,
     updated: results.filter((r) => r.ok).length,
   };

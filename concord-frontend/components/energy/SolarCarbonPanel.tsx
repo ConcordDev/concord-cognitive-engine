@@ -19,6 +19,7 @@ interface SolarResult {
   roofArea?: number | null; maxPanels?: number | null; systemSizeKW?: number | null;
   monthlyProductionKWh?: number | null; coveragePercent?: number | null;
   estimatedCost?: number | null; afterTaxCredit?: number | null; annualSavings?: number | null;
+  savingsRateUsdPerKwh?: number | null;
   paybackYears?: number | null; recommendation?: string | null;
   reason?: string | null; unavailable?: string[];
 }
@@ -114,12 +115,12 @@ export function SolarCarbonPanel() {
                   <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">System</div><div className="font-mono text-yellow-200">{typeof solarResult.systemSizeKW === 'number' ? `${solarResult.systemSizeKW} kW` : '—'}</div></div>
                   <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Panels</div><div className="font-mono text-yellow-200">{typeof solarResult.maxPanels === 'number' ? solarResult.maxPanels : '—'}</div></div>
                   <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Production</div><div className="font-mono text-yellow-200">{typeof solarResult.monthlyProductionKWh === 'number' ? `${solarResult.monthlyProductionKWh} kWh/mo` : '—'}</div></div>
-                  <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Savings</div><div className="font-mono text-emerald-200">{typeof solarResult.annualSavings === 'number' ? `$${solarResult.annualSavings}/yr` : '—'}</div></div>
+                  <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Savings</div><div className="font-mono text-emerald-200">{typeof solarResult.annualSavings === 'number' ? `$${solarResult.annualSavings}/yr` : '—'}</div>{typeof solarResult.savingsRateUsdPerKwh === 'number' && <div className="text-[9px] text-zinc-500">at ${solarResult.savingsRateUsdPerKwh.toFixed(2)}/kWh assumed, not this account&apos;s rate</div>}</div>
                 </div>
                 <div className="rounded border border-yellow-500/20 bg-zinc-950/40 px-2 py-1">
                   <div className="text-[9px] text-zinc-400">Cost</div>
                   <div className="font-mono text-yellow-200">{typeof solarResult.estimatedCost === 'number' ? `$${solarResult.estimatedCost.toLocaleString()}` : '—'} <span className="text-[9px] text-zinc-400">(after 30% credit: {typeof solarResult.afterTaxCredit === 'number' ? `$${solarResult.afterTaxCredit.toLocaleString()}` : '—'})</span></div>
-                  <div className="text-[10px] text-zinc-400">Payback: {typeof solarResult.paybackYears === 'number' ? `~${solarResult.paybackYears} years` : '—'}</div>
+                  <div className="text-[10px] text-zinc-400">Payback: {typeof solarResult.paybackYears === 'number' ? `~${solarResult.paybackYears} years` : '—'}{typeof solarResult.savingsRateUsdPerKwh === 'number' ? `, at the same $${solarResult.savingsRateUsdPerKwh.toFixed(2)}/kWh assumption` : ''}</div>
                 </div>
               </div>
             )}
@@ -178,7 +179,7 @@ export function SolarCarbonPanel() {
       dtu={{
         apiSource: 'concord-energy-solar-carbon',
         title: (s, c) => `Solar ${s.systemSizeKW ?? '—'} kW · Carbon ${typeof c.annualEstimate === 'number' ? c.annualEstimate : '—'} t/yr`,
-        content: (s, c) => `Solar:\n  ${s.recommendation ?? 'not recorded'}\n  System: ${s.systemSizeKW ?? 'not recorded'} kW (${s.maxPanels ?? 'not recorded'} panels)\n  Monthly production: ${s.monthlyProductionKWh ?? 'not recorded'} kWh\n  Cost: ${typeof s.estimatedCost === 'number' ? `$${s.estimatedCost.toLocaleString()}` : 'not recorded'} (after 30% credit: ${typeof s.afterTaxCredit === 'number' ? `$${s.afterTaxCredit.toLocaleString()}` : 'not recorded'})\n  Savings: ${typeof s.annualSavings === 'number' ? `$${s.annualSavings}/yr` : 'not recorded'} · Payback: ${typeof s.paybackYears === 'number' ? `${s.paybackYears} years` : 'not recorded'}\n\nCarbon:\n  ${c.status === 'NOT_COMPUTED' ? `Not computed. ${c.message ?? ''}` : `Monthly: ${typeof c.totalMetricTons === 'number' ? c.totalMetricTons : 'not recorded'} tons CO2 | Annual: ${typeof c.annualEstimate === 'number' ? c.annualEstimate : 'not recorded'} tons\n  vs US avg: ${c.vsUSAverage ?? 'not compared'}\n  Top source: ${c.topSource ?? 'not recorded'}\n  Breakdown:\n${Object.entries(c.breakdown || {}).map(([k, v]) => `    ${k}: ${typeof v === 'number' ? `${v} t` : 'not recorded'}`).join('\n')}\n  Tips:\n${(c.reductionTips || []).map((t) => `    • ${t}`).join('\n')}`}`,
+        content: (s, c) => `Solar:\n  ${s.recommendation ?? 'not recorded'}\n  System: ${s.systemSizeKW ?? 'not recorded'} kW (${s.maxPanels ?? 'not recorded'} panels)\n  Monthly production: ${s.monthlyProductionKWh ?? 'not recorded'} kWh\n  Cost: ${typeof s.estimatedCost === 'number' ? `$${s.estimatedCost.toLocaleString()}` : 'not recorded'} (after 30% credit: ${typeof s.afterTaxCredit === 'number' ? `$${s.afterTaxCredit.toLocaleString()}` : 'not recorded'})\n  Savings: ${typeof s.annualSavings === 'number' ? `$${s.annualSavings}/yr` : 'not recorded'}${typeof s.savingsRateUsdPerKwh === 'number' ? ` at $${s.savingsRateUsdPerKwh.toFixed(2)}/kWh assumed, not this account's rate` : ''} · Payback: ${typeof s.paybackYears === 'number' ? `${s.paybackYears} years` : 'not recorded'}\n\nCarbon:\n  ${c.status === 'NOT_COMPUTED' ? `Not computed. ${c.message ?? ''}` : `Monthly: ${typeof c.totalMetricTons === 'number' ? c.totalMetricTons : 'not recorded'} tons CO2 | Annual: ${typeof c.annualEstimate === 'number' ? c.annualEstimate : 'not recorded'} tons\n  vs US avg: ${c.vsUSAverage ?? 'not compared'}\n  Top source: ${c.topSource ?? 'not recorded'}\n  Breakdown:\n${Object.entries(c.breakdown || {}).map(([k, v]) => `    ${k}: ${typeof v === 'number' ? `${v} t` : 'not recorded'}`).join('\n')}\n  Tips:\n${(c.reductionTips || []).map((t) => `    • ${t}`).join('\n')}`}`,
         tags: () => ['energy', 'solar', 'carbon'],
         rawData: (s, c) => ({ solar, carbon, solarResult: s, carbonResult: c }),
       }}

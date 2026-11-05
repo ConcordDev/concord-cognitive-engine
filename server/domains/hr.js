@@ -320,6 +320,20 @@ export default function registerHRActions(registerLensAction) {
       return { ok: false, reason: "forecast_error", detail: String(fc?.error || "forecast failed") };
     }
     const f = fc.result;
+    // Feasible-range bound (HR F6): when every observed value is >= 0 the
+    // series measures a non-negative quantity (every LABOR_SERIES preset —
+    // rates, thousands of jobs, USD/hr, an index), so a prediction interval
+    // may not cross below zero; the raw Holt-Winters bands reached -10.291
+    // for the unemployment rate. Only the lower bounds clamp; the point
+    // forecast and uppers stay exactly as the engine computed them.
+    const boundAtZero = values.every((v) => v >= 0);
+    const predictions = boundAtZero
+      ? (f.predictions || []).map((p) => ({
+        ...p,
+        lower95: typeof p.lower95 === "number" ? Math.max(0, p.lower95) : p.lower95,
+        lower80: typeof p.lower80 === "number" ? Math.max(0, p.lower80) : p.lower80,
+      }))
+      : f.predictions;
     const last = ordered[ordered.length - 1];
     const catalogTitle = series?.catalog && typeof series.catalog === "object" ? series.catalog.series_title : null;
     return {
@@ -336,9 +350,12 @@ export default function registerHRActions(registerLensAction) {
         method: f.method,
         parameters: f.parameters,
         horizon: f.horizon,
-        // [{ step, forecast, lower95, upper95, lower80, upper80 }] — the exact
-        // intervals temporal.forecast computes from residual std × √h × z.
-        forecast: f.predictions,
+        // [{ step, forecast, lower95, upper95, lower80, upper80 }] — the
+        // intervals temporal.forecast computes from residual std × √h × z,
+        // with lower bounds clamped at the feasible zero floor when the
+        // series is non-negative (see boundAtZero above).
+        forecast: predictions,
+        intervalsBoundedAtZero: boundAtZero,
         trend: f.trend,
         accuracy: f.accuracy,
         accuracyLabel: f.accuracyLabel,
@@ -1165,8 +1182,14 @@ export default function registerHRActions(registerLensAction) {
     const userId = hrAid(ctx);
     const acks = s.complianceAcks.get(userId) || [];
     const activeEmps = (s.employees.get(userId) || []).filter((e) => e.status === "active");
+    const activeIds = new Set(activeEmps.map((e) => e.id));
     const docs = (s.complianceDocs.get(userId) || []).map((d) => {
-      const a = acks.filter((x) => x.docId === d.id && x.version === d.version);
+      // Statistics rule (HR F4): a document's counts run over CURRENT active
+      // employees only — the same rule compliance-status applies org-wide.
+      // Counting a departed employee's acknowledgement in the numerator while
+      // dividing by the active roster printed "1 acked / 0 pending · 0%".
+      const a = acks.filter((x) => x.docId === d.id && x.version === d.version
+        && activeIds.has(x.employeeId));
       return {
         ...d,
         acknowledgedCount: a.length,
@@ -1475,6 +1498,13 @@ export default function registerHRActions(registerLensAction) {
       !anyRecordEmployeeIds.has(e.id)
       && (new Date(today) - new Date(e.hireDate || today)) > THREE_DAYS_MS).length;
     const verifiedCount = activeEmps.filter((e) => verifiedEmployeeIds.has(e.id)).length;
+    // Statistics rule (HR F5): "missing" means NO record on file. An employee
+    // with a record that is not yet verified is PENDING — a distinct count —
+    // not missing; the old active-minus-verified figure called a filed,
+    // pending I-9 missing.
+    const missingCount = activeEmps.filter((e) => !anyRecordEmployeeIds.has(e.id)).length;
+    const pendingCount = activeEmps.filter((e) =>
+      anyRecordEmployeeIds.has(e.id) && !verifiedEmployeeIds.has(e.id)).length;
     const i9Measured = measuredPercent(
       activeEmps.length,
       activeEmps.length ? Math.round((verifiedCount / activeEmps.length) * 100) : null,
@@ -1484,7 +1514,8 @@ export default function registerHRActions(registerLensAction) {
       result: {
         activeEmployees: activeEmps.length,
         verified: verifiedCount,
-        missing: activeEmps.length - verifiedCount,
+        pending: pendingCount,
+        missing: missingCount,
         overdue,
         compliancePct: i9Measured.value,
         reason: i9Measured.reason,

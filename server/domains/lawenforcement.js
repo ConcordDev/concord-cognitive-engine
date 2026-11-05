@@ -23,6 +23,23 @@
 // rejects a new record at 2000. No new table and no migration. Every
 // value returned is real (user input or deterministic computation) — no
 // seed/mock/demo data.
+//
+// Identifier definition (evidence, S2(i) — the contract-definition gap
+// named in cross-check #70(b), closed here and in
+// content/contracts/overrides/law-enforcement.evidenceTransfer.json):
+// every evidence item carries TWO identifiers — the display ID
+// (`barcode`, "EVD-…"), issued at intake and printed on the item's row,
+// and the internal id ("ev_…"), the store key. The display ID is the
+// item's public name: evidenceTransfer and evidenceChain accept EITHER
+// form, the display ID matched case-insensitively, so the ID the
+// booking hands the user is the ID every later operation takes.
+//
+// Analysis scope (S1): the Quick Analysis computes read the lens's own
+// records — crimeStats counts the caller's Crime Map incidents, cases
+// on file, and any rows staged in the workbench; caseAnalysis weighs
+// the evidence actually booked against a resolved case alongside any
+// staged rows. Every compute result names its scope in `result.scope`;
+// no figure is presented as lens-wide that was computed over less.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
@@ -137,20 +154,56 @@ export default function registerLawEnforcementActions(registerLensAction) {
   // ======================================================================
   registerLensAction("law-enforcement", "caseAnalysis", (ctx, artifact, _params) => {
     const data = artifact.data || {};
-    const evidence = Array.isArray(data.evidence) ? data.evidence : [];
+    const stagedEvidence = Array.isArray(data.evidence) ? data.evidence : [];
     const witnesses = Array.isArray(data.witnesses) ? data.witnesses : [];
     const suspects = Array.isArray(data.suspects) ? data.suspects : [];
-    const evidenceScore = Math.min(100, evidence.length * 15);
+    // S1: when the given caseId resolves to a case on file, the evidence
+    // actually booked into custody against that case counts alongside
+    // the staged workbench rows — the booked items are the lens's real
+    // record, and a strength score that cannot see them is a staged
+    // figure wearing a lens-wide posture.
+    let linkedCase = null;
+    let bookedEvidence = [];
+    const wanted = str(data.caseId);
+    if (wanted) {
+      try {
+        const cs = caseStore(ctx);
+        const uidActor = actorId(ctx);
+        linkedCase =
+          cs.getByCaseNumber(uidActor, normalizeCaseNumber(wanted)) ||
+          cs.getById(uidActor, wanted);
+        if (linkedCase) {
+          const target = normalizeCaseNumber(linkedCase.caseNumber);
+          bookedEvidence = [...userMap("evidence", uidActor).values()].filter(
+            (e) => normalizeCaseNumber(e.caseNumber) === target
+          );
+        }
+      } catch {
+        linkedCase = null;
+        bookedEvidence = [];
+      }
+    }
+    const evidenceCount = bookedEvidence.length + stagedEvidence.length;
+    const evidenceScore = Math.min(100, evidenceCount * 15);
     const witnessScore = Math.min(100, witnesses.length * 20);
     const suspectLinks = suspects.reduce((s, su) => s + ((su.evidenceLinks || []).length), 0);
     const caseStrength = Math.round(evidenceScore * 0.4 + witnessScore * 0.3 + Math.min(100, suspectLinks * 25) * 0.3);
-    return { ok: true, result: { caseId: data.caseId || artifact.title, evidenceCount: evidence.length, witnessCount: witnesses.length, suspectCount: suspects.length, caseStrength, prosecutable: caseStrength >= 60, status: caseStrength >= 80 ? "strong-case" : caseStrength >= 50 ? "developing" : "insufficient-evidence", nextSteps: caseStrength < 60 ? ["Collect additional evidence", "Interview more witnesses", "Analyze forensics"] : ["Prepare prosecution brief"] } };
+    const scope = linkedCase
+      ? `Scope: case ${linkedCase.caseNumber} on file — ${bookedEvidence.length} evidence item(s) booked in custody against it, plus ${stagedEvidence.length} staged workbench row(s); witnesses and suspects are workbench entries only.`
+      : "Scope: workbench entries only — no case on file resolved for the given case ID, so no booked evidence is counted.";
+    return { ok: true, result: { caseId: linkedCase ? linkedCase.caseNumber : (data.caseId || artifact.title), linkedCase: linkedCase ? { caseNumber: linkedCase.caseNumber, title: linkedCase.title, status: linkedCase.status } : null, evidenceCount, bookedEvidenceCount: bookedEvidence.length, stagedEvidenceCount: stagedEvidence.length, witnessCount: witnesses.length, suspectCount: suspects.length, caseStrength, prosecutable: caseStrength >= 60, status: caseStrength >= 80 ? "strong-case" : caseStrength >= 50 ? "developing" : "insufficient-evidence", nextSteps: caseStrength < 60 ? ["Collect additional evidence", "Interview more witnesses", "Analyze forensics"] : ["Prepare prosecution brief"], scope } };
   });
   registerLensAction("law-enforcement", "patrolOptimize", (ctx, artifact, _params) => {
     const zones = artifact.data?.zones || [];
-    if (zones.length === 0) return { ok: true, result: { message: "Add patrol zones with crime data." } };
+    // Scope (S1): patrol zones exist only as workbench planning rows —
+    // the lens keeps no zone store — so the result names that scope and
+    // its "hotspots" are high-rate planning rows, NOT detections. The
+    // lens's detector of record is crimeMap; nothing may cite a staged
+    // zone as a detected hotspot.
+    const scope = "Scope: patrol zones staged in this workbench (planning rows with operator-entered crime rates) — not detections; the Crime Map is the lens's hotspot detector.";
+    if (zones.length === 0) return { ok: true, result: { message: "Add patrol zones with crime data.", scope } };
     const analyzed = zones.map(z => ({ zone: z.name, crimeRate: parseFloat(z.crimeRate) || 0, population: parseInt(z.population) || 0, currentPatrols: parseInt(z.currentPatrols) || 0, recommended: Math.ceil((parseFloat(z.crimeRate) || 0) / 10) }));
-    return { ok: true, result: { zones: analyzed, totalUnitsNeeded: analyzed.reduce((s, z) => s + z.recommended, 0), totalCurrentUnits: analyzed.reduce((s, z) => s + z.currentPatrols, 0), hotspots: analyzed.filter(z => z.crimeRate > 50).map(z => z.zone) } };
+    return { ok: true, result: { zones: analyzed, totalUnitsNeeded: analyzed.reduce((s, z) => s + z.recommended, 0), totalCurrentUnits: analyzed.reduce((s, z) => s + z.currentPatrols, 0), hotspots: analyzed.filter(z => z.crimeRate > 50).map(z => z.zone), scope } };
   });
   registerLensAction("law-enforcement", "incidentReport", (ctx, artifact, _params) => {
     const data = artifact.data || {};
@@ -159,13 +212,33 @@ export default function registerLawEnforcementActions(registerLensAction) {
     return { ok: true, result: { reportId: `IR-${Date.now().toString(36).toUpperCase()}`, complete: missing.length === 0, missingFields: missing, type: data.type || "unspecified", date: data.date || new Date().toISOString(), location: data.location || "unspecified", severity: data.severity || "standard", status: "filed", chain_of_custody: { filed: new Date().toISOString(), officer: data.officer || ctx?.userId || "system" } } };
   });
   registerLensAction("law-enforcement", "crimeStats", (ctx, artifact, _params) => {
+    // S1: the population is the lens's own records — the caller's Crime
+    // Map incidents and cases on file — plus any rows staged in the
+    // workbench. A mapped incident carries no resolution state and
+    // counts as unresolved; a case counts as cleared when it is closed.
+    // The result names this scope and its per-source counts, so a figure
+    // is never presented as lens-wide that was computed over less.
     const rawIncidents = artifact.data?.incidents;
-    const incidents = Array.isArray(rawIncidents) ? rawIncidents : [];
-    if (incidents.length === 0) return { ok: true, result: { message: "Add incident data to generate statistics." } };
+    const staged = Array.isArray(rawIncidents) ? rawIncidents : [];
+    const uidActor = actorId(ctx);
+    const mapped = [...userMap("mapIncidents", uidActor).values()].map((i) => ({ type: i.type || "other", resolved: false, source: "map" }));
+    let caseRows = [];
+    try {
+      caseRows = caseStore(ctx)
+        .listForUser(uidActor)
+        .map((c) => ({ type: "case", resolved: c.status === "closed", source: "case" }));
+    } catch {
+      caseRows = [];
+    }
+    const stagedRows = staged.map((i) => ({ type: i.type || "other", resolved: !!(i.resolved || i.status === "closed"), source: "staged" }));
+    const incidents = [...mapped, ...caseRows, ...stagedRows];
+    const sources = { mappedIncidents: mapped.length, cases: caseRows.length, stagedRows: stagedRows.length };
+    const scope = `Scope: this lens's records — ${sources.mappedIncidents} Crime Map incident(s), ${sources.cases} case(s) on file, ${sources.stagedRows} staged workbench row(s).`;
+    if (incidents.length === 0) return { ok: true, result: { message: "No incidents on record yet — plot an incident on the Crime Map, open a case, or stage a workbench row.", scope, sources } };
     const byType = {};
     for (const i of incidents) { const t = i.type || "other"; byType[t] = (byType[t] || 0) + 1; }
-    const resolved = incidents.filter(i => i.resolved || i.status === "closed").length;
-    return { ok: true, result: { totalIncidents: incidents.length, byType: Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, c]) => ({ type: t, count: c })), clearanceRate: Math.round((resolved / incidents.length) * 100), mostCommon: Object.entries(byType).sort((a, b) => b[1] - a[1])[0]?.[0] || "none", trend: incidents.length > 100 ? "high-volume" : "normal" } };
+    const resolved = incidents.filter(i => i.resolved).length;
+    return { ok: true, result: { totalIncidents: incidents.length, byType: Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, c]) => ({ type: t, count: c })), clearanceRate: Math.round((resolved / incidents.length) * 100), mostCommon: Object.entries(byType).sort((a, b) => b[1] - a[1])[0]?.[0] || "none", trend: incidents.length > 100 ? "high-volume" : "normal", scope, sources } };
   });
 
   // ======================================================================
@@ -400,12 +473,27 @@ export default function registerLawEnforcementActions(registerLensAction) {
     }
   });
 
+  // The identifier definition, applied (see the header comment): an
+  // evidence item is found by its internal id OR by its display ID
+  // (barcode), the display ID matched case-insensitively.
+  function findEvidence(evidence, key) {
+    const k = str(key);
+    if (!k) return null;
+    const byId = evidence.get(k);
+    if (byId) return byId;
+    const upper = k.toUpperCase();
+    for (const rec of evidence.values()) {
+      if (rec.barcode && rec.barcode.toUpperCase() === upper) return rec;
+    }
+    return null;
+  }
+
   registerLensAction("law-enforcement", "evidenceTransfer", (ctx, _artifact, params) => {
     try {
       const p = params || {};
       const evidence = userMap("evidence", actorId(ctx));
-      const rec = evidence.get(str(p.evidenceId));
-      if (!rec) return { ok: false, error: "evidence not found" };
+      const rec = findEvidence(evidence, p.evidenceId);
+      if (!rec) return { ok: false, error: "evidence not found — use the item's display ID (EVD-…) or its internal id (ev_…)" };
       const to = str(p.to);
       const signature = str(p.signature);
       if (!to) return { ok: false, error: "to (recipient) is required" };
@@ -457,8 +545,8 @@ export default function registerLawEnforcementActions(registerLensAction) {
 
   registerLensAction("law-enforcement", "evidenceChain", (ctx, _artifact, params) => {
     try {
-      const rec = userMap("evidence", actorId(ctx)).get(str((params || {}).evidenceId));
-      if (!rec) return { ok: false, error: "evidence not found" };
+      const rec = findEvidence(userMap("evidence", actorId(ctx)), (params || {}).evidenceId);
+      if (!rec) return { ok: false, error: "evidence not found — use the item's display ID (EVD-…) or its internal id (ev_…)" };
       // Integrity: every link's `from` must equal the prior link's `to`.
       let intact = true;
       for (let i = 1; i < rec.custody.length; i++) {
@@ -1076,6 +1164,12 @@ export default function registerLawEnforcementActions(registerLensAction) {
       put(userId, c) {
         db.prepare(UPSERT_CASE_SQL).run(caseToRow(c, userId));
       },
+      remove(userId, id) {
+        const info = db
+          .prepare("DELETE FROM le_cases WHERE user_id = ? AND id = ?")
+          .run(userId, id);
+        return info.changes > 0;
+      },
     };
   }
 
@@ -1097,6 +1191,9 @@ export default function registerLawEnforcementActions(registerLensAction) {
           const err = new Error("record_cap");
           throw err;
         }
+      },
+      remove(_userId, id) {
+        return cases.delete(id);
       },
     };
   }
@@ -1271,6 +1368,41 @@ export default function registerLawEnforcementActions(registerLensAction) {
           },
         },
       };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  // caseDelete — the delete half of the case lifecycle (F6). Absent at
+  // registry until this build (#70(b)): caseUpdate covered edits, but a
+  // case opened in error stood permanently. Deletes ONLY the case row:
+  // records filed against its case number (evidence above all — custody
+  // records are never destroyed by a case delete) stay on file, and the
+  // result reports how many of each remain under that number so the
+  // surface can say so before and after. The confirmation standard is
+  // the surface's (two-step inline confirm in the Cases tab).
+  registerLensAction("law-enforcement", "caseDelete", (ctx, _artifact, params) => {
+    try {
+      const p = params || {};
+      const uidActor = actorId(ctx);
+      const cs = caseStore(ctx);
+      const id = str(p.id);
+      const caseNumber = normalizeCaseNumber(p.caseNumber);
+      const rec = id ? cs.getById(uidActor, id) : caseNumber ? cs.getByCaseNumber(uidActor, caseNumber) : null;
+      if (!rec) return { ok: false, error: "case not found" };
+      const targetNumber = normalizeCaseNumber(rec.caseNumber);
+      const countLinked = (bucket) =>
+        [...userMap(bucket, uidActor).values()].filter(
+          (r) => normalizeCaseNumber(r.caseNumber) === targetNumber
+        ).length;
+      const linked = {
+        reports: countLinked("reports"),
+        evidence: countLinked("evidence"),
+        bookings: countLinked("bookings"),
+        warrants: countLinked("warrants"),
+      };
+      if (!cs.remove(uidActor, rec.id)) return { ok: false, error: "case delete failed" };
+      return { ok: true, result: { deleted: true, case: rec, linked } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }

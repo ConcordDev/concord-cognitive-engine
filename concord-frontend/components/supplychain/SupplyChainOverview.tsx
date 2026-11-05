@@ -4,7 +4,8 @@
  * SupplyChainOverview — control-tower landing dashboard.
  *
  * Aggregates real state across the STATE-backed supplychain macros
- * (shipmentList / networkGraph / workOrderList / exceptionScan) into one
+ * (shipmentList / networkGraph / workOrderList / exceptionScan /
+ * exceptionLatest) into one
  * at-a-glance view — the SAP-IBP "control tower" pattern: real-time
  * visibility + KPI tracking + exception alerts, no simulation, no
  * fabricated numbers. Every tile traces to a live macro call.
@@ -30,6 +31,7 @@ interface Overview {
     critical: number; warning: number;
     alerts: Array<{ id: string; severity: string; kind: string; message: string; detail: string }>;
     byKind: Record<string, number>;
+    scan: { scannedAt: number } | null;
   };
 }
 
@@ -58,12 +60,27 @@ export function SupplyChainOverview({ onJump }: { onJump: (destination: 'tower' 
   const load = useCallback(async () => {
     setErr(null);
     try {
-      const [ships, net, wos, exc] = await Promise.all([
+      const [ships, net, wos, exc, latest] = await Promise.all([
         run<{ shipments: unknown[]; inTransit: number; delivered: number; delayed: number }>('shipmentList'),
         run<{ counts: { supplier: number; factory: number; warehouse: number; customer: number }; edgeCount: number; criticalLeadTime: number }>('networkGraph'),
         run<{ openValue: number; overdueCount: number; workOrders: unknown[] }>('workOrderList'),
         run<{ critical: number; warning: number; alerts: Overview['exceptions']['alerts']; byKind: Record<string, number> }>('exceptionScan', { inventory: [], suppliers: [] }),
+        run<{ scan: { scannedAt: number; alerts: Overview['exceptions']['alerts']; critical: number; warning: number } | null }>('exceptionLatest'),
       ]);
+      // One exception system behind the tile: shipment/PO alerts are live
+      // from STATE; inventory/supplier alerts join from the last Planner
+      // scan (exceptionLatest) instead of never reaching the tower.
+      const mergedAlerts = [...(exc?.alerts ?? []), ...(latest?.scan?.alerts ?? [])]
+        .sort((a, b) => (a.severity === 'critical' ? 0 : 1) - (b.severity === 'critical' ? 0 : 1));
+      const mergedByKind: Record<string, number> = {};
+      for (const a of mergedAlerts) mergedByKind[a.kind] = (mergedByKind[a.kind] || 0) + 1;
+      const mergedExceptions: Overview['exceptions'] = {
+        critical: (exc?.critical ?? 0) + (latest?.scan?.critical ?? 0),
+        warning: (exc?.warning ?? 0) + (latest?.scan?.warning ?? 0),
+        alerts: mergedAlerts,
+        byKind: mergedByKind,
+        scan: latest?.scan ? { scannedAt: latest.scan.scannedAt } : null,
+      };
       setData({
         shipments: {
           inTransit: ships?.inTransit ?? 0, delivered: ships?.delivered ?? 0,
@@ -75,7 +92,7 @@ export function SupplyChainOverview({ onJump }: { onJump: (destination: 'tower' 
           edgeCount: net?.edgeCount ?? 0, criticalLeadTime: net?.criticalLeadTime ?? 0,
         },
         workOrders: { openValue: wos?.openValue ?? 0, overdueCount: wos?.overdueCount ?? 0, total: wos?.workOrders?.length ?? 0 },
-        exceptions: { critical: exc?.critical ?? 0, warning: exc?.warning ?? 0, alerts: exc?.alerts ?? [], byKind: exc?.byKind ?? {} },
+        exceptions: mergedExceptions,
       });
       setLastLoadedAt(Date.now());
     } catch (e) {
@@ -167,12 +184,17 @@ export function SupplyChainOverview({ onJump }: { onJump: (destination: 'tower' 
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-white">
-            <AlertTriangle className="w-4 h-4 text-amber-400" /> Live exceptions
+            <AlertTriangle className="w-4 h-4 text-amber-400" /> Exceptions
           </div>
           <button onClick={() => onJump('tower')} className="flex items-center gap-1 text-[11px] text-teal-300 hover:text-teal-200">
             Manage in Control Tower <ArrowRight className="w-3 h-3" />
           </button>
         </div>
+        <p className="text-[10px] text-zinc-500 mb-2">
+          {data.exceptions.scan
+            ? <>Shipment &amp; PO alerts are live. Inventory &amp; supplier alerts are from your last Control Tower scan · {timeAgo(data.exceptions.scan.scannedAt)}.</>
+            : <>Shipment &amp; PO alerts are live. Run a scan in the Control Tower to add inventory &amp; supplier alerts here.</>}
+        </p>
         {kinds.length > 1 && (
           <div className="flex flex-wrap gap-1 mb-2">
             <button type="button" onClick={() => setKindFilter(null)}
@@ -191,7 +213,7 @@ export function SupplyChainOverview({ onJump }: { onJump: (destination: 'tower' 
         )}
         {data.exceptions.alerts.length === 0 ? (
           <p className="flex items-center gap-1.5 py-3 text-center justify-center text-[11px] text-emerald-400">
-            <CheckCircle2 className="w-3.5 h-3.5" /> No shipment or PO exceptions right now.
+            <CheckCircle2 className="w-3.5 h-3.5" /> No exceptions right now.
           </p>
         ) : (
           <div className="space-y-1.5">

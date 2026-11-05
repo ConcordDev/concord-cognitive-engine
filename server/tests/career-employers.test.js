@@ -119,4 +119,27 @@ describe("findEmployers — read-only NPC employer directory", () => {
     const tracks = all.filter((e) => e.npcId === "eng1").map((e) => e.trackId).sort();
     assert.deepEqual(tracks, ["hacker", "smith"]);
   });
+
+  // ── S2 generation constraint: the visible pool leads with the entry band ──
+  it("orders the directory by offered tier, lowest first, deterministically", () => {
+    seedNpc(db, { id: "hi", archetype: "cook", level: 21 });  // tier 7
+    seedNpc(db, { id: "mid", archetype: "cook", level: 15 }); // tier 5
+    seedNpc(db, { id: "lo", archetype: "cook", level: 2 });   // tier 1
+    seedNpc(db, { id: "lo2", archetype: "cook", level: 8 });  // tier 3
+    const tiers = findEmployers(db, { worldId: "w1", trackId: "chef" }).map((e) => e.tier);
+    assert.deepEqual(tiers, [1, 3, 5, 7], "the band a new account can be hired at leads the pool");
+  });
+
+  it("the cap applies AFTER ordering — a late-rowed entry-level NPC is not crowded out", () => {
+    // 35 high-level cooks inserted first would fill the default cap of 30
+    // under first-come order; the one entry-level cook inserted last must
+    // still surface, first.
+    for (let i = 0; i < 35; i++) seedNpc(db, { id: `vet${i}`, archetype: "cook", level: 20 });
+    seedNpc(db, { id: "rookie-cook", archetype: "cook", level: 2 });
+    const pool = findEmployers(db, { worldId: "w1", trackId: "chef" });
+    assert.equal(pool.length, 30, "the cap still bounds the directory");
+    assert.equal(pool[0].npcId, "rookie-cook");
+    assert.equal(pool[0].tier, 1);
+    assert.ok(pool.every((e, i) => i === 0 || pool[i - 1].tier <= e.tier), "tiers are non-decreasing down the list");
+  });
 });

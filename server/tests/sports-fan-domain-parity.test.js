@@ -59,6 +59,21 @@ describe("sports.game-* tracking", () => {
 });
 
 describe("sports.predictions (Pick'em)", () => {
+  it("deleting a game removes that pick and leaves another account's pick", () => {
+    const g = newGame();
+    const other = newGame(ctxB, { homeTeam: "Heat", awayTeam: "Nets" });
+    call("prediction-make", ctxA, { gameId: g.id, predictedWinner: "Lakers" });
+    call("prediction-make", ctxB, { gameId: other.id, predictedWinner: "Heat" });
+    call("watchlist-add", ctxA, { gameId: g.id });
+    const del = call("game-delete", ctxA, { id: g.id });
+    assert.equal(del.result.predictionsRemoved, 1);
+    assert.equal(call("prediction-list", ctxA, {}).result.count, 0);
+    assert.equal(call("prediction-record", ctxA, {}).result.pending, 0);
+    assert.equal(call("watchlist-list", ctxA, {}).result.count, 0);
+    assert.equal(call("sports-dashboard", ctxA, {}).result.watchlist, 0);
+    assert.equal(call("prediction-list", ctxB, {}).result.count, 1);
+  });
+
   it("predict, resolve correct after final, accuracy", () => {
     const g = newGame();
     assert.equal(call("prediction-make", ctxA, { gameId: g.id, predictedWinner: "Bulls" }).ok, false);
@@ -105,6 +120,39 @@ describe("sports.athletes", () => {
 
   it("rejects stats for a missing athlete", () => {
     assert.equal(call("athlete-stat-log", ctxA, { athleteId: "nope", stats: {} }).ok, false);
+  });
+
+  it("remove drops the athlete and that athlete's stat lines only", () => {
+    const ath = call("athlete-track", ctxA, { name: "Star Player", team: "Lakers", position: "PG" }).result.athlete;
+    const other = call("athlete-track", ctxB, { name: "Other", team: "Heat", position: "C" }).result.athlete;
+    call("athlete-stat-log", ctxA, { athleteId: ath.id, stats: { points: 10 } });
+    const gone = call("athlete-remove", ctxA, { id: ath.id });
+    assert.equal(gone.result.deleted, ath.id);
+    assert.equal(gone.result.statLinesRemoved, 1);
+    assert.equal(call("athlete-list", ctxA, {}).result.athletes.length, 0);
+    assert.equal(call("athlete-stats", ctxA, { athleteId: ath.id }).ok, false);
+    assert.equal(call("athlete-remove", ctxB, { id: ath.id }).ok, false);
+    assert.equal(call("athlete-list", ctxB, {}).result.athletes[0].id, other.id);
+  });
+});
+
+describe("sports.training-delete", () => {
+  it("deletes the owner's training session and refuses another account", () => {
+    const STATE = globalThis._concordSTATE;
+    STATE.lensArtifacts = new Map();
+    STATE.lensDomainIndex = new Map([["sports", new Set(["sess_a", "sess_b", "note_a"])]]);
+    STATE.lensArtifacts.set("sess_a", { id: "sess_a", domain: "sports", type: "TrainingLog", ownerId: "user_a", title: "Drills" });
+    STATE.lensArtifacts.set("sess_b", { id: "sess_b", domain: "sports", type: "TrainingLog", ownerId: "user_b", title: "Other" });
+    STATE.lensArtifacts.set("note_a", { id: "note_a", domain: "sports", type: "game", ownerId: "user_a", title: "Not a session" });
+    const del = call("training-delete", ctxA, { id: "sess_a" });
+    assert.equal(del.result.deleted, "sess_a");
+    assert.equal(STATE.lensArtifacts.has("sess_a"), false);
+    assert.equal(STATE.lensDomainIndex.get("sports").has("sess_a"), false);
+    assert.equal(call("training-delete", ctxA, { id: "sess_b" }).ok, false);
+    assert.equal(STATE.lensArtifacts.has("sess_b"), true);
+    assert.equal(call("training-delete", ctxA, { id: "note_a" }).ok, false);
+    assert.equal(STATE.lensArtifacts.has("note_a"), true);
+    assert.equal(call("training-delete", ctxA, { id: "missing" }).ok, false);
   });
 });
 

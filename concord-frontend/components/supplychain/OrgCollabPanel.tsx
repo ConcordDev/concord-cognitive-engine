@@ -28,6 +28,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   Building2, Users, UserPlus, Crown, ShieldCheck, Eye, LogOut,
   Loader2, Plus, Check, AlertTriangle, Search, Ship, ClipboardList,
+  Trash2, ArrowRight,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -49,8 +50,10 @@ interface OrgMembersResult {
   organization: OrgSummary; members: OrgMember[]; pending?: PendingRequest[];
   myRole: ScRole | null; myOrgRole: OrgRole;
 }
-interface ShipmentSummary { inTransit: number; delivered: number; delayed: number; shipments: { id: string; reference: string }[] }
-interface WorkOrderSummary { openValue: number; overdueCount: number; workOrders: { id: string; poNumber: string; stage: string }[] }
+interface TeamShipment { id: string; reference: string; status: string; origin: string; destination: string }
+interface ShipmentSummary { inTransit: number; delivered: number; delayed: number; shipments: TeamShipment[] }
+interface TeamWorkOrder { id: string; poNumber: string; stage: string; item: string; quantity: number; totalCost: number }
+interface WorkOrderSummary { openValue: number; overdueCount: number; workOrders: TeamWorkOrder[] }
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 
@@ -213,7 +216,11 @@ function OrgWorkspace({
   const [busy, setBusy] = useState(false);
   const [roleEdits, setRoleEdits] = useState<Record<string, ScRole>>({});
   const [newRef, setNewRef] = useState('');
+  const [newShipOrigin, setNewShipOrigin] = useState('');
+  const [newShipDest, setNewShipDest] = useState('');
   const [newPo, setNewPo] = useState('');
+  const [newPoQty, setNewPoQty] = useState('1');
+  const [newPoCost, setNewPoCost] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -266,8 +273,8 @@ function OrgWorkspace({
     if (!newRef.trim()) { notify({ kind: 'err', text: 'Enter a reference.' }); return; }
     setBusy(true);
     try {
-      await run('shipmentCreate', { orgId: org.id, reference: newRef });
-      setNewRef(''); await load();
+      await run('shipmentCreate', { orgId: org.id, reference: newRef, origin: newShipOrigin, destination: newShipDest });
+      setNewRef(''); setNewShipOrigin(''); setNewShipDest(''); await load();
       notify({ kind: 'ok', text: 'Shipment booked for the team.' });
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
   };
@@ -276,10 +283,42 @@ function OrgWorkspace({
     if (!newPo.trim()) { notify({ kind: 'err', text: 'Enter an item name.' }); return; }
     setBusy(true);
     try {
-      await run('workOrderCreate', { orgId: org.id, item: newPo });
-      setNewPo(''); await load();
+      const qty = Number(newPoQty); const cost = Number(newPoCost);
+      await run('workOrderCreate', {
+        orgId: org.id, item: newPo,
+        quantity: Number.isFinite(qty) && qty > 0 ? qty : 1,
+        unitCost: Number.isFinite(cost) && cost > 0 ? cost : 0,
+      });
+      setNewPo(''); setNewPoQty('1'); setNewPoCost(''); await load();
       notify({ kind: 'ok', text: 'Work order raised for the team.' });
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
+  };
+
+  const SHIPMENT_FLOW = ['booked', 'picked_up', 'in_transit', 'customs', 'out_for_delivery', 'delivered'];
+  const advanceShipment = async (s: TeamShipment) => {
+    const cur = s.status ?? 'booked';
+    const next = cur === 'exception' ? 'in_transit' : SHIPMENT_FLOW[SHIPMENT_FLOW.indexOf(cur) + 1];
+    if (!next) return;
+    setBusy(true);
+    try {
+      await run('shipmentCheckpoint', { orgId: org.id, shipmentId: s.id, status: next, location: next === 'delivered' ? (s.destination || 'destination') : 'in transit' });
+      await load();
+    } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
+  };
+  const deleteShipment = async (id: string) => {
+    setBusy(true);
+    try { await run('shipmentDelete', { orgId: org.id, shipmentId: id }); await load(); }
+    catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
+  };
+  const advanceWorkOrder = async (id: string) => {
+    setBusy(true);
+    try { await run('workOrderAdvance', { orgId: org.id, workOrderId: id }); await load(); }
+    catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
+  };
+  const deleteWorkOrder = async (id: string) => {
+    setBusy(true);
+    try { await run('workOrderDelete', { orgId: org.id, workOrderId: id }); await load(); }
+    catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
   };
 
   if (!detail) {
@@ -370,37 +409,91 @@ function OrgWorkspace({
         <Stat label="Open PO value" value={workOrders ? `$${Math.round(workOrders.openValue).toLocaleString()}` : '$0'} />
         <Stat label="Overdue POs" value={workOrders?.overdueCount ?? 0} tone={(workOrders?.overdueCount ?? 0) > 0 ? 'text-rose-300' : undefined} />
       </div>
+      <p className="text-[10px] text-zinc-500">
+        Shared with every member of {org.name}. Shipments and POs raised here live in the firm&apos;s workspace —
+        your personal control-tower items stay in your own workspace, and personal items don&apos;t appear here.
+      </p>
 
       <div className="grid md:grid-cols-2 gap-3">
         <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5">
           <div className="flex items-center gap-1.5 mb-1.5"><Ship className="w-3.5 h-3.5 text-blue-400" /><span className={LABEL}>Team shipments</span></div>
           {canWriteBuyer && (
-            <div className="flex gap-1.5 mb-1.5">
-              <input className={INPUT} value={newRef} onChange={(e) => setNewRef(e.target.value)} placeholder="New shipment reference" />
-              <button onClick={addShipment} disabled={busy} className={cn(BTN, 'bg-blue-600 text-white hover:bg-blue-500 whitespace-nowrap')}>
-                <Plus className="w-3.5 h-3.5" /> Book
-              </button>
+            <div className="space-y-1.5 mb-1.5">
+              <div className="flex gap-1.5">
+                <input className={INPUT} value={newRef} onChange={(e) => setNewRef(e.target.value)} placeholder="New shipment reference" />
+                <button onClick={addShipment} disabled={busy} className={cn(BTN, 'bg-blue-600 text-white hover:bg-blue-500 whitespace-nowrap')}>
+                  <Plus className="w-3.5 h-3.5" /> Book
+                </button>
+              </div>
+              <div className="flex gap-1.5">
+                <input className={INPUT} value={newShipOrigin} onChange={(e) => setNewShipOrigin(e.target.value)} placeholder="Origin" />
+                <input className={INPUT} value={newShipDest} onChange={(e) => setNewShipDest(e.target.value)} placeholder="Destination" />
+              </div>
             </div>
           )}
           {!canWriteBuyer && <p className="text-[9px] text-zinc-600 mb-1.5">Analyst view — read-only.</p>}
           {(shipments?.shipments.length ?? 0) === 0
             ? <p className="text-[10px] text-zinc-500 py-2 text-center">No shared shipments yet.</p>
-            : <ul className="space-y-0.5">{shipments!.shipments.slice(0, 8).map((s) => <li key={s.id} className="text-[10px] text-zinc-300 font-mono">{s.reference}</li>)}</ul>}
+            : <ul className="space-y-1">{shipments!.shipments.slice(0, 8).map((s) => (
+              <li key={s.id} className="flex items-center justify-between gap-2 rounded bg-zinc-900/50 px-2 py-1">
+                <div className="min-w-0">
+                  <div className="text-[10px] text-zinc-200 font-mono truncate">{s.reference}</div>
+                  <div className="text-[9px] text-zinc-500">{s.origin || '?'} → {s.destination || '?'} · {(s.status ?? 'booked').replace(/_/g, ' ')}</div>
+                </div>
+                {canWriteBuyer && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    {s.status !== 'delivered' && (
+                      <button onClick={() => advanceShipment(s)} disabled={busy} className="text-teal-400 hover:text-teal-300 disabled:text-zinc-700" aria-label={`Advance ${s.reference}`}>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button onClick={() => deleteShipment(s.id)} disabled={busy} className="text-zinc-600 hover:text-rose-400 disabled:text-zinc-800" aria-label={`Delete ${s.reference}`}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}</ul>}
         </div>
         <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5">
           <div className="flex items-center gap-1.5 mb-1.5"><ClipboardList className="w-3.5 h-3.5 text-amber-400" /><span className={LABEL}>Team work orders</span></div>
           {canWritePlanner && (
-            <div className="flex gap-1.5 mb-1.5">
-              <input className={INPUT} value={newPo} onChange={(e) => setNewPo(e.target.value)} placeholder="New PO item" />
-              <button onClick={addWorkOrder} disabled={busy} className={cn(BTN, 'bg-amber-600 text-white hover:bg-amber-500 whitespace-nowrap')}>
-                <Plus className="w-3.5 h-3.5" /> Raise PO
-              </button>
+            <div className="space-y-1.5 mb-1.5">
+              <div className="flex gap-1.5">
+                <input className={INPUT} value={newPo} onChange={(e) => setNewPo(e.target.value)} placeholder="New PO item" />
+                <button onClick={addWorkOrder} disabled={busy} className={cn(BTN, 'bg-amber-600 text-white hover:bg-amber-500 whitespace-nowrap')}>
+                  <Plus className="w-3.5 h-3.5" /> Raise PO
+                </button>
+              </div>
+              <div className="flex gap-1.5">
+                <input className={INPUT} type="number" value={newPoQty} onChange={(e) => setNewPoQty(e.target.value)} placeholder="Qty" aria-label="Quantity" />
+                <input className={INPUT} type="number" value={newPoCost} onChange={(e) => setNewPoCost(e.target.value)} placeholder="Unit cost" aria-label="Unit cost" />
+              </div>
             </div>
           )}
           {!canWritePlanner && <p className="text-[9px] text-zinc-600 mb-1.5">{myScRole === 'buyer' ? 'Buyer view — work orders are planner-only.' : 'Analyst view — read-only.'}</p>}
           {(workOrders?.workOrders.length ?? 0) === 0
             ? <p className="text-[10px] text-zinc-500 py-2 text-center">No shared work orders yet.</p>
-            : <ul className="space-y-0.5">{workOrders!.workOrders.slice(0, 8).map((w) => <li key={w.id} className="text-[10px] text-zinc-300 font-mono">{w.poNumber} · {w.stage}</li>)}</ul>}
+            : <ul className="space-y-1">{workOrders!.workOrders.slice(0, 8).map((w) => (
+              <li key={w.id} className="flex items-center justify-between gap-2 rounded bg-zinc-900/50 px-2 py-1">
+                <div className="min-w-0">
+                  <div className="text-[10px] text-zinc-200 font-mono truncate">{w.poNumber} · {w.item} ×{w.quantity ?? 1}</div>
+                  <div className="text-[9px] text-zinc-500">{w.stage} · ${Math.round(w.totalCost ?? 0).toLocaleString()}</div>
+                </div>
+                {canWritePlanner && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    {w.stage !== 'closed' && (
+                      <button onClick={() => advanceWorkOrder(w.id)} disabled={busy} className="text-teal-400 hover:text-teal-300 disabled:text-zinc-700" aria-label={`Advance ${w.poNumber}`}>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button onClick={() => deleteWorkOrder(w.id)} disabled={busy} className="text-zinc-600 hover:text-rose-400 disabled:text-zinc-800" aria-label={`Delete ${w.poNumber}`}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}</ul>}
         </div>
       </div>
     </div>

@@ -63,6 +63,70 @@ describe("materials.corrosionRisk", () => {
     assert.equal(omitted.result.corrosionResistance, null);
     assert.deepEqual(omitted.result.unavailable, ["category", "environment"]);
   });
+
+  it("scores a card environment and refuses a name that is not on the card", () => {
+    // metal 40 + titanium 35 + indoor 0 = 75. Indoor is on the card and has no extra penalty.
+    const indoor = run({ material: "titanium", category: "metal", environment: "Indoor", temperature: 25, humidity: 50 });
+    assert.equal(indoor.ok, true);
+    assert.equal(indoor.result.corrosionResistance, 75);
+    assert.equal(indoor.result.riskLevel, "moderate");
+    assert.equal(indoor.result.environment, "indoor");
+
+    const industrial = run({ material: "titanium", category: "metal", environment: "industrial", temperature: 25, humidity: 50 });
+    assert.equal(industrial.result.corrosionResistance, 75);
+
+    const offCard = run({ material: "titanium", category: "metal", environment: "salt", temperature: 25, humidity: 50 });
+    assert.equal(offCard.ok, true);
+    assert.equal(offCard.result.corrosionResistance, null);
+    assert.equal(offCard.result.riskLevel, null);
+    assert.equal(offCard.result.reason, "not_recorded");
+    assert.deepEqual(offCard.result.unavailable, ["environment"]);
+    assert.equal(offCard.result.environment, "salt");
+  });
+});
+
+describe("materials.thermalAnalysis", () => {
+  function run(data) {
+    const fn = ACTIONS.get("materials.thermalAnalysis");
+    return fn(ctxA, { id: null, data, meta: {} }, {});
+  }
+
+  it("keeps the copper conductor class when every property is recorded", () => {
+    const r = run({ name: "Copper", thermalConductivity: 401, meltingPoint: 1085, thermalExpansion: 16.5, operatingTemp: 200 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.thermalClass, "excellent-conductor");
+    assert.equal(r.result.isSafe, true);
+    assert.equal(r.result.safetyMargin, "82%");
+    assert.equal(r.result.suitability["heat-sink"], "excellent");
+    assert.deepEqual(r.result.missingInputs, []);
+    assert.equal(r.result.warnings.length, 0);
+  });
+
+  it("does not invent an insulator or a safe 0% margin from omitted properties", () => {
+    const r = run({ name: "Unknown alloy", operatingTemp: 200 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.status, undefined);
+    assert.equal(r.result.thermalClass, null);
+    assert.equal(r.result.safetyMargin, null);
+    assert.equal(r.result.isSafe, null);
+    assert.equal(r.result.thermalConductivity, null);
+    assert.equal(r.result.meltingPoint, null);
+    assert.equal(r.result.suitability["heat-sink"], null);
+    assert.equal(r.result.suitability["cryogenic"], null);
+    assert.deepEqual(r.result.missingInputs, ["thermalConductivity", "meltingPoint", "thermalExpansion"]);
+    assert.equal(r.result.warnings.length, 0);
+  });
+
+  it("keeps an explicit conductivity of 0 as an insulator and still withholds a missing melt", () => {
+    const r = run({ thermalConductivity: 0, operatingTemp: 80, application: "heat-sink" });
+    assert.equal(r.result.thermalClass, "insulator");
+    assert.equal(r.result.thermalConductivity, "0 W/mK");
+    assert.equal(r.result.safetyMargin, null);
+    assert.equal(r.result.isSafe, null);
+    assert.equal(r.result.suitability.insulation, "excellent");
+    assert.ok(r.result.warnings.some((w) => /not suitable for heat transfer/i.test(w)));
+    assert.deepEqual(r.result.missingInputs, ["meltingPoint", "thermalExpansion"]);
+  });
 });
 
 describe("materials.ashby-plot", () => {

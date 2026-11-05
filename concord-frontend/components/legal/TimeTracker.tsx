@@ -145,7 +145,7 @@ export function TimeTracker() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Timer className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Time entries</span>
-          <span className="text-[10px] text-amber-300 font-mono">${totalUnbilled.toFixed(2)} / {totalUnbilledHours.toFixed(1)}h unbilled</span>
+          <span className="text-[10px] text-amber-300 font-mono">${totalUnbilled.toFixed(2)} / {totalUnbilledHours.toFixed(2)}h unbilled</span>
           <button onClick={() => setShowManual(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-amber-500 text-black font-semibold hover:bg-amber-400 inline-flex items-center gap-1">
             <Plus className="w-3 h-3" />Manual entry
           </button>

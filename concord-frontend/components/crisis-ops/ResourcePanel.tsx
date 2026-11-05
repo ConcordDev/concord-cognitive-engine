@@ -137,6 +137,12 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
         </div>
       )}
 
+      {!crisisId && data && data.resources.length > 0 && (
+        <p className="text-[11px] text-zinc-500">
+          Deploy and recall move the totals immediately; with a crisis selected, each movement also logs to that crisis's timeline.
+        </p>
+      )}
+
       {loading && (
         <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading inventory…
@@ -170,8 +176,7 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
                       {avail}/{res.quantity} {res.unit} available · {res.deployed} deployed
                     </span>
                   </div>
-                  {crisisId && (
-                    <div className="flex shrink-0 gap-1">
+                  <div className="flex shrink-0 gap-1">
                       <button
                         type="button"
                         disabled={avail <= 0}
@@ -189,7 +194,6 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
                         <ArrowDownLeft className="h-3 w-3" /> Recall
                       </button>
                     </div>
-                  )}
                 </div>
                 <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
                   <div

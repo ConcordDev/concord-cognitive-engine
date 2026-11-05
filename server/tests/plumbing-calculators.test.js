@@ -57,5 +57,7 @@ test("drainSlope + fixtureCount still correct (no regression)", () => {
   assert.equal(numIn(ds.slopePerFoot), 0.25);
   assert.equal(numIn(ds.totalDrop), 2.5);
   const fc = call("fixtureCount", { fixtures: [{ type: "toilet", count: 2 }, { type: "lavatory", count: 2 }] }).result;
-  assert.equal(fc.totalWSFU, 7);
+  // IPC Table 709.1 (private): toilet 3, lavatory 1 → 3x2 + 1x2 = 8. (Was
+  // pinned at 7 via the old 2.5 toilet value — Review 4's F4 correction.)
+  assert.equal(fc.totalWSFU, 8);
 });

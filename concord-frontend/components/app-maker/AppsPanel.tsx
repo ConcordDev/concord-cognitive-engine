@@ -35,6 +35,13 @@ const TEMPLATES = [
   { id: 'booking', name: 'Service Booking', icon: Layout, description: 'Appointment scheduling with calendar integration and client management' },
 ];
 
+// Real promotion-stage progress (draft -> published -> marketplace -> global),
+// the only genuinely app-specific "maturity" signal this lens tracks. The
+// prior "Avg Maturity" stat compared `version !== '0.0.1'`, but no app ever
+// gets created with version '0.0.1' (the default is always '1.0.0'), so it
+// was a dead check that silently always read 100%.
+const STAGE_PROGRESS: Record<string, number> = { draft: 0, published: 1, marketplace: 2, global: 3 };
+
 export function AppsPanel() {
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('app-maker');
   const newNameInputRef = useRef<HTMLInputElement>(null);
@@ -183,8 +190,8 @@ export function AppsPanel() {
         <div className="panel p-3 flex items-center gap-3">
           <TrendingUp className="w-5 h-5 text-green-400" />
           <div>
-            <p className="text-lg font-bold">{apps.length > 0 ? ((apps.filter((a) => a.version !== '0.0.1').length / apps.length) * 100).toFixed(0) + '%' : '0%'}</p>
-            <p className="text-xs text-gray-400">Avg Maturity</p>
+            <p className="text-lg font-bold">{apps.length > 0 ? Math.round((apps.reduce((sum, a) => sum + (STAGE_PROGRESS[a.status] ?? 0), 0) / (apps.length * 3)) * 100) + '%' : '0%'}</p>
+            <p className="text-xs text-gray-400" title="Average promotion-stage progress across all apps: draft=0%, published=33%, marketplace=66%, global=100%">Avg Promotion Progress</p>
           </div>
         </div>
       </div>
@@ -329,7 +336,7 @@ export function AppsPanel() {
           Build Your App
         </h2>
         <p className="text-sm text-gray-400">
-          Choose a template, name your app, and deploy it directly into the Lattice ecosystem.
+          Choose a template and name your app to create it as a new draft in the Lattice ecosystem.
         </p>
 
         <div className="space-y-2">
@@ -410,17 +417,17 @@ export function AppsPanel() {
           {deployStatus === 'deploying' ? (
             <>
               <div className="w-4 h-4 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
-              Deploying...
+              Creating...
             </>
           ) : deployStatus === 'deployed' ? (
             <>
               <CheckCircle className="w-4 h-4" />
-              Deployed Successfully!
+              App Created!
             </>
           ) : (
             <>
               <Rocket className="w-4 h-4" />
-              Deploy App
+              Create App
             </>
           )}
         </button>

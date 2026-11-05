@@ -42,6 +42,83 @@ beforeEach(() => {
 });
 
 describe('gallery wall', () => {
+  it('F1 TIER: declares the wall as real, persistent account state', async () => {
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'collection-list') return list([{ id: 'col_1', artworkCount: 0 }]);
+      if (action === 'collection-detail') return detail([]);
+      throw new Error(action);
+    });
+    const view = render(<GalleryPage />);
+    await view.findByText('The wall is empty.');
+    expect(view.getByTestId('gallery-tier')).toHaveTextContent(/Live/);
+    expect(view.getByTestId('gallery-tier')).toHaveTextContent(/persisted/);
+  });
+
+  it('F2 IMAGE: an image URL is saved and rendered on the wall', async () => {
+    const arts: { id: string; title: string; image?: string }[] = [];
+    lensRun.mockImplementation(async (_d: string, action: string, input?: { title?: string; image?: string }) => {
+      if (action === 'collection-list') return list([{ id: 'col_1', artworkCount: arts.length }]);
+      if (action === 'collection-detail') return detail(arts);
+      if (action === 'artwork-save') {
+        arts.push({ id: 'art_img', title: input?.title || '', image: input?.image });
+        return { data: { ok: true, result: { artwork: { id: 'art_img' }, collectionId: 'col_1' }, error: null } };
+      }
+      throw new Error(action);
+    });
+    const view = render(<GalleryPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Hang a work' }));
+    fireEvent.change(view.getByTestId('gallery-title'), { target: { value: 'Framed study' } });
+    fireEvent.change(view.getByTestId('gallery-image-url'), { target: { value: 'https://example.org/art.png' } });
+    fireEvent.click(view.getByRole('button', { name: 'Hang a work' }));
+    const heading = await view.findByRole('heading', { name: 'Framed study' });
+    expect(heading).toBeInTheDocument();
+    const img = view.getByAltText('Framed study') as HTMLImageElement;
+    expect(img.src).toBe('https://example.org/art.png');
+    const save = lensRun.mock.calls.find((call) => call[1] === 'artwork-save');
+    expect(save?.[2]).toEqual({ title: 'Framed study', image: 'https://example.org/art.png' });
+  });
+
+  it('F3 RENAME: edits a work title in place via artwork-update', async () => {
+    const arts: { id: string; title: string }[] = [{ id: 'art_1', title: 'Old title' }];
+    lensRun.mockImplementation(async (_d: string, action: string, input?: { title?: string }) => {
+      if (action === 'collection-list') return list([{ id: 'col_1', artworkCount: arts.length }]);
+      if (action === 'collection-detail') return detail(arts);
+      if (action === 'artwork-update') {
+        arts[0] = { ...arts[0], title: input?.title || arts[0].title };
+        return { data: { ok: true, result: { artwork: { id: 'art_1' } }, error: null } };
+      }
+      throw new Error(action);
+    });
+    const view = render(<GalleryPage />);
+    await view.findByRole('heading', { name: 'Old title' });
+    fireEvent.click(view.getByRole('button', { name: 'Rename' }));
+    const input = view.getByTestId('gallery-edit-title-art_1');
+    fireEvent.change(input, { target: { value: 'New title' } });
+    fireEvent.click(view.getByRole('button', { name: 'Save' }));
+    expect(await view.findByRole('heading', { name: 'New title' })).toBeInTheDocument();
+    const update = lensRun.mock.calls.find((call) => call[1] === 'artwork-update');
+    expect(update?.[2]).toEqual({ collectionId: 'col_1', artworkId: 'art_1', title: 'New title' });
+  });
+
+  it('F3 TAKEDOWN: removes a work via artwork-remove and it leaves the wall', async () => {
+    const arts: { id: string; title: string }[] = [{ id: 'art_1', title: 'Doomed study' }];
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'collection-list') return list([{ id: 'col_1', artworkCount: arts.length }]);
+      if (action === 'collection-detail') return detail(arts);
+      if (action === 'artwork-remove') {
+        arts.length = 0;
+        return { data: { ok: true, result: { removed: true }, error: null } };
+      }
+      throw new Error(action);
+    });
+    const view = render(<GalleryPage />);
+    await view.findByRole('heading', { name: 'Doomed study' });
+    fireEvent.click(view.getByRole('button', { name: 'Take down' }));
+    expect(await view.findByText('The wall is empty.')).toBeInTheDocument();
+    const remove = lensRun.mock.calls.find((call) => call[1] === 'artwork-remove');
+    expect(remove?.[2]).toEqual({ collectionId: 'col_1', artworkId: 'art_1' });
+  });
+
   it('EMPTY: says the wall is empty and offers Hang a work', async () => {
     lensRun.mockImplementation(async (_d: string, action: string) => {
       if (action === 'collection-list') return list([{ id: 'col_1', artworkCount: 0 }]);

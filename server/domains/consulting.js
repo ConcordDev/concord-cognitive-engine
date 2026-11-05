@@ -222,7 +222,7 @@ export default function registerConsultingActions(registerLensAction) {
       `Engagement: ${inv.engagementName}`,
       `Issued: ${inv.issuedAt}    Due: ${inv.dueDate}`,
       "",
-      ...inv.lineItems.map((l) => `${l.date}  ${l.hours}h  ${l.note}  $${l.amount.toFixed(2)}`),
+      ...inv.lineItems.map((l) => `${l.date || ""}  ${l.hours != null ? `${l.hours}h  ` : ""}${l.note}  $${l.amount.toFixed(2)}`),
       "",
       `Subtotal: $${inv.subtotal.toFixed(2)}`,
       `Tax (${(inv.taxRate * 100).toFixed(1)}%): $${inv.tax.toFixed(2)}`,
@@ -271,7 +271,11 @@ export default function registerConsultingActions(registerLensAction) {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const proposals = csColl(s, "proposals", csActor(ctx)).map((p) => {
       const filled = p.sections.filter((sec) => sec.content && sec.content.trim()).length;
-      return { ...p, completeness: p.sections.length ? Math.round((filled / p.sections.length) * 100) : 0 };
+      // F5: expose the section counts beside the content completeness so a
+      // surface can show "8 sections · 0% complete" — the creation-time
+      // sections counted, the percentage still computed from real content.
+      return { ...p, sectionCount: p.sections.length, filledCount: filled,
+        completeness: p.sections.length ? Math.round((filled / p.sections.length) * 100) : 0 };
     });
     return { ok: true, result: { proposals, count: proposals.length } };
   });
@@ -401,6 +405,9 @@ export default function registerConsultingActions(registerLensAction) {
       id: csId("exp"), engagementId: eng.id, engagementName: eng.name,
       description: desc, category: csClean(params.category, 60) || "General",
       amount: csRound2(amount), reimbursable: params.reimbursable !== false,
+      // Billable-to-client is its own control (Consulting F7), distinct from
+      // reimbursable-by-the-firm; it is set deliberately, never pre-checked.
+      billable: params.billable === true,
       status: "pending", date: csClean(params.date, 30) || new Date().toISOString().slice(0, 10),
       createdAt: new Date().toISOString(),
     };
@@ -415,8 +422,9 @@ export default function registerConsultingActions(registerLensAction) {
     if (params.engagementId) expenses = expenses.filter((e) => e.engagementId === params.engagementId);
     const total = csRound2(expenses.reduce((n, e) => n + e.amount, 0));
     const reimbursable = csRound2(expenses.filter((e) => e.reimbursable).reduce((n, e) => n + e.amount, 0));
+    const billable = csRound2(expenses.filter((e) => e.billable).reduce((n, e) => n + e.amount, 0));
     const approved = csRound2(expenses.filter((e) => e.status === "approved").reduce((n, e) => n + e.amount, 0));
-    return { ok: true, result: { expenses, count: expenses.length, total, reimbursable, approved } };
+    return { ok: true, result: { expenses, count: expenses.length, total, reimbursable, billable, approved } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
   registerLensAction("consulting", "expense-update", (ctx, _a, params = {}) => {
@@ -531,13 +539,36 @@ export default function registerConsultingActions(registerLensAction) {
       status: "billed",
     };
     period.overageHours = Math.max(0, period.hoursUsed - r.includedHours);
+    // Close the retainer→invoice loop (Consulting F6): billing a period
+    // mints a real invoice in the same collection and numbering the
+    // time-based invoice path uses, so the period's charge exists in
+    // invoice-list / collected / mark-paid like any other invoice. The
+    // invoice carries retainerId (engagementId stays null — a retainer is
+    // not an engagement and has no time entries to roll up).
+    const invoices = csColl(s, "invoices", csActor(ctx));
+    const number = `INV-${String(invoices.length + 1).padStart(4, "0")}`;
+    const taxRate = Math.max(0, Math.min(1, csNum(params.taxRate)));
+    const tax = csRound2(period.amount * taxRate);
+    const dueInDays = csNum(params.dueInDays) > 0 ? csNum(params.dueInDays) : 30;
+    const due = new Date(new Date(period.billedAt + "T00:00:00Z").getTime() + dueInDays * 86400000);
+    const invoice = {
+      id: csId("inv"), number, engagementId: null, retainerId: r.id,
+      engagementName: r.label, client: r.client,
+      lineItems: [{ date: period.billedAt, note: `${r.label} — ${r.cadence} retainer period`, amount: period.amount }],
+      subtotal: period.amount, taxRate, tax, total: csRound2(period.amount + tax),
+      status: "issued", issuedAt: period.billedAt,
+      dueDate: due.toISOString().slice(0, 10), paidAt: null, createdAt: new Date().toISOString(),
+    };
+    invoices.push(invoice);
+    period.invoiceId = invoice.id;
+    period.invoiceNumber = number;
     r.periods.push(period);
     // advance nextBillDate
     const days = r.cadence === "weekly" ? 7 : r.cadence === "quarterly" ? 91 : 30;
     r.nextBillDate = new Date(new Date(r.nextBillDate + "T00:00:00Z").getTime() + days * 86400000)
       .toISOString().slice(0, 10);
     saveConsulting();
-    return { ok: true, result: { retainer: r, period } };
+    return { ok: true, result: { retainer: r, period, invoice } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
   registerLensAction("consulting", "retainer-update", (ctx, _a, params = {}) => {

@@ -201,7 +201,9 @@ describe("manufacturing — lot traceability (wave 12 top-up)", () => {
     assert.equal(fin.ok, true);
     const gen = await lensRun("manufacturing", "lot-genealogy", { params: { lotNumber: "FIN-1" } }, ctx);
     assert.equal(gen.ok, true);
-    assert.ok(gen.result.upstream.children.some((c) => c.lotNumber === "RAW-1"), "FIN-1 traces up to RAW-1");
+    // upstream is the forest of PARENT trees (the lot itself is result.lot, never its own ancestor)
+    assert.ok(gen.result.upstream.some((c) => c.lotNumber === "RAW-1"), "FIN-1 traces up to RAW-1");
+    assert.ok(!gen.result.upstream.some((c) => c.lotNumber === "FIN-1"), "a lot is not its own ancestor");
     // and RAW-1's downstream includes FIN-1
     const down = await lensRun("manufacturing", "lot-genealogy", { params: { lotNumber: "RAW-1" } }, ctx);
     assert.ok(down.result.downstream.some((d) => d.lotNumber === "FIN-1"), "RAW-1 traces down to FIN-1");
@@ -448,7 +450,7 @@ describe("manufacturing — status feeds & instruction listing (wave 12 top-up)"
     assert.equal(r.ok, true);
     assert.equal(r.result.source, "empty");
     assert.deepEqual(r.result.machines, []);
-    assert.match(r.result.notes, /MES\/SCADA/);
+    assert.match(r.result.notes, /No machines registered yet/);
   });
 
   it("work-instruction-create → work-instructions-list: list reflects the created set; workOrderId filter narrows", async () => {
