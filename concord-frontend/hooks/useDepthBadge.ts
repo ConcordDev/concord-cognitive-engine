@@ -83,6 +83,16 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Your world records: land claims and houses are your real persistent state in Concord’s worlds, and the tools work on your own plots and buildings. No external feed is polled.',
   },
+  /**
+   * Nonprofit's own records (campaigns, donors, volunteers, pages, events)
+   * are live per-user workspace data; the 990 research data is ProPublica's
+   * open-access IRS dataset — real, but static reference data. The generic
+   * REAL_LIVE line would blur that split, so the caption names both halves.
+   */
+  nonprofit: {
+    label: 'Workspace',
+    caption: 'Your workspace data: campaigns, donors, volunteers and pages are your live records; 990 research data is ProPublica’s open-access IRS dataset.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
