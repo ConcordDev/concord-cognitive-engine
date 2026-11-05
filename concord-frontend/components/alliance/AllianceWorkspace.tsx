@@ -24,7 +24,7 @@ interface Attachment { name: string; url: string; mime: string; sizeBytes: numbe
 interface Message {
   id: string; channelId: string; userId: string; displayName: string | null; content: string;
   parentId: string | null; attachments: Attachment[]; reactions: Record<string, string[]>;
-  createdAt: string; replies?: Message[]; isMine?: boolean;
+  createdAt: string; replies?: Message[]; isMine?: boolean; editedAt?: string | null;
 }
 interface Invite { id: string; allianceId: string; allianceName: string; inviteeId: string; inviteeName?: string | null; role: string; status: string; createdAt: string }
 interface Tally { yes: number; no: number; abstain: number; cast: number; eligible: number; participation: number; quorumMet: boolean; passed: boolean }
@@ -89,6 +89,9 @@ export function AllianceWorkspace() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // Lifecycle feedback (F6): deletes and edits announce themselves here
+  // instead of completing in silence.
+  const [notice, setNotice] = useState<string | null>(null);
 
   // ── Form state ──
   const [newAllianceName, setNewAllianceName] = useState('');
@@ -122,6 +125,7 @@ export function AllianceWorkspace() {
   const [dmAttachUrl, setDmAttachUrl] = useState('');
   const [showNewDm, setShowNewDm] = useState(false);
   const [newDmTarget, setNewDmTarget] = useState('');
+  const [dmHandle, setDmHandle] = useState('');
 
   const { user } = useAuth();
 
@@ -369,10 +373,12 @@ export function AllianceWorkspace() {
 
   const deleteAlliance = () => guard('delete-alliance', async () => {
     if (!selAlliance) return;
+    const name = selAllianceData?.name || 'Alliance';
     const r = await run('alliance-delete', { allianceId: selAlliance });
     if (!r.ok) { setErr(r.error); return; }
     setSelAlliance(null);
     setOutgoingInvites([]);
+    setNotice(`${name} deleted — its channels, messages and proposals are gone.`);
     await loadAlliances();
     notifyAllianceSummaryChanged();
   });
@@ -405,6 +411,15 @@ export function AllianceWorkspace() {
     if (!selChannel) return;
     const r = await run('message-delete', { channelId: selChannel, messageId });
     if (!r.ok) { setErr(r.error); return; }
+    setNotice('Message deleted.');
+    await loadMessages(selChannel);
+  });
+
+  const editMessage = (messageId: string, content: string) => guard(`edit-msg-${messageId}`, async () => {
+    if (!selChannel) return;
+    const r = await run('message-edit', { channelId: selChannel, messageId, content });
+    if (!r.ok) { setErr(r.error); return; }
+    setNotice('Message updated.');
     await loadMessages(selChannel);
   });
 
@@ -412,6 +427,7 @@ export function AllianceWorkspace() {
     if (!selAlliance) return;
     const r = await run('proposal-delete', { allianceId: selAlliance, proposalId });
     if (!r.ok) { setErr(r.error); return; }
+    setNotice('Proposal deleted.');
     await Promise.all([loadProposals(selAlliance), loadAlliances()]);
     notifyAllianceSummaryChanged();
   });
@@ -446,14 +462,27 @@ export function AllianceWorkspace() {
   });
 
   // Opens (or resumes) a conversation with a real member picked from the
-  // roster — this is the ONLY way a new DM thread gets started; there is
-  // no free-text recipient field.
+  // roster of the caller's own alliances.
   const startDm = (partnerId: string) => guard('start-dm', async () => {
     setRailMode('dms');
     setSelDmPartner(partnerId);
     setShowNewDm(false);
     setNewDmTarget('');
     await Promise.all([loadDmThread(partnerId), loadDmInbox()]);
+  });
+
+  // Start a DM with any known alliance member — including members of
+  // alliances the caller is not in, as the panel copy promises (F3) —
+  // by the handle the platform displays. Resolution is server-side
+  // (user-resolve); the recipient gate itself is unchanged (dm-send
+  // still requires a member of some alliance).
+  const startDmByHandle = () => guard('start-dm-handle', async () => {
+    const handle = dmHandle.trim();
+    if (!handle) return;
+    const r = await run<{ userId: string }>('user-resolve', { handle });
+    if (!r.ok || !r.result) { setErr(r.error || 'unknown user'); return; }
+    setDmHandle('');
+    await startDm(r.result.userId);
   });
 
   if (loading) {
@@ -470,6 +499,13 @@ export function AllianceWorkspace() {
         <div className="flex items-center gap-2 px-3 py-2 rounded bg-red-500/10 text-red-400 text-sm">
           <XCircle className="w-4 h-4" /> {err}
           <button onClick={() => setErr(null)} className="ml-auto text-red-300 hover:text-white" aria-label="dismiss">×</button>
+        </div>
+      )}
+
+      {notice && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded bg-emerald-500/10 text-emerald-300 text-sm" role="status">
+          <CheckCircle2 className="w-4 h-4" /> {notice}
+          <button onClick={() => setNotice(null)} className="ml-auto text-emerald-200 hover:text-white" aria-label="dismiss">×</button>
         </div>
       )}
 
@@ -534,12 +570,15 @@ export function AllianceWorkspace() {
                 <div className="space-y-2 p-2 bg-lattice-deep rounded">
                   <input value={newAllianceName} onChange={(e) => setNewAllianceName(e.target.value)} placeholder="Alliance name" className="input-lattice w-full text-sm" />
                   <input value={newAllianceDesc} onChange={(e) => setNewAllianceDesc(e.target.value)} placeholder="Description" className="input-lattice w-full text-sm" />
-                  <select value={newAllianceType} onChange={(e) => setNewAllianceType(e.target.value)} className="input-lattice w-full text-sm">
-                    <option value="research">Research</option>
-                    <option value="security">Security</option>
-                    <option value="development">Development</option>
-                    <option value="governance">Governance</option>
-                  </select>
+                  <label className="block">
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400">Alliance type</span>
+                    <select value={newAllianceType} onChange={(e) => setNewAllianceType(e.target.value)} className="input-lattice w-full text-sm mt-0.5" aria-label="Alliance type">
+                      <option value="research">Research</option>
+                      <option value="security">Security</option>
+                      <option value="development">Development</option>
+                      <option value="governance">Governance</option>
+                    </select>
+                  </label>
                   <button onClick={createAlliance} disabled={busy === 'create-alliance' || !newAllianceName.trim()} className="btn-neon green w-full text-sm disabled:opacity-50">
                     {busy === 'create-alliance' ? 'Creating…' : 'Create'}
                   </button>
@@ -596,8 +635,24 @@ export function AllianceWorkspace() {
                   >
                     {busy === 'start-dm' ? 'Opening…' : 'Start Conversation'}
                   </button>
+                  <div className="flex gap-2">
+                    <input
+                      value={dmHandle}
+                      onChange={(e) => setDmHandle(e.target.value)}
+                      placeholder="@username or profile name"
+                      aria-label="Message a member by handle"
+                      className="input-lattice flex-1 min-w-[160px] text-sm"
+                    />
+                    <button
+                      onClick={startDmByHandle}
+                      disabled={busy === 'start-dm-handle' || !dmHandle.trim()}
+                      className="btn-neon text-sm disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {busy === 'start-dm-handle' ? 'Finding…' : 'Message by handle'}
+                    </button>
+                  </div>
                   {dmCandidates.length === 0 && (
-                    <p className="text-[11px] text-amber-400">No known members yet — join or invite someone into an alliance first.</p>
+                    <p className="text-[11px] text-amber-400">No members in your alliances yet — invite someone first, or message any alliance member by handle above.</p>
                   )}
                 </div>
               )}
@@ -666,6 +721,7 @@ export function AllianceWorkspace() {
                         label="Delete alliance"
                         confirmLabel="Confirm delete"
                         ariaLabel="Delete alliance"
+                        confirmNote={`Deletes its ${channels.length} channel${channels.length !== 1 ? 's' : ''}, all messages and ${proposals.length} proposal${proposals.length !== 1 ? 's' : ''}.`}
                         disabled={busy === 'delete-alliance'}
                         onConfirm={deleteAlliance}
                         className="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-50"
@@ -818,7 +874,7 @@ export function AllianceWorkspace() {
                             <>
                               {messages.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">No messages yet</p>}
                               {messages.map((m) => (
-                                <MessageBubble key={m.id} m={m} onReact={react} onReply={setReplyTo} onDelete={deleteMessage} canModerate={isAdmin} busy={busy} />
+                                <MessageBubble key={m.id} m={m} onReact={react} onReply={setReplyTo} onDelete={deleteMessage} onEdit={editMessage} canModerate={isAdmin} busy={busy} />
                               ))}
                             </>
                           )}
@@ -899,17 +955,20 @@ export function AllianceWorkspace() {
                 <div className="panel p-3 space-y-3">
                   <h4 className="text-sm font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-neon-cyan" /> Members & Roles</h4>
                   {isAdmin && (
-                    <div className="flex gap-2 p-2 bg-lattice-deep rounded">
-                      <label htmlFor="alliance-invite-handle" className="sr-only">Handle to invite</label>
-                      <input id="alliance-invite-handle" value={inviteUser} onChange={(e) => setInviteUser(e.target.value)} placeholder="@handle" aria-label="Handle to invite" className="input-lattice flex-1 text-sm" />
-                      <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="input-lattice text-sm" aria-label="Invite role">
-                        <option value="admin">admin</option>
-                        <option value="member">member</option>
-                        <option value="guest">guest</option>
-                      </select>
-                      <button type="button" onClick={sendInvite} disabled={busy === 'invite' || !inviteUser.trim()} className="btn-neon text-sm disabled:opacity-50 flex items-center gap-1">
-                        <UserPlus className="w-3.5 h-3.5" /> Invite
-                      </button>
+                    <div className="p-2 bg-lattice-deep rounded space-y-1.5">
+                      <div className="flex gap-2">
+                        <label htmlFor="alliance-invite-handle" className="sr-only">Handle to invite</label>
+                        <input id="alliance-invite-handle" value={inviteUser} onChange={(e) => setInviteUser(e.target.value)} placeholder="@username or profile name" aria-label="Handle to invite" className="input-lattice flex-1 min-w-[220px] text-sm" />
+                        <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)} className="input-lattice text-sm" aria-label="Invite role">
+                          <option value="admin">admin</option>
+                          <option value="member">member</option>
+                          <option value="guest">guest</option>
+                        </select>
+                        <button type="button" onClick={sendInvite} disabled={busy === 'invite' || !inviteUser.trim()} className="btn-neon text-sm disabled:opacity-50 flex items-center gap-1">
+                          <UserPlus className="w-3.5 h-3.5" /> Invite
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-gray-400">Invite by @username or the name shown on their profile — they get a pending invite to accept.</p>
                     </div>
                   )}
                   {isAdmin && outgoingInvites.some((i) => i.allianceId === selAlliance) && (
@@ -1016,7 +1075,7 @@ function escapeRegex(s: string): string {
 }
 
 function ConfirmButton({
-  label, confirmLabel, onConfirm, disabled, className, ariaLabel,
+  label, confirmLabel, onConfirm, disabled, className, ariaLabel, confirmNote,
 }: {
   label: string;
   confirmLabel: string;
@@ -1024,6 +1083,9 @@ function ConfirmButton({
   disabled?: boolean;
   className?: string;
   ariaLabel?: string;
+  // What the confirmed action will destroy/do, stated at the moment of
+  // confirmation (F6) — a confirm that names its scope.
+  confirmNote?: string;
 }) {
   const [armed, setArmed] = useState(false);
   const confirmRef = useRef<HTMLButtonElement>(null);
@@ -1037,6 +1099,7 @@ function ConfirmButton({
   }
   return (
     <span className="inline-flex items-center gap-1">
+      {confirmNote && <span className="text-[11px] text-red-300">{confirmNote}</span>}
       <button
         ref={confirmRef}
         type="button"
@@ -1053,28 +1116,69 @@ function ConfirmButton({
 }
 
 // ── Message bubble with threads, reactions, attachments ──
-function MessageBubble({ m, onReact, onReply, onDelete, canModerate, busy }: {
+function MessageBubble({ m, onReact, onReply, onDelete, onEdit, canModerate, busy }: {
   m: Message; onReact: (id: string, e: string) => void; onReply: (id: string) => void;
-  onDelete: (id: string) => void; canModerate: boolean; busy: string | null;
+  onDelete: (id: string) => void; onEdit: (id: string, content: string) => void;
+  canModerate: boolean; busy: string | null;
 }) {
   const [showReactions, setShowReactions] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState('');
   return (
     <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="bg-lattice-deep p-2 rounded">
       <div className="flex items-center gap-2 mb-0.5">
         <span className="text-sm font-medium text-neon-cyan">{personLabel(m.displayName, m.isMine)}</span>
         <span className="text-[11px] text-gray-400">{new Date(m.createdAt).toLocaleTimeString()}</span>
-        {(m.isMine || canModerate) && (
-          <ConfirmButton
-            label="Delete"
-            confirmLabel="Confirm"
-            ariaLabel="Delete message"
-            disabled={busy === `del-msg-${m.id}`}
-            onConfirm={() => onDelete(m.id)}
-            className="ml-auto px-1.5 py-0.5 rounded text-[11px] text-red-400 hover:bg-red-500/20 disabled:opacity-50"
-          />
-        )}
+        {m.editedAt && <span className="text-[10px] text-gray-500">(edited)</span>}
+        <span className="ml-auto flex items-center gap-1">
+          {m.isMine && !editing && (
+            <button
+              type="button"
+              onClick={() => { setEditDraft(m.content); setEditing(true); }}
+              className="px-1.5 py-0.5 rounded text-[11px] text-gray-400 hover:bg-white/10 hover:text-white"
+              aria-label="Edit message"
+            >
+              Edit
+            </button>
+          )}
+          {(m.isMine || canModerate) && (
+            <ConfirmButton
+              label="Delete"
+              confirmLabel="Confirm"
+              ariaLabel="Delete message"
+              disabled={busy === `del-msg-${m.id}`}
+              onConfirm={() => onDelete(m.id)}
+              className="px-1.5 py-0.5 rounded text-[11px] text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+            />
+          )}
+        </span>
       </div>
-      <p className="text-sm text-gray-200 whitespace-pre-wrap">{m.content}</p>
+      {editing ? (
+        <div className="space-y-1.5">
+          <textarea
+            value={editDraft}
+            onChange={(e) => setEditDraft(e.target.value)}
+            rows={2}
+            className="input-lattice w-full text-sm"
+            aria-label="Edit message content"
+          />
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              disabled={busy === `edit-msg-${m.id}` || !editDraft.trim()}
+              onClick={() => { setEditing(false); onEdit(m.id, editDraft.trim()); }}
+              className="px-2 py-1 rounded text-[11px] bg-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/30 disabled:opacity-50"
+            >
+              Save
+            </button>
+            <button type="button" onClick={() => setEditing(false)} className="px-2 py-1 rounded text-[11px] text-gray-300 hover:text-white">
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-gray-200 whitespace-pre-wrap">{m.content}</p>
+      )}
       {m.attachments?.length > 0 && (
         <div className="mt-1 space-y-0.5">
           {m.attachments.map((a, i) => (
