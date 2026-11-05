@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { EVENT_STATUS_WORDS, statusFromEngine, statusToEngine } from './event-status.ts';
+import { EVENT_STATUS_WORDS, statusFromEngine, statusToEngine } from './event-status';
 
 describe('event status words', () => {
   it('uses one list and maps live and completed onto the engine', () => {
