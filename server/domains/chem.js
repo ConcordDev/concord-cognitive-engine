@@ -166,6 +166,22 @@ export default function registerChemActions(registerLensAction) {
     // Parse all compounds
     const parsed = compounds.map(parseFormula);
 
+    // Validation: every compound must parse to at least one REAL element.
+    // A formula that parses to nothing ("banana") used to sail through —
+    // the element set came out empty, the verification below iterated zero
+    // elements, and the chamber receipted "banana → split" as a success.
+    for (let i = 0; i < compounds.length; i++) {
+      const els = Object.keys(parsed[i]);
+      if (els.length === 0) {
+        return { ok: false, error: `could not parse "${compounds[i]}" as a chemical formula (no element symbols found)` };
+      }
+      for (const el of els) {
+        if (!PERIODIC_TABLE[el]) {
+          return { ok: false, error: `unknown element symbol "${el}" in "${compounds[i]}"` };
+        }
+      }
+    }
+
     // Collect all elements
     const allElements = new Set();
     for (const p of parsed) for (const el of Object.keys(p)) allElements.add(el);
@@ -248,6 +264,13 @@ export default function registerChemActions(registerLensAction) {
       verification[el] = { left, right, balanced: left === right };
     }
     const isBalanced = Object.values(verification).every(v => v.balanced);
+
+    // An equation that does not actually conserve atoms — or whose solution
+    // drops a compound (a zero coefficient) — is a refusal, not a success
+    // receipt carrying balanced:false for the surface to misread.
+    if (!isBalanced || intCoeffs.some(c => !(c >= 1))) {
+      return { ok: false, error: "could not balance this equation (it may be impossible as written, or underdetermined)" };
+    }
 
     return {
       ok: true, result: {
@@ -1352,7 +1375,13 @@ export default function registerChemActions(registerLensAction) {
     if (!query) return { ok: false, error: "query required (compound name or SMILES)" };
     if (query.length > 200) return { ok: false, error: "query too long" };
     const ns = params.bySmiles ? "smiles" : "name";
-    const props = "MolecularFormula,MolecularWeight,CanonicalSMILES,IsomericSMILES,InChI,InChIKey,IUPACName";
+    // PubChem renamed the SMILES properties: CanonicalSMILES is now
+    // ConnectivitySMILES and IsomericSMILES is now SMILES. Requesting the
+    // dead names returns a row WITHOUT either field (verified live against
+    // PUG-REST) — which is why this resolver's two headline fields rendered
+    // "—" while CID/InChI landed. The mapping below also tolerates the old
+    // names, so either API generation resolves.
+    const props = "MolecularFormula,MolecularWeight,ConnectivitySMILES,SMILES,InChI,InChIKey,IUPACName";
     const url = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/${ns}/${encodeURIComponent(query)}/property/${props}/JSON`;
     try {
       const json = await cachedFetchJson(url, { ttlMs: 24 * 60 * 60 * 1000 });
@@ -1366,8 +1395,8 @@ export default function registerChemActions(registerLensAction) {
           iupacName: row.IUPACName || null,
           molecularFormula: row.MolecularFormula || null,
           molecularWeight: row.MolecularWeight ? Number(row.MolecularWeight) : null,
-          canonicalSmiles: row.CanonicalSMILES || null,
-          isomericSmiles: row.IsomericSMILES || null,
+          canonicalSmiles: row.ConnectivitySMILES || row.CanonicalSMILES || row.SMILES || null,
+          isomericSmiles: row.SMILES || row.IsomericSMILES || null,
           inchi: row.InChI || null,
           inchiKey: row.InChIKey || null,
           structureImage: row.CID
@@ -1750,6 +1779,40 @@ export default function registerChemActions(registerLensAction) {
     };
     entries.unshift(entry);
     if (entries.length > 500) entries.length = 500;
+    return { ok: true, result: entry };
+  });
+
+  /**
+   * notebook-update — edit a lab-notebook entry in place. Only the fields
+   * provided change; the title cannot be emptied. (The notebook's lifecycle
+   * was add/list/delete only — a typo in a logged reaction could not be
+   * corrected, only deleted and re-typed.)
+   */
+  registerLensAction("chem", "notebook-update", (ctx, _artifact, params = {}) => {
+    const userId = chemActor(ctx);
+    const id = String(params.id || "").trim();
+    if (!id) return { ok: false, error: "id required" };
+    const s = chemState();
+    const entries = s.chemLabNotebook.get(userId);
+    if (!entries) return { ok: false, error: "entry not found" };
+    const entry = entries.find((e) => e.id === id);
+    if (!entry) return { ok: false, error: "entry not found" };
+    if (params.title !== undefined) {
+      const title = String(params.title || "").trim();
+      if (!title) return { ok: false, error: "title required" };
+      entry.title = title;
+    }
+    if (params.equation !== undefined) entry.equation = String(params.equation || "").trim() || null;
+    if (params.procedure !== undefined) entry.procedure = String(params.procedure || "").trim() || null;
+    if (params.observations !== undefined) entry.observations = String(params.observations || "").trim() || null;
+    if (params.yieldPercent !== undefined) {
+      entry.yieldPercent = params.yieldPercent != null && Number.isFinite(Number(params.yieldPercent))
+        ? Number(params.yieldPercent) : null;
+    }
+    if (params.tags !== undefined) {
+      entry.tags = Array.isArray(params.tags) ? params.tags.map((t) => String(t)).slice(0, 12) : entry.tags;
+    }
+    entry.updatedAt = new Date().toISOString();
     return { ok: true, result: entry };
   });
 

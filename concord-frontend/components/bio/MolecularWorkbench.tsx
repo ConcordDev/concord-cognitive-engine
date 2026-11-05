@@ -96,6 +96,7 @@ interface RingFeature {
 interface PlasmidResult {
   length: number; gcPercent: number; topology: string;
   featureCount: number; features: RingFeature[]; summary: string;
+  annotationNote?: string;
 }
 const FEATURE_COLOR: Record<string, string> = {
   CDS: '#22c55e', restriction_site: '#f59e0b', misc_feature: '#60a5fa',
@@ -139,6 +140,7 @@ function PlasmidTab() {
               <Stat label="GC%" value={`${res.gcPercent}`} />
               <Stat label="Features" value={`${res.featureCount}`} />
             </div>
+            {res.annotationNote && <p className="text-[10px] text-gray-500">{res.annotationNote} Spans below are 1-based.</p>}
             <div className="border border-white/10 rounded max-h-56 overflow-y-auto">
               <table className="w-full text-[11px]">
                 <thead className="bg-black/40 text-gray-400 uppercase text-[9px] sticky top-0">
@@ -152,7 +154,7 @@ function PlasmidTab() {
                         {f.name}
                       </td>
                       <td className="px-2 py-1 text-gray-400">{f.type}</td>
-                      <td className="px-2 py-1 text-right font-mono text-gray-300">{f.start}–{f.end}{f.strand}</td>
+                      <td className="px-2 py-1 text-right font-mono text-gray-300">{f.start + 1}–{f.end} <span className="text-gray-500">({f.strand} strand)</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -210,28 +212,38 @@ interface MsaResult {
 }
 
 function MsaTab() {
-  const [raw, setRaw] = useState('');
+  // The worked example ships as a real VALUE, not a placeholder: as a
+  // placeholder the box looked prefilled while the Align control stayed
+  // disabled on arrival (raw was empty) — the tool read as unusable.
+  const [raw, setRaw] = useState('>seq1\nATGCATGC\n>seq2\nATGGATGC\n>seq3\nATGCATTC');
   const [res, setRes] = useState<MsaResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const run = useCallback(async () => {
     setBusy(true); setErr(null);
-    // FASTA-ish parse: > headers, sequence lines until next header.
-    const sequences: { id: string; sequence: string }[] = [];
-    let cur: { id: string; sequence: string } | null = null;
-    for (const line of raw.split(/\r?\n/)) {
-      if (line.startsWith('>')) {
-        if (cur) sequences.push(cur);
-        cur = { id: line.slice(1).trim().split(/\s+/)[0] || `seq${sequences.length + 1}`, sequence: '' };
-      } else if (cur) cur.sequence += line.replace(/\s/g, '');
+    try {
+      // FASTA-ish parse: > headers, sequence lines until next header.
+      const sequences: { id: string; sequence: string }[] = [];
+      let cur: { id: string; sequence: string } | null = null;
+      for (const line of raw.split(/\r?\n/)) {
+        if (line.startsWith('>')) {
+          if (cur) sequences.push(cur);
+          cur = { id: line.slice(1).trim().split(/\s+/)[0] || `seq${sequences.length + 1}`, sequence: '' };
+        } else if (cur) cur.sequence += line.replace(/\s/g, '');
+      }
+      if (cur) sequences.push(cur);
+      if (sequences.length < 2) { setErr('Provide ≥2 FASTA records (each starts with >).'); return; }
+      const r = await lensRun<MsaResult>('bio', 'align-multiple', { sequences });
+      if (r.data.ok && r.data.result) setRes(r.data.result);
+      else { setRes(null); setErr(r.data.error || 'align-multiple failed'); }
+    } catch (e) {
+      // A thrown run must never leave the control disabled: busy resets in
+      // finally, and the failure is shown instead of swallowed.
+      setRes(null); setErr(e instanceof Error ? e.message : 'align-multiple failed');
+    } finally {
+      setBusy(false);
     }
-    if (cur) sequences.push(cur);
-    if (sequences.length < 2) { setErr('Provide ≥2 FASTA records (each starts with >).'); setBusy(false); return; }
-    const r = await lensRun<MsaResult>('bio', 'align-multiple', { sequences });
-    if (r.data.ok && r.data.result) setRes(r.data.result);
-    else { setRes(null); setErr(r.data.error || 'align-multiple failed'); }
-    setBusy(false);
   }, [raw]);
 
   const consColor = (pct: number) => pct >= 100 ? '#22c55e' : pct >= 60 ? '#eab308' : pct > 0 ? '#f97316' : '#3f3f46';
@@ -511,7 +523,7 @@ function BlastTab() {
       <div>
         <label className="text-[10px] uppercase tracking-wider text-gray-400">Database FASTA (optional — falls back to your saved sequences)</label>
         <textarea value={dbRaw} onChange={(e) => setDbRaw(e.target.value)} rows={4}
-          placeholder={'>subject1\nATGC…\n>subject2\nGGCC…'} className={cn(ta, 'mt-1')} />
+          placeholder={'>subject1\nATGCGTACGTAGCTAGCTACGATCGTAGCTAG\n>subject2\nGGCCATGCGTACGATCGTAGCTAGCTACGATC'} className={cn(ta, 'mt-1')} />
       </div>
       {err && <Err msg={err} />}
       {res && (
@@ -566,6 +578,7 @@ interface Guide {
 interface CrisprResult {
   pam: string; targetLength: number; guideCount: number;
   guides: Guide[]; topGuide: Guide; message?: string;
+  scoring?: string;
 }
 
 function CrisprTab() {
@@ -583,12 +596,21 @@ function CrisprTab() {
   }, [seq]);
 
   const scoreColor = (s: number) => s >= 75 ? 'text-emerald-300' : s >= 50 ? 'text-yellow-300' : 'text-rose-300';
+  // The designer's own minimum (30 bp) is enforced HERE, before the click —
+  // the button previously enabled on any text and let the run refuse.
+  const seqLen = seq.replace(/\s/g, '').length;
+  const tooShort = seqLen < 30;
 
   return (
     <div className="space-y-3">
-      <button type="button" className={btn()} disabled={busy || !seq.trim()} onClick={run}>
-        {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Crosshair className="w-3 h-3" />} Design guides (SpCas9 NGG)
-      </button>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button type="button" className={btn()} disabled={busy || tooShort} onClick={run}>
+          {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Crosshair className="w-3 h-3" />} Design guides (SpCas9 NGG)
+        </button>
+        <span className="text-[10px] text-gray-400">
+          {seqLen === 0 ? 'Guides need a target of at least 30 bp.' : tooShort ? `${seqLen} bp — add ${30 - seqLen} more bp to design guides.` : `${seqLen} bp — ready.`}
+        </span>
+      </div>
       <textarea value={seq} onChange={(e) => setSeq(e.target.value)} rows={4} placeholder="Paste target DNA (≥30 bp)…" className={ta} />
       {err && <Err msg={err} />}
       {res && (
@@ -599,6 +621,7 @@ function CrisprTab() {
             <Stat label="Target" value={`${res.targetLength} bp`} />
             <Stat label="Guides" value={`${res.guideCount}`} />
           </div>
+          {res.scoring && <p className="text-[10px] text-gray-500">{res.scoring}</p>}
           {res.guides.length > 0 && (
             <div className="border border-white/10 rounded overflow-x-auto">
               <table className="w-full text-[11px]">
@@ -699,9 +722,15 @@ function NotebookTab() {
     else setErr(r.data.error || 'notebook save failed');
   }, [draft, editing, refresh]);
 
-  const remove = useCallback(async (id: string) => {
-    const r = await lensRun('bio', 'notebook-delete', { id });
-    if (r.data.ok) await refresh();
+  // Delete is two-step (fleet delete-safety standard: confirm + receipt).
+  // The first click arms the row's confirm; only the confirm deletes, and
+  // a receipt line names what was deleted.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const remove = useCallback(async (entry: NotebookEntry) => {
+    const r = await lensRun('bio', 'notebook-delete', { id: entry.id });
+    setConfirmDeleteId(null);
+    if (r.data.ok) { setNotice(`Deleted notebook entry “${entry.title}”.`); await refresh(); }
     else setErr(r.data.error || 'notebook-delete failed');
   }, [refresh]);
 
@@ -724,6 +753,7 @@ function NotebookTab() {
         <span className="text-[10px] text-gray-400">{entries.length} entr{entries.length === 1 ? 'y' : 'ies'}</span>
       </div>
       {err && <Err msg={err} />}
+      {notice && <p className="text-[11px] text-emerald-300">{notice}</p>}
 
       {showForm && (
         <div className="rounded border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
@@ -804,7 +834,14 @@ function NotebookTab() {
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                   <button type="button" onClick={() => startEdit(e)} className="p-1 text-gray-600 hover:text-cyan-300" aria-label="Edit"><NotebookPen className="w-3 h-3" /></button>
-                  <button type="button" onClick={() => remove(e.id)} className="p-1 text-gray-600 hover:text-rose-300" aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
+                  {confirmDeleteId === e.id ? (
+                    <>
+                      <button type="button" onClick={() => remove(e)} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-500/20 text-rose-200 hover:bg-rose-500/30">Confirm delete</button>
+                      <button type="button" onClick={() => setConfirmDeleteId(null)} className="px-1.5 py-0.5 text-[10px] rounded bg-white/5 text-gray-300 hover:bg-white/10">Cancel</button>
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => setConfirmDeleteId(e.id)} className="p-1 text-gray-600 hover:text-rose-300" aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
+                  )}
                 </div>
               </div>
             </div>

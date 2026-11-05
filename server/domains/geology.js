@@ -126,13 +126,96 @@ export default function registerGeologyActions(registerLensAction) {
     const adjustedRisk = Math.min(1, baseRisk * amp);
     return { ok: true, result: { location: { lat, lon }, soilType, amplificationFactor: amp, baseSeismicRisk: Math.round(baseRisk * 100), adjustedRisk: Math.round(adjustedRisk * 100), riskLevel: adjustedRisk > 0.6 ? "high" : adjustedRisk > 0.3 ? "moderate" : "low", buildingCode, recommendations: adjustedRisk > 0.5 ? ["Seismic retrofit required", "Foundation isolation recommended", "Earthquake insurance essential"] : ["Standard building codes sufficient"] } };
   });
+  // Species table on the Mindat shape: defining properties per species.
+  // Identification scores the probe's ACTUAL VALUES against each species —
+  // the previous implementation scored how many form fields were filled
+  // (25/20/20/20/15) and bucketed by hardness alone, so a fully-filled
+  // form rendered "100% confidence" for a chemical family and no species
+  // was ever named.
+  const MINERAL_SPECIES = [
+    { name: "quartz", family: "silicate", hardness: 7, sg: 2.65, streak: "white", cleavage: "none", fracture: "conchoidal" },
+    { name: "orthoclase feldspar", family: "silicate", hardness: 6, sg: 2.56, streak: "white", cleavage: "two directions", fracture: "uneven" },
+    { name: "plagioclase feldspar", family: "silicate", hardness: 6, sg: 2.65, streak: "white", cleavage: "two directions", fracture: "uneven" },
+    { name: "muscovite mica", family: "silicate", hardness: 2.5, sg: 2.82, streak: "white", cleavage: "perfect", fracture: "uneven" },
+    { name: "biotite mica", family: "silicate", hardness: 3, sg: 3.0, streak: "white", cleavage: "perfect", fracture: "uneven" },
+    { name: "hornblende", family: "silicate", hardness: 5.5, sg: 3.2, streak: "white", cleavage: "two directions", fracture: "uneven" },
+    { name: "olivine", family: "silicate", hardness: 6.5, sg: 3.3, streak: "white", cleavage: "none", fracture: "conchoidal" },
+    { name: "garnet", family: "silicate", hardness: 7, sg: 3.8, streak: "white", cleavage: "none", fracture: "conchoidal" },
+    { name: "talc", family: "silicate", hardness: 1, sg: 2.75, streak: "white", cleavage: "perfect", fracture: "uneven" },
+    { name: "calcite", family: "carbonate", hardness: 3, sg: 2.71, streak: "white", cleavage: "three directions", fracture: "conchoidal" },
+    { name: "dolomite", family: "carbonate", hardness: 3.5, sg: 2.85, streak: "white", cleavage: "three directions", fracture: "conchoidal" },
+    { name: "fluorite", family: "halide", hardness: 4, sg: 3.18, streak: "white", cleavage: "perfect", fracture: "uneven" },
+    { name: "halite", family: "halide", hardness: 2.5, sg: 2.17, streak: "white", cleavage: "three directions", fracture: "conchoidal" },
+    { name: "gypsum", family: "sulfate", hardness: 2, sg: 2.32, streak: "white", cleavage: "perfect", fracture: "fibrous" },
+    { name: "barite", family: "sulfate", hardness: 3.5, sg: 4.5, streak: "white", cleavage: "perfect", fracture: "uneven" },
+    { name: "apatite", family: "phosphate", hardness: 5, sg: 3.2, streak: "white", cleavage: "none", fracture: "conchoidal" },
+    { name: "magnetite", family: "oxide", hardness: 6, sg: 5.18, streak: "black", cleavage: "none", fracture: "uneven" },
+    { name: "hematite", family: "oxide", hardness: 6, sg: 5.26, streak: "red-brown", cleavage: "none", fracture: "uneven" },
+    { name: "corundum", family: "oxide", hardness: 9, sg: 4.0, streak: "white", cleavage: "none", fracture: "conchoidal" },
+    { name: "pyrite", family: "sulfide", hardness: 6.5, sg: 5.0, streak: "greenish black", cleavage: "none", fracture: "conchoidal" },
+    { name: "galena", family: "sulfide", hardness: 2.5, sg: 7.5, streak: "gray", cleavage: "three directions", fracture: "uneven" },
+    { name: "malachite", family: "carbonate", hardness: 4, sg: 3.8, streak: "pale green", cleavage: "perfect", fracture: "splintery" },
+    { name: "topaz", family: "silicate", hardness: 8, sg: 3.55, streak: "white", cleavage: "perfect", fracture: "conchoidal" },
+  ];
   registerLensAction("geology", "mineralId", (ctx, artifact, _params) => {
     const data = artifact.data || {};
     // Hardness 0–10 (Mohs), specific gravity 0–25 (osmium ~22.6 is the densest
     // natural solid) — clamp both so a poisoned numeric can't leak Infinity/NaN.
     const properties = { hardness: Math.max(0, Math.min(10, fin(data.hardness, 0))), streak: data.streak || "", cleavage: data.cleavage || "", fracture: data.fracture || "", specific_gravity: Math.max(0, Math.min(25, fin(data.specificGravity, 0))) };
-    const score = (properties.hardness > 0 ? 25 : 0) + (properties.streak ? 20 : 0) + (properties.cleavage ? 20 : 0) + (properties.specific_gravity > 0 ? 20 : 0) + (data.color ? 15 : 0);
-    return { ok: true, result: { specimen: data.name || artifact.title, properties, identificationConfidence: score, testsPerformed: Object.values(properties).filter(v => v && v !== 0).length, testsRecommended: score < 60 ? ["streak test", "acid test", "hardness test", "specific gravity"].filter(t => !properties[t.split(" ")[0]]) : [], classification: properties.hardness >= 7 ? "silicate-likely" : properties.hardness >= 3 ? "carbonate-or-sulfate" : "clay-or-evaporite" } };
+    const color = String(data.color || "");
+    const supplied = {
+      hardness: properties.hardness > 0,
+      sg: properties.specific_gravity > 0,
+      streak: !!properties.streak,
+      cleavage: !!properties.cleavage,
+      fracture: !!properties.fracture,
+      color: !!color,
+    };
+    const testsPerformed = Object.values(supplied).filter(Boolean).length;
+    // Match scoring: each supplied property contributes its weight by
+    // agreement with the species' defining value; properties the probe
+    // did not supply contribute nothing, so a partial battery caps the
+    // confidence it can earn (the filed quartz probe, colour untested,
+    // tops out at 90).
+    const numScore = (probe, target, full, partial) => {
+      const d = Math.abs(probe - target);
+      return d <= full ? 1 : d <= partial ? 0.5 : 0;
+    };
+    const textHit = (probe, target) => {
+      const p = String(probe || "").toLowerCase();
+      return p !== "" && (p === target || p.includes(target) || target.includes(p));
+    };
+    const scored = MINERAL_SPECIES.map((sp) => {
+      let match = 0;
+      if (supplied.hardness) match += 30 * numScore(properties.hardness, sp.hardness, 0.25, 0.75);
+      if (supplied.sg) match += 25 * numScore(properties.specific_gravity, sp.sg, 0.08, 0.25);
+      if (supplied.streak) match += 15 * (textHit(properties.streak, sp.streak) ? 1 : 0);
+      if (supplied.cleavage) match += 10 * (textHit(properties.cleavage, sp.cleavage) ? 1 : 0);
+      if (supplied.fracture) match += 10 * (textHit(properties.fracture, sp.fracture) ? 1 : 0);
+      // Colour is corroborating only: it can support quartz-vs-garnet
+      // style ties weakly, never carry an identification alone.
+      if (supplied.color) match += 10 * 0.5;
+      return { species: sp.name, family: sp.family, match: Math.round(match) };
+    }).sort((a, b) => b.match - a.match);
+    const top = scored[0];
+    const identified = testsPerformed >= 2 && top && top.match >= 50 ? top : null;
+    const missing = [
+      !supplied.hardness && "hardness test", !supplied.sg && "specific gravity",
+      !supplied.streak && "streak test", !supplied.cleavage && "cleavage check",
+      !supplied.fracture && "fracture check", !supplied.color && "colour note",
+    ].filter(Boolean);
+    return { ok: true, result: {
+      specimen: data.name || artifact.title,
+      properties,
+      identificationConfidence: top ? top.match : 0,
+      identification: identified
+        ? { species: identified.species, family: identified.family, match: identified.match }
+        : null,
+      candidates: scored.filter((c) => c.match > 0).slice(0, 3),
+      testsPerformed,
+      testsRecommended: identified && identified.match >= 85 ? [] : missing,
+      classification: identified ? `${identified.family}-species` : properties.hardness >= 7 ? "silicate-likely" : properties.hardness >= 3 ? "carbonate-or-sulfate" : "clay-or-evaporite",
+    } };
   });
   registerLensAction("geology", "stratigraphicColumn", (ctx, artifact, _params) => {
     const layers = artifact.data?.layers || [];
@@ -372,6 +455,13 @@ export default function registerGeologyActions(registerLensAction) {
     if (params.kind != null && SAMPLE_KINDS.includes(params.kind)) obs.kind = params.kind;
     if (params.notes != null) obs.notes = geoClean(params.notes, 2000);
     if (params.formation != null) obs.formation = geoClean(params.formation, 120) || null;
+    if (params.locationName != null) obs.locationName = geoClean(params.locationName, 160) || null;
+    // Geotag after the fact: an explicit null clears the coordinate, a
+    // supplied value sets it (observation-log already accepted both at
+    // creation; update silently dropped them, so a text-located record
+    // could never gain the tag the dashboard counts).
+    if ("lat" in params) obs.lat = params.lat == null || params.lat === "" ? null : geoNum(params.lat);
+    if ("lon" in params) obs.lon = params.lon == null || params.lon === "" ? null : geoNum(params.lon);
     if (Array.isArray(params.tags)) obs.tags = params.tags.map((t) => geoClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 8);
     saveGeo();
     return { ok: true, result: { observation: obs } };
@@ -591,6 +681,76 @@ export default function registerGeologyActions(registerLensAction) {
     const arr = ensureStructure(s).get(geoActor(ctx)) || [];
     const i = arr.findIndex((m) => m.id === params.id);
     if (i < 0) return { ok: false, error: "measurement not found" };
+    arr.splice(i, 1);
+    saveGeo();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ─── Stratigraphic column persistence ────────────────────────────────
+  // The column builder's compute verb (stratigraphicColumn) stood alone:
+  // no save/list/get family was ever registered for the one record the
+  // builder produces, so a built column evaporated on reload in a lens
+  // where every other record type persists. This family is constructed
+  // on the domain's own per-user pattern (cf. measurements above).
+  function ensureColumns(s) {
+    if (!(s.columns instanceof Map)) s.columns = new Map(); // userId -> Array
+    return s.columns;
+  }
+  const cleanLayer = (l) => {
+    if (!l || typeof l !== "object") return null;
+    const name = geoClean(l.name || l.formation, 120);
+    if (!name) return null;
+    const raw = geoNum(l.thickness);
+    return {
+      name,
+      lithology: geoClean(l.lithology || l.rockType, 60) || "unknown",
+      thickness: raw == null || raw < 0 ? 1 : raw,
+      age: geoClean(l.age, 80) || "unknown",
+      fossils: Array.isArray(l.fossils) ? l.fossils.map((f) => geoClean(f, 60)).filter(Boolean).slice(0, 12) : [],
+    };
+  };
+  registerLensAction("geology", "column-save", (ctx, _a, params = {}) => {
+  try {
+    const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const layers = (Array.isArray(params.layers) ? params.layers : []).map(cleanLayer).filter(Boolean).slice(0, 200);
+    if (layers.length === 0) return { ok: false, error: "column needs at least one named layer" };
+    const map = ensureColumns(s);
+    const userId = geoActor(ctx);
+    if (!map.has(userId)) map.set(userId, []);
+    const arr = map.get(userId);
+    const existing = params.id ? arr.find((c) => c.id === params.id) : null;
+    const now = new Date().toISOString();
+    const column = existing || { id: geoId("col"), createdAt: now };
+    column.name = geoClean(params.name, 120) || existing?.name || "Untitled column";
+    column.layers = layers;
+    column.updatedAt = now;
+    if (!existing) arr.push(column);
+    saveGeo();
+    return { ok: true, result: { column } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("geology", "column-list", (ctx, _a, _params = {}) => {
+  try {
+    const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = [...(ensureColumns(s).get(geoActor(ctx)) || [])];
+    arr.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+    return { ok: true, result: { columns: arr, count: arr.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("geology", "column-get", (ctx, _a, params = {}) => {
+    const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const column = (ensureColumns(s).get(geoActor(ctx)) || []).find((c) => c.id === params.id);
+    if (!column) return { ok: false, error: "column not found" };
+    return { ok: true, result: { column } };
+  });
+
+  registerLensAction("geology", "column-delete", (ctx, _a, params = {}) => {
+    const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = ensureColumns(s).get(geoActor(ctx)) || [];
+    const i = arr.findIndex((c) => c.id === params.id);
+    if (i < 0) return { ok: false, error: "column not found" };
     arr.splice(i, 1);
     saveGeo();
     return { ok: true, result: { deleted: params.id } };

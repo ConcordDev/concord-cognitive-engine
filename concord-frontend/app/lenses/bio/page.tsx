@@ -8,7 +8,7 @@ import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { PubMedPanel } from '@/components/research/PubMedPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import BioWorkbench from '@/components/bio/BioWorkbench';
 import { MolecularWorkbench } from '@/components/bio/MolecularWorkbench';
@@ -20,7 +20,6 @@ import { useState, useMemo } from 'react';
 import { Dna, Activity, Heart, Brain, Microscope, AlertTriangle, Bug, Wand2, BookOpen, FlaskConical } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
@@ -51,6 +50,20 @@ export default function BioLensPage() {
   useLensNav('bio');
 
   const [selectedSystem, setSelectedSystem] = useState('homeostasis');
+  const [simBySystem, setSimBySystem] = useState<Record<string, { metrics: BioMetric[]; note: string }>>({});
+  const [simBusy, setSimBusy] = useState(false);
+  const runSimulation = async () => {
+    setSimBusy(true);
+    try {
+      const r = await lensRun<{ metrics: BioMetric[]; note: string }>('bio', 'simulate-system', { system: selectedSystem, steps: 60 });
+      if (r.data.ok && r.data.result) {
+        const result = r.data.result;
+        setSimBySystem((prev) => ({ ...prev, [selectedSystem]: { metrics: result.metrics, note: result.note } }));
+      }
+    } finally {
+      setSimBusy(false);
+    }
+  };
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<BioTab>('organisms');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('bio');
@@ -123,8 +136,26 @@ export default function BioLensPage() {
         subtitle="Biological system simulation, Growth OS metrics and a full sequence-analysis bench."
         actions={
           <div className="flex items-center gap-3">
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="bio" data={{}} compact />
+            {/* No LIVE pill on this lens: the pill reported the realtime
+                socket's state while the tier line declares this lens
+                "Real — real but static / open-access dataset". The two
+                contradicted each other; the tier is the truthful claim,
+                so the pill goes. (The Literature view's own feed panels
+                carry their own source labels.) */}
+            <DTUExportButton domain="bio" data={{}} compact prepare={async () => {
+              // Export THIS lens's own saved records (saved sequences +
+              // notebook entries), not the generic lens-artifact read —
+              // with data={{}} alone the button declared "no saved data"
+              // over a lens holding both.
+              const [seqs, nb] = await Promise.all([
+                lensRun<{ sequences?: unknown[] }>('bio', 'sequence-list', {}),
+                lensRun<{ entries?: unknown[] }>('bio', 'notebook-list', {}),
+              ]);
+              const sequences = seqs.data.ok ? (seqs.data.result?.sequences ?? []) : [];
+              const notebookEntries = nb.data.ok ? (nb.data.result?.entries ?? []) : [];
+              if (!sequences.length && !notebookEntries.length) return {};
+              return { source: 'bio-lens-records', exportedAt: new Date().toISOString(), sequences, notebookEntries };
+            }} />
           </div>
         }
         tabs={TABS.map((t) => ({ id: t.key, label: t.label, icon: t.icon, keys: t.keys, hint: t.hint }))}
@@ -178,11 +209,17 @@ export default function BioLensPage() {
 
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 <div className={`${card} space-y-4`}>
-                  <h3 className="flex items-center gap-2 font-semibold">
-                    <Activity className="h-4 w-4 text-neon-green" />
-                    {systems.find((s) => s.id === selectedSystem)?.name} Metrics
-                  </h3>
-                  {sysMetrics?.map((metric: BioMetric) => (
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="flex items-center gap-2 font-semibold">
+                      <Activity className="h-4 w-4 text-neon-green" />
+                      {systems.find((s) => s.id === selectedSystem)?.name} Metrics
+                    </h3>
+                    <button type="button" onClick={runSimulation} disabled={simBusy}
+                      className="px-2.5 py-1 rounded-md border border-neon-green/40 bg-neon-green/10 text-xs text-neon-green hover:bg-neon-green/20 disabled:opacity-40">
+                      {simBusy ? 'Simulating…' : 'Run simulation'}
+                    </button>
+                  </div>
+                  {(simBySystem[selectedSystem]?.metrics ?? sysMetrics)?.map((metric: BioMetric) => (
                     <div key={metric.name} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-400">{metric.name}</span>
@@ -193,7 +230,12 @@ export default function BioLensPage() {
                       </div>
                     </div>
                   ))}
-                  {!sysMetrics && <p className="py-4 text-center text-gray-400">No metrics reported for this system yet.</p>}
+                  {!(simBySystem[selectedSystem]?.metrics ?? sysMetrics) && (
+                    <p className="py-4 text-center text-gray-400">No metrics reported for this system yet — run the simulation to produce them.</p>
+                  )}
+                  {simBySystem[selectedSystem] && (
+                    <p className="text-[10px] text-gray-500">Simulated model output (deterministic, 60 steps) — a teaching model, not a measurement. {simBySystem[selectedSystem].note}</p>
+                  )}
                 </div>
 
                 <div className={`${card} space-y-3`}>
@@ -245,13 +287,20 @@ export default function BioLensPage() {
             <>
               <ArxivPanel domain="bio" title="arXiv · Quantitative Biology" />
               <PubMedPanel domain="bio" title="PubMed · biology" initialQuery="CRISPR" />
-              <LiveFeed
-                articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
-                domain="research"
-                isLive={isLive}
-                lastUpdated={lastUpdated}
-                limit={8}
-              />
+              <div className="space-y-2">
+                <p className="text-xs text-gray-400">
+                  <span className="font-medium text-gray-200">Platform research wire</span> — papers from every field
+                  (computer science included), not filtered to biology. For biology, the arXiv q-bio and PubMed
+                  panels above are the scoped feeds.
+                </p>
+                <LiveFeed
+                  articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
+                  domain="research"
+                  isLive={isLive}
+                  lastUpdated={lastUpdated}
+                  limit={8}
+                />
+              </div>
               <RealtimeDataPanel domain="bio" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
             </>
           )}
