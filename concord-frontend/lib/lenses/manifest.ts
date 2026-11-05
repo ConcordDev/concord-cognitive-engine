@@ -191,7 +191,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // no productization-roadmap pipeline). The operator decision `repair.resolve_escalation`
   // is a state mutation on an existing escalation, not artifact authoring.
   { domain: 'repair-telemetry', label: 'Repair Telemetry', artifacts: ['report'], macros: { list: 'repair.health_log', get: 'repair.escalations', run: 'repair.resolve_escalation' }, exports: ['json'], actions: ['health_log', 'escalations', 'memory', 'resolve_escalation'], category: 'system' },
-  { domain: 'move-builder', label: 'Move Builder', artifacts: ['move', 'recipe'], macros: { list: 'move-builder.list', get: 'move-builder.get', create: 'move-builder.mint' }, exports: ['json'], actions: ['compose', 'mint'], category: 'creative' },
+  { domain: 'move-builder', label: 'Move Builder', artifacts: ['move', 'recipe'], macros: { list: 'move-builder.list', get: 'move-builder.get', create: 'move-builder.mint' }, exports: ['json'], actions: ['compose', 'mint'], category: 'creative', dataTier: 'REAL_LIVE' },
   // Civic Bonds is a READER+ACTOR over the real `civic_bonds` domain
   // (server/domains/civic-bonds.js — registerCivicBondsMacros, registered at
   // server.js:25551 — register("civic_bonds", "list"|"get"|"spillover"|"ledger"|
