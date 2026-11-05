@@ -325,49 +325,66 @@ export default function registerMaterialsActions(registerLensAction) {
   registerLensAction("materials", "thermalAnalysis", (ctx, artifact, _params) => {
   try {
     const data = artifact.data || {};
-    const thermalK = parseFloat(data.thermalConductivity) || 0;
-    const meltingPoint = parseFloat(data.meltingPoint) || 0;
-    const expansion = parseFloat(data.thermalExpansion) || 0;
+    // A blank or non-finite property is not zero. Conductivity and melting
+    // point must be finite and non-negative; a melting point of 0 cannot
+    // support a safety margin. Expansion may be 0 or negative. An explicit
+    // conductivity of 0 stays 0 and classifies as an insulator.
+    const recorded = (v, { min = null } = {}) => {
+      if (v == null || v === "") return null;
+      const n = typeof v === "number" ? v : parseFloat(v);
+      if (!Number.isFinite(n)) return null;
+      if (min != null && n < min) return null;
+      return n;
+    };
     const { values: _ot, missing: _m } = needNums(data, ["operatingTemp"]);
     if (_m.length) return notComputed(_m, "Thermal analysis needs operatingTemp (was assumed 25 °C).");
     const operatingTemp = _ot.operatingTemp;
-    const application = (data.application || "general").toLowerCase();
+    const thermalK = recorded(data.thermalConductivity, { min: 0 });
+    const meltingPoint = recorded(data.meltingPoint, { min: 0.000001 });
+    const expansion = recorded(data.thermalExpansion);
+    const application = typeof data.application === "string" ? data.application.trim().toLowerCase() : "";
+    const missing = [];
+    if (thermalK == null) missing.push("thermalConductivity");
+    if (meltingPoint == null) missing.push("meltingPoint");
+    if (expansion == null) missing.push("thermalExpansion");
 
-    // Safety margin: material should handle 1.5x operating temp
-    const safetyMargin = meltingPoint > 0 ? Math.round(((meltingPoint - operatingTemp) / meltingPoint) * 100) : 0;
-    const isSafe = meltingPoint === 0 || operatingTemp < meltingPoint * 0.67;
+    let thermalClass = null;
+    if (thermalK != null) {
+      thermalClass = "insulator";
+      if (thermalK > 100) thermalClass = "excellent-conductor";
+      else if (thermalK > 10) thermalClass = "good-conductor";
+      else if (thermalK > 1) thermalClass = "moderate";
+    }
+    const safetyMargin = meltingPoint != null ? Math.round(((meltingPoint - operatingTemp) / meltingPoint) * 100) : null;
+    const isSafe = meltingPoint != null ? operatingTemp < meltingPoint * 0.67 : null;
 
-    // Thermal classification
-    let thermalClass = "insulator";
-    if (thermalK > 100) thermalClass = "excellent-conductor";
-    else if (thermalK > 10) thermalClass = "good-conductor";
-    else if (thermalK > 1) thermalClass = "moderate";
-
-    // Application suitability
-    const suitability = {};
-    suitability["heat-sink"] = thermalK > 100 ? "excellent" : thermalK > 50 ? "good" : "poor";
-    suitability["insulation"] = thermalK < 1 ? "excellent" : thermalK < 5 ? "good" : "poor";
-    suitability["high-temp"] = isSafe && meltingPoint > 500 ? "suitable" : "not-recommended";
-    suitability["cryogenic"] = meltingPoint > 200 && expansion < 20 ? "suitable" : "evaluate-further";
+    const suitability = {
+      "heat-sink": thermalK == null ? null : (thermalK > 100 ? "excellent" : thermalK > 50 ? "good" : "poor"),
+      "insulation": thermalK == null ? null : (thermalK < 1 ? "excellent" : thermalK < 5 ? "good" : "poor"),
+      "high-temp": meltingPoint == null ? null : (isSafe && meltingPoint > 500 ? "suitable" : "not-recommended"),
+      "cryogenic": meltingPoint == null || expansion == null ? null : (meltingPoint > 200 && expansion < 20 ? "suitable" : "evaluate-further"),
+    };
 
     const warnings = [];
-    if (!isSafe) warnings.push(`Operating temperature (${operatingTemp}\u00B0C) exceeds 67% of melting point (${meltingPoint}\u00B0C) — risk of creep deformation`);
-    if (expansion > 20 && application.includes("precision")) warnings.push("High thermal expansion may cause dimensional issues in precision applications");
-    if (thermalK < 1 && application.includes("heat")) warnings.push("Low thermal conductivity — not suitable for heat transfer applications");
+    if (isSafe === false) warnings.push(`Operating temperature (${operatingTemp}\u00B0C) exceeds 67% of melting point (${meltingPoint}\u00B0C) — risk of creep deformation`);
+    if (expansion != null && expansion > 20 && application.includes("precision")) warnings.push("High thermal expansion may cause dimensional issues in precision applications");
+    if (thermalK != null && thermalK < 1 && application.includes("heat")) warnings.push("Low thermal conductivity — not suitable for heat transfer applications");
 
     return {
       ok: true,
       result: {
-        material: data.name || artifact.title,
-        thermalConductivity: thermalK > 0 ? `${thermalK} W/mK` : "Not specified",
-        meltingPoint: meltingPoint > 0 ? `${meltingPoint}\u00B0C` : "Not specified",
-        thermalExpansion: expansion > 0 ? `${expansion} \u00B5m/m\u00B0C` : "Not specified",
+        material: data.name || artifact.title || null,
+        thermalConductivity: thermalK == null ? null : `${thermalK} W/mK`,
+        meltingPoint: meltingPoint == null ? null : `${meltingPoint}\u00B0C`,
+        thermalExpansion: expansion == null ? null : `${expansion} \u00B5m/m\u00B0C`,
         operatingTemp: `${operatingTemp}\u00B0C`,
-        safetyMargin: `${safetyMargin}%`,
+        safetyMargin: safetyMargin == null ? null : `${safetyMargin}%`,
         isSafe,
         thermalClass,
         suitability,
         warnings,
+        missingInputs: missing,
+        ...(missing.length ? { message: `Not recorded: ${missing.join(", ")}.` } : {}),
       },
     };
     } catch (e) { return handlerFailure(e); }

@@ -13,11 +13,14 @@ vi.mock('lucide-react', () => ({ Cog: () => null, Droplet: () => null, Thermomet
 vi.mock('@/components/lens-primitives/CalcPanel', () => ({
   CalcPanel: (props: {
     left: { render: ReactNode; buildArtifact: () => { data: { temperature: unknown; humidity: unknown } } };
+    right: { render: ReactNode; buildArtifact: () => { data: Record<string, unknown> } };
     renderResults: (cor: Record<string, unknown> | null, therm: unknown) => ReactNode;
   }) => (
     <div>
       {props.left.render}
+      {props.right.render}
       <button type="button" onClick={() => { (globalThis as { __cor?: unknown }).__cor = props.left.buildArtifact(); }}>build</button>
+      <button type="button" onClick={() => { (globalThis as { __therm?: unknown }).__therm = props.right.buildArtifact(); }}>build thermal</button>
       {props.renderResults({
         corrosionResistance: null,
         riskLevel: null,
@@ -96,5 +99,37 @@ describe('CorrosionThermalPanel', () => {
     fixtures.therm = { thermalClass: 'insulator', safetyMargin: '-10%', isSafe: false, suitability: {}, warnings: [] };
     render(<CorrosionThermalPanel />);
     expect(screen.getByText('Safety margin: -10% — AT-RISK')).toBeInTheDocument();
+  });
+
+  it('shows a recorded class and withholds SAFE when the melt was not recorded', () => {
+    fixtures.therm = {
+      thermalClass: 'excellent-conductor',
+      safetyMargin: null,
+      isSafe: null,
+      missingInputs: ['meltingPoint'],
+      suitability: { 'heat-sink': 'excellent', insulation: null },
+      warnings: [],
+    };
+    render(<CorrosionThermalPanel />);
+    expect(screen.getByText('excellent-conductor')).toBeInTheDocument();
+    expect(screen.getByText('Not recorded: melting point')).toBeInTheDocument();
+    expect(screen.getByText('Safety margin: —')).toBeInTheDocument();
+    expect(screen.getByText('not recorded')).toBeInTheDocument();
+    expect(screen.queryByText(/SAFE/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/AT-RISK/)).not.toBeInTheDocument();
+  });
+
+  it('does not send a blank thermal property as zero', () => {
+    render(<CorrosionThermalPanel />);
+    const melt = screen.getByLabelText('Melting point (°C)') as HTMLInputElement;
+    expect((screen.getByLabelText('Thermal cond. (W/mK)') as HTMLInputElement).value).toBe('');
+    expect(melt.value).toBe('');
+    fireEvent.change(melt, { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'build thermal' }));
+    const built = (globalThis as { __therm?: { data: Record<string, unknown> } }).__therm;
+    expect(built?.data.meltingPoint).toBe(0);
+    expect(built?.data.thermalConductivity).toBeUndefined();
+    expect(built?.data.thermalExpansion).toBeUndefined();
+    expect(built?.data.operatingTemp).toBeUndefined();
   });
 });
