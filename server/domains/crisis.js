@@ -41,6 +41,21 @@ function badNumericField(input, keys) {
   return null;
 }
 
+// Epoch-MILLISECONDS fields (poll cursors) live at ~1.7e12 — six orders of
+// magnitude above the quantity cap above. Guarding a cursor with the
+// quantity cap rejects every legitimate cursor (the alerts feed's cursor is
+// Date.now()), so the poll fails closed on its own happy path forever.
+// Same fail-closed spirit at the field's own scale: NaN / negative /
+// Infinity / absurd magnitudes still reject.
+function badEpochMsField(input, keys) {
+  for (const k of keys) {
+    if (input[k] === undefined || input[k] === null) continue;
+    const n = Number(input[k]);
+    if (!Number.isFinite(n) || n < 0 || n > 1e14) return k;
+  }
+  return null;
+}
+
 const USGS_QUAKES =
   "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson";
 const NWS_ALERTS = "https://api.weather.gov/alerts/active?status=actual&limit=200";
@@ -267,6 +282,58 @@ function triageScore(crisis, nowSec) {
   return { score, priority, impact: Math.round(impact * 100), urgency: Math.round(urgency * 100), ageHours: Math.round(ageHours) };
 }
 
+// ---- the console's own filed reports, for the triage board ---------------
+// Incident reports are lens artifacts (STATE.lensArtifacts, domain
+// "crisis-ops", type "incident_report") — a different store from
+// world_crises, so the board never saw them. One record set: the actor's
+// own reports rank alongside world crises, scored on the same ladder
+// shape (severity impact + age urgency), rows labelled source: "report".
+const REPORT_IMPACT = { critical: 0.95, major: 0.75, minor: 0.5, info: 0.3 };
+function reportTriageScore(severity, createdMs, nowSec) {
+  const ageHours = Math.max(0, (nowSec * 1000 - createdMs) / 3600000);
+  const urgency = Math.max(0.2, 1 - Math.min(1, ageHours / 48) * 0.6);
+  const impact = REPORT_IMPACT[String(severity || "minor").toLowerCase()] ?? 0.5;
+  const raw = impact * 0.6 + urgency * 0.4;
+  const score = Math.round(raw * 100);
+  let priority = "low";
+  if (score >= 80) priority = "critical";
+  else if (score >= 60) priority = "high";
+  else if (score >= 40) priority = "moderate";
+  return { score, priority, impact: Math.round(impact * 100), urgency: Math.round(urgency * 100), ageHours: Math.round(ageHours) };
+}
+function artifactMs(v) {
+  if (v == null) return 0;
+  const n = Number(v);
+  if (Number.isFinite(n) && n > 0) return n < 1e12 ? n * 1000 : n; // seconds or ms
+  const p = Date.parse(String(v));
+  return Number.isFinite(p) ? p : 0;
+}
+function readFiledReports(userId, nowSec) {
+  if (!userId) return [];
+  try {
+    const store = globalThis._concordSTATE?.lensArtifacts;
+    if (!store || typeof store.values !== "function") return [];
+    const out = [];
+    for (const art of store.values()) {
+      if (!art || art.domain !== "crisis-ops" || art.type !== "incident_report") continue;
+      if (art.ownerId !== userId) continue;
+      const createdMs = artifactMs(art.createdAt ?? art.created_at) || nowSec * 1000;
+      out.push({
+        id: art.id,
+        type: "Incident report",
+        description: String(art.title || "Untitled report").slice(0, 200),
+        location: art.data?.location || null,
+        severity: String(art.data?.severity || art.meta?.status || "minor"),
+        started_at: Math.floor(createdMs / 1000),
+        source: "report",
+        triage: reportTriageScore(art.data?.severity || art.meta?.status, createdMs, nowSec),
+      });
+      if (out.length >= 50) break;
+    }
+    return out;
+  } catch { return []; }
+}
+
 export default function registerCrisisMacros(register) {
   // ---- existing macros (unchanged) ----------------------------------
   register("crisis", "active_for_player", async (ctx, input = {}) => {
@@ -293,7 +360,7 @@ export default function registerCrisisMacros(register) {
           `).all(userId);
         }
       } catch { /* table may not exist */ }
-      return { ok: true, crises: rows, suggestions };
+      return { ok: true, crises: rows, suggestions, crisisTypes: Object.keys(CRISIS_TYPES) };
     } catch (err) {
       return { ok: false, reason: "query_failed", err: String(err?.message || err) };
     }
@@ -477,8 +544,10 @@ export default function registerCrisisMacros(register) {
          ORDER BY started_at DESC
          LIMIT 50
       `).all(worldId);
-      const ranked = rows
-        .map((c) => ({ ...c, triage: triageScore(c, nowSec) }))
+      const world = rows
+        .map((c) => ({ ...c, source: "world", triage: triageScore(c, nowSec) }));
+      const reports = readFiledReports(ctx?.actor?.userId, nowSec);
+      const ranked = [...world, ...reports]
         .sort((a, b) => b.triage.score - a.triage.score);
       const summary = {
         critical: ranked.filter((r) => r.triage.priority === "critical").length,
@@ -486,7 +555,7 @@ export default function registerCrisisMacros(register) {
         moderate: ranked.filter((r) => r.triage.priority === "moderate").length,
         low: ranked.filter((r) => r.triage.priority === "low").length,
       };
-      return { ok: true, result: { ranked, summary, total: ranked.length } };
+      return { ok: true, result: { ranked, summary, total: ranked.length, reports: reports.length } };
     } catch (err) {
       return { ok: false, error: String(err?.message || err) };
     }
@@ -496,7 +565,14 @@ export default function registerCrisisMacros(register) {
   register("crisis", "playbook", async (ctx, input = {}) => {
     try {
       const { crisisType, crisisId } = input || {};
-      if (!crisisType) return { ok: false, error: "missing_crisis_type" };
+      if (!crisisType) {
+        // Catalogue read: the console's Playbooks library lists every
+        // playbook without needing a live crisis to attach progress to.
+        const playbooks = Object.entries(PLAYBOOKS).map(([key, pb]) => ({
+          key, title: pb.title, total: pb.steps.length,
+        }));
+        return { ok: true, result: { playbooks } };
+      }
       const pb = playbookFor(crisisType);
       let done = new Set();
       const userId = ctx?.actor?.userId;
@@ -593,7 +669,11 @@ export default function registerCrisisMacros(register) {
   register("crisis", "team", async (ctx, input = {}) => {
     try {
       const { crisisId } = input || {};
-      if (!crisisId) return { ok: false, error: "missing_crisis_id" };
+      if (!crisisId) {
+        // Roles-only read: the command structure (roles) renders in the
+        // console's at-rest state; the roster itself is per-crisis.
+        return { ok: true, result: { crisisId: null, team: [], byRole: {}, roles: COMMAND_ROLES, count: 0 } };
+      }
       const viewerId = ctx?.actor?.userId || null;
       const S = stores();
       const team = (S.crisisTeams.get(crisisId) || []).map((m) => projectMember(ctx?.db, m, viewerId, crisisId));
@@ -692,7 +772,7 @@ export default function registerCrisisMacros(register) {
     if (!db) return { ok: false, error: "no_db" };
     try {
       const userId = ctx?.actor?.userId;
-      const badNum = badNumericField(input, ["sinceMs"]);
+      const badNum = badEpochMsField(input, ["sinceMs"]);
       if (badNum) return { ok: false, reason: "bad_numeric_field", field: badNum };
       const { worldId, sinceMs } = input || {};
       const since = Number(sinceMs) || 0;

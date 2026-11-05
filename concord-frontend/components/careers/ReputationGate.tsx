@@ -24,6 +24,8 @@ export interface ReputationInfo {
   gateTier: number;
   wageMultiplier: number;
   gatedTiers: number[];
+  /** The next rung of the same gate rule: the reputation that opens it, and the tier it opens. Null at the top. */
+  nextGate?: { atReputation: number; gateTier: number } | null;
 }
 
 interface Props {
@@ -75,6 +77,12 @@ export function ReputationGate({ trackId, onLoaded }: Props) {
             <span className="tabular-nums text-amber-200">{reputation.reputation}/100</span>
           </div>
           <p>Hireable up to <span className="text-amber-200">tier {reputation.gateTier}</span> · wage ×{reputation.wageMultiplier.toFixed(2)}</p>
+          <p className="text-gray-500">
+            Reputation is earned, not bought: +4 per shift worked, +20 per contract active or completed.
+            {reputation.nextGate
+              ? <> Tier {reputation.nextGate.gateTier} contracts open at {reputation.nextGate.atReputation} reputation.</>
+              : <> You are at the top gate — every tier is open to your contracts.</>}
+          </p>
           {reputation.gatedTiers.length > 0 ? (
             <p className="text-gray-500 flex items-center gap-1">
               <Lock className="w-3 h-3 shrink-0" aria-hidden="true" /> Gated out of tier{reputation.gatedTiers.length > 1 ? 's' : ''} {reputation.gatedTiers.join(', ')} until your reputation grows — sign more contracts or work more shifts.

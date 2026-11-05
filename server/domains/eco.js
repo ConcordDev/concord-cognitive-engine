@@ -732,15 +732,48 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
    * latitude (cosine of |lat-23.5|°), tilt match, and azimuth deviation.
    * params: { lat, lng, systemKw, tilt?, azimuth? }
    */
-  registerLensAction("eco", "energy-estimate", (_ctx, _artifact, params = {}) => {
+  registerLensAction("eco", "energy-estimate", (_ctx, artifact, params = {}) => {
   try {
-    // Fail-CLOSED: every numeric is coerced to a finite value within physical
-    // bounds, so a poisoned Infinity/NaN/1e999 never leaks into the kWh totals.
-    const lat = finiteNum(params.lat, 0, { min: -90, max: 90 });
-    const lng = finiteNum(params.lng, 0, { min: -180, max: 180 });
-    const systemKw = finiteNum(params.systemKw, 5, { min: 0.1, max: 1e6 });
-    const tilt = finiteNum(params.tilt, 30, { min: 0, max: 89 });
-    const azimuth = params.azimuth != null ? finiteNum(params.azimuth, 180, { min: 0, max: 360 }) : 180;
+    // A missing site is not a 5 kW plant at 0°, 0°. Latitude 0 and longitude
+    // 0 stay valid when the caller sent them. Tilt and azimuth may use the
+    // model defaults (30° and 180°) and those defaults are labeled.
+    const src = { ...(artifact?.data || {}), ...(params || {}) };
+    const recorded = (v, min, max) => {
+      if (v == null || v === "") return null;
+      const n = typeof v === "number" ? v : parseFloat(v);
+      if (!Number.isFinite(n) || n < min || n > max) return null;
+      return n;
+    };
+    const lat = recorded(src.lat, -90, 90);
+    const lng = recorded(src.lng, -180, 180);
+    const systemKw = recorded(src.systemKw, 0.1, 1e6);
+    const tiltSent = recorded(src.tilt, 0, 89);
+    const azimuthSent = recorded(src.azimuth, 0, 360);
+    const unavailable = [];
+    if (lat == null) unavailable.push("lat");
+    if (lng == null) unavailable.push("lng");
+    if (systemKw == null) unavailable.push("systemKw");
+    if (unavailable.length) {
+      return {
+        ok: true,
+        result: {
+          systemKwp: null,
+          annualKwh: null,
+          monthlyKwh: null,
+          co2AvoidedKgPerYear: null,
+          capacityFactor: null,
+          location: null,
+          source: null,
+          reason: "not_recorded",
+          unavailable,
+          message: `Not recorded: ${unavailable.join(", ")}.`,
+        },
+      };
+    }
+    const tilt = tiltSent == null ? 30 : tiltSent;
+    const azimuth = azimuthSent == null ? 180 : azimuthSent;
+    const tiltAssumed = tiltSent == null;
+    const azimuthAssumed = azimuthSent == null;
 
     // Baseline daily insolation (kWh/m²/day) — NREL average for the US is
     // ~4.5; we modulate by absolute latitude (higher = lower) and seasonal
@@ -778,6 +811,12 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
         capacityFactor,
         source: "concord-pvmodel (NREL-derived constants, deterministic)",
         location: { lat, lng },
+        tilt,
+        azimuth,
+        tiltAssumed,
+        azimuthAssumed,
+        reason: null,
+        unavailable: [],
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
