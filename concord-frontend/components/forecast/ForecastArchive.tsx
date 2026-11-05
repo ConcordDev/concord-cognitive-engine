@@ -27,10 +27,12 @@ interface ArchiveResult {
   trend: ArchiveEntry[];
 }
 
-export function ForecastArchive({ worldId }: { worldId: string }) {
+export function ForecastArchive({ worldId, refreshKey = 0 }: { worldId: string; refreshKey?: number }) {
   const [result, setResult] = useState<ArchiveResult | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // refreshKey: the page's compose version — a persisted compose re-reads
+  // the archive in session, so the count grows without a reload (F2).
   const load = useCallback(async () => {
     setLoading(true);
     const r = await lensRun<ArchiveResult>('forecast', 'archive', { worldId, limit: 60 });
@@ -40,7 +42,7 @@ export function ForecastArchive({ worldId }: { worldId: string }) {
       setResult(null);
     }
     setLoading(false);
-  }, [worldId]);
+  }, [worldId, refreshKey]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -90,7 +92,7 @@ export function ForecastArchive({ worldId }: { worldId: string }) {
             </span>
             <span className="text-xs text-zinc-200">{e.weather_kind ?? '—'}</span>
             <span className="font-mono text-xs text-cyan-300">
-              {e.temperature_c !== null ? `${e.temperature_c}°C` : '—'}
+              {e.temperature_c !== null ? `${e.temperature_c.toFixed(1)}°C` : '—'}
             </span>
             <span className="font-mono text-[10px] text-zinc-400">
               {e.drift_kind ? `drift: ${e.drift_kind} · ` : ''}

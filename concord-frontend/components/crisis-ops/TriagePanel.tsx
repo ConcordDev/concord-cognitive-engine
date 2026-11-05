@@ -16,6 +16,9 @@ interface RankedCrisis {
   type: string;
   description: string;
   started_at: number;
+  source?: string;
+  location?: string | null;
+  severity?: string;
   triage: {
     score: number;
     priority: 'critical' | 'high' | 'moderate' | 'low';
@@ -28,6 +31,7 @@ interface TriageResult {
   ranked: RankedCrisis[];
   summary: Record<string, number>;
   total: number;
+  reports?: number;
 }
 
 const PRIORITY_TONE: Record<string, string> = {
@@ -87,6 +91,10 @@ export function TriagePanel({
         </button>
       </header>
 
+      <p className="text-[11px] text-zinc-500">
+        Ranks active world crises and the incident reports filed in this console — one record set.
+      </p>
+
       {loading && (
         <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Scoring crises…
@@ -95,7 +103,7 @@ export function TriagePanel({
 
       {!loading && data && data.total === 0 && (
         <p className="rounded border border-white/10 bg-white/5 p-4 text-center text-xs text-zinc-400">
-          No active crises to triage.
+          No active crises or filed reports to triage.
         </p>
       )}
 
@@ -112,13 +120,9 @@ export function TriagePanel({
             />
           </div>
           <ol className="space-y-2">
-            {data.ranked.map((c, i) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  onClick={() => onSelect?.(c)}
-                  className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition hover:brightness-125 ${PRIORITY_TONE[c.triage.priority]}`}
-                >
+            {data.ranked.map((c, i) => {
+              const inner = (
+                <>
                   <span className="font-mono text-lg font-bold opacity-60">#{i + 1}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -126,21 +130,39 @@ export function TriagePanel({
                       <span className="rounded bg-black/30 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider">
                         {c.triage.priority}
                       </span>
+                      {c.source === 'report' && (
+                        <span className="rounded bg-black/30 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider">
+                          filed report{c.severity ? ` · ${c.severity}` : ''}
+                        </span>
+                      )}
                     </div>
                     <p className="truncate text-[11px] opacity-75">{c.description}</p>
                     <div className="mt-1 flex gap-3 text-[10px] opacity-60">
                       <span>impact {c.triage.impact}</span>
                       <span>urgency {c.triage.urgency}</span>
                       <span>{c.triage.ageHours}h old</span>
+                      {c.location && <span>{c.location}</span>}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold tabular-nums">{c.triage.score}</div>
                     <div className="text-[9px] uppercase tracking-wider opacity-60">priority</div>
                   </div>
-                </button>
-              </li>
-            ))}
+                </>
+              );
+              const rowClass = `flex w-full items-center gap-3 rounded-lg border p-3 text-left transition ${PRIORITY_TONE[c.triage.priority]}`;
+              return (
+                <li key={c.id}>
+                  {c.source === 'report' ? (
+                    <div className={rowClass}>{inner}</div>
+                  ) : (
+                    <button type="button" onClick={() => onSelect?.(c)} className={`${rowClass} hover:brightness-125`}>
+                      {inner}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ol>
         </>
       )}

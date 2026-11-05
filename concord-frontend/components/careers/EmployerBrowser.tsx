@@ -17,7 +17,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Users, Send } from 'lucide-react';
+import { Loader2, Users, Send, Lock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/store/ui';
@@ -39,11 +39,13 @@ export interface EmployerListing {
 
 interface Props {
   trackId: string;
+  /** The viewer's current contract reach (careers.myReputation's gateTier); entries above it are marked, not hidden. */
+  gateTier?: number | null;
   /** Called after a contract offer is successfully sent, so the caller can refresh its contracts list. */
   onContractProposed?: () => void;
 }
 
-export function EmployerBrowser({ trackId, onContractProposed }: Props) {
+export function EmployerBrowser({ trackId, gateTier = null, onContractProposed }: Props) {
   const { user } = useAuth();
   const addToast = useUIStore((s) => s.addToast);
   const [employers, setEmployers] = useState<EmployerListing[]>([]);
@@ -118,6 +120,14 @@ export function EmployerBrowser({ trackId, onContractProposed }: Props) {
                 </span>
                 <span className="text-amber-200 tabular-nums">tier {npc.tier}{npc.tierTitle ? ` · ${npc.tierTitle}` : ''} · {npc.suggestedWage ?? 0} sparks/shift</span>
               </div>
+              {gateTier !== null && (npc.tier > gateTier ? (
+                <p className="mt-1 flex items-center gap-1 text-gray-500">
+                  <Lock className="w-3 h-3 shrink-0" aria-hidden="true" />
+                  Above your current reach (tier {gateTier}) — this offer opens as your reputation grows; proposing now returns an honest refusal.
+                </p>
+              ) : (
+                <p className="mt-1 text-emerald-300/80">Within your reach — you can be hired at this tier today.</p>
+              ))}
               {proposingFor === npc.npcId ? (
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-1.5">
                   <label className="sr-only" htmlFor={`propose-wage-${npc.npcId}`}>Base wage offered to {npc.name}</label>
