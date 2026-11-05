@@ -30,7 +30,8 @@ export function PgSleepPanel({ childId }: { childId: string }) {
   const [stats, setStats] = useState<SleepStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [form, setForm] = useState({ type: 'nap', durationMin: '' });
+  const [form, setForm] = useState({ type: 'nap', durationMin: '', startAt: '' });
+  const [formError, setFormError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -55,9 +56,35 @@ export function PgSleepPanel({ childId }: { childId: string }) {
 
   const logSleep = async () => {
     const m = Number(form.durationMin);
-    if (!(m > 0)) return;
-    await lensRun('parenting', 'sleep-log', { childId, type: form.type, durationMin: m });
-    setForm({ type: 'nap', durationMin: '' });
+    if (!(m > 0) || !form.startAt) {
+      setFormError('Enter when the sleep started and how long it lasted.');
+      return;
+    }
+    const startMs = new Date(form.startAt).getTime();
+    if (!Number.isFinite(startMs)) {
+      setFormError('That start time is not a real time.');
+      return;
+    }
+    const endMs = startMs + Math.round(m) * 60000;
+    if (endMs > Date.now() + 2 * 60000) {
+      setFormError('That sleep has not ended. Start the sleep timer and stop it when the child wakes.');
+      return;
+    }
+    const r = await lensRun('parenting', 'sleep-log', {
+      childId,
+      type: form.type,
+      durationMin: m,
+      startAt: new Date(startMs).toISOString(),
+    });
+    if (r.data?.ok === false) {
+      const unfinished = r.data?.reason === 'end_in_future' || r.data?.reason === 'start_in_future';
+      setFormError(unfinished
+        ? 'That sleep has not ended. Start the sleep timer and stop it when the child wakes.'
+        : (r.data?.error || 'Could not save this sleep.'));
+      return;
+    }
+    setFormError(null);
+    setForm({ type: 'nap', durationMin: '', startAt: '' });
     await refresh();
   };
 
@@ -101,20 +128,29 @@ export function PgSleepPanel({ childId }: { childId: string }) {
         </div>
       )}
 
-      {/* Log sleep */}
-      <div className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-        <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
-          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
-          <option value="nap">Nap</option>
-          <option value="night">Night sleep</option>
-        </select>
-        <input placeholder="Duration (min)" inputMode="numeric" value={form.durationMin}
-          onChange={(e) => setForm({ ...form, durationMin: e.target.value })}
-          className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-        <button type="button" onClick={logSleep}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
-          <Plus className="w-3.5 h-3.5" /> Log
-        </button>
+      {/* Log a sleep that has already ended. The start is required and empty. */}
+      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
+            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+            <option value="nap">Nap</option>
+            <option value="night">Night sleep</option>
+          </select>
+          <label className="flex items-center gap-1 text-[11px] text-zinc-400">
+            Started
+            <input type="datetime-local" value={form.startAt}
+              onChange={(e) => setForm({ ...form, startAt: e.target.value })}
+              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          </label>
+          <input placeholder="Duration (min)" inputMode="numeric" value={form.durationMin}
+            onChange={(e) => setForm({ ...form, durationMin: e.target.value })}
+            className="w-28 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          <button type="button" onClick={logSleep}
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
+            <Plus className="w-3.5 h-3.5" /> Log
+          </button>
+        </div>
+        {formError && <p className="text-[11px] text-rose-300">{formError}</p>}
       </div>
 
       {/* History */}

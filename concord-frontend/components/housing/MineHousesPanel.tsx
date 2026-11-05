@@ -30,6 +30,17 @@ export function MineHousesPanel({
   const [claiming, setClaiming] = useState<string | null>(null);
   const [showClaimPanel, setShowClaimPanel] = useState(false);
 
+  // F1 / S-HO-1: claim CREATION — the lifecycle's missing first verb.
+  // The land_claims macro domain has always offered it; no surface did.
+  const [claimWorld, setClaimWorld] = useState('tunya');
+  const [claimX, setClaimX] = useState('');
+  const [claimZ, setClaimZ] = useState('');
+  const [claimRadius, setClaimRadius] = useState('25');
+  const [worldBuildings, setWorldBuildings] = useState<WorldBuilding[]>([]);
+  const [worldBuildingsState, setWorldBuildingsState] = useState<LoadState>('idle');
+  const [claimingLand, setClaimingLand] = useState(false);
+  const [landError, setLandError] = useState<string | null>(null);
+
   const refreshMine = useCallback(async () => {
     setMineState('loading');
     setMineError(null);
@@ -81,6 +92,46 @@ export function MineHousesPanel({
   }, []);
 
   useEffect(() => { if (showClaimPanel && claimsState === 'idle') refreshClaims(); }, [showClaimPanel, claimsState, refreshClaims]);
+
+  const loadWorldBuildings = useCallback(async (worldId: string) => {
+    setWorldBuildingsState('loading');
+    try {
+      const r = await fetch(`/api/worlds/${encodeURIComponent(worldId)}/buildings`);
+      const j = await r.json();
+      if (!r.ok || !j.ok) { setWorldBuildingsState('error'); return; }
+      setWorldBuildings((j.buildings as WorldBuilding[]) || []);
+      setWorldBuildingsState('ready');
+    } catch {
+      setWorldBuildingsState('error');
+    }
+  }, []);
+
+  useEffect(() => { if (showClaimPanel) loadWorldBuildings(claimWorld); }, [showClaimPanel, claimWorld, loadWorldBuildings]);
+
+  const submitClaim = useCallback(async (x: number, z: number) => {
+    setClaimingLand(true);
+    setLandError(null);
+    try {
+      const radiusM = Math.max(5, Math.min(200, Number(claimRadius) || 25));
+      const r = await lensRun<{ ok?: boolean; claimId?: string; reason?: string }>('land_claims', 'claim', { worldId: claimWorld, x, z, radiusM });
+      const res = (r.data.result ?? r.data) as { ok?: boolean; claimId?: string; reason?: string };
+      if (res && res.ok && res.claimId) {
+        onFlash('ok', `Plot claimed in ${claimWorld} @(${Math.round(x)}, ${Math.round(z)}) — now claim a building on it as your house.`);
+        await refreshClaims();
+        setSelectedClaimId(res.claimId);
+      } else {
+        setLandError(
+          res?.reason === 'overlap'
+            ? 'That plot overlaps an existing claim — pick a spot further from other plots.'
+            : res?.reason || 'Could not claim that plot.',
+        );
+      }
+    } catch (e) {
+      setLandError(e instanceof Error ? e.message : 'Network error');
+    } finally {
+      setClaimingLand(false);
+    }
+  }, [claimWorld, claimRadius, onFlash, refreshClaims]);
 
   const selectedClaim = useMemo(() => myClaims.find(c => c.id === selectedClaimId) || null, [myClaims, selectedClaimId]);
   const housedBuildingIds = useMemo(() => new Set(myHouses.map(h => h.building_id)), [myHouses]);
@@ -260,7 +311,7 @@ export function MineHousesPanel({
             ) : claimsState === 'error' ? (
               <p className="text-[11px] text-rose-300">Couldn&apos;t load your land claims.</p>
             ) : myClaims.length === 0 ? (
-              <p className="text-[11px] text-slate-500">No active land claims. Claim a plot from the <span className="text-emerald-300">Land Claims</span> lens first.</p>
+              <p className="text-[11px] text-slate-500">No active land claims yet — claim your first plot below.</p>
             ) : (
               <>
                 <select
@@ -283,7 +334,7 @@ export function MineHousesPanel({
                 ) : (
                   <ul className="max-h-40 space-y-1 overflow-y-auto" data-testid="housing-claim-buildings">
                     {claimBuildings.filter(b => !housedBuildingIds.has(b.id)).length === 0 ? (
-                      <p className="py-2 text-[11px] text-slate-500">No unclaimed buildings on this plot yet. Place a building here in the world lens first.</p>
+                      <p className="py-2 text-[11px] text-slate-500">No unclaimed buildings on this plot yet. Buildings rise in the world itself — or claim a plot around an existing building below.</p>
                     ) : claimBuildings.filter(b => !housedBuildingIds.has(b.id)).map(b => (
                       <li key={b.id}>
                         <button
@@ -299,6 +350,50 @@ export function MineHousesPanel({
                 )}
               </>
             )}
+
+            <div className="space-y-2 border-t border-emerald-500/15 pt-2.5" data-testid="housing-claim-land">
+              <p className="flex items-center gap-1.5 text-[10px] text-emerald-300/80">
+                <MapPin className="h-3 w-3" /> Claim new land — a circular plot in a world. Buildings on it can become your house.
+              </p>
+              <select
+                value={claimWorld}
+                onChange={(e) => setClaimWorld(e.target.value)}
+                aria-label="World"
+                className="w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100">
+                {['tunya', 'concordia-hub', 'sere'].map(w => (
+                  <option key={w} value={w}>{w}</option>
+                ))}
+              </select>
+              {worldBuildingsState === 'loading' ? (
+                <div className="h-5 animate-pulse rounded bg-slate-800/60" />
+              ) : worldBuildingsState === 'ready' && worldBuildings.length > 0 ? (
+                <ul className="max-h-32 space-y-1 overflow-y-auto" data-testid="housing-world-buildings">
+                  {worldBuildings.slice(0, 12).map(b => (
+                    <li key={b.id}>
+                      <button
+                        onClick={() => submitClaim(b.x, b.z)}
+                        disabled={claimingLand}
+                        className="flex w-full items-center justify-between rounded border border-slate-700 bg-slate-900/50 px-2 py-1 text-left text-[11px] text-slate-200 hover:border-emerald-500/40 hover:bg-emerald-500/10 disabled:opacity-50">
+                        <span className="flex items-center gap-1.5"><Building2 className="h-3 w-3 text-emerald-400" />{b.name || b.building_type || b.id} <span className="text-[10px] text-slate-500">@({Math.round(b.x)}, {Math.round(b.z)})</span></span>
+                        <span className="text-[10px] text-emerald-300">claim land here</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="flex items-center gap-1.5">
+                <input value={claimX} onChange={(e) => setClaimX(e.target.value)} placeholder="x" inputMode="numeric" aria-label="Anchor x" className="w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
+                <input value={claimZ} onChange={(e) => setClaimZ(e.target.value)} placeholder="z" inputMode="numeric" aria-label="Anchor z" className="w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
+                <input value={claimRadius} onChange={(e) => setClaimRadius(e.target.value)} placeholder="radius m" inputMode="numeric" aria-label="Radius (metres)" className="w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
+                <button
+                  onClick={() => submitClaim(Number(claimX) || 0, Number(claimZ) || 0)}
+                  disabled={claimingLand}
+                  className="shrink-0 rounded bg-emerald-500/80 px-2 py-1 text-[11px] font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50">
+                  {claimingLand ? 'claiming…' : 'Claim plot'}
+                </button>
+              </div>
+              {landError && <p className="text-[11px] text-rose-300" role="alert">{landError}</p>}
+            </div>
           </div>
         )}
       </aside>
