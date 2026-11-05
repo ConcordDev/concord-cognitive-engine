@@ -1,26 +1,28 @@
 'use client';
 
 /**
- * TidalSalinityPanel — approximate lunar-phase tide estimator +
- * depth/salinity/temperature profile builder for the ocean lens.
- * Wires ocean.tidalPrediction + ocean.salinityProfile — the two
- * pure-compute macros that shipped with the domain but had zero UI
- * (every other ocean macro already has a bespoke component: NOAA tides
- * are covered by NoaaTidesPanel/TideActionStack, live marine data by
- * LiveMarinePanel). tidalPrediction is explicitly an *approximation*
- * (its own result carries a "use official tide tables" note) — kept
- * distinct from the real NOAA station lookups elsewhere on the lens.
+ * TidalSalinityPanel — station tide predictions + depth/salinity/
+ * temperature profile builder for the ocean lens. Wires
+ * ocean.tidalPrediction + ocean.salinityProfile. tidalPrediction used
+ * to be a lunar-phase approximation; the verb now delegates to the
+ * real NOAA CO-OPS predictions for a station ID and refuses
+ * (NOT_COMPUTED) without one — this panel sends the station and
+ * renders the verb's real result shape (next high/low + the
+ * prediction rows). (Ocean S4 / F5: the panel previously expected
+ * the retired lunar shape, so its values could never render.)
  */
 
 import { useState } from 'react';
 import { Moon, Layers3, Plus, Trash2 } from 'lucide-react';
 import { CalcPanel } from '@/components/lens-primitives/CalcPanel';
 
-interface TideInput { location: string; tidalRangeMeters: number }
+interface TideInput { location: string; stationId: string }
 interface Reading { depth: number; salinity: number; temperature: number }
+interface TidePoint { time: string; height: number; type: string }
 interface TideResult {
-  location?: string; lunarPhase?: string; springOrNeap?: string; estimatedCurrentHeight?: string;
-  tidalRange?: string; nextHigh?: string; nextLow?: string; note?: string;
+  location?: string; stationId?: string; beginDate?: string; endDate?: string; count?: number;
+  predictions?: TidePoint[]; nextHigh?: TidePoint | null; nextLow?: TidePoint | null;
+  status?: string; message?: string;
 }
 interface SalinityResult {
   readings?: Reading[]; avgSalinity?: number; maxDepth?: number; haloclineDepth?: number | string; waterMass?: string; message?: string;
@@ -29,7 +31,7 @@ interface SalinityResult {
 const emptyReading = (): Reading => ({ depth: 0, salinity: 35, temperature: 15 });
 
 export function TidalSalinityPanel() {
-  const [tide, setTide] = useState<TideInput>({ location: '', tidalRangeMeters: 2 });
+  const [tide, setTide] = useState<TideInput>({ location: '', stationId: '' });
   const [readings, setReadings] = useState<Reading[]>([emptyReading(), { depth: 50, salinity: 34.5, temperature: 12 }]);
 
   const addReading = () => setReadings((rs) => [...rs, emptyReading()]);
@@ -39,7 +41,7 @@ export function TidalSalinityPanel() {
 
   return (
     <CalcPanel<TideResult, SalinityResult>
-      title="Tidal phase & salinity profile"
+      title="Station tides & salinity profile"
       domain="ocean"
       icon={<Moon className="h-5 w-5 text-cyan-300" />}
       macroBadge="ocean.tidalPrediction + salinityProfile"
@@ -49,13 +51,13 @@ export function TidalSalinityPanel() {
         buildArtifact: () => ({ data: tide }),
         render: (
           <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-            <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Moon className="h-3 w-3" />Lunar-phase estimate</div>
+            <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Moon className="h-3 w-3" />Station tide predictions</div>
             <div className="grid grid-cols-2 gap-2">
               <input className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" placeholder="Location label" value={tide.location} onChange={(e) => setTide({ ...tide, location: e.target.value })} />
-              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Tidal range (m)</span>
-                <input type="number" step={0.1} min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={tide.tidalRangeMeters} onChange={(e) => setTide({ ...tide, tidalRangeMeters: Number(e.target.value) || 0 })} /></label>
+              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">NOAA station ID</span>
+                <input className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" placeholder="9414290" value={tide.stationId} onChange={(e) => setTide({ ...tide, stationId: e.target.value })} /></label>
             </div>
-            <p className="text-[9px] text-zinc-500">Approximate — computed from the current lunar day, not station data. For real predictions use the Tides tab.</p>
+            <p className="text-[9px] text-zinc-500">Real NOAA CO-OPS predictions for the station (times GMT). Find station IDs at tidesandcurrents.noaa.gov — the Tides tab lists common ones.</p>
           </div>
         ),
       }}
@@ -82,19 +84,19 @@ export function TidalSalinityPanel() {
       renderResults={(tideResult, salResult) => (
         <>
           <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3">
-            <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Moon className="h-3 w-3" />Tidal estimate</div>
+            <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Moon className="h-3 w-3" />Tide predictions</div>
             {!tideResult && <div className="text-[11px] text-zinc-400">Analyze to compute.</div>}
-            {tideResult && (
+            {tideResult?.status === 'NOT_COMPUTED' && (
+              <div className="text-[11px] text-amber-200/90">{tideResult.message}</div>
+            )}
+            {tideResult && tideResult.status !== 'NOT_COMPUTED' && (
               <div className="space-y-2 text-[11px]">
-                <div className="flex items-center gap-2">
-                  <span className="rounded bg-cyan-500/20 px-2 py-0.5 font-mono text-[10px] text-cyan-200 capitalize">{tideResult.lunarPhase?.replace(/-/g, ' ')}</span>
-                  <span className="text-zinc-300 capitalize">{tideResult.springOrNeap?.replace(/-/g, ' ')}</span>
-                </div>
+                <div className="text-zinc-300">{tideResult.location || tideResult.stationId} · station {tideResult.stationId}</div>
                 <div className="grid grid-cols-2 gap-1.5">
-                  <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Est. height</div><div className="font-mono text-cyan-200">{tideResult.estimatedCurrentHeight}</div></div>
-                  <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Range</div><div className="font-mono text-cyan-200">{tideResult.tidalRange}</div></div>
+                  <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Next high</div><div className="font-mono text-cyan-200">{tideResult.nextHigh ? `${tideResult.nextHigh.height.toFixed(2)} m · ${tideResult.nextHigh.time}` : '—'}</div></div>
+                  <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Next low</div><div className="font-mono text-cyan-200">{tideResult.nextLow ? `${tideResult.nextLow.height.toFixed(2)} m · ${tideResult.nextLow.time}` : '—'}</div></div>
                 </div>
-                <div className="text-[10px] text-amber-300/80">{tideResult.note}</div>
+                <div className="text-[10px] text-zinc-400">{tideResult.count ?? tideResult.predictions?.length ?? 0} predictions · {tideResult.beginDate} → {tideResult.endDate} (GMT, MLLW)</div>
               </div>
             )}
           </div>
@@ -120,9 +122,9 @@ export function TidalSalinityPanel() {
       )}
       dtu={{
         apiSource: 'concord-ocean-tide-salinity',
-        title: (t, s) => `Ocean profile — ${t.lunarPhase ?? '—'} tide · ${s.waterMass ?? '—'} water mass`,
+        title: (t, s) => `Ocean profile — tides at ${t.location ?? t.stationId ?? 'station'} · ${s.waterMass ?? '—'} water mass`,
         content: (t, s) =>
-          `Tidal estimate (${t.location ?? tide.location}):\n  Phase: ${t.lunarPhase} (${t.springOrNeap})\n  Height: ${t.estimatedCurrentHeight} of ${t.tidalRange} range\n  ${t.note}\n\nSalinity profile:\n  Water mass: ${s.waterMass}\n  Avg salinity: ${s.avgSalinity} PSU\n  Max depth: ${s.maxDepth}m\n  Halocline: ${s.haloclineDepth}\n${(s.readings || []).map((r) => `  ${r.depth}m: ${r.salinity} PSU, ${r.temperature}°C`).join('\n')}`,
+          `Tide predictions (${t.location ?? tide.location}, station ${t.stationId ?? tide.stationId}):\n  Next high: ${t.nextHigh ? `${t.nextHigh.height} m @ ${t.nextHigh.time}` : '—'}\n  Next low: ${t.nextLow ? `${t.nextLow.height} m @ ${t.nextLow.time}` : '—'}\n  ${t.count ?? t.predictions?.length ?? 0} predictions, ${t.beginDate} → ${t.endDate} (GMT, MLLW, NOAA CO-OPS)\n\nSalinity profile:\n  Water mass: ${s.waterMass}\n  Avg salinity: ${s.avgSalinity} PSU\n  Max depth: ${s.maxDepth}m\n  Halocline: ${s.haloclineDepth}\n${(s.readings || []).map((r) => `  ${r.depth}m: ${r.salinity} PSU, ${r.temperature}°C`).join('\n')}`,
         tags: () => ['ocean', 'tide', 'salinity', 'water-column'],
         rawData: (t, s) => ({ tide, readings, tideResult: t, salResult: s }),
       }}
