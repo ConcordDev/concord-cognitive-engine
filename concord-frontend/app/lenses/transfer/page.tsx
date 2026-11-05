@@ -21,6 +21,19 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { TransferAnalysisPanel } from '@/components/transfer/TransferAnalysisPanel';
+import { lensRun } from '@/lib/api/client';
+import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
+import { transferKeptRecord } from '@/components/transfer/transferKeep';
+
+interface AnalogyMappingRow { from: string; to: string; relation: string }
+interface AnalogyResult {
+  patternId?: string | null; dtuId?: string; patternName: string;
+  sourceDomain: string; targetDomain: string; relevance: number;
+  kind?: string; mapping?: AnalogyMappingRow[]; sharedTerms?: string[];
+  template?: unknown;
+}
+interface AnalogyResponse { ok?: boolean; results?: AnalogyResult[]; scanned?: { patterns: number; dtus: number }; error?: string }
+interface ClassifyResponse { ok?: boolean; domain?: string; matchedKeywords?: string[]; basis?: string; error?: string }
 
 type TransferView = 'analogies' | 'etl' | 'migration' | 'repos';
 
@@ -39,7 +52,9 @@ export default function TransferLensPage() {
   const [sourceText, setSourceText] = useState('');
   const [targetDomain, setTargetDomain] = useState('');
   const [classifyText, setClassifyText] = useState('');
-  const [results, setResults] = useState<unknown>(null);
+  const [analogyData, setAnalogyData] = useState<AnalogyResponse | null>(null);
+  const [analogyError, setAnalogyError] = useState<string | null>(null);
+  const [classifyData, setClassifyData] = useState<ClassifyResponse | null>(null);
   const sourceInputRef = useRef<HTMLTextAreaElement>(null);
   const classifyInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,19 +63,54 @@ export default function TransferLensPage() {
     queryFn: () => apiHelpers.transfer.history().then((r) => r.data),
   });
 
+  // The ETL run log — the lens's other ledger (S-TR-3). The Analogies
+  // surface drinks from both stores; neither is hidden from the other.
+  const { data: runLog } = useQuery({
+    queryKey: ['transfer-run-log'],
+    queryFn: () => lensRun('transfer', 'run-log', {}).then((r) => (r.data?.result ?? null) as { runs?: Array<Record<string, unknown>> } | null),
+  });
+  const syncRuns = useMemo(() => (Array.isArray(runLog?.runs) ? runLog.runs : []), [runLog]);
+
   const findAnalogies = useMutation({
     mutationFn: () => apiHelpers.transfer.analogies({ source: sourceText, target: targetDomain || undefined }),
-    onSuccess: (res) => setResults(res.data),
-    onError: (err) => console.error('findAnalogies failed:', err instanceof Error ? err.message : err),
+    onSuccess: (res) => { setAnalogyData(res.data as AnalogyResponse); setAnalogyError(null); setClassifyData(null); },
+    onError: (err) => { setAnalogyData(null); setAnalogyError(err instanceof Error ? err.message : 'Analogy search failed'); },
   });
 
   const classifyDomain = useMutation({
     mutationFn: () => apiHelpers.transfer.classifyDomain({ content: classifyText }),
-    onSuccess: (res) => setResults(res.data),
-    onError: (err) => console.error('classifyDomain failed:', err instanceof Error ? err.message : err),
+    onSuccess: (res) => { setClassifyData(res.data as ClassifyResponse); setAnalogyData(null); setAnalogyError(null); },
+    onError: (err) => { setClassifyData({ ok: false, error: err instanceof Error ? err.message : 'Classification failed' }); },
   });
 
   const transfers = useMemo(() => history?.transfers || history || [], [history]);
+
+  // One ledger (S-TR-3): stats and history count the lens's transfers —
+  // pattern transfers and ETL syncs alike, each labelled for what it is.
+  const completedCount = useMemo(
+    () => transfers.filter((t: Record<string, unknown>) => t.status === 'completed').length
+      + syncRuns.filter((r) => r.status === 'success' || r.status === 'partial').length,
+    [transfers, syncRuns],
+  );
+  const rowsMoved = useMemo(
+    () => syncRuns.reduce((sum, r) => sum + (Number(r.rowsWritten) || 0), 0),
+    [syncRuns],
+  );
+  const historyEntries = useMemo(() => {
+    const patternEntries = (transfers as Array<Record<string, unknown>>).map((t) => ({
+      kind: 'pattern' as const,
+      title: `${(t.sourceDomain as string) || 'pattern'} → ${(t.targetDomain as string) || ''}`,
+      sub: `pattern transfer · ${(t.status as string) || 'recorded'}${t.confidence != null ? ` · confidence ${t.confidence}` : ''}`,
+      at: (t.createdAt as string) || '',
+    }));
+    const syncEntries = syncRuns.map((r) => ({
+      kind: 'sync' as const,
+      title: (r.pipelineName as string) || 'sync',
+      sub: `ETL sync · ${(r.mode as string) || 'full'} · ${Number(r.rowsWritten) || 0} written${Number(r.rowsSkippedDuplicates) ? ` · ${Number(r.rowsSkippedDuplicates)} duplicates skipped` : ''} · ${(r.status as string) || ''}`,
+      at: (r.finishedAt as string) || '',
+    }));
+    return [...patternEntries, ...syncEntries].sort((a, b) => (b.at || '').localeCompare(a.at || ''));
+  }, [transfers, syncRuns]);
 
   useLensCommand(
     [
@@ -118,18 +168,18 @@ export default function TransferLensPage() {
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
                   <CheckCircle2 className="w-5 h-5 text-neon-green mb-2" />
-                  <p className="text-2xl font-bold">{transfers.filter((t: Record<string, unknown>) => t.status === 'completed').length || transfers.length}</p>
-                  <p className="text-sm text-gray-400">Completed</p>
+                  <p className="text-2xl font-bold">{completedCount}</p>
+                  <p className="text-sm text-gray-400">Completed (syncs + pattern transfers)</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
                   <Shuffle className="w-5 h-5 text-neon-cyan mb-2" />
-                  <p className="text-2xl font-bold">{transfers.length}</p>
-                  <p className="text-sm text-gray-400">Total Volume</p>
+                  <p className="text-2xl font-bold">{rowsMoved}</p>
+                  <p className="text-sm text-gray-400">Rows Moved (ETL syncs)</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
                   <GitCompare className="w-5 h-5 text-yellow-400 mb-2" />
-                  <p className="text-2xl font-bold">{[...new Set(transfers.map((t: Record<string, unknown>) => t.domain || t.target).filter(Boolean))].length}</p>
-                  <p className="text-sm text-gray-400">Domains</p>
+                  <p className="text-2xl font-bold">{[...new Set(transfers.map((t: Record<string, unknown>) => t.targetDomain || t.domain).filter(Boolean))].length}</p>
+                  <p className="text-sm text-gray-400">Domains (pattern transfers)</p>
                 </div>
               </div>
 
@@ -194,11 +244,77 @@ export default function TransferLensPage() {
                     <h2 className="font-semibold mb-3 flex items-center gap-2">
                       <ArrowRight className="w-4 h-4 text-neon-purple" /> Results
                     </h2>
-                    {results ? (
-                      <pre className="bg-lattice-surface p-3 rounded-lg whitespace-pre-wrap text-xs text-gray-300 font-mono max-h-64 overflow-y-auto">
-                        {JSON.stringify(results, null, 2)}
-                      </pre>
-                    ) : (
+                    {analogyError && (
+                      <p className="text-sm text-rose-300">Analogy search failed: {analogyError}</p>
+                    )}
+                    {classifyData && (
+                      classifyData.ok === false ? (
+                        <p className="text-sm text-rose-300">Classification failed: {classifyData.error || 'the classifier refused the input'}.</p>
+                      ) : (
+                        <div className="space-y-1 text-sm">
+                          <p className="text-gray-200">
+                            Classified as <span className="font-semibold text-neon-green">{classifyData.domain}</span>
+                            {classifyData.basis === 'content' ? ' — from the content in the box.' : '.'}
+                          </p>
+                          {classifyData.matchedKeywords && classifyData.matchedKeywords.length > 0 ? (
+                            <p className="text-xs text-gray-400">Matched keywords: {classifyData.matchedKeywords.join(', ')} — the words that decided it.</p>
+                          ) : (
+                            <p className="text-xs text-gray-400">No domain keywords matched, so it lands in general.</p>
+                          )}
+                        </div>
+                      )
+                    )}
+                    {analogyData && (
+                      analogyData.ok === false ? (
+                        <p className="text-sm text-rose-300">Analogy search failed: {analogyData.error || 'the search refused the input'}.</p>
+                      ) : (analogyData.results && analogyData.results.length > 0 ? (
+                        <div className="space-y-3">
+                          {analogyData.results.map((r, i) => (
+                            <div key={r.patternId || r.dtuId || i} className="rounded-xl border border-white/10 bg-black/30 p-3 space-y-1.5">
+                              <p className="text-sm font-medium text-gray-100">{r.patternName}</p>
+                              <p className="text-[11px] text-gray-400">
+                                {r.kind === 'pattern' ? 'Extracted pattern' : 'From a DTU the platform holds'} · {r.sourceDomain} → {r.targetDomain} · relevance {Math.round(r.relevance * 100)}%
+                              </p>
+                              {r.mapping && r.mapping.length > 0 ? (
+                                <div className="space-y-0.5">
+                                  {r.mapping.map((m, j) => (
+                                    <p key={j} className="text-xs text-gray-300">
+                                      <span className="text-neon-cyan">{m.from}</span>
+                                      <span className="text-gray-500"> → </span>
+                                      {m.to}
+                                      <span className="text-gray-500"> · {m.relation}</span>
+                                    </p>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-500">No element mapping recorded for this result.</p>
+                              )}
+                            </div>
+                          ))}
+                          <KeepRecordActions
+                            record={transferKeptRecord({
+                              source: sourceText,
+                              target: targetDomain,
+                              result: {
+                                ...analogyData,
+                                results: (analogyData.results || []).map((r) => ({
+                                  ...r,
+                                  template: typeof r.template === 'string' ? r.template : undefined,
+                                })),
+                              },
+                            })}
+                            saveLabel="Keep these analogies"
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400">
+                          Nothing the platform holds matches that pair yet — no extracted pattern and no DTU shares its terms
+                          {analogyData.scanned ? ` (searched ${analogyData.scanned.patterns} patterns and ${analogyData.scanned.dtus} DTUs)` : ''}.
+                          Try broader terms, or a concept the platform already holds work about.
+                        </p>
+                      ))
+                    )}
+                    {!analogyError && !classifyData && !analogyData && (
                       <p className="text-center py-8 text-gray-400 text-sm">Run an operation to see results</p>
                     )}
                   </div>
@@ -208,10 +324,10 @@ export default function TransferLensPage() {
                       <History className="w-4 h-4 text-neon-blue" /> Transfer History
                     </h2>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {transfers.length > 0 ? transfers.map((t: Record<string, unknown>, i: number) => (
+                      {historyEntries.length > 0 ? historyEntries.map((entry, i) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="rounded-xl border border-white/10 bg-[#111] p-3 text-xs">
-                          <p className="font-medium">{(t.source as string) || (t.pattern as string)}</p>
-                          <p className="text-gray-400">{(t.target as string) || (t.domain as string)}</p>
+                          <p className="font-medium">{entry.title}</p>
+                          <p className="text-gray-400">{entry.sub}{entry.at ? ` · ${new Date(entry.at).toLocaleString()}` : ''}</p>
                         </motion.div>
                       )) : (
                         <p className="text-center py-4 text-gray-400 text-sm">No transfers yet</p>
