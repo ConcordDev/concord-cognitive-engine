@@ -1270,7 +1270,54 @@ export default function registerInsuranceActions(register) {
     if (premiumSparks <= 0) return { ok: false, error: "premiumSparks must be > 0" };
     const durationDays = Math.max(1, pactInt(params.durationDays, 30));
 
-    const beneficiaries = normaliseBeneficiaries(params.beneficiaries, params.beneficiaryUserId);
+    // F3 (death-insurance) — beneficiaries must resolve to accounts (the
+    // alliance resolver's shape): a pact naming an identifier that resolves
+    // to nobody can never complete its handshake, and the insured's own
+    // name must not slip past the id-only self check. Resolution is
+    // directory-backed — where the request carries no user directory the
+    // raw id stands, exactly as before; it is never fabricated.
+    const selfNames = new Set(
+      [ctx?.actor?.displayName, ctx?.actor?.username, ctx?.actor?.name]
+        .filter((v) => typeof v === "string" && v.trim())
+        .map((v) => v.trim().toLowerCase()),
+    );
+    const resolveBene = (raw) => {
+      const token = String(raw ?? "").trim().replace(/^@+/, "");
+      if (!token) return { ok: true, userId: "" };
+      if (selfNames.has(token.toLowerCase())) {
+        return { ok: false, error: "self_pact_blocked: beneficiary cannot equal insured" };
+      }
+      const db = ctx?.db || globalThis._concordSTATE?.db || null;
+      if (!db || typeof db.prepare !== "function") return { ok: true, userId: token };
+      try {
+        const row = db.prepare("SELECT id FROM users WHERE username = ?").get(token)
+          || db.prepare("SELECT id FROM users WHERE lower(username) = lower(?)").get(token)
+          || db.prepare("SELECT id FROM users WHERE id = ?").get(token);
+        if (!row || !row.id) return { ok: false, error: `beneficiary_not_found: ${token}` };
+        return { ok: true, userId: String(row.id) };
+      } catch {
+        return { ok: true, userId: token };
+      }
+    };
+    let resolvedBeneficiaries = params.beneficiaries;
+    if (Array.isArray(params.beneficiaries)) {
+      resolvedBeneficiaries = [];
+      for (const b of params.beneficiaries) {
+        const r = resolveBene(b?.userId ?? b?.beneficiaryUserId ?? b);
+        if (!r.ok) return r;
+        resolvedBeneficiaries.push(
+          b && typeof b === "object" ? { ...b, userId: r.userId } : r.userId,
+        );
+      }
+    }
+    let resolvedFallback = params.beneficiaryUserId;
+    if (resolvedFallback != null) {
+      const r = resolveBene(resolvedFallback);
+      if (!r.ok) return r;
+      resolvedFallback = r.userId;
+    }
+
+    const beneficiaries = normaliseBeneficiaries(resolvedBeneficiaries, resolvedFallback);
     if (!beneficiaries.length) return { ok: false, error: "at least one beneficiary required" };
     // Suicide-pact prevention: insured cannot be a beneficiary of their own pact.
     if (beneficiaries.some((b) => b.userId === userId)) {
