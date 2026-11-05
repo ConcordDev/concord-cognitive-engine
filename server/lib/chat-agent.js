@@ -35,6 +35,7 @@
 
 import { sanitizeAgentHistory, DONT_INVENT_LINE } from "./chat/agent-history-sanitize.js";
 import { brainChat, provenanceFrom } from "./byo-router.js";
+import { normalizeToolCall, normalizeCallParams } from "./chat/tool-call-normalize.js";
 import {
   resolveAgentMaxTokens,
   resolveChatTimeoutMs,
@@ -160,6 +161,15 @@ function _validateToolCall(call) {
   });
   if (missing.length === 0) return { ok: true };
 
+  if (call.tool === "run_lens_action") {
+    const names = { domain: '"domain" (the lens, e.g. "fitness")', action: '"action" (e.g. "plan-create")' };
+    return {
+      ok: false,
+      reason: `run_lens_action is missing ${missing.map((k) => names[k] || `"${k}"`).join(" and ")}. If you don't know the exact name, call find_lens_actions with what the user wants, or list_lens_actions with the lens.`,
+      missing,
+      example: '[TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "fitness", "action": "workout-plan-generate", "params": {}}}]',
+    };
+  }
   // Build a worked example the model can copy.
   const exParams = {};
   for (const k of required) exParams[k] = `<${k}>`;
@@ -442,8 +452,9 @@ export function parseToolCalls(text) {
     for (const span of findToolCallSpans(source)) {
       const parsed = span.parsed;
       if (!parsed?.tool) continue;
-      const params = parsed.params && typeof parsed.params === "object" ? parsed.params : {};
-      calls.push({ tool: String(parsed.tool), params, raw: span.raw });
+      // params, else arguments/args/input (object or JSON string), else stray top-level keys.
+      const params = normalizeCallParams(parsed);
+      calls.push(normalizeToolCall({ tool: String(parsed.tool), params, raw: span.raw }, AGENT_TOOL_NAMES));
     }
   };
   const s = String(text ?? "");
@@ -879,6 +890,11 @@ export async function validComputeKeys(modName = "") {
 export { GEN_3D_FALLBACK_RESERVE_MS } from "./chat/gen-budget.js";
 
 export async function executeToolCall(ctx, runMacro, lensActions, call) {
+  // Every path (agent loop, chat.respond, ConKay, native tool calls) lands
+  // here: map aliased shapes ({lens, actionName}, "fitness.plan-create",
+  // JSON-string arguments, tool "lens.action") onto the schema first.
+  call = normalizeToolCall(call, AGENT_TOOL_NAMES) || call;
+  if (!call.params || typeof call.params !== "object") call = { ...call, params: {} };
   // Param-validator gate (R-concay-tools-3): catch empty `{}` blocks the
   // model emits before they reach the macro router. The brain sees the
   // surgical error on the next turn and self-corrects — no LLM guesswork
