@@ -20,7 +20,7 @@ import { TimelineView, type TimelineEvent } from '@/components/viz';
 import {
   Activity, Play, Plus, Pause, Trash2, Loader2, CheckCircle2, XCircle,
   AlertTriangle, Bug, Library, Clock, History, Sigma, Camera, Eraser,
-  Wrench, Target,
+  Wrench, Target, Pencil,
 } from 'lucide-react';
 
 type TabId = 'monitor' | 'counter' | 'templates' | 'temporal' | 'history' | 'quantified';
@@ -36,6 +36,19 @@ const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
 
 const SEV = ['critical', 'high', 'medium', 'low'];
 
+/** F11: developer error codes never reach the user verbatim. */
+function userError(raw: string | null | undefined, fallback: string): string {
+  if (!raw) return fallback;
+  if (raw.startsWith('unsafe_expression:') || raw.startsWith('unsafe_condition:') || raw.startsWith('unsafe_until:')) {
+    const reason = raw.split(':').slice(1).join(':').replace(/_/g, ' ');
+    return `That expression was refused — ${reason}. Expressions may only read state fields, compare them, and combine comparisons.`;
+  }
+  if (raw.includes(':parse_error') || raw.includes('parse_error')) {
+    return 'That expression could not be parsed — check its syntax and try again.';
+  }
+  return raw;
+}
+
 function sevClass(s: string): string {
   return s === 'critical' ? 'bg-red-500/15 text-red-400'
     : s === 'high' ? 'bg-orange-500/15 text-orange-400'
@@ -50,6 +63,12 @@ function parseJsonOr<T>(text: string, fallback: T): { value: T; error: string | 
 
 export function FormalVerificationWorkbench() {
   const [tab, setTab] = useState<TabId>('monitor');
+  // S-INV-4 (D3): a Library "Use" loads the template into the monitor form.
+  const [templateSeed, setTemplateSeed] = useState<{ name: string; expression: string } | null>(null);
+  const useTemplate = useCallback((t: { name: string; expression: string }) => {
+    setTemplateSeed(t);
+    setTab('monitor');
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -73,9 +92,9 @@ export function FormalVerificationWorkbench() {
         })}
       </div>
 
-      {tab === 'monitor' && <MonitorPanel />}
+      {tab === 'monitor' && <MonitorPanel templateSeed={templateSeed} onConsumeTemplate={() => setTemplateSeed(null)} />}
       {tab === 'counter' && <CounterexamplePanel />}
-      {tab === 'templates' && <TemplatesPanel />}
+      {tab === 'templates' && <TemplatesPanel onUse={useTemplate} />}
       {tab === 'temporal' && <TemporalPanel />}
       {tab === 'history' && <ViolationHistoryPanel />}
       {tab === 'quantified' && <QuantifiedPanel />}
@@ -98,7 +117,10 @@ interface Monitor {
   lastCheckedAt: string | null;
 }
 
-function MonitorPanel() {
+function MonitorPanel({ templateSeed, onConsumeTemplate }: {
+  templateSeed: { name: string; expression: string } | null;
+  onConsumeTemplate: () => void;
+}) {
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [name, setName] = useState('');
   const [expression, setExpression] = useState('');
@@ -107,6 +129,19 @@ function MonitorPanel() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [lastTick, setLastTick] = useState<any>(null);
+  // S-INV-2 (F5): edit-in-place + confirming removal.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [notice, setNotice] = useState('');
+
+  // S-INV-4: a template chosen in the Library lands in this form.
+  useEffect(() => {
+    if (!templateSeed) return;
+    setName(templateSeed.name);
+    setExpression(templateSeed.expression);
+    setEditingId(null);
+    onConsumeTemplate();
+  }, [templateSeed, onConsumeTemplate]);
 
   const refresh = useCallback(async () => {
     const { data } = await lensRun<any>('invariant', 'listMonitors', {});
@@ -121,10 +156,21 @@ function MonitorPanel() {
     setBusy(true); setErr(null);
     const { data } = await lensRun<any>('invariant', 'registerMonitor', { name, expression, severity });
     setBusy(false);
-    if (!data.ok) { setErr(data.error || 'Failed to register monitor'); return; }
+    if (!data.ok) { setErr(userError(data.error, 'Failed to register monitor')); return; }
     setName(''); setExpression('');
     await refresh();
   }, [name, expression, severity, refresh]);
+
+  const saveEdit = useCallback(async () => {
+    if (!editingId || !name.trim() || !expression.trim()) return;
+    setBusy(true); setErr(null);
+    const { data } = await lensRun<any>('invariant', 'updateMonitor', { monitorId: editingId, name, expression, severity });
+    setBusy(false);
+    if (!data.ok) { setErr(userError(data.error, 'Failed to save the edit')); return; }
+    setEditingId(null);
+    setName(''); setExpression('');
+    await refresh();
+  }, [editingId, name, expression, severity, refresh]);
 
   const runTick = useCallback(async () => {
     setBusy(true); setErr(null);
@@ -143,9 +189,18 @@ function MonitorPanel() {
   }, [refresh]);
 
   const remove = useCallback(async (m: Monitor) => {
-    await lensRun('invariant', 'removeMonitor', { monitorId: m.id });
+    // S-INV-2 (F5): removal confirms, and the disposition of the
+    // monitor's violations is stated — they stay in the history under
+    // its name, resolvable and deletable there.
+    if (confirmRemoveId !== m.id) { setConfirmRemoveId(m.id); return; }
+    setConfirmRemoveId(null);
+    const { data } = await lensRun<any>('invariant', 'removeMonitor', { monitorId: m.id });
+    const retained = data?.result?.violationsRetained;
+    setNotice(typeof retained === 'number'
+      ? `Removed \u201c${m.name}\u201d. Its ${retained} recorded violation(s) stay in the Violation History under its name.`
+      : `Removed \u201c${m.name}\u201d.`);
     await refresh();
-  }, [refresh]);
+  }, [refresh, confirmRemoveId]);
 
   return (
     <div className="space-y-4">
@@ -166,11 +221,24 @@ function MonitorPanel() {
           <select value={severity} onChange={(e) => setSeverity(e.target.value)} className="input-lattice text-sm">
             {SEV.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-          <button onClick={addMonitor} disabled={busy || !name.trim() || !expression.trim()}
-            className="btn-neon green text-sm flex items-center gap-1 disabled:opacity-50">
-            {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-            Register Monitor
-          </button>
+          {editingId ? (
+            <>
+              <button onClick={saveEdit} disabled={busy || !name.trim() || !expression.trim()}
+                className="btn-neon green text-sm flex items-center gap-1 disabled:opacity-50">
+                {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Pencil className="w-3 h-3" />}
+                Save changes
+              </button>
+              <button onClick={() => { setEditingId(null); setName(''); setExpression(''); }}
+                className="btn-secondary text-sm">Cancel</button>
+              <span className="text-[11px] text-gray-400">Editing — saving replaces the monitor in place.</span>
+            </>
+          ) : (
+            <button onClick={addMonitor} disabled={busy || !name.trim() || !expression.trim()}
+              className="btn-neon green text-sm flex items-center gap-1 disabled:opacity-50">
+              {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+              Register Monitor
+            </button>
+          )}
         </div>
       </div>
 
@@ -183,7 +251,7 @@ function MonitorPanel() {
             Run Tick
           </button>
         </div>
-        <textarea value={stateJson} onChange={(e) => setStateJson(e.target.value)} rows={3}
+        <textarea value={stateJson} onChange={(e) => { setStateJson(e.target.value); setLastTick(null); }} rows={3}
           className="input-lattice text-xs font-mono w-full" />
         {lastTick && (
           <div className="flex items-center gap-3 text-xs">
@@ -196,6 +264,7 @@ function MonitorPanel() {
       </div>
 
       {err && <div className="text-xs text-neon-pink bg-neon-pink/10 rounded px-2 py-1">{err}</div>}
+      {notice && <div className="text-xs text-gray-300 bg-white/5 rounded px-2 py-1">{notice}</div>}
 
       <div className="space-y-2">
         {monitors.length === 0 && <p className="text-xs text-gray-400">No monitors registered yet.</p>}
@@ -221,12 +290,17 @@ function MonitorPanel() {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              <button onClick={() => { setEditingId(m.id); setName(m.name); setExpression(m.expression); setSeverity(m.severity); }} title="Edit"
+                className="p-1 rounded hover:bg-white/10">
+                <Pencil className="w-3.5 h-3.5 text-gray-400" />
+              </button>
               <button onClick={() => toggle(m)} title={m.active ? 'Pause' : 'Resume'}
                 className="p-1 rounded hover:bg-white/10">
                 {m.active ? <Pause className="w-3.5 h-3.5 text-gray-400" /> : <Play className="w-3.5 h-3.5 text-neon-green" />}
               </button>
-              <button onClick={() => remove(m)} title="Remove" className="p-1 rounded hover:bg-white/10">
-                <Trash2 className="w-3.5 h-3.5 text-neon-pink" />
+              <button onClick={() => remove(m)} title="Remove"
+                className={confirmRemoveId === m.id ? 'text-[10px] text-rose-300 px-1' : 'p-1 rounded hover:bg-white/10'}>
+                {confirmRemoveId === m.id ? `Remove \u201c${m.name}\u201d? Its violations stay in the history. Click again` : <Trash2 className="w-3.5 h-3.5 text-neon-pink" />}
               </button>
             </div>
           </div>
@@ -347,7 +421,7 @@ interface Template {
   params: string[];
 }
 
-function TemplatesPanel() {
+function TemplatesPanel({ onUse }: { onUse: (t: { name: string; expression: string }) => void }) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [filter, setFilter] = useState<string>('');
@@ -376,7 +450,8 @@ function TemplatesPanel() {
     <div className="space-y-4">
       <p className="text-xs text-gray-400">
         A library of ready-made invariant templates — uniqueness, referential integrity, range
-        bounds, presence, conservation laws, and temporal safety/liveness.
+        bounds, presence, conservation laws, and temporal safety/liveness. Use loads a template
+        into the monitor form, ready to register or adjust.
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
         {categories.map((c) => (
@@ -406,12 +481,17 @@ function TemplatesPanel() {
             <code className="block text-[11px] font-mono text-neon-green bg-lattice-surface rounded px-2 py-1">
               {t.expressionTemplate}
             </code>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               {t.params.map((p) => (
                 <span key={p} className="text-[10px] font-mono text-gray-400 bg-lattice-surface rounded px-1 py-0.5">
                   {p}
                 </span>
               ))}
+              <button type="button"
+                onClick={() => onUse({ name: t.name, expression: t.expressionTemplate })}
+                className="ml-auto text-[11px] text-neon-cyan underline">
+                Use in the monitor form →
+              </button>
             </div>
           </div>
         ))}
@@ -427,6 +507,9 @@ interface TraceRow {
   conditionHolds: boolean;
   conditionError: string | null;
   untilHolds?: boolean;
+  label?: string;
+  at?: string | null;
+  state?: Record<string, unknown>;
 }
 
 function TemporalPanel() {
@@ -471,17 +554,6 @@ function TemporalPanel() {
     setHistoryLen(data.result.historyLength);
   }, [operator, condition, untilExpr]);
 
-  const timelineEvents: TimelineEvent[] = useMemo(() => {
-    if (!result?.trace) return [];
-    return (result.trace as TraceRow[]).map((r) => ({
-      id: `step-${r.step}`,
-      label: `Step ${r.step}`,
-      time: r.step,
-      tone: r.conditionError ? 'warn' : r.conditionHolds ? 'good' : 'bad',
-      detail: `condition ${r.conditionHolds ? 'holds' : 'fails'}${
-        r.untilHolds !== undefined ? ` · until ${r.untilHolds ? 'holds' : 'fails'}` : ''}`,
-    }));
-  }, [result]);
 
   return (
     <div className="space-y-4">
@@ -553,10 +625,31 @@ function TemporalPanel() {
               <span className="text-neon-pink">violation @ step {result.violationStep}</span>
             )}
           </div>
-          {timelineEvents.length > 0 && (
-            <div className="bg-lattice-surface rounded p-2">
-              <TimelineView events={timelineEvents} height={100} />
-            </div>
+          {/* F7: steps are steps — a list naming each recorded state and
+              its label, never a time axis (the axis rendered step numbers
+              as the Unix epoch). */}
+          {Array.isArray(result.trace) && result.trace.length > 0 && (
+            <ol className="space-y-1">
+              {(result.trace as TraceRow[]).map((r) => (
+                <li key={r.step} className="bg-lattice-surface rounded px-2 py-1.5 text-[11px] flex items-start gap-2">
+                  <span className={r.conditionError ? 'text-yellow-400' : r.conditionHolds ? 'text-neon-green' : 'text-neon-pink'}>
+                    {r.conditionError ? '⚠' : r.conditionHolds ? '✓' : '✗'}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="font-medium">Step {r.step + 1}</span>
+                    {r.label ? <span className="text-gray-300"> · {r.label}</span> : null}
+                    <span className="text-gray-400">
+                      {' '}— condition {r.conditionError ? `could not evaluate (${r.conditionError})` : r.conditionHolds ? 'holds' : 'fails'}
+                      {r.untilHolds !== undefined ? ` · until ${r.untilHolds ? 'holds' : 'fails'}` : ''}
+                    </span>
+                    {r.state && (
+                      <span className="block font-mono text-gray-500 truncate">{JSON.stringify(r.state)}</span>
+                    )}
+                  </span>
+                  {r.at && <span className="text-gray-500">{new Date(r.at).toLocaleString()}</span>}
+                </li>
+              ))}
+            </ol>
           )}
         </div>
       )}
@@ -576,6 +669,10 @@ interface Violation {
   resolved: boolean;
   resolvedAt: string | null;
   resolution?: string;
+  // D1: the receipt — the offending state the engine recorded.
+  state?: Record<string, unknown>;
+  evaluatedValue?: unknown;
+  error?: string | null;
 }
 
 function ViolationHistoryPanel() {
@@ -600,15 +697,26 @@ function ViolationHistoryPanel() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // F4: Resolve was wired through window.prompt — a native dialog, dead
+  // under the product's own standards, so the click never reached the
+  // (working) verb. The note is an inline field now.
+  const [resolveNote, setResolveNote] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const resolve = useCallback(async (v: Violation) => {
-    const note = window.prompt(`Resolution note for "${v.name}":`, '');
-    if (note === null) return;
-    setResolving(v.id);
-    const { data } = await lensRun('invariant', 'resolveViolation', { violationId: v.id, resolution: note });
+    if (resolving !== v.id) { setResolving(v.id); setResolveNote(''); return; }
+    const { data } = await lensRun('invariant', 'resolveViolation', { violationId: v.id, resolution: resolveNote });
+    if (!data.ok) { setErr(data.error || 'Failed to resolve'); setResolving(null); return; }
     setResolving(null);
-    if (!data.ok) { setErr(data.error || 'Failed to resolve'); return; }
     await refresh();
-  }, [refresh]);
+  }, [refresh, resolving, resolveNote]);
+
+  const deleteViolation = useCallback(async (v: Violation) => {
+    if (confirmDeleteId !== v.id) { setConfirmDeleteId(v.id); return; }
+    setConfirmDeleteId(null);
+    const { data } = await lensRun('invariant', 'deleteViolation', { violationId: v.id });
+    if (!data.ok) { setErr(data.error || 'Failed to delete'); return; }
+    await refresh();
+  }, [refresh, confirmDeleteId]);
 
   const timelineEvents: TimelineEvent[] = useMemo(() =>
     violations.map((v) => ({
@@ -686,17 +794,39 @@ function ViolationHistoryPanel() {
                 detected {new Date(v.detectedAt).toLocaleString()}
                 {v.resolved && v.resolvedAt && ` · resolved ${new Date(v.resolvedAt).toLocaleString()}`}
               </div>
+              {/* D1: the receipt — the state that violated, as recorded. */}
+              {v.state && (
+                <p className="text-[10px] text-gray-300 mt-1 font-mono break-all">
+                  offending state: {JSON.stringify(v.state)}
+                  {v.error ? ` · evaluation error: ${v.error}` : ` · evaluated to ${String(v.evaluatedValue)}`}
+                </p>
+              )}
               {v.resolved && v.resolution && (
                 <p className="text-[10px] text-neon-green mt-0.5">↳ {v.resolution}</p>
               )}
+              {resolving === v.id && !v.resolved && (
+                <div className="mt-2 flex items-center gap-2">
+                  <input value={resolveNote} onChange={(e) => setResolveNote(e.target.value)}
+                    placeholder="Resolution note (optional)"
+                    className="input-lattice text-xs flex-1" aria-label="Resolution note" />
+                  <button onClick={() => resolve(v)} className="btn-neon green text-xs">Confirm resolve</button>
+                  <button onClick={() => setResolving(null)} className="btn-secondary text-xs">Cancel</button>
+                </div>
+              )}
             </div>
-            {!v.resolved && (
-              <button onClick={() => resolve(v)} disabled={resolving === v.id}
-                className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50">
-                {resolving === v.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wrench className="w-3 h-3" />}
-                Resolve
+            <div className="flex flex-col items-end gap-1">
+              {!v.resolved && resolving !== v.id && (
+                <button onClick={() => resolve(v)}
+                  className="btn-secondary text-xs flex items-center gap-1">
+                  <Wrench className="w-3 h-3" />
+                  Resolve
+                </button>
+              )}
+              <button onClick={() => deleteViolation(v)}
+                className={confirmDeleteId === v.id ? 'text-[10px] text-rose-300 underline' : 'text-[10px] text-gray-500 underline hover:text-gray-300'}>
+                {confirmDeleteId === v.id ? `Delete this record? Click again` : 'Delete'}
               </button>
-            )}
+            </div>
           </div>
         ))}
       </div>

@@ -671,6 +671,11 @@ export default function registerInvariantActions(registerLensAction) {
       const userId = invActor(ctx);
       const monitors = invList(s.monitors, userId);
       const state = (params && params.state && typeof params.state === "object") ? params.state : {};
+      // dryRun (the Action Tester's evaluation): verdicts are computed
+      // against the live monitors but NOTHING is recorded — no violation
+      // entries, no counter movement. A hypothetical state must not
+      // pollute the real history.
+      const dryRun = params?.dryRun === true;
       const ts = invNow();
       const checked = [];
       const newViolations = [];
@@ -679,6 +684,10 @@ export default function registerInvariantActions(registerLensAction) {
         const { value, error } = safeEval(m.expression, state);
         const passed = error === null && value === true;
         const status = error ? "error" : passed ? "pass" : "violation";
+        if (dryRun) {
+          checked.push({ monitorId: m.id, name: m.name, expression: m.expression, status, evaluatedValue: value, error });
+          continue;
+        }
         m.lastCheckedAt = ts;
         m.lastResult = status;
         m.checkCount += 1;
@@ -762,8 +771,64 @@ export default function registerInvariantActions(registerLensAction) {
       const idx = monitors.findIndex(x => x.id === p.monitorId);
       if (idx === -1) return { ok: false, error: "monitor_not_found" };
       const [removed] = monitors.splice(idx, 1);
+      // Derived records are RETAINED, stated not silent: the monitor's
+      // violations stay in the history under its name and expression,
+      // resolvable and deletable like any other record.
+      const vlog = invList(s.violations, userId);
+      const violationsRetained = vlog.filter(v => v.monitorId === removed.id).length;
       invSave();
-      return { ok: true, result: { removed: removed.id, totalMonitors: monitors.length } };
+      return { ok: true, result: { removed: removed.id, totalMonitors: monitors.length, violationsRetained } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * updateMonitor — edit a registered monitor in place (S-INV-2/F5).
+   * The expression is re-validated by the same AST gate as registration.
+   * params: { monitorId, name?, expression?, severity?, description? }
+   */
+  registerLensAction("invariant", "updateMonitor", (ctx, _artifact, params) => {
+    try {
+      const s = invState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = invActor(ctx);
+      const p = params || {};
+      const monitors = invList(s.monitors, userId);
+      const m = monitors.find(x => x.id === p.monitorId);
+      if (!m) return { ok: false, error: "monitor_not_found" };
+      if (typeof p.name === "string" && p.name.trim()) m.name = p.name.trim().slice(0, 120);
+      if (typeof p.expression === "string" && p.expression.trim()) {
+        const astCheck = validateExpressionAST(p.expression.trim());
+        if (!astCheck.ok) return { ok: false, error: `unsafe_expression:${astCheck.reason}` };
+        m.expression = p.expression.trim();
+      }
+      if (["critical", "high", "medium", "low"].includes(p.severity)) m.severity = p.severity;
+      if (typeof p.description === "string") m.description = p.description.slice(0, 400);
+      invSave();
+      return { ok: true, result: { monitor: m } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * deleteViolation — remove a recorded violation outright (S-INV-2/F4:
+   * records are not permanent; Resolve closes, delete removes).
+   * params: { violationId }
+   */
+  registerLensAction("invariant", "deleteViolation", (ctx, _artifact, params) => {
+    try {
+      const s = invState();
+      if (!s) return { ok: false, error: "state_unavailable" };
+      const userId = invActor(ctx);
+      const p = params || {};
+      const log = invList(s.violations, userId);
+      const idx = log.findIndex(x => x.id === p.violationId);
+      if (idx === -1) return { ok: false, error: "violation_not_found" };
+      const [removed] = log.splice(idx, 1);
+      invSave();
+      return { ok: true, result: { deleted: removed.id, totalViolations: log.length } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -942,10 +1007,18 @@ export default function registerInvariantActions(registerLensAction) {
         if (!uCheck.ok) return { ok: false, error: `unsafe_until:${uCheck.reason}` };
       }
       // History can be supplied directly or pulled from recorded snapshots.
+      // Recorded snapshots keep their label + timestamp so the trace can
+      // show WHICH state each step was (F7: the step inspector rendered
+      // the Unix epoch for want of this data reaching it).
       let history = Array.isArray(p.history) ? p.history : null;
+      let recordedMeta = null;
       if (!history) {
         const s = invState();
-        if (s) history = invList(s.histories, invActor(ctx)).map(h => h.state);
+        if (s) {
+          const entries = invList(s.histories, invActor(ctx));
+          recordedMeta = entries.map(h => ({ label: h.label || "", at: h.at || null }));
+          history = entries.map(h => h.state);
+        }
       }
       history = (history || []).slice(0, 1000);
       if (history.length === 0) return { ok: false, error: "history_required" };
@@ -954,7 +1027,14 @@ export default function registerInvariantActions(registerLensAction) {
         const context = (st && typeof st === "object") ? st : {};
         const c = safeEval(condition, context);
         const cHolds = c.error === null && c.value === true;
-        const row = { step: i, conditionHolds: cHolds, conditionError: c.error };
+        const row = {
+          step: i,
+          conditionHolds: cHolds,
+          conditionError: c.error,
+          label: recordedMeta?.[i]?.label || "",
+          at: recordedMeta?.[i]?.at || null,
+          state: context,
+        };
         if (operator === "until") {
           const u = safeEval(untilExpr, context);
           row.untilHolds = u.error === null && u.value === true;
