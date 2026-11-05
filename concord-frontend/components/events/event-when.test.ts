@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyEventDate, countsAsPast, countsAsUpcoming, eventDay } from './event-when.ts';
+import { classifyEventDate, countsAsPast, countsAsUpcoming, eventDay } from './event-when';
 
 const TODAY = '2026-11-03';
 
