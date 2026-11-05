@@ -8,7 +8,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Plus, Trash2, Loader2, Users, Edit2, X, UserCheck } from 'lucide-react';
+import { Plus, Loader2, Users, Edit2, X, UserCheck } from 'lucide-react';
+import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface Person {
   id: string;
@@ -62,6 +63,7 @@ export function PersonnelRoster() {
   const [data, setData] = useState<RosterResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState<PersonForm | null>(null);
 
@@ -105,11 +107,17 @@ export function PersonnelRoster() {
     setBusy(false);
   }, [form, refresh]);
 
-  const remove = useCallback(async (id: string) => {
+  const remove = useCallback(async (person: { id: string; name: string }) => {
     setBusy(true);
-    const r = await lensRun('defense', 'personnel-delete', { id });
-    if (r.data?.ok) await refresh();
-    else setError(r.data?.error || 'Failed to delete personnel record');
+    setNotice(null);
+    setError(null);
+    const r = await lensRun('defense', 'personnel-delete', { id: person.id });
+    if (r.data?.ok) {
+      setNotice(`Deleted personnel — ${person.name}`);
+      await refresh();
+    } else {
+      setError(r.data?.error || 'Failed to delete personnel record');
+    }
     setBusy(false);
   }, [refresh]);
 
@@ -137,6 +145,12 @@ export function PersonnelRoster() {
       {error && (
         <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-400">
           {error}
+        </div>
+      )}
+
+      {notice && (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400">
+          {notice}
         </div>
       )}
 
@@ -197,14 +211,12 @@ export function PersonnelRoster() {
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
-                <button
-                  onClick={() => remove(p.id)}
+                <ConfirmDeleteButton
+                  ariaLabel="Delete personnel"
+                  itemLabel={`personnel record "${p.name}"`}
                   disabled={busy}
-                  aria-label="Delete personnel"
-                  className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                  onConfirm={() => remove(p)}
+                />
               </div>
             </div>
           ))}

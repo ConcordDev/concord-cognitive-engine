@@ -2216,7 +2216,7 @@ export const LENS_REGISTRY: LensEntry[] = [
     id: 'defense',
     name: 'Defense',
     icon: Shield,
-    description: 'Defense & national security',
+    description: 'Defense planning workspace — authored records, not live operations',
     category: 'superlens',
     showInSidebar: false,
     showInCommandPalette: true,

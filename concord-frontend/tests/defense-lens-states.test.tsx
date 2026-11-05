@@ -121,7 +121,10 @@ describe('defense lens — one brief architecture', () => {
     fireEvent.click(screen.getByRole('button', { name: /Contracts/ }));
     expect(screen.getByTestId('contract-search')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Live feed/ }));
-    expect(screen.getByTestId('realtime-panel')).toBeInTheDocument();
+    // S3: the live view is the lens's own domain event feed now — the generic
+    // realtime panel no longer renders here.
+    expect(screen.getByText(/not authenticated military telemetry/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Workspace Events')).toBeInTheDocument());
   });
 });
 
