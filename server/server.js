@@ -17771,25 +17771,74 @@ register("attention", "list_threads", (ctx, _input = {}) => {
   try {
   enforceEthosInvariant("attention_list");
   ensureAttentionManager();
-  const threads = Array.from(ctx.state.attention.threads.values())
-    .sort((a, b) => b.priority - a.priority)
-    .map(t => ({ id: t.id, type: t.type, priority: t.priority, status: t.status, description: t.description, createdAt: t.createdAt }));
+  const attn = ctx.state.attention;
+  // Personal stats and labels need to know whose thread a row is:
+  // system threads (created by the engine, no owner) are labelled as
+  // system and excluded from personal aggregates; the caller's own
+  // threads are marked mine. ownerId itself is never sent.
+  const _actor = lensRequireActor(ctx);
+  const actorId = _actor.ok ? _actor.actorId : null;
+  const shape = (t) => ({
+    id: t.id, type: t.type, priority: t.priority ?? 0, status: t.status,
+    description: t.description || "", createdAt: t.createdAt,
+    domain: t.domain || null,
+    completedAt: t.completedAt || null,
+    system: !t.ownerId,
+    mine: !!actorId && t.ownerId === actorId,
+  });
+  const live = Array.from(attn.threads.values()).map(shape);
+  const liveIds = new Set(live.map(x => x.id));
+  // Completed threads leave the live map (completeCognitiveThread moves
+  // them to attn.completed) — union them back or the Completed filter
+  // can never list the user's finished work (attention F4).
+  const done = (attn.completed || []).filter(c => !liveIds.has(c.id)).map(shape);
+  const threads = [...live, ...done].sort((a, b) => b.priority - a.priority);
   return { ok: true, threads };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
+
+register("attention", "delete_thread", (ctx, input = {}) => {
+  enforceEthosInvariant("attention_delete");
+  const threadId = String(input.threadId || input.id || "");
+  if (!threadId) return { ok: false, error: "threadId required" };
+  // Same ownership rule as complete_thread: the owner's thread is
+  // theirs to delete; another account gets "not found". System threads
+  // (no ownerId) are not deletable from the lens.
+  const _t = STATE.attention?.threads?.get?.(threadId);
+  if (!_t) return { ok: false, error: "Thread not found" };
+  if (!_t.ownerId || !lensRequireOwner(ctx, _t.ownerId).ok) return { ok: false, error: "Thread not found" };
+  return deleteCognitiveThread(threadId);
+}, { public: false });
 
 register("attention", "queue", (ctx, _input = {}) => {
   try {
   enforceEthosInvariant("attention_queue");
   ensureAttentionManager();
-  return { ok: true, queue: ctx.state.attention.queue, completed: ctx.state.attention.completed.slice(-10) };
+  const attn = ctx.state.attention;
+  // Background tasks are tasks: they ride the same payload with their
+  // state, so a started task is visible with an outcome instead of a
+  // bare counter (attention F8).
+  const background = (attn.background || []).slice(-10).map(b => ({
+    id: b.id, type: b.type, status: b.status,
+    createdAt: b.createdAt, completedAt: b.completedAt || null,
+  }));
+  return { ok: true, queue: attn.queue, completed: attn.completed.slice(-10), background };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 register("attention", "add_background", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("attention_background");
-  const queued = addBackgroundTask(input);
+  // The lens's Quick Background buttons send a TYPE and no handler, so
+  // processBackgroundTasks' switch hit its default and did no work at
+  // all (attention F8). Map the surface's types to the real handlers.
+  const HANDLERS = {
+    "memory-consolidation": "experience_consolidation",
+    "pattern-scan": "pattern_decay",
+    "cleanup": "world_model_decay",
+  };
+  const handler = input.handler || HANDLERS[input.type] || "";
+  const queued = addBackgroundTask({ ...input, handler });
   return { ok: true, result: queued };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: false });
@@ -85834,8 +85883,18 @@ function completeCognitiveThread(threadId, output) {
     attn.stats.avgFocusDurationMs = total / attn.stats.threadsCompleted;
   }
 
-  // Move to completed list
-  attn.completed.push({ id: thread.id, type: thread.type, duration: thread.completedAt, output: thread.output });
+  // Move to completed list — the FULL record, not a stub: the completed
+  // list is what the lens's Completed filter reads, and the old stub
+  // misfiled the timestamp under `duration` and dropped the description,
+  // domain and owner, so a completed thread existed in a count and
+  // nowhere else (attention F4).
+  attn.completed.push({
+    id: thread.id, type: thread.type, priority: thread.priority,
+    status: "completed", description: thread.description,
+    domain: thread.domain || null, ownerId: thread.ownerId || null,
+    createdAt: thread.createdAt, startedAt: thread.startedAt || null,
+    completedAt: thread.completedAt, output: thread.output,
+  });
   if (attn.completed.length > 50) attn.completed.splice(0, attn.completed.length - 50);
 
   // Remove from active
@@ -85859,6 +85918,24 @@ function completeCognitiveThread(threadId, output) {
 
   saveStateDebounced();
   return { ok: true, completed: thread };
+}
+
+// Delete a cognitive thread outright (the lens's lifecycle verb —
+// threads previously offered Complete only). Removes the thread and
+// any queue entries pointing at it, and recomputes focus.
+function deleteCognitiveThread(threadId) {
+  ensureAttentionManager();
+  const attn = STATE.attention;
+  const thread = attn.threads.get(threadId);
+  if (!thread) return { ok: false, error: "Thread not found" };
+  attn.threads.delete(threadId);
+  attn.queue = attn.queue.filter(q => q.threadId !== threadId);
+  const activeThreads = Array.from(attn.threads.values()).filter(x => x.status === "active");
+  attn.focus = activeThreads.length > 0
+    ? activeThreads.sort((a, b) => b.priority - a.priority)[0].id
+    : null;
+  saveStateDebounced();
+  return { ok: true, deleted: threadId };
 }
 
 // Add a background task (deferred processing)
