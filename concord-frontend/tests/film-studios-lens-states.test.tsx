@@ -29,6 +29,12 @@ vi.mock('@/hooks/useAuth', () => ({
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRun(...args),
 }));
+vi.mock('@/store/ui', () => ({
+  useUIStore: Object.assign(() => {}, { getState: () => ({ addToast: () => {} }) }),
+}));
+vi.mock('@/components/lens/DTUExportButton', () => ({
+  DTUExportButton: () => React.createElement('button', { title: 'Export as .dtu' }, '↓ .dtu'),
+}));
 
 import FilmStudiosPage from '@/app/lenses/film-studios/page';
 
@@ -130,14 +136,20 @@ describe('film studios production', () => {
     expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('scene-add');
   });
 
-  it('SCENE: shows the slugline only after scene-list contains the id and location', async () => {
+  it('SCENE: shows the slugline only after scene-list contains the id and location, sending the structured fields', async () => {
     const projects = [{ id: 'prj_1', title: 'Door production' }];
-    const scenes: { id: string; location: string; slugline: string }[] = [];
-    lensRun.mockImplementation(async (_d: string, action: string, input?: { location?: string; projectId?: string }) => {
+    const scenes: { id: string; location: string; slugline: string; intExt?: string; timeOfDay?: string }[] = [];
+    lensRun.mockImplementation(async (_d: string, action: string, input?: { location?: string; projectId?: string; intExt?: string; timeOfDay?: string }) => {
       if (action === 'project-list') return listed(projects);
       if (action === 'scene-list') return scenesOf(scenes);
       if (action === 'scene-add') {
-        scenes.push({ id: 'scn_1', location: input?.location || '', slugline: `INT. ${input?.location} - DAY` });
+        scenes.push({
+          id: 'scn_1',
+          location: input?.location || '',
+          slugline: `${input?.intExt}. ${input?.location} - ${input?.timeOfDay}`,
+          intExt: input?.intExt,
+          timeOfDay: input?.timeOfDay,
+        });
         return { data: { ok: true, result: { scene: { id: 'scn_1', location: input?.location } }, error: null } };
       }
       throw new Error(action);
@@ -146,11 +158,122 @@ describe('film studios production', () => {
     fireEvent.click(await view.findByRole('button', { name: 'Door production' }));
     fireEvent.click(await view.findByRole('button', { name: 'Add scene' }));
     fireEvent.change(view.getByTestId('film-location'), { target: { value: '  Kitchen  ' } });
+    fireEvent.change(view.getByTestId('film-intext'), { target: { value: 'EXT' } });
+    fireEvent.change(view.getByTestId('film-timeofday'), { target: { value: 'NIGHT' } });
     fireEvent.click(view.getByRole('button', { name: 'Add scene' }));
-    expect(await view.findByRole('heading', { name: 'INT. Kitchen - DAY' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'EXT. Kitchen - NIGHT' })).toBeInTheDocument();
     expect(view.queryByText('Nothing selected.')).toBeNull();
+    expect(view.getByTestId('film-scene-location')).toHaveTextContent('Kitchen');
+    expect(view.getByTestId('film-scene-intext')).toHaveTextContent('EXT');
+    expect(view.getByTestId('film-scene-timeofday')).toHaveTextContent('NIGHT');
     const save = lensRun.mock.calls.find((call) => call[1] === 'scene-add');
-    expect(save?.[2]).toEqual({ projectId: 'prj_1', location: 'Kitchen' });
+    expect(save?.[2]).toEqual({ projectId: 'prj_1', location: 'Kitchen', intExt: 'EXT', timeOfDay: 'NIGHT' });
+  });
+
+  it('PRODUCTION: rename calls project-update and shows the new title only after it reads back', async () => {
+    const projects = [{ id: 'prj_1', title: 'Door production' }];
+    lensRun.mockImplementation(async (_d: string, action: string, input?: { title?: string }) => {
+      if (action === 'project-list') return listed(projects);
+      if (action === 'scene-list') return scenesOf([]);
+      if (action === 'project-update') {
+        projects[0] = { ...projects[0], title: input?.title || '' };
+        return { data: { ok: true, result: { project: { id: 'prj_1', title: input?.title } }, error: null } };
+      }
+      throw new Error(action);
+    });
+    const view = render(<FilmStudiosPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Door production' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Rename' }));
+    fireEvent.change(view.getByTestId('film-rename-production'), { target: { value: 'Rain production' } });
+    fireEvent.click(view.getByRole('button', { name: 'Save' }));
+    expect(await view.findByRole('button', { name: 'Rain production' })).toBeInTheDocument();
+    const save = lensRun.mock.calls.find((call) => call[1] === 'project-update');
+    expect(save?.[2]).toEqual({ id: 'prj_1', title: 'Rain production' });
+  });
+
+  it('PRODUCTION: rename rejects a blank title without calling project-update', async () => {
+    const projects = [{ id: 'prj_1', title: 'Door production' }];
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'project-list') return listed(projects);
+      if (action === 'scene-list') return scenesOf([]);
+      throw new Error(action);
+    });
+    const view = render(<FilmStudiosPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Door production' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Rename' }));
+    fireEvent.change(view.getByTestId('film-rename-production'), { target: { value: '   ' } });
+    fireEvent.click(view.getByRole('button', { name: 'Save' }));
+    expect(await view.findByRole('alert')).toHaveTextContent(/A title is required/);
+    expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('project-update');
+  });
+
+  it('PRODUCTION: delete is a two-step arm then confirm, and calls project-delete', async () => {
+    const projects = [{ id: 'prj_1', title: 'Door production' }];
+    let deleted = false;
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'project-list') return listed(deleted ? [] : projects);
+      if (action === 'scene-list') return scenesOf([]);
+      if (action === 'project-delete') {
+        deleted = true;
+        return { data: { ok: true, result: { deleted: 'prj_1' }, error: null } };
+      }
+      throw new Error(action);
+    });
+    const view = render(<FilmStudiosPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Door production' }));
+    const deleteButton = await view.findByRole('button', { name: 'Delete' });
+    fireEvent.click(deleteButton);
+    expect(await view.findByRole('button', { name: 'Delete this production?' })).toBeInTheDocument();
+    expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('project-delete');
+    fireEvent.click(view.getByRole('button', { name: 'Delete this production?' }));
+    await view.findByText('No production open.');
+    expect(lensRun.mock.calls.map((call) => call[1])).toContain('project-delete');
+  });
+
+  it('SCENE: edit calls scene-update and delete is a two-step arm then confirm', async () => {
+    const projects = [{ id: 'prj_1', title: 'Door production' }];
+    const scenes = [{ id: 'scn_1', location: 'Kitchen', slugline: 'INT. Kitchen - DAY', intExt: 'INT', timeOfDay: 'DAY' }];
+    let removed = false;
+    lensRun.mockImplementation(async (_d: string, action: string, input?: { location?: string }) => {
+      if (action === 'project-list') return listed(projects);
+      if (action === 'scene-list') return scenesOf(removed ? [] : scenes);
+      if (action === 'scene-update') {
+        scenes[0] = { ...scenes[0], location: input?.location || scenes[0].location, slugline: `INT. ${input?.location} - DAY` };
+        return { data: { ok: true, result: { scene: { id: 'scn_1' } }, error: null } };
+      }
+      if (action === 'scene-delete') {
+        removed = true;
+        return { data: { ok: true, result: { deleted: 'scn_1' }, error: null } };
+      }
+      throw new Error(action);
+    });
+    const view = render(<FilmStudiosPage />);
+    fireEvent.click(await view.findByRole('button', { name: 'Door production' }));
+    fireEvent.click(await view.findByRole('button', { name: 'INT. Kitchen - DAY' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Edit' }));
+    fireEvent.change(view.getByTestId('film-edit-location'), { target: { value: 'Hallway' } });
+    fireEvent.click(view.getByRole('button', { name: 'Save' }));
+    expect(await view.findByRole('heading', { name: 'INT. Hallway - DAY' })).toBeInTheDocument();
+    const deleteButtons = view.getAllByRole('button', { name: 'Delete' });
+    fireEvent.click(deleteButtons[deleteButtons.length - 1]);
+    expect(await view.findByRole('button', { name: 'Delete this scene?' })).toBeInTheDocument();
+    fireEvent.click(view.getByRole('button', { name: 'Delete this scene?' }));
+    expect(await view.findByText('Nothing selected.')).toBeInTheDocument();
+    expect(lensRun.mock.calls.map((call) => call[1])).toContain('scene-delete');
+  });
+
+  it('EXPORT: the export control appears only when a production is open', async () => {
+    const projects = [{ id: 'prj_1', title: 'Door production' }];
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'project-list') return listed(projects);
+      if (action === 'scene-list') return scenesOf([]);
+      throw new Error(action);
+    });
+    const view = render(<FilmStudiosPage />);
+    await view.findByRole('button', { name: 'Door production' });
+    expect(view.queryByTitle('Export as .dtu')).toBeNull();
+    fireEvent.click(view.getByRole('button', { name: 'Door production' }));
+    expect(await view.findByTitle('Export as .dtu')).toBeInTheDocument();
   });
 
   it('SCENE: choosing a scene reads scene-list again', async () => {

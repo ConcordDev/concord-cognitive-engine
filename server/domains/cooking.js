@@ -139,7 +139,7 @@ export default function registerCookingActions(registerLensAction) {
         return { ok: false, status: "unavailable", reason: res.reason, lastOkAt: res.lastOkAt, error: `fdc unavailable: ${res.reason}` };
       }
       const data = res.data;
-      const foods = (data.foods || []).map((f) => ({
+      const mapped = (data.foods || []).map((f) => ({
         fdcId: f.fdcId,
         description: f.description,
         dataType: f.dataType,
@@ -151,6 +151,15 @@ export default function registerCookingActions(registerLensAction) {
         score: f.score,
         publishedDate: f.publishedDate,
       }));
+      // Generic reference foods (Foundation / SR Legacy / FNDDS) lead,
+      // Branded follows — a generic staple (all-purpose flour) must not be
+      // buried under branded rows inside the returned page. Stable within
+      // each class; the explorer's UI groups on the same split.
+      const genericRank = (f) => (f.dataType === "Branded" ? 1 : 0);
+      const foods = mapped
+        .map((f, i) => [genericRank(f), i, f])
+        .sort((a, b) => a[0] - b[0] || a[1] - b[1])
+        .map((x) => x[2]);
       return {
         ok: true,
         result: {
@@ -187,14 +196,25 @@ export default function registerCookingActions(registerLensAction) {
       }
       if (res.data?.notFound) return { ok: false, error: `FDC ID not found: ${fdcId}` };
       const food = res.data;
-      // Build a {nutrientName: { amount, unit }} dict
+      // Build a {nutrientName: { amount, unit }} dict. "Energy" arrives
+      // twice from FDC (kcal and kJ under the same name) — the dict keeps
+      // the kcal entry, never the kJ one, so headline calories are kcal.
       const nutrients = {};
       for (const n of food.foodNutrients || []) {
         const name = n.nutrient?.name || n.nutrientName;
         if (!name) continue;
+        const unit = n.nutrient?.unitName || n.unitName;
+        if (name === "Energy") {
+          const u = String(unit || "").toLowerCase();
+          // A named non-kcal Energy (kJ) never lands in the dict; a
+          // unitless Energy is kcal by FDC convention; once a kcal
+          // entry is held, later Energy entries do not replace it.
+          if (u !== "" && u !== "kcal") continue;
+          if (nutrients.Energy && String(nutrients.Energy.unit || "").toLowerCase() === "kcal") continue;
+        }
         nutrients[name] = {
           amount: n.amount ?? n.value ?? null,
-          unit: n.nutrient?.unitName || n.unitName,
+          unit,
         };
       }
       // Pull out the headline values
@@ -698,8 +718,26 @@ export default function registerCookingActions(registerLensAction) {
       const filtered = recipes.filter(r => `${r.title} ${(r.tags || []).join(' ')} ${r.cuisine}`.toLowerCase().includes(tagFilter));
       if (filtered.length > 0) pool = filtered;
     }
+    // APPLY mode — persist exactly the assignment list the member reviewed
+    // in a preview (never a fresh shuffle). Every entry is validated
+    // against the member's own recipes; anything else is refused whole.
+    if (Array.isArray(params.assignments)) {
+      const plan = mapCk(s.mealPlan, userId);
+      const applied = [];
+      for (const a of params.assignments) {
+        const date = String(a?.date || "");
+        const slot = MEAL_SLOTS.includes(a?.slot) ? a.slot : null;
+        const recipe = recipes.find(r => r.id === String(a?.recipeId || ""));
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !slot || !recipe) {
+          return { ok: false, error: "assignments must name a date, a valid slot, and one of your recipes" };
+        }
+        applied.push({ date, slot, recipeId: recipe.id, title: recipe.title, servings: Math.max(1, Number(a.servings) || recipe.servings) });
+      }
+      for (const a of applied) plan.set(`${a.date}|${a.slot}`, { recipeId: a.recipeId, servings: a.servings });
+      saveCook();
+      return { ok: true, result: { assigned: applied, applied: true, days, slots, poolSize: pool.length, preference: tagFilter || null, source: 'deterministic' } };
+    }
     // Round-robin assignment, minimising repeats.
-    const plan = mapCk(s.mealPlan, userId);
     const assigned = [];
     let poolIdx = 0;
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
@@ -708,12 +746,21 @@ export default function registerCookingActions(registerLensAction) {
       for (const slot of slots) {
         const recipe = shuffled[poolIdx % shuffled.length];
         poolIdx++;
-        plan.set(`${date}|${slot}`, { recipeId: recipe.id, servings: recipe.servings });
-        assigned.push({ date, slot, recipeId: recipe.id, title: recipe.title });
+        assigned.push({ date, slot, recipeId: recipe.id, title: recipe.title, servings: recipe.servings });
       }
     }
-    saveCook();
-    return { ok: true, result: { assigned, days, slots, poolSize: pool.length, preference: tagFilter || null, source: 'deterministic' } };
+    // PREVIEW mode (the default call shape from the review-step UI):
+    // return the proposal WITHOUT persisting — generation proposes, the
+    // member disposes. `preview: false` keeps the legacy one-call apply
+    // for non-UI callers, and the assignments-apply above is the path
+    // the UI's Apply button takes.
+    if (params.preview === false) {
+      const plan = mapCk(s.mealPlan, userId);
+      for (const a of assigned) plan.set(`${a.date}|${a.slot}`, { recipeId: a.recipeId, servings: a.servings });
+      saveCook();
+      return { ok: true, result: { assigned, applied: true, days, slots, poolSize: pool.length, preference: tagFilter || null, source: 'deterministic' } };
+    }
+    return { ok: true, result: { assigned, applied: false, preview: true, days, slots, poolSize: pool.length, preference: tagFilter || null, source: 'deterministic' } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -1051,7 +1098,15 @@ export default function registerCookingActions(registerLensAction) {
           const pick = (...names) => {
             for (const n of food.foodNutrients || []) {
               const nm = n.nutrientName || n.nutrient?.name || "";
-              if (names.some((x) => nm === x)) return n.value ?? n.amount ?? 0;
+              if (!names.some((x) => nm === x)) continue;
+              // "Energy" exists in kcal AND kJ under the same name — a
+              // named kJ entry never counts toward a calorie total
+              // (unitless Energy is kcal by FDC convention).
+              if (nm === "Energy") {
+                const eu = String(n.unitName || n.nutrient?.unitName || "").toLowerCase();
+                if (eu !== "" && eu !== "kcal") continue;
+              }
+              return n.value ?? n.amount ?? 0;
             }
             return 0;
           };

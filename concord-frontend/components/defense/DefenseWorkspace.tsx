@@ -7,8 +7,6 @@ import {
   Shield, Target, Truck, Users,
 } from 'lucide-react';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
@@ -21,6 +19,7 @@ import { CommonOperatingPicture } from './CommonOperatingPicture';
 import { ContractSearch } from './ContractSearch';
 import { DashboardStats } from './DashboardStats';
 import { DefenseActionPanel } from './DefenseActionPanel';
+import { EventFeed } from './EventFeed';
 import { LogisticsBoard } from './LogisticsBoard';
 import { MissionPlanner } from './MissionPlanner';
 import { PersonnelRoster } from './PersonnelRoster';
@@ -79,7 +78,7 @@ export function DefenseWorkspace() {
   const [initialState] = useState(() => restore());
   const [opened, setOpened] = useState(() => initialState?.opened === true);
   const [tool, setTool] = useState<BriefTool>(() => isBriefTool(initialState?.tool) ? initialState.tool : 'overview');
-  const { latestData, isLive, lastUpdated, insights } = useRealtimeLens('defense');
+  const { latestData } = useRealtimeLens('defense');
 
   const selectTool = useCallback((next: BriefTool) => {
     setOpened(true);
@@ -132,12 +131,9 @@ export function DefenseWorkspace() {
             <p className="text-sm font-medium text-zinc-200">Defense domain event feed</p>
             <p className="text-xs text-zinc-500">Platform events only; this is not authenticated military telemetry.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="defense" data={latestData || {}} compact />
-          </div>
+          <DTUExportButton domain="defense" data={latestData || {}} compact />
         </div>
-        <RealtimeDataPanel domain="defense" data={latestData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+        <EventFeed />
       </div>
     );
   }
@@ -193,7 +189,7 @@ function EmptyBrief({ onOpen }: { onOpen: () => void }) {
         </div>
         <h2 className="mt-5 text-xl font-medium text-zinc-200">No brief open.</h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-600">
-          Open the command brief to map operations, plan missions, track readiness, and record decisions against the real workspace.
+          Open the command brief to plan missions, track readiness, plot your operating picture, and record decisions. Everything in the brief is authored in your own workspace — a planning record, not live operations or intelligence.
         </p>
         <button type="button" onClick={onOpen} className="mt-7 rounded-full bg-zinc-100 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition-transform active:scale-[0.98]">
           Open a brief

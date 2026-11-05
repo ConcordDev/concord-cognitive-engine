@@ -25,6 +25,8 @@ interface ApodResult {
   items: ApodItem[];
   count: number;
   usingDemoKey: boolean;
+  stale?: boolean;
+  staleNote?: string;
 }
 
 export function ApodFeed() {
@@ -33,6 +35,7 @@ export function ApodFeed() {
   const [error, setError] = useState<string | null>(null);
   const [date, setDate] = useState('');
   const [active, setActive] = useState<ApodItem | null>(null);
+  const [staleNote, setStaleNote] = useState<string | null>(null);
 
   const fetchApod = useCallback(async (params: Record<string, unknown>) => {
     setLoading(true);
@@ -41,6 +44,7 @@ export function ApodFeed() {
     if (r.data?.ok && r.data.result) {
       setItems(r.data.result.items);
       setActive(r.data.result.items[0] || null);
+      setStaleNote(r.data.result.stale ? (r.data.result.staleNote || 'Showing the last image this lens fetched.') : null);
     } else {
       setError(r.data?.error || 'NASA imagery unavailable');
     }
@@ -89,6 +93,10 @@ export function ApodFeed() {
         <div className="flex items-center gap-2 text-xs text-rose-400 bg-rose-500/10 rounded-lg p-3">
           <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
         </div>
+      )}
+
+      {staleNote && !error && (
+        <p className="text-[11px] text-amber-400/90 bg-amber-500/10 rounded-lg px-3 py-2">{staleNote}</p>
       )}
 
       {loading && (

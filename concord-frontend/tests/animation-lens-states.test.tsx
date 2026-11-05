@@ -1,12 +1,19 @@
 /**
- * /lenses/animation — one shot.
+ * /lenses/animation — the studio shell.
  *
- * + New shot calls animation.anim-create and shows the title only after
- * animation.anim-list contains that id and the same title.
+ * The page's own responsibility is just the admission-gate warm-up
+ * retry on the first anim-list call (loading/error/retry) and the
+ * Studio / Reference images tab switch — once the gate clears it hands
+ * off entirely to <AnimationStudioSection> (gallery, create, open,
+ * rename, delete, playback — all already covered directly by
+ * animation-rename-clear.test.tsx, animation-undo-redo.test.tsx, and
+ * animation-reference-import.test.tsx) and <AnimationReferenceImages>.
+ * Both are mocked here so this file stays focused on the page's own
+ * phase-gating contract, the tab switch, and the "+ New shot" affordance.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 const { lensRun, authUser } = vi.hoisted(() => ({
@@ -25,11 +32,20 @@ vi.mock('@/hooks/useAuth', () => ({
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRun(...args),
 }));
+vi.mock('@/components/animation/AnimationStudioSection', () => ({
+  AnimationStudioSection: () =>
+    React.createElement('div', { 'data-testid': 'anim-studio-section' },
+      React.createElement('input', { id: 'anim-new-title', placeholder: 'Title' })),
+}));
+vi.mock('@/components/animation/AnimationReferenceImages', () => ({
+  AnimationReferenceImages: () =>
+    React.createElement('div', { 'data-testid': 'anim-reference-section' }, 'Reference images panel'),
+}));
 
 import AnimationPage from '@/app/lenses/animation/page';
 
-function listed(animations: { id: string; title: string }[]) {
-  return { data: { ok: true, result: { animations, count: animations.length }, error: null } };
+function listed(ok = true, error: string | null = null) {
+  return { data: { ok, result: ok ? { animations: [], count: 0 } : null, error } };
 }
 
 beforeEach(() => {
@@ -37,124 +53,75 @@ beforeEach(() => {
   authUser.current = null;
 });
 
-describe('animation shot', () => {
-  it('EMPTY: says no shot is open and offers + New shot', async () => {
-    lensRun.mockResolvedValue(listed([]));
+describe('animation studio shell', () => {
+  it('LOADING: shows a loading message and no panel yet', async () => {
+    lensRun.mockImplementation(() => new Promise(() => {})); // never resolves
     const view = render(<AnimationPage />);
-    expect(await view.findByText('No shot open.')).toBeInTheDocument();
+    expect(view.getByTestId('animation-loading')).toBeInTheDocument();
+    expect(view.queryByTestId('anim-studio-section')).toBeNull();
+    expect(view.getByRole('button', { name: '+ New shot' })).toBeDisabled();
+  });
+
+  it('READY: mounts the Studio tab once anim-list clears the admission gate', async () => {
+    lensRun.mockResolvedValue(listed(true));
+    const view = render(<AnimationPage />);
+    expect(await view.findByTestId('anim-studio-section')).toBeInTheDocument();
+    expect(view.queryByTestId('animation-loading')).toBeNull();
     expect(view.getByRole('heading', { name: 'Animation' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: '+ New shot' })).toBeEnabled();
-    expect(view.queryByText('Studio')).toBeNull();
-    expect(view.queryByText('Motion Toolkit')).toBeNull();
-    expect(view.queryByText('Untitled animation')).toBeNull();
+  });
+
+  it('WARMING: a shed anim-list retries and then mounts the studio', async () => {
+    lensRun
+      .mockResolvedValueOnce(listed(false, 'service_overloaded'))
+      .mockResolvedValue(listed(true));
+    const view = render(<AnimationPage />);
+    expect(await view.findByTestId('anim-studio-section', {}, { timeout: 8000 })).toBeInTheDocument();
+    expect(view.queryByRole('alert')).toBeNull();
+    expect(lensRun).toHaveBeenCalledTimes(2);
   });
 
   it('ERROR: a failed list shows role=alert and Retry reloads', async () => {
-    lensRun.mockResolvedValueOnce({ data: { ok: false, result: null, error: 'STATE unavailable' } });
+    lensRun.mockResolvedValueOnce(listed(false, 'state_unavailable'));
     const view = render(<AnimationPage />);
-    expect(await view.findByRole('alert')).toHaveTextContent(/STATE unavailable/);
-    lensRun.mockResolvedValue(listed([]));
+    expect(await view.findByRole('alert')).toHaveTextContent(/state_unavailable/);
+    expect(view.queryByTestId('anim-studio-section')).toBeNull();
+    lensRun.mockResolvedValue(listed(true));
     fireEvent.click(view.getByRole('button', { name: 'Retry' }));
-    expect(await view.findByText('No shot open.')).toBeInTheDocument();
+    expect(await view.findByTestId('anim-studio-section')).toBeInTheDocument();
   });
 
-  it('SHOT: a blank title does not call anim-create', async () => {
-    lensRun.mockResolvedValue(listed([]));
+  it('TABS: Reference images swaps the panel without unmounting the page', async () => {
+    lensRun.mockResolvedValue(listed(true));
     const view = render(<AnimationPage />);
-    fireEvent.click(await view.findByRole('button', { name: '+ New shot' }));
-    fireEvent.click(view.getByRole('button', { name: '+ New shot' }));
-    expect(await view.findByRole('alert')).toHaveTextContent(/A title is required/);
-    expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('anim-create');
+    await view.findByTestId('anim-studio-section');
+    fireEvent.click(view.getByRole('tab', { name: 'Reference images' }));
+    expect(await view.findByTestId('anim-reference-section')).toBeInTheDocument();
+    expect(view.queryByTestId('anim-studio-section')).toBeNull();
+    fireEvent.click(view.getByRole('tab', { name: 'Studio' }));
+    expect(await view.findByTestId('anim-studio-section')).toBeInTheDocument();
+    expect(view.queryByTestId('anim-reference-section')).toBeNull();
   });
 
-  it('SHOT: shows the title only after anim-list contains the id and title', async () => {
-    const animations: { id: string; title: string }[] = [];
-    lensRun.mockImplementation(async (_d: string, action: string, input?: { title?: string }) => {
-      if (action === 'anim-list') return listed(animations);
-      if (action === 'anim-create') {
-        animations.unshift({ id: 'anm_1', title: input?.title || '' });
-        return { data: { ok: true, result: { animation: { id: 'anm_1', title: input?.title } }, error: null } };
-      }
-      throw new Error(action);
+  it('+ New shot switches to Studio and focuses the title input', async () => {
+    lensRun.mockResolvedValue(listed(true));
+    const view = render(<AnimationPage />);
+    await view.findByTestId('anim-studio-section');
+    fireEvent.click(view.getByRole('tab', { name: 'Reference images' }));
+    await view.findByTestId('anim-reference-section');
+    fireEvent.click(view.getByRole('button', { name: '+ New shot' }));
+    expect(await view.findByTestId('anim-studio-section')).toBeInTheDocument();
+    await waitFor(() => {
+      const input = view.container.querySelector('#anim-new-title');
+      expect(input).toBe(document.activeElement);
     });
-    const view = render(<AnimationPage />);
-    fireEvent.click(await view.findByRole('button', { name: '+ New shot' }));
-    fireEvent.change(view.getByTestId('animation-title'), { target: { value: '  Door slam  ' } });
-    fireEvent.click(view.getByRole('button', { name: '+ New shot' }));
-    expect(await view.findByRole('heading', { name: 'Door slam' })).toBeInTheDocument();
-    expect(view.queryByText('No shot open.')).toBeNull();
-    expect(view.queryByText('Untitled animation')).toBeNull();
-    const save = lensRun.mock.calls.find((call) => call[1] === 'anim-create');
-    expect(save?.[0]).toBe('animation');
-    expect(save?.[2]).toEqual({ title: 'Door slam' });
-  });
-
-  it('SHOT: a list miss does not show the title', async () => {
-    lensRun.mockImplementation(async (_d: string, action: string) => {
-      if (action === 'anim-list') return listed([]);
-      if (action === 'anim-create') {
-        return { data: { ok: true, result: { animation: { id: 'anm_missing', title: 'Lost shot' } }, error: null } };
-      }
-      throw new Error(action);
-    });
-    const view = render(<AnimationPage />);
-    fireEvent.click(await view.findByRole('button', { name: '+ New shot' }));
-    fireEvent.change(view.getByTestId('animation-title'), { target: { value: 'Lost shot' } });
-    fireEvent.click(view.getByRole('button', { name: '+ New shot' }));
-    expect(await view.findByRole('alert')).toHaveTextContent(/did not read it back/);
-    expect(view.queryByRole('heading', { name: 'Lost shot' })).toBeNull();
   });
 
   it('HEADER: shows the lens name signed-in', async () => {
     authUser.current = { username: 'ramaj' };
-    lensRun.mockResolvedValue(listed([]));
+    lensRun.mockResolvedValue(listed(true));
     const view = render(<AnimationPage />);
     expect(await view.findByRole('heading', { name: 'Animation' })).toBeInTheDocument();
-    expect(await view.findByText('No shot open.')).toBeInTheDocument();
-  });
-
-  it('LOAD: shows a title already on the list and skips a blank title', async () => {
-    lensRun.mockResolvedValue(listed([
-      { id: 'anm_a', title: 'First shot' },
-      { id: 'anm_b', title: '   ' },
-    ]));
-    const view = render(<AnimationPage />);
-    expect(await view.findByRole('heading', { name: 'First shot' })).toBeInTheDocument();
-    expect(view.queryByText('No shot open.')).toBeNull();
-  });
-
-  it('SHOT: a refused create does not show the title', async () => {
-    lensRun.mockResolvedValue(listed([]));
-    const view = render(<AnimationPage />);
-    fireEvent.click(await view.findByRole('button', { name: '+ New shot' }));
-    lensRun.mockImplementation(async (_d: string, action: string) => {
-      if (action === 'anim-list') return listed([]);
-      if (action === 'anim-create') return { data: { ok: false, result: null, error: 'shot_not_saved' } };
-      throw new Error(action);
-    });
-    fireEvent.change(view.getByTestId('animation-title'), { target: { value: 'Bad shot' } });
-    fireEvent.click(view.getByRole('button', { name: '+ New shot' }));
-    expect(await view.findByRole('alert')).toHaveTextContent(/shot_not_saved/);
-    expect(view.queryByRole('heading', { name: 'Bad shot' })).toBeNull();
-    expect(view.getByTestId('animation-title')).toBeInTheDocument();
-  });
-
-  it('SHOT: a second shot stays beside the first', async () => {
-    const animations: { id: string; title: string }[] = [{ id: 'anm_1', title: 'First shot' }];
-    lensRun.mockImplementation(async (_d: string, action: string, input?: { title?: string }) => {
-      if (action === 'anim-list') return listed(animations);
-      if (action === 'anim-create') {
-        animations.unshift({ id: 'anm_2', title: input?.title || '' });
-        return { data: { ok: true, result: { animation: { id: 'anm_2', title: input?.title } }, error: null } };
-      }
-      throw new Error(action);
-    });
-    const view = render(<AnimationPage />);
-    expect(await view.findByRole('heading', { name: 'First shot' })).toBeInTheDocument();
-    fireEvent.click(view.getByRole('button', { name: '+ New shot' }));
-    fireEvent.change(view.getByTestId('animation-title'), { target: { value: 'Second shot' } });
-    fireEvent.click(view.getByRole('button', { name: '+ New shot' }));
-    expect(await view.findByRole('heading', { name: 'Second shot' })).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'First shot' })).toBeInTheDocument();
+    expect(await view.findByTestId('anim-studio-section')).toBeInTheDocument();
   });
 });

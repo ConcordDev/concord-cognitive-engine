@@ -20,6 +20,7 @@ import Database from "better-sqlite3";
 import registerPhotosMacros from "../domains/photos.js";
 import { savePhoto } from "../lib/photo-gallery.js";
 import { up as upPhotos } from "../migrations/243_photo_gallery.js";
+import { up as upPhotoMetadata } from "../migrations/496_photo_metadata.js";
 
 const TMP_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "concord-photos-dom-"));
 process.env.CONCORD_PHOTO_DIR = TMP_DIR;
@@ -36,20 +37,16 @@ function register(domain, name, fn) {
 before(() => { registerPhotosMacros(register); });
 
 let db;
+let STATE;
 function freshDb() {
   const d = new Database(":memory:");
-  d.exec(`
-    CREATE TABLE dtus (
-      id TEXT PRIMARY KEY, title TEXT, type TEXT,
-      creator_id TEXT, created_at INTEGER, body_json TEXT
-    );
-  `);
   upPhotos(d);
+  upPhotoMetadata(d);
   return d;
 }
-beforeEach(() => { db = freshDb(); });
+beforeEach(() => { db = freshDb(); STATE = { dtus: new Map() }; });
 
-function ctxFor(userId) { return { db, actor: { userId } }; }
+function ctxFor(userId) { return { db, actor: { userId }, STATE }; }
 function call(name, ctx, input = {}) {
   const fn = ACTIONS.get(name);
   if (!fn) throw new Error(`photos.${name} not registered`);
@@ -135,10 +132,14 @@ describe("photos — share (mints a public photo DTU)", () => {
     assert.equal(s.ok, true);
     assert.ok(s.dtuId.startsWith("dtu_photo_"), "share returns a minted dtuId");
 
-    // the DTU is real, kind='photo', creator = owner
-    const dtu = db.prepare(`SELECT type, creator_id FROM dtus WHERE id = ?`).get(s.dtuId);
-    assert.equal(dtu.type, "photo");
-    assert.equal(dtu.creator_id, "u1");
+    // the DTU is real, kind='photo', owned by the sharer — the exact shape
+    // the DTU Browser's dtu.list/dtu.get actually read (STATE.dtus, not the
+    // dead legacy SQL `dtus` table this macro used to write to).
+    const dtu = STATE.dtus.get(s.dtuId);
+    assert.ok(dtu, "the minted DTU must be findable in the live substrate");
+    assert.equal(dtu.machine.kind, "photo");
+    assert.equal(dtu.ownerId, "u1");
+    assert.equal(dtu.visibility, "public");
 
     // now visible in the public world feed, and the gallery row carries the dtu_id
     const feed = call("world", ctxFor("u2"), { worldId: "tunya" });
@@ -154,6 +155,15 @@ describe("photos — share (mints a public photo DTU)", () => {
     assert.equal(call("share", ctxFor("u1"), { photoId: "nope" }).reason, "no_photo");
     assert.equal(call("share", ctxFor("u2"), { photoId: saved.id }).reason, "not_owner");
     // still private after a rejected share
+    assert.equal(call("world", ctxFor("u1"), { worldId: "tunya" }).count, 0);
+  });
+
+  it("fails honestly (dtu_store_unavailable) rather than silently no-op when no DTU substrate reaches the macro", async () => {
+    const saved = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
+    assert.equal(globalThis.STATE, undefined, "precondition: no global STATE leaked in from another suite");
+    const r = call("share", { db, actor: { userId: "u1" } }, { photoId: saved.id });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "dtu_store_unavailable");
     assert.equal(call("world", ctxFor("u1"), { worldId: "tunya" }).count, 0);
   });
 });

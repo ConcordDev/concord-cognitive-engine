@@ -145,13 +145,19 @@ export default function registerCustomActions(registerLensAction) {
   registerLensAction("custom", "evaluateSchema", (ctx, artifact, _params) => {
     const schema = artifact?.data?.schema || artifact?.data?.fields || [];
     if (schema.length === 0) return { ok: true, result: { message: "Define custom fields to evaluate schema." } };
-    const fields = (Array.isArray(schema) ? schema : Object.entries(schema).map(([k, v]) => ({ name: k, type: v }))).map((f) => {
-      const name = f.name || f.field || f;
-      const type = f.type || "string";
-      const required = f.required || false;
-      return { name, type, required, valid: !!name && !!type };
+    // Every submitted field is counted and judged: an unnamed field is a
+    // named validation failure ("field N has no name"), never a silent
+    // drop and never — via a truthy object name — a silent pass.
+    const issues = [];
+    const fields = (Array.isArray(schema) ? schema : Object.entries(schema).map(([k, v]) => ({ name: k, type: v }))).map((f, i) => {
+      const rawName = typeof f === "string" ? f : (f?.name ?? f?.field);
+      const name = typeof rawName === "string" ? rawName.trim() : "";
+      const type = (typeof f === "object" && f !== null && typeof f.type === "string" && f.type.trim()) ? f.type.trim() : "string";
+      const required = !!(f && typeof f === "object" && f.required);
+      if (!name) issues.push(`field ${i + 1} has no name`);
+      return { name, type, required, valid: !!name };
     });
-    return { ok: true, result: { fields, totalFields: fields.length, validFields: fields.filter((f) => f.valid).length, types: [...new Set(fields.map((f) => f.type))], requiredCount: fields.filter((f) => f.required).length, schemaValid: fields.every((f) => f.valid) } };
+    return { ok: true, result: { fields, totalFields: fields.length, validFields: fields.filter((f) => f.valid).length, types: [...new Set(fields.map((f) => f.type))], requiredCount: fields.filter((f) => f.required).length, schemaValid: fields.every((f) => f.valid), issues } };
   });
 
   registerLensAction("custom", "templateRender", (ctx, artifact, _params) => {

@@ -236,6 +236,7 @@ export function ShopFloorToolsPanel() {
             <ListChecks className="h-4 w-4 text-cyan-400" />
             <span className="text-xs uppercase font-semibold text-zinc-300 tracking-wider">Advance routing step</span>
           </header>
+          <p className="text-[11px] text-zinc-500">Calculator: it works out the step position from the steps and index you supply. It does not advance a saved work order — record progress on the Work Orders board.</p>
           <Field label="Work order">
             <input className={inputCls} value={woTitle} onChange={(e) => setWoTitle(e.target.value)} placeholder="WO-1042" />
           </Field>

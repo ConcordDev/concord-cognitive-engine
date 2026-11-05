@@ -1,15 +1,132 @@
 'use client';
 
 /**
- * Documentation Hub — live /api/v1/docs + version timeline.
- * Extracted from docs/page.tsx.
+ * Documentation Hub — live /api/v1/docs, every figure derived from
+ * the payload actually fetched (S2 / F4 — API Hub honesty).
+ *
+ * The /api/v1/docs payload (server/server.js) is:
+ *   { version, authentication, rateLimit, domains, totalActions,
+ *     endpoints: { <domain>: [{ endpoint: "POST /api/v1/lens/<domain>/<action>",
+ *                               description, brain, producesFile, fileType }] } }
+ *
+ * The previous panel read `endpoints.length` and `domainCount` —
+ * both undefined on this shape — so its cards always fell back to
+ * hardcoded figures (47 endpoints / 12 domains) over a hardcoded
+ * 8-row sample list, under hardcoded claims (98% schema coverage,
+ * "Released 3 days ago", "2 deprecations pending", "Synced from
+ * source") and a hardcoded version timeline whose "latest"
+ * contradicted the payload's own version. F4's rule: every number
+ * on this view derives from the listed source, or the claim comes
+ * down.
+ *
+ * Here the endpoint count IS the number of endpoints listed below
+ * (grouped by domain; the per-domain counts sum to the headline —
+ * the payload's own totalActions field is not trusted over the
+ * list). The version, authentication and rate limit are the
+ * payload's own strings. Claims with no source in the payload
+ * (schema coverage, release recency, deprecations, a version
+ * history) are not rendered as fact. An endpoint-less payload
+ * renders an honest empty state.
  */
 
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import {
-  Code2, FileJson, GitBranch, Shield, RefreshCw, CheckCircle2, AlertCircle,
+  Code2, FileJson, GitBranch, Shield, RefreshCw, AlertCircle,
 } from 'lucide-react';
+
+export interface ApiDocsEndpoint {
+  method: string;
+  path: string;
+  description: string;
+  brain?: string;
+}
+
+export interface ApiDocsGroup {
+  domain: string;
+  endpoints: ApiDocsEndpoint[];
+}
+
+export interface ApiDocsSummary {
+  version: string | null;
+  authentication: string | null;
+  rateLimit: string | null;
+  groups: ApiDocsGroup[];
+  totalEndpoints: number;
+  domainCount: number;
+}
+
+interface RawEndpoint {
+  endpoint?: string;
+  method?: string;
+  path?: string;
+  description?: string;
+  desc?: string;
+  brain?: string;
+}
+
+function parseEndpoint(raw: RawEndpoint): ApiDocsEndpoint {
+  if (typeof raw.endpoint === 'string' && raw.endpoint) {
+    const sp = raw.endpoint.indexOf(' ');
+    return {
+      method: sp > 0 ? raw.endpoint.slice(0, sp) : 'POST',
+      path: sp > 0 ? raw.endpoint.slice(sp + 1) : raw.endpoint,
+      description: raw.description ?? '',
+      brain: raw.brain,
+    };
+  }
+  return {
+    method: raw.method ?? 'GET',
+    path: raw.path ?? '',
+    description: raw.description ?? raw.desc ?? '',
+    brain: raw.brain,
+  };
+}
+
+function domainOf(path: string): string {
+  const m = path.match(/\/lens\/([^/]+)\//);
+  return m ? m[1] : 'api';
+}
+
+/**
+ * Reduce a /api/v1/docs payload to what the view may claim. The
+ * headline count is computed from the listed endpoints themselves,
+ * never from a summary field, so the count and the list cannot
+ * disagree.
+ */
+export function summarizeApiDocs(payload: unknown): ApiDocsSummary {
+  const p = (payload ?? {}) as Record<string, unknown>;
+  const raw = p.endpoints;
+  const byDomain = new Map<string, ApiDocsEndpoint[]>();
+  const add = (domain: string, ep: ApiDocsEndpoint) => {
+    const list = byDomain.get(domain) ?? [];
+    list.push(ep);
+    byDomain.set(domain, list);
+  };
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    for (const [domain, actions] of Object.entries(raw as Record<string, unknown>)) {
+      if (!Array.isArray(actions)) continue;
+      for (const a of actions) add(domain, parseEndpoint(a as RawEndpoint));
+    }
+  } else if (Array.isArray(raw)) {
+    for (const a of raw) {
+      const ep = parseEndpoint(a as RawEndpoint);
+      add(domainOf(ep.path), ep);
+    }
+  }
+  const groups = [...byDomain.entries()]
+    .map(([domain, endpoints]) => ({ domain, endpoints }))
+    .sort((a, b) => a.domain.localeCompare(b.domain));
+  return {
+    version: typeof p.version === 'string' ? p.version : null,
+    authentication: typeof p.authentication === 'string' ? p.authentication : null,
+    rateLimit: typeof p.rateLimit === 'string' ? p.rateLimit : null,
+    groups,
+    totalEndpoints: groups.reduce((n, g) => n + g.endpoints.length, 0),
+    domainCount: groups.length,
+  };
+}
 
 export function ApiHubPanel() {
   const {
@@ -21,6 +138,25 @@ export function ApiHubPanel() {
     queryFn: () => api.get('/api/v1/docs').then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
+  const [filter, setFilter] = useState('');
+
+  const summary = useMemo(() => summarizeApiDocs(liveApiDocs), [liveApiDocs]);
+  const visibleGroups = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return summary.groups;
+    return summary.groups
+      .map((g) => ({
+        domain: g.domain,
+        endpoints: g.domain.toLowerCase().includes(q)
+          ? g.endpoints
+          : g.endpoints.filter(
+              (e) =>
+                e.path.toLowerCase().includes(q) ||
+                e.description.toLowerCase().includes(q),
+            ),
+      }))
+      .filter((g) => g.endpoints.length > 0);
+  }, [summary, filter]);
 
   if (docsLoading) {
     return (
@@ -57,232 +193,132 @@ export function ApiHubPanel() {
   }
 
   return (
-      <div className="panel p-6 space-y-5">
-        <h2 className="text-lg font-bold flex items-center gap-2">
-          <Code2 className="w-5 h-5 text-neon-cyan" />
-          Documentation Hub
-        </h2>
-        <p className="text-sm text-gray-400">
-          Auto-generated API documentation with version tracking across all Concord endpoints.
-        </p>
+    <div className="panel p-6 space-y-5">
+      <h2 className="text-lg font-bold flex items-center gap-2">
+        <Code2 className="w-5 h-5 text-neon-cyan" />
+        Documentation Hub
+      </h2>
+      <p className="text-sm text-gray-400">
+        API documentation generated from the live <span className="font-mono">/api/v1/docs</span>{' '}
+        source. Every figure on this page is computed from the endpoints listed below.
+      </p>
 
-        {/* API Endpoint Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-2">
-            <div className="flex items-center gap-2">
-              <FileJson className="w-4 h-4 text-neon-cyan" />
-              <span className="text-sm font-semibold text-white">REST Endpoints</span>
-            </div>
-            <p className="text-2xl font-bold text-neon-cyan">
-              {liveApiDocs?.endpoints?.length ?? 47}
-            </p>
-            <p className="text-xs text-gray-400">Across {liveApiDocs?.domainCount ?? 12} domains</p>
-            <div className="flex items-center gap-1 text-xs text-neon-green">
-              <CheckCircle2 className="w-3 h-3" />
-              <span>All documented</span>
-            </div>
+      {/* API Endpoint Summary Cards — all values from the payload */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <FileJson className="w-4 h-4 text-neon-cyan" />
+            <span className="text-sm font-semibold text-white">REST Endpoints</span>
           </div>
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-2">
-            <div className="flex items-center gap-2">
-              <GitBranch className="w-4 h-4 text-neon-purple" />
-              <span className="text-sm font-semibold text-white">API Version</span>
-            </div>
-            <p className="text-2xl font-bold text-neon-purple">
-              {liveApiDocs?.version ?? 'v2.4.1'}
-            </p>
-            <p className="text-xs text-gray-400">Released 3 days ago</p>
-            <div className="flex items-center gap-1 text-xs text-yellow-400">
-              <AlertCircle className="w-3 h-3" />
-              <span>2 deprecations pending</span>
-            </div>
-          </div>
-          <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-2">
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-neon-green" />
-              <span className="text-sm font-semibold text-white">Schema Coverage</span>
-            </div>
-            <p className="text-2xl font-bold text-neon-green">98%</p>
-            <p className="text-xs text-gray-400">TypeScript types generated</p>
-            <div className="flex items-center gap-1 text-xs text-neon-green">
-              <CheckCircle2 className="w-3 h-3" />
-              <span>OpenAPI 3.1 compliant</span>
-            </div>
-          </div>
+          <p className="text-2xl font-bold text-neon-cyan">{summary.totalEndpoints}</p>
+          <p className="text-xs text-gray-400">
+            Across {summary.domainCount} domains — every one listed below
+          </p>
         </div>
-
-        {/* Auto-Generated API Docs Table */}
-        <div className="bg-black/40 border border-white/10 rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Code2 className="w-4 h-4 text-neon-cyan" />
-              Auto-Generated API Reference
-            </h3>
-            <div className="flex items-center gap-2">
-              <RefreshCw className="w-3 h-3 text-gray-400" />
-              <span className="text-xs text-gray-400">Synced from source</span>
-            </div>
-          </div>
-          <div className="divide-y divide-white/5">
-            {(() => {
-              const fallbackEndpoints = [
-                {
-                  method: 'GET',
-                  path: '/api/dtus',
-                  desc: 'List all DTUs with pagination',
-                  status: 'stable',
-                },
-                { method: 'POST', path: '/api/dtus', desc: 'Create a new DTU', status: 'stable' },
-                {
-                  method: 'POST',
-                  path: '/api/forge/auto',
-                  desc: 'AI-generated DTU creation',
-                  status: 'stable',
-                },
-                {
-                  method: 'GET',
-                  path: '/api/graph/nodes',
-                  desc: 'Fetch knowledge graph nodes',
-                  status: 'stable',
-                },
-                {
-                  method: 'POST',
-                  path: '/api/chat',
-                  desc: 'Natural language query interface',
-                  status: 'beta',
-                },
-                {
-                  method: 'GET',
-                  path: '/api/council/queue',
-                  desc: 'Pending governance proposals',
-                  status: 'stable',
-                },
-                {
-                  method: 'POST',
-                  path: '/api/economy/tip',
-                  desc: 'Send CC tip to a creator',
-                  status: 'beta',
-                },
-                {
-                  method: 'GET',
-                  path: '/api/reflection/status',
-                  desc: 'Self-model reflection status',
-                  status: 'stable',
-                },
-              ];
-              const endpoints =
-                liveApiDocs?.endpoints?.length > 0
-                  ? liveApiDocs.endpoints.map(
-                      (ep: {
-                        method?: string;
-                        path?: string;
-                        description?: string;
-                        status?: string;
-                      }) => ({
-                        method: ep.method ?? 'GET',
-                        path: ep.path ?? '',
-                        desc: ep.description ?? '',
-                        status: ep.status ?? 'stable',
-                      })
-                    )
-                  : fallbackEndpoints;
-              return endpoints;
-            })().map(
-              (
-                endpoint: { method: string; path: string; desc: string; status: string },
-                idx: number
-              ) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors"
-                >
-                  <span
-                    className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${
-                      endpoint.method === 'GET'
-                        ? 'bg-neon-green/20 text-neon-green'
-                        : 'bg-neon-cyan/20 text-neon-cyan'
-                    }`}
-                  >
-                    {endpoint.method}
-                  </span>
-                  <span className="text-sm font-mono text-gray-300 flex-1">{endpoint.path}</span>
-                  <span className="text-xs text-gray-400 hidden md:block">{endpoint.desc}</span>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded ${
-                      endpoint.status === 'stable'
-                        ? 'bg-neon-green/10 text-neon-green'
-                        : 'bg-neon-purple/10 text-neon-purple'
-                    }`}
-                  >
-                    {endpoint.status}
-                  </span>
-                </div>
-              )
-            )}
-          </div>
-        </div>
-
-        {/* Version Tracking Timeline */}
-        <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-4">
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+        <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-2">
+          <div className="flex items-center gap-2">
             <GitBranch className="w-4 h-4 text-neon-purple" />
-            Version History
-          </h3>
-          <div className="space-y-3">
-            {[
-              {
-                version: 'v2.4.1',
-                date: 'Feb 26, 2026',
-                changes: 'Added economy tip endpoint, CRETI scoring docs',
-                tag: 'latest',
-              },
-              {
-                version: 'v2.4.0',
-                date: 'Feb 18, 2026',
-                changes: 'ConnectiveTissue bar integration, fork royalties',
-                tag: '',
-              },
-              {
-                version: 'v2.3.2',
-                date: 'Feb 5, 2026',
-                changes: 'Reflection lens API, self-model endpoints',
-                tag: '',
-              },
-              {
-                version: 'v2.3.0',
-                date: 'Jan 22, 2026',
-                changes: 'Queue lens overhaul, governor job controls',
-                tag: 'breaking',
-              },
-            ].map((v, idx) => (
-              <div key={idx} className="flex items-start gap-3">
-                <div className="flex flex-col items-center mt-1">
-                  <div
-                    className={`w-2.5 h-2.5 rounded-full ${idx === 0 ? 'bg-neon-cyan' : 'bg-gray-600'}`}
-                  />
-                  {idx < 3 && <div className="w-px h-8 bg-white/10" />}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-mono font-bold text-white">{v.version}</span>
-                    {v.tag === 'latest' && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-neon-cyan/20 text-neon-cyan">
-                        latest
-                      </span>
-                    )}
-                    {v.tag === 'breaking' && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
-                        breaking
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-0.5">{v.date}</p>
-                  <p className="text-xs text-gray-400 mt-1">{v.changes}</p>
-                </div>
-              </div>
-            ))}
+            <span className="text-sm font-semibold text-white">API Version</span>
           </div>
+          <p className="text-2xl font-bold text-neon-purple">
+            {summary.version ?? 'Not published'}
+          </p>
+          <p className="text-xs text-gray-400">As reported by the docs source</p>
+        </div>
+        <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-neon-green" />
+            <span className="text-sm font-semibold text-white">Access</span>
+          </div>
+          <p className="text-xs text-gray-300">{summary.authentication ?? 'Not published'}</p>
+          <p className="text-xs text-gray-400">{summary.rateLimit ?? ''}</p>
         </div>
       </div>
 
+      {/* API Reference — the listed source the cards count */}
+      <div className="bg-black/40 border border-white/10 rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <Code2 className="w-4 h-4 text-neon-cyan" />
+            Auto-Generated API Reference
+          </h3>
+          <div className="flex items-center gap-2">
+            <RefreshCw className="w-3 h-3 text-gray-400" />
+            <span className="text-xs text-gray-400">Live from /api/v1/docs</span>
+          </div>
+        </div>
+        <div className="px-4 py-2 border-b border-white/10">
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filter by domain, path, or description…"
+            aria-label="Filter endpoints"
+            className="w-full bg-black/30 border border-white/10 rounded px-2 py-1 text-xs text-gray-200"
+          />
+        </div>
+        {summary.totalEndpoints === 0 ? (
+          <p className="px-4 py-6 text-xs text-gray-400 italic">
+            The docs source returned no endpoints.
+          </p>
+        ) : visibleGroups.length === 0 ? (
+          <p className="px-4 py-6 text-xs text-gray-400 italic">
+            No endpoints match &ldquo;{filter}&rdquo;.
+          </p>
+        ) : (
+          <div className="divide-y divide-white/5">
+            {visibleGroups.map((g) => (
+              <details key={g.domain} open={filter.trim() ? true : undefined}>
+                <summary className="flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:bg-white/5">
+                  <span className="text-sm font-semibold text-white">{g.domain}</span>
+                  <span className="text-xs text-gray-400">
+                    {g.endpoints.length} endpoint{g.endpoints.length === 1 ? '' : 's'}
+                  </span>
+                </summary>
+                <div className="divide-y divide-white/5">
+                  {g.endpoints.map((endpoint, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors"
+                    >
+                      <span
+                        className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${
+                          endpoint.method === 'GET'
+                            ? 'bg-neon-green/20 text-neon-green'
+                            : 'bg-neon-cyan/20 text-neon-cyan'
+                        }`}
+                      >
+                        {endpoint.method}
+                      </span>
+                      <span className="text-sm font-mono text-gray-300 flex-1">{endpoint.path}</span>
+                      <span className="text-xs text-gray-400 hidden md:block">
+                        {endpoint.description}
+                      </span>
+                      {endpoint.brain && (
+                        <span className="text-xs text-gray-500 hidden lg:block">
+                          {endpoint.brain}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Version History — the source publishes a current version only */}
+      <div className="bg-black/40 border border-white/10 rounded-lg p-4 space-y-2">
+        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+          <GitBranch className="w-4 h-4 text-neon-purple" />
+          Version History
+        </h3>
+        <p className="text-xs text-gray-400">
+          The docs source publishes the current version only
+          {summary.version ? ` (${summary.version})` : ''}; no release history is
+          available from /api/v1/docs, so none is shown.
+        </p>
+      </div>
+    </div>
   );
 }

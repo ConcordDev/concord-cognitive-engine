@@ -79,10 +79,12 @@ function SchemaTab() {
   const [result, setResult] = useState<any>(null);
 
   const run = async () => {
-    const schema = fields.filter((f) => f.name.trim());
-    if (schema.length === 0) return;
+    // Send EVERY field, unnamed ones included: the macro names them as
+    // validation failures ("field N has no name") instead of the field
+    // silently vanishing from the verdict.
+    if (fields.length === 0) return;
     setBusy(true);
-    const r = await lensRun('custom', 'evaluateSchema', { schema });
+    const r = await lensRun('custom', 'evaluateSchema', { schema: fields });
     setBusy(false);
     setResult(r.data.ok ? r.data.result : { error: r.data.error });
   };
@@ -114,10 +116,15 @@ function SchemaTab() {
             <span className={`rounded px-2 py-0.5 ${result.schemaValid ? 'bg-emerald-500/15 text-emerald-300' : 'bg-rose-500/15 text-rose-300'}`}>{result.schemaValid ? 'schema valid' : 'schema invalid'}</span>
           </div>
           <div className="flex flex-wrap gap-1">
-            {(result.fields || []).map((f: any) => (
-              <span key={f.name} className="rounded bg-zinc-900 border border-zinc-800 px-1.5 py-0.5">{f.name} <span className="text-zinc-500">{f.type}</span> {f.valid ? <span className="text-emerald-400">✓</span> : <span className="text-rose-400">✗</span>}</span>
+            {(result.fields || []).map((f: any, i: number) => (
+              <span key={`${f.name}-${i}`} className="rounded bg-zinc-900 border border-zinc-800 px-1.5 py-0.5">{f.name || `(field ${i + 1})`} <span className="text-zinc-500">{f.type}</span> {f.valid ? <span className="text-emerald-400">✓</span> : <span className="text-rose-400">✗</span>}</span>
             ))}
           </div>
+          {(result.issues || []).length > 0 && (
+            <div className="rounded bg-rose-500/10 border border-rose-500/30 p-2 text-[11px] text-rose-300">
+              {(result.issues as string[]).map((iss, i) => <div key={i}>⚠ {iss}</div>)}
+            </div>
+          )}
         </div>
       ))}
       <InStyle />

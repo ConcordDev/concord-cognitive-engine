@@ -394,7 +394,7 @@ function EvidenceTab() {
 
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 space-y-2">
           <h4 className="text-xs font-semibold text-white flex items-center gap-1.5"><Radio className="w-3.5 h-3.5 text-blue-400" /> Custody Transfer</h4>
-          <Field label="Evidence ID" value={xferId} onChange={(e) => setXferId(e.target.value)} placeholder="ev_..." />
+          <Field label="Evidence ID — display ID (EVD-…) or internal id (ev_…)" value={xferId} onChange={(e) => setXferId(e.target.value)} placeholder="EVD-…" />
           <div className="grid grid-cols-2 gap-2">
             <Field label="Recipient" value={xferTo} onChange={(e) => setXferTo(e.target.value)} placeholder="Forensics Lab" />
             <Field label="Signature" value={xferSig} onChange={(e) => setXferSig(e.target.value)} placeholder="Det. Wells" />

@@ -68,7 +68,11 @@ export function thinkingDisabled(env = process.env) {
 }
 
 const REASONING_LEVELS = new Set(["low", "medium", "high"]);
-const REASONING_EFFORT_MODEL_RE = /(?:^|[/:])gpt-oss(?:[:\-_.]|$)/i;
+// Kimi K3 (kimi-k3.1-pro:cloud) is listed too. Measured 2026-11-05: with
+// think:false it only announces a tool ("I'll look up the latest news…") and
+// never writes the call, and its reasoning can leak into the reply; with
+// think:"low" it writes the tool call in ~3 s and keeps reasoning separate.
+const REASONING_EFFORT_MODEL_RE = /(?:^|[/:])(?:gpt-oss|kimi)(?:[:\-_.]|$)/i;
 
 /** True for models that take a reasoning level instead of a think on/off switch. */
 export function usesReasoningLevels(model) {

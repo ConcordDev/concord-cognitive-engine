@@ -197,24 +197,16 @@ describe('classroom lens — create/submit flows read fields off the unwrapped r
     expect(() => getByText(/Cohort #undefined/)).toThrow();
   });
 
-  it('flashes the real submissionId from result.submissionId after submitting homework', async () => {
+  it('does not ask for a homework DTU the cohort view never shows', async () => {
     // @ts-expect-error test global
-    global.fetch = vi.fn((url: string, init: RequestInit) => {
-      const body = JSON.parse(String(init.body));
-      if (body.name === 'submit_homework') return jsonResponse(envelope({ ok: true, submissionId: 314 }));
-      return jsonResponse(envelope(COHORTS_EMPTY));
-    });
-    const { getByText, getByRole, getAllByPlaceholderText, getByPlaceholderText } = render(<ClassroomPage />);
+    global.fetch = vi.fn(() => jsonResponse(envelope(COHORTS_EMPTY)));
+    const { getByText, queryByPlaceholderText, queryByRole, queryByText } = render(<ClassroomPage />);
     await waitFor(() => expect(getByText(/No cohorts you teach/i)).toBeInTheDocument());
 
-    // Two "Cohort id" inputs exist (Enrol + Submit panels) — target the Submit one.
-    fireEvent.change(getAllByPlaceholderText('Cohort id')[1], { target: { value: '12' } });
-    fireEvent.change(getByPlaceholderText('DTU id'), { target: { value: 'dtu_abc123' } });
-    await act(async () => { fireEvent.click(getByRole('button', { name: 'Submit' })); });
-
-    await waitFor(() => expect(getByText(/Submitted \(#314\)/)).toBeInTheDocument());
-    // pre-fix this read the top-level (always-undefined) `submissionId`, i.e. "Submitted (#undefined)".
-    expect(() => getByText(/Submitted \(#undefined\)/)).toThrow();
+    expect(getByText(/Hand work in on an assignment in the workspace/)).toBeInTheDocument();
+    expect(queryByText('Submit homework')).toBeNull();
+    expect(queryByPlaceholderText('DTU id')).toBeNull();
+    expect(queryByRole('button', { name: 'Submit' })).toBeNull();
   });
 
   it('surfaces the real macro-level failure reason on create (result.ok:false is not masked as success)', async () => {
@@ -260,28 +252,6 @@ describe('classroom lens — create/submit flows read fields off the unwrapped r
     expect(queryByText('✓ Enrolled')).toBeNull();
     expect(cohort.value).toBe('987654');
     expect(student.value).toBe('victim-user');
-  });
-
-  it('Submit keeps the typed DTU id and shows the server refusal instead of a submission id', async () => {
-    // @ts-expect-error test global
-    global.fetch = vi.fn((_url: string, init: RequestInit) => {
-      const body = JSON.parse(String(init.body));
-      if (body.name === 'submit_homework') return jsonResponse(envelope({ ok: false, reason: 'dtu_not_found' }));
-      return jsonResponse(envelope(COHORTS_EMPTY));
-    });
-    const { getByText, getByRole, getAllByPlaceholderText, getByPlaceholderText, queryByText } = render(<ClassroomPage />);
-    await waitFor(() => expect(getByText(/No cohorts you teach/i)).toBeInTheDocument());
-
-    const cohort = getAllByPlaceholderText('Cohort id')[1] as HTMLInputElement;
-    const dtu = getByPlaceholderText('DTU id') as HTMLInputElement;
-    fireEvent.change(cohort, { target: { value: '12' } });
-    fireEvent.change(dtu, { target: { value: 'dtu_private_other' } });
-    await act(async () => { fireEvent.click(getByRole('button', { name: 'Submit' })); });
-
-    await waitFor(() => expect(getByText(/Failed: dtu_not_found/)).toBeInTheDocument());
-    expect(queryByText(/Submitted/)).toBeNull();
-    expect(cohort.value).toBe('12');
-    expect(dtu.value).toBe('dtu_private_other');
   });
 
   it('Archive and Leave show a server refusal and leave the cohort row in place', async () => {

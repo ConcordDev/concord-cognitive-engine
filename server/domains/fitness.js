@@ -231,6 +231,7 @@ export default function registerFitnessActions(registerLensAction) {
       "workouts", "recoveryEntries", "activityEntries",
       "activities", "routes", "goals", "gear", "hrvSamples",
       "segments", "segmentEfforts", "clubs", "challenges",
+      "feedLibrary",
     ]) {
       if (!(s[k] instanceof Map)) s[k] = new Map();
     }
@@ -2413,9 +2414,62 @@ Generate the plan.`;
 
   // feed — ingest real exercises from the open wger workout database as
   // visible DTUs. Free public API, no key.
+  //
+  // F14 (completed by the feed-library fix): the listing contract is the
+  // STORED library, not the pull response. Three facts the first build
+  // missed, all verified live (R3 re-pass + re-check, 2026-11-04):
+  //  (1) the wger v2 list payload carries name: null — real names and
+  //      descriptions live in exerciseinfo/<id> translations;
+  //  (2) the seen set is corpus-level (one shared domain state), so the
+  //      only reachable pull state for most batches is "already seen" —
+  //      the seen form must carry names + full DTU ids too;
+  //  (3) a listing held in the pull response dies on reload — the batch
+  //      must be recorded durably at ingest (feedLibrary, a Map in the
+  //      domain state, revived by getFitState like every other store)
+  //      and read back through fitness.feed-library.
+  // Legacy batches (ingested before the library existed) heal at their
+  // next pull: the name always resolves from exerciseinfo, and the DTU
+  // id is recovered from the corpus by the meta.exerciseId the ingest
+  // stamped at create time.
+  async function wgerExerciseInfo(ex) {
+    try {
+      const r = await fetch(`https://wger.de/api/v2/exerciseinfo/${ex.id}/?format=json`);
+      if (!r.ok) return { name: null, desc: "" };
+      const info = await r.json();
+      const trs = Array.isArray(info?.translations) ? info.translations : [];
+      const tr = trs.find((t) => t?.language === 2) || trs[0];
+      const name = typeof tr?.name === "string" && tr.name.trim() ? tr.name.trim() : null;
+      const desc = String(tr?.description || "").replace(/<[^>]+>/g, "").trim();
+      return { name, desc };
+    } catch { return { name: null, desc: "" }; }
+  }
+
+  async function recoverFeedDtuId(ctx, ex, name) {
+    // Best-effort recovery for a pre-library ingest: the create call
+    // stamped meta.exerciseId, so a corpus search can find the DTU.
+    try {
+      for (const q of [name, `Exercise ${ex.id}`]) {
+        if (!q) continue;
+        const res = await ctx.macro.run("dtu", "search", { q, limit: 25 });
+        const dtus = Array.isArray(res?.dtus) ? res.dtus : [];
+        const hit = dtus.find((d) => d?.meta?.exerciseId === ex.id)
+          || dtus.find((d) => d?.title === `Exercise: ${name}` || d?.title === `Exercise: Exercise ${ex.id}`);
+        if (hit?.id) return hit.id;
+      }
+    } catch { /* recovery is best-effort; the name still heals */ }
+    return null;
+  }
+
+  function feedLibraryList(s) {
+    return [...(s.feedLibrary?.values() || [])]
+      .map((e) => ({ name: e.name, dtuId: e.dtuId ?? null, exerciseId: e.exerciseId }))
+      .sort((a, b) => a.exerciseId - b.exerciseId);
+  }
+
   registerLensAction("fitness", "feed", async (ctx, _a, params = {}) => {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
+    if (!(s.feedLibrary instanceof Map)) s.feedLibrary = new Map();
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 12)));
     const offset = (new Date().getDate() * limit) % 200;
     try {
@@ -2424,32 +2478,69 @@ Generate the plan.`;
       const data = await r.json();
       const exercises = (Array.isArray(data?.results) ? data.results : []).slice(0, limit);
       let ingested = 0, skipped = 0; const dtuIds = [];
-      // F14: the ingested DTUs used to surface in no list — the result
-      // carried only counts. Carry the batch itself (name + full DTU id
-      // for fresh ingests) so the lens's feed view can list what landed
-      // and where it lives.
       const surfaced = [];
       for (const ex of exercises) {
-        const id = `wger_${ex.uuid || ex.id}`;
-        const name = ex.name || `Exercise ${ex.id}`;
-        if (s.feedSeen.has(id)) { skipped++; surfaced.push({ name, dtuId: null, fresh: false }); continue; }
-        const desc = String(ex.description || "").replace(/<[^>]+>/g, "").trim();
-        const title = `Exercise: ${name}`;
-        const res = await ctx.macro.run("dtu", "create", {
-          title,
-          creti: `${title}\n\n${desc || "An exercise from the wger open workout database."}`.slice(0, 3000),
-          tags: ["fitness", "feed", "exercise", "wger"],
-          source: "wger-feed",
-          visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
-          meta: { exerciseId: ex.id, uuid: ex.uuid, name },
-        });
-        if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(id); surfaced.push({ name, dtuId: res.dtu.id, fresh: true }); }
+        const key = `wger_${ex.uuid || ex.id}`;
+        const info = await wgerExerciseInfo(ex);
+        const name = info.name || (typeof ex.name === "string" && ex.name.trim() ? ex.name.trim() : `Exercise ${ex.id}`);
+        let entry = s.feedLibrary.get(key) || null;
+        // fresh = never ingested anywhere (not in the library, not in
+        // the legacy seen set). Anything else is the seen form — the
+        // only state most pulls can reach, so it carries full data.
+        const fresh = !entry && !s.feedSeen.has(key);
+        let created = false;
+        if (!entry) entry = { exerciseId: ex.id, uuid: ex.uuid || null, name, dtuId: null };
+        if (fresh || entry.pendingCreate) {
+          const title = `Exercise: ${name}`;
+          const res = await ctx.macro.run("dtu", "create", {
+            title,
+            creti: `${title}\n\n${info.desc || "An exercise from the wger open workout database."}`.slice(0, 3000),
+            tags: ["fitness", "feed", "exercise", "wger"],
+            source: "wger-feed",
+            visibility: "public", visibilityScope: "global", // public external feed (lib/public-feed-sources.js)
+            meta: { exerciseId: ex.id, uuid: ex.uuid, name },
+          });
+          if (res?.ok && res.dtu) {
+            entry.dtuId = res.dtu.id; entry.pendingCreate = false;
+            created = true; ingested++; dtuIds.push(res.dtu.id);
+          } else if (fresh) {
+            // Create failed transiently: remember to retry the create
+            // (not the recovery) on the next sighting.
+            entry.pendingCreate = true;
+          }
+        }
+        if (!created) skipped++;
+        // Heal the stored record on every sighting: real name from
+        // exerciseinfo (replacing any fallback label), and the DTU id
+        // for a legacy entry (ingested before the library existed) via
+        // corpus recovery on the meta.exerciseId stamped at create.
+        if (info.name) entry.name = info.name;
+        if (!entry.dtuId && !entry.pendingCreate) entry.dtuId = await recoverFeedDtuId(ctx, ex, entry.name);
+        s.feedLibrary.set(key, entry);
+        if (entry.dtuId) s.feedSeen.add(key);
+        surfaced.push({ name: entry.name, dtuId: entry.dtuId ?? null, fresh });
+      }
+      // Bound the library (batches land daily; oldest drop first).
+      while (s.feedLibrary.size > 500) {
+        const oldest = s.feedLibrary.keys().next().value;
+        if (oldest === undefined) break;
+        s.feedLibrary.delete(oldest);
       }
       saveStateIfAvailable();
-      return { ok: true, result: { ingested, skipped, source: "wger-exercises", dtuIds, exercises: surfaced } };
+      return { ok: true, result: { ingested, skipped, source: "wger-exercises", dtuIds, exercises: surfaced, library: feedLibraryList(s) } };
     } catch (e) {
       return { ok: false, error: `wger unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // feed-library — the stored wger batch listing (names + full DTU
+  // ids), read from domain state: no fetch, no ingest. This is what
+  // the lens's feed panel renders on mount, so the listing persists
+  // across reload exactly as stored.
+  registerLensAction("fitness", "feed-library", async (ctx, _a, _params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.feedLibrary instanceof Map)) s.feedLibrary = new Map();
+    return { ok: true, result: { source: "wger-exercises", items: feedLibraryList(s) } };
   });
 };
 

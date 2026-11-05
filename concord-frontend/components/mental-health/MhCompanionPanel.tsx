@@ -121,6 +121,9 @@ export function MhCompanionPanel() {
         </button>
       </div>
       <p className="text-[10px] text-zinc-400 italic">For reflection only — not a therapist and not medical advice.</p>
+      <p className="text-[10px] text-zinc-400">
+        In crisis? Call or text <strong className="text-zinc-200">988</strong> — the Suicide &amp; Crisis Lifeline (US), free, confidential, 24/7. International lines are in the Support view.
+      </p>
     </div>
   );
 }
