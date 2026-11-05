@@ -122,7 +122,7 @@ function bindBudget(parsed: unknown): BenchBind {
     if (typeof raw === 'string') return { category: raw };
     if (!raw || typeof raw !== 'object') return null;
     const line = raw as Record<string, unknown>;
-    return { ...line, category: line.category ?? line.name };
+    return { ...line, category: line.category ?? line.name ?? line.label };
   };
   if (Array.isArray(parsed)) {
     if (!parsed.length) return { ok: false, error: 'The budget list is empty — add at least one line.' };

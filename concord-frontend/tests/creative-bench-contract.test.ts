@@ -51,8 +51,8 @@ describe("creative bench input contract — the panel binds before it calls", ()
     assert.ok(panel.includes("durationSec: shot.durationSec ?? shot.duration"));
   });
 
-  it("budget lines take their category from the entered name when no category is authored", () => {
-    assert.ok(panel.includes("category: line.category ?? line.name"));
+  it("budget lines take their category from the entered name or label when no category is authored", () => {
+    assert.ok(panel.includes("category: line.category ?? line.name ?? line.label"));
   });
 
   it("a delivery array lifts its channel and date to the macro's platform/deliveryDate", () => {
