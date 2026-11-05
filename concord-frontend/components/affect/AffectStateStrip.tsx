@@ -4,6 +4,7 @@
  * AffectStateStrip — persistent 7D readout + ATS health (clinical header).
  */
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useAffectAts } from '@/components/affect/useAffectAts';
@@ -21,6 +22,17 @@ export function AffectStateStrip() {
     isLoading,
     isError,
   } = useAffectAts();
+
+  // F9: the session input edits a local draft and commits on blur/Enter.
+  // Bound directly to the context session, every keystroke re-keyed
+  // every query in the lens and the strip's own loading branch
+  // unmounted the input mid-typing, truncating the id.
+  const [draft, setDraft] = useState<string | null>(null);
+  const commitDraft = () => {
+    if (draft == null) return;
+    setSessionId(draft.trim() || 'default');
+    setDraft(null);
+  };
 
   if (isLoading) {
     return (
@@ -55,8 +67,17 @@ export function AffectStateStrip() {
       <div className="flex items-center justify-end gap-3">
         <input
           type="text"
-          value={sessionId}
-          onChange={(e) => setSessionId(e.target.value)}
+          value={draft ?? sessionId}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitDraft}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commitDraft();
+            } else if (e.key === 'Escape') {
+              setDraft(null);
+            }
+          }}
           className="input-lattice w-40 text-sm"
           placeholder="Session ID"
           aria-label="Affect session id"
@@ -80,6 +101,19 @@ export function AffectStateStrip() {
           <Shield className="w-3 h-3" /> Cooldown
         </button>
       </div>
+
+      {/* F11: the reset's effect is invisible at baseline — say so. */}
+      {resetAffect.isSuccess && !resetAffect.isPending && (
+        <p role="status" className="text-xs text-emerald-400 text-right">
+          Session reset — state returned to baseline, and the reset is in the event log.
+        </p>
+      )}
+      {resetAffect.isError && (
+        <p role="alert" className="text-xs text-red-400 text-right">
+          Reset failed
+          {resetAffect.error instanceof Error ? ` — ${resetAffect.error.message}` : ''}.
+        </p>
+      )}
 
       {healthData && (
         <div

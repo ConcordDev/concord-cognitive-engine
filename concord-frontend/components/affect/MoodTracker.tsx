@@ -11,7 +11,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { lensRun } from '@/lib/api/client';
+import { lensRun, apiHelpers } from '@/lib/api/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAffectSession } from '@/components/affect/AffectSessionContext';
+import { moodToAffectEvent } from '@/components/affect/affect-model';
 import { ChartKit } from '@/components/viz/ChartKit';
 import {
   Smile,
@@ -28,6 +31,8 @@ import {
   CalendarDays,
   X,
   Sparkles,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 
 // --- Types mirroring the backend macro result shapes ---
@@ -153,6 +158,8 @@ function moodColor(value: number, max: number): string {
 }
 
 export function MoodTracker() {
+  const { sessionId } = useAffectSession();
+  const queryClient = useQueryClient();
   const [subTab, setSubTab] = useState<MoodSubTab>('checkin');
 
   // Shared data
@@ -193,8 +200,17 @@ export function MoodTracker() {
   // Export
   const [exporting, setExporting] = useState(false);
 
+  // Check-in edit state (F12)
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editMood, setEditMood] = useState<number>(3);
+  const [editNote, setEditNote] = useState('');
+
   const maxMood = useMemo(
     () => (scale ? Math.max(...scale.points.map((p) => p.value)) : 5),
+    [scale],
+  );
+  const minMood = useMemo(
+    () => (scale ? Math.min(...scale.points.map((p) => p.value)) : 1),
     [scale],
   );
 
@@ -239,7 +255,7 @@ export function MoodTracker() {
 
   const loadCorrelation = useCallback(async () => {
     try {
-      const r = await lensRun('affect', 'activityCorrelation', { minSamples: 2 });
+      const r = await lensRun('affect', 'activityCorrelation', { minSamples: 1 });
       if (r.data?.ok && r.data.result) setCorrelation(r.data.result as CorrelationResult);
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed to load correlations');
@@ -283,6 +299,7 @@ export function MoodTracker() {
 
   const submitCheckin = async () => {
     if (selectedMood == null) return;
+    const moodValue = selectedMood;
     setSubmitting(true);
     setErr(null);
     try {
@@ -301,6 +318,19 @@ export function MoodTracker() {
         setSelectedPrompt(null);
         setPromptAnswer('');
         await loadCore();
+        // S-AFF-1: a check-in is an input to the affective state, not a
+        // parallel record — emit it as FEEDBACK on the session the rest
+        // of the lens reads, so the 7D state moves with the user's own
+        // acts. The check-in has already saved; a failed emit must not
+        // fail it, so the wire is contained.
+        try {
+          const values = scale ? scale.points.map((p) => p.value) : [1, 2, 3, 4, 5];
+          await apiHelpers.affect.emit(sessionId, moodToAffectEvent(values, moodValue));
+          queryClient.invalidateQueries({ queryKey: ['affect-state', sessionId] });
+          queryClient.invalidateQueries({ queryKey: ['affect-events', sessionId] });
+          queryClient.invalidateQueries({ queryKey: ['affect-policy', sessionId] });
+          queryClient.invalidateQueries({ queryKey: ['affect-health'] });
+        } catch { /* the saved check-in stands; the state wire is best-effort beside it */ }
       } else {
         setErr(r.data?.error || 'Check-in failed');
       }
@@ -308,6 +338,49 @@ export function MoodTracker() {
       setErr(e instanceof Error ? e.message : 'Check-in failed');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // F12: check-ins can be corrected and removed; derived views
+  // (trends, correlations, streaks) recompute from the list on read.
+  const startEditCheckin = (e: CheckinEntry) => {
+    setEditingId(e.id);
+    setEditMood(e.mood);
+    setEditNote(e.note || '');
+  };
+
+  const saveEditCheckin = async () => {
+    if (!editingId) return;
+    setErr(null);
+    try {
+      const r = await lensRun('affect', 'updateCheckin', {
+        id: editingId,
+        mood: editMood,
+        note: editNote,
+      });
+      if (r.data?.ok) {
+        setEditingId(null);
+        await loadCore();
+      } else {
+        setErr(r.data?.error || 'Failed to update check-in');
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Failed to update check-in');
+    }
+  };
+
+  const deleteCheckin = async (id: string) => {
+    setErr(null);
+    try {
+      const r = await lensRun('affect', 'deleteCheckin', { id });
+      if (r.data?.ok) {
+        if (editingId === id) setEditingId(null);
+        await loadCore();
+      } else {
+        setErr(r.data?.error || 'Failed to delete check-in');
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Failed to delete check-in');
     }
   };
 
@@ -632,7 +705,48 @@ export function MoodTracker() {
             </h3>
             {history && history.entries.length > 0 ? (
               <div className="space-y-1.5 max-h-72 overflow-y-auto">
-                {history.entries.map((e) => (
+                {history.entries.map((e) => editingId === e.id ? (
+                  <div key={e.id} className="lens-card space-y-2 text-sm">
+                    <div className="flex flex-wrap gap-1.5">
+                      {(scale?.points || []).map((p) => (
+                        <button
+                          key={p.value}
+                          onClick={() => setEditMood(p.value)}
+                          aria-label={`Set mood to ${p.label}`}
+                          className={`text-xs px-2 py-1 rounded-lg border ${
+                            editMood === p.value
+                              ? 'border-neon-purple bg-neon-purple/10 text-neon-purple'
+                              : 'border-gray-700/50 text-gray-400 hover:border-gray-500'
+                          }`}
+                        >
+                          {p.emoji} {p.label}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={editNote}
+                      onChange={(ev) => setEditNote(ev.target.value)}
+                      rows={2}
+                      placeholder="Note"
+                      aria-label="Check-in note"
+                      className="input-lattice w-full text-sm resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={saveEditCheckin}
+                        className="btn-neon flex items-center gap-1 text-sm"
+                      >
+                        <Check className="w-3.5 h-3.5" /> Save
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="btn-neon flex items-center gap-1 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <div
                     key={e.id}
                     className="lens-card flex items-start gap-3 text-sm"
@@ -650,6 +764,22 @@ export function MoodTracker() {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}
+                        </span>
+                        <span className="ml-auto flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => startEditCheckin(e)}
+                            aria-label="Edit check-in"
+                            className="text-gray-400 hover:text-cyan-300"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => deleteCheckin(e.id)}
+                            aria-label="Delete check-in"
+                            className="text-gray-400 hover:text-rose-400"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </span>
                       </div>
                       {e.note && <p className="text-xs text-gray-400 mt-0.5">{e.note}</p>}
@@ -720,6 +850,7 @@ export function MoodTracker() {
                   xKey="day"
                   series={[{ key: 'avgMood', label: 'Daily avg mood', color: '#22c55e' }]}
                   height={220}
+                  yDomain={[minMood, maxMood]}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -736,6 +867,7 @@ export function MoodTracker() {
                       xKey="bucket"
                       series={[{ key: 'avgMood', label: 'Avg mood', color: '#6366f1' }]}
                       height={180}
+                      yDomain={[minMood, maxMood]}
                     />
                   </div>
                   <div>
@@ -748,6 +880,7 @@ export function MoodTracker() {
                       xKey="label"
                       series={[{ key: 'avgMood', label: 'Avg mood', color: '#ec4899' }]}
                       height={180}
+                      yDomain={[minMood, maxMood]}
                     />
                   </div>
                 </div>
@@ -811,7 +944,7 @@ export function MoodTracker() {
             <Tag className="w-4 h-4 text-neon-cyan" />
             Activity Correlations
           </h3>
-          {correlation?.hasData ? (
+          {correlation?.hasData && correlation.correlations.length > 0 ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 {correlation.topLift && (
@@ -872,11 +1005,17 @@ export function MoodTracker() {
                   </div>
                 ))}
               </div>
+              {correlation.correlations.some((c) => c.samples < 3) && (
+                <p className="text-xs text-gray-400">
+                  Rows from 1–2 logs are single observations — too few to conclude an
+                  effect. Keep logging the activity and the estimate firms up.
+                </p>
+              )}
             </div>
           ) : (
             <p className="text-center py-8 text-gray-400 text-sm">
-              No correlations yet. Tag activities on your check-ins (at least 2 logs per
-              activity) to see what lifts your mood.
+              No correlations yet. Tag an activity on a check-in (Check-in tab) — each
+              activity appears here from its first log, with its sample count stated.
             </p>
           )}
         </div>
