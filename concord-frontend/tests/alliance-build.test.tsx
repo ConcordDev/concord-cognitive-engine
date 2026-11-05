@@ -58,7 +58,13 @@ vi.mock('@/components/dtu/SaveAsDtuButton', () => ({
 vi.mock('framer-motion', () => ({
   useReducedMotion: () => false,
   MotionConfig: ({ children }: { children?: React.ReactNode }) => children,
-  motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
+  // One stable component per tag: a fresh function on every property read changes the
+  // element type each render, which remounts the workspace and drops its notice on any
+  // page re-render (the summary refresh after a delete).
+  motion: (() => {
+    const Stable = (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode);
+    return new Proxy({}, { get: () => Stable });
+  })(),
   AnimatePresence: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
 }));
 
@@ -145,14 +151,14 @@ describe('Alliance workspace lifecycle (F6/F7)', () => {
     render(<QueryClientProvider client={qc}><AllianceLens /></QueryClientProvider>);
     await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('alliance', 'alliance-list', expect.anything()));
 
-    fireEvent.click(screen.getByLabelText('new alliance'));
+    fireEvent.click(await screen.findByLabelText('new alliance'));
     expect(await screen.findByText('Alliance type')).toBeInTheDocument();
     const nameInput = await screen.findByPlaceholderText(/Alliance name/i);
     fireEvent.change(nameInput, { target: { value: 'Fresh Pact' } });
     fireEvent.click(screen.getByRole('button', { name: /^Create$/i }));
 
     // Select the created alliance in the rail.
-    const rail = await screen.findByText('Fresh Pact');
+    const rail = (await screen.findAllByText('Fresh Pact'))[0];
     fireEvent.click(rail);
     fireEvent.click(await screen.findByRole('button', { name: /Members/i }));
 
@@ -160,7 +166,8 @@ describe('Alliance workspace lifecycle (F6/F7)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete alliance' }));
     expect(await screen.findByText(/Deletes its 1 channel, all messages and 0 proposals\./)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Confirm delete/i }));
+    // The armed confirm button's accessible name is `${ariaLabel} confirm` (visible label: Confirm delete).
+    fireEvent.click(screen.getByRole('button', { name: 'Delete alliance confirm' }));
     expect(await screen.findByText(/Fresh Pact deleted — its channels, messages and proposals are gone\./)).toBeInTheDocument();
   });
 });
@@ -199,7 +206,8 @@ describe('Alliance analytics disclosure (F4/F5)', () => {
     fireEvent.change(nameInputs[0], { target: { value: 'A' } });
     fireEvent.change(nameInputs[1], { target: { value: 'B' } });
     fireEvent.click(screen.getByRole('button', { name: /Score compatibility/i }));
-    expect(await screen.findByText(/strength similarity/i)).toBeInTheDocument();
+    // the score card label and the formula prose both mention it
+    expect((await screen.findAllByText(/strength\s*similarity/i)).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/How this score is computed:/)).toBeInTheDocument();
     expect(screen.getByText(/Weights — capabilities 0\.3, values 0\.35/)).toBeInTheDocument();
 
