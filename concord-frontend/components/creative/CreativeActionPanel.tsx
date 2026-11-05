@@ -92,7 +92,12 @@ export function CreativeActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Production pkg`, tags: ['creative', 'production'], source: 'creative:pkg:mint', meta: { visibility: 'private', consent: { allowCitations: false }, prod: { shots: shotsResult, assets: assetsResult, budget: budgetResult, dist: distResult } } }, 'media', ['private']) });
+      // domain/lens stamped so the minted DTU scores the `primaryDomain`
+      // boost in context.query and actually surfaces in this lens's own
+      // Library panel (useLensDTUs({ lens: 'creative' })) — omitting it
+      // left the DTU unfindable in a system with many other domains'
+      // DTUs competing for the same top-N slots.
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Production pkg`, domain: 'creative', lens: 'creative', tags: ['creative', 'production'], source: 'creative:pkg:mint', meta: { lens: 'creative', visibility: 'private', consent: { allowCitations: false }, prod: { shots: shotsResult, assets: assetsResult, budget: budgetResult, dist: distResult } } }, 'media', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('creative.mintedDtuId', id, { label: `Pkg DTU ${id.slice(0, 8)}…` }); ok(`Pkg DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -121,7 +126,7 @@ export function CreativeActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Production handoff`, tags: ['creative', 'handoff', 'public'], source: 'creative:handoff:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, shots: shotsResult, dist: distResult } }, 'media', ['private', 'public_view', 'social_post', 'public_listen']) });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Production handoff`, domain: 'creative', lens: 'creative', tags: ['creative', 'handoff', 'public'], source: 'creative:handoff:publish', meta: { lens: 'creative', visibility: 'public', consent: { allowCitations: true }, anon: true, shots: shotsResult, dist: distResult } }, 'media', ['private', 'public_view', 'social_post', 'public_listen']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
