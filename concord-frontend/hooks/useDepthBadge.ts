@@ -82,6 +82,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
   /**
+   * Aviation's records are the user's own, saved server-side, and its
+   * weather/feed surfaces poll real external sources (NOAA METAR/TAF,
+   * NOTAMs, the OpenSky network). The generic REAL_FREE line ("static /
+   * open-access dataset") was false for this lens in both directions
+   * (gate record G1/G2); the caption states what is live.
+   */
+  aviation: {
+    label: 'Live',
+    caption: 'Live: your aircraft, logbook and plans are saved in your own workspace, with live METAR/TAF, NOTAMs and OpenSky traffic.',
+  },
+  /**
    * The world vehicle fleet (spawn/mine/inspector) is a real persistent DB
    * store, not a feed polled from an external source (F1) — so the generic
    * REAL_LIVE caption is false here.
