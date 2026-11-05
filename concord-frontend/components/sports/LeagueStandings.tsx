@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Trophy, Plus, Loader2, Copy, Check } from 'lucide-react';
+import { LEAGUE_SPORTS, actionError, leagueCreateBody } from '@/components/sports/league-wire';
 
 interface Team {
   id: string;
@@ -22,6 +23,7 @@ interface Team {
   power_score: number;
   wins?: number;
   losses?: number;
+  draws?: number;
 }
 
 export interface ActiveLeague { id: string; name: string; sportKind: string }
@@ -29,15 +31,20 @@ export interface ActiveLeague { id: string; name: string; sportKind: string }
 export function LeagueStandings({
   leagueId: initialLeagueId,
   onLeagueChange,
+  onRosterChange,
+  reloadToken = 0,
 }: {
   leagueId?: string;
   onLeagueChange?: (league: ActiveLeague) => void;
+  onRosterChange?: () => void;
+  reloadToken?: number;
 }) {
   const [leagueId, setLeagueId] = useState<string | null>(initialLeagueId || null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [newLeagueName, setNewLeagueName] = useState('');
-  const [newSportKind, setNewSportKind] = useState('soccer');
+  const [newSportKind, setNewSportKind] = useState<string>(LEAGUE_SPORTS[0]);
   const [newTeamName, setNewTeamName] = useState('');
   const [copied, setCopied] = useState(false);
 
@@ -60,44 +67,69 @@ export function LeagueStandings({
   const refresh = useCallback(async () => {
     if (!leagueId) return;
     try {
-      const j = await fetch(`/api/sports/league/${leagueId}/teams`, { credentials: 'include' }).then(r => r.json());
-      if (j?.ok) setTeams(j.teams || []);
-    } catch { /* swallow */ }
+      const r = await fetch(`/api/sports/league/${leagueId}/teams`, { credentials: 'include' });
+      const j = await r.json().catch(() => null);
+      const err = actionError(j, r.status, 'Standings are unavailable');
+      if (err) {
+        setError(err);
+        return;
+      }
+      setError(null);
+      setTeams(j.teams || []);
+    } catch {
+      setError('Standings are unavailable.');
+    }
   }, [leagueId]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { refresh(); }, [refresh, reloadToken]);
 
   const createLeague = useCallback(async () => {
     if (!newLeagueName.trim()) return;
     setPending(true);
+    setError(null);
     try {
       const r = await fetch('/api/sports/league', {
         method: 'POST', credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: newLeagueName, sportKind: newSportKind }),
+        body: JSON.stringify(leagueCreateBody(newLeagueName, newSportKind)),
       });
-      const j = await r.json();
-      if (j?.ok && j.leagueId) {
-        setLeagueId(j.leagueId);
-        onLeagueChange?.({ id: j.leagueId, name: newLeagueName, sportKind: newSportKind });
-        setNewLeagueName('');
+      const j = await r.json().catch(() => null);
+      const err = actionError(j, r.status, 'League was not created');
+      if (err || !j?.leagueId) {
+        setError(err || 'League was not created.');
+        return;
       }
+      setLeagueId(j.leagueId);
+      onLeagueChange?.({ id: j.leagueId, name: newLeagueName.trim(), sportKind: newSportKind });
+      setNewLeagueName('');
+    } catch {
+      setError('League was not created.');
     } finally { setPending(false); }
   }, [newLeagueName, newSportKind, onLeagueChange]);
 
   const addTeam = useCallback(async () => {
     if (!leagueId || !newTeamName.trim()) return;
     setPending(true);
+    setError(null);
     try {
-      await fetch(`/api/sports/league/${leagueId}/team`, {
+      const r = await fetch(`/api/sports/league/${leagueId}/team`, {
         method: 'POST', credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: newTeamName }),
+        body: JSON.stringify({ name: newTeamName.trim() }),
       });
+      const j = await r.json().catch(() => null);
+      const err = actionError(j, r.status, 'Team was not added');
+      if (err || !j?.teamId) {
+        setError(err || 'Team was not added.');
+        return;
+      }
       setNewTeamName('');
-      refresh();
+      onRosterChange?.();
+      await refresh();
+    } catch {
+      setError('Team was not added.');
     } finally { setPending(false); }
-  }, [leagueId, newTeamName, refresh]);
+  }, [leagueId, newTeamName, refresh, onRosterChange]);
 
   if (!leagueId) {
     return (
@@ -117,11 +149,14 @@ export function LeagueStandings({
             onChange={(e) => setNewSportKind(e.target.value)}
             className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
           >
-            <option value="soccer">Soccer</option>
-            <option value="basketball">Basketball</option>
-            <option value="tennis">Tennis</option>
-            <option value="cricket">Cricket</option>
+            {LEAGUE_SPORTS.map((sport) => (
+              <option key={sport} value={sport}>{sport.charAt(0).toUpperCase() + sport.slice(1)}</option>
+            ))}
           </select>
+          <p className="text-[10px] text-zinc-500">
+            Stored on the hub world. This form has no world picker.
+          </p>
+          {error && <p role="alert" className="text-xs text-red-300">{error}</p>}
           <button
             onClick={createLeague}
             disabled={pending || !newLeagueName.trim()}
@@ -155,6 +190,7 @@ export function LeagueStandings({
       </header>
 
       <div className="mb-3 space-y-1">
+        {error && <p role="alert" className="text-xs text-red-300">{error}</p>}
         {teams.length === 0 && <p className="text-center text-xs text-zinc-500">No teams yet.</p>}
         {teams
           .slice()
@@ -168,6 +204,7 @@ export function LeagueStandings({
               <div className="flex items-center gap-2 font-mono text-[10px]">
                 <span className="text-emerald-300">W{t.wins ?? 0}</span>
                 <span className="text-red-300">L{t.losses ?? 0}</span>
+                <span className="text-zinc-400">D{t.draws ?? 0}</span>
                 <span className="text-amber-300">PWR {t.power_score}</span>
               </div>
             </div>
