@@ -50,6 +50,47 @@ describe("artistry study restart", () => {
     assert.equal(created.result.project.title, "Untitled Project");
   });
 
+  it("reopens, renames, and deletes a persisted-only study after the in-memory lens is dropped", () => {
+    const created = call("projectCreate", ctx, { title: "Hallway study" });
+    assert.equal(created.ok, true);
+    const id = created.result.project.id;
+
+    // Simulate a process restart: the in-memory artistryLens is gone,
+    // only the artistry_studies row survives.
+    globalThis._concordSTATE = { db, artistryLens: { projects: new Map() } };
+
+    const viewed = call("projectView", ctx, { projectId: id });
+    assert.equal(viewed.ok, true, "projectView should hydrate a persisted-only study, not 404");
+    assert.equal(viewed.result.project.title, "Hallway study");
+
+    const renamed = call("projectUpdate", ctx, { projectId: id, title: "Stairwell study" });
+    assert.equal(renamed.ok, true, "projectUpdate should hydrate a persisted-only study, not 404");
+    assert.equal(renamed.result.project.title, "Stairwell study");
+    const row = db.prepare("SELECT title FROM artistry_studies WHERE id = ?").get(id);
+    assert.equal(row.title, "Stairwell study");
+
+    const deleted = call("projectDelete", ctx, { projectId: id });
+    assert.equal(deleted.ok, true, "projectDelete should hydrate a persisted-only study, not 404");
+    assert.equal(
+      db.prepare("SELECT 1 FROM artistry_studies WHERE id = ?").get(id),
+      undefined,
+    );
+  });
+
+  it("projectView hydrates a persisted-only study owned by a different viewer", () => {
+    const ownerCtx = { actor: { userId: "user_owner" }, userId: "user_owner", db };
+    const created = call("projectCreate", ownerCtx, { title: "Open-air study" });
+    assert.equal(created.ok, true);
+    const id = created.result.project.id;
+
+    globalThis._concordSTATE = { db, artistryLens: { projects: new Map() } };
+
+    const otherCtx = { actor: { userId: "user_other" }, userId: "user_other", db };
+    const viewed = call("projectView", otherCtx, { projectId: id });
+    assert.equal(viewed.ok, true);
+    assert.equal(viewed.result.project.title, "Open-air study");
+  });
+
   it("down drops the table", () => {
     down(db);
     assert.equal(

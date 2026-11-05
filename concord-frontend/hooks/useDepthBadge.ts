@@ -72,6 +72,37 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
   /**
+   * Bounties board data is live user data — bounties posted, worked and paid
+   * by Concord users — so the generic REAL_LIVE line ("polled live from an
+   * external source") is false for this lens in the same way as database's.
+   */
+  bounties: {
+    label: 'Live',
+    caption: 'Real bounties posted, worked and paid by Concord users — live user data, not a simulation or an external feed.',
+  },
+  /**
+   * Emergency Services' registry is the user's own live substrate —
+   * units, incidents and agency records persist per account on
+   * Concord's backend — so the generic REAL_FREE line ("static /
+   * open-access dataset") was false for this lens (F1). The seismic
+   * half is a live USGS feed; the caption names both halves.
+   */
+  'emergency-services': {
+    label: 'Live',
+    caption: 'Live: units, incidents and agency records are your own data, stored on Concord’s backend and persisted per account. Seismic data is a live USGS feed.',
+  },
+  /**
+   * Masonry's calculators execute for real against published spec tables
+   * and the contractor suite's records persist server-side — the generic
+   * REAL_LIVE line ("polled live from an external source") would claim a
+   * feed this lens does not poll (F1 flip, Review 4 determination
+   * 2026-11-01: real execution under a Simulated banner).
+   */
+  masonry: {
+    label: 'Live',
+    caption: 'Real execution: the calculators run against published masonry spec tables and your suite records are saved in your own workspace. No external feed is polled.',
+  },
+  /**
    * Housing's substrate is the member's own persistent world state —
    * land claims and houses live in the platform database, owner-gated
    * in the lib (PROBE-BLOCKED at the then-missing claim surface in

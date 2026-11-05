@@ -256,8 +256,74 @@ export default function registerEmergencyServicesActions(registerLensAction) {
     const s = getEmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const scope = emScope(ctx, params, null);
     if (!scope.ok) return scope;
-    const units = emList(s.units, scope.key);
+    // allowedNext is computed from the server's UNIT_STATUS_FLOW so the
+    // roster renders the legal status set from the one source of truth
+    // instead of mirroring a subset client-side.
+    const units = emList(s.units, scope.key).map((u) => ({ ...u, allowedNext: UNIT_STATUS_FLOW[u.status] || [] }));
     return { ok: true, result: { units, count: units.length, available: units.filter((u) => u.status === "available").length } };
+  });
+
+  // unit-update — correct a roster unit's record (call-sign, kind,
+  // station, map position). Edit was absent at registry before this
+  // macro: a mistyped call-sign or a retired station could never be
+  // fixed. Coordinates ride the unit-position contract: a finite lat/lng
+  // pair sets the position; an explicit null pair clears it.
+  registerLensAction("emergency-services", "unit-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getEmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const scope = emScope(ctx, params, EMS_WRITE_TIERS);
+      if (!scope.ok) return scope;
+      const unit = emList(s.units, scope.key).find((u) => u.id === params.id);
+      if (!unit) return { ok: false, error: "unit not found" };
+      if (params.name !== undefined) {
+        const name = emClean(params.name, 80);
+        if (!name) return { ok: false, error: "unit name required" };
+        unit.name = name;
+      }
+      if (params.kind !== undefined) {
+        if (!UNIT_KINDS.includes(params.kind)) return { ok: false, error: "unknown unit kind" };
+        unit.kind = params.kind;
+      }
+      if (params.station !== undefined) unit.station = emClean(params.station, 120) || "";
+      if (params.lat !== undefined || params.lng !== undefined) {
+        if (params.lat === null && params.lng === null) {
+          delete unit.lat;
+          delete unit.lng;
+        } else {
+          const lat = Number(params.lat), lng = Number(params.lng ?? params.lon);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return { ok: false, error: "lat/lng required" };
+          unit.lat = lat;
+          unit.lng = lng;
+        }
+      }
+      saveEms();
+      emitOrgRealtime("ems:unit-updated", { unit }, scope.orgId);
+      return { ok: true, result: { unit } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // unit-delete — retire a unit from the roster. Delete was absent at
+  // registry before this macro: a unit, once added, was permanent. A
+  // unit committed to an incident keeps its record until it clears —
+  // deleting it mid-assignment would orphan the incident's assignment —
+  // so an assigned unit is refused with its reason, never silently cut.
+  registerLensAction("emergency-services", "unit-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getEmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const scope = emScope(ctx, params, EMS_WRITE_TIERS);
+      if (!scope.ok) return scope;
+      const units = emList(s.units, scope.key);
+      const idx = units.findIndex((u) => u.id === params.id);
+      if (idx < 0) return { ok: false, error: "unit not found" };
+      const unit = units[idx];
+      if (unit.assignedIncidentId || ["dispatched", "en_route", "on_scene", "transporting"].includes(unit.status)) {
+        return { ok: false, error: "unit_is_assigned", result: { unit } };
+      }
+      units.splice(idx, 1);
+      saveEms();
+      emitOrgRealtime("ems:unit-deleted", { unitId: unit.id, name: unit.name }, scope.orgId);
+      return { ok: true, result: { deleted: true, unit } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
   registerLensAction("emergency-services", "ems-dashboard", (ctx, _a, params = {}) => {
@@ -286,7 +352,7 @@ export default function registerEmergencyServicesActions(registerLensAction) {
   //     queue, incident timeline, nearest-unit, readiness, alerting) ───
 
   const UNIT_STATUS_FLOW = {
-    available: ["dispatched"],
+    available: ["dispatched", "out_of_service"],
     dispatched: ["en_route", "available"],
     en_route: ["on_scene", "available"],
     on_scene: ["clear", "transporting"],

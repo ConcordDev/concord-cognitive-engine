@@ -35,10 +35,14 @@ const SEV_COLOR: Record<string, string> = {
 export function GhsaAdvisories({ onConvertToBounty }: { onConvertToBounty?: (draft: BountyDraftFromAdvisory) => void }) {
   const [severity, setSeverity] = useState<'all' | 'critical' | 'high'>('high');
 
+  // The severity control FILTERS ONE LIST (F6): a single unfiltered fetch,
+  // filtered here. Fetching per-severity server-side returns a different
+  // cached slice per severity, so "all" changed contents across toggles and
+  // the filtered views were never subsets of it.
   const advisories = useQuery({
-    queryKey: ['ghsa-advisories', severity],
+    queryKey: ['ghsa-advisories'],
     queryFn: async () => {
-      const res = await lensRun('repos', 'github-advisories', { severity: severity !== 'all' ? severity : undefined });
+      const res = await lensRun('repos', 'github-advisories', {});
       if (!res.data?.ok) throw new Error(res.data?.reason || res.data?.error || 'github_unavailable');
       const out = res.data.result as { items?: Advisory[]; stale?: boolean; fetchedAt?: number } | null;
       return { items: out?.items || [], stale: !!out?.stale, fetchedAt: out?.fetchedAt ?? null };
@@ -46,7 +50,8 @@ export function GhsaAdvisories({ onConvertToBounty }: { onConvertToBounty?: (dra
     staleTime: 5 * 60 * 1000,
   });
 
-  const list = advisories.data?.items || [];
+  const allItems = advisories.data?.items || [];
+  const list = severity === 'all' ? allItems : allItems.filter((a) => a.severity === severity);
 
   return (
     <div className="space-y-4">

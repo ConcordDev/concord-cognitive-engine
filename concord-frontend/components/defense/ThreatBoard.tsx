@@ -8,7 +8,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Plus, Trash2, Loader2, AlertTriangle, ChevronUp, ChevronDown, ShieldAlert } from 'lucide-react';
+import { Plus, Loader2, AlertTriangle, ChevronUp, ChevronDown, ShieldAlert } from 'lucide-react';
+import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface Threat {
   id: string;
@@ -49,6 +50,7 @@ export function ThreatBoard() {
   const [board, setBoard] = useState<ThreatBoardResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [name, setName] = useState('');
@@ -122,11 +124,17 @@ export function ThreatBoard() {
     setBusy(false);
   }, [refresh]);
 
-  const remove = useCallback(async (id: string) => {
+  const remove = useCallback(async (threat: { id: string; name: string }) => {
     setBusy(true);
-    const r = await lensRun('defense', 'threat-delete', { id });
-    if (r.data?.ok) await refresh();
-    else setError(r.data?.error || 'Failed to delete threat');
+    setNotice(null);
+    setError(null);
+    const r = await lensRun('defense', 'threat-delete', { id: threat.id });
+    if (r.data?.ok) {
+      setNotice(`Deleted threat — ${threat.name}`);
+      await refresh();
+    } else {
+      setError(r.data?.error || 'Failed to delete threat');
+    }
     setBusy(false);
   }, [refresh]);
 
@@ -151,6 +159,12 @@ export function ThreatBoard() {
       {error && (
         <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-400">
           {error}
+        </div>
+      )}
+
+      {notice && (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400">
+          {notice}
         </div>
       )}
 
@@ -199,14 +213,12 @@ export function ThreatBoard() {
                   >
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    onClick={() => remove(t.id)}
+                  <ConfirmDeleteButton
+                    ariaLabel="Delete threat"
+                    itemLabel={`threat "${t.name}"`}
                     disabled={busy}
-                    aria-label="Delete threat"
-                    className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    onConfirm={() => remove(t)}
+                  />
                 </div>
               </div>
               {t.note && <p className="text-[10px] text-zinc-400 mt-1">{t.note}</p>}

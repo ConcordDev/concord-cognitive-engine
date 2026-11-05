@@ -19,6 +19,7 @@ import {
   Loader2, Check, Crosshair, Plus, RefreshCw, Activity, ArrowRight,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { LimitationNotice } from '@/components/lens/LimitationNotice';
 import { MapView, TimelineView } from '@/components/viz';
 import type { MapMarker, TimelineEvent } from '@/components/viz';
 import { cn } from '@/lib/utils';
@@ -46,6 +47,8 @@ interface Unit {
   lat?: number;
   lng?: number;
   assignedIncidentId?: string | null;
+  /** Legal next statuses, computed server-side from UNIT_STATUS_FLOW. */
+  allowedNext?: string[];
 }
 interface MapPin {
   id: string;
@@ -134,6 +137,19 @@ async function call<T = any>(action: string, input: Record<string, unknown> = {}
   }
 }
 
+/** Like call(), but surfaces the handler's honest error string so a
+ *  refusal (e.g. deleting a unit that is assigned to an incident) can
+ *  be shown with its real reason instead of a generic failure. */
+async function callRaw(action: string, input: Record<string, unknown> = {}): Promise<{ ok: boolean; error?: string; result?: any }> {
+  try {
+    const r = await lensRun<any>(DOMAIN, action, input);
+    if (r?.data?.ok) return { ok: true, result: r.data.result };
+    return { ok: false, error: r?.data?.error || 'request_failed' };
+  } catch {
+    return { ok: false, error: 'request_failed' };
+  }
+}
+
 export function CADConsole() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -163,6 +179,15 @@ export function CADConsole() {
   const [uStation, setUStation] = useState('');
   const [uLat, setULat] = useState('');
   const [uLng, setULng] = useState('');
+
+  // roster lifecycle (S2): inline edit + two-step remove, per unit row
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [eName, setEName] = useState('');
+  const [eKind, setEKind] = useState('ambulance');
+  const [eStation, setEStation] = useState('');
+  const [eLat, setELat] = useState('');
+  const [eLng, setELng] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const flash = (kind: 'ok' | 'err', text: string) => {
     setMsg({ kind, text });
@@ -264,6 +289,54 @@ export function CADConsole() {
     if (selectedId) await loadDetail(selectedId);
   }
 
+  function beginEdit(u: Unit) {
+    setEditingId(u.id);
+    setConfirmDeleteId(null);
+    setEName(u.name);
+    setEKind(u.kind);
+    setEStation(u.station || '');
+    setELat(u.lat != null ? String(u.lat) : '');
+    setELng(u.lng != null ? String(u.lng) : '');
+  }
+
+  async function saveEdit(unitId: string) {
+    if (!eName.trim()) { flash('err', 'Unit call-sign required.'); return; }
+    const hasLat = eLat.trim() !== '';
+    const hasLng = eLng.trim() !== '';
+    if (hasLat !== hasLng) { flash('err', 'Position needs both latitude and longitude — or clear both to remove the pin.'); return; }
+    setBusy(true);
+    const params: Record<string, unknown> = {
+      id: unitId, name: eName.trim(), kind: eKind, station: eStation.trim(),
+    };
+    // A filled pair sets the position; an emptied pair clears it
+    // (unit-update's contract) — a unit with no coordinates simply
+    // does not render on the map, as before.
+    if (hasLat && hasLng) { params.lat = Number(eLat); params.lng = Number(eLng); }
+    else { params.lat = null; params.lng = null; }
+    const res = await callRaw('unit-update', params);
+    setBusy(false);
+    if (!res.ok) { flash('err', `Edit failed (${res.error}).`); return; }
+    flash('ok', `Unit ${eName.trim()} updated.`);
+    setEditingId(null);
+    await refreshAll();
+  }
+
+  async function deleteUnit(u: Unit) {
+    setBusy(true);
+    const res = await callRaw('unit-delete', { id: u.id });
+    setBusy(false);
+    setConfirmDeleteId(null);
+    if (!res.ok) {
+      flash('err', res.error === 'unit_is_assigned'
+        ? `${u.name} is assigned to an incident — clear it before removing it from the roster.`
+        : `Remove failed (${res.error}).`);
+      return;
+    }
+    flash('ok', `Unit ${u.name} removed from roster.`);
+    if (editingId === u.id) setEditingId(null);
+    await refreshAll();
+  }
+
   const mapMarkers: MapMarker[] = useMemo(() => {
     const im: MapMarker[] = incidentPins.map((p) => ({
       id: `inc-${p.id}`,
@@ -294,12 +367,18 @@ export function CADConsole() {
   );
 
   const selectedIncident = incidents.find((i) => i.id === selectedId) || null;
+  // Fallback only: unit-list carries the server's allowedNext per unit
+  // (computed from UNIT_STATUS_FLOW). This mirror of the full flow —
+  // including the returns to available and the out-of-service path the
+  // old subset stranded — is used only if a payload ever lacks it.
   const NEXT_STATUS: Record<string, string[]> = {
-    available: ['dispatched'],
-    dispatched: ['en_route'],
-    en_route: ['on_scene'],
+    available: ['dispatched', 'out_of_service'],
+    dispatched: ['en_route', 'available'],
+    en_route: ['on_scene', 'available'],
     on_scene: ['clear', 'transporting'],
     transporting: ['clear'],
+    clear: ['available'],
+    out_of_service: ['available'],
   };
 
   return (
@@ -316,6 +395,11 @@ export function CADConsole() {
           Refresh
         </button>
       </header>
+
+      {/* S1 — the limitation copy on the Call board itself, at the
+          operational claim: this console is where incidents are logged
+          and units dispatched, so the notice stands at its head. */}
+      <LimitationNotice register="emergency" />
 
       {msg && (
         <div className={cn(
@@ -540,18 +624,26 @@ export function CADConsole() {
         {units.length === 0 && <p className="py-3 text-center text-[11px] text-zinc-400">No units on roster.</p>}
         <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
           {units.map((u) => {
-            const nextOptions = NEXT_STATUS[u.status] || [];
+            const nextOptions = u.allowedNext ?? NEXT_STATUS[u.status] ?? [];
+            const editing = editingId === u.id;
+            const confirmingDelete = confirmDeleteId === u.id;
             return (
               <div key={u.id} className="rounded-md border border-zinc-800 bg-zinc-900/60 px-2.5 py-1.5">
                 <div className="flex items-center gap-2 text-xs">
                   <span className="flex-1 truncate font-medium text-zinc-200">{u.name}</span>
                   <span className="text-[10px] text-zinc-400">{u.kind}</span>
                   <span className={cn('rounded px-1.5 py-0.5 text-[10px]', UNIT_STATUS_TONE[u.status] || 'bg-zinc-700 text-zinc-300')}>
-                    {u.status}
+                    {u.status.replace(/_/g, ' ')}
                   </span>
                 </div>
+                {(u.station || u.lat != null) && (
+                  <p className="mt-0.5 text-[10px] text-zinc-500">
+                    {u.station}
+                    {u.lat != null && u.lng != null ? `${u.station ? ' · ' : ''}${u.lat}, ${u.lng}` : ''}
+                  </p>
+                )}
                 {nextOptions.length > 0 && (
-                  <div className="mt-1.5 flex gap-1.5">
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {nextOptions.map((next) => (
                       <button
                         key={next}
@@ -559,9 +651,81 @@ export function CADConsole() {
                         disabled={busy}
                         className="rounded border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
                       >
-                        → {next}
+                        → {next.replace(/_/g, ' ')}
                       </button>
                     ))}
+                  </div>
+                )}
+                {!editing && !confirmingDelete && (
+                  <div className="mt-1.5 flex gap-1.5">
+                    <button
+                      onClick={() => beginEdit(u)}
+                      disabled={busy}
+                      className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-[11px] text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => { setConfirmDeleteId(u.id); setEditingId(null); }}
+                      disabled={busy}
+                      className="rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-500/20 disabled:opacity-40"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+                {confirmingDelete && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-rose-200">
+                    <span>Remove {u.name} from the roster?</span>
+                    <button
+                      onClick={() => void deleteUnit(u)}
+                      disabled={busy}
+                      className="rounded bg-rose-600 px-2 py-1 font-medium text-white hover:bg-rose-500 disabled:opacity-40"
+                    >
+                      Confirm remove
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      disabled={busy}
+                      className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+                {editing && (
+                  <div className="mt-2 space-y-1.5">
+                    <input
+                      value={eName} onChange={(e) => setEName(e.target.value)}
+                      placeholder="Call-sign" aria-label="Unit call-sign"
+                      className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
+                    />
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <select value={eKind} onChange={(e) => setEKind(e.target.value)} aria-label="Unit type" className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white">
+                        {UNIT_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+                      </select>
+                      <input value={eStation} onChange={(e) => setEStation(e.target.value)} placeholder="Station" aria-label="Unit station" className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input value={eLat} onChange={(e) => setELat(e.target.value)} placeholder="Lat (map)" aria-label="Unit latitude" className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
+                      <input value={eLng} onChange={(e) => setELng(e.target.value)} placeholder="Lng (map)" aria-label="Unit longitude" className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => void saveEdit(u.id)}
+                        disabled={busy}
+                        className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-500 disabled:opacity-40"
+                      >
+                        Save changes
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        disabled={busy}
+                        className="rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-[11px] text-zinc-300 hover:bg-zinc-700 disabled:opacity-40"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

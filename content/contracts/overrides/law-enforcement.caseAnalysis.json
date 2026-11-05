@@ -19,7 +19,9 @@
     "output.ok === false || Number.isInteger(output.result.suspectCount)",
     "output.ok === false || typeof output.result.prosecutable === 'boolean'",
     "output.ok === false || ['strong-case','developing','insufficient-evidence'].includes(output.result.status)",
-    "output.ok === false || Array.isArray(output.result.nextSteps)"
+    "output.ok === false || Array.isArray(output.result.nextSteps)",
+    "output.ok === false || typeof output.result.scope === 'string'",
+    "output.ok === false || (Number.isInteger(output.result.bookedEvidenceCount) && Number.isInteger(output.result.stagedEvidenceCount) && output.result.evidenceCount === output.result.bookedEvidenceCount + output.result.stagedEvidenceCount)"
   ],
   "fuzz_cases": [
     { "input": { "artifact": { "data": { "caseId": "C-1", "evidence": [{}, {}], "witnesses": [{}], "suspects": [{ "evidenceLinks": [1, 2] }] } } }, "expect": { "ok": true } },
@@ -27,5 +29,5 @@
     { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
     { "input": { "artifact": { "data": { "evidence": "NaN", "witnesses": "Infinity", "suspects": "oops" } } }, "expect": { "ok": true } }
   ],
-  "_note": "Pure compute, reads artifact.data (LawEnforcementActionPanel.actCase: callMacro('caseAnalysis',{artifact:{data:parsed,title}}) → runDomain → {input:{artifact:{data,title}}} → sole-key peel at dispatch yields artifact.data). caseStrength = round(min(100,evidence*15)*0.4 + min(100,witnesses*20)*0.3 + min(100,suspectLinks*25)*0.3); prosecutable = caseStrength>=60; status strong>=80 / developing>=50 / insufficient. The CaseResult card renders caseId/caseStrength/status/evidenceCount/witnessCount/suspectCount/nextSteps[]/prosecutable EXACTLY — all returned by the handler (verified 2026-06-28). Non-array evidence/witnesses/suspects fall back to 0 counts (default `|| []`), never NaN. Component-exact-shape gate: server/tests/law-enforcement-lens-macros.test.js."
+  "_note": "Reads artifact.data (LawEnforcementActionPanel.actCase: callMacro('caseAnalysis',{artifact:{data:parsed,title}}) → runDomain → {input:{artifact:{data,title}}} → sole-key peel at dispatch yields artifact.data). SCOPE (S1, written per cross-check #70(d)): when data.caseId resolves to one of the caller's cases on file (by case number, case-insensitive, or by internal id), the evidence actually BOOKED into custody against that case (evidenceIntake store, matched on caseNumber) counts alongside the staged workbench rows — evidenceCount = bookedEvidenceCount + stagedEvidenceCount, result.linkedCase names the resolved case, and result.scope states the population in words (witnesses and suspects remain workbench entries only — no store holds them per case). Unresolved caseId → staged-only scope, stated as such. Before S1 the macro weighed staged rows only, so evidence standing in custody was invisible to the score (review finding F3). caseStrength = round(min(100,evidenceCount*15)*0.4 + min(100,witnesses*20)*0.3 + min(100,suspectLinks*25)*0.3); prosecutable = caseStrength>=60; status strong>=80 / developing>=50 / insufficient. The CaseResult card renders caseId/caseStrength/status/evidenceCount/witnessCount/suspectCount/nextSteps[]/prosecutable/scope. Non-array evidence/witnesses/suspects fall back to 0 counts, never NaN. Component-exact-shape gate: server/tests/law-enforcement-lens-macros.test.js."
 }
