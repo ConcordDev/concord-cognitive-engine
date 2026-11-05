@@ -52,7 +52,7 @@ describe("gallery — registration", () => {
       "artist", "recommendations", "feed",
       // pure-STATE collections + history
       "collection-create", "collection-list", "collection-detail", "collection-delete",
-      "artwork-save", "artwork-remove", "gallery-dashboard",
+      "artwork-save", "artwork-remove", "artwork-update", "gallery-dashboard",
       "record-view", "view-history",
       // curated exhibits
       "exhibit-create", "exhibit-list", "exhibit-detail", "exhibit-add-panel",
@@ -67,7 +67,7 @@ describe("gallery — registration", () => {
 });
 
 describe("gallery — saved-collections round-trip (create → save → dashboard → remove → delete)", () => {
-  it("creates a collection, saves real artwork metadata into it, and counts it", () => {
+  it("creates a collection, saves real artwork metadata into it, and counts it", async () => {
     const created = call("collection-create", ctxA, { name: "Dutch Masters" });
     assert.equal(created.ok, true);
     const colId = created.result.collection.id;
@@ -82,17 +82,21 @@ describe("gallery — saved-collections round-trip (create → save → dashboar
     assert.equal(listed.result.count, 2);
 
     // save an artwork (real CMA-shaped metadata) into the new collection.
-    const saved = call("artwork-save", ctxA, {
+    const saved = await call("artwork-save", ctxA, {
       collectionId: colId, title: "The Night Watch", artist: "Rembrandt",
       refId: "cma:1", museum: "Cleveland Museum of Art", image: "https://x/img.jpg",
     });
     assert.equal(saved.ok, true);
     assert.equal(saved.result.artworkCount, 1);
     assert.equal(saved.result.artwork.artist, "Rembrandt");
+    // F4: no runMacro bridge wired in this ctx — minting is best-effort and
+    // the save still succeeds, honestly flagging why no DTU was minted.
+    assert.equal(saved.result.artwork.dtuId, undefined);
+    assert.equal(saved.result.artwork.dtuError, "dtu_create_unavailable");
     const artId = saved.result.artwork.id;
 
     // dedupe: same refId into the same collection is rejected.
-    const dup = call("artwork-save", ctxA, { collectionId: colId, title: "The Night Watch", refId: "cma:1" });
+    const dup = await call("artwork-save", ctxA, { collectionId: colId, title: "The Night Watch", refId: "cma:1" });
     assert.equal(dup.ok, false);
     assert.match(dup.error, /already/i);
 
@@ -121,9 +125,9 @@ describe("gallery — saved-collections round-trip (create → save → dashboar
     assert.equal(listed.result.collections.some((c) => c.id === colId), false);
   });
 
-  it("rejects a blank collection name and an empty-title save", () => {
+  it("rejects a blank collection name and an empty-title save", async () => {
     assert.equal(call("collection-create", ctxA, { name: "   " }).ok, false);
-    assert.equal(call("artwork-save", ctxA, { title: "" }).ok, false);
+    assert.equal((await call("artwork-save", ctxA, { title: "" })).ok, false);
   });
 
   it("isolates collections per user", () => {
@@ -131,6 +135,95 @@ describe("gallery — saved-collections round-trip (create → save → dashboar
     const listB = call("collection-list", ctxB, {});
     // user_b sees only their auto-seeded Favorites, never user_a's "Private A".
     assert.equal(listB.result.collections.some((c) => c.name === "Private A"), false);
+  });
+});
+
+describe("gallery — F3 edit/takedown lifecycle (rename + remove)", () => {
+  it("renames a hung work in place and leaves other fields untouched", async () => {
+    const colId = call("collection-list", ctxA, {}).result.collections[0].id;
+    const saved = await call("artwork-save", ctxA, { collectionId: colId, title: "Draft Title", artist: "A. Author" });
+    const artId = saved.result.artwork.id;
+
+    const renamed = call("artwork-update", ctxA, { collectionId: colId, artworkId: artId, title: "Final Title" });
+    assert.equal(renamed.ok, true);
+    assert.equal(renamed.result.artwork.title, "Final Title");
+    assert.equal(renamed.result.artwork.artist, "A. Author");
+
+    const detail = call("collection-detail", ctxA, { id: colId });
+    assert.equal(detail.result.collection.artworks[0].title, "Final Title");
+  });
+
+  it("rejects a blank rename and an update on a nonexistent artwork", async () => {
+    const colId = call("collection-list", ctxA, {}).result.collections[0].id;
+    const saved = await call("artwork-save", ctxA, { collectionId: colId, title: "Keep Me" });
+    const artId = saved.result.artwork.id;
+    assert.equal(call("artwork-update", ctxA, { collectionId: colId, artworkId: artId, title: "   " }).ok, false);
+    assert.equal(call("artwork-update", ctxA, { collectionId: colId, artworkId: "nope", title: "X" }).ok, false);
+  });
+
+  it("takes down a hung work completely — removal survives a subsequent detail read", async () => {
+    const colId = call("collection-list", ctxA, {}).result.collections[0].id;
+    const saved = await call("artwork-save", ctxA, { collectionId: colId, title: "PR4 Gallery Probe" });
+    const artId = saved.result.artwork.id;
+    const removed = call("artwork-remove", ctxA, { collectionId: colId, artworkId: artId });
+    assert.equal(removed.ok, true);
+    const detail = call("collection-detail", ctxA, { id: colId });
+    assert.equal(detail.result.collection.artworks.some((a) => a.id === artId), false);
+  });
+});
+
+describe("gallery — F4 canonical-object wiring (a hung work mints a real DTU)", () => {
+  it("passes an image/artist/date/museum-aware DTU through the runMacro bridge and stamps the artwork with its id", async () => {
+    const created = [];
+    const ctxWithDtu = {
+      actor: { userId: "user_a" },
+      runMacro: async (domain, name, input) => {
+        assert.equal(domain, "dtu");
+        assert.equal(name, "create");
+        created.push(input);
+        return { ok: true, dtu: { id: "dtu_mock_1", title: input.title } };
+      },
+    };
+    const colId = call("collection-list", ctxWithDtu, {}).result.collections[0].id;
+    const saved = await call("artwork-save", ctxWithDtu, {
+      collectionId: colId, title: "Starry Night", artist: "Van Gogh",
+      date: "1889", museum: "MoMA", image: "https://x/img.jpg",
+    });
+    assert.equal(saved.ok, true);
+    assert.equal(saved.result.artwork.dtuId, "dtu_mock_1");
+    assert.equal(saved.result.artwork.dtuError, undefined);
+
+    // real content was passed to dtu.create — not a thin/fabricated stand-in.
+    assert.equal(created.length, 1);
+    assert.match(created[0].title, /Starry Night/);
+    assert.match(created[0].human.summary, /Van Gogh/);
+    assert.match(created[0].human.summary, /1889/);
+    assert.match(created[0].human.summary, /MoMA/);
+    assert.equal(created[0].machine.artworkId, saved.result.artwork.id);
+    assert.equal(created[0].source, "lens");
+  });
+
+  it("never blocks the hang when dtu.create itself rejects (council/consent denial) — surfaces the reason honestly", async () => {
+    const ctxRejecting = {
+      actor: { userId: "user_a" },
+      runMacro: async () => ({ ok: false, error: "low_value" }),
+    };
+    const colId = call("collection-list", ctxRejecting, {}).result.collections[0].id;
+    const saved = await call("artwork-save", ctxRejecting, { collectionId: colId, title: "Thin Entry" });
+    assert.equal(saved.ok, true); // the hang itself always succeeds
+    assert.equal(saved.result.artwork.dtuId, undefined);
+    assert.equal(saved.result.artwork.dtuError, "low_value");
+  });
+
+  it("never blocks the hang when dtu.create throws", async () => {
+    const ctxThrowing = {
+      actor: { userId: "user_a" },
+      runMacro: async () => { throw new Error("brain unavailable"); },
+    };
+    const colId = call("collection-list", ctxThrowing, {}).result.collections[0].id;
+    const saved = await call("artwork-save", ctxThrowing, { collectionId: colId, title: "Another Entry" });
+    assert.equal(saved.ok, true);
+    assert.equal(saved.result.artwork.dtuError, "brain unavailable");
   });
 });
 

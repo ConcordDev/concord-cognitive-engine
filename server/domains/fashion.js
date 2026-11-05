@@ -1410,7 +1410,7 @@ export default function registerFashionActions(registerLensAction) {
     const queries = ["dress", "gown", "coat", "hat", "shoes", "textile"];
     const q = queries[new Date().getHours() % queries.length];
     try {
-      const sr = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/search?q=${q}&hasImages=true`);
+      const sr = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1.1/search?q=${q}&hasImages=true`);
       if (!sr.ok) return { ok: false, error: `metmuseum ${sr.status}` };
       const sdata = await sr.json();
       const ids = (Array.isArray(sdata?.objectIDs) ? sdata.objectIDs : []).slice(0, limit);
