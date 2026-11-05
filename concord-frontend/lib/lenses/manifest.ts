@@ -1568,7 +1568,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['reorderCheck', 'pipelineValue', 'customerLTV', 'slaStatus', 'inventoryForecast', 'priceOptimize', 'promotionROI', 'churnPredict'],
     category: 'operations',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Retail & commerce.",
       caption: "Products, orders, customers, leads, tickets \u2014 reorder, forecast, retain.",
@@ -5600,7 +5600,12 @@ export const LENS_MANIFESTS: LensManifest[] = [
   { domain: 'courtship',     label: 'Courtship',          artifacts: ['courtship'],   macros: { list: 'lens.courtship.list',     get: 'lens.courtship.get' },     exports: ['json'], actions: ['interact', 'propose', 'wed', 'conceive'], category: 'lifestyle' },
   { domain: 'creatures',     label: 'Creatures',          artifacts: ['creature'],    macros: { list: 'creatures.roster',        get: 'creatures.taxonomy',     create: 'creatures.breed' },     exports: ['json'], actions: ['roster', 'species', 'breed', 'lineage', 'taxonomy', 'for_world'], category: 'lifestyle' },
   { domain: 'fishing',       label: 'Fishing',            artifacts: ['catch'],       macros: { list: 'lens.fishing.list',       get: 'lens.fishing.get',       create: 'lens.fishing.create' },       exports: ['json'], actions: ['cast', 'reel'], category: 'lifestyle' },
-  { domain: 'garage',        label: 'Garage',             artifacts: ['vehicle'],     macros: { list: 'garage.list',             get: 'garage.get',           create: 'garage.spawn',     run: 'garage.spawn' },        exports: ['json'], actions: ['spawn', 'mine', 'mount', 'dismount', 'move'], category: 'lifestyle' },
+  // dataTier REAL_LIVE (F1): a real, persistent world_vehicles store (mig 177)
+  // — spawn/list/mine/get/despawn all hit the live DB, reconcile exactly, and
+  // survive reload. The generic REAL_LIVE caption says "polled live from an
+  // external source", which is false here (no external feed) -- overridden
+  // in useDepthBadge's LENS_DEPTH_OVERRIDE with an honest, lens-specific line.
+  { domain: 'garage',        label: 'Garage',             artifacts: ['vehicle'],     macros: { list: 'garage.list',             get: 'garage.get',           create: 'garage.spawn',     run: 'garage.spawn' },        exports: ['json'], actions: ['spawn', 'mine', 'mount', 'dismount', 'move'], category: 'lifestyle', dataTier: 'REAL_LIVE' },
 ];
 
 // ---- Sub-lens auto-registration ----

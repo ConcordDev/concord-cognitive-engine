@@ -244,7 +244,7 @@ export default function registerGalleryActions(registerLensAction) {
     return { ok: true, result: { deleted: params.id } };
   });
 
-  registerLensAction("gallery", "artwork-save", (ctx, _a, params = {}) => {
+  registerLensAction("gallery", "artwork-save", async (ctx, _a, params = {}) => {
     const s = getGalleryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = glActor(ctx);
     const collections = ensureDefaultCollection(s, userId);
@@ -264,13 +264,79 @@ export default function registerGalleryActions(registerLensAction) {
       title,
       artist: glClean(params.artist, 200) || "Unknown",
       date: glClean(params.date, 80) || null,
-      image: glClean(params.image, 600) || null,
+      image: glClean(params.image, 2000) || null,
       museum: glClean(params.museum, 120) || null,
       savedAt: glNow(),
     };
     collection.artworks.push(artwork);
+
+    // Gallery review F4 — mint a real DTU alongside the panel record so a
+    // hung work is a canonical, findable, exportable, publishable object
+    // (the Crafting pattern), not a name trapped in gallery-only storage.
+    // Best-effort: a council rejection or an unavailable macro never blocks
+    // the hang itself, and is surfaced honestly via artwork.dtuError rather
+    // than silently pretended as a success.
+    try {
+      const runMacro = ctx?.runMacro || globalThis.__concordRunMacro;
+      if (typeof runMacro === "function") {
+        const descriptors = [];
+        if (artwork.artist && artwork.artist !== "Unknown") descriptors.push(`by ${artwork.artist}`);
+        if (artwork.date) descriptors.push(`(${artwork.date})`);
+        if (artwork.museum) descriptors.push(`— from ${artwork.museum}`);
+        const dtuRes = await runMacro("dtu", "create", {
+          title: `Gallery: ${title}`,
+          human: {
+            summary: `Hung in the gallery: "${title}"${descriptors.length ? " " + descriptors.join(" ") : ""}.`,
+            bullets: [],
+          },
+          core: { definitions: [], invariants: [] },
+          machine: {
+            domain: "gallery",
+            refId,
+            artist: artwork.artist,
+            date: artwork.date,
+            image: artwork.image,
+            museum: artwork.museum,
+            collectionId: collection.id,
+            artworkId: artwork.id,
+          },
+          tags: ["gallery", "artwork"],
+          source: "lens",
+          meta: { lens: "gallery" },
+        }, ctx);
+        if (dtuRes?.ok && dtuRes.dtu?.id) {
+          artwork.dtuId = dtuRes.dtu.id;
+        } else {
+          artwork.dtuError = dtuRes?.error || dtuRes?.reason || "dtu_create_failed";
+        }
+      } else {
+        artwork.dtuError = "dtu_create_unavailable";
+      }
+    } catch (e) {
+      artwork.dtuError = e?.message || "dtu_create_failed";
+    }
+
     saveGallery();
     return { ok: true, result: { artwork, collectionId: collection.id, artworkCount: collection.artworks.length } };
+  });
+
+  registerLensAction("gallery", "artwork-update", (ctx, _a, params = {}) => {
+    const s = getGalleryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const collection = glList(s, glActor(ctx)).find((c) => c.id === params.collectionId);
+    if (!collection) return { ok: false, error: "collection not found" };
+    const artwork = collection.artworks.find((a) => a.id === params.artworkId);
+    if (!artwork) return { ok: false, error: "artwork not found" };
+    if (params.title !== undefined) {
+      const title = glClean(params.title, 300);
+      if (!title) return { ok: false, error: "artwork title required" };
+      artwork.title = title;
+    }
+    if (params.artist !== undefined) artwork.artist = glClean(params.artist, 200) || "Unknown";
+    if (params.date !== undefined) artwork.date = glClean(params.date, 80) || null;
+    if (params.image !== undefined) artwork.image = glClean(params.image, 2000) || null;
+    if (params.museum !== undefined) artwork.museum = glClean(params.museum, 120) || null;
+    saveGallery();
+    return { ok: true, result: { artwork } };
   });
 
   registerLensAction("gallery", "artwork-remove", (ctx, _a, params = {}) => {

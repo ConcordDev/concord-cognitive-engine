@@ -72,6 +72,26 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
   /**
+   * The world vehicle fleet (spawn/mine/inspector) is a real persistent DB
+   * store, not a feed polled from an external source (F1) — so the generic
+   * REAL_LIVE caption is false here.
+   */
+  garage: {
+    label: 'Live',
+    caption: 'Real account + world state: vehicles you spawn are persisted and shared with the 3D world, not demo data.',
+  },
+  /**
+   * Retail's store is the account's own live store — products, orders and
+   * stock are the merchant's real records. The generic REAL_FREE line
+   * ("static / open-access dataset") was false about the machinery in both
+   * directions, and REAL_LIVE's generic caption ("polled live from an
+   * external source") would be false too: nothing here is polled.
+   */
+  retail: {
+    label: 'Live',
+    caption: 'Your own live store: products, orders and stock are your account’s real records, updated as you sell.',
+  },
+  /**
    * Emergency Services' registry is the user's own live substrate —
    * units, incidents and agency records persist per account on
    * Concord's backend — so the generic REAL_FREE line ("static /

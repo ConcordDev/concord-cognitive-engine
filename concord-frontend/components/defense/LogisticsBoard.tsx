@@ -9,7 +9,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Plus, Trash2, Loader2, Truck, ChevronRight, X } from 'lucide-react';
+import { Plus, Loader2, Truck, ChevronRight, X } from 'lucide-react';
+import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface SupplyRequest {
   id: string;
@@ -54,6 +55,7 @@ export function LogisticsBoard() {
   const [board, setBoard] = useState<SupplyBoardResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
@@ -122,11 +124,17 @@ export function LogisticsBoard() {
     setBusy(false);
   }, [refresh]);
 
-  const remove = useCallback(async (id: string) => {
+  const remove = useCallback(async (request: { id: string; item: string }) => {
     setBusy(true);
-    const r = await lensRun('defense', 'supply-delete', { id });
-    if (r.data?.ok) await refresh();
-    else setError(r.data?.error || 'Failed to delete request');
+    setNotice(null);
+    setError(null);
+    const r = await lensRun('defense', 'supply-delete', { id: request.id });
+    if (r.data?.ok) {
+      setNotice(`Deleted request — ${request.item}`);
+      await refresh();
+    } else {
+      setError(r.data?.error || 'Failed to delete request');
+    }
     setBusy(false);
   }, [refresh]);
 
@@ -151,6 +159,12 @@ export function LogisticsBoard() {
       {error && (
         <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-400">
           {error}
+        </div>
+      )}
+
+      {notice && (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400">
+          {notice}
         </div>
       )}
 
@@ -202,14 +216,12 @@ export function LogisticsBoard() {
                       </button>
                     </>
                   )}
-                  <button
-                    onClick={() => remove(r.id)}
+                  <ConfirmDeleteButton
+                    ariaLabel="Delete request"
+                    itemLabel={`request "${r.item}"`}
                     disabled={busy}
-                    aria-label="Delete request"
-                    className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    onConfirm={() => remove(r)}
+                  />
                 </div>
               </div>
               {r.requestedBy && (

@@ -1363,7 +1363,12 @@ EXTENDED_DOMAIN_RULES.set("realestate", {
 
 // === Retail ===
 EXTENDED_DOMAIN_RULES.set("retail", {
-  types: ["product", "order", "inventory", "promotion", "return"],
+  // "capture" is the Quick Capture dialog's type (components/common/
+  // QuickCapture.tsx creates { type: "capture" } in the open lens). Ruled
+  // domains reject any type outside this list with validation_failed —
+  // Retail refused every capture (the capture genus's fifth domain) until
+  // the type the dialog actually sends was admitted here.
+  types: ["product", "order", "inventory", "promotion", "return", "capture"],
   validStatuses: ["draft", "active", "sold", "returned", "archived"],
   transitions: { draft: ["active", "archived"], active: ["sold", "archived"], sold: ["returned", "archived"], returned: ["archived"], archived: [] },
   requiredFields: { product: ["title"] },

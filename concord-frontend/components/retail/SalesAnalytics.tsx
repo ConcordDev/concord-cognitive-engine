@@ -60,11 +60,12 @@ export function SalesAnalytics() {
       ) : (
         <div className="p-3 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <Tile icon={DollarSign} label="Today" value={`$${summary.revenueToday.toFixed(0)}`} sub={`${summary.ordersToday} orders`} />
-            <Tile icon={TrendingUp} label="7-day" value={`$${summary.revenue7d.toFixed(0)}`} sub="revenue" />
-            <Tile icon={DollarSign} label="AOV" value={`$${summary.avgOrderValue.toFixed(0)}`} sub="avg order" />
+            <Tile icon={DollarSign} label="Today" value={`$${summary.revenueToday.toFixed(2)}`} sub={`${summary.ordersToday} orders`} />
+            <Tile icon={TrendingUp} label="7-day" value={`$${summary.revenue7d.toFixed(2)}`} sub="revenue" />
+            <Tile icon={DollarSign} label="AOV" value={`$${summary.avgOrderValue.toFixed(2)}`} sub="avg order" />
             <Tile icon={Package} label="Products" value={String(summary.productCount)} sub={`${summary.customerCount} customers`} />
           </div>
+          <p className="text-[10px] text-gray-500">Sales basis: order totals, tax included, net of refunds — the same basis the Storefront panel reads.</p>
 
           <div className="rounded-md border border-white/10 bg-white/[0.03] p-3">
             <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Revenue · last 30 days</div>

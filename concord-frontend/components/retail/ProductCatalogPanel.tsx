@@ -81,6 +81,7 @@ export function ProductCatalogPanel() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [expandedSku, setExpandedSku] = useState<string | null>(null);
+  const [confirmDeleteSku, setConfirmDeleteSku] = useState<string | null>(null);
   const [keepSku, setKeepSku] = useState<string | null>(null);
   const [variantsBySku, setVariantsBySku] = useState<Record<string, ProductVariant[]>>({});
   const [variantLoading, setVariantLoading] = useState(false);
@@ -147,6 +148,11 @@ export function ProductCatalogPanel() {
   };
 
   const remove = async (sku: string) => {
+    // Deleting a product is destructive and was one unconfirmed click (F7):
+    // the first click arms the row, the second — labelled with the act —
+    // performs it. Clicking anything else disarms.
+    if (confirmDeleteSku !== sku) { setConfirmDeleteSku(sku); return; }
+    setConfirmDeleteSku(null);
     try {
       await lensRun({ domain: 'retail', action: 'product-delete', input: { sku } });
       if (expandedSku === sku) setExpandedSku(null);
@@ -309,8 +315,8 @@ export function ProductCatalogPanel() {
                     className={cn('p-1', keepSku === p.sku ? 'text-rose-300' : 'text-gray-600 hover:text-rose-300')}><ShieldCheck className="w-3 h-3" /></button>
                   <button type="button" onClick={() => startEdit(p)} aria-label={`Edit ${p.name}`}
                     className="p-1 text-gray-600 hover:text-rose-300"><Pencil className="w-3 h-3" /></button>
-                  <button type="button" onClick={() => remove(p.sku)} aria-label={`Delete ${p.name}`}
-                    className="p-1 text-gray-600 hover:text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                  <button type="button" onClick={() => remove(p.sku)} aria-label={confirmDeleteSku === p.sku ? `Confirm delete ${p.name}` : `Delete ${p.name}`}
+                    className={cn('p-1', confirmDeleteSku === p.sku ? 'text-rose-300 bg-rose-500/15 rounded px-1.5 text-[10px] font-semibold' : 'text-gray-600 hover:text-rose-300')}>{confirmDeleteSku === p.sku ? 'Confirm delete?' : <Trash2 className="w-3 h-3" />}</button>
                 </div>
               </div>
 

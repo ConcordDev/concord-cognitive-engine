@@ -232,20 +232,38 @@ export default function registerDefenseActions(registerLensAction) {
         if (m.isCopMarker) markers.push(m);
       }
       // Geolocated assets.
-      for (const a of (s.assets.get(userId)?.values() || [])) {
+      const assetRows = Array.from(s.assets.get(userId)?.values() || []);
+      for (const a of assetRows) {
         if (validLat(a.lat) && validLon(a.lon)) {
           markers.push({ id: a.id, kind: "asset", label: a.designation, lat: a.lat, lon: a.lon, affiliation: "friendly", status: a.status });
         }
       }
       // Geolocated threats.
-      for (const t of (s.threats.get(userId)?.values() || [])) {
+      const threatRows = Array.from(s.threats.get(userId)?.values() || []);
+      for (const t of threatRows) {
         if (validLat(t.lat) && validLon(t.lon)) {
           markers.push({ id: t.id, kind: "threat", label: t.name, lat: t.lat, lon: t.lon, affiliation: "hostile", severity: t.severity });
         }
       }
       const byKind = { asset: 0, threat: 0, operation: 0 };
       for (const m of markers) byKind[m.kind] = (byKind[m.kind] || 0) + 1;
-      return { ok: true, result: { markers, count: markers.length, byKind } };
+      // Registry truth beside the mapped truth (C2): totals count every
+      // record in the registry, and records without coordinates are NAMED
+      // as unmapped — never silently absent from the picture.
+      const totals = {
+        asset: assetRows.length,
+        threat: threatRows.length,
+        operation: markers.filter((m) => m.isCopMarker).length,
+      };
+      const unmapped = {
+        assets: assetRows
+          .filter((a) => !(validLat(a.lat) && validLon(a.lon)))
+          .map((a) => ({ id: a.id, label: a.designation })),
+        threats: threatRows
+          .filter((t) => !(validLat(t.lat) && validLon(t.lon)))
+          .map((t) => ({ id: t.id, label: t.name })),
+      };
+      return { ok: true, result: { markers, count: markers.length, byKind, totals, unmapped } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -287,6 +305,7 @@ export default function registerDefenseActions(registerLensAction) {
         owner: String(params.owner || "").slice(0, 60),
         startOffset: clampNum(params.startOffset, 0, 100000, 0),
         durationHours: clampNum(params.durationHours, 1, 100000, 24),
+        history: [{ at: nowIso(), status: "pending" }],
         createdAt: nowIso(), updatedAt: nowIso(),
       };
       map.set(task.id, task);
@@ -308,7 +327,13 @@ export default function registerDefenseActions(registerLensAction) {
         if (!["pending", "in_progress", "complete", "blocked"].includes(params.status)) {
           return { ok: false, error: "invalid status" };
         }
-        t.status = params.status;
+        if (t.status !== params.status) {
+          t.status = params.status;
+          // Status transitions are the planner's event trail (the feed
+          // reads them; timestamps alone collide at millisecond speed).
+          if (!Array.isArray(t.history)) t.history = [{ at: t.createdAt, status: "pending" }];
+          t.history.push({ at: nowIso(), status: params.status });
+        }
       }
       if (typeof params.name === "string" && params.name.trim()) t.name = params.name.trim().slice(0, 100);
       if (["shaping", "decisive", "sustainment", "transition"].includes(params.phase)) t.phase = params.phase;
@@ -849,6 +874,96 @@ export default function registerDefenseActions(registerLensAction) {
         ok: true,
         result: { messages, channels, total: messages.length, unacknowledged },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /* ── Domain event feed — the lens's own events, derived ─────────
+   * S3: the Live feed reads the events this lens itself produces.
+   * There is no separate feed store and no feed writer: every event
+   * below is derived from the records the boards above already keep
+   * (creation/update timestamps, threat + supply history trails,
+   * comms acknowledgements), so the feed can never drift from the
+   * workspace it describes. */
+
+  registerLensAction("defense", "activity-feed", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getDefState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = defActor(ctx);
+      const limit = clampNum(params.limit, 1, 100, 50);
+      const events = [];
+      const push = (at, kind, text) => { if (at) events.push({ at, kind, text }); };
+
+      for (const a of (s.assets.get(userId)?.values() || [])) {
+        push(a.createdAt, "asset", `Asset added — ${a.designation}`);
+        if (a.updatedAt && a.updatedAt !== a.createdAt) {
+          push(a.updatedAt, "asset", `Asset updated — ${a.designation} (${a.status}, ${a.readiness}%)`);
+        }
+      }
+      for (const t of (s.threats.get(userId)?.values() || [])) {
+        const history = Array.isArray(t.history) ? t.history : [];
+        if (history.length) {
+          for (const h of history) {
+            const verb = h.event === "added" ? "Threat added"
+              : h.event === "escalated" ? "Threat escalated"
+              : h.event === "deescalated" ? "Threat de-escalated"
+              : typeof h.event === "string" && h.event.startsWith("status:")
+                ? `Threat status ${h.event.slice("status:".length)}`
+                : "Threat updated";
+            push(h.at, "threat", `${verb} — ${t.name} (${h.severity || t.severity})`);
+          }
+        } else {
+          push(t.createdAt, "threat", `Threat added — ${t.name} (${t.severity})`);
+        }
+        const lastTrailAt = history.length ? history[history.length - 1].at : null;
+        if (t.updatedAt && t.updatedAt !== t.createdAt && t.updatedAt !== lastTrailAt) {
+          push(t.updatedAt, "threat", `Threat updated — ${t.name} (${t.status})`);
+        }
+      }
+      for (const t of (s.tasks.get(userId)?.values() || [])) {
+        const history = Array.isArray(t.history) ? t.history : [];
+        if (history.length) {
+          history.forEach((h, i) => {
+            if (i === 0) push(h.at, "mission", `Mission task added — ${t.name}`);
+            else push(h.at, "mission", `Mission task ${String(h.status || "").replace("_", " ")} — ${t.name}`);
+          });
+          const lastTrailAt = history[history.length - 1].at;
+          if (t.updatedAt && t.updatedAt > lastTrailAt) {
+            push(t.updatedAt, "mission", `Mission task updated — ${t.name} (now ${t.status})`);
+          }
+        } else {
+          push(t.createdAt, "mission", `Mission task added — ${t.name}`);
+          if (t.updatedAt && t.updatedAt !== t.createdAt) {
+            push(t.updatedAt, "mission", `Mission task updated — ${t.name} (now ${t.status})`);
+          }
+        }
+      }
+      for (const p of (s.personnel.get(userId)?.values() || [])) {
+        push(p.createdAt, "personnel", `Personnel added — ${p.name}`);
+        if (p.updatedAt && p.updatedAt !== p.createdAt) {
+          push(p.updatedAt, "personnel", `Personnel updated — ${p.name} (${p.availability})`);
+        }
+      }
+      for (const r of (s.supply.get(userId)?.values() || [])) {
+        const history = Array.isArray(r.history) ? r.history : [];
+        if (history.length) {
+          for (const h of history) {
+            push(h.at, "supply", `Supply ${h.status} — ${r.item} ×${r.quantity}`);
+          }
+        } else {
+          push(r.createdAt, "supply", `Supply requested — ${r.item} ×${r.quantity}`);
+        }
+      }
+      for (const m of (s.comms.get(userId)?.values() || [])) {
+        push(m.postedAt, "comms", `Comms post on ${m.channel} — ${m.sender}`);
+        if (m.acknowledgedAt) push(m.acknowledgedAt, "comms", `Comms acknowledged on ${m.channel} — ${m.sender}`);
+      }
+      for (const m of (s.ops.get(userId)?.values() || [])) {
+        if (m.isCopMarker) push(m.createdAt, "map", `Map marker plotted — ${m.label}`);
+      }
+
+      events.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+      return { ok: true, result: { events: events.slice(0, limit), total: events.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 }
