@@ -99,7 +99,7 @@ export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}
         <h3 className="text-sm font-bold text-zinc-100">Engagement Tracker</h3>
       </div>
       <p className="text-[10px] text-zinc-500 mb-3">
-        Live engagement status, rates, and time logs — for freeform briefs and scope notes,
+        Engagement status, rates, and time logs — for freeform briefs and scope notes,
         open Engagement notes in the records rail.
       </p>
 
