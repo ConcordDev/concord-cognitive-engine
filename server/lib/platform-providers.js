@@ -68,7 +68,23 @@ function platformRetryDelayMs() {
   return Number.isFinite(v) && v >= 0 ? v : 1000;
 }
 
+// CONCORD_PLATFORM_PROVIDER_<SLOT>=local (or none/off) keeps that slot on
+// Concord's own brain for High Power accounts too: no platform provider and
+// no free-cloud router for it. Use it when the slot's own brain is stronger
+// than the platform model (live 2026-11-04: High Power chat was answered by a
+// flash-lite fallback while the conscious brain sat idle). A user's own BYO
+// key for the slot is still honoured.
+const LOCAL_PIN = new Set(["local", "none", "off"]);
+
+/** True when the operator pinned this slot to Concord's own brain. */
+export function platformSlotPinnedLocal(slot) {
+  if (!slot) return false;
+  const v = String(process.env[`CONCORD_PLATFORM_PROVIDER_${String(slot).toUpperCase()}`] || "").trim().toLowerCase();
+  return LOCAL_PIN.has(v);
+}
+
 function providerForSlot(slot) {
+  if (platformSlotPinnedLocal(slot)) return null;
   const override = process.env[`CONCORD_PLATFORM_PROVIDER_${slot.toUpperCase()}`];
   if (override && PROVIDER_ENV_KEY[override]) return override;
   return DEFAULT_SLOT_PROVIDER[slot] || null;

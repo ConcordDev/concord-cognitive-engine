@@ -757,6 +757,7 @@ export default function registerArtActions(registerLensAction) {
         w: Math.round(atClamp(raw.w, 0, art.width * 2, 0)),
         h: Math.round(atClamp(raw.h, 0, art.height * 2, 0)),
         filled: !!raw.filled,
+        ...(atHex(raw.lineColor) ? { lineColor: atHex(raw.lineColor) } : {}),
       };
     }
     const tool = ART_TOOLS.includes(String(raw.tool)) ? String(raw.tool) : "ink";
@@ -767,7 +768,14 @@ export default function registerArtActions(registerLensAction) {
       if (Array.isArray(p) && p.length >= 2) points.push([cx(p[0]), cy(p[1])]);
     }
     if (!points.length) return null;
-    return { ...base, tool, size, points };
+    // Vector shapes (chat drawings, closed polygons): optional and only
+    // stored when set, so freehand strokes keep their existing shape.
+    const vector = {};
+    if (raw.closed === true) vector.closed = true;
+    if (raw.filled === true) vector.filled = true;
+    if (raw.smooth === false) vector.smooth = false;
+    if (atHex(raw.lineColor)) vector.lineColor = atHex(raw.lineColor);
+    return { ...base, tool, size, points, ...vector };
   }
   // Apply a geometry function to every coordinate of an element.
   function transformElement(el, fn) {
