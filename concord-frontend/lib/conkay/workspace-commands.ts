@@ -468,3 +468,47 @@ export function studyContext(inputs: {
   }
   return parts.join('\n');
 }
+
+/**
+ * Analyses the beam solver states as out of scope (server lib/conkay/
+ * beam-study.js BEAM_OUT_OF_SCOPE, carried on every result's
+ * analysisReceipt.outOfScope). A request naming one must decline BY NAME
+ * (ConKay F6) — never be answered with a substituted bending solve.
+ * `label` is how the surface names it; `receipt` is the receipt's code.
+ */
+export const OUT_OF_SCOPE_ANALYSES: Array<{ receipt: string; label: string; terms: RegExp }> = [
+  { receipt: 'buckling_eigen', label: 'buckling / eigenvalue analysis', terms: /\b(?:buckling|eigen(?:value|frequency)?|critical\s+(?:buckling\s+)?load)\b/i },
+  { receipt: 'modal', label: 'modal / vibration analysis', terms: /\b(?:modal|vibration|natural\s+frequency|resonance)\b/i },
+  { receipt: 'thermal_stress', label: 'thermal stress analysis', terms: /\bthermal\s+(?:stress|expansion|load)/i },
+  { receipt: 'contact', label: 'contact analysis', terms: /\bcontact\s+(?:stress|analysis|pressure)\b/i },
+  { receipt: 'plasticity', label: 'plasticity analysis', terms: /\b(?:plasticity|plastic\s+(?:analysis|deformation|hinge))\b/i },
+  { receipt: 'large_deflection', label: 'large-deflection analysis', terms: /\blarge[-\s]deflection\b/i },
+  { receipt: 'dynamics', label: 'dynamic analysis', terms: /\b(?:dynamic|transient|impact|seismic)\s+(?:analysis|response|load)/i },
+  { receipt: 'shell', label: 'shell-element analysis', terms: /\bshell\s+(?:element|model|analysis)\b/i },
+  { receipt: 'solid', label: '3-D solid analysis', terms: /\b(?:solid|3-?d)\s+(?:element|mesh|analysis)\b/i },
+];
+
+/**
+ * The out-of-scope analysis a message asks for, or null. Fires only when
+ * the message also asks for an analysis to be performed (a check, a run, a
+ * calculation, a "what is" question) — a question ABOUT the scope ("why is
+ * buckling not checked?") is conversation, not a solve request, and goes
+ * to the agent as before.
+ */
+export function detectOutOfScopeRequest(text: string): { receipt: string; label: string } | null {
+  const t = String(text || '');
+  const hit = OUT_OF_SCOPE_ANALYSES.find((a) => a.terms.test(t));
+  if (!hit) return null;
+  const asks = /\b(?:run|do|perform|check|calculate|compute|find|give|show|what(?:'s| is)|critical)\b/i.test(t)
+    || /\b(?:check|analysis|load)\b/i.test(t);
+  return asks ? { receipt: hit.receipt, label: hit.label } : null;
+}
+
+/** The decline text for an out-of-scope ask, citing the solver's stated scope. */
+export function outOfScopeDecline(hit: { receipt: string; label: string }, outOfScope: string[] | undefined): string {
+  const scope = (outOfScope && outOfScope.length > 0 ? outOfScope : OUT_OF_SCOPE_ANALYSES.map((a) => a.receipt))
+    .map((code) => OUT_OF_SCOPE_ANALYSES.find((a) => a.receipt === code)?.label ?? code.replace(/_/g, ' '))
+    .join(', ');
+  return `The beam solver does not run ${hit.label} — its stated out-of-scope list is: ${scope}. `
+    + 'I have not substituted a bending solve for it. The study is unchanged; ask for a bending edit or "run FEA" and I will solve what the solver covers.';
+}
