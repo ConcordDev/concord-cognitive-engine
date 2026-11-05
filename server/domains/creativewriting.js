@@ -132,6 +132,12 @@ export default function registerCreativeWritingActions(registerLensAction) {
       targetWords: Math.max(0, Math.round(cwNum(params.targetWords))),
       deadline: cwClean(params.deadline, 10).slice(0, 10) || null,
       logline: cwClean(params.logline, 400) || null,
+      // The body is the manuscript prose itself (F3: a page needs a
+      // body slot, not just a title). Not written to the restart-durable
+      // creative_writing_pages table (same precedent as chapters/scenes
+      // below) — it survives the in-memory snapshot, which is what the
+      // re-pass's reload-and-read-back test exercises.
+      body: cwClean(params.body, 200000) || "",
       createdAt: cwNow(), updatedAt: cwNow(),
     };
     cwListB(s.projects, cwAid(ctx)).push(project);
@@ -166,6 +172,7 @@ export default function registerCreativeWritingActions(registerLensAction) {
         targetWords: null,
         deadline: null,
         logline: null,
+        body: null,
         createdAt: row.created_at || "",
         updatedAt: row.updated_at || "",
         wordCount: null,
@@ -207,6 +214,7 @@ export default function registerCreativeWritingActions(registerLensAction) {
     if (params.targetWords != null) project.targetWords = Math.max(0, Math.round(cwNum(params.targetWords)));
     if (params.deadline != null) project.deadline = cwClean(params.deadline, 10).slice(0, 10) || null;
     if (params.logline != null) project.logline = cwClean(params.logline, 400) || null;
+    if (params.body != null) project.body = cwClean(params.body, 200000);
     project.updatedAt = cwNow();
     try {
       writePageRow(ctx, project);
