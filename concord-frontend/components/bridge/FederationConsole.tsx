@@ -152,6 +152,7 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
   const [kind, setKind] = useState('world');
   const [region, setRegion] = useState('concordia-hub');
   const [endpoint, setEndpoint] = useState('');
+  const [confirmPeer, setConfirmPeer] = useState<string | null>(null);
 
   const addPeer = async () => {
     if (!name.trim()) return;
@@ -166,6 +167,7 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
     setBusy(true);
     const r = await lensRun('bridge', 'peerRemove', { peerId });
     if (!r.data.ok) setErr(r.data.error);
+    setConfirmPeer(null);
     await reload();
     setBusy(false);
   };
@@ -201,9 +203,20 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
               <span className="text-zinc-200">{p.name}</span>
               <span className="text-zinc-600">{p.kind}</span>
-              <button aria-label="Delete" onClick={() => removePeer(p.id)} className="text-zinc-600 hover:text-red-400">
-                <Trash2 className="w-3 h-3" />
-              </button>
+              {confirmPeer === p.id ? (
+                <>
+                  <span className="text-red-300">Delete {p.name} and its recorded flows?</span>
+                  <button onClick={() => removePeer(p.id)} disabled={busy}
+                    className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 disabled:opacity-40">
+                    Confirm
+                  </button>
+                  <button onClick={() => setConfirmPeer(null)} className="text-zinc-500 hover:text-zinc-300">Cancel</button>
+                </>
+              ) : (
+                <button aria-label="Delete" onClick={() => setConfirmPeer(p.id)} className="text-zinc-600 hover:text-red-400">
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -372,6 +385,14 @@ function FlowsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null)
     setReplaying(null);
   };
 
+  const [confirmFlow, setConfirmFlow] = useState<string | null>(null);
+  const removeFlow = async (flowId: string) => {
+    const r = await lensRun('bridge', 'flowRemove', { flowId });
+    if (!r.data.ok) setErr(r.data.error);
+    setConfirmFlow(null);
+    await load();
+  };
+
   return (
     <div className="space-y-3">
       {/* record-flow control */}
@@ -448,6 +469,20 @@ function FlowsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null)
                   {replaying === f.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />} Replay
                 </button>
               )}
+              {confirmFlow === f.id ? (
+                <span className="flex items-center gap-1.5 text-[11px]">
+                  <span className="text-red-300">Delete flow?</span>
+                  <button onClick={() => removeFlow(f.id)}
+                    className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30">
+                    Confirm
+                  </button>
+                  <button onClick={() => setConfirmFlow(null)} className="text-zinc-500 hover:text-zinc-300">Cancel</button>
+                </span>
+              ) : (
+                <button aria-label="Delete flow" onClick={() => setConfirmFlow(f.id)} className="text-zinc-600 hover:text-red-400">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -493,9 +528,11 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
     else { setSource(''); setTarget(''); await load(); }
   };
 
+  const [confirmMapping, setConfirmMapping] = useState<string | null>(null);
   const remove = async (mappingId: string) => {
     const r = await lensRun('bridge', 'mappingRemove', { mappingId });
     if (!r.data.ok) setErr(r.data.error);
+    setConfirmMapping(null);
     await load();
   };
 
@@ -554,9 +591,20 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
               <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">{m.transform}</span>
               <span className="text-zinc-600">{m.dataType}</span>
               {m.required && <span className="text-amber-400">required</span>}
-              <button aria-label="Delete" onClick={() => remove(m.id)} className="ml-auto text-zinc-600 hover:text-red-400">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {confirmMapping === m.id ? (
+                <span className="ml-auto flex items-center gap-1.5">
+                  <span className="text-red-300">Delete mapping?</span>
+                  <button onClick={() => remove(m.id)}
+                    className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30">
+                    Confirm
+                  </button>
+                  <button onClick={() => setConfirmMapping(null)} className="text-zinc-500 hover:text-zinc-300">Cancel</button>
+                </span>
+              ) : (
+                <button aria-label="Delete" onClick={() => setConfirmMapping(m.id)} className="ml-auto text-zinc-600 hover:text-red-400">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -714,9 +762,11 @@ function AlertsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null
     else await load();
   };
 
+  const [confirmRule, setConfirmRule] = useState<string | null>(null);
   const removeRule = async (ruleId: string) => {
     const r = await lensRun('bridge', 'alertRuleRemove', { ruleId });
     if (!r.data.ok) setErr(r.data.error);
+    setConfirmRule(null);
     await load();
   };
 
@@ -734,9 +784,15 @@ function AlertsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null
   };
 
   const METRIC_LABEL: Record<string, string> = {
-    'error-rate': 'Error rate ≥ % ',
-    'lag-minutes': 'Sync lag ≥ min',
+    'error-rate': 'Error rate ≥ ',
+    'lag-minutes': 'Sync lag ≥ ',
     'consecutive-failures': 'Consecutive failures ≥',
+  };
+  // The unit belongs AFTER the threshold value ("≥ 25%"), as the
+  // evaluation line already renders it — not inside the label.
+  const METRIC_SUFFIX: Record<string, string> = {
+    'error-rate': '%',
+    'lag-minutes': ' min',
   };
 
   return (
@@ -783,13 +839,24 @@ function AlertsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null
             <div key={r.id} className="flex items-center gap-2 p-2 rounded-lg bg-zinc-950/60 border border-zinc-800 text-xs">
               <Bell className="w-3.5 h-3.5 text-zinc-400" />
               <span className="text-zinc-300">{METRIC_LABEL[r.metric] || r.metric}</span>
-              <span className="font-bold text-amber-400">{r.threshold}</span>
+              <span className="font-bold text-amber-400">{r.threshold}{METRIC_SUFFIX[r.metric] || ''}</span>
               <span className="text-zinc-600">
                 {r.peerId ? (peers.find(p => p.id === r.peerId)?.name || 'peer') : 'all peers'}
               </span>
-              <button aria-label="Delete" onClick={() => removeRule(r.id)} className="ml-auto text-zinc-600 hover:text-red-400">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {confirmRule === r.id ? (
+                <span className="ml-auto flex items-center gap-1.5">
+                  <span className="text-red-300">Delete rule?</span>
+                  <button onClick={() => removeRule(r.id)}
+                    className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30">
+                    Confirm
+                  </button>
+                  <button onClick={() => setConfirmRule(null)} className="text-zinc-500 hover:text-zinc-300">Cancel</button>
+                </span>
+              ) : (
+                <button aria-label="Delete" onClick={() => setConfirmRule(r.id)} className="ml-auto text-zinc-600 hover:text-red-400">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -891,6 +958,9 @@ function ThroughputTab({ peers }: { peers: Peer[] }) {
           </div>
         )}
       </div>
+      {stats && (
+        <p className="text-[10px] text-zinc-600">avg rps is the mean of the recorded per-flow rates (not total records ÷ total time).</p>
+      )}
 
       {chartData.length === 0 ? (
         <div className="h-40 flex items-center justify-center text-xs text-zinc-400 border border-zinc-800 rounded-lg">
