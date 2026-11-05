@@ -38,6 +38,8 @@ import {
 } from '@/components/docs/delete-safety-store';
 import { ConfirmDeleteButton, DeleteReceiptToast } from '@/components/docs/DeleteSafety';
 import { DatabaseViews } from '@/components/docs/DatabaseViews';
+import { BlockEditorRow, blockDeleteLabel } from '@/components/docs/BlockEditorRow';
+import { DocsWorkspace } from '@/components/docs/DocsWorkspace';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -168,5 +170,121 @@ describe('DatabaseViews — database + row deletes ride the safeguard', () => {
     expect(rowDeletes.length).toBe(1);
     expect(rowDeletes[0][2]).toMatchObject({ id: 'db1', rowId: 'r1' });
     expect(screen.getByText(/“Travel” deleted\./)).toBeTruthy();
+  });
+});
+
+describe('S1 follow-up — confirm-step geometry wraps inside the list column', () => {
+  it('the confirm cluster wraps and the label is not nowrap-locked; both buttons stay reachable', () => {
+    const onConfirm = vi.fn();
+    render(<ConfirmDeleteButton itemLabel="A Rather Long Page Title" deleteTitle="Delete" onConfirm={onConfirm} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    const label = screen.getByText(/Delete “A Rather Long Page Title”\?/);
+    // The cluster (the label's parent) must be able to wrap within the
+    // narrow column instead of overflowing it — the S1 defect was a
+    // non-wrapping inline cluster whose Cancel sat under the editor.
+    expect(label.parentElement?.className).toContain('flex-wrap');
+    expect(label.parentElement?.className).toContain('max-w-full');
+    expect(label.className).not.toContain('whitespace-nowrap');
+    // Both halves of the two-way door are present in the open step.
+    expect(screen.getByRole('button', { name: 'Confirm delete A Rather Long Page Title' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Cancel delete' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel delete' }));
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('the database list confirm step wraps the same way', async () => {
+    mockDbRun();
+    render(<DatabaseViews />);
+    await flush();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete database' }));
+    const label = screen.getByText(/Delete “Budgets”\?/);
+    expect(label.parentElement?.className).toContain('flex-wrap');
+    expect(screen.getByRole('button', { name: 'Cancel delete' })).toBeTruthy();
+  });
+});
+
+describe('S1 follow-up — block delete rides the safeguard (Lead ruling)', () => {
+  const block = { id: 'b1', type: 'paragraph', text: 'Marker block' } as never;
+
+  it('blockDeleteLabel names the block by its text, or its type when text-less', () => {
+    expect(blockDeleteLabel(block)).toBe('Marker block');
+    expect(blockDeleteLabel({ id: 'b2', type: 'divider', text: '' } as never)).toBe('divider block');
+  });
+
+  it('first click deletes nothing; the confirm step names the block; Cancel resets', () => {
+    const onDelete = vi.fn();
+    render(<BlockEditorRow block={block} cursors={[]} onChange={vi.fn()} onDelete={onDelete}
+      onUp={vi.fn()} onDown={vi.fn()} onFocus={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete block' }));
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(screen.getByText(/Delete “Marker block”\?/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel delete' }));
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Delete block' })).toBeTruthy();
+  });
+
+  it('the named Confirm fires onDelete exactly once', () => {
+    const onDelete = vi.fn();
+    render(<BlockEditorRow block={block} cursors={[]} onChange={vi.fn()} onDelete={onDelete}
+      onUp={vi.fn()} onDown={vi.fn()} onFocus={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete block' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete Marker block' }));
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+});
+
+const WS_PAGE = {
+  id: 'pg1', title: 'Spec Page', icon: '📄',
+  blocks: [{ id: 'b1', type: 'paragraph', text: 'Marker block' }],
+};
+
+function mockWsRun() {
+  lensRun.mockImplementation((_domain: string, action: string) => {
+    if (action === 'page-list') {
+      return Promise.resolve({ data: { ok: true, result: { pages: [{ id: 'pg1', title: 'Spec Page', icon: '📄', parentId: null }] } } });
+    }
+    if (action === 'page-detail') {
+      return Promise.resolve({ data: { ok: true, result: { page: WS_PAGE } } });
+    }
+    if (action === 'comment-list') {
+      return Promise.resolve({ data: { ok: true, result: { count: 0, comments: [] } } });
+    }
+    return Promise.resolve({ data: { ok: true, result: {} } });
+  });
+}
+
+describe('DocsWorkspace — a confirmed block delete defers its macro to the window', () => {
+  it('confirm hides the block and announces Undo; Undo restores it; the window commits block-delete once', async () => {
+    mockWsRun();
+    render(<DocsWorkspace />);
+    await flush();
+    fireEvent.click(screen.getByText(/Spec Page/));
+    await flush();
+    expect(screen.getByDisplayValue('Marker block')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete block' }));
+    expect(screen.getByText(/Delete “Marker block”\?/)).toBeTruthy();
+    expect(lensRun.mock.calls.some((c) => c[1] === 'block-delete')).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete Marker block' }));
+    // Gone from the editor at once, announced with Undo, macro not yet run.
+    expect(screen.queryByDisplayValue('Marker block')).toBeNull();
+    expect(screen.getByText(/Deleting “Marker block”…/)).toBeTruthy();
+    expect(lensRun.mock.calls.some((c) => c[1] === 'block-delete')).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await flush();
+    expect(screen.getByDisplayValue('Marker block')).toBeTruthy();
+    await act(async () => { await vi.advanceTimersByTimeAsync(DELETE_UNDO_WINDOW_MS * 2); });
+    expect(lensRun.mock.calls.some((c) => c[1] === 'block-delete')).toBe(false);
+
+    // Delete again and let the window lapse: the macro runs exactly once.
+    fireEvent.click(screen.getByRole('button', { name: 'Delete block' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete Marker block' }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(DELETE_UNDO_WINDOW_MS); });
+    const blockDeletes = lensRun.mock.calls.filter((c) => c[1] === 'block-delete');
+    expect(blockDeletes.length).toBe(1);
+    expect(blockDeletes[0][2]).toMatchObject({ pageId: 'pg1', blockId: 'b1' });
+    expect(screen.getByText(/“Marker block” deleted\./)).toBeTruthy();
   });
 });

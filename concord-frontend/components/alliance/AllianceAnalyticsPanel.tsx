@@ -86,9 +86,11 @@ function ScoreGauge({ value, max = 100, label }: { value: number; max?: number; 
 
 interface CompatibilityResult {
   partnerA: string; partnerB: string; compositeScore: number; compatibilityLevel: string;
-  componentScores: { capabilitySimilarity: number; valuesAlignment: number; resourceSimilarity: number; complementarity: number };
+  componentScores: { capabilitySimilarity: number; valuesAlignment: number; resourceSimilarity: number; strengthSimilarity: number; complementarity: number };
   overlap: { capabilities: string[]; values: string[]; resources: string[] };
   uniqueContributions: Record<string, { capabilities: string[]; resources: string[] }>;
+  weights?: { capabilities: number; values: number; resources: number; complementarity: number };
+  formula?: string;
 }
 
 const LEVEL_COLOR: Record<string, string> = {
@@ -162,7 +164,7 @@ function CompatibilityTool() {
               {result.compatibilityLevel}
             </span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
             {Object.entries(result.componentScores).map(([k, v]) => (
               <div key={k} className="rounded-md border border-white/10 bg-black/30 p-2.5">
                 <div className="text-[10px] uppercase tracking-wider text-gray-400 truncate">{k.replace(/([A-Z])/g, ' $1')}</div>
@@ -170,6 +172,17 @@ function CompatibilityTool() {
               </div>
             ))}
           </div>
+          {/* F4: the composite is reconstructible — its recipe is printed,
+              and strengths report their own similarity instead of only
+              feeding complementarity. */}
+          {result.formula && (
+            <p className="text-[11px] text-gray-400 leading-relaxed">
+              How this score is computed: {result.formula}
+              {result.weights && (
+                <> Weights — capabilities {result.weights.capabilities}, values {result.weights.values}, resources {result.weights.resources}, complementarity {result.weights.complementarity}. Complementarity measures what the partners do <em>not</em> share; strength similarity is reported separately above.</>
+              )}
+            </p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className={ds.panel}>
               <h5 className="text-xs font-semibold text-gray-300 mb-2">Overlap</h5>
@@ -328,7 +341,9 @@ function NetworkTool() {
 interface AllianceRow { partnerId: string; partnerName: string; dependencyPct: string; categories: string; revenue: string; critical: boolean }
 interface RiskResult {
   overallRiskScore: number; riskLevel: string; hhi: number; hhiClassification: string; diversificationIndex: number;
-  concentrationRisks: { partnerName: string; dependencyPct: number; isConcentrated: boolean }[];
+  concentrationRisks: { partnerName: string; dependencyPct: number; normalizedPct: number; isConcentrated: boolean }[];
+  concentrationThreshold?: number;
+  concentrationBasis?: string;
   singlePointsOfFailure: { category: string; partnerName: string; isCritical: boolean }[];
   summary: { concentratedPartners: number; singleSourceCategories: number; criticalSPOF: number; totalCategories: number };
 }
@@ -374,6 +389,7 @@ function RiskTool() {
   const concCols: DataTableColumn<RiskResult['concentrationRisks'][number]>[] = [
     { id: 'partnerName', header: 'Partner', accessor: (r) => r.partnerName },
     { id: 'dependencyPct', header: 'Dependency %', accessor: (r) => `${r.dependencyPct}%`, sortValue: (r) => r.dependencyPct, sortable: true, align: 'right', monospace: true },
+    { id: 'normalizedPct', header: 'Share of total', accessor: (r) => `${r.normalizedPct}%`, sortValue: (r) => r.normalizedPct, sortable: true, align: 'right', monospace: true },
     { id: 'isConcentrated', header: 'Concentrated', accessor: (r) => r.isConcentrated ? <span className="text-amber-300">yes</span> : <span className="text-gray-500">no</span> },
   ];
 
@@ -423,6 +439,13 @@ function RiskTool() {
           </div>
           <div>
             <h5 className="text-xs font-semibold text-gray-300 mb-1.5">Dependency concentration</h5>
+            {/* F5: the flag follows the stated rule — a partner's share of
+                total dependency against the threshold — not the raw input. */}
+            <p className="text-[11px] text-gray-400 mb-1.5">
+              {result.concentrationBasis
+                ? `Concentrated means: ${result.concentrationBasis}.`
+                : 'Concentrated means the partner\u2019s share of total dependency meets the threshold.'}
+            </p>
             <DataTable columns={concCols} rows={result.concentrationRisks} getRowId={(r) => r.partnerName} density="compact" emptyState="No concentration data." />
           </div>
           {result.singlePointsOfFailure.length > 0 && (

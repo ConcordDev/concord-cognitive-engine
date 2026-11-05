@@ -5,7 +5,7 @@ import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { NeighborhoodStats } from '@/components/realestate/NeighborhoodStats';
 import { RealEstateActionPanel } from '@/components/realestate/RealEstateActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { ds } from '@/lib/design-system';
@@ -50,6 +50,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { showToast } from '@/components/common/Toasts';
 import { cn } from '@/lib/utils';
@@ -485,6 +486,29 @@ export function ArtifactDeskPanel() {
     });
 
   const runAction = useRunArtifact('realestate');
+
+  // F2 — the Desk reads the Search store for its listing figures.
+  // Listings are created and browsed against the lens's canonical
+  // listings store (realestate.listings-list); this panel's artifact
+  // store holds the Desk's own workflow records (showings,
+  // transactions, rentals, deals, appraisals). Before this wiring the
+  // Desk's listing figures derived from the artifact store alone, so
+  // a listing standing in Search left every Desk figure at zero.
+  interface ReListingRow { id: string; address: string; city?: string; state?: string; price: number; status?: string }
+  const [reListings, setReListings] = useState<ReListingRow[] | null>(null);
+  const loadReListings = useCallback(async () => {
+    try {
+      const r = await lensRun<{ listings?: ReListingRow[] }>('realestate', 'listings-list', {});
+      const result = (r.data?.result ?? r.data) as { listings?: ReListingRow[] };
+      setReListings(result.listings || []);
+    } catch {
+      setReListings([]);
+    }
+  }, []);
+  useEffect(() => { loadReListings(); }, [loadReListings]);
+  const reVolume = reListings
+    ? reListings.filter((l) => l.status === 'for_sale' || l.status == null).reduce((s, l) => s + (l.price || 0), 0)
+    : null;
 
   /* ---------- derived ---------- */
 
@@ -971,24 +995,14 @@ export function ArtifactDeskPanel() {
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {(() => {
-          const listings = items.filter((i) => (i.data as Record<string, unknown>).price);
-          const avgPrice =
-            listings.length > 0
-              ? Math.round(
-                  listings.reduce(
-                    (s, i) => s + Number((i.data as Record<string, unknown>).price || 0),
-                    0
-                  ) / listings.length
-                )
-              : 0;
           const pending = items.filter(
             (i) =>
               i.meta?.status === 'pending' ||
               (i.data as Record<string, unknown>).status === 'pending'
           ).length;
           return [
-            { label: 'Listings', value: items.length, icon: Building2 },
-            { label: 'Avg Price', value: `$${(avgPrice / 1000).toFixed(0)}K`, icon: DollarSign },
+            { label: 'Listings', value: reListings ? reListings.length : '—', icon: Building2 },
+            { label: 'Avg Price', value: reListings ? (reListings.length > 0 ? `$${(Math.round(reListings.reduce((s, l) => s + (l.price || 0), 0) / reListings.length) / 1000).toFixed(0)}K` : '$0K') : '—', icon: DollarSign },
             { label: 'Pending Offers', value: pending, icon: KeyRound },
             {
               label: 'Active',
@@ -1397,7 +1411,7 @@ export function ArtifactDeskPanel() {
                 <DollarSign className="w-5 h-5 text-neon-cyan" />
                 <span className={ds.textMuted}>Listing Volume</span>
               </div>
-              <p className="text-3xl font-bold text-white">{fmt(stats.totalListVal)}</p>
+              <p className="text-3xl font-bold text-white">{fmt(reVolume != null ? reVolume : stats.totalListVal)}</p>
               <p className="text-xs text-gray-400 mt-1">{fmt(stats.closedVol)} closed</p>
             </div>
             <div className={ds.panel}>
@@ -1467,6 +1481,20 @@ export function ArtifactDeskPanel() {
           <div className={ds.grid2}>
             <div className={ds.panel}>
               <h3 className={cn(ds.heading3, 'mb-3')}>Recent Listings</h3>
+              {(reListings || []).slice(0, 5).map((l) => (
+                <div key={l.id} className="flex items-center justify-between py-2 border-b border-lattice-border px-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{l.address}</p>
+                    <p className="text-xs text-gray-400 truncate">{[l.city, l.state].filter(Boolean).join(', ') || 'From Search'}</p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-2">
+                    <span className="text-sm font-semibold text-white">{fmt(l.price)}</span>
+                    <span className={ds.badge(STATUS_COLORS[l.status || 'for_sale'] || 'gray-400')}>
+                      {(l.status || 'for_sale').replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                </div>
+              ))}
               {items
                 .filter((i) => (i.data as unknown as RealEstateArtifact).artifactType === 'Listing')
                 .slice(0, 5)
@@ -1498,7 +1526,7 @@ export function ArtifactDeskPanel() {
                 })}
               {items.filter(
                 (i) => (i.data as unknown as RealEstateArtifact).artifactType === 'Listing'
-              ).length === 0 && (
+              ).length === 0 && (reListings == null || reListings.length === 0) && (
                 <p className={cn(ds.textMuted, 'text-center py-4')}>
                   No properties listed yet. Add your first real estate listing.
                 </p>

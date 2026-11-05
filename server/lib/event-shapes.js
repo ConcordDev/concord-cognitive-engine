@@ -88,7 +88,7 @@ export const EVENT_SHAPES = Object.freeze({
   // retired (see server/routes/fishing.js) as genuinely redundant — zero
   // subscribers, and the caster already gets the same sessionId/
   // biteAtEpochMs synchronously in the cast HTTP response.
-  "fishing:bite":   { required: ["userId", "sessionId"], optional: [] },
+  "fishing:bite":   { required: ["userId", "sessionId"], optional: ["fishId", "fishName", "rarity", "abilities"] },
   "fishing:caught": { required: ["userId", "sessionId", "fishId"], optional: ["fishName", "qualityScore", "tier"] },
 
   // ── Minigames (Phase E) ───────────────────────────────────────────

@@ -12,6 +12,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { BarChart3, Building2, Calculator, Map as MapIcon, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
+import { FeedItemsPanel } from '@/components/realestate/FeedItemsPanel';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ShellPreview } from '@/components/lens/ShellPreview';
@@ -129,6 +130,9 @@ export default function RealEstateLensPage() {
 
         <section className="mt-4">
           <LensFeedButton domain="realestate" label="Live home-value feed" />
+          <div className="mt-2">
+            <FeedItemsPanel />
+          </div>
         </section>
 
         <MobileTabBar

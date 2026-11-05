@@ -888,9 +888,32 @@ export function EventOps() {
                     <Stat label="Actual Exp." value={fmt(budget.actualExpense)}
                       accent={budget.overBudget ? 'red-400' : 'white'} />
                     <Stat label="Revenue" value={fmt(budget.actualRevenue)} accent="green-400" />
-                    <Stat label="Net" value={fmt(budget.netProfit)}
-                      accent={budget.netProfit >= 0 ? 'green-400' : 'red-400'} />
+                    <Stat label="Net" value={fmt(budget.variance)}
+                      accent={budget.variance >= 0 ? 'green-400' : 'red-400'} />
                   </div>
+                  <p className={ds.textMuted}>Budgeted − Actual = Net. {fmt(budget.budgetedExpense)} − {fmt(budget.actualExpense)} = {fmt(budget.variance)}.</p>
+                  {Object.keys(budget.byCategory).length > 0 && (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-gray-400">
+                          <th className="pb-1 pr-3">Category</th>
+                          <th className="pb-1 pr-3 text-right">Budgeted</th>
+                          <th className="pb-1 pr-3 text-right">Actual</th>
+                          <th className="pb-1 text-right">Net</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(budget.byCategory).map(([name, row]) => (
+                          <tr key={name} className="text-gray-200">
+                            <td className="py-1 pr-3 capitalize">{name}</td>
+                            <td className="py-1 pr-3 text-right">{fmt(row.budgeted)}</td>
+                            <td className="py-1 pr-3 text-right">{fmt(row.actual)}</td>
+                            <td className="py-1 text-right">{fmt(row.budgeted - row.actual)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                   <div className={cn(ds.panel, 'grid grid-cols-2 sm:grid-cols-6 gap-2')}>
                     <input className={ds.input} placeholder="Line label" value={lineForm.label}
                       onChange={(e) => setLineForm({ ...lineForm, label: e.target.value })} />

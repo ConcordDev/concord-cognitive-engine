@@ -7,7 +7,7 @@ import { lensRun } from '@/lib/api/client';
 export interface LegalAnswer {
   answer: string;
   jurisdiction: string;
-  citations: Array<{ title: string; url?: string; section?: string }>;
+  citations: Array<{ title: string; url?: string; section?: string; verification?: 'reference' | 'unverified' | null; corrected?: boolean }>;
   caveats: string[];
 }
 
@@ -84,6 +84,12 @@ export function LegalQA() {
                         <span className="text-cyan-300">{c.title}</span>
                       )}
                       {c.section && <span className="text-gray-400"> · §{c.section}</span>}
+                      {c.verification === 'reference' && (
+                        <span className="ml-1.5 text-[9px] uppercase px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-300">{c.corrected ? 'corrected · in reference' : 'in reference'}</span>
+                      )}
+                      {c.verification === 'unverified' && (
+                        <span className="ml-1.5 text-[9px] uppercase px-1 py-0.5 rounded bg-amber-500/15 text-amber-300">not verified — check this cite</span>
+                      )}
                     </li>
                   ))}
                 </ul>

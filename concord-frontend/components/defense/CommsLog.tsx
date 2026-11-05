@@ -8,7 +8,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Trash2, Loader2, Radio, Check, Tag, Send } from 'lucide-react';
+import { Loader2, Radio, Check, Tag, Send } from 'lucide-react';
+import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface CommsMessage {
   id: string;
@@ -55,6 +56,7 @@ export function CommsLog() {
   const [data, setData] = useState<CommsLogResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [channelFilter, setChannelFilter] = useState<string | null>(null);
 
@@ -121,11 +123,17 @@ export function CommsLog() {
     setBusy(false);
   }, [channelFilter, refresh]);
 
-  const remove = useCallback(async (id: string) => {
+  const remove = useCallback(async (message: { id: string; channel: string }) => {
     setBusy(true);
-    const r = await lensRun('defense', 'comms-delete', { id });
-    if (r.data?.ok) await refresh(channelFilter);
-    else setError(r.data?.error || 'Failed to delete message');
+    setNotice(null);
+    setError(null);
+    const r = await lensRun('defense', 'comms-delete', { id: message.id });
+    if (r.data?.ok) {
+      setNotice(`Deleted message on ${message.channel}`);
+      await refresh(channelFilter);
+    } else {
+      setError(r.data?.error || 'Failed to delete message');
+    }
     setBusy(false);
   }, [channelFilter, refresh]);
 
@@ -155,6 +163,12 @@ export function CommsLog() {
       {error && (
         <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-400">
           {error}
+        </div>
+      )}
+
+      {notice && (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400">
+          {notice}
         </div>
       )}
 
@@ -221,14 +235,12 @@ export function CommsLog() {
                       <Check className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  <button
-                    onClick={() => remove(m.id)}
+                  <ConfirmDeleteButton
+                    ariaLabel="Delete message"
+                    itemLabel={`message on ${m.channel}`}
                     disabled={busy}
-                    aria-label="Delete message"
-                    className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    onConfirm={() => remove(m)}
+                  />
                 </div>
               </div>
               <p className="text-xs text-zinc-200 mt-1 whitespace-pre-wrap">{m.body}</p>

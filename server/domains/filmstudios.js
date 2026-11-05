@@ -162,6 +162,14 @@ export default function registerFilmStudiosActions(registerLensAction) {
        FROM film_studio_scenes WHERE user_id = ? AND project_id = ? ORDER BY created_at ASC`,
     ).all(fmAid(ctx), String(projectId));
   }
+  function readSceneRow(ctx, id) {
+    const db = fmDb(ctx);
+    if (!fmTable(db, "film_studio_scenes") || !id) return null;
+    return db.prepare(
+      `SELECT id, project_id, number, int_ext, location, time_of_day, page_eighths, created_at
+       FROM film_studio_scenes WHERE id = ? AND user_id = ?`,
+    ).get(String(id), fmAid(ctx)) || null;
+  }
   function ensureProject(ctx, s, userId, projectId) {
     const mem = fmProject(s, userId, projectId);
     if (mem) return mem;
@@ -176,6 +184,35 @@ export default function registerFilmStudiosActions(registerLensAction) {
     };
     fmListB(s.projects, userId).push(project);
     return project;
+  }
+  // Mirrors ensureProject: scene-update/scene-delete only ever look at the
+  // in-memory list, which scene-list's DB-row merge never writes back into
+  // (by design -- that merge is read-only). Without this, editing/deleting a
+  // scene that was read back after a process restart (or simply never
+  // touched by scene-add in this session) would wrongly report "scene not
+  // found" even though the row is real. F4's edit/delete must work on every
+  // scene the lens can show, not only ones created in the current session.
+  function ensureScene(ctx, s, userId, sceneId) {
+    const mem = (s.scenes.get(userId) || []).find((x) => x.id === sceneId);
+    if (mem) return mem;
+    const row = readSceneRow(ctx, sceneId);
+    if (!row || typeof row.location !== "string" || !row.location.trim()) return null;
+    const scene = {
+      id: row.id,
+      projectId: String(row.project_id || ""),
+      number: row.number || "",
+      intExt: row.int_ext || null,
+      location: row.location,
+      timeOfDay: row.time_of_day || null,
+      description: null,
+      pageEighths: Number.isFinite(row.page_eighths) ? row.page_eighths : null,
+      castIds: [],
+      shootDayId: null,
+      stripOrder: 0,
+      createdAt: row.created_at || "",
+    };
+    fmListB(s.scenes, userId).push(scene);
+    return scene;
   }
   const fmId = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const fmNow = () => new Date().toISOString();
@@ -257,9 +294,36 @@ export default function registerFilmStudiosActions(registerLensAction) {
     return { ok: true, result: { projects, count: projects.length } };
   });
 
+  // Renames a production's title (and optionally its format/logline). The
+  // review's F4 (absent-lifecycle): productions were write-once -- the
+  // Title field existed only at creation, with no edit control anywhere.
+  registerLensAction("film-studios", "project-update", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    const project = ensureProject(ctx, s, userId, params.id);
+    if (!project) return { ok: false, error: "project not found" };
+    if (params.title != null) {
+      const title = fmClean(params.title, 160);
+      if (!title) return { ok: false, error: "project title required" };
+      project.title = title;
+    }
+    if (params.format != null) {
+      project.format = fmPick(params.format, ["feature", "short", "series", "spec", "doc", "commercial"], project.format);
+    }
+    if (params.logline != null) project.logline = fmClean(params.logline, 400) || null;
+    try {
+      writeProductionRow(ctx, project);
+    } catch (e) {
+      return { ok: false, error: "production_not_saved", detail: String(e?.message || e) };
+    }
+    saveFmState();
+    return { ok: true, result: { project } };
+  });
+
   registerLensAction("film-studios", "project-delete", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
+    ensureProject(ctx, s, userId, params.id); // hydrate from the row if this session never touched it (e.g. after a restart)
     const arr = s.projects.get(userId) || [];
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "project not found" };
@@ -357,7 +421,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
 
   registerLensAction("film-studios", "scene-update", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const scene = (s.scenes.get(fmAid(ctx)) || []).find((x) => x.id === params.id);
+    const scene = ensureScene(ctx, s, fmAid(ctx), params.id);
     if (!scene) return { ok: false, error: "scene not found" };
     if (params.intExt != null) scene.intExt = fmPick(params.intExt, FM_INT_EXT, scene.intExt);
     if (params.timeOfDay != null) scene.timeOfDay = fmPick(params.timeOfDay, FM_TIME_OF_DAY, scene.timeOfDay);
@@ -366,6 +430,11 @@ export default function registerFilmStudiosActions(registerLensAction) {
     if (params.description != null) scene.description = fmClean(params.description, 2000) || null;
     if (params.pageEighths != null) scene.pageEighths = Math.max(0, Math.round(fmNum(params.pageEighths)));
     if (Array.isArray(params.castIds)) scene.castIds = params.castIds.map(String).slice(0, 40);
+    try {
+      writeSceneRow(ctx, scene);
+    } catch (e) {
+      return { ok: false, error: "scene_not_saved", detail: String(e?.message || e) };
+    }
     saveFmState();
     return { ok: true, result: { scene: { ...scene, slugline: fmSlugline(scene) } } };
   });
@@ -373,6 +442,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
   registerLensAction("film-studios", "scene-delete", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
+    ensureScene(ctx, s, userId, params.id); // hydrate from the row if this session never touched it
     const arr = s.scenes.get(userId) || [];
     const i = arr.findIndex((x) => x.id === params.id);
     if (i < 0) return { ok: false, error: "scene not found" };

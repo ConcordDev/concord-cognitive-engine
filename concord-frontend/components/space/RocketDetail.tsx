@@ -100,7 +100,7 @@ export function RocketDetail() {
             )}
           >
             {f.name}
-            {!f.active && <span className="ml-1.5 text-[10px] text-zinc-400">retired</span>}
+            {f.active === false && <span className="ml-1.5 text-[10px] text-zinc-400">retired</span>}
           </button>
         ))}
       </div>
@@ -120,19 +120,21 @@ export function RocketDetail() {
                 {[spec.company, spec.country, spec.firstFlight].filter(Boolean).join(' · ')}
               </p>
             </div>
-            <span
-              className={cn(
-                'flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full',
-                spec.active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-700/40 text-zinc-400',
-              )}
-            >
-              {spec.active ? (
-                <CheckCircle2 className="w-3 h-3" />
-              ) : (
-                <XCircle className="w-3 h-3" />
-              )}
-              {spec.active ? 'Active' : 'Retired'}
-            </span>
+            {typeof spec.active === 'boolean' && (
+              <span
+                className={cn(
+                  'flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full',
+                  spec.active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-700/40 text-zinc-400',
+                )}
+              >
+                {spec.active ? (
+                  <CheckCircle2 className="w-3 h-3" />
+                ) : (
+                  <XCircle className="w-3 h-3" />
+                )}
+                {spec.active ? 'Active' : 'Retired'}
+              </span>
+            )}
           </div>
 
           {spec.description && <p className="text-xs text-zinc-400">{spec.description}</p>}

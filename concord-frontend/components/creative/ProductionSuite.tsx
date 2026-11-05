@@ -15,10 +15,11 @@
  * Every value rendered comes from a real macro response. No seed data.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
+import { notifyCreativeDashboardDirty } from '@/lib/creative/dashboard-bus';
 import {
   Clapperboard, MessageSquare, ClipboardList, Layers, CalendarDays, Link2,
   Plus, Trash2, X, CheckCircle2, Clock, Send, RotateCcw, Film, Image as ImageIcon,
@@ -103,6 +104,28 @@ function fmtTime(sec: number | null): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+// Review-asset upload — real bytes via the shared /api/artifact/upload
+// pipeline (same route ReelRecorder / FeedComposer / ProfileEditDialog use),
+// not a URL-paste-only form. Returns a playable stream URL + the detected
+// video/image kind from the stored MIME type.
+async function uploadReviewFile(file: File): Promise<{ src: string; kind: 'video' | 'image' }> {
+  const res = await fetch('/api/artifact/upload', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': file.type || 'application/octet-stream',
+      'X-Filename': encodeURIComponent(file.name),
+      'X-Title': encodeURIComponent(file.name),
+      'X-Domain': 'creative',
+    },
+    body: file,
+  });
+  const body = await res.json().catch(() => ({})) as { ok?: boolean; dtuId?: string; artifact?: { type?: string }; error?: string };
+  if (!res.ok || !body.ok || !body.dtuId) throw new Error(body.error || `Upload failed (${res.status})`);
+  const mime = String(body.artifact?.type || file.type || '');
+  return { src: `/api/artifact/${body.dtuId}/stream`, kind: mime.startsWith('video/') ? 'video' : 'image' };
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -158,6 +181,10 @@ function ReviewTab() {
   const [src, setSrc] = useState('');
   const [duration, setDuration] = useState('');
   const [project, setProject] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // comment composer
   const [cBody, setCBody] = useState('');
   const [cAuthor, setCAuthor] = useState('');
@@ -178,6 +205,23 @@ function ReviewTab() {
 
   const activeAsset = assets.find((a) => a.id === selected) || null;
 
+  const handleFiles = async (files: FileList | File[]) => {
+    const file = Array.from(files)[0];
+    if (!file) return;
+    setUploadErr(null);
+    setUploading(true);
+    try {
+      const { src: uploadedSrc, kind: detectedKind } = await uploadReviewFile(file);
+      setSrc(uploadedSrc);
+      setKind(detectedKind);
+      if (!name.trim()) setName(file.name.replace(/\.[^.]+$/, ''));
+    } catch (e: unknown) {
+      setUploadErr(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const createAsset = async () => {
     if (!name.trim()) return;
     setBusy(true);
@@ -188,9 +232,10 @@ function ReviewTab() {
     });
     setBusy(false);
     if (r.data.ok && r.data.result) {
-      setName(''); setSrc(''); setDuration(''); setProject(''); setShowNew(false);
+      setName(''); setSrc(''); setDuration(''); setProject(''); setShowNew(false); setUploadErr(null);
       await loadAssets();
       setSelected(r.data.result.asset.id);
+      notifyCreativeDashboardDirty();
     }
   };
 
@@ -198,6 +243,7 @@ function ReviewTab() {
     await lensRun('creative', 'review-asset-delete', { id });
     if (selected === id) { setSelected(null); setComments([]); }
     await loadAssets();
+    notifyCreativeDashboardDirty();
   };
 
   const addComment = async () => {
@@ -214,17 +260,20 @@ function ReviewTab() {
       setCBody(''); setCTimestamp('');
       await loadComments(selected);
       await loadAssets();
+      notifyCreativeDashboardDirty();
     }
   };
 
   const toggleResolved = async (c: ReviewComment) => {
     await lensRun('creative', 'review-comment-resolve', { id: c.id, resolved: !c.resolved });
     if (selected) { await loadComments(selected); await loadAssets(); }
+    notifyCreativeDashboardDirty();
   };
 
   const deleteComment = async (id: string) => {
     await lensRun('creative', 'review-comment-delete', { id });
     if (selected) { await loadComments(selected); await loadAssets(); }
+    notifyCreativeDashboardDirty();
   };
 
   return (
@@ -239,6 +288,30 @@ function ReviewTab() {
         </div>
         {showNew && (
           <div className={`${PANEL} space-y-2`}>
+            <input
+              ref={fileInputRef} type="file" accept="video/*,image/*" className="hidden"
+              onChange={(e) => { if (e.target.files?.length) void handleFiles(e.target.files); e.target.value = ''; }}
+            />
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files.length) void handleFiles(e.dataTransfer.files); }}
+              className={`rounded-lg border-2 border-dashed p-3 text-center text-xs transition-colors ${dragOver ? 'border-violet-500 bg-violet-500/10' : 'border-zinc-700'}`}
+            >
+              {uploading ? (
+                <p className="text-zinc-400">Uploading…</p>
+              ) : src && src.startsWith('/api/artifact/') ? (
+                <p className="text-emerald-400">File uploaded — {kind} ready below.</p>
+              ) : (
+                <p className="text-zinc-400">
+                  Drop a video or image here or{' '}
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="text-violet-400 underline underline-offset-2">
+                    browse files
+                  </button>
+                </p>
+              )}
+            </div>
+            {uploadErr && <p className="text-xs text-rose-400">{uploadErr}</p>}
             <input className={INPUT} placeholder="Asset name" value={name} onChange={(e) => setName(e.target.value)} />
             <div className="flex gap-2">
               <select className={INPUT} value={kind} onChange={(e) => setKind(e.target.value as 'video' | 'image')}>
@@ -249,9 +322,9 @@ function ReviewTab() {
                 <input className={INPUT} type="number" placeholder="Duration (sec)" value={duration} onChange={(e) => setDuration(e.target.value)} />
               )}
             </div>
-            <input className={INPUT} placeholder="Source URL (optional)" value={src} onChange={(e) => setSrc(e.target.value)} />
+            <input className={INPUT} placeholder="Source URL (or upload a file above)" value={src} onChange={(e) => setSrc(e.target.value)} />
             <input className={INPUT} placeholder="Project (optional)" value={project} onChange={(e) => setProject(e.target.value)} />
-            <button onClick={createAsset} disabled={busy || !name.trim()} className={BTN_PRIMARY}>
+            <button onClick={createAsset} disabled={busy || uploading || !name.trim()} className={BTN_PRIMARY}>
               Create asset
             </button>
           </div>
@@ -401,6 +474,7 @@ function CallSheetTab() {
       setProject(''); setShootDate(''); setDayNumber('1'); setShowNew(false);
       await loadSheets();
       setActive(r.data.result.sheet);
+      notifyCreativeDashboardDirty();
     }
   };
 
@@ -408,6 +482,7 @@ function CallSheetTab() {
     await lensRun('creative', 'callsheet-delete', { id });
     if (active?.id === id) setActive(null);
     await loadSheets();
+    notifyCreativeDashboardDirty();
   };
 
   const addRow = async () => {
@@ -791,6 +866,7 @@ function DeliverableTab() {
       setName(''); setProject(''); setSrc(''); setShowNew(false);
       await loadList();
       setActive(r.data.result.deliverable);
+      notifyCreativeDashboardDirty();
     }
   };
 
@@ -798,6 +874,7 @@ function DeliverableTab() {
     await lensRun('creative', 'deliverable-delete', { id });
     if (active?.id === id) setActive(null);
     await loadList();
+    notifyCreativeDashboardDirty();
   };
 
   const addVersion = async () => {
@@ -819,6 +896,7 @@ function DeliverableTab() {
     await lensRun('creative', 'deliverable-submit', { id: active.id, reviewer: reviewer.trim() || undefined });
     setReviewer('');
     await refresh(active.id);
+    notifyCreativeDashboardDirty();
   };
 
   const decide = async (decision: 'approved' | 'rejected' | 'changes_requested') => {
@@ -826,6 +904,7 @@ function DeliverableTab() {
     await lensRun('creative', 'deliverable-decide', { id: active.id, decision, note: decisionNote.trim() || undefined });
     setDecisionNote('');
     await refresh(active.id);
+    notifyCreativeDashboardDirty();
   };
 
   return (
@@ -988,17 +1067,19 @@ function CalendarTab() {
       title: title.trim(), date, kind, project: project.trim() || undefined, notes: notes.trim() || undefined,
     });
     setBusy(false);
-    if (r.data.ok) { setTitle(''); setDate(''); setProject(''); setNotes(''); setShowNew(false); await load(); }
+    if (r.data.ok) { setTitle(''); setDate(''); setProject(''); setNotes(''); setShowNew(false); await load(); notifyCreativeDashboardDirty(); }
   };
 
   const toggleDone = async (ev: CalendarEvent) => {
     await lensRun('creative', 'calendar-update', { id: ev.id, done: !ev.done });
     await load();
+    notifyCreativeDashboardDirty();
   };
 
   const del = async (id: string) => {
     await lensRun('creative', 'calendar-delete', { id });
     await load();
+    notifyCreativeDashboardDirty();
   };
 
   const timelineEvents: TimelineEvent[] = useMemo(
@@ -1123,17 +1204,19 @@ function ProofLinkTab() {
       assetId, label: label.trim() || undefined, allowComments,
     });
     setBusy(false);
-    if (r.data.ok) { setLabel(''); setAssetId(''); await loadLinks(); }
+    if (r.data.ok) { setLabel(''); setAssetId(''); await loadLinks(); notifyCreativeDashboardDirty(); }
   };
 
   const toggle = async (l: ProofLink) => {
     await lensRun('creative', 'prooflink-toggle', { id: l.id, active: !l.active });
     await loadLinks();
+    notifyCreativeDashboardDirty();
   };
 
   const del = async (id: string) => {
     await lensRun('creative', 'prooflink-delete', { id });
     await loadLinks();
+    notifyCreativeDashboardDirty();
   };
 
   const copyShare = async (l: ProofLink) => {

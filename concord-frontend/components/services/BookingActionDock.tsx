@@ -91,7 +91,7 @@ export function BookingActionDock({ appointment, onClose }: DockProps) {
 
   async function dmClient(content: string): Promise<{ sent: boolean; reason?: string }> {
     const recipient = d.clientUserId?.trim();
-    if (!recipient) return { sent: false, reason: 'No clientUserId on this appointment.' };
+    if (!recipient) return { sent: false, reason: 'This appointment is not linked to a client with a Concord user ID — link the client in the appointment editor to enable reminders.' };
     try {
       const r = await api.post('/api/social/dm', { toUserId: recipient, content });
       return { sent: r.data?.ok !== false, reason: r.data?.error };
@@ -251,7 +251,7 @@ export function BookingActionDock({ appointment, onClose }: DockProps) {
   const actions = [
     { id: 'confirm',  label: 'Confirm',         icon: CheckCircle2, accent: '#06b6d4', desc: 'Mark confirmed + DM client',                             handler: actConfirm,  disabled: status === 'confirmed' || status === 'completed' },
     { id: 'reminder', label: 'Send reminder',   icon: Bell,         accent: '#f97316', desc: d.clientUserId ? 'DM client a Booksy-style nudge'
-                                                                                                              : 'Add clientUserId to enable',
+                                                                                                              : 'Link a client with a Concord user ID to enable',
                                                                                                                                                  handler: actReminder, disabled: !d.clientUserId },
     { id: 'complete', label: 'Mark complete',   icon: Receipt,      accent: '#22c55e', desc: 'Close + mint receipt DTU + DM',                          handler: actComplete, disabled: status === 'completed' },
     { id: 'no_show',  label: 'Mark no-show',    icon: XCircle,      accent: '#ef4444', desc: 'Status + bump no-show count + soft-touch DM',            handler: actNoShow,   disabled: status === 'no_show' || status === 'completed' },
@@ -276,7 +276,7 @@ export function BookingActionDock({ appointment, onClose }: DockProps) {
             </span>
             {receiptDtu && (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">
-                receipt {receiptDtu.slice(0, 6)}
+                receipt {receiptDtu}
               </span>
             )}
           </div>
@@ -610,7 +610,7 @@ export function EndOfDayClose({ allAppointments, tomorrowAppointments, onClose }
               {reminderCount && (
                 <p className="text-xs text-gray-400 pl-12">
                   <Mail className="w-3 h-3 inline mr-1" />
-                  {reminderCount.sent} sent, {reminderCount.failed} skipped (no clientUserId).
+                  {reminderCount.sent} sent, {reminderCount.failed} skipped (no linked Concord account).
                 </p>
               )}
             </div>

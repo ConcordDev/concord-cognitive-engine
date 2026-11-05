@@ -43,7 +43,7 @@ function send(res, result) {
   res.status(photoHttpStatus(result)).json(result);
 }
 
-export function createPhotosRouter({ db, requireAuth }) {
+export function createPhotosRouter({ db, requireAuth, STATE }) {
   const router = Router();
   const auth = requireAuth();
 
@@ -67,7 +67,7 @@ export function createPhotosRouter({ db, requireAuth }) {
     }
     if (!owner) return send(res, { ok: false, error: "no_photo" });
     if (owner.user_id !== userId) return send(res, { ok: false, error: "not_owner" });
-    send(res, sharePhoto(db, photoId));
+    send(res, sharePhoto(db, photoId, { STATE: STATE || globalThis.STATE || null }));
   });
 
   router.post("/:photoId/delete", auth, (req, res) => {
