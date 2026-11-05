@@ -72,6 +72,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
   /**
+   * Emergency Services' registry is the user's own live substrate —
+   * units, incidents and agency records persist per account on
+   * Concord's backend — so the generic REAL_FREE line ("static /
+   * open-access dataset") was false for this lens (F1). The seismic
+   * half is a live USGS feed; the caption names both halves.
+   */
+  'emergency-services': {
+    label: 'Live',
+    caption: 'Live: units, incidents and agency records are your own data, stored on Concord’s backend and persisted per account. Seismic data is a live USGS feed.',
+  },
+  /**
    * Housing's substrate is the member's own persistent world state —
    * land claims and houses live in the platform database, owner-gated
    * in the lib (PROBE-BLOCKED at the then-missing claim surface in
