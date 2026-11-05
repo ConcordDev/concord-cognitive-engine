@@ -144,7 +144,7 @@ export default function registerEventsActions(registerLensAction) {
   registerLensAction("events", "event-detail", (ctx, _a, params = {}) => {
   try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const event = evList(s, evActor(ctx)).find((e) => e.id === params.id);
+    const event = evList(s, evActor(ctx)).find((e) => e.id === (params.id || params.eventId));
     if (!event) return { ok: false, error: "event not found" };
     const vendorCost = event.vendors.reduce((n, v) => n + v.cost, 0);
     return { ok: true, result: { event, vendorCost, budgetRemaining: event.budget - vendorCost } };
