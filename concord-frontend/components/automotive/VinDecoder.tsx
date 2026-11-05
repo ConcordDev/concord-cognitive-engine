@@ -23,6 +23,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
+import { joinParts } from '@/lib/utils';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface VinData {
@@ -174,7 +175,7 @@ export function VinDecoder() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <h3 className="text-2xl font-semibold text-white">
-                  {vehicle.year} {vehicle.make} {vehicle.model}
+                  {joinParts([vehicle.year, vehicle.make, vehicle.model])}
                 </h3>
                 <p className="mt-0.5 text-xs text-zinc-400">
                   {vehicle.trim && <span>{vehicle.trim} · </span>}
@@ -185,10 +186,10 @@ export function VinDecoder() {
               <SaveAsDtuButton
                 apiSource="nhtsa-vpic"
                 apiUrl={`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${vehicle.vin}?format=json`}
-                title={`${vehicle.year} ${vehicle.make} ${vehicle.model} — VIN ${vehicle.vin}`}
+                title={`${joinParts([vehicle.year, vehicle.make, vehicle.model])} — VIN ${vehicle.vin}`}
                 content={[
                   `VIN: ${vehicle.vin}`,
-                  `Year/Make/Model: ${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+                  `Year/Make/Model: ${joinParts([vehicle.year, vehicle.make, vehicle.model])}`,
                   vehicle.trim ? `Trim: ${vehicle.trim}` : '',
                   vehicle.bodyClass ? `Body: ${vehicle.bodyClass}` : '',
                   vehicle.engineCylinders ? `Engine: ${vehicle.engineCylinders}-cyl ${vehicle.engineDisplacementL || ''}L ${vehicle.fuelType || ''}` : '',
@@ -251,7 +252,7 @@ function RecallList({ recalls, vehicle, loading }: { recalls: Recall[]; vehicle:
       <div className="flex items-center gap-2 rounded-md border border-emerald-500/25 bg-emerald-500/5 px-3 py-2.5">
         <CheckCircle2 className="h-4 w-4 text-emerald-400" />
         <span className="text-xs text-emerald-200">
-          No open recalls indexed by NHTSA for this {vehicle.year} {vehicle.make} {vehicle.model}.
+          No open recalls indexed by NHTSA for this {joinParts([vehicle.year, vehicle.make, vehicle.model])}.
         </span>
       </div>
     );
@@ -295,7 +296,7 @@ function RecallList({ recalls, vehicle, loading }: { recalls: Recall[]; vehicle:
                   `Component: ${r.component}`,
                   `Manufacturer: ${r.manufacturer}`,
                   `Report received: ${r.reportReceivedDate}`,
-                  `Vehicle: ${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+                  `Vehicle: ${joinParts([vehicle.year, vehicle.make, vehicle.model])}`,
                   '',
                   `Summary: ${r.summary}`,
                   `Consequence: ${r.consequence}`,

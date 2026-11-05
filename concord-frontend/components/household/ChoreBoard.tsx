@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Home, Plus, Trash2, Check, Trophy, Pause, Play, Loader2, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
+import { cn, formatFigure } from '@/lib/utils';
 
 interface Room { id: string; name: string; taskCount: number }
 interface Condition { ratio: number; state: string; daysOverdue: number }
@@ -117,7 +117,7 @@ export function ChoreBoard() {
 
       {dash && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
-          {([['Clean', `${dash.cleanlinessPct}%`], ['Rooms', dash.rooms], ['Chores', dash.tasks], ['Urgent', dash.needsAttention]] as const).map(([l, v]) => (
+          {([['Clean', formatFigure(dash.cleanlinessPct, { suffix: '%' })], ['Rooms', dash.rooms], ['Chores', dash.tasks], ['Urgent', dash.needsAttention]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
               <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
