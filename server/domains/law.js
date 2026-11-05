@@ -20,6 +20,59 @@ import { requireList } from "../lib/lens-inputs.js";
 
 const USPTO_PATENTSVIEW = "https://search.patentsview.org/api/v1";
 const COURTLISTENER_BASE = "https://www.courtlistener.com/api/rest/v4";
+
+// ── CourtListener client (LG-S4) ──────────────────────────────────────
+// Every CourtListener call in this domain goes through courtlistenerGet:
+// it sends a real User-Agent (CourtListener's edge drops UA-less
+// requests) plus the optional account token, and it maps EVERY upstream
+// failure to a plain-language unavailable state. The walked surfaces
+// printed the raw plumbing ("courtlistener unreachable: courtlistener
+// 405") as panel text and notifications, and the rate-limit branch named
+// the server's env var to end users (Legal F6 · Law F2). Neither reaches
+// a caller now: thrown errors carry a user-safe message (the upstream
+// status rides on `upstreamStatus` for logs only), and handlers return
+// them as { ok: false, unavailable: true }.
+// Upstream truth (probed 2026-11-04): the v4 search endpoints now
+// require an account token (401 + Bearer challenge, while /courts/
+// still answers unauthenticated). The token is a founder/ops
+// provisioning item; with one configured, this same client returns
+// results.
+const COURTLISTENER_UA = "Concord/1.0 (concord-os.org; case-law integration)";
+async function courtlistenerGet(pathAndQuery) {
+  const token = process.env.COURTLISTENER_API_TOKEN;
+  const headers = { "User-Agent": COURTLISTENER_UA, Accept: "application/json" };
+  if (token) headers.Authorization = `Token ${token}`;
+  let r;
+  try {
+    r = await fetch(`${COURTLISTENER_BASE}${pathAndQuery}`, { headers });
+  } catch {
+    const err = new Error("Case law is unavailable right now — CourtListener could not be reached. Try again shortly.");
+    err.unavailable = true;
+    throw err;
+  }
+  if (!r.ok) {
+    let message;
+    if (r.status === 429) message = "Case law search is busy — CourtListener's rate limit was reached. Try again shortly.";
+    else if (r.status === 401 || r.status === 403) message = token
+      ? "Case law is unavailable — the configured CourtListener access was refused."
+      : "Case law search is unavailable — CourtListener now requires an account key for search, and none is configured here.";
+    else message = "Case law is unavailable right now — CourtListener returned an error. Try again shortly.";
+    const err = new Error(message);
+    err.unavailable = true;
+    err.upstreamStatus = r.status;
+    throw err;
+  }
+  return r.json();
+}
+// The handlers' catch shape: only the client's own user-safe messages
+// pass through; anything unexpected degrades to the generic state.
+function courtlistenerFailure(e) {
+  return {
+    ok: false,
+    unavailable: true,
+    error: e?.unavailable ? e.message : "Case law is unavailable right now. Try again shortly.",
+  };
+}
 // Granted-patent claim text never changes once granted — safe to cache
 // long. Cuts real network traffic to search.patentsview.org (rate limit
 // 45 req/min per API key) for repeat views of the same patent.
@@ -804,13 +857,7 @@ export default function registerLawActions(registerLensAction) {
     qs.set("page_size", String(limit));
     if (semantic) qs.set("semantic", "true");
     try {
-      const headers = token ? { Authorization: `Token ${token}` } : {};
-      const r = await fetch(`${COURTLISTENER_BASE}/search/?${qs.toString()}`, { headers });
-      if (!r.ok) {
-        if (r.status === 429) return { ok: false, error: "courtlistener rate limit — set COURTLISTENER_API_TOKEN env" };
-        throw new Error(`courtlistener ${r.status}`);
-      }
-      const data = await r.json();
+      const data = await courtlistenerGet(`/search/?${qs.toString()}`);
       const results = (data.results || []).map((o) => ({
         id: o.id,
         caseName: o.caseName,
@@ -843,7 +890,7 @@ export default function registerLawActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return courtlistenerFailure(e);
     }
   };
   registerLensAction("law", "courtlistener-search", courtlistenerSearchHandler);
@@ -905,13 +952,7 @@ export default function registerLawActions(registerLensAction) {
     if (params.dateBefore) qs.set("filed_before", String(params.dateBefore));
     qs.set("page_size", String(limit));
     try {
-      const headers = token ? { Authorization: `Token ${token}` } : {};
-      const r = await fetch(`${COURTLISTENER_BASE}/search/?${qs.toString()}`, { headers });
-      if (!r.ok) {
-        if (r.status === 429) return { ok: false, error: "courtlistener rate limit — set COURTLISTENER_API_TOKEN env" };
-        throw new Error(`courtlistener ${r.status}`);
-      }
-      const data = await r.json();
+      const data = await courtlistenerGet(`/search/?${qs.toString()}`);
       const results = (data.results || []).map((d) => {
         const docs = Array.isArray(d.recap_documents) ? d.recap_documents : [];
         const absoluteUrl = d.docket_absolute_url || d.absolute_url || null;
@@ -953,7 +994,7 @@ export default function registerLawActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return courtlistenerFailure(e);
     }
   };
   registerLensAction("law", "recap-docket-search", recapDocketSearchHandler);
@@ -983,13 +1024,7 @@ export default function registerLawActions(registerLensAction) {
     const qs = new URLSearchParams({ docket_entry__docket: String(docketId), page_size: String(limit) });
     if (params.onlyAvailable) qs.set("is_available", "true");
     try {
-      const headers = token ? { Authorization: `Token ${token}` } : {};
-      const r = await fetch(`${COURTLISTENER_BASE}/recap-documents/?${qs.toString()}`, { headers });
-      if (!r.ok) {
-        if (r.status === 429) return { ok: false, error: "courtlistener rate limit — set COURTLISTENER_API_TOKEN env" };
-        throw new Error(`courtlistener ${r.status}`);
-      }
-      const data = await r.json();
+      const data = await courtlistenerGet(`/recap-documents/?${qs.toString()}`);
       const documents = (data.results || []).map((doc) => {
         const docUrl = doc.filepath_local || doc.absolute_url || null;
         return {
@@ -1013,7 +1048,7 @@ export default function registerLawActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return courtlistenerFailure(e);
     }
   });
 
@@ -1083,13 +1118,7 @@ export default function registerLawActions(registerLensAction) {
     if (direction === "citedBy") qs.set("cited_opinion", String(opinionId));
     else qs.set("citing_opinion", String(opinionId));
     try {
-      const headers = token ? { Authorization: `Token ${token}` } : {};
-      const r = await fetch(`${COURTLISTENER_BASE}/opinions-cited/?${qs.toString()}`, { headers });
-      if (!r.ok) {
-        if (r.status === 429) return { ok: false, error: "courtlistener rate limit — set COURTLISTENER_API_TOKEN env" };
-        throw new Error(`courtlistener ${r.status}`);
-      }
-      const data = await r.json();
+      const data = await courtlistenerGet(`/opinions-cited/?${qs.toString()}`);
       const extractOpinionId = (v) => {
         if (v == null) return null;
         if (typeof v === "number") return v;
@@ -1124,7 +1153,7 @@ export default function registerLawActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return courtlistenerFailure(e);
     }
   });
 
@@ -2261,10 +2290,7 @@ export default function registerLawActions(registerLensAction) {
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
     const token = process.env.COURTLISTENER_API_TOKEN;
     try {
-      const headers = token ? { Authorization: `Token ${token}` } : {};
-      const r = await fetch(`${COURTLISTENER_BASE}/search/?type=o&order_by=${encodeURIComponent("dateFiled desc")}&page_size=${limit}`, { headers });
-      if (!r.ok) return { ok: false, error: `courtlistener ${r.status}` };
-      const data = await r.json();
+      const data = await courtlistenerGet(`/search/?type=o&order_by=${encodeURIComponent("dateFiled desc")}&page_size=${limit}`);
       const results = data.results || [];
       let ingested = 0, skipped = 0;
       const dtuIds = [];
@@ -2285,7 +2311,7 @@ export default function registerLawActions(registerLensAction) {
       saveLaw();
       return { ok: true, result: { ingested, skipped, source: "courtlistener", dtuIds } };
     } catch (e) {
-      return { ok: false, error: `courtlistener unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      return courtlistenerFailure(e);
     }
   });
 

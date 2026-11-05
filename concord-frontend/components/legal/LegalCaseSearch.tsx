@@ -368,7 +368,7 @@ export function LegalCaseSearch() {
       {!result && !searchQuery.isPending && !errorMsg && (
         <div className="rounded-md border border-dashed border-lattice-border bg-lattice-void/50 px-3 py-8 text-center text-xs text-gray-400">
           Search 9M+ federal and state court opinions via the CourtListener REST API.
-          Free without a key; <code className="text-cyan-300">COURTLISTENER_API_TOKEN</code> env unlocks higher rate limits.
+          If case law is unavailable, this panel says so plainly instead of guessing.
           <br />
           <span className="text-gray-500">
             <strong className="text-gray-400">Keyword</strong> matches exact terms and boolean connectors;{' '}
