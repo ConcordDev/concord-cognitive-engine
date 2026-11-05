@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Trees, Loader2, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { wikiSummary, lookupMeta } from '@/lib/public-lookup';
+import { lensRun } from '@/lib/api/client';
 import { LookupNotice } from '@/components/common/LookupNotice';
 
 interface WikiSummary { title: string; extract?: string; description?: string; thumbnail?: { source: string }; content_urls?: { desktop?: { page: string } } }
+interface SpeciesProps { name: string; janka: number; densityKgM3: number; workability: string; cost: string; bestFor: string }
 
 const PRESETS = [
   'Oak', 'White oak', 'Red oak', 'Maple', 'Hard maple', 'Walnut', 'Black walnut',
@@ -19,6 +21,21 @@ export function WoodSpeciesReference() {
   const [results, setResults] = useState<Record<string, WikiSummary>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // F6: the lens's own trade properties (Janka · density · workability)
+  // from the same table the selection guide reads — shown only for the
+  // species that table covers, never fabricated for the rest.
+  const [propsByName, setPropsByName] = useState<Record<string, SpeciesProps>>({});
+  useEffect(() => {
+    let live = true;
+    lensRun<{ species: SpeciesProps[] }>('carpentry', 'speciesReference', {})
+      .then((r) => {
+        if (live && r.data.ok && r.data.result) {
+          setPropsByName(Object.fromEntries(r.data.result.species.map((s) => [s.name.toLowerCase(), s])));
+        }
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
 
   const load = useMutation({
     mutationFn: async (species: string) => {
@@ -76,6 +93,16 @@ export function WoodSpeciesReference() {
                 </div>
                 {v.description && <p className="text-[10px] uppercase tracking-wider text-cyan-300/80">{v.description}</p>}
                 <p className="mt-1 line-clamp-4 text-[11px] text-zinc-300">{v.extract}</p>
+                {/* F6: trade properties where the lens's own table covers
+                    this species (exact name match); absent otherwise. */}
+                {propsByName[k.toLowerCase()] && (
+                  <div className="mt-1.5 flex flex-wrap gap-1 text-[10px]">
+                    <span className="rounded bg-cyan-500/15 px-1.5 py-0.5 font-mono text-cyan-200">Janka {propsByName[k.toLowerCase()].janka.toLocaleString()}</span>
+                    <span className="rounded bg-cyan-500/15 px-1.5 py-0.5 font-mono text-cyan-200">{propsByName[k.toLowerCase()].densityKgM3} kg/m³</span>
+                    <span className="rounded bg-cyan-500/15 px-1.5 py-0.5 text-cyan-200">Workability: {propsByName[k.toLowerCase()].workability}</span>
+                    <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">Best for: {propsByName[k.toLowerCase()].bestFor}</span>
+                  </div>
+                )}
               </div>
             </div>
           </a>

@@ -70,6 +70,8 @@ describe("carpentry lens — registration of the driven macros", () => {
       "photoLogAdd", "photoLogList", "photoLogDelete",
       "estimateToInvoice", "invoiceList", "invoiceMarkPaid", "signEstimate",
       "portalCreate", "portalView", "portalList", "portalRespond", "portalUpdateProgress",
+      // build(carpentry): the species reference card + the F7 exit paths
+      "speciesReference", "invoiceDelete", "portalDelete", "portalRevoke",
     ];
     for (const m of driven) {
       assert.equal(typeof ACTIONS.get(m), "function", `missing carpentry.${m}`);
@@ -123,14 +125,16 @@ describe("carpentry lens — boardFootCalc (the CarpentryShop board-foot card)",
 
 describe("carpentry lens — jointStrength (the CarpentryShop joinery card)", () => {
   // The card reads effectiveStrength + rating + glueBonus + speciesMultiplier.
-  it("effectiveStrength = round(base × speciesMult) + glueBonus; rating bands", () => {
-    // dovetail base 95, oak mult 1.2 → round(114)=114, +20 glue = 134; rating excellent
+  it("effectiveStrength = round(base × speciesMult) + glueBonus, clamped to the /100 scale; rating bands", () => {
+    // dovetail base 95, oak mult 1.2 → round(114)=114, +20 glue = 134 raw;
+    // the card prints the score on a /100 scale, so it clamps to 100
+    // (F8 fix, build(carpentry) — behaviour-change pin update).
     const r = call("jointStrength", ctxA, { jointType: "dovetail", species: "oak", glued: true });
     assert.equal(r.ok, true);
     assert.equal(r.result.baseStrength, 95);
     assert.equal(r.result.speciesMultiplier, 1.2);
     assert.equal(r.result.glueBonus, "+20");
-    assert.equal(r.result.effectiveStrength, 134);
+    assert.equal(r.result.effectiveStrength, 100);
     assert.equal(r.result.rating, "excellent");
   });
 

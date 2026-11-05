@@ -68,6 +68,16 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Your own live shop records: technicians, jobs, invoices, parts and inspections are your account\'s real data, saved as you work.',
   },
+  /**
+   * Carpentry's trade records are the account's own shop data, persisted
+   * server-side (Review 5's determination: PROBE-LIVE — a fixture job
+   * survived reloads), and its species lookups read live from Wikipedia —
+   * the Simulated declaration was false on its own terms.
+   */
+  carpentry: {
+    label: 'Live',
+    caption: 'Your own live shop records: schedule, crew, time, invoices and photo logs are your account\'s real data, saved as you work. Species lookups pull live reference data from Wikipedia.',
+  },
   game: {
     label: 'Lab & arcade sim',
     caption: 'Simulated: Design Lab forecasts and mini-game practice XP. Profile XP, quests, and achievements are your real activity.',
