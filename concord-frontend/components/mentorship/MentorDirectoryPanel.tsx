@@ -376,6 +376,7 @@ export function MentorDirectoryPanel() {
       ) : mentors.length === 0 ? (
         <p className="text-sm text-zinc-400 text-center py-8">No mentors found. List yourself as a mentor to appear here.</p>
       ) : (
+      <>
         <p className="text-xs text-zinc-500">A star is the mean of that profile&apos;s reviews. A dataset profile is not a member account.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {mentors.map((m) => (
@@ -402,6 +403,7 @@ export function MentorDirectoryPanel() {
             </button>
           ))}
         </div>
+      </>
       )}
     </div>
   );
