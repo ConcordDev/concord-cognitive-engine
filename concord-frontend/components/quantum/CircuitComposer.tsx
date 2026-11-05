@@ -71,6 +71,15 @@ export function CircuitComposer({
   const [armed, setArmed] = useState<GateDef | null>(null);
   // multi-qubit placement in progress: collected wires for the active gate
   const [pendingWires, setPendingWires] = useState<{ column: number; wires: number[] } | null>(null);
+  // Rotation angle for the armed parametric gate, set by the inline θ
+  // control below. This used to be a window.prompt() inside placeSingle —
+  // a native dialog that never returns a value in the product shell, so
+  // the wire click died there and parametric gates could not be placed
+  // at all (F3). The angle is now ordinary component state: arming a
+  // parametric gate shows the control, and placement consumes it.
+  const [theta, setTheta] = useState(Math.PI / 2);
+  // Clear circuit is destructive and unrecoverable — it arms first (F6).
+  const [clearArmed, setClearArmed] = useState(false);
 
   const columns = Math.max(8, (placed.reduce((m, g) => Math.max(m, g.column), -1) + 2));
 
@@ -80,12 +89,9 @@ export function CircuitComposer({
   const cancelPending = () => { setPendingWires(null); };
 
   const placeSingle = (gate: GateDef, qubit: number, column: number) => {
-    let params: { theta: number } | undefined;
-    if (gate.parametric) {
-      const raw = window.prompt(`Rotation angle θ for ${gate.id} (radians)`, '1.5708');
-      if (raw === null) return;
-      params = { theta: Number(raw) || 0 };
-    }
+    // Parametric gates take the angle from the inline θ control — no
+    // native dialog anywhere on the placement path (F3).
+    const params = gate.parametric ? { theta } : undefined;
     onPlacedChange([
       ...placed,
       { uid: nextUid(), gate: gate.id, column, targets: [qubit], controls: [], params },
@@ -148,7 +154,7 @@ export function CircuitComposer({
         {gateLibrary.map((g) => (
           <button
             key={g.id}
-            onClick={() => { setArmed(armed?.id === g.id ? null : g); setPendingWires(null); }}
+            onClick={() => { setArmed(armed?.id === g.id ? null : g); setPendingWires(null); setClearArmed(false); }}
             className={`px-2 py-1 rounded text-xs font-mono font-bold border transition-all ${
               armed?.id === g.id
                 ? 'bg-neon-purple text-white border-neon-purple ring-2 ring-neon-purple/50'
@@ -185,16 +191,57 @@ export function CircuitComposer({
             <button aria-label="Close" onClick={cancelPending} className="text-zinc-400 hover:text-white"><X className="w-3 h-3" /></button>
           </span>
         )}
+        {armed?.parametric && (
+          <span className="flex items-center gap-1.5 text-zinc-300">
+            <label htmlFor="quantum-theta" className="text-zinc-400">θ (rad)</label>
+            <input
+              id="quantum-theta"
+              type="number"
+              step="0.01"
+              value={theta}
+              onChange={(e) => setTheta(Number(e.target.value) || 0)}
+              className="w-20 bg-black/40 border border-white/15 rounded px-1.5 py-0.5 font-mono text-xs text-white"
+            />
+            {([['π/4', Math.PI / 4], ['π/2', Math.PI / 2], ['π', Math.PI]] as const).map(([label, v]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setTheta(v)}
+                className={`px-1.5 py-0.5 rounded border font-mono ${theta === v ? 'border-fuchsia-300 text-fuchsia-200 bg-fuchsia-500/20' : 'border-zinc-700 text-zinc-400 hover:text-white'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </span>
+        )}
         {placed.length > 0 && !armed && !pendingWires && (
           <span className="text-zinc-400">Click a placed gate to remove it</span>
         )}
-        <button
-          onClick={() => onPlacedChange([])}
-          disabled={placed.length === 0}
-          className="ml-auto px-2 py-0.5 rounded border border-zinc-700 text-zinc-400 hover:text-white disabled:opacity-40"
-        >
-          Clear circuit
-        </button>
+        {clearArmed ? (
+          <span className="ml-auto flex items-center gap-1.5 text-red-300">
+            Clear all {placed.length} gate{placed.length === 1 ? '' : 's'}?
+            <button
+              onClick={() => { onPlacedChange([]); setClearArmed(false); }}
+              className="px-2 py-0.5 rounded bg-red-500/80 text-white font-semibold hover:bg-red-500"
+            >
+              Clear
+            </button>
+            <button
+              onClick={() => setClearArmed(false)}
+              className="px-2 py-0.5 rounded border border-zinc-700 text-zinc-300 hover:text-white"
+            >
+              Cancel
+            </button>
+          </span>
+        ) : (
+          <button
+            onClick={() => setClearArmed(true)}
+            disabled={placed.length === 0}
+            className="ml-auto px-2 py-0.5 rounded border border-zinc-700 text-zinc-400 hover:text-white disabled:opacity-40"
+          >
+            Clear circuit
+          </button>
+        )}
       </div>
 
       {/* Wire grid */}
@@ -245,7 +292,14 @@ export function CircuitComposer({
                           {g.gate === 'CNOT' || g.gate === 'CX' ? '⊕'
                             : g.gate === 'SWAP' ? '✕'
                               : g.gate === 'MEASURE' ? 'M'
-                                : g.gate}
+                                : g.params
+                                  ? (
+                                    <span className="flex flex-col items-center leading-none">
+                                      <span>{g.gate}</span>
+                                      <span className="text-[7px] font-normal">{g.params.theta.toFixed(2)}</span>
+                                    </span>
+                                  )
+                                  : g.gate}
                         </div>
                       )}
                       {isPending && !g && (

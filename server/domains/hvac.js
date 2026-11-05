@@ -1,5 +1,7 @@
 // server/domains/hvac.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { searchHvacCodes, HVAC_CODE_CORPUS } from "../lib/hvac-codes.js";
+import { searchHvacMaterials, HVAC_MATERIALS_PRICE_NOTE } from "../lib/hvac-materials.js";
 import { ductSizingFull, sectionProperties } from "../lib/compute/engineering-compute.js";
 import { runFEA } from "../lib/simulation/fea-solver.js";
 import { lumpUniformLoadToNodes } from "../lib/simulation/distributed-load.js";
@@ -292,9 +294,15 @@ export default function registerHVACActions(registerLensAction) {
 
       result.cadParams = ductCadParams(shape, sizing, lengthFt, wallThicknessIn);
       result.basis = "Darcy-Weisbach + Colebrook friction factor (iterative, Haaland-seeded), standard air (0.075 lbm/ft3), Huebscher (1948) rectangular-round equivalence — see lib/compute/engineering-compute.js#ductSizingFull.";
+      // ONE friction figure for the run (S4): the duct you actually install
+      // is the nearest standard size, so the run's friction is the
+      // at-standard-size rate, and every surface (headline + this text)
+      // cites that same value. frictionRatePer100ft stays in the payload —
+      // it is the rate at the exact computed diameter, a different quantity,
+      // and must never be stated as the run's friction.
       result.recommendation = method === "friction"
-        ? `At ${num(data.frictionRate, 0.1)} in.wg/100ft, ${cfm} CFM needs a ${sizing.nearestStandardRoundIn}" round duct (or its rectangular equivalent) — ${sizing.velocityBand}.`
-        : `At ${num(data.velocityFpm, 900)} fpm design velocity, ${cfm} CFM needs a ${sizing.nearestStandardRoundIn}" round duct (or its rectangular equivalent), running ~${result.frictionRatePer100ft} in.wg/100ft — ${sizing.velocityBand}.`;
+        ? `At ${num(data.frictionRate, 0.1)} in.wg/100ft design rate, ${cfm} CFM needs a ${sizing.nearestStandardRoundIn}" round duct (or its rectangular equivalent), running ~${result.frictionAtStandardSizePer100ft} in.wg/100ft at that standard size — ${sizing.velocityBand}.`
+        : `At ${num(data.velocityFpm, 900)} fpm design velocity, ${cfm} CFM needs a ${sizing.nearestStandardRoundIn}" round duct (or its rectangular equivalent), running ~${result.frictionAtStandardSizePer100ft} in.wg/100ft at that standard size — ${sizing.velocityBand}.`;
 
       return { ok: true, result };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -402,6 +410,24 @@ export default function registerHVACActions(registerLensAction) {
         },
       };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // ── Reference library — Codes corpus + Materials catalog (S2) ──────
+  // The Codes and Materials desk views were generic record lists wearing
+  // reference labels: Codes had no corpus (a search for "EPA" returned an
+  // uncommented empty list) and Materials no catalog or prices. These two
+  // read-only verbs serve the curated reference data in lib/hvac-codes.js
+  // and lib/hvac-materials.js; the desk's own records stay on the generic
+  // artifact layer beneath them.
+  registerLensAction("hvac", "code-search", (ctx, _a, params = {}) => {
+    const q = String(params.q ?? params.query ?? "").slice(0, 120);
+    const entries = searchHvacCodes(q);
+    return { ok: true, result: { entries, count: entries.length, total: HVAC_CODE_CORPUS.length, query: q } };
+  });
+  registerLensAction("hvac", "materials-catalog", (ctx, _a, params = {}) => {
+    const q = String(params.q ?? params.query ?? "").slice(0, 120);
+    const items = searchHvacMaterials(q);
+    return { ok: true, result: { items, count: items.length, query: q, priceNote: HVAC_MATERIALS_PRICE_NOTE } };
   });
 
   // ─────────────────────────────────────────────────────────────────────
@@ -789,8 +815,11 @@ export default function registerHVACActions(registerLensAction) {
     const all = s.payments.get(hvAid(ctx)) || [];
     const payments = all.filter((r) => r.kind === "payment").slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     const signatures = all.filter((r) => r.kind === "signature").slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const collected = payments.reduce((sum, p) => sum + p.amount, 0);
-    const fees = payments.reduce((sum, p) => sum + p.processingFee, 0);
+    // Collected means money the shop still holds: a refunded receipt went
+    // back out and must not inflate the collected/fees/net figures.
+    const held = payments.filter((p) => p.status !== "refunded");
+    const collected = held.reduce((sum, p) => sum + p.amount, 0);
+    const fees = held.reduce((sum, p) => sum + p.processingFee, 0);
     return { ok: true, result: {
       payments, signatures,
       summary: {
