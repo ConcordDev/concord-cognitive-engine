@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { EMAIL_REQUIRED, REGISTRATION_STATUS } from './registration-copy';
 import { ChartKit, TimelineView } from '@/components/viz';
 import {
   Ticket, Users, Armchair, DollarSign, ListChecks, ScanLine, Mail,
@@ -682,7 +683,7 @@ export function EventOps() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Stat label="Capacity" value={tierTotals.totalCapacity.toLocaleString()} />
                     <Stat label="Sold" value={tierTotals.totalSold.toLocaleString()} />
-                    <Stat label="Revenue" value={fmt(tierTotals.totalRevenue)} accent="green-400" />
+                    <Stat label="Listed" value={fmt(tierTotals.totalRevenue)} />
                   </div>
                   <div className={cn(ds.panel, 'grid grid-cols-2 sm:grid-cols-5 gap-2')}>
                     <input className={ds.input} placeholder="Tier name" value={tierForm.name}
@@ -736,7 +737,7 @@ export function EventOps() {
                                     style={{ width: `${t.quantity > 0 ? Math.min(100, (t.sold / t.quantity) * 100) : 0}%` }} />
                                 </div>
                                 <p className="text-xs text-gray-400">{t.sold} sold · {t.remaining} left</p>
-                                <p className="text-xs text-green-400">{fmt(t.revenue)} revenue</p>
+                                <p className="text-xs text-gray-400">{fmt(t.revenue)} listed, not collected</p>
                                 {t.perks && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{t.perks}</p>}
                                 <div className="flex gap-1 mt-2">
                                   <button onClick={() => startEditTier(t)}
@@ -778,8 +779,9 @@ export function EventOps() {
                     <Stat label="Registered" value={regStats.totalTickets.toLocaleString()} />
                     <Stat label="Capacity" value={`${regStats.capacityPct}%`} />
                     <Stat label="Checked In" value={regStats.checkedInCount.toLocaleString()} />
-                    <Stat label="Revenue" value={fmt(regStats.revenue)} accent="green-400" />
+                    <Stat label="Collected" value="Not collected" />
                   </div>
+                  <p className={ds.textMuted}>{EMAIL_REQUIRED} Registering does not collect money. {REGISTRATION_STATUS}</p>
                   <div className={cn(ds.panel, 'grid grid-cols-2 sm:grid-cols-5 gap-2')}>
                     <input className={ds.input} placeholder="Attendee name" value={regForm.name}
                       onChange={(e) => setRegForm({ ...regForm, name: e.target.value })} />
@@ -806,7 +808,7 @@ export function EventOps() {
                           <tr className="text-left text-gray-400 border-b border-lattice-border">
                             <th className="pb-2 pr-4">Name</th><th className="pb-2 pr-4">Email</th>
                             <th className="pb-2 pr-4">Tier</th><th className="pb-2 pr-4">Code</th>
-                            <th className="pb-2 pr-4">Paid</th><th className="pb-2 pr-4">Status</th><th className="pb-2" />
+                            <th className="pb-2 pr-4">Registration</th><th className="pb-2 pr-4">Status</th><th className="pb-2" />
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-lattice-border">
@@ -816,7 +818,7 @@ export function EventOps() {
                               <td className="py-2 pr-4">{r.email}</td>
                               <td className="py-2 pr-4">{r.tierName}</td>
                               <td className="py-2 pr-4 font-mono text-xs text-neon-cyan">{r.ticketCode}</td>
-                              <td className="py-2 pr-4">{fmt(r.amountPaid)}</td>
+                              <td className="py-2 pr-4">{REGISTRATION_STATUS}</td>
                               <td className="py-2 pr-4">
                                 <span className={ds.badge(r.checkedIn ? 'green-400' : 'gray-400')}>
                                   {r.checkedIn ? 'checked-in' : 'registered'}
