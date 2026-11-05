@@ -172,6 +172,16 @@ function formFromItem(item: LensItem<AgricultureArtifact>): FormState {
   };
 }
 
+// Empty numeric inputs stay ABSENT (build(agriculture) S1c): the old
+// `parseFloat(x) || 0` turned an untouched field into a stored 0 — a
+// fabricated measurement (0 acres, 0 head, pH 0). JSON drops undefined,
+// so the key simply isn't sent and the record carries no invented value.
+function numOrUndef(raw: string, parse: (s: string) => number): number | undefined {
+  if (raw.trim() === '') return undefined;
+  const n = parse(raw);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function payloadFromForm(form: FormState, type: AgricultureArtifact['type']): AgricultureArtifact {
   const base: AgricultureArtifact = {
     name: form.name,
@@ -182,11 +192,11 @@ function payloadFromForm(form: FormState, type: AgricultureArtifact['type']): Ag
   };
   if (type === 'Field') {
     Object.assign(base, {
-      acreage: parseFloat(form.acreage) || 0,
+      acreage: numOrUndef(form.acreage, parseFloat),
       soilType: form.soilType,
       location: form.location,
       currentCrop: form.currentCrop,
-      phLevel: parseFloat(form.phLevel) || 0,
+      phLevel: numOrUndef(form.phLevel, parseFloat),
     });
   } else if (type === 'Crop') {
     Object.assign(base, {
@@ -194,14 +204,14 @@ function payloadFromForm(form: FormState, type: AgricultureArtifact['type']): Ag
       fieldName: form.fieldName,
       plantDate: form.plantDate,
       expectedHarvest: form.expectedHarvest,
-      estimatedYield: parseFloat(form.estimatedYield) || 0,
+      estimatedYield: numOrUndef(form.estimatedYield, parseFloat),
       yieldUnit: form.yieldUnit,
     });
   } else if (type === 'Animal') {
     Object.assign(base, {
       species: form.species,
       breed: form.breed,
-      headCount: parseInt(form.headCount, 10) || 0,
+      headCount: numOrUndef(form.headCount, (s) => parseInt(s, 10)),
       pasture: form.pasture,
     });
   } else if (type === 'FarmEquipment') {
@@ -209,15 +219,15 @@ function payloadFromForm(form: FormState, type: AgricultureArtifact['type']): Ag
       equipmentType: form.equipmentType,
       make: form.make,
       model: form.model,
-      year: parseInt(form.year, 10) || 0,
-      hours: parseInt(form.hours, 10) || 0,
+      year: numOrUndef(form.year, (s) => parseInt(s, 10)),
+      hours: numOrUndef(form.hours, (s) => parseInt(s, 10)),
       condition: form.condition,
     });
   } else if (type === 'WaterSystem') {
     Object.assign(base, {
       systemType: form.systemType,
-      coverageAcres: parseFloat(form.coverageAcres) || 0,
-      flowRate: parseFloat(form.flowRate) || 0,
+      coverageAcres: numOrUndef(form.coverageAcres, parseFloat),
+      flowRate: numOrUndef(form.flowRate, parseFloat),
       waterSource: form.waterSource,
     });
   } else if (type === 'Harvest') {
@@ -225,9 +235,9 @@ function payloadFromForm(form: FormState, type: AgricultureArtifact['type']): Ag
       crop: form.crop,
       field: form.field,
       harvestDate: form.harvestDate,
-      quantity: parseFloat(form.quantity) || 0,
+      quantity: numOrUndef(form.quantity, parseFloat),
       quality: form.quality,
-      pricePerUnit: parseFloat(form.pricePerUnit) || 0,
+      pricePerUnit: numOrUndef(form.pricePerUnit, parseFloat),
       buyer: form.buyer,
     });
   } else if (type === 'Certification') {
@@ -250,6 +260,7 @@ export function RecordsPanel({ kind }: { kind: RecordKind }) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<AgricultureArtifact> | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const { items, isLoading, isError, error, refetch, create, update, remove } =
     useLensData<AgricultureArtifact>('agriculture', artifactType, { noSeed: true });
@@ -283,25 +294,48 @@ export function RecordsPanel({ kind }: { kind: RecordKind }) {
   const openCreate = () => {
     setEditingItem(null);
     setForm(EMPTY_FORM);
+    setSaveError(null);
     setEditorOpen(true);
   };
 
   const openEdit = (item: LensItem<AgricultureArtifact>) => {
     setEditingItem(item);
     setForm(formFromItem(item));
+    setSaveError(null);
     setEditorOpen(true);
   };
 
   const handleSave = async () => {
+    setSaveError(null);
     const data = payloadFromForm(form, artifactType);
     const payload = {
       title: form.name,
       data: data as Partial<AgricultureArtifact>,
       meta: { status: form.status, tags: [artifactType] },
     };
-    if (editingItem) await update(editingItem.id, payload);
-    else await create(payload);
-    setEditorOpen(false);
+    try {
+      const res = (editingItem
+        ? await update(editingItem.id, payload)
+        : await create(payload)) as
+        | { ok?: boolean; error?: string; errors?: string[] }
+        | undefined;
+      // The generic lens-create path RESOLVES with { ok: false, error,
+      // errors[] } on a refused write (build(agriculture) S1c): surface the
+      // server's named errors in the editor and keep it open, instead of
+      // closing silently over a record that was never saved — the
+      // error-swallowing half of the founding-create refusal.
+      if (res && res.ok === false) {
+        setSaveError(
+          res.errors?.length
+            ? res.errors.join(' ')
+            : res.error || 'Save failed — the record was not saved.',
+        );
+        return;
+      }
+      setEditorOpen(false);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Save failed — the record was not saved.');
+    }
   };
 
   if (isLoading) {
@@ -395,6 +429,7 @@ export function RecordsPanel({ kind }: { kind: RecordKind }) {
           editing={Boolean(editingItem)}
           onClose={() => setEditorOpen(false)}
           onSave={handleSave}
+          saveError={saveError}
         />
       )}
     </div>
@@ -624,6 +659,7 @@ function EditorModal({
   editing,
   onClose,
   onSave,
+  saveError,
 }: {
   kind: RecordKind;
   artifactType: string;
@@ -632,6 +668,7 @@ function EditorModal({
   editing: boolean;
   onClose: () => void;
   onSave: () => void;
+  saveError?: string | null;
 }) {
   return (
     <div
@@ -879,6 +916,11 @@ function EditorModal({
               />
             </Field>
           </div>
+          {saveError && (
+            <div role="alert" className="px-6 pt-4 text-sm text-red-400">
+              {saveError}
+            </div>
+          )}
           <div className="flex items-center justify-end gap-3 p-6 border-t border-lattice-border">
             <button type="button" onClick={onClose} className={ds.btnSecondary}>
               Cancel

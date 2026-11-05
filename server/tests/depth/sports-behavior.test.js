@@ -605,7 +605,7 @@ describe("sports — external-API macros: deterministic pre-fetch validation", (
 
   it("team-lookup: a valid name passes the guard and surfaces a graceful thesportsdb fault offline", async () => {
     // name present → past the guard → fetch is rejected (no-egress) or
-    // returns non-2xx → the catch/throw path yields a graceful ok:false
+    // returns non-2xx → the catch path yields a graceful ok:false
     // verdict that names thesportsdb. Never throws.
     const r = await lensRun("sports", "team-lookup", { params: { name: "Arsenal" } });
     assert.equal(r.result.ok, false);
@@ -620,8 +620,7 @@ describe("sports — external-API macros: deterministic pre-fetch validation", (
 
   it("feed: passes the STATE guard, reaches the fetch, returns a failure verdict offline (never throws)", async () => {
     // STATE present → past the guard → the external fetch either rejects
-    // (no-egress: "thesportsdb unreachable") or returns a non-2xx
-    // ("thesportsdb <status>"). Both are graceful ok:false verdicts; the
+    // or returns non-2xx. Both are graceful ok:false verdicts; the
     // contract is that feed never throws and surfaces the thesportsdb fault.
     const r = await lensRun("sports", "feed", { params: { limit: 5 } });
     assert.equal(r.result.ok, false);

@@ -47,8 +47,9 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface StatsResult { metric?: string; average?: number; best?: number; trend?: string; consistency?: number; dataPoints?: number }
-interface PlanResult { sport?: string; daysPerWeek?: number; schedule?: Array<{ day: number; workout: string; intensity: string }>; principle?: string }
+interface StatsResult { metric?: string; direction?: string; average?: number; best?: number; trend?: string; consistency?: number; dataPoints?: number }
+interface PlanSession { day: number; workout: string; intensity: string; durationHours?: number | null }
+interface PlanResult { sport?: string; daysPerWeek?: number; weeklyHours?: number | null; schedule?: PlanSession[]; principle?: string }
 interface RiskResult { riskScore?: number; riskLevel?: string; recommendations?: string[] }
 
 const SPORTS = ['running', 'swimming', 'cycling', 'general'];
@@ -59,6 +60,7 @@ export function ActivityActionPanel() {
   const [level, setLevel] = useState('intermediate');
   const [daysPerWeek, setDaysPerWeek] = useState('');
   const [statsText, setStatsText] = useState('');
+  const [lowerIsBetter, setLowerIsBetter] = useState(true);
   const [weeklyHours, setWeeklyHours] = useState('');
   const [restDays, setRestDays] = useState('');
   const [age, setAge] = useState('');
@@ -99,7 +101,7 @@ export function ActivityActionPanel() {
     if (!statsArray.length) { err('Add at least one value (one per line).'); return; }
     setBusy('stats'); setFeedback(null);
     try {
-      const r = await callMacro<StatsResult>('performanceStats', { stats: statsArray });
+      const r = await callMacro<StatsResult>('performanceStats', { stats: statsArray, lowerIsBetter });
       if (r.ok && r.result) { setStatsResult(r.result); pipe.publish('sports.performance', r.result, { label: `${r.result.trend ?? 'trend'}` }); ok('Stats analyzed.'); }
       else err(r.error ?? 'stats failed');
     } catch (e) { err(pickMessage(e)); }
@@ -109,7 +111,13 @@ export function ActivityActionPanel() {
   async function actPlan() {
     setBusy('plan'); setFeedback(null);
     try {
-      const r = await callMacro<PlanResult>('trainingPlan', { sport, level, daysPerWeek: parseInt(daysPerWeek, 10) });
+      const hours = weeklyHours.trim() === '' ? null : Number(weeklyHours);
+      const r = await callMacro<PlanResult>('trainingPlan', {
+        sport,
+        level,
+        daysPerWeek: parseInt(daysPerWeek, 10),
+        weeklyHours: hours != null && Number.isFinite(hours) ? hours : null,
+      });
       if (r.ok && r.result) { setPlanResult(r.result); pipe.publish('sports.plan', r.result, { label: `${r.result.sport ?? sport} plan` }); ok('Plan ready.'); }
       else err(r.error ?? 'plan failed');
     } catch (e) { err(pickMessage(e)); }
@@ -297,6 +305,10 @@ export function ActivityActionPanel() {
       <div>
         <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Performance values (one per line — e.g. 5k times in min)</label>
         <textarea value={statsText} onChange={(e) => setStatsText(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-400/40 resize-none" placeholder="22.5&#10;22.1&#10;21.8&#10;21.5" />
+        <label className="mt-1 flex items-center gap-2 text-[11px] text-zinc-300">
+          <input type="checkbox" checked={lowerIsBetter} onChange={(e) => setLowerIsBetter(e.target.checked)} className="accent-emerald-400" />
+          Lower number is better (times)
+        </label>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
@@ -331,7 +343,7 @@ export function ActivityActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center gap-1.5">
               <BarChart3 className="w-3 h-3" /> Performance ({statsResult.dataPoints} pts)
             </div>
-            <div className="text-[11px] text-zinc-300">avg <span className="font-mono text-cyan-300">{statsResult.average}</span> · best <span className="font-mono">{statsResult.best}</span> · trend <span className={cn('font-semibold', statsResult.trend === 'improving' ? 'text-emerald-300' : 'text-amber-300')}>{statsResult.trend}</span> · σ <span className="font-mono">{statsResult.consistency}</span></div>
+            <div className="text-[11px] text-zinc-300">avg <span className="font-mono text-cyan-300">{statsResult.average}</span> · best <span className="font-mono">{statsResult.best}</span> · trend <span className={cn('font-semibold', statsResult.trend === 'improving' ? 'text-emerald-300' : 'text-amber-300')}>{statsResult.trend}</span> · σ <span className="font-mono">{statsResult.consistency}</span>{statsResult.direction ? <> · {statsResult.direction} is better</> : null}</div>
           </div>
         )}
         {planResult && (
@@ -340,7 +352,7 @@ export function ActivityActionPanel() {
               <ClipboardList className="w-3 h-3" /> {planResult.sport} plan
             </div>
             {planResult.schedule?.map((d, i) => (
-              <div key={i} className="text-[11px] text-zinc-300"><span className="font-mono text-emerald-300">D{d.day}</span> {d.workout} <span className="text-[9px] text-zinc-400">({d.intensity})</span></div>
+              <div key={i} className="text-[11px] text-zinc-300"><span className="font-mono text-emerald-300">D{d.day}</span> {d.workout} <span className="text-[9px] text-zinc-400">({d.intensity}{d.durationHours != null ? ` · ${d.durationHours} h` : ''})</span></div>
             ))}
             {planResult.principle && <p className="text-[10px] text-zinc-400 italic">{planResult.principle}</p>}
           </div>

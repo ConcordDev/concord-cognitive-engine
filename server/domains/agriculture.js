@@ -768,10 +768,18 @@ export default function registerAgricultureActions(registerLensAction) {
     const acreage = Number(params.acreage);
     if (!Number.isFinite(acreage) || acreage <= 0) return { ok: false, error: "acreage must be > 0" };
     if (acreage > 100_000) return { ok: false, error: "acreage too large (max 100000)" };
-    const lat = Number(params.lat);
-    const lng = Number(params.lng);
-    if (!Number.isFinite(lat) || lat < -90 || lat > 90) return { ok: false, error: "lat must be -90..90" };
-    if (!Number.isFinite(lng) || lng < -180 || lng > 180) return { ok: false, error: "lng must be -180..180" };
+    // Coordinates are OPTIONAL (build(agriculture) S1b, 2026-11-04): the
+    // surface's generic create shape collects name/acreage/soilType but no
+    // GPS pair, and the old unconditional Number(params.lat) turned an
+    // omitted coordinate into NaN and refused every such create — the
+    // founding "New Field" refusal of the gate record. Following the
+    // codebase's `!= null` idiom (cf. field-update/Q23: null = not
+    // provided), an absent coordinate is stored as null; a PROVIDED one
+    // must still be finite and in range, with the same named errors.
+    const lat = params.lat == null ? null : Number(params.lat);
+    const lng = params.lng == null ? null : Number(params.lng);
+    if (lat !== null && (!Number.isFinite(lat) || lat < -90 || lat > 90)) return { ok: false, error: "lat must be -90..90" };
+    if (lng !== null && (!Number.isFinite(lng) || lng < -180 || lng > 180)) return { ok: false, error: "lng must be -180..180" };
     const soilType = String(params.soilType || "loam").slice(0, 24);
     const currentCrop = String(params.currentCrop || "").slice(0, 40);
     const field = {
