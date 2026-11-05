@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { Map as MapIcon, Plus, Loader2, CheckSquare, Square, Clock } from 'lucide-react';
+import { Map as MapIcon, Plus, Loader2, CheckSquare, Square, Clock, Trash2 } from 'lucide-react';
 
 interface PlanStep {
   id: string;
@@ -35,6 +35,7 @@ export function LearningPlanPanel() {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -66,6 +67,18 @@ export function LearningPlanPanel() {
       await refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed to create plan');
+    } finally { setBusy(null); }
+  };
+
+  const remove = async (planId: string) => {
+    setBusy(planId);
+    try {
+      const { data: r } = await lensRun<any>('metalearning', 'planDelete', { planId });
+      if (r?.ok === false) { setErr(r.error || 'Delete failed'); return; }
+      setConfirmDeleteId(null);
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Delete failed');
     } finally { setBusy(null); }
   };
 
@@ -119,12 +132,32 @@ export function LearningPlanPanel() {
       <div className="space-y-3">
         {plans.map((p) => (
           <div key={p.id} className="bg-lattice-surface rounded-lg p-3 border border-white/5">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold">{p.title}</p>
-              <span className="text-[10px] text-gray-400">
-                {p.stepsDone}/{p.stepsTotal} · {p.remainingHours}h left
+              <span className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-[10px] text-gray-400">
+                  {p.stepsDone}/{p.stepsTotal} · {p.remainingHours}h left
+                </span>
+                {confirmDeleteId === p.id ? (
+                  <button onClick={() => remove(p.id)} disabled={busy === p.id}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/25 hover:bg-red-500/35 text-red-300 disabled:opacity-50"
+                    title={`Confirm delete — removes the plan "${p.title}"`}>
+                    Delete?
+                  </button>
+                ) : (
+                  <button onClick={() => setConfirmDeleteId(p.id)}
+                    className="text-gray-600 hover:text-red-400" title="Delete plan" aria-label={`Delete plan ${p.title}`}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </span>
             </div>
+            {p.stepsTotal > 0 && p.stepsDone === p.stepsTotal && (
+              <p className="text-xs text-neon-green mt-1.5">
+                Plan complete · {p.totalHours}h · {p.stepsTotal} topic{p.stepsTotal !== 1 ? 's' : ''}
+                {p.remainingHours === 0 && <span className="block font-serif italic text-gray-300 mt-0.5">Every hour accounted for.</span>}
+              </p>
+            )}
             {p.goal && <p className="text-xs text-gray-400 mt-0.5">{p.goal}</p>}
             <div className="h-1.5 bg-lattice-void rounded-full overflow-hidden mt-2">
               <div className="h-full bg-neon-purple rounded-full transition-all"
