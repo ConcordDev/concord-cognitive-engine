@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { EMAIL_REQUIRED, REGISTRATION_STATUS, registrationStatus } from './registration-copy.ts';
+import { EMAIL_REQUIRED, REGISTRATION_STATUS, registrationStatus } from './registration-copy';
 
 describe('registration copy', () => {
   it('does not call an unpaid registration paid', () => {
