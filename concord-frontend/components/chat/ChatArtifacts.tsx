@@ -30,6 +30,8 @@ export interface ChatArtifact {
   image_b64?: string;
   prompt?: string;
   source?: string;
+  /** art_draw: in-app link that opens the saved drawing (e.g. /lenses/art?artwork=…). */
+  href?: string;
   mimeType?: string;
   artist?: string;
   projectId?: string;
@@ -126,6 +128,11 @@ export function ChatArtifacts({ artifacts }: { artifacts?: ChatArtifact[] }) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src || `data:image/png;base64,${a.image_b64}`} alt={a.prompt || a.title || 'Generated image'} className="w-full h-auto" />
               {a.prompt && <div className="px-3 py-1.5 text-[11px] text-zinc-400 bg-zinc-900">{a.prompt}</div>}
+              {typeof a.href === 'string' && /^\/lenses\/[\w-]+(?:[/?][\w\-=&%./?]*)?$/.test(a.href) && (
+                <a href={a.href} className="block px-3 py-1.5 text-[11px] font-medium text-sky-300 hover:text-sky-200 bg-zinc-900 border-t border-zinc-800">
+                  Open in Art lens →
+                </a>
+              )}
             </div>
           );
         }
