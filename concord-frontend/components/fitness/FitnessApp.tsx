@@ -10,7 +10,6 @@ import { WgerFeedPanel } from '@/components/fitness/WgerFeedPanel';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FitnessFeed } from '@/components/fitness/FitnessFeed';
-import { omitCommunityRedditViews } from '@/lib/community/reddit-flag';
 import { CommunityRedditSlot } from '@/lib/community/CommunityRedditSlot';
 import { RoutesPanel } from '@/components/fitness/RoutesPanel';
 import { FitnessStravaSection } from '@/components/fitness/FitnessStravaSection';
@@ -830,7 +829,10 @@ export default function FitnessApp() {
       )}
       tabs={[
         { id: 'Training', label: 'Training', icon: Dumbbell, hint: 'Strava-style personal training log' },
-        ...omitCommunityRedditViews(MODE_TABS, ['Feed']).map((t) => ({ id: t.id, label: t.id === 'HRZones' ? 'HR zones' : t.id === 'AIPlan' ? 'AI plan' : t.id, icon: t.icon })),
+        // Every MODE_TAB stays in the bar — including Feed: the tab hosts
+        // the lens-native wger panel alongside the (self-gating) Reddit
+        // panel, so omitting it for the Reddit flag hid the whole tab (F14 fix).
+        ...MODE_TABS.map((t) => ({ id: t.id, label: t.id === 'HRZones' ? 'HR zones' : t.id === 'AIPlan' ? 'AI plan' : t.id, icon: t.icon })),
       ]}
       activeTab={surface === 'training' ? 'Training' : activeTab}
       onTab={(id) => {
@@ -892,9 +894,16 @@ export default function FitnessApp() {
       {activeTab === 'Finish' && <div className="p-4"><WorkoutFinishPanel /></div>}
       {activeTab === 'Routes' && <RoutesPanel className="mt-2" />}
       {activeTab === 'Feed' && (
-        <CommunityRedditSlot>
-          <div className="p-4 space-y-4"><FitnessFeed /><WgerFeedPanel /></div>
-        </CommunityRedditSlot>
+        <div className="p-4 space-y-4">
+          <CommunityRedditSlot>
+            <FitnessFeed />
+          </CommunityRedditSlot>
+          {/* The wger exercise feed is the lens's own surface, not Reddit
+              community content — it must NOT ride inside the Reddit slot
+              (which renders null while the community flag is off) or the
+              Feed tab itself disappears from the tab bar. F14 fix. */}
+          <WgerFeedPanel />
+        </div>
       )}
 
       {/* ========== Client Progress Dashboard ========== */}
