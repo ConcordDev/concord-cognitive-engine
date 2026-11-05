@@ -20,7 +20,6 @@ import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
@@ -71,7 +70,9 @@ export default function HRLensPage() {
         subtitle="People, time off, payroll, benefits, recruiting, learning and compliance."
         actions={
           <>
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            {/* No LiveIndicator: the lens declares a simulated tier in its
+                manifest, and a LIVE pill beside that banner contradicts it
+                (HR F1). The tier declaration itself is the shared F-G flip. */}
             <DTUExportButton domain="hr" data={{}} compact />
           </>
         }
