@@ -262,6 +262,7 @@ export function domainForToolCall(call) {
     case "create_dtu": return "dtu"; // runMacro("dtu", "create", ...)
     case "expert_mode": return "expert_mode"; // runMacro("expert_mode", "answer", ...)
     case "generate_image": return "multimodal"; // runMacro("multimodal", "image_generate", ...)
+    case "art_draw": return "art"; // art.artwork-create / layer-add / stroke-batch
     // ConKay tool-authoring first slice (docs/CONKAY_TOOL_AUTHORING_SPEC.md
     // §7 point 5) — a synthetic domain tag so a marathon session's
     // allowed_domains_json allowlist can explicitly permit/deny authored-

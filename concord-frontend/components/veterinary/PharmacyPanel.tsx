@@ -16,8 +16,9 @@ export function PharmacyPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [patients, setPatients] = useState<{ id: string; name: string; species?: string }[]>([]);
+  const [patientId, setPatientId] = useState('');
   const [drug, setDrug] = useState('');
-  const [patientName, setPatientName] = useState('');
   const [dosage, setDosage] = useState('');
   const [frequency, setFrequency] = useState('');
   const [durationDays, setDurationDays] = useState('');
@@ -27,7 +28,10 @@ export function PharmacyPanel() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const r = await lensRun('veterinary', 'prescription-list', {});
+    const [r, patientsRes] = await Promise.all([
+      lensRun('veterinary', 'prescription-list', {}),
+      lensRun('veterinary', 'patient-list', {}),
+    ]);
     if (r.data.ok && r.data.result) {
       const res = r.data.result as { prescriptions: VetPrescription[]; active: number };
       setRxs(res.prescriptions || []);
@@ -35,6 +39,12 @@ export function PharmacyPanel() {
       setError(null);
     } else {
       setError(r.data.error || 'failed to load prescriptions');
+    }
+    if (patientsRes.data.ok && patientsRes.data.result) {
+      const list = (patientsRes.data.result as { patients?: { id: string; name: string; species?: string }[] }).patients;
+      setPatients(Array.isArray(list) ? list.filter((p) => p && typeof p.id === 'string') : []);
+    } else {
+      setPatients([]);
     }
     setLoading(false);
   }, []);
@@ -45,11 +55,11 @@ export function PharmacyPanel() {
   }, []);
 
   const addRx = async () => {
-    if (!drug.trim()) return;
+    if (!drug.trim() || !patientId) return;
     setBusy(true);
     const r = await lensRun('veterinary', 'prescription-add', {
       drug,
-      patientName,
+      patientId,
       dosage,
       frequency,
       durationDays: Number(durationDays) || 0,
@@ -59,7 +69,7 @@ export function PharmacyPanel() {
     setBusy(false);
     if (r.data.ok) {
       setDrug('');
-      setPatientName('');
+      setPatientId('');
       setDosage('');
       setFrequency('');
       setDurationDays('');
@@ -97,12 +107,20 @@ export function PharmacyPanel() {
           placeholder="Drug *"
           className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-sm text-white"
         />
-        <input
-          value={patientName}
-          onChange={(e) => setPatientName(e.target.value)}
-          placeholder="Patient name"
+        <select
+          aria-label="Patient"
+          value={patientId}
+          onChange={(e) => setPatientId(e.target.value)}
           className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-sm text-white"
-        />
+        >
+          <option value="">Patient on the chart</option>
+          {patients.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name || 'Unnamed'}
+              {p.species ? ` · ${p.species}` : ''}
+            </option>
+          ))}
+        </select>
         <input
           value={dosage}
           onChange={(e) => setDosage(e.target.value)}
@@ -137,7 +155,7 @@ export function PharmacyPanel() {
         />
         <button
           type="submit"
-          disabled={busy || !drug.trim()}
+          disabled={busy || !drug.trim() || !patientId}
           className="col-span-2 md:col-span-3 flex items-center justify-center gap-2 rounded bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
@@ -177,7 +195,7 @@ export function PharmacyPanel() {
                   </span>
                 </p>
                 <p className="text-xs text-zinc-400">
-                  {rx.patientName || 'unassigned'}
+                  {rx.patientName || 'patient not on this chart'}
                   {rx.dosage && ` · ${rx.dosage}`}
                   {rx.frequency && ` · ${rx.frequency}`}
                   {rx.durationDays > 0 && ` · ${rx.durationDays}d`}

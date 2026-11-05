@@ -176,9 +176,11 @@ describe("eco.energy-estimate", () => {
     assert.ok(equator.result.annualKwh > arctic.result.annualKwh);
   });
 
-  it("clamps system size to positive", () => {
+  it("does not rewrite a negative system size as a 0.1 kW plant", () => {
     const r = call("energy-estimate", ctxA, { lat: 30, lng: 0, systemKw: -5 });
-    assert.ok(r.result.systemKwp > 0);
+    assert.equal(r.result.systemKwp, null);
+    assert.equal(r.result.reason, "not_recorded");
+    assert.deepEqual(r.result.unavailable, ["systemKw"]);
   });
 });
 

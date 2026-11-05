@@ -27,10 +27,16 @@ import { ObserveActionPanel } from '@/components/observe/ObserveActionPanel';
 import { ObservePlatform } from '@/components/observe/ObservePlatform';
 import { PipingProvider } from '@/components/panel-polish';
 
+interface RippleEnvelope {
+  ripples?: Record<string, unknown[]>;
+  focusOutcome?: { statement: string } | null;
+  coverage?: { statement: string; sources?: { label: string; count: number }[] } | null;
+}
+
 interface Report {
   ok: boolean;
   dtuId?: string;
-  ripple?: unknown;
+  ripple?: RippleEnvelope;
   error?: string;
   reason?: string;
 }
@@ -138,9 +144,20 @@ export default function ObservePage() {
                   <>
                     <p className="font-bold">✓ Report composed.</p>
                     <p className="mt-1 break-all font-mono text-xs">DTU id: {report.dtuId}</p>
+                    {report.ripple?.coverage?.sources && (
+                      <p className="mt-1 text-xs">
+                        Recorded in window: {report.ripple.coverage.sources.map((s) => `${s.label} ${s.count}`).join(' · ')}
+                      </p>
+                    )}
+                    {report.ripple?.focusOutcome?.statement && (
+                      <p className="mt-1 text-xs">{report.ripple.focusOutcome.statement}</p>
+                    )}
+                    {report.ripple?.coverage?.statement && (
+                      <p className="mt-1 text-xs text-emerald-200/70">{report.ripple.coverage.statement}</p>
+                    )}
                     {report.ripple ? (
                       <pre className="mt-2 overflow-x-auto rounded border border-zinc-800 bg-zinc-950 p-2 text-[10px]">
-                        {JSON.stringify(report.ripple, null, 2).slice(0, 800)}…
+                        {JSON.stringify(report.ripple.ripples ?? report.ripple, null, 2).slice(0, 800)}…
                       </pre>
                     ) : null}
                   </>

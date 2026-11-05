@@ -333,7 +333,7 @@ test("generate_image uses the pod image path and does not touch ctx.state", asyn
   }
 });
 
-test("generate_image reports GPU offline and never calls Pollinations", async () => {
+test("generate_image with the GPU offline draws on the Art lens and never calls Pollinations", async () => {
   const saved = {
     gen: process.env.CONCORD_GEN_URL,
     force: process.env.CONCORD_FORCE_POLLINATIONS,
@@ -349,17 +349,19 @@ test("generate_image reports GPU offline and never calls Pollinations", async ()
   process.env.CONCORD_GEN_URL = "http://127.0.0.1:9";
   process.env.CONCORD_FORCE_POLLINATIONS = "1";
   try {
-    const offline = await executeToolCall({}, async () => { throw new Error("macro should not run"); }, new Map(), {
+    const offline = await executeToolCall({ brainChat: async () => ({ ok: false, text: "" }) }, async () => { throw new Error("macro should not run"); }, new Map(), {
       tool: "generate_image",
       params: { prompt: "a red cube" },
     });
-    assert.equal(offline.ok, false);
-    assert.equal(offline.error, "GPU image generation is offline");
-    assert.equal(offline.artifact, undefined);
+    // No GPU: art_draw draws it as an editable vector picture instead.
+    assert.equal(offline.ok, true);
+    assert.equal(offline.tool, "art_draw");
+    assert.equal(offline.gpuOffline, true);
+    assert.match(offline.artifact.url, /^data:image\/svg\+xml;base64,/);
     assert.ok(urls.some((u) => u.includes("127.0.0.1:9")));
     assert.ok(urls.every((u) => !/pollinations/i.test(u)));
     const rendered = formatToolResults([offline]);
-    assert.match(rendered, /GPU image generation is offline/);
+    assert.match(rendered, /GPU image tool is offline/);
     assert.ok(!/pollinations/i.test(rendered));
     assert.ok(!/dall-?e|stable diffusion|midjourney/i.test(rendered));
   } finally {
