@@ -17,7 +17,7 @@ import { ollamaChat } from "./inference/ollama-client.js";
 import { providerChat, BYO_PROVIDERS } from "./byo-providers.js";
 import { decryptKey } from "./byo-crypto.js";
 import { consumeRateLimitToken } from "./byo-rate-limit.js";
-import { platformProviderChat, platformProviderConfigured } from "./platform-providers.js";
+import { platformProviderChat, platformProviderConfigured, platformSlotPinnedLocal } from "./platform-providers.js";
 import { freeCloudProviderChat } from "./free-cloud-router-extended.js";
 
 /**
@@ -192,7 +192,10 @@ async function _brainChatDispatch({ db, userId, slot, messages, opts = {}, brain
   // server/lib/platform-providers.js's slot registry. Only ever reached
   // when mode === 'high_power' (Private returned above), so a Private-Mode
   // account can never land here even if a platform key is configured.
-  if (platformProviderConfigured(slot)) {
+  if (platformSlotPinnedLocal(slot)) {
+    // Operator pinned this slot to Concord's own brain: skip the platform
+    // provider and the free-cloud routers (CONCORD_PLATFORM_PROVIDER_<SLOT>=local).
+  } else if (platformProviderConfigured(slot)) {
     const pg = await platformProviderChat({ slot, messages, opts });
     if (pg.ok) return pg;
     // Platform provider failed/exhausted budget — try free cloud routers next
