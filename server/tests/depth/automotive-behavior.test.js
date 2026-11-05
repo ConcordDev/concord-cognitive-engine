@@ -87,7 +87,7 @@ describe("automotive — calc contracts (exact computed values)", () => {
   it("repairEstimate: rejects an empty repair list", async () => {
     const bad = await lensRun("automotive", "repairEstimate", { data: { repairs: [] } });
     assert.equal(bad.result.ok, false);
-    assert.match(bad.result.error, /add repair items/);
+    assert.match(bad.result.error, /add at least one repair/i);
   });
 });
 
