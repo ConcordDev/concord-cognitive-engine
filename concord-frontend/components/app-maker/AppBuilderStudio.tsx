@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useAppMakerProject } from './AppMakerProjectContext';
 import {
   Plus, Trash2, Copy, Layers, Database, Workflow, Eye, Rocket,
   Package, Plug, History, MousePointer2, Save, RefreshCw,
@@ -80,6 +81,7 @@ export function AppBuilderStudio() {
   const [tab, setTab] = useState<Tab>('canvas');
   const [busy, setBusy] = useState<string | null>(null);
   const [newProjName, setNewProjName] = useState('');
+  const { setActiveProjectId } = useAppMakerProject();
 
   // ── helpers ──────────────────────────────────────────────────────
   const run = useCallback(async (name: string, params: Record<string, unknown>) => {
@@ -94,8 +96,15 @@ export function AppBuilderStudio() {
 
   const loadProject = useCallback(async (id: string) => {
     const d = await run('projectGet', { projectId: id });
-    if (d?.ok) { setProject((d.result as { project: Project }).project); setActiveId(id); }
-  }, [run]);
+    if (d?.ok) {
+      setProject((d.result as { project: Project }).project);
+      setActiveId(id);
+      // Publish which project is "open" so the Compute tab (a sibling panel
+      // that mounts separately — see page.tsx) can resolve a real spec
+      // instead of operating on a disconnected artifact. Fixes F4.
+      setActiveProjectId(id);
+    }
+  }, [run, setActiveProjectId]);
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
 
@@ -122,7 +131,7 @@ export function AppBuilderStudio() {
     setBusy('del');
     await run('projectDelete', { projectId: id });
     setBusy(null);
-    if (activeId === id) { setProject(null); setActiveId(null); }
+    if (activeId === id) { setProject(null); setActiveId(null); setActiveProjectId(null); }
     await loadProjects();
   };
 
