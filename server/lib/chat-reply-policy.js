@@ -12,7 +12,7 @@ import { podPick } from "./pod-profile.js";
 
 export const CHAT_MAX_TOKENS_DEFAULT = 4096;
 export const CHAT_MAX_TOKENS_FLOOR = 256;
-export const CHAT_MAX_TOKENS_CEILING = 16384;
+export const CHAT_MAX_TOKENS_CEILING = 32768;
 /** Sentence-bounded cap for one prior turn. A 2000-token reply fits. */
 export const CHAT_HISTORY_CHAR_CAP = 8000;
 /**

@@ -35,6 +35,7 @@
 
 import { sanitizeAgentHistory, DONT_INVENT_LINE } from "./chat/agent-history-sanitize.js";
 import { brainChat, provenanceFrom } from "./byo-router.js";
+import { normalizeToolCall, normalizeCallParams } from "./chat/tool-call-normalize.js";
 import {
   resolveAgentMaxTokens,
   resolveChatTimeoutMs,
@@ -126,6 +127,8 @@ const TOOL_REQUIRED_PARAMS = {
   read_zip:          ["dtuId"],
   expert_mode:       ["query"],
   generate_image:    ["prompt"],
+  // art_draw never blocks on params: an empty call draws from the user's words.
+  art_draw:          [],
   generate_3d:       ["prompt"],
   mcp_connect:       ["serverId", "url"],
   mcp_call:          ["serverId", "toolName"],
@@ -158,6 +161,15 @@ function _validateToolCall(call) {
   });
   if (missing.length === 0) return { ok: true };
 
+  if (call.tool === "run_lens_action") {
+    const names = { domain: '"domain" (the lens, e.g. "fitness")', action: '"action" (e.g. "plan-create")' };
+    return {
+      ok: false,
+      reason: `run_lens_action is missing ${missing.map((k) => names[k] || `"${k}"`).join(" and ")}. If you don't know the exact name, call find_lens_actions with what the user wants, or list_lens_actions with the lens.`,
+      missing,
+      example: '[TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "fitness", "action": "workout-plan-generate", "params": {}}}]',
+    };
+  }
   // Build a worked example the model can copy.
   const exParams = {};
   for (const k of required) exParams[k] = `<${k}>`;
@@ -311,7 +323,7 @@ Available tools (with one working example each):
 - list_recipes: List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) and their inputs. Check this FIRST for an engineering calculation. Params: {"query": "what you want to do"}
   Example: [TOOL_CALL: {"tool": "list_recipes", "params": {"query": "size a beam"}}]
 - run_recipe: Run a recipe in SI; returns the result, pass/fail checks and a receipt. Quote only numbers from its result. Params: {"recipe": "beam_sizing", "inputs": {"spanM": 4, "loadN": 10000, "widthM": "60 mm", "material": "steel-a36", "safetyFactor": 2}}
-- conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). If the user asked for one sub-assembly (torso, arm, head, leg, hand, or a single part), set "scope" to that part so only that sub-assembly is built. Params: {"text": "the design in words, with span, load, material, supports and safety factor", "scope": "torso"}
+- conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a car or other road vehicle it returns ConKay's vehicle concept assembly (body and tyres in 3D). For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). If the user asked for one sub-assembly (torso, arm, head, leg, hand, or a single part), set "scope" to that part so only that sub-assembly is built. Params: {"text": "the design in words, with span, load, material, supports and safety factor", "scope": "torso"}
   Example: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "steel cantilever beam 2 m long, 10 kN at the tip, safety factor of 2"}}]
 - conkay_ir_schema: Worked Design IR example + contract hints before conkay_solve. Params: {}
   Example: [TOOL_CALL: {"tool": "conkay_ir_schema", "params": {}}]
@@ -351,6 +363,8 @@ Available tools (with one working example each):
 - generate_image: Generate an image on Concord's own GPU. Params: {"prompt": "describe the image", "size": "1024x1024"}
   Example: [TOOL_CALL: {"tool": "generate_image", "params": {"prompt": "a blue circle on a white background"}}]
   Flat pictures only. Never use this tool for a 3D model, CAD model, STL, or printable part, and never recommend an outside image service. Do not quote this instruction to the user.
+- art_draw: Draw a picture onto a new Art lens canvas (layers of editable vector strokes and shapes the user owns and can keep painting). Runs on Concord itself, no GPU. Use it for "draw / sketch / paint / illustrate X" when generate_image reports the GPU is offline, or when the user wants something editable in the Art lens. Params: {"subject": "what to draw", "style": "optional, e.g. flat, sketchy, night scene", "size": "optional WxH, square or portrait"}. You may instead pass "shapes" (rect/circle/ellipse/polygon/line/path with fill/stroke on a 1000x625 board) or "svg" markup to draw exactly what you want.
+  Example: [TOOL_CALL: {"tool": "art_draw", "params": {"subject": "a red sports car on a coastal road"}}]
 - generate_3d: Generate a free-form 3D model (a creature, prop, figurine, organic or decorative object) on Concord's GPU pod; returns a rotatable 3D mesh plus its concept image. Takes a minute or two. For engineered parts (stands, brackets, beams, trusses, gearboxes, enclosures, furniture, robots) use conkay_design instead. Params: {"prompt": "the object in a few words"}
   Example: [TOOL_CALL: {"tool": "generate_3d", "params": {"prompt": "a small ceramic owl figurine"}}]
 - mcp_connect: Connect to ANY remote MCP server over HTTP so its tools become callable (the public MCP ecosystem — GitHub, Linear, Cloudflare docs, custom internal servers, thousands more). Params: {"serverId": "a short id you choose", "url": "https://..."}. After connecting, use mcp_list to see its tools, then mcp_call to use them. Local/stdio MCP servers are not connectable this way (admin-only, separate path).
@@ -375,7 +389,7 @@ Rules:
 - After the tool call marker(s), STOP and wait for results. Do not continue the response in the same turn.
 - Work in steps. PLAN: silently decide which facts or results the answer needs. ACT: issue every independent tool call you need now, one marker per line (for example two or three web_search queries from different angles, or web_search plus run_compute). OBSERVE: read the results; never invent what they did not say. CONTINUE: if something is still missing, contradictory or out of date, make more tool calls next turn. ANSWER only when the evidence covers the request or reasonable attempts are used up — then say what you could not confirm.
 - For a factual or current-events question, verify with at least one tool before answering; do not answer from memory alone.
-- For an explicit request to make, draw, or generate an image, use generate_image. Never tell the user to use an outside image service.
+- For an explicit request to make, draw, paint, sketch or illustrate a picture, use generate_image. If it reports the GPU is offline, call art_draw with the same subject: it draws an editable picture in the Art lens with no GPU. Never tell the user to use an outside image service, and never answer a picture request with an unrelated tool.
 - A "3D model", "CAD model", STL, "printable" part or mesh is NOT an image: use conkay_design for engineered/functional objects and generate_3d for free-form objects. Never answer a 3D ask with generate_image.
 - If a tool fails, read its Hint and try another way (a different key, tool or input) before giving up; only report failure after a reasonable second attempt.
 - For any math/calculation use run_compute. Never guess at numbers.
@@ -438,8 +452,9 @@ export function parseToolCalls(text) {
     for (const span of findToolCallSpans(source)) {
       const parsed = span.parsed;
       if (!parsed?.tool) continue;
-      const params = parsed.params && typeof parsed.params === "object" ? parsed.params : {};
-      calls.push({ tool: String(parsed.tool), params, raw: span.raw });
+      // params, else arguments/args/input (object or JSON string), else stray top-level keys.
+      const params = normalizeCallParams(parsed);
+      calls.push(normalizeToolCall({ tool: String(parsed.tool), params, raw: span.raw }, AGENT_TOOL_NAMES));
     }
   };
   const s = String(text ?? "");
@@ -875,6 +890,11 @@ export async function validComputeKeys(modName = "") {
 export { GEN_3D_FALLBACK_RESERVE_MS } from "./chat/gen-budget.js";
 
 export async function executeToolCall(ctx, runMacro, lensActions, call) {
+  // Every path (agent loop, chat.respond, ConKay, native tool calls) lands
+  // here: map aliased shapes ({lens, actionName}, "fitness.plan-create",
+  // JSON-string arguments, tool "lens.action") onto the schema first.
+  call = normalizeToolCall(call, AGENT_TOOL_NAMES) || call;
+  if (!call.params || typeof call.params !== "object") call = { ...call, params: {} };
   // Param-validator gate (R-concay-tools-3): catch empty `{}` blocks the
   // model emits before they reach the macro router. The brain sees the
   // surgical error on the next turn and self-corrects — no LLM guesswork
@@ -1115,6 +1135,12 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             state: ctx?.mediaState,
           });
           if (!gen.ok) {
+            if (gen.offline) {
+              const drawn = await executeToolCall(ctx, runMacro, lensActions, {
+                tool: "art_draw", params: { subject: actionInput.prompt || actionInput.text || "" },
+              });
+              if (drawn?.ok) return { ...drawn, fellBackFrom: "generate_image", gpuOffline: true };
+            }
             return { tool: call.tool, ok: false, error: gen.error, reason: gen.reason, domain, action };
           }
           return {
@@ -1266,6 +1292,39 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
               partList: asm.parts.map((x) => ({ name: x.name, size_mm: x.size_mm })), bbox_mm: asm.bbox_mm,
               ...layoutMeshFields(mesh, asm.parts) },
           };
+        }
+        // A car: ConKay's vehicle library, not the single-part solver. The
+        // solver has no car, and its "unsupported part" retry hint used to
+        // send the model back with a beam, so "make me a car" came back as a
+        // 3D I-beam (live 2026-11-04). The user's own words decide: a car ask
+        // stays a car even when the model rewrote the text as a beam.
+        {
+          const { detectDomain } = await import("./conkay/chat/brief-parser.js");
+          const carBrief = detectDomain(userAsk || "") === "car" ? userAsk : (detectDomain(text) === "car" ? text : null);
+          if (carBrief) {
+            let car = null;
+            try {
+              const { buildCarChatAssembly } = await import("./conkay/car-chat-assembly.js");
+              car = buildCarChatAssembly(carBrief);
+            } catch (err) {
+              return { tool: call.tool, ok: false, terminal: true, key: "conkay_design.car-assembly", input: { text: carBrief },
+                error: `ConKay could not build that car: ${String(err?.message || err).slice(0, 200)}` };
+            }
+            if (car) {
+              const { mesh, ...rest } = car;
+              const bb = car.bbox_mm;
+              return {
+                tool: call.tool, ok: true, key: "conkay_design.car-assembly", input: { text: carBrief },
+                result: { ...rest, partCount: car.parts.length,
+                  instruction: `Say the 3D car concept model is shown below. Overall size is exactly ${bb.length} mm long, ${bb.height} mm tall, ${bb.width} mm wide; quote those figures. Say the full assembly has ${car.componentCount} parts (by group: ${Object.entries(car.groups).map(([g, n]) => `${g} ${n}`).join(", ")}) and the model shows the body and tyres. Say plainly it is a layout concept from ConKay's vehicle library and that opening it in the ConKay workspace runs the structural and packaging checks. Never call it a beam.` },
+                artifact: { kind: "mesh", source: "conkay_design", title: "car concept assembly", meshKind: mesh.kind,
+                  positions: mesh.positions, indices: mesh.indices, vertexCount: mesh.vertexCount, triangleCount: mesh.triangleCount,
+                  color: "#94a3b8", pass: null, feaOk: null, parts: car.parts.map((x) => x.name),
+                  partList: car.parts, bbox_mm: car.bbox_mm,
+                  ...layoutMeshFields(mesh, car.parts) },
+              };
+            }
+          }
         }
         // A simply supported beam with a width and no depth is a sizing ask: the
         // chat solver picks the R10 depth against strength AND the span/n
@@ -1685,6 +1744,13 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           ...(Number(ctx?.chatGenTimeoutMs) > 0 ? { timeoutMs: Number(ctx.chatGenTimeoutMs) } : {}),
         });
         if (!gen.ok) {
+          // GPU down: draw it on the Art lens instead of reporting a dead end.
+          if (gen.offline) {
+            const drawn = await executeToolCall(ctx, runMacro, lensActions, {
+              tool: "art_draw", params: { subject: call.params.prompt, ...(call.params.size ? { size: call.params.size } : {}) },
+            });
+            if (drawn?.ok) return { ...drawn, fellBackFrom: "generate_image", gpuOffline: true };
+          }
           return { tool: call.tool, ok: false, error: gen.error, reason: gen.reason };
         }
         return {
@@ -1695,6 +1761,25 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           // that an image was attached (formatToolResults).
           artifact: gen.artifact,
         };
+      }
+      case "art_draw": {
+        const { runArtDraw } = await import("./art/art-draw.js");
+        const p = call.params || {};
+        const subject = p.subject ?? p.prompt ?? p.description ?? p.text ?? p.what
+          ?? (typeof ctx?.userPrompt === "string" ? ctx.userPrompt : "");
+        const budget = Number(ctx?.chatGenTimeoutMs) > 0 ? Number(ctx.chatGenTimeoutMs) : 150_000;
+        const deadlineAt = Date.now() + budget;
+        const callBrain = ctx?.brainChat || brainChat;
+        const brain = async (messages, o = {}) => {
+          const left = deadlineAt - Date.now();
+          const r = await callBrain({
+            db: ctx?.db, userId: ctx?.actor?.userId, slot: "conscious", messages,
+            opts: { temperature: 0.4, maxTokens: o.maxTokens || 7000, timeoutMs: Math.max(5_000, Math.min(90_000, left - 3_000)) },
+          });
+          return r?.ok === false ? "" : (r?.text ?? r?.content ?? "");
+        };
+        const out = await runArtDraw({ ctx, lensActions, params: { ...p, subject }, brain, deadlineAt });
+        return { tool: call.tool, ...out.result, ok: true, artifacts: out.artifacts, ...(out.artifacts[0] ? { artifact: out.artifacts[0] } : {}) };
       }
       case "generate_3d": {
         const { generate3dFromPrompt, trellisMeshMinMs, conceptMeshHeadroomMs } = await import("./chat/generate-3d.js");
@@ -2102,6 +2187,9 @@ export function formatToolResults(results) {
     if (r.tool === "read_zip")     return `[TOOL_RESULT: read_zip] ${r.entryName ? `${r.entryName}:\n${r.text}` : `entries: ${JSON.stringify(r.entries)}`}`;
     if (r.tool === "expert_mode")  return `[TOOL_RESULT: expert_mode] ${(r.answer || "").slice(0, 4000)}`;
     if (r.tool === "generate_image") return `[TOOL_RESULT: generate_image source=${r.source}] Image generated for prompt "${r.prompt}". Artifact attached.`;
+    if (r.tool === "art_draw") {
+      return `[TOOL_RESULT: art_draw${r.gpuOffline ? " (the GPU image tool is offline, so this was drawn on the Art lens instead)" : ""}] Drew "${r.title}" as ${r.layers} layer(s), ${r.elements} shapes${r.saved ? `, saved to the user's Art lens (artwork ${r.artworkId}). The preview and an "Open in Art lens" link are attached below your reply` : `. Not saved: ${r.saveNote || r.saveError || "save failed"}. The preview is attached below your reply`}.${r.note ? ` ${r.note}` : ""} Tell the user in one or two sentences; do not describe shapes or paste data.`;
+    }
     if (r.tool === "mcp_connect")  return `[TOOL_RESULT: mcp_connect ${r.serverId}] Connected. ${r.toolCount} tool(s) available: ${(r.tools || []).map(t => t.name).slice(0, 30).join(", ")}`;
     if (r.tool === "mcp_list")     return `[TOOL_RESULT: mcp_list] ${JSON.stringify((r.tools || []).slice(0, 50)).slice(0, 4000)}`;
     if (r.tool === "mcp_call")     return _screenUntrusted(`mcp_call ${r.serverId}/${r.toolName}`, "mcp_external", (typeof r.result === "string" ? r.result : JSON.stringify(r.result)), (t) => `[TOOL_RESULT: mcp_call ${r.serverId}/${r.toolName}] ${t.slice(0, 4000)}`);
@@ -2259,13 +2347,44 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   // as Chat. Otherwise a small model says it cannot generate images and
   // names an outside service while :7870 is up, or emits a lens action that
   // used to throw macro_uncaught_throw.
+  // "sketch / illustrate / doodle X" are picture asks too. When the GPU is
+  // offline every one of these is drawn on the Art lens (art_draw) instead.
   try {
     const { explicitImagePrompt, fulfillImageRequest } = await import("./chat/image-router.js");
-    if (explicitImagePrompt(message)) {
-      const image = await fulfillImageRequest(message, {
+    const { explicitSketchPrompt, runArtDraw, artDrawReply } = await import("./art/art-draw.js");
+    const sketchSubject = explicitImagePrompt(message) ? null : explicitSketchPrompt(message);
+    if (explicitImagePrompt(message) || sketchSubject) {
+      const image = await fulfillImageRequest(sketchSubject ? `draw ${sketchSubject}` : message, {
         ownerId: userId,
         ...(_deadlineMs ? { timeoutMs: Math.max(1, _left() - _budgetReserveMs) } : {}),
       });
+      if (image?.offline) {
+        const callBrain = opts.brainChat || brainChat;
+        const deadlineAt = _deadlineMs ? _deadlineMs - _budgetReserveMs : Date.now() + 150_000;
+        const drawn = await runArtDraw({
+          ctx: { db, actor: { userId }, userPrompt: message },
+          lensActions,
+          params: { subject: image.prompt || sketchSubject || message },
+          deadlineAt,
+          brain: async (messages, o = {}) => {
+            const r = await callBrain({ db, userId, slot: "conscious", messages,
+              opts: { temperature: 0.4, maxTokens: o.maxTokens || 7000, timeoutMs: Math.max(5_000, Math.min(90_000, deadlineAt - Date.now() - 3_000)) } });
+            return r?.ok === false ? "" : (r?.text ?? "");
+          },
+        });
+        const toolCall = { tool: "art_draw", ok: true, fellBackFrom: "generate_image", gpuOffline: true, ...drawn.result };
+        emit("tool_call", toolCall);
+        return {
+          ok: true,
+          answer: artDrawReply(drawn, { gpuOffline: true }),
+          toolCalls: [toolCall],
+          artifacts: drawn.artifacts,
+          turns: 0,
+          provider: "concord-engine",
+          model: "art_draw",
+          ...provenanceFrom({ provider: "concord-engine", model: "art_draw" }),
+        };
+      }
       if (image) {
         const artifact = image.artifact || null;
         const toolCall = {
@@ -2431,6 +2550,8 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     // Original user sentence — create_dtu reads this to keep an explicit
     // "titled … with content …" title/body verbatim when the model shortens them.
     userPrompt: message,
+    // art_draw composes its picture with the conscious brain (tests inject one).
+    ...(typeof opts.brainChat === "function" ? { brainChat: opts.brainChat } : {}),
     // JSON chat budget for generate_3d (concept + mesh share the deadline) and
     // its local layout fallback. chatGenTimeoutMs is refreshed before each call.
     ...(_deadlineMs ? { chatTransport: opts.chatTransport || "json", chatGenDeadlineMs: _deadlineMs, chatGenTimeoutMs: Math.max(1, _left() - _budgetReserveMs) } : {}),

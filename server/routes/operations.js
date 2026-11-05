@@ -9,6 +9,7 @@ import fs from "fs";
 import { asyncHandler } from "../lib/async-handler.js";
 import { validateBody, ingestUrlSchema, ingestTextSchema, ingestSchema, ingestSubmitSchema, researchRunSchema, harnessRunSchema, apiKeyCreateSchema } from "../lib/validators/mutation-schemas.js";
 import { ctxMayReadDtu, dtuFromStoreRow } from "../lib/dtu-read-access.js";
+import { founderSeedCustody, stampFounderSeed } from "../lib/dtu-ownership.js";
 
 // Security audit 2026-07-30: the real user's role decides the ingest tier —
 // see the /api/ingest/submit route below for why a client-supplied tier is
@@ -988,22 +989,27 @@ export default function registerOperationRoutes(app, {
       if (!force && (STATE.dtus?.size || 0) > 0) {
         return res.json({ ok: false, error: "DTUs already exist. Pass { force: true } to reseed anyway.", currentCount: STATE.dtus?.size || 0 });
       }
+      // Founder seed content is private to the founder account; without
+      // FOUNDER_USER_ID there is no owner, so nothing is reseeded.
+      const seedCustody = founderSeedCustody();
+      if (!seedCustody) {
+        return res.json({ ok: false, error: "FOUNDER_USER_ID is not set; seeds are private to the founder and are not loaded without it." });
+      }
       const seeds = await tryLoadSeedDTUs();
       if (!seeds.length) {
         return res.json({ ok: false, error: SEED_INFO.error || "No seeds found in dtus.js", seedInfo: SEED_INFO });
       }
       let added = 0;
       for (const s of seeds) {
-        // Scope Separation: reseeded DTUs enter Global scope (canonical knowledge)
-        s.scope = "global";
-        const d = toOptionADTU(s);
+        const d = stampFounderSeed(toOptionADTU(s), seedCustody);
+        d.tier = "regular"; // seeds are never promoted to mega/hyper at load
         if (!STATE.dtus?.has(d.id)) {
           STATE.dtus?.set(d.id, d);
           added++;
         }
       }
       saveStateDebounced();
-      return res.json({ ok: true, added, total: STATE.dtus?.size || 0, scope: "global", seedInfo: SEED_INFO });
+      return res.json({ ok: true, added, total: STATE.dtus?.size || 0, scope: seedCustody.scope, seedInfo: SEED_INFO });
     } catch (e) {
       return res.status(500).json({ ok: false, error: String(e?.message || e) });
     }

@@ -117,7 +117,7 @@ export function PhysicsActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Physics — ${kinResult ? 'kinematics' : projResult ? 'projectile' : 'calc'}`, tags: ['physics', 'mechanics'], source: 'physics:calc:mint', meta: { visibility: 'private', consent: { allowCitations: false }, physics: { kin: kinResult, proj: projResult, unit: unitResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('physics.mintedDtuId', id, { label: `calc ${id.slice(0, 8)}` }); ok(`Calc DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('physics.mintedDtuId', id, { label: `calc ${id.slice(0, 8)}` }); ok(`Calc DTU ${id}`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
@@ -145,7 +145,7 @@ export function PhysicsActionPanel() {
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
         return newId as string;
       });
-      if (id) { setPublishedDtuId(id); pipe.publish('physics.publishedDtuId', id, { label: `problem ${id.slice(0, 8)}` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
+      if (id) { setPublishedDtuId(id); pipe.publish('physics.publishedDtuId', id, { label: `problem ${id.slice(0, 8)}` }); ok(`Published ${id} · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -163,9 +163,9 @@ export function PhysicsActionPanel() {
     { id: 'proj' as ActionId, label: 'Projectile', desc: 'range/apex/ToF', icon: Crosshair, accent: '#f97316', handler: actProj },
     { id: 'unit' as ActionId, label: 'Convert', desc: `${unitKind} units`, icon: Rocket, accent: '#06b6d4', handler: actUnit },
     { id: 'const' as ActionId, label: 'Constants', desc: 'c, G, h, kB...', icon: Atom, accent: '#8b5cf6', handler: actConst },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private calc DTU', icon: Sparkles, accent: '#22c55e', handler: actMint },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private calc DTU', icon: Sparkles, accent: '#22c55e', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send results', icon: Send, accent: '#ec4899', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public problem', icon: Globe, accent: '#15803d', handler: actPublish },
+    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : 'Public problem', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Scenario', desc: 'Agent: real-world tie', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
@@ -268,7 +268,7 @@ export function PhysicsActionPanel() {
         {constantsResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Constants ({Object.keys(constantsResult.constants).length})</div>
-            {Object.entries(constantsResult.constants).slice(0, 8).map(([k, c]) => <div key={k} className="text-[10px] text-zinc-300 mt-0.5"><span className="text-purple-200 font-mono">{k}</span> = {c.value.toExponential(3)} <span className="text-zinc-400">{c.units}</span></div>)}
+            {Object.entries(constantsResult.constants).map(([k, c]) => <div key={k} className="text-[10px] text-zinc-300 mt-0.5"><span className="text-purple-200 font-mono">{k}</span> = {c.value.toExponential(3)} <span className="text-zinc-400">{c.units}</span></div>)}
           </div>
         )}
       </div>
