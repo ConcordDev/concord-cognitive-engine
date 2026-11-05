@@ -241,7 +241,8 @@ describe('F6/F7 ActionPanel — α input, method line, honest scorecard', () => 
     const supArea = container.querySelectorAll('textarea')[2];
     fireEvent.change(supArea, { target: { value: 'Ghost |' } });
     fireEvent.click(screen.getByText('Score suppliers'));
-    await waitFor(() => expect(screen.getByText(/none scored/)).toBeInTheDocument());
+    // "none scored" is printed by both the scorecard heading and the summary line.
+    await waitFor(() => expect(screen.getAllByText(/none scored/).length).toBeGreaterThanOrEqual(1));
     expect(container.textContent).not.toContain('undefined');
   });
 
