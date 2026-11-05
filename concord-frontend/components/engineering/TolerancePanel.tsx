@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { Plus, Trash2, Ruler, Loader2, ArrowRight } from 'lucide-react';
+import { NumCell } from './NumCell';
 
 interface ChainLink {
   name: string;
@@ -47,11 +48,18 @@ const STARTER: ChainLink[] = [
 ];
 
 export function TolerancePanel() {
+  const [armedDelete, setArmedDelete] = useState<number | null>(null);
   const [links, setLinks] = useState<ChainLink[]>(STARTER);
   const [targetGap, setTargetGap] = useState<number | ''>('');
   const [result, setResult] = useState<ChainResult | null>(null);
+  const [resultSig, setResultSig] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // The chain analysis describes the links + target it ran on; when
+  // those change (a deleted link included), the display marks itself
+  // stale instead of presenting a dead link's numbers as current.
+  const inputsSig = JSON.stringify({ links, targetGap });
+  const resultStale = result !== null && resultSig !== inputsSig;
 
   const addLink = () =>
     setLinks((l) => [
@@ -85,8 +93,10 @@ export function TolerancePanel() {
       links,
       ...(targetGap !== '' ? { targetGap } : {}),
     });
-    if (r.data.ok && r.data.result) setResult(r.data.result);
-    else setError(r.data.error || 'Tolerance chain failed');
+    if (r.data.ok && r.data.result) {
+      setResult(r.data.result);
+      setResultSig(JSON.stringify({ links, targetGap }));
+    } else setError(r.data.error || 'Tolerance chain failed');
     setLoading(false);
   }, [links, targetGap]);
 
@@ -146,27 +156,42 @@ export function TolerancePanel() {
                     </button>
                   </td>
                   <td className="py-1 px-2 text-right">
-                    <input
+                    <NumCell
                       className="w-20 bg-black/30 border border-white/10 rounded px-1 text-right font-mono"
                       value={l.nominal}
-                      onChange={(e) => setField(i, 'nominal', e.target.value)}
+                      ariaLabel={`${l.name} nominal`}
+                      onCommit={(v) => setField(i, 'nominal', String(v))}
                     />
                   </td>
                   <td className="py-1 px-2 text-right">
-                    <input
+                    <NumCell
                       className="w-20 bg-black/30 border border-white/10 rounded px-1 text-right font-mono"
                       value={l.tolerance}
-                      onChange={(e) => setField(i, 'tolerance', e.target.value)}
+                      ariaLabel={`${l.name} tolerance`}
+                      onCommit={(v) => setField(i, 'tolerance', String(v))}
                     />
                   </td>
                   <td className="py-1 px-1">
-                    <button
-                      onClick={() => removeLink(i)}
-                      className="text-gray-600 hover:text-red-400"
-                      aria-label="Delete link"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                    {armedDelete === i ? (
+                      <button
+                        onClick={() => {
+                          setArmedDelete(null);
+                          removeLink(i);
+                        }}
+                        className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 text-[10px] whitespace-nowrap"
+                        aria-label={`Confirm delete link ${l.name}`}
+                      >
+                        Delete?
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setArmedDelete(i)}
+                        className="text-gray-600 hover:text-red-400"
+                        aria-label={`Delete link ${l.name}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -209,8 +234,14 @@ export function TolerancePanel() {
 
       {result && (
         <>
+          {resultStale && (
+            <p role="alert" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              Stale — the chain links or target changed after this analysis ran. The display below describes
+              the earlier chain; analyze again for the current one.
+            </p>
+          )}
           {/* Visual chain */}
-          <div className="panel p-4 space-y-2">
+          <div className={`panel p-4 space-y-2 ${resultStale ? 'opacity-50' : ''}`}>
             <h3 className="font-semibold text-sm">Visual Chain</h3>
             <div className="space-y-1.5">
               {result.chain.map((c) => {
@@ -254,7 +285,7 @@ export function TolerancePanel() {
           </div>
 
           {/* Closing dimension */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 ${resultStale ? 'opacity-50' : ''}`}>
             <div className="panel p-3 text-center">
               <p className="text-xs text-gray-400">Closing Nominal</p>
               <p className="text-lg font-mono font-bold text-neon-cyan">

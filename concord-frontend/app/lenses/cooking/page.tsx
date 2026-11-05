@@ -7,6 +7,7 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RecipeBoxSection } from '@/components/cooking/RecipeBoxSection';
 import { RecipeKitchen } from '@/components/cooking/RecipeKitchen';
+import { UnitConverter } from '@/components/cooking/UnitConverter';
 import { NutritionExplorer } from '@/components/cooking/NutritionExplorer';
 import { UsdaFoodSearch } from '@/components/cooking/UsdaFoodSearch';
 import { CookingActionPanel } from '@/components/cooking/CookingActionPanel';
@@ -17,7 +18,7 @@ import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import {
   Timer, BookOpen, CalendarCheck, ShoppingBasket, Package, FolderHeart,
-  Flame, Apple, UtensilsCrossed,
+  Flame, Apple, UtensilsCrossed, Scale,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -137,7 +138,7 @@ function CookingTimer() {
   );
 }
 
-type CookingView = 'recipes' | 'kitchen' | 'nutrition' | 'timer' | 'bench';
+type CookingView = 'recipes' | 'kitchen' | 'nutrition' | 'timer' | 'convert' | 'bench';
 
 
 const COOKING_TABS: { id: CookingView; label: string; icon: typeof BookOpen; keys: string }[] = [
@@ -145,6 +146,7 @@ const COOKING_TABS: { id: CookingView; label: string; icon: typeof BookOpen; key
   { id: 'kitchen', label: 'Cook', icon: Flame, keys: 'k' },
   { id: 'nutrition', label: 'Nutrition', icon: Apple, keys: 'n' },
   { id: 'timer', label: 'Timer', icon: Timer, keys: 't' },
+  { id: 'convert', label: 'Convert', icon: Scale, keys: 'c' },
   { id: 'bench', label: 'Bench', icon: UtensilsCrossed, keys: 'b' },
 ];
 
@@ -184,6 +186,15 @@ export default function CookingLensPage() {
     })();
     return () => { cancelled = true; };
   }, [refreshTick]);
+
+  // The KPI strip re-reads when any cooking surface mutates lens state
+  // (sections dispatch 'cooking:changed' after a successful write) —
+  // it no longer lags one reload behind panel changes.
+  useEffect(() => {
+    const onChanged = () => setRefreshTick(t => t + 1);
+    window.addEventListener('cooking:changed', onChanged);
+    return () => window.removeEventListener('cooking:changed', onChanged);
+  }, []);
 
 
   return (
@@ -227,6 +238,7 @@ export default function CookingLensPage() {
               </>
             )}
             {activeView === 'timer' && <CookingTimer />}
+            {activeView === 'convert' && <UnitConverter />}
             {activeView === 'bench' && (
               <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
                 <PipingProvider>
@@ -237,7 +249,7 @@ export default function CookingLensPage() {
           </div>
 
           <RealtimeDataPanel domain="cooking" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-          <section><LensFeedButton domain="cooking" label="Live recipe feed" /></section>
+          <section><LensFeedButton domain="cooking" label="Recipe feed · TheMealDB" /></section>
         </div>
       </NorthStarFrame>
     </LensShell>

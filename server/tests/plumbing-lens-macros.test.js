@@ -220,27 +220,30 @@ describe("plumbing lens — drainSlope (the PlumbCalc drain-slope card)", () => 
 
 describe("plumbing lens — fixtureCount (the PlumbCalc fixture-supply card)", () => {
   it("returns fixtures/totalWSFU/meterSize/supplyLine/note for the EXACT { type, count } shape the component sends", () => {
-    // toilet 2.5 × 2 + lavatory 1 × 2 = 5 + 2 = 7 WSFU
-    // 7 ≤ 15 → meter 3/4" ; 7 ≤ 20 → supply 3/4" main
+    // IPC Table 709.1 (private): toilet 3 x 2 + lavatory 1 x 2 = 6 + 2 = 8 WSFU
+    // 8 ≤ 15 → meter 3/4" ; 8 ≤ 20 → supply 3/4" main
+    // (Priors pinned the F4 defects: toilet at 2.5 and `fixtures` counting
+    //  ROWS (2) over four fixtures — corrected with Review 4's F4 fix.)
     const r = call("fixtureCount", ctxA, {
       fixtures: [{ type: "toilet", count: 2 }, { type: "lavatory", count: 2 }],
     });
     assert.equal(r.ok, true);
     const res = r.result;
-    assert.equal(res.fixtures, 2);
-    assert.equal(res.totalWSFU, 7);
+    assert.equal(res.fixtures, 4);
+    assert.equal(res.totalWSFU, 8);
     assert.equal(res.meterSize, '3/4"');
     assert.equal(res.supplyLine, '3/4" main');
     assert.equal(typeof res.note, "string");
   });
 
   it("a big fixture count bumps the meter + supply-line bands", () => {
-    // shower 2 × 5 + kitchen-sink 1.5 × 4 + washing-machine 2 × 3 = 10 + 6 + 6 = 22
-    // 22 > 15 → 1" meter ; 22 > 20 → 1" main
+    // IPC Table 709.1 (private): shower 2 x 5 + kitchen-sink 2 x 4 +
+    // washing-machine 4 x 3 = 10 + 8 + 12 = 30
+    // 30 > 15 → 1" meter ; 30 > 20 → 1" main
     const r = call("fixtureCount", ctxA, {
       fixtures: [{ type: "shower", count: 5 }, { type: "kitchen-sink", count: 4 }, { type: "washing-machine", count: 3 }],
     });
-    assert.equal(r.result.totalWSFU, 22);
+    assert.equal(r.result.totalWSFU, 30);
     assert.equal(r.result.meterSize, '1"');
     assert.equal(r.result.supplyLine, '1" main');
   });
@@ -318,9 +321,19 @@ describe("plumbing lens — fail-closed on poisoned numeric inputs", () => {
     });
     assert.equal(r.ok, true);
     // parseInt("abc")→NaN→`||1`→1 ; NaN→1 ; Infinity → parseInt(Infinity) is NaN → 1
-    // toilet 2.5·1 + shower 2·1 + bathtub 2·1 = 6.5
+    // IPC Table 709.1: toilet 3·1 + shower 2·1 + bathtub 2·1 = 7.
+    // (The prior pin read 6.5 via the pre-F4 toilet value of 2.5 — the fifth
+    //  assertion in this file encoding the walked finding; it sat in the
+    //  fail-closed describe, past the fixtureCount describe PR #2148
+    //  corrected, and the batch #2151 fold caught it. The table governs.
+    //  Was 6.5 ever right for this poisoned set? Only against the pre-F4
+    //  table. The poisoning is unchanged by the fix — "abc", NaN and
+    //  Infinity still sanitise to a count of 1 apiece, exactly as before —
+    //  so the set always meant toilet x1 + shower x1 + bathtub x1. What the
+    //  pin encoded was the toilet's old 2.5 value, the F4 defect itself;
+    //  under Table 709.1 that same sanitised set reads 3 + 2 + 2 = 7.)
     assert.ok(Number.isFinite(r.result.totalWSFU), `totalWSFU = ${r.result.totalWSFU} must be finite`);
-    assert.equal(r.result.totalWSFU, 6.5);
+    assert.equal(r.result.totalWSFU, 7);
   });
 
   it("fixtureCount: a non-array fixtures payload is tolerated (treated empty), never crashes", () => {

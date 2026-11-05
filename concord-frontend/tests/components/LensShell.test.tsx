@@ -43,9 +43,6 @@ vi.mock('@/components/common/EmptyState', () => ({
   ),
 }));
 
-vi.mock('@/components/lens/UniversalActions', () => ({
-  UniversalActions: () => <div data-testid="universal-actions" />,
-}));
 
 vi.mock('@/components/chat/PersistentChatRail', () => ({
   PersistentChatRail: () => <div data-testid="chat-rail" />,

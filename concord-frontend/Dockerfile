@@ -37,6 +37,12 @@ RUN npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
 FROM base AS builder
 WORKDIR /app
 
+# bzip2: next.config.js vendors the Pyodide runtime at build time from a
+# .tar.bz2 release asset; bookworm-slim ships tar without bzip2, so the
+# extraction failed and the build (correctly) refused to ship without it.
+# Builder stage only; the runtime image is unchanged.
+RUN apt-get update && apt-get install -y --no-install-recommends bzip2 && rm -rf /var/lib/apt/lists/*
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 

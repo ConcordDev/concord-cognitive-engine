@@ -329,16 +329,19 @@ describe("app-maker — preview + deploy + version round-trips", () => {
     assert.ok(r.result.html.includes("&lt;script&gt;"));
   });
 
-  it("deployPublish flips status to live with a real concord-os URL + snapshots a version", async () => {
+  it("deployPublish snapshots a version and marks it published — never fabricates a hosted URL", async () => {
     const proj = await freshProject();
     const dep = await call("deployPublish", ctxA, { projectId: proj.id });
     assert.equal(dep.ok, true);
-    assert.equal(dep.result.deployment.status, "live");
-    assert.match(dep.result.deployment.url, /^https:\/\/[a-z0-9-]+\.apps\.concord-os\.org$/);
+    assert.equal(dep.result.deployment.status, "snapshotted");
+    // There is no hosting infrastructure behind this — the URL must stay
+    // null rather than presenting a fabricated, never-served address.
+    assert.equal(dep.result.deployment.url, null);
 
-    // deployStatus reflects the live deployment.
+    // deployStatus reflects the same honest state.
     const st = await call("deployStatus", ctxA, { projectId: proj.id });
-    assert.equal(st.result.deployment.status, "live");
+    assert.equal(st.result.deployment.status, "snapshotted");
+    assert.equal(st.result.deployment.url, null);
 
     // a version was snapshotted by the deploy.
     const vl = await call("versionList", ctxA, { projectId: proj.id });

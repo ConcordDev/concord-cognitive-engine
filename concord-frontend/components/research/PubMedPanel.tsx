@@ -23,12 +23,17 @@ interface PubMedArticle {
   pubmedUrl: string;
 }
 
-async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
+async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<{ data: T | null; error: string | null }> {
   try {
     const r = await lensRun({ domain, name, input });
-    return r?.data as T;
+    // lensRun unwraps the { ok, result } envelope: the handler's own
+    // return value rides at data.result, and a handler refusal's
+    // reason at data.error. Reading the handler's fields (articles,
+    // total) off data itself renders every successful fetch as
+    // empty — the dead-panel shape this fixes.
+    return { data: (r?.data?.result ?? null) as T | null, error: r?.data?.error ?? null };
   } catch {
-    return null;
+    return { data: null, error: null };
   }
 }
 
@@ -63,14 +68,14 @@ export function PubMedPanel({ domain, macro = 'live_pubmed', title, initialQuery
     }
     setLoading(true);
     setError(null);
-    const r = await runMacro<{ ok: boolean; articles?: PubMedArticle[]; total?: number; fetchedAt?: number; reason?: string }>(
+    const { data: r, error: runError } = await runMacro<{ ok: boolean; articles?: PubMedArticle[]; total?: number; fetchedAt?: number; reason?: string }>(
       domain, macro, { query: q, limit },
     );
     if (r?.ok) {
       setArticles(r.articles || []);
       setTotal(r.total || 0);
       setUpdatedAt(r.fetchedAt || Math.floor(Date.now() / 1000));
-    } else setError(r?.reason || 'fetch_failed');
+    } else setError(r?.reason || runError || 'fetch_failed');
     setLoading(false);
   }, [domain, macro, limit]);
 

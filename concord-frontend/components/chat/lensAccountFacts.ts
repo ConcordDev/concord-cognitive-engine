@@ -33,7 +33,7 @@
  * is exactly what it was before this module existed.
  */
 
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { formatNumber } from '@/lib/utils';
 
 export interface AccountFact {
@@ -49,6 +49,10 @@ export interface LensFactsResult {
   facts: AccountFact[];
   /** Human-readable names of sources that could not be read. */
   unreadable: string[];
+  /** Display name for the block heading (default 'Analytics'). */
+  lensLabel?: string;
+  /** The closing instruction (default: the Analytics decline rule). */
+  rule?: string;
 }
 
 /** A finite number from an unknown payload field, or undefined. Never coerces. */
@@ -214,8 +218,88 @@ async function fetchAnalyticsFacts(): Promise<LensFactsResult> {
   return { facts, unreadable };
 }
 
+/**
+ * ConKay (Review 3 F2 — the origin-labelling rule's sharpest instance):
+ * arriving with ?context=conkay, the analyst denied the user's open study
+ * existed and quoted an ENGINEERING frame DTU from the shared store as
+ * "the most recent FEA result". The reads below mirror the workspace's
+ * own calls (useConKayWorkspace.reload / the Models rail), so "current
+ * model" and "most recent result" answer from the study itself.
+ */
+async function fetchConkayFacts(): Promise<LensFactsResult> {
+  const facts: AccountFact[] = [];
+  const unreadable: string[] = [];
+  const STUDY_SOURCE = 'ConKay workspace study — POST /api/lens/run engineering.beamStudy-get';
+
+  try {
+    const r = await lensRun<{ study: Record<string, unknown> | null }>('engineering', 'beamStudy-get', {});
+    if (r.data?.ok === false) {
+      unreadable.push('Current study (engineering.beamStudy-get)');
+    } else {
+      const s = r.data?.result?.study;
+      if (!s) {
+        facts.push({ label: 'Current study', value: 'No study has been solved or saved in this workspace yet.', source: STUDY_SOURCE });
+      } else {
+        const dims = (s.dims ?? {}) as Record<string, unknown>;
+        const mat = (s.materialInfo ?? {}) as { label?: string };
+        const sum = (s.summary ?? {}) as Record<string, unknown>;
+        const dimLine = ['length', 'height', 'flangeWidth', 'flangeThickness', 'webThickness']
+          .map((k) => num(dims[k])).filter((v) => v !== undefined);
+        facts.push({
+          label: 'Current study',
+          value: `“${String(s.name || 'I-beam study')}” — ${dimLine.length === 5 ? `L ${dimLine[0]} mm, D ${dimLine[1]} mm, W ${dimLine[2]} mm, t_f ${dimLine[3]} mm, t_w ${dimLine[4]} mm, ` : ''}${String(s.support || '')}, point load ${num(s.loadN) !== undefined ? `${(num(s.loadN)! / 1000).toFixed(1)} kN` : '—'}, material ${mat.label || String(s.material || '')}`,
+          source: STUDY_SOURCE,
+        });
+        const stress = num(sum.maxStressMPa), defl = num(sum.maxDeflectionMm), util = num(sum.utilization), sf = num(sum.safetyFactor);
+        if (stress !== undefined && defl !== undefined && util !== undefined) {
+          facts.push({
+            label: 'Most recent FEA result',
+            value: `max stress ${stress.toFixed(1)} MPa, deflection ${defl.toFixed(3)} mm, utilization ${(util * 100).toFixed(1)}%${sf !== undefined ? `, safety factor ${sf.toFixed(2)}` : ''}${typeof sum.pass === 'boolean' ? (sum.pass ? ', within yield' : ', EXCEEDS yield') : ''} (job ${String(s.jobId || '—')})`,
+            source: STUDY_SOURCE,
+          });
+        }
+        facts.push({
+          label: 'Kept as DTU',
+          value: s.dtuId ? String(s.dtuId) : 'Not kept — the current study has not been kept as a DTU.',
+          source: STUDY_SOURCE,
+        });
+      }
+    }
+  } catch {
+    unreadable.push('Current study (engineering.beamStudy-get)');
+  }
+
+  try {
+    const r = await lensRun<{ parts: Array<{ name?: string }> }>('engineering', 'listParts', {});
+    if (r.data?.ok === false) {
+      unreadable.push('Saved models (engineering.listParts)');
+    } else {
+      const parts = r.data?.result?.parts ?? [];
+      const names = parts.slice(0, 5).map((p) => `“${String(p?.name || '')}”`).filter((n) => n !== '“”');
+      facts.push({
+        label: 'Saved models',
+        value: parts.length === 0 ? 'None saved yet.' : `${parts.length} saved${names.length ? `: ${names.join(', ')}${parts.length > names.length ? ', …' : ''}` : ''}`,
+        source: 'ConKay Models rail — POST /api/lens/run engineering.listParts',
+      });
+    }
+  } catch {
+    unreadable.push('Saved models (engineering.listParts)');
+  }
+
+  return {
+    facts,
+    unreadable,
+    lensLabel: 'ConKay',
+    rule:
+      'Rule: the user\'s current model and most recent FEA result are the study facts above — answer those questions ONLY from them, and name the source you used. '
+      + 'The DTU store is shared across lenses: a record found there (for example an Engineering frame or simulation) is NOT the user\'s ConKay study, even when it is the newest record. '
+      + 'If you cite a store record, name the lens it came from. If a value is not listed above, say the surface doesn\'t give you that — never estimate or invent one.',
+  };
+}
+
 const PROVIDERS: Record<string, () => Promise<LensFactsResult>> = {
   analytics: fetchAnalyticsFacts,
+  conkay: fetchConkayFacts,
 };
 
 const DECLINE_RULE =
@@ -246,9 +330,10 @@ export async function buildLensFactsBlock(domain: string): Promise<string> {
     result = { facts: [], unreadable: ['the lens account data'] };
   }
 
+  const lensLabel = result.lensLabel || 'Analytics';
   if (result.facts.length === 0) {
     return [
-      'ACCOUNT FACTS — Analytics could not be read just now (the live surface did not answer).',
+      `ACCOUNT FACTS — ${lensLabel} could not be read just now (the live surface did not answer).`,
       'Rule: if the user asks about this account\'s values (DTU counts, citations, followers, reach, totals), ' +
         'say the surface doesn\'t give you that right now — never estimate or invent a number.',
       CONTEXT_COUNT_RULE,
@@ -256,7 +341,7 @@ export async function buildLensFactsBlock(domain: string): Promise<string> {
   }
 
   const lines = [
-    'ACCOUNT FACTS — Analytics, read live from the Analytics surface just now. ' +
+    `ACCOUNT FACTS — ${lensLabel}, read live from the ${lensLabel} surface just now. ` +
       'These are the account\'s real values; they override any examples, placeholders, ' +
       'or numbers mentioned earlier in this conversation:',
     ...result.facts.map((f) => `- ${f.label}: ${f.value} (source: ${f.source})`),
@@ -267,6 +352,6 @@ export async function buildLensFactsBlock(domain: string): Promise<string> {
         'If asked about those, say the surface doesn\'t give you that right now.',
     );
   }
-  lines.push(DECLINE_RULE);
+  lines.push(result.rule || DECLINE_RULE);
   return lines.join('\n');
 }

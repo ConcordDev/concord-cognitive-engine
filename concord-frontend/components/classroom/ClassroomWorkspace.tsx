@@ -22,6 +22,7 @@ import {
   ListChecks, FileQuestion, Plus, Trash2, Check, Loader2, AlertTriangle,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { quizAttemptFromSubmit } from '@/components/classroom/quiz-attempt';
 import { ChartKit, TimelineView } from '@/components/viz';
 
 type TabId = 'stream' | 'assignments' | 'gradebook' | 'materials' | 'todo' | 'quizzes';
@@ -133,7 +134,9 @@ export function ClassroomWorkspace({ cohortId }: { cohortId: number | null }) {
       {tab === 'stream' && <StreamTab cohortId={cohortId} flash={flash} />}
       {tab === 'assignments' && <AssignmentsTab cohortId={cohortId} flash={flash} />}
       {tab === 'gradebook' && <GradebookTab cohortId={cohortId} flash={flash} />}
-      {tab === 'quizzes' && <QuizzesTab cohortId={cohortId} flash={flash} />}
+      <div className={tab === 'quizzes' ? undefined : 'hidden'} hidden={tab !== 'quizzes'}>
+        <QuizzesTab cohortId={cohortId} flash={flash} />
+      </div>
       {tab === 'materials' && <MaterialsTab cohortId={cohortId} flash={flash} />}
       {tab === 'todo' && <TodoTab cohortId={cohortId} />}
     </div>
@@ -679,13 +682,16 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
 
   const submitQuiz = async () => {
     if (!taking) return;
-    const r = await run<QuizAttempt>('quiz-submit', { quizId: taking.id, answers });
-    if (r) {
-      setResult(r);
-      flash('ok', `Scored ${r.score}/${r.totalPoints} (${r.percent}%)`);
+    const r = await run<unknown>('quiz-submit', { quizId: taking.id, answers });
+    const attempt = quizAttemptFromSubmit(r);
+    if (attempt) {
+      setResult(attempt as QuizAttempt);
+      flash('ok', `Scored ${attempt.score}/${attempt.totalPoints} (${attempt.percent}%)`);
       const ar = await run<{ count: number; averagePercent: number | null }>('quiz-attempts', { quizId: taking.id });
       setAttempts(ar);
       void refresh();
+    } else if (r) {
+      flash('ok', 'The attempt was saved. The score did not come back.');
     } else flash('err', 'Quiz submit failed');
   };
 
@@ -755,7 +761,7 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
             <div>
               <div className="text-sm font-semibold text-zinc-100">{q.title}</div>
               <div className="text-[10px] text-zinc-400 mt-0.5">
-                {q.questionCount ?? q.questions.length} questions · {q.totalPoints} pts · {q.attemptCount ?? 0} attempts
+                {q.questionCount ?? q.questions?.length ?? 0} questions · {q.totalPoints} pts · {q.attemptCount ?? 0} attempts
               </div>
             </div>
             <button onClick={() => take(q)} className={btnCls}>Take</button>
@@ -776,7 +782,7 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
                     onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })} />
                 ) : (
                   <div className="flex flex-col gap-0.5">
-                    {q.options.map((opt) => (
+                    {(q.options ?? []).map((opt) => (
                       <label key={opt} className="flex items-center gap-1.5 text-xs text-zinc-300 cursor-pointer">
                         <input type="radio" name={q.id} checked={answers[q.id] === opt}
                           onChange={() => setAnswers({ ...answers, [q.id]: opt })} />
@@ -805,7 +811,7 @@ function QuizzesTab({ cohortId, flash }: TabProps) {
                 </div>
               )}
               <ul className="mt-1.5 space-y-1">
-                {result.breakdown.map((b) => (
+                {(result.breakdown ?? []).map((b) => (
                   <li key={b.questionId} className="text-[11px] flex justify-between gap-2 bg-zinc-950/60 rounded p-1.5">
                     <span className="text-zinc-300">{b.prompt}</span>
                     <span className={b.correct ? 'text-emerald-400' : 'text-rose-400'}>

@@ -121,7 +121,7 @@ export function HrBenefitsPanel() {
           <ul className="flex flex-wrap gap-1.5 mt-2">
             {plans.map((p) => (
               <li key={p.id} className="text-[11px] px-2 py-1 rounded-lg border border-zinc-700 text-zinc-300">
-                {p.name} <span className="text-zinc-400">· {p.category} · {usd(p.monthlyCost)}/mo · {p.employerContribution}% employer</span>
+                {p.name} <span className="text-zinc-400">· {p.category}{p.provider ? ` · ${p.provider}` : ''} · {usd(p.monthlyCost)}/mo · {p.employerContribution}% employer</span>
               </li>
             ))}
           </ul>

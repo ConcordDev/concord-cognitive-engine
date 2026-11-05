@@ -4,13 +4,17 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Activity, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { ConfirmDeleteButton, useDeleteSafety } from './DeleteSafety';
+import { requestDelete } from './delete-safety-store';
+import { notifyManufacturingMutated } from './mfg-events';
 
 export interface MachineOEE {
   id: string;
   name: string;
   line?: string;
   availability: number; // 0-100
-  performance: number;
+  /** Null until derivable — performance needs two readings spanning run time. */
+  performance: number | null;
   /** Null until a real quality signal exists. IoT readings do not carry one. */
   quality: number | null;
   /** Null while quality is unknown. Availability × performance is not reported as OEE. */
@@ -92,6 +96,7 @@ export function OEEDashboard() {
       const result = await load();
       setMachines(result.machines);
       setNotes(result.notes);
+      notifyManufacturingMutated();
     } catch (e) {
       setError(lensError(e, 'Could not register machine.'));
     } finally {
@@ -99,17 +104,35 @@ export function OEEDashboard() {
     }
   }
 
-  const avgOee = mean(machines.map((m) => m.oee));
-  const avgAvail = mean(machines.map((m) => m.availability));
-  const avgPerf = mean(machines.map((m) => m.performance));
-  const avgQual = mean(machines.map((m) => m.quality));
+  const { pendingKeys } = useDeleteSafety();
+  const visibleMachines = machines.filter((m) => !pendingKeys.includes(`machine:${m.id}`));
+
+  function deleteMachine(m: MachineOEE) {
+    requestDelete({
+      key: `machine:${m.id}`,
+      label: m.name,
+      commit: async () => {
+        const res = await api.post('/api/lens/run', { domain: 'manufacturing', action: 'machine-delete', input: { machineId: m.id } });
+        if (res.data?.ok === false) throw new Error(res.data.error || 'Could not delete machine.');
+        const result = await load();
+        setMachines(result.machines);
+        setNotes(result.notes);
+        notifyManufacturingMutated();
+      },
+    });
+  }
+
+  const avgOee = mean(visibleMachines.map((m) => m.oee));
+  const avgAvail = mean(visibleMachines.map((m) => m.availability));
+  const avgPerf = mean(visibleMachines.map((m) => m.performance));
+  const avgQual = mean(visibleMachines.map((m) => m.quality));
 
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Activity className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">OEE dashboard</span>
-        <span className="ml-auto text-[10px] text-gray-400">{machines.length} machines · world-class &gt;85%</span>
+        <span className="ml-auto text-[10px] text-gray-400">{visibleMachines.length} machines · world-class &gt;85%</span>
       </header>
       <form onSubmit={registerMachine} className="px-3 py-2 border-b border-white/5 flex flex-wrap items-end gap-2">
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
@@ -143,7 +166,7 @@ export function OEEDashboard() {
             <Stat label="Performance" value={pct(avgPerf)} />
             <Stat label="Quality" value={pct(avgQual)} />
           </div>
-          {machines.length === 0 ? (
+          {visibleMachines.length === 0 ? (
             <p className="px-4 pb-4 text-xs text-gray-400">
               No machines registered.
               {notes && <span className="block mt-1 text-[10px] text-gray-500">{notes}</span>}
@@ -158,10 +181,11 @@ export function OEEDashboard() {
                   <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-400">Perf %</th>
                   <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-400">Qual %</th>
                   <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-400">OEE</th>
+                  <th className="px-3 py-1.5"><span className="sr-only">Delete</span></th>
                 </tr>
               </thead>
               <tbody>
-                {machines.map(m => (
+                {visibleMachines.map(m => (
                   <tr key={m.id} className="border-b border-white/5 hover:bg-white/[0.03]">
                     <td className="px-3 py-1.5 text-white">
                       {m.name}
@@ -176,11 +200,20 @@ export function OEEDashboard() {
                       )}>{m.status}</span>
                     </td>
                     <td className="px-3 py-1.5 text-right font-mono tabular-nums">{m.availability}%</td>
-                    <td className="px-3 py-1.5 text-right font-mono tabular-nums">{m.performance}%</td>
+                    <td className="px-3 py-1.5 text-right font-mono tabular-nums">{pct(m.performance)}</td>
                     <td className="px-3 py-1.5 text-right font-mono tabular-nums">{pct(m.quality)}</td>
                     <td className={cn('px-3 py-1.5 text-right font-mono tabular-nums font-bold',
                       m.oee == null ? 'text-gray-500' : m.oee >= 85 ? 'text-green-300' : m.oee >= 65 ? 'text-cyan-300' : m.oee >= 50 ? 'text-yellow-300' : 'text-red-300'
                     )}>{pct(m.oee)}</td>
+                    <td className="px-3 py-1.5 text-right">
+                      <ConfirmDeleteButton
+                        itemLabel={m.name}
+                        deleteTitle={`Delete machine ${m.name}`}
+                        consequence="Its logged readings go with it."
+                        onConfirm={() => deleteMachine(m)}
+                        className="text-gray-500 hover:text-rose-300"
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>

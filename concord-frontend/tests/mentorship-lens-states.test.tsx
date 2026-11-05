@@ -171,7 +171,7 @@ describe('mentorship lens — header KPI states', () => {
       mentors: 5, activeMatches: 2, matchAcceptanceRate: 80,
       sessions: { total: 10, completed: 7 }, sessionCompletionRate: 70,
       goals: { total: 4, done: 2 }, goalCompletionRate: 50,
-      avgSessionRating: 4.2, avgMentorRating: 4.5,
+      avgSessionRating: 4.2, avgMentorRating: 4.5, ratedMentorCount: 2,
     };
     render(<MentorshipLens />);
     // Scope to the KPI list (role="list" from StatTileGrid) — single-digit
@@ -182,7 +182,8 @@ describe('mentorship lens — header KPI states', () => {
     expect(kpis.getByText(/80% acceptance/)).toBeInTheDocument();
     // Caption must key off the same field as the value (avgMentorRating), not
     // avgSessionRating — otherwise ★5 can sit above "no ratings yet".
-    expect(kpis.getByText(/4\.5\/5 mentor avg/)).toBeInTheDocument();
+    // The caption names the set the mean is over (rated mentors), not a bare "/5 mentor avg".
+    expect(kpis.getByText(/mean of 2 listed mentors with a review/)).toBeInTheDocument();
     expect(kpis.queryByText(/no ratings yet/i)).not.toBeInTheDocument();
   });
 
@@ -192,11 +193,11 @@ describe('mentorship lens — header KPI states', () => {
       mentors: 1, activeMatches: 0, matchAcceptanceRate: 0,
       sessions: { total: 0, completed: 0 }, sessionCompletionRate: 0,
       goals: { total: 0, done: 0 }, goalCompletionRate: 0,
-      avgSessionRating: 0, avgMentorRating: 5,
+      avgSessionRating: 0, avgMentorRating: 5, ratedMentorCount: 1,
     };
     render(<MentorshipLens />);
     const kpis = within(screen.getByRole('list'));
-    expect(kpis.getByText(/5\/5 mentor avg/)).toBeInTheDocument();
+    expect(kpis.getByText(/mean of 1 listed mentor with a review/)).toBeInTheDocument();
     expect(kpis.queryByText(/no ratings yet/i)).not.toBeInTheDocument();
   });
 });

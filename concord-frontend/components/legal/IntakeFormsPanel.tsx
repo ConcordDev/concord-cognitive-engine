@@ -67,6 +67,8 @@ const blankField = (): DraftField => ({ key: '', label: '', type: 'text', requir
 
 export function IntakeFormsPanel() {
   const [forms, setForms] = useState<IntakeForm[]>([]);
+  const [confirmingDeleteFormId, setConfirmingDeleteFormId] = useState<string | null>(null);
+  const [confirmingConvertId, setConfirmingConvertId] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<IntakeSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -128,9 +130,10 @@ export function IntakeFormsPanel() {
   }
 
   async function deleteForm(id: string) {
-    if (!confirm('Delete this intake form?')) return;
     try {
-      await lensRun({ domain: 'legal', action: 'intake-forms-delete', input: { id } });
+      const r = await lensRun({ domain: 'legal', action: 'intake-forms-delete', input: { id } });
+      if (r.data?.ok === false) { setError(r.data.error || 'Could not delete the form.'); return; }
+      setConfirmingDeleteFormId(null);
       if (selectedForm?.id === id) setSelectedForm(null);
       await refresh();
     } catch (e) {
@@ -157,10 +160,10 @@ export function IntakeFormsPanel() {
   }
 
   async function convert(sub: IntakeSubmission) {
-    if (!confirm(`Convert "${sub.contactName}" into a client contact + open matter?`)) return;
     try {
       const r = await lensRun({ domain: 'legal', action: 'intake-convert', input: { id: sub.id } });
       if (r.data?.ok === false) { setError(r.data.error || 'Conversion failed.'); return; }
+      setConfirmingConvertId(null);
       await refresh();
     } catch (e) {
       console.error('[IntakeForms] convert failed', e);
@@ -301,12 +304,20 @@ export function IntakeFormsPanel() {
                     </div>
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
-                  <button aria-label="Delete"
-                    onClick={(e) => { e.stopPropagation(); deleteForm(f.id); }}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {confirmingDeleteFormId === f.id ? (
+                    <span className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <span className="text-[10px] text-rose-200">Delete “{f.name}”?</span>
+                      <button onClick={() => deleteForm(f.id)} className="px-1.5 py-0.5 rounded bg-rose-500/25 hover:bg-rose-500/40 text-rose-100 text-[10px]">Delete</button>
+                      <button onClick={() => setConfirmingDeleteFormId(null)} className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-gray-200 text-[10px]">Cancel</button>
+                    </span>
+                  ) : (
+                    <button aria-label="Delete"
+                      onClick={(e) => { e.stopPropagation(); setConfirmingDeleteFormId(f.id); }}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-rose-500/20 text-rose-300"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -408,14 +419,20 @@ export function IntakeFormsPanel() {
                       {sub.contactEmail && <span> · {sub.contactEmail}</span>}
                     </div>
                   </div>
-                  {sub.status === 'new' ? (
+                  {sub.status === 'new' ? (confirmingConvertId === sub.id ? (
+                    <span className="flex items-center gap-1 shrink-0">
+                      <span className="text-[10px] text-amber-200">Convert “{sub.contactName}” into a client contact + open matter?</span>
+                      <button onClick={() => convert(sub)} className="px-1.5 py-0.5 rounded bg-amber-500 text-black text-[10px] font-semibold">Convert</button>
+                      <button onClick={() => setConfirmingConvertId(null)} className="px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-gray-200 text-[10px]">Cancel</button>
+                    </span>
+                  ) : (
                     <button
-                      onClick={() => convert(sub)}
+                      onClick={() => setConfirmingConvertId(sub.id)}
                       className="px-2.5 py-1 text-xs rounded bg-amber-500 text-black font-semibold hover:bg-amber-400 inline-flex items-center gap-1"
                     >
                       <UserPlus className="w-3 h-3" />Convert
                     </button>
-                  ) : (
+                  )) : (
                     <span className="text-[10px] text-emerald-300">Matter opened</span>
                   )}
                 </li>

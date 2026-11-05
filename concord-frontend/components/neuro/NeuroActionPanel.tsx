@@ -118,7 +118,7 @@ export function NeuroActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Neuro — ${signalKind} (${channels.length}ch)`, tags: ['neuro', 'eeg', signalKind, 'synthetic'], source: 'neuro:bench:mint', meta: { visibility: 'private', consent: { allowCitations: false }, synthetic: true, neuro: { kind: signalKind, freq: freqResult, conn: connResult, erp: erpResult, synthetic: true } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('neuro.mintedDtuId', id, { label: `bench ${id.slice(0, 8)}` }); ok(`Neuro DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('neuro.mintedDtuId', id, { label: `bench ${id.slice(0, 8)}` }); ok(`Neuro DTU ${id} · synthetic: true`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
@@ -166,7 +166,7 @@ export function NeuroActionPanel() {
     { id: 'conn' as ActionId, label: 'Connectivity', desc: 'cross-channel corr', icon: Network, accent: '#a855f7', handler: actConn },
     { id: 'erp' as ActionId, label: 'ERP', desc: 'event-related potential', icon: Zap, accent: '#f59e0b', handler: actErp },
     { id: 'sim' as ActionId, label: 'Sim signal', desc: 'generate channels', icon: Brain, accent: '#06b6d4', handler: actSim },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private EEG DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private EEG DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send EEG brief', icon: Send, accent: '#ec4899', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public dataset', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Interpret', desc: 'Agent: cognitive state', icon: Wand2, accent: '#eab308', handler: actAgent },

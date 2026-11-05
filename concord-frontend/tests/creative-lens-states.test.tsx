@@ -74,6 +74,25 @@ describe('creative producer bench — wiring', () => {
     const input = (payload as { input: Record<string, unknown> }).input;
     expect(Object.keys(input)).toEqual(['artifact']);
   });
+
+  it('F5: mint stamps domain/lens so the DTU scores the primaryDomain boost in context.query (findable in the Library)', async () => {
+    const lensRunMod = await import('@/lib/api/client');
+    const lensRunMock = lensRunMod.lensRun as unknown as ReturnType<typeof vi.fn>;
+    lensRunMock.mockReset();
+    lensRunMock.mockResolvedValue({ data: { result: { id: 'dtu-abc123' } } });
+    const { getByText } = render(<CreativeActionPanel />);
+    await act(async () => { fireEvent.click(getByText('Mint')); });
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalled());
+    const call = lensRunMock.mock.calls.find((c) => (c[0] as { name?: string })?.name === 'create');
+    expect(call).toBeTruthy();
+    const input = (call![0] as { input: Record<string, unknown> }).input;
+    // Without this stamp the minted DTU's `domain` column is null and it loses
+    // the primaryDomain score boost in context.query, so it falls out of the
+    // top-N results in a system with many other domains' DTUs — unfindable.
+    expect(input.domain).toBe('creative');
+    expect(input.lens).toBe('creative');
+    expect((input.meta as Record<string, unknown>)?.lens).toBe('creative');
+  });
 });
 
 describe('creative producer bench — four UX states', () => {

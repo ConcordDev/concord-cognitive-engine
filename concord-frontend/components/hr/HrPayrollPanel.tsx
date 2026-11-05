@@ -13,17 +13,25 @@ import { cn } from '@/lib/utils';
 
 interface Stub {
   employeeId: string; employeeName: string; grossPay: number;
-  federalTax: number; stateTax: number; socialSecurity: number;
+  // stateTax is null when the run supplied no state tax rate — the server
+  // records it as EXCLUDED (see the run's assumptions), never as zero.
+  federalTax: number; stateTax: number | null; socialSecurity: number;
   medicare: number; totalDeductions: number; netPay: number;
 }
 interface PayRun {
   id: string; periodLabel: string; payDate: string; frequency: string;
   headcount: number; stubs: Stub[]; totalGross: number;
   totalDeductions: number; totalNet: number; status: string; createdAt: string;
+  assumptions?: { stateTaxRate?: { value: number | null; note?: string } };
+  missingInputs?: string[];
 }
 
 const FREQUENCIES = ['weekly', 'biweekly', 'semimonthly', 'monthly'];
-const usd = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// Null-safe (HR F3): a null figure means "not part of this run" and renders
+// as a dash — calling toLocaleString on it crashed the pay-run detail.
+const usd = (n: number | null | undefined) => (n == null || !Number.isFinite(n)
+  ? '—'
+  : `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
 export function HrPayrollPanel() {
   const [runs, setRuns] = useState<PayRun[]>([]);
@@ -81,6 +89,11 @@ export function HrPayrollPanel() {
             <Metric label="Deductions" value={usd(openRun.totalDeductions)} tone="rose" />
             <Metric label="Net" value={usd(openRun.totalNet)} tone="emerald" />
           </div>
+          {openRun.assumptions?.stateTaxRate?.value == null && (
+            <p className="mt-2 text-[11px] text-amber-300/90">
+              State tax excluded — no state tax rate was supplied for this run, so the State column shows — rather than a computed figure.
+            </p>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-[11px]">

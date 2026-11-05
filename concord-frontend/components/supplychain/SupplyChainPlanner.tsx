@@ -82,6 +82,7 @@ interface ExceptionAlert {
 }
 interface ExceptionResult {
   alerts: ExceptionAlert[]; critical: number; warning: number; byKind: Record<string, number>;
+  ropModel?: string;
 }
 
 interface WorkOrder {
@@ -129,6 +130,22 @@ function Stat({ label, value, tone }: { label: string; value: string | number; t
     <div className="rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5">
       <div className={LABEL}>{label}</div>
       <div className={cn('text-lg font-bold', tone || 'text-white')}>{value}</div>
+    </div>
+  );
+}
+
+/* Example lines for a bulk editor, shown OUTSIDE the input so example
+   content can never be mistaken for the user's own data (the ghost-data
+   defect class). Loading one is a deliberate action that fills the editor
+   with real, editable lines. */
+function ExampleBlock({ lines, onLoad }: { lines: string; onLoad: () => void }) {
+  return (
+    <div className="rounded border border-dashed border-zinc-800 bg-zinc-900/20 px-2 py-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-semibold">Example — not your data</span>
+        <button type="button" onClick={onLoad} className="text-[10px] font-semibold text-teal-300 hover:text-teal-200">Load example</button>
+      </div>
+      <pre className="mt-1 whitespace-pre-wrap font-mono text-[10px] text-zinc-500">{lines}</pre>
     </div>
   );
 }
@@ -220,7 +237,7 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
               {s.origin || '?'} <ArrowRight className="inline w-2.5 h-2.5" /> {s.destination || '?'}
               {s.etaDriftDays !== 0 && (
                 <span className={cn('ml-2 font-mono', s.etaDriftDays > 0 ? 'text-rose-300' : 'text-emerald-300')}>
-                  {s.etaDriftDays > 0 ? `+${s.etaDriftDays}d late` : `${s.etaDriftDays}d early`}
+                  {s.etaDriftDays > 0 ? `+${s.etaDriftDays}d late` : `${Math.abs(s.etaDriftDays)}d early`}
                 </span>
               )}
             </div>
@@ -257,10 +274,23 @@ function NetworkPanel({ notify }: { notify: (f: Feedback) => void }) {
   const [busy, setBusy] = useState(false);
   const [nodesText, setNodesText] = useState('');
   const [edgesText, setEdgesText] = useState('');
+  const [loadedSaved, setLoadedSaved] = useState(false);
 
   const load = useCallback(async () => {
-    try { setGraph(await run<NetworkGraph>('networkGraph')); }
-    catch (e) { notify({ kind: 'err', text: (e as Error).message }); }
+    try {
+      const [g, savedNet] = await Promise.all([
+        run<NetworkGraph>('networkGraph'),
+        run<{ nodes: Array<{ id: string; label: string; kind: string; location: string; capacity: number }>; edges: Array<{ from: string; to: string; leadTimeDays: number; volume: number }>; saved: boolean }>('networkGet'),
+      ]);
+      setGraph(g);
+      // The saved network reloads into the editors (networkGet returns it
+      // raw) so it can be reviewed and edited down, not just re-typed.
+      if (savedNet?.saved) {
+        setNodesText(savedNet.nodes.map((n) => `${n.id} | ${n.label} | ${n.kind} | ${n.location} | ${n.capacity}`).join('\n'));
+        setEdgesText(savedNet.edges.map((e) => `${e.from} > ${e.to} | ${e.leadTimeDays} | ${e.volume}`).join('\n'));
+        setLoadedSaved(true);
+      }
+    } catch (e) { notify({ kind: 'err', text: (e as Error).message }); }
   }, [notify]);
 
   useEffect(() => { load(); }, [load]);
@@ -291,14 +321,20 @@ function NetworkPanel({ notify }: { notify: (f: Feedback) => void }) {
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-2">
         <div>
           <div className={LABEL}>Nodes — one per line: <span className="text-zinc-600 normal-case">id | label | kind | location | capacity</span></div>
-          <textarea className={cn(INPUT, 'font-mono')} rows={4} value={nodesText} onChange={(e) => setNodesText(e.target.value)}
-            placeholder={'s1 | Shenzhen Mill | supplier | Shenzhen | 5000\nw1 | LA DC | warehouse | Los Angeles | 8000\nc1 | West Retail | customer | San Francisco | 0'} />
+          <textarea className={cn(INPUT, 'font-mono')} rows={4} value={nodesText} onChange={(e) => setNodesText(e.target.value)} />
         </div>
         <div>
           <div className={LABEL}>Edges — one per line: <span className="text-zinc-600 normal-case">fromId &gt; toId | leadTimeDays | volume</span></div>
-          <textarea className={cn(INPUT, 'font-mono')} rows={3} value={edgesText} onChange={(e) => setEdgesText(e.target.value)}
-            placeholder={'s1 > w1 | 21 | 4000\nw1 > c1 | 3 | 3500'} />
+          <textarea className={cn(INPUT, 'font-mono')} rows={3} value={edgesText} onChange={(e) => setEdgesText(e.target.value)} />
         </div>
+        {loadedSaved && <p className="text-[10px] text-zinc-500">Showing your saved network — edit the lines and Save to replace it.</p>}
+        <ExampleBlock
+          lines={'s1 | Shenzhen Mill | supplier | Shenzhen | 5000\nw1 | LA DC | warehouse | Los Angeles | 8000\nc1 | West Retail | customer | San Francisco | 0\n\ns1 > w1 | 21 | 4000\nw1 > c1 | 3 | 3500'}
+          onLoad={() => {
+            setNodesText('s1 | Shenzhen Mill | supplier | Shenzhen | 5000\nw1 | LA DC | warehouse | Los Angeles | 8000\nc1 | West Retail | customer | San Francisco | 0');
+            setEdgesText('s1 > w1 | 21 | 4000\nw1 > c1 | 3 | 3500');
+          }}
+        />
         <button onClick={save} disabled={busy} className={cn(BTN, 'bg-indigo-600 text-white hover:bg-indigo-500')}>
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Network className="w-3.5 h-3.5" />} Save network
         </button>
@@ -360,8 +396,11 @@ function EchelonPanel({ notify }: { notify: (f: Feedback) => void }) {
     <div className="space-y-3">
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-2">
         <div className={LABEL}>Echelons — one per line: <span className="text-zinc-600 normal-case">location | tier | dailyDemand | leadTimeDays | currentStock | demandStdDev</span></div>
-        <textarea className={cn(INPUT, 'font-mono')} rows={4} value={text} onChange={(e) => setText(e.target.value)}
-          placeholder={'LA DC | regional | 120 | 7 | 900 | 40\nDallas DC | regional | 80 | 5 | 250 | 25\nCentral Hub | central | 220 | 14 | 4000 | 90'} />
+        <textarea className={cn(INPUT, 'font-mono')} rows={4} value={text} onChange={(e) => setText(e.target.value)} />
+        <ExampleBlock
+          lines={'LA DC | regional | 120 | 7 | 900 | 40\nDallas DC | regional | 80 | 5 | 250 | 25\nCentral Hub | central | 220 | 14 | 4000 | 90'}
+          onLoad={() => setText('LA DC | regional | 120 | 7 | 900 | 40\nDallas DC | regional | 80 | 5 | 250 | 25\nCentral Hub | central | 220 | 14 | 4000 | 90')}
+        />
         <div className="flex items-center gap-2">
           <div className="w-40"><div className={LABEL}>Service-level Z (1.65 ≈ 95%)</div><input className={INPUT} type="number" step="0.01" value={zText} onChange={(e) => setZText(e.target.value)} /></div>
           <button onClick={optimize} disabled={busy} className={cn(BTN, 'bg-emerald-600 text-white hover:bg-emerald-500 mt-3')}>
@@ -537,8 +576,8 @@ function ForecastPanel({ notify }: { notify: (f: Feedback) => void }) {
     <div className="space-y-3">
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-2">
         <div className={LABEL}>Demand history — space/comma-separated values (oldest first)</div>
-        <textarea className={cn(INPUT, 'font-mono')} rows={2} value={text} onChange={(e) => setText(e.target.value)}
-          placeholder="120 95 140 180 130 100 155 200" />
+        <textarea className={cn(INPUT, 'font-mono')} rows={2} value={text} onChange={(e) => setText(e.target.value)} />
+        <ExampleBlock lines="120 95 140 180 130 100 155 200" onLoad={() => setText('120 95 140 180 130 100 155 200')} />
         <div className="flex items-center gap-2">
           <div className="w-32"><div className={LABEL}>Season length</div><input className={INPUT} type="number" value={season} onChange={(e) => setSeason(e.target.value)} /></div>
           <div className="w-32"><div className={LABEL}>Horizon</div><input className={INPUT} type="number" value={horizon} onChange={(e) => setHorizon(e.target.value)} /></div>
@@ -585,7 +624,10 @@ function ExceptionsPanel({ notify }: { notify: (f: Feedback) => void }) {
 
   // inventory line: name | currentStock | dailyDemand | leadTimeDays | reorderPoint
   // supplier line:  name | qualityScore | onTimePercent
-  const scan = useCallback(async () => {
+  // The mount scan reads live STATE only (no persist — it must not
+  // overwrite a real scan). The Scan button persists, so its inventory /
+  // supplier alerts feed the control tower via exceptionLatest.
+  const scan = useCallback(async (persist: boolean) => {
     const inventory = invText.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
       const [name, cur, dd, lt, rop] = l.split('|').map((x) => x.trim());
       return { name, currentStock: Number(cur) || 0, dailyDemand: Number(dd) || 0, leadTimeDays: Number(lt) || 7, reorderPoint: rop ? Number(rop) : undefined };
@@ -596,28 +638,29 @@ function ExceptionsPanel({ notify }: { notify: (f: Feedback) => void }) {
     });
     setBusy(true);
     try {
-      setResult(await run<ExceptionResult>('exceptionScan', { inventory, suppliers }));
+      setResult(await run<ExceptionResult>('exceptionScan', { inventory, suppliers, persist }));
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
   }, [invText, supText, notify]);
 
-  useEffect(() => { scan(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { scan(false); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-3">
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
           <div className={LABEL}>Inventory — <span className="text-zinc-600 normal-case">name | currentStock | dailyDemand | leadTimeDays | reorderPoint</span></div>
-          <textarea className={cn(INPUT, 'font-mono')} rows={3} value={invText} onChange={(e) => setInvText(e.target.value)}
-            placeholder={'Widget A | 0 | 12 | 7 | 90\nWidget B | 40 | 6 | 5 | 60'} />
+          <textarea className={cn(INPUT, 'font-mono')} rows={3} value={invText} onChange={(e) => setInvText(e.target.value)} />
+          <ExampleBlock lines={'Widget A | 0 | 12 | 7 | 90\nWidget B | 40 | 6 | 5'} onLoad={() => setInvText('Widget A | 0 | 12 | 7 | 90\nWidget B | 40 | 6 | 5')} />
         </div>
         <div>
           <div className={LABEL}>Suppliers — <span className="text-zinc-600 normal-case">name | qualityScore | onTimePercent</span></div>
-          <textarea className={cn(INPUT, 'font-mono')} rows={3} value={supText} onChange={(e) => setSupText(e.target.value)}
-            placeholder={'Acme Corp | 45 | 55\nGlobex | 80 | 92'} />
+          <textarea className={cn(INPUT, 'font-mono')} rows={3} value={supText} onChange={(e) => setSupText(e.target.value)} />
+          <ExampleBlock lines={'Acme Corp | 45 | 55\nGlobex | 80 | 92'} onLoad={() => setSupText('Acme Corp | 45 | 55\nGlobex | 80 | 92')} />
         </div>
-        <button onClick={scan} disabled={busy} className={cn(BTN, 'bg-rose-600 text-white hover:bg-rose-500 md:col-span-2 justify-center')}>
+        <button onClick={() => scan(true)} disabled={busy} className={cn(BTN, 'bg-rose-600 text-white hover:bg-rose-500 md:col-span-2 justify-center')}>
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />} Scan exceptions (incl. live shipments &amp; POs)
         </button>
+        <p className="text-[10px] text-zinc-500 md:col-span-2">Scan results also update the Overview control tower.</p>
       </div>
 
       {result && (
@@ -626,6 +669,7 @@ function ExceptionsPanel({ notify }: { notify: (f: Feedback) => void }) {
             <Stat label="Critical" value={result.critical} tone="text-rose-300" />
             <Stat label="Warnings" value={result.warning} tone="text-amber-300" />
           </div>
+          {result.ropModel && <p className="text-[10px] text-zinc-500">{result.ropModel}</p>}
           <div className="space-y-1.5">
             {result.alerts.map((a) => (
               <div key={a.id} className={cn('rounded-md border px-2.5 py-1.5',
@@ -755,6 +799,8 @@ function SpendPanel({ notify }: { notify: (f: Feedback) => void }) {
   const [text, setText] = useState('');
 
   // order line: supplier | category | quantity | unitCost
+  // No mount auto-run: an untouched editor must not silently produce
+  // work-order-only analytics beside its example lines.
   const analyze = useCallback(async () => {
     const orders = text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
       const [supplier, category, qty, unit] = l.split('|').map((x) => x.trim());
@@ -766,14 +812,15 @@ function SpendPanel({ notify }: { notify: (f: Feedback) => void }) {
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
   }, [text, notify]);
 
-  useEffect(() => { analyze(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   return (
     <div className="space-y-3">
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-2">
         <div className={LABEL}>Orders — one per line: <span className="text-zinc-600 normal-case">supplier | category | quantity | unitCost</span> (work orders are auto-included)</div>
-        <textarea className={cn(INPUT, 'font-mono')} rows={4} value={text} onChange={(e) => setText(e.target.value)}
-          placeholder={'Acme Corp | raw materials | 500 | 4.20\nGlobex | packaging | 1200 | 0.85\nAcme Corp | raw materials | 300 | 4.50'} />
+        <textarea className={cn(INPUT, 'font-mono')} rows={4} value={text} onChange={(e) => setText(e.target.value)} />
+        <ExampleBlock
+          lines={'Acme Corp | raw materials | 500 | 4.20\nGlobex | packaging | 1200 | 0.85\nAcme Corp | raw materials | 300 | 4.50'}
+          onLoad={() => setText('Acme Corp | raw materials | 500 | 4.20\nGlobex | packaging | 1200 | 0.85\nAcme Corp | raw materials | 300 | 4.50')}
+        />
         <button onClick={analyze} disabled={busy} className={cn(BTN, 'bg-amber-600 text-white hover:bg-amber-500')}>
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <DollarSign className="w-3.5 h-3.5" />} Analyze spend
         </button>

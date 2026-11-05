@@ -117,32 +117,36 @@ describe("parenting — artifact calc contracts (exact computed values)", () => 
     assert.equal(r.result.newSuggestions, 11); // one template time collides
   });
 
-  it("immunizationTracker: applicable schedule at 24mo, matched complete, unmatched overdue, compliance exact", async () => {
-    // At 24mo the applicable set (byMonths-6 <= 24) is: Hepatitis B(6), RV(8),
-    // Hib(15), PCV13(15), Hepatitis A(24), Influenza(6). DTaP/IPV/MMR/Varicella
-    // (byMonths 72) are NOT yet applicable.
+  it("immunizationTracker: full checklist at 24mo, matched complete, unmatched overdue, compliance exact", async () => {
+    // Dose 1 is due well before the series ends, so DTaP, IPV, MMR, and
+    // Varicella are on the list at 24 months. Influenza is annual, not overdue.
     const r = await lensRun("parenting", "immunizationTracker", {
       data: { childAge: "2y", vaccinations: "Hepatitis B, Hib, Hepatitis A" },
     });
     assert.equal(r.ok, true);
     assert.equal(r.result.ageMonths, 24);
     const names = r.result.immunizations.map((v) => v.vaccine);
-    assert.ok(names.includes("Hepatitis B") && names.includes("Hib") && names.includes("Hepatitis A"));
-    assert.ok(!names.includes("MMR")); // byMonths 72 → not applicable yet at 24mo
+    assert.equal(names.length, 10);
+    assert.ok(names.includes("DTaP") && names.includes("IPV (Polio)") && names.includes("MMR") && names.includes("Varicella"));
     const hepB = r.result.immunizations.find((v) => v.vaccine === "Hepatitis B");
     assert.equal(hepB.received, true);
     assert.equal(hepB.status, "completed");
-    // PCV13 was applicable (byMonths 15 < 24) but not in the supplied list → overdue.
+    const mmr = r.result.immunizations.find((v) => v.vaccine === "MMR");
+    assert.equal(mmr.received, false);
+    assert.equal(mmr.status, "overdue");
     const pcv = r.result.immunizations.find((v) => v.vaccine === "PCV13 (Pneumococcal)");
     assert.equal(pcv.received, false);
-    assert.equal(pcv.status, "overdue"); // ageMonths 24 > byMonths 15
-    assert.equal(r.result.summary.completed, 3); // HepB + Hib + HepA matched
+    assert.equal(pcv.status, "overdue");
+    const flu = r.result.immunizations.find((v) => v.vaccine === "Influenza");
+    assert.equal(flu.status, "annual");
+    assert.equal(r.result.summary.completed, 3);
+    assert.equal(r.result.summary.total, 10);
+    assert.equal(r.result.summary.overdue, r.result.immunizations.filter((v) => v.status === "overdue").length);
     assert.equal(
       r.result.summary.complianceRate,
       Math.round((r.result.summary.completed / r.result.summary.total) * 100),
     );
-    assert.ok(r.result.summary.overdue >= 1);
-    assert.ok(r.result.action.includes("overdue"));
+    assert.ok(r.result.action.startsWith(`${r.result.summary.overdue} critical`));
   });
 });
 
@@ -236,12 +240,17 @@ describe("parenting — logging round-trips (feeds, sleep, diapers, pumping)", (
   });
 
   it("sleep-log → sleep-stats: minutes today + longest stretch are exact", async () => {
-    const start = new Date().toISOString();
-    await lensRun("parenting", "sleep-log", { params: { childId, type: "nap", durationMin: 90, startAt: start } }, ctx);
-    await lensRun("parenting", "sleep-log", { params: { childId, type: "nap", durationMin: 45, startAt: start } }, ctx);
+    const end = Date.now() - 2 * 60000;
+    const start90 = new Date(end - 90 * 60000).toISOString();
+    const start45 = new Date(end - 45 * 60000).toISOString();
+    await lensRun("parenting", "sleep-log", { params: { childId, type: "nap", durationMin: 90, startAt: start90 } }, ctx);
+    await lensRun("parenting", "sleep-log", { params: { childId, type: "nap", durationMin: 45, startAt: start45 } }, ctx);
     const stats = await lensRun("parenting", "sleep-stats", { params: { childId } }, ctx);
-    assert.equal(stats.result.sleepMinToday, 135); // 90 + 45
-    assert.equal(stats.result.napsToday, 2);
+    const today = new Date().toISOString().slice(0, 10);
+    const logged = [{ startAt: start90, durationMin: 90 }, { startAt: start45, durationMin: 45 }];
+    const todayNaps = logged.filter((n) => n.startAt.slice(0, 10) === today);
+    assert.equal(stats.result.sleepMinToday, todayNaps.reduce((a, n) => a + n.durationMin, 0));
+    assert.equal(stats.result.napsToday, todayNaps.length);
     assert.equal(stats.result.longestStretchMin, 90);
   });
 
@@ -682,9 +691,9 @@ describe("parenting — sleep-schedule predictor + expert content + trends", () 
     const add = await lensRun("parenting", "child-add", { params: { name: "Trend", birthDate: birthDateMonthsAgo(6) } }, ctx);
     const childId = add.result.child.id;
     // Seed a few days of feeds/diapers/sleep within the window.
-    for (let i = 0; i < 4; i++) {
+    for (let i = 1; i <= 4; i++) {
       const day = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-      const at = `${day}T09:00:00.000Z`;
+      const at = `${day}T12:00:00.000Z`;
       await lensRun("parenting", "feed-log", { params: { childId, kind: "bottle", amountMl: 100, at } }, ctx);
       await lensRun("parenting", "diaper-log", { params: { childId, kind: "wet", at } }, ctx);
       await lensRun("parenting", "sleep-log", { params: { childId, type: "nap", durationMin: 120, startAt: at } }, ctx);

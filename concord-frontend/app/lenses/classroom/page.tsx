@@ -19,6 +19,23 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenLibrarySearch } from '@/components/classroom/OpenLibrarySearch';
 import { ClassroomWorkspace } from '@/components/classroom/ClassroomWorkspace';
+import { cohortStillListed, parseClassroomCohort } from '@/components/classroom/quiz-attempt';
+
+const COHORT_SCOPE_KEY = 'classroom-active-cohort';
+
+function readStoredCohort(): number | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try { return parseClassroomCohort(sessionStorage.getItem(COHORT_SCOPE_KEY)); }
+  catch { return null; }
+}
+
+function writeStoredCohort(id: number | null) {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    if (id == null) sessionStorage.removeItem(COHORT_SCOPE_KEY);
+    else sessionStorage.setItem(COHORT_SCOPE_KEY, String(id));
+  } catch { /* storage blocked */ }
+}
 
 interface Cohort {
   id: number;
@@ -30,7 +47,7 @@ interface Cohort {
   enroled_at?: number;
 }
 
-type CohortCard = 'create' | 'enrol' | 'submit' | 'list';
+type CohortCard = 'create' | 'enrol' | 'list';
 
 function teacherLabel(c: Cohort): string {
   const named = c.teacher_display_name?.trim();
@@ -109,7 +126,6 @@ export default function ClassroomPage() {
   const [studying, setStudying] = useState<Cohort[]>([]);
   const [createForm, setCreateForm] = useState({ name: '', rubricDtuId: '' });
   const [enrolForm, setEnrolForm] = useState({ cohortId: '', studentUserId: '' });
-  const [submitForm, setSubmitForm] = useState({ cohortId: '', dtuId: '' });
   const [status, setStatus] = useState<string | null>(null);
   // A server refusal stays on the card that caused it. Success toasts clear;
   // refusals do not, and the form fields stay so the attempt is visible.
@@ -127,9 +143,18 @@ export default function ClassroomPage() {
     const r = await macro('classroom', 'list_cohorts');
     setLoading(false);
     if (r?.ok) {
-      setTeaching(r.teaching || []);
-      setStudying(r.studying || []);
+      const teachingRows = r.teaching || [];
+      const studyingRows = r.studying || [];
+      setTeaching(teachingRows);
+      setStudying(studyingRows);
       setLoadError(null);
+      const ids = [...teachingRows, ...studyingRows].map((c) => c.id);
+      const stored = readStoredCohort();
+      setActiveCohort((cur) => {
+        const next = cohortStillListed(cur ?? stored, ids);
+        if (next !== stored) writeStoredCohort(next);
+        return next;
+      });
     } else {
       // null (swallowed fetch failure) or { ok:false } → surface, don't silently blank.
       setLoadError(r?.error || r?.reason || 'Could not reach the classroom service.');
@@ -165,17 +190,10 @@ export default function ClassroomPage() {
     else noteRefusal('enrol', r);
   };
 
-  const submit = async () => {
-    if (!submitForm.cohortId || !submitForm.dtuId) return;
-    const r = await macro('classroom', 'submit_homework', { cohortId: Number(submitForm.cohortId), dtuId: submitForm.dtuId });
-    if (r?.ok) noteOk(`✓ Submitted (#${r.submissionId})`);
-    else noteRefusal('submit', r);
-  };
-
   const archive = async (cohortId: number) => {
     const r = await macro('classroom', 'archive_cohort', { cohortId });
     if (r?.ok) {
-      if (activeCohort === cohortId) setActiveCohort(null);
+      if (activeCohort === cohortId) { setActiveCohort(null); writeStoredCohort(null); }
       noteOk('✓ Cohort archived');
       await refresh();
     } else noteRefusal('list', r);
@@ -184,7 +202,7 @@ export default function ClassroomPage() {
   const leave = async (cohortId: number) => {
     const r = await macro('classroom', 'leave_cohort', { cohortId });
     if (r?.ok) {
-      if (activeCohort === cohortId) setActiveCohort(null);
+      if (activeCohort === cohortId) { setActiveCohort(null); writeStoredCohort(null); }
       noteOk('✓ Left the cohort');
       await refresh();
     } else noteRefusal('list', r);
@@ -198,7 +216,11 @@ export default function ClassroomPage() {
     <li key={c.id} className="flex items-center gap-2">
       <button
         type="button"
-        onClick={() => setActiveCohort(activeCohort === c.id ? null : c.id)}
+        onClick={() => {
+          const next = activeCohort === c.id ? null : c.id;
+          setActiveCohort(next);
+          writeStoredCohort(next);
+        }}
         className={cn(
           'flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-[13px] transition-colors',
           activeCohort === c.id ? 'border-teal-400/40 bg-teal-400/10' : 'border-white/10 bg-white/[0.02] hover:border-white/20',
@@ -270,7 +292,7 @@ export default function ClassroomPage() {
 
         {view === 'cohorts' && (
           <div className="space-y-5">
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-2">
               <section className={cn(cardCls, 'space-y-2.5')}>
                 <h2 className="text-[13px] font-medium text-zinc-300">Create a cohort</h2>
                 <input id="classroom-cohort-name" type="text" placeholder="Cohort name" value={createForm.name}
@@ -289,16 +311,8 @@ export default function ClassroomPage() {
                 <button onClick={enrol} disabled={!enrolForm.cohortId} className={submitCls}>Enrol</button>
                 {refusal('enrol')}
               </section>
-              <section className={cn(cardCls, 'space-y-2.5')}>
-                <h2 className="text-[13px] font-medium text-zinc-300">Submit homework</h2>
-                <input type="text" placeholder="Cohort id" value={submitForm.cohortId}
-                  onChange={(e) => setSubmitForm({ ...submitForm, cohortId: e.target.value })} className={inputCls} />
-                <input type="text" placeholder="DTU id" value={submitForm.dtuId}
-                  onChange={(e) => setSubmitForm({ ...submitForm, dtuId: e.target.value })} className={inputCls} />
-                <button onClick={submit} disabled={!submitForm.cohortId || !submitForm.dtuId} className={submitCls}>Submit</button>
-                {refusal('submit')}
-              </section>
             </div>
+            <p className="text-[13px] text-zinc-500">Hand work in on an assignment in the workspace. This view does not take a homework DTU.</p>
 
             {loading && <div role="status" aria-busy="true" className="text-[13px] italic text-zinc-500">Loading classroom cohorts…</div>}
             {refusal('list')}

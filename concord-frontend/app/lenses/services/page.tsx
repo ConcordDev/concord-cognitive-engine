@@ -19,7 +19,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { ServicesDeskPanel } from '@/components/services/ServicesDeskPanel';
 import { BookingSuite } from '@/components/services/BookingSuite';
@@ -70,7 +69,7 @@ const PANELS: Record<ServicesView, ComponentType> = {
 export default function ServicesLensPage() {
   useLensNav('services');
   useLensIdentity('services');
-  const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('services');
+  const { latestData: realtimeData } = useRealtimeLens('services');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<ServicesView>('desk');
   const navViews = omitCommunityRedditViews(VIEWS, ['feed']);
@@ -112,7 +111,6 @@ export default function ServicesLensPage() {
         onTab={(id) => setActive(id as ServicesView)}
         actions={
           <>
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="services" data={realtimeData || {}} compact />
           </>
         }
