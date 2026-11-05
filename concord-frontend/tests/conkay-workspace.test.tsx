@@ -269,9 +269,15 @@ describe('ConKay workspace — agent and reopen', () => {
     expect(screen.getByText('dtu_old')).toBeTruthy();
     expect(within(convo()).getByText('Earlier reply.')).toBeTruthy();
     expect((screen.getByLabelText('Study name') as HTMLInputElement).value).toBe('Frame beam');
+    // Clearing is two-step: arm, then confirm (the receipt names what was removed).
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm clear?' }));
     await waitFor(() => expect(within(convo()).queryByText('Earlier reply.')).toBeNull());
-    expect(appended).toEqual([]);
+    // The cleared conversation is not written back; only the F9 receipt (what was removed,
+    // and what was not touched) is stored as the new first message.
+    await waitFor(() => expect(appended.length).toBe(1));
+    expect(JSON.stringify(appended)).toMatch(/Conversation cleared — 1 message removed/);
+    expect(JSON.stringify(appended)).not.toMatch(/Earlier reply/);
   });
 });
 

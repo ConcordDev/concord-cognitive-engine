@@ -198,17 +198,6 @@ export function ConKayWorkspace() {
     });
   }, [logLoaded, messages, workspaceId]);
 
-  const [clearArmed, setClearArmed] = useState(false);
-  const clearConversation = useCallback(async () => {
-    const had = messagesRef.current.length;
-    const r = await lensRun('engineering', 'workspaceLog-clear', workspaceId ? { workspaceId } : {});
-    if (r.data?.ok === false) return;
-    persisted.current = new Set();
-    setMessages([]);
-    setClearArmed(false);
-    // The receipt (F9): what was cleared, and what was NOT touched.
-    push({ role: 'assistant', text: `Conversation cleared — ${had} message${had === 1 ? '' : 's'} removed. The study, its results and your saved models were not touched.` });
-  }, [push, workspaceId]);
   useEffect(() => { listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' }); }, [messages]);
 
   const loadWorkspaces = useCallback(async () => {
@@ -241,6 +230,17 @@ export function ConKayWorkspace() {
     setMessages((prev) => [...prev, msg]);
     return msg.id;
   }, []);
+  const [clearArmed, setClearArmed] = useState(false);
+  const clearConversation = useCallback(async () => {
+    const had = messagesRef.current.length;
+    const r = await lensRun('engineering', 'workspaceLog-clear', workspaceId ? { workspaceId } : {});
+    if (r.data?.ok === false) return;
+    persisted.current = new Set();
+    setMessages([]);
+    setClearArmed(false);
+    // The receipt (F9): what was cleared, and what was NOT touched.
+    push({ role: 'assistant', text: `Conversation cleared — ${had} message${had === 1 ? '' : 's'} removed. The study, its results and your saved models were not touched.` });
+  }, [push, workspaceId]);
   const patch = useCallback((id: string, p: Partial<WsMessage>) => {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...p } : m)));
   }, []);
@@ -453,7 +453,9 @@ export function ConKayWorkspace() {
       const oos = detectOutOfScopeRequest(text);
       if (oos) {
         reply(push({ role: 'assistant', text: '', pending: true }), outOfScopeDecline(oos, result?.analysisReceipt?.outOfScope));
-        if (!cmd) return;
+        // The "run" in "run a buckling check" is the ask being declined, not a request to
+        // re-solve the bending study: only real edits (or save/keep) continue below.
+        if (!cmd || (cmd.changes.length === 0 && !cmd.save && !cmd.keep)) return;
       }
       if (!cmd) { await askAgent(text); return; }
       setDesign(null);
