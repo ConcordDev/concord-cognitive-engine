@@ -90,6 +90,8 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
   retail: {
     label: 'Live',
     caption: 'Your own live store: products, orders and stock are your account’s real records, updated as you sell.',
+  },
+  /**
    * Emergency Services' registry is the user's own live substrate —
    * units, incidents and agency records persist per account on
    * Concord's backend — so the generic REAL_FREE line ("static /
