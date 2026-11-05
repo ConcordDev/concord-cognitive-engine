@@ -11,6 +11,7 @@ import { useState, useCallback, useRef } from 'react';
 import { Book, RefreshCw, AlertTriangle, Search, Volume2 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { dictionaryFailureCopy } from '@/components/linguistics/dictionary-copy';
 
 interface Definition {
   definition: string;
@@ -103,7 +104,7 @@ export function DictionaryPanel({ domain, className }: DictionaryPanelProps) {
 
       {error && (
         <div className="px-3 py-3 text-xs text-rose-300/80">
-          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" /> Dictionary unreachable ({error})
+          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" /> {dictionaryFailureCopy(error)}
         </div>
       )}
 

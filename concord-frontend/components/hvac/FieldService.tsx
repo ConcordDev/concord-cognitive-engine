@@ -973,6 +973,12 @@ function EsignPanel() {
 }
 
 // ── Payments ──────────────────────────────────────────────────────────
+// This panel RECORDS receipts. There is no card processor connected to
+// this platform, so card and ACH cannot be charged here — the domain
+// handler refuses them outright (no_card_processor) — and the panel says
+// so on its face instead of presenting a charge flow that silently
+// fails. Cash and check receipts are recorded as records; a "recorded"
+// receipt can be marked refunded. Nothing here moves live money.
 function PaymentsPanel() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
@@ -981,7 +987,9 @@ function PaymentsPanel() {
   const [invoiceId, setInvoiceId] = useState('');
   const [client, setClient] = useState('');
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState('card');
+  const [method, setMethod] = useState('cash');
+  const [notice, setNotice] = useState<string | null>(null);
+  const [chargeError, setChargeError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -998,7 +1006,17 @@ function PaymentsPanel() {
 
   const charge = async () => {
     if (!invoiceId.trim() || !(parseFloat(amount) > 0)) return;
-    await run('payment-charge', { invoiceId, client, amount: parseFloat(amount), method });
+    setChargeError(null);
+    setNotice(null);
+    // Read the raw result: a refusal (e.g. a card attempt) must surface
+    // its reason here, not close the form as if the payment landed.
+    const r = await lensRun('hvac', 'payment-charge', { invoiceId, client, amount: parseFloat(amount), method });
+    if (!r.data?.ok) {
+      setChargeError(r.data?.message || r.data?.error || 'The payment could not be recorded.');
+      return;
+    }
+    const msg = (r.data.result as { message?: string } | null)?.message;
+    setNotice(msg || `Recorded $${parseFloat(amount)} received by ${method}.`);
     setInvoiceId('');
     setClient('');
     setAmount('');
@@ -1013,7 +1031,7 @@ function PaymentsPanel() {
   const chartData = useMemo(() => {
     const byMethod: Record<string, number> = {};
     for (const p of payments) {
-      if (p.status !== 'paid') continue;
+      if (p.status === 'refunded') continue;
       byMethod[p.method] = (byMethod[p.method] || 0) + p.amount;
     }
     return Object.entries(byMethod).map(([method, collected]) => ({ method, collected }));
@@ -1024,9 +1042,11 @@ function PaymentsPanel() {
       <div className="flex items-center gap-2">
         <div className="flex-1" />
         <button onClick={() => setShowForm((v) => !v)} className={ds.btnPrimary}>
-          <CreditCard className="w-4 h-4" /> Charge invoice
+          <CreditCard className="w-4 h-4" /> Record a payment
         </button>
       </div>
+      {notice && <p className="text-xs text-emerald-300" role="status">{notice}</p>}
+      {chargeError && <p className="text-xs text-rose-400" role="alert">{chargeError}</p>}
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Stat label="Payments" value={summary.count} />
@@ -1054,18 +1074,21 @@ function PaymentsPanel() {
             <input className={ds.input} placeholder="Client" value={client} onChange={(e) => setClient(e.target.value)} />
             <input type="number" className={ds.input} placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
             <select className={ds.select} value={method} onChange={(e) => setMethod(e.target.value)}>
-              {['card', 'ach', 'cash', 'check'].map((m) => <option key={m} value={m}>{m}</option>)}
+              {['cash', 'check'].map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
+          <p className="text-[11px] text-gray-500">
+            This records a cash or check receipt. Card and ACH can't be charged here — no card processor is connected, so nothing would be paid.
+          </p>
           <button onClick={charge} className={ds.btnPrimary} disabled={!invoiceId.trim() || !(parseFloat(amount) > 0)}>
-            Process payment
+            Record payment
           </button>
         </div>
       )}
       {loading && !payments.length ? (
         <Spinner />
       ) : payments.length === 0 ? (
-        <Empty label="No payments processed" />
+        <Empty label="No payments recorded" />
       ) : (
         payments.map((p) => (
           <div key={p.id} className={ds.panel}>
@@ -1077,7 +1100,7 @@ function PaymentsPanel() {
                 <p className="text-xs text-gray-400">
                   {p.client} · {p.method} · fee ${p.processingFee} · net ${p.net}
                 </p>
-                <p className="text-xs text-gray-400">{p.reference} · {p.paidAt.slice(0, 10)}</p>
+                <p className="text-xs text-gray-400">{p.paidAt.slice(0, 10)}</p>
               </div>
               <div className="flex items-center gap-1">
                 <span
@@ -1088,8 +1111,8 @@ function PaymentsPanel() {
                 >
                   {p.status}
                 </span>
-                {p.status === 'paid' && (
-                  <button onClick={() => refund(p.id)} className={ds.btnSecondary}>Refund</button>
+                {(p.status === 'recorded' || p.status === 'paid') && (
+                  <button onClick={() => refund(p.id)} className={ds.btnSecondary}>Mark refunded</button>
                 )}
               </div>
             </div>

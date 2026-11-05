@@ -6,6 +6,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 const POETRYDB_BASE = "https://poetrydb.org";
 const DATAMUSE_BASE = "https://api.datamuse.com";
@@ -181,6 +182,33 @@ export default function registerPoetryActions(registerLensAction) {
       "SELECT id, title, body, created_at, updated_at FROM poetry_poems WHERE user_id = ? ORDER BY updated_at DESC",
     ).all(poActor(ctx));
   }
+  // poem-update/poem-delete/poem-analyze all look a poem up by id
+  // before acting on it. A poem that was only ever written to
+  // poetry_poems (created in an earlier process, or restored after a
+  // restart) is real and listed by poem-list (which already merges
+  // readPoemRows), but was never hydrated into the in-memory poList
+  // array those three macros searched — so editing, deleting, or
+  // analyzing a persisted-only poem 404'd as "poem not found" even
+  // though poem-list showed it. Hydrate on first touch, same shape
+  // poem-list and poem-detail already build for a persisted-only row.
+  function ensurePoem(ctx, s, userId, id) {
+    const mem = poList(s, userId).find((p) => p.id === id);
+    if (mem) return mem;
+    const row = readPoemRows(ctx).find((item) => item.id === id);
+    if (!row || typeof row.title !== "string" || !row.title.trim()) return null;
+    const poem = {
+      id: row.id,
+      title: row.title,
+      body: typeof row.body === "string" ? row.body : "",
+      form: null,
+      tags: [],
+      status: null,
+      createdAt: row.created_at || "",
+      updatedAt: row.updated_at || "",
+    };
+    poList(s, userId).push(poem);
+    return poem;
+  }
 
   // Compact prosody analysis shared by poem-analyze.
   function analyzePoem(body) {
@@ -308,7 +336,7 @@ export default function registerPoetryActions(registerLensAction) {
 
   registerLensAction("poetry", "poem-update", (ctx, _a, params = {}) => {
     const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const poem = poList(s, poActor(ctx)).find((p) => p.id === params.id);
+    const poem = ensurePoem(ctx, s, poActor(ctx), params.id);
     if (!poem) return { ok: false, error: "poem not found" };
     const previous = {
       title: poem.title,
@@ -336,15 +364,16 @@ export default function registerPoetryActions(registerLensAction) {
 
   registerLensAction("poetry", "poem-delete", (ctx, _a, params = {}) => {
     const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = poList(s, poActor(ctx));
-    const i = arr.findIndex((p) => p.id === params.id);
-    if (i < 0) return { ok: false, error: "poem not found" };
+    const userId = poActor(ctx);
+    if (!ensurePoem(ctx, s, userId, params.id)) return { ok: false, error: "poem not found" };
+    const arr = poList(s, userId);
     try {
       deletePoemRow(ctx, params.id);
     } catch (e) {
       return { ok: false, error: "poem_not_saved", detail: String(e?.message || e) };
     }
-    arr.splice(i, 1);
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i >= 0) arr.splice(i, 1);
     savePoetry();
     return { ok: true, result: { deleted: params.id } };
   });
@@ -352,12 +381,47 @@ export default function registerPoetryActions(registerLensAction) {
   registerLensAction("poetry", "poem-analyze", (ctx, _a, params = {}) => {
   try {
     const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const poem = poList(s, poActor(ctx)).find((p) => p.id === params.id);
+    const poem = ensurePoem(ctx, s, poActor(ctx), params.id);
     if (!poem) return { ok: false, error: "poem not found" };
     if (!poem.body.trim()) return { ok: false, error: "poem has no text to analyze" };
     return { ok: true, result: { poemId: poem.id, title: poem.title, analysis: analyzePoem(poem.body) } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // D5 (poetry review, 2026-11-03): the shared top-bar Export (JSON/CSV)
+  // and the per-lens ↓.dtu control both read through this registered
+  // provider (lib/lens-export.js). Poems live in STATE.poetryLens, not
+  // the generic artifact store, so without this both export menu items
+  // closed with no file and no message. Scope rows to the caller, like
+  // every other read in this file, and merge in persisted-only poems
+  // the same way poem-list already does.
+  registerLensExportProvider("poetry", (ctx) => {
+    const s = getPoetryState();
+    if (!s) return [];
+    const userId = poActor(ctx);
+    const seen = new Set();
+    const rows = [];
+    for (const p of poList(s, userId)) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      rows.push({
+        id: p.id, type: "poem", title: p.title,
+        createdAt: p.createdAt, updatedAt: p.updatedAt || p.createdAt,
+        data: p,
+      });
+    }
+    for (const row of readPoemRows(ctx)) {
+      if (!row?.id || seen.has(row.id)) continue;
+      if (typeof row.title !== "string" || !row.title.trim()) continue;
+      seen.add(row.id);
+      rows.push({
+        id: row.id, type: "poem", title: row.title,
+        createdAt: row.created_at || "", updatedAt: row.updated_at || row.created_at || "",
+        data: { id: row.id, title: row.title, body: typeof row.body === "string" ? row.body : "" },
+      });
+    }
+    return rows;
+  });
 
   registerLensAction("poetry", "poetry-dashboard", (ctx, _a, _params = {}) => {
     const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };

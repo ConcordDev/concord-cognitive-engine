@@ -129,4 +129,14 @@ describe('ReputationGate', () => {
     await waitFor(() => expect(getByText('60/100')).toBeInTheDocument());
     expect(lensRun.mock.calls.some((c) => c[1] === 'myReputation' && c[2]?.trackId === 'smith')).toBe(true);
   });
+
+  it('states the earning rule and the next gate rung when the server names one', async () => {
+    lensRun.mockImplementation((_d: string, name: string) =>
+      name === 'myReputation'
+        ? reply({ ok: true, trackId: 'chef', reputation: 4, gateTier: 3, wageMultiplier: 0.82, gatedTiers: [4, 5, 6, 7, 8, 9, 10], nextGate: { atReputation: 20, gateTier: 6 } })
+        : reply({ ok: true }));
+    const { getByText } = render(<ReputationGate trackId="chef" />);
+    await waitFor(() => expect(getByText(/Tier 6 contracts open at 20 reputation/)).toBeInTheDocument());
+    expect(getByText(/\+4 per shift worked, \+20 per contract/)).toBeInTheDocument();
+  });
 });

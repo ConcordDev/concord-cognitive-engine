@@ -471,7 +471,16 @@ describe("cooking — pantry delete/suggestions, ai-meal-plan, dashboard, export
     assert.equal(plan.result.days, 3);
     assert.equal(plan.result.assigned.length, 3);     // 3 days × 1 slot
     assert.equal(plan.result.source, "deterministic");
-    // The assignments actually landed in the meal plan calendar.
+    // S-CK2-3 contract: the default call is a PREVIEW — the calendar is
+    // untouched until the reviewed assignment list is applied.
+    assert.equal(plan.result.preview, true);
+    const beforeApply = await lensRun("cooking", "meal-plan-get", { params: { start: "2026-10-01", end: "2026-10-05" } }, ctx);
+    assert.equal(beforeApply.result.entries.length, 0);
+    const applied = await lensRun("cooking", "ai-meal-plan", {
+      params: { assignments: plan.result.assigned },
+    }, ctx);
+    assert.equal(applied.result.applied, true);
+    // The applied assignments landed in the meal plan calendar.
     const got = await lensRun("cooking", "meal-plan-get", { params: { start: "2026-10-01", end: "2026-10-05" } }, ctx);
     assert.equal(got.result.entries.length, 3);
   });

@@ -13,7 +13,7 @@ import { getSparks, creditSparks } from "../lib/sparks-service.js";
 import {
   offerContract, counterContract, acceptContract, rejectContract,
   listContractsFor, reputationGateTier, reputationWageMultiplier, get,
-  deriveWorkerReputation,
+  deriveWorkerReputation, nextReputationGate,
 } from "../lib/career-contracts.js";
 
 describe("reputation gating", () => {
@@ -21,6 +21,25 @@ describe("reputation gating", () => {
     assert.ok(reputationGateTier(10) < reputationGateTier(90));
     assert.equal(reputationGateTier(95), 10);
     assert.ok(reputationWageMultiplier(100) > reputationWageMultiplier(0));
+  });
+
+  it("nextReputationGate names the next rung of the same rule, at its price", () => {
+    assert.deepEqual(nextReputationGate(0), { atReputation: 20, gateTier: 6 });
+    assert.deepEqual(nextReputationGate(19), { atReputation: 20, gateTier: 6 });
+    assert.deepEqual(nextReputationGate(20), { atReputation: 50, gateTier: 8 });
+    assert.deepEqual(nextReputationGate(79), { atReputation: 80, gateTier: 10 });
+    assert.equal(nextReputationGate(80), null, "the top gate has no next rung");
+    assert.equal(nextReputationGate(100), null);
+    // and it can never disagree with the gate it describes
+    for (let r = 0; r <= 100; r++) {
+      const n = nextReputationGate(r);
+      if (n === null) assert.equal(reputationGateTier(r), 10);
+      else {
+        assert.ok(n.atReputation > r);
+        assert.equal(reputationGateTier(n.atReputation), n.gateTier);
+        assert.equal(reputationGateTier(n.atReputation - 1), reputationGateTier(r));
+      }
+    }
   });
 });
 

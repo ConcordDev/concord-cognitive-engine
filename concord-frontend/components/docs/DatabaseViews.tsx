@@ -145,7 +145,7 @@ export function DatabaseViews() {
           {visibleList.map(d => (
             <li key={d.id}
               className={cn('group flex items-center gap-1 rounded px-1.5 py-1 hover:bg-zinc-800', active?.id === d.id && 'bg-zinc-800')}>
-              <button onClick={() => open(d.id)} className="flex-1 text-left text-xs text-zinc-300 truncate">
+              <button onClick={() => open(d.id)} className="flex-1 min-w-0 text-left text-xs text-zinc-300 truncate">
                 <Table2 className="w-3 h-3 inline mr-1 text-zinc-400" />{d.name}
                 <span className="text-[10px] text-zinc-400 ml-1">{d.rowCount} rows</span>
               </button>

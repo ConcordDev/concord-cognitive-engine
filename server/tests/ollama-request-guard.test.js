@@ -1,7 +1,7 @@
 // server/tests/ollama-request-guard.test.js — lib/ollama-request-guard.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildThreadMap, buildContextMap, guardBody, installOllamaRequestGuard, thinkingDisabled } from "../lib/ollama-request-guard.js";
+import { buildThreadMap, buildContextMap, guardBody, installOllamaRequestGuard, thinkingDisabled, usesReasoningLevels, reasoningLevelFor } from "../lib/ollama-request-guard.js";
 
 const brains = {
   conscious: { url: "http://gpu0:11436", urls: ["http://gpu0:11436"], model: "concord-conscious:latest", contextWindow: 32768 },
@@ -80,4 +80,38 @@ test("think: guardBody only adds think:false when asked and the caller didn't se
   assert.equal(guardBody(JSON.stringify({ model: "m", think: true }), { disableThink: true }), null);
   assert.equal(thinkingDisabled({}), true);
   assert.equal(thinkingDisabled({ CONCORD_OLLAMA_THINK: "1" }), false);
+});
+
+test("reasoning-effort models: think:false becomes a low reasoning level", () => {
+  assert.equal(usesReasoningLevels("gpt-oss:120b"), true);
+  assert.equal(usesReasoningLevels("gpt-oss:20b-q4"), true);
+  assert.equal(usesReasoningLevels("library/gpt-oss"), true);
+  assert.equal(usesReasoningLevels("qwen2.5:7b"), false);
+  assert.equal(usesReasoningLevels("my-gpt-ossified"), false);
+  assert.equal(reasoningLevelFor({}), "low");
+  assert.equal(reasoningLevelFor({ CONCORD_GPT_OSS_THINK: "high" }), "high");
+  assert.equal(reasoningLevelFor({ CONCORD_GPT_OSS_THINK: "nonsense" }), "low");
+  assert.equal(reasoningLevelFor({ CONCORD_GPT_OSS_THINK: "model" }), null);
+
+  const send = (body, opts) => { const out = guardBody(JSON.stringify(body), opts); return out == null ? null : JSON.parse(out); };
+  // explicit think:false (every chat follow-up sends it) → "low"
+  assert.equal(send({ model: "gpt-oss:120b", think: false }, { reasoningLevel: "low" }).think, "low");
+  // no think while thinking is off by default → "low", not a dropped boolean
+  assert.equal(send({ model: "gpt-oss:20b" }, { disableThink: true, reasoningLevel: "low" }).think, "low");
+  // think:true and an explicit level are the caller's choice
+  assert.equal(send({ model: "gpt-oss:120b", think: true }, { disableThink: true, reasoningLevel: "low" }), null);
+  assert.equal(send({ model: "gpt-oss:120b", think: "high" }, { disableThink: true, reasoningLevel: "low" }), null);
+  // other models keep the boolean switch
+  assert.equal(send({ model: "qwen2.5:7b" }, { disableThink: true, reasoningLevel: "low" }).think, false);
+  assert.equal(send({ model: "qwen2.5:7b", think: false }, { reasoningLevel: "low" }), null);
+  // off switch
+  assert.equal(send({ model: "gpt-oss:120b", think: false }, { reasoningLevel: null }), null);
+});
+
+test("Kimi K3 gets think:low instead of think:false (think:false stops it writing tool calls)", async () => {
+  const { guardBody, usesReasoningLevels } = await import("../lib/ollama-request-guard.js");
+  assert.equal(usesReasoningLevels("kimi-k3.1-pro:cloud"), true);
+  assert.equal(usesReasoningLevels("minimax-m3:cloud"), false);
+  const out = JSON.parse(guardBody(JSON.stringify({ model: "kimi-k3.1-pro:cloud", messages: [] }), { disableThink: true, reasoningLevel: "low" }));
+  assert.equal(out.think, "low");
 });

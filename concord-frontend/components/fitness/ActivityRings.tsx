@@ -10,6 +10,10 @@ export interface ActivityDay {
   exerciseMinutes: number; exerciseGoal: number;
   standHours: number; standGoal: number;
   steps: number; stepsGoal: number;
+  /** "device" / a wearable provider, "manual" (fitness.activity-log), or
+   *  "logged" (exercise minutes derived server-side from real Log
+   *  workouts + Training Hub activities — F4). */
+  source?: string;
 }
 
 export function ActivityRings() {
@@ -17,8 +21,76 @@ export function ActivityRings() {
   const [week, setWeek] = useState<ActivityDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Manual log (fitness.activity-log — the write path the server's
+  // empty note always named; it exists now, and so does this form).
+  const [showLogForm, setShowLogForm] = useState(false);
+  const [logDate, setLogDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [logExercise, setLogExercise] = useState('');
+  const [logCalories, setLogCalories] = useState('');
+  const [logSteps, setLogSteps] = useState('');
+  const [logStand, setLogStand] = useState('');
+  const [logBusy, setLogBusy] = useState(false);
+  const [logError, setLogError] = useState<string | null>(null);
+  const [logNote, setLogNote] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
+
+  async function submitLog() {
+    const input: Record<string, unknown> = { date: logDate };
+    const ex = parseFloat(logExercise); if (ex > 0) input.exerciseMinutes = ex;
+    const cal = parseFloat(logCalories); if (cal > 0) input.activeCalories = cal;
+    const st = parseFloat(logSteps); if (st > 0) input.steps = st;
+    const sh = parseFloat(logStand); if (sh > 0) input.standHours = sh;
+    if (Object.keys(input).length === 1) { setLogError('Enter at least one metric.'); return; }
+    setLogBusy(true); setLogError(null); setLogNote(null);
+    try {
+      const res = await lensRun({ domain: 'fitness', action: 'activity-log', input });
+      if (res.data?.ok === false) {
+        setLogError(res.data?.error || 'Log failed.');
+      } else {
+        setLogNote(`Logged for ${logDate} (manual entry).`);
+        setLogExercise(''); setLogCalories(''); setLogSteps(''); setLogStand('');
+        await refresh();
+      }
+    } catch (e) {
+      setLogError(e instanceof Error ? e.message : 'Log failed.');
+    } finally { setLogBusy(false); }
+  }
+
+  const logForm = (
+    <div className="mt-3 border-t border-white/10 pt-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+        <label>
+          <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Date</span>
+          <input type="date" value={logDate} onChange={e => setLogDate(e.target.value)} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+        </label>
+        <label>
+          <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Exercise (min)</span>
+          <input type="number" min="0" value={logExercise} onChange={e => setLogExercise(e.target.value)} placeholder="45" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+        </label>
+        <label>
+          <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Active kcal</span>
+          <input type="number" min="0" value={logCalories} onChange={e => setLogCalories(e.target.value)} placeholder="400" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+        </label>
+        <label>
+          <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Steps</span>
+          <input type="number" min="0" value={logSteps} onChange={e => setLogSteps(e.target.value)} placeholder="8000" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+        </label>
+        <label>
+          <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Stand (hrs)</span>
+          <input type="number" min="0" step="0.5" value={logStand} onChange={e => setLogStand(e.target.value)} placeholder="10" className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+        </label>
+      </div>
+      <div className="flex items-center gap-2 mt-2">
+        <button onClick={submitLog} disabled={logBusy} className="px-3 py-1.5 rounded bg-cyan-500 text-black text-xs font-bold hover:bg-cyan-400 disabled:opacity-50">
+          {logBusy ? 'Logging…' : 'Log entry'}
+        </button>
+        <span className="text-[10px] text-gray-500">Stored as a manual entry — never shown as a device reading.</span>
+      </div>
+      {logError && <p role="alert" className="text-xs text-red-300 mt-2">{logError}</p>}
+      {logNote && <p role="status" className="text-xs text-emerald-300 mt-2">{logNote}</p>}
+    </div>
+  );
 
   async function refresh() {
     setLoading(true);
@@ -53,7 +125,13 @@ export function ActivityRings() {
     );
   }
   if (!today) {
-    return <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-6 text-xs text-gray-400">No activity data yet.</div>;
+    return (
+      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-6 text-xs text-gray-400">
+        <p>No activity data yet. Exercise minutes from workouts you log and Training Hub activities appear here automatically; connect a wearable for Move, Stand and Steps — or log a day by hand.</p>
+        <button onClick={() => setShowLogForm(v => !v)} className="mt-3 px-3 py-1.5 rounded bg-cyan-500/20 text-cyan-200 border border-cyan-500/30 hover:bg-cyan-500/30 text-xs font-semibold">Log manually</button>
+        {showLogForm && logForm}
+      </div>
+    );
   }
 
   return (
@@ -85,6 +163,13 @@ export function ActivityRings() {
               </div>
             );
           })}
+        </div>
+        {week.some(d => d.source === 'logged') && (
+          <p className="mt-2 text-[10px] text-gray-500">Days marked from your logs: exercise minutes come from logged workouts and Training Hub activities; Move, Stand and Steps need a wearable or a manual log.</p>
+        )}
+        <div className="mt-2">
+          <button onClick={() => setShowLogForm(v => !v)} className="text-xs text-cyan-300 hover:text-cyan-100 font-semibold">Log manually</button>
+          {showLogForm && logForm}
         </div>
       </div>
     </div>

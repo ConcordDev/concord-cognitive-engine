@@ -98,7 +98,7 @@ export default function registerFishingMacros(register) {
     const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
     try {
       const catches = db.prepare(`
-        SELECT id, world_id, item_id, item_name, acquired_at, metadata AS meta_json
+        SELECT id, world_id, item_id, item_name, quantity, acquired_at, metadata AS meta_json
         FROM player_inventory
         WHERE user_id = ? AND item_type = 'raw_fish'
         ORDER BY acquired_at DESC LIMIT ?
@@ -176,7 +176,16 @@ export default function registerFishingMacros(register) {
       qualityScore: result.qualityScore,
       sessionId: String(input.sessionId),
     });
-    return { ok: true, fish: result.fish, qualityScore: result.qualityScore, tier: result.tier, mint };
+    // F2 fix: a reel can genuinely win the fight (resolveFishCatch succeeds)
+    // while the mint still fails (DB error, partially-migrated schema). The
+    // old code returned ok:true unconditionally here, so the dialog said
+    // "Caught" on every one of those silent losses. Fold mint.ok into the
+    // top-level envelope so a "Caught" response is always a committed write.
+    return {
+      ok: mint.ok,
+      reason: mint.ok ? undefined : (mint.error || "mint_failed"),
+      fish: result.fish, qualityScore: result.qualityScore, tier: result.tier, mint,
+    };
   }
 
   /**

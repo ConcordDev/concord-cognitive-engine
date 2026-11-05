@@ -46,12 +46,16 @@ export function ConcordLinkWalkers() {
   useEffect(() => { void tick; }, [tick]);
 
   const walkers = useQuery({
-    queryKey: ['concord-link-walkers'],
+    queryKey: ['concord-link-walkers', worldId],
     queryFn: async () => {
-      const r = await api.get('/api/concord-link/walkers');
+      // Scoped to the entered world, like the anchors query below: the
+      // endpoint filters on home_world server-side (?homeWorld=). Without
+      // it this panel showed the hub's contracts under any world id.
+      const r = await api.get(`/api/concord-link/walkers?homeWorld=${encodeURIComponent(worldId)}`);
       const data = r.data as { walkers?: Walker[] } | Walker[];
       return (Array.isArray(data) ? data : data.walkers || []) as Walker[];
     },
+    enabled: !!worldId.trim(),
     refetchInterval: 20000,
   });
   const anchors = useQuery({
@@ -88,7 +92,7 @@ export function ConcordLinkWalkers() {
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
-          <div className="mb-2 text-xs font-semibold text-zinc-200">Walker contracts ({walkers.data?.length ?? 0})</div>
+          <div className="mb-2 text-xs font-semibold text-zinc-200">Walker contracts in {worldId} ({walkers.data?.length ?? 0})</div>
           <div className="space-y-1 max-h-72 overflow-y-auto">
             {(walkers.data || []).map((w) => {
               const rate = walkerRateLabel(w);
@@ -113,7 +117,7 @@ export function ConcordLinkWalkers() {
                 </div>
               );
             })}
-            {walkers.data?.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">No walkers registered.</div>}
+            {walkers.data?.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">No walkers in this world.</div>}
           </div>
         </div>
         <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">

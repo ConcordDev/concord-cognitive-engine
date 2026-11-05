@@ -125,6 +125,48 @@ describe("careers domain macros", () => {
     assert.equal(getSparks(db, "farmer"), paid, "no extra sparks during the cooldown, on any track");
   });
 
+  // ── S1: the cooldown is a stated rule, not a bare refusal ─────────────────
+  it("the cooldown refusal states the rule: duration + seconds remaining", async () => {
+    seedUser(db, "waiter", 0);
+    const first = await macros.get("work")(ctxFor(db, "waiter"), { trackId: "chef", skillInput: 1 });
+    assert.equal(first.ok, true);
+    const second = await macros.get("work")(ctxFor(db, "waiter"), { trackId: "chef", skillInput: 1 });
+    assert.equal(second.ok, false);
+    assert.equal(second.reason, "shift_cooldown");
+    assert.equal(second.cooldownSeconds, 1800, "the default rule is 1800s, stated on the refusal");
+    assert.ok(second.retryAfterSeconds > 1700 && second.retryAfterSeconds <= 1800,
+      `retryAfterSeconds in (1700, 1800], got ${second.retryAfterSeconds}`);
+    assert.ok(Math.abs(second.retryAt - (Date.now() + second.retryAfterSeconds * 1000)) < 5000,
+      "retryAt and retryAfterSeconds describe the same moment");
+  });
+
+  it("progress states the cooldown and the sparks balance before any attempt", async () => {
+    seedUser(db, "planner", 0);
+    const before = await macros.get("progress")(ctxFor(db, "planner"), { trackId: "chef" });
+    assert.equal(before.cooldownSeconds, 1800);
+    assert.equal(before.nextShiftAt, null, "no shift worked yet — nothing is cooling down");
+    assert.equal(before.sparksBalance, 0);
+    const worked = await macros.get("work")(ctxFor(db, "planner"), { trackId: "chef", skillInput: 1 });
+    assert.equal(worked.ok, true);
+    assert.equal(worked.sparksBalance, getSparks(db, "planner"), "work returns the balance it paid into");
+    const after = await macros.get("progress")(ctxFor(db, "planner"), { trackId: "chef" });
+    assert.equal(after.sparksBalance, worked.sparksBalance);
+    assert.ok(after.nextShiftAt > Date.now(), "the next opening is stated, in the future");
+    assert.ok(after.nextShiftAt <= Date.now() + 1800 * 1000 + 5000);
+    const all = await macros.get("progress")(ctxFor(db, "planner"), {});
+    assert.equal(all.sparksBalance, worked.sparksBalance, "the all-tracks variant carries the balance too");
+    assert.equal(all.nextShiftAt, after.nextShiftAt);
+  });
+
+  it("myReputation names the next gate of the one contract rule", async () => {
+    seedUser(db, "rookie", 0);
+    const r = await macros.get("myReputation")(ctxFor(db, "rookie"), { trackId: "chef" });
+    assert.equal(r.ok, true);
+    assert.equal(r.gateTier, 3, "a fresh worker is hireable up to tier 3");
+    assert.deepEqual(r.nextGate, { atReputation: 20, gateTier: 6 },
+      "the next rung of the same rule, stated with its price");
+  });
+
   it("work persists XP and promotes per the engine gate (tier × 100 XP, performance ≥ 0.6)", async () => {
     process.env.CONCORD_CAREER_SHIFT_COOLDOWN_S = "0"; // exercise many shifts back to back
     seedUser(db, "climber", 0);

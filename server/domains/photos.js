@@ -72,7 +72,8 @@ export default function registerPhotosMacros(register) {
     let row;
     try {
       row = db.prepare(`
-        SELECT id, user_id, world_id, caption, taken_at, dtu_id, visibility, blob_path
+        SELECT id, user_id, world_id, caption, taken_at, dtu_id, visibility, blob_path,
+               width, height, size_bytes, original_filename
         FROM user_photos WHERE id = ?
       `).get(id);
     } catch (err) {
@@ -116,7 +117,7 @@ export default function registerPhotosMacros(register) {
     }
     if (!owner) return { ok: false, reason: "no_photo" };
     if (owner.user_id !== userId) return { ok: false, reason: "not_owner" };
-    return sharePhoto(db, photoId);
+    return sharePhoto(db, photoId, { STATE: ctx?.STATE || globalThis.STATE || null });
   }, { note: "share a photo — mints a kind='photo' DTU + flips visibility public (owner-only)" });
 
   // Organize: caption / favorite edits and albums. All owner-scoped in the lib.
