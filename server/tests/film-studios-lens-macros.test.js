@@ -26,7 +26,9 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import Database from "better-sqlite3";
 import registerFilmStudiosActions from "../domains/filmstudios.js";
+import { up as upFilmStudioTables } from "../migrations/457_film_studio_productions.js";
 
 const ACTIONS = new Map();
 function registerLensAction(domain, name, fn) {
@@ -68,7 +70,7 @@ describe("film-studios — registration (the macros the lens reaches)", () => {
 
   it("registers the lens-driven CRUD + report macros", () => {
     for (const m of [
-      "project-create", "project-list", "project-delete",
+      "project-create", "project-list", "project-update", "project-delete",
       "scene-add", "scene-list", "scene-update", "scene-delete",
       "budget-line-add", "budget-list", "budget-line-update", "cost-report",
       "shoot-day-create", "stripboard", "call-sheet", "dood-report",
@@ -333,5 +335,119 @@ describe("film-studios — schedule report math (stripboard) is finite", () => {
     assert.equal(sb.result.days[0].sceneCount, 1);
     assert.equal(sb.result.days[0].pageEighths, 8);
     assertAllFinite(sb.result);
+  });
+});
+
+// ── F4 (absent-lifecycle): production rename + scene/production edit-delete
+// survive a process restart, not just the in-memory session they were
+// created in. `project-update` is new; `project-delete`/`scene-update`/
+// `scene-delete` previously only ever checked the in-memory Map, which
+// `project-list`/`scene-list`'s DB-row merge never writes back into — so
+// editing/deleting anything read back after a restart used to silently
+// 404 even though the row was real.
+describe("film-studios — lifecycle survives a restart (real sqlite, no in-memory carryover)", () => {
+  function freshDb() {
+    const db = new Database(":memory:");
+    upFilmStudioTables(db);
+    return db;
+  }
+  function ctxWithDb(db, userId) {
+    return { actor: { userId }, db };
+  }
+
+  it("project-update renames a title and persists it to the row", () => {
+    const db = freshDb();
+    const ctx = ctxWithDb(db, "user_a");
+    const projectId = call("project-create", ctx, { title: "Working Title" }).result.project.id;
+
+    const upd = call("project-update", ctx, { id: projectId, title: "The Real Title", format: "short" });
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.project.title, "The Real Title");
+    assert.equal(upd.result.project.format, "short");
+
+    const row = db.prepare("SELECT title, format FROM film_studio_productions WHERE id = ?").get(projectId);
+    assert.equal(row.title, "The Real Title");
+    assert.equal(row.format, "short");
+
+    // simulate a process restart: a fresh in-memory STATE, same db
+    globalThis._concordSTATE = {};
+    const listed = call("project-list", ctx, {}).result.projects;
+    assert.equal(listed.find((p) => p.id === projectId)?.title, "The Real Title");
+  });
+
+  it("project-update rejects an empty title and a missing project", () => {
+    const db = freshDb();
+    const ctx = ctxWithDb(db, "user_a");
+    const projectId = call("project-create", ctx, { title: "P" }).result.project.id;
+    assert.equal(call("project-update", ctx, { id: projectId, title: "  " }).ok, false);
+    assert.equal(call("project-update", ctx, { id: "nope", title: "X" }).error, "project not found");
+  });
+
+  it("project-delete and project-update both work on a project only known via the DB row (post-restart)", () => {
+    const db = freshDb();
+    const ctx = ctxWithDb(db, "user_a");
+    const projectId = call("project-create", ctx, { title: "Survives" }).result.project.id;
+
+    // Drop the in-memory session entirely -- only the DB row remains.
+    globalThis._concordSTATE = {};
+    const renamed = call("project-update", ctx, { id: projectId, title: "Renamed After Restart" });
+    assert.equal(renamed.ok, true, JSON.stringify(renamed));
+    assert.equal(renamed.result.project.title, "Renamed After Restart");
+
+    globalThis._concordSTATE = {};
+    const del = call("project-delete", ctx, { id: projectId });
+    assert.equal(del.ok, true, JSON.stringify(del));
+    const row = db.prepare("SELECT id FROM film_studio_productions WHERE id = ?").get(projectId);
+    assert.equal(row, undefined);
+  });
+
+  it("scene-update edits a scene and persists it; survives a restart too", () => {
+    const db = freshDb();
+    const ctx = ctxWithDb(db, "user_a");
+    const projectId = call("project-create", ctx, { title: "Scenes" }).result.project.id;
+    const sceneId = call("scene-add", ctx, {
+      projectId, location: "Desert Highway", intExt: "EXT", timeOfDay: "DAY",
+    }).result.scene.id;
+
+    const upd = call("scene-update", ctx, { id: sceneId, timeOfDay: "NIGHT", location: "Desert Highway (night shoot)" });
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.scene.slugline, "EXT. Desert Highway (night shoot) - NIGHT");
+
+    const row = db.prepare("SELECT location, time_of_day FROM film_studio_scenes WHERE id = ?").get(sceneId);
+    assert.equal(row.location, "Desert Highway (night shoot)");
+    assert.equal(row.time_of_day, "NIGHT");
+
+    // Simulate a restart, then edit again purely from the DB row.
+    globalThis._concordSTATE = {};
+    const upd2 = call("scene-update", ctx, { id: sceneId, number: "12A" });
+    assert.equal(upd2.ok, true, JSON.stringify(upd2));
+    assert.equal(upd2.result.scene.number, "12A");
+    // The field edited before the simulated restart must not have been lost.
+    assert.equal(upd2.result.scene.timeOfDay, "NIGHT");
+  });
+
+  it("scene-delete removes a scene known only via its DB row (post-restart)", () => {
+    const db = freshDb();
+    const ctx = ctxWithDb(db, "user_a");
+    const projectId = call("project-create", ctx, { title: "Scenes2" }).result.project.id;
+    const sceneId = call("scene-add", ctx, { projectId, location: "Office" }).result.scene.id;
+
+    globalThis._concordSTATE = {};
+    const del = call("scene-delete", ctx, { id: sceneId });
+    assert.equal(del.ok, true, JSON.stringify(del));
+    const row = db.prepare("SELECT id FROM film_studio_scenes WHERE id = ?").get(sceneId);
+    assert.equal(row, undefined);
+  });
+
+  it("the F3 slugline bug is a frontend symptom: structured fields drive a correct slugline", () => {
+    const db = freshDb();
+    const ctx = ctxWithDb(db, "user_a");
+    const projectId = call("project-create", ctx, { title: "Slug" }).result.project.id;
+    const scene = call("scene-add", ctx, { projectId, location: "Desert Highway", intExt: "EXT", timeOfDay: "DAY" }).result.scene;
+    assert.equal(scene.slugline, "EXT. Desert Highway - DAY");
+    // Without intExt/timeOfDay (the old frontend's call shape), defaults kick in --
+    // this is the behavior the review found, not a backend bug.
+    const defaulted = call("scene-add", ctx, { projectId, location: "EXT. Desert Highway" }).result.scene;
+    assert.equal(defaulted.slugline, "INT. EXT. Desert Highway - DAY");
   });
 });
