@@ -114,13 +114,17 @@ describe("plumbing price book with markup", () => {
     assert.equal(r.result.item.price, 6);
   });
 
-  it("priceBookList reports average margin", () => {
+  it("priceBookList reports average markup AND the true average margin", () => {
     call("priceItemAdd", ctxA, { name: "Labor", kind: "labor", cost: 60, markupPct: 100 });
     call("priceItemAdd", ctxA, { name: "Valve", kind: "part", cost: 10, markupPct: 0 });
     const lst = call("priceBookList", ctxA, {});
     assert.equal(lst.ok, true);
     assert.equal(lst.result.count, 2);
-    assert.equal(lst.result.avgMarginPct, 50);
+    // F3: the old pin (avgMarginPct === 50) asserted the mean MARKUP under the
+    // margin name. Markup mean is (100 + 0) / 2 = 50; true margins are
+    // (120-60)/120 = 50% and (10-10)/10 = 0% → mean 25.
+    assert.equal(lst.result.avgMarkupPct, 50);
+    assert.equal(lst.result.avgMarginPct, 25);
   });
 
   it("priceItemUpdate recomputes price; priceItemRemove deletes", () => {
