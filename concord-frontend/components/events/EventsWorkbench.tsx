@@ -2537,12 +2537,6 @@ export function EventsWorkbench({
                     {s}
                   </option>
                 ))}
-              {mode === 'budget' &&
-                ['active', 'draft', 'finalized'].map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
               {mode === 'tickets' &&
                 ['active', 'completed', 'cancelled'].map((s) => (
                   <option key={s} value={s}>
