@@ -163,6 +163,17 @@ export default function UrbanPlanningLensPage() {
     void Promise.resolve().then(loadCounts);
   }, [loadCounts]);
 
+  // Dashboard freshness (Review 5 F6): the counts loaded once on mount,
+  // so a parcel/scenario/project/comment created in another tab left the
+  // header stale for the whole session. Re-pull whenever the user comes
+  // back to the Dashboard tab, and let each mutating panel signal a
+  // change directly (onDataChanged below).
+  useEffect(() => {
+    if (activeMode === 'Dashboard') {
+      void Promise.resolve().then(loadCounts);
+    }
+  }, [activeMode, loadCounts]);
+
   return (
     <LensShell lensId="urban-planning" asMain={false}>
 
@@ -246,7 +257,7 @@ export default function UrbanPlanningLensPage() {
                 calculators (FAR, walkability, density, traffic impact), add real parcels and
                 model their 3D massing envelope, compare alternative development scenarios with
                 population / jobs / emissions impacts, track real projects through their honest
-                proposed → approved → built permit lifecycle, analyze transit walk-shed coverage,
+                proposed → approved → permit issued → built lifecycle, analyze transit walk-shed coverage,
                 run a stakeholder public-comment review, and export a shareable plan report. Live
                 US Census ACS demographics and HUD income limits power the County Data tab.
               </p>
@@ -277,11 +288,11 @@ export default function UrbanPlanningLensPage() {
         )}
 
         {activeMode === 'Zoning' && <ZoningSiteAnalysis />}
-        {activeMode === 'Parcels' && <ParcelManager />}
-        {activeMode === 'Scenarios' && <ScenarioStudio />}
-        {activeMode === 'Projects' && <ProjectTracker />}
+        {activeMode === 'Parcels' && <ParcelManager onParcelsChange={() => { void loadCounts(); }} />}
+        {activeMode === 'Scenarios' && <ScenarioStudio onDataChanged={loadCounts} />}
+        {activeMode === 'Projects' && <ProjectTracker onDataChanged={loadCounts} />}
         {activeMode === 'Transit' && <TransitCoveragePanel />}
-        {activeMode === 'Comments' && <PublicCommentPanel />}
+        {activeMode === 'Comments' && <PublicCommentPanel onDataChanged={loadCounts} />}
         {activeMode === 'Reports' && <PlanExportPanel />}
         {activeMode === 'County' && (
           <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
