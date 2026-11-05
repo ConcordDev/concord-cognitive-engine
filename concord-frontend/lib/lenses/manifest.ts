@@ -4023,7 +4023,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Plumbing projects.",
       caption: "Pipes, fixtures, codes, inspections, materials \u2014 analyze, generate, validate.",
