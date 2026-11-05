@@ -23,6 +23,25 @@ export interface ToolCall {
   title?: string; // for browse_url / create_dtu
 }
 
+/**
+ * "domain.action" for a lens call from wherever the record carries it
+ * (params, top-level domain/action, or key). Records saved before the fix,
+ * and some live shapes, have no params — this never renders "undefined".
+ */
+export function lensActionLabel(call: ToolCall): string {
+  const c = call as ToolCall & { domain?: unknown; action?: unknown };
+  const pick = (...vals: unknown[]) => {
+    for (const v of vals) if (typeof v === 'string' && v.trim()) return v.trim();
+    return '';
+  };
+  const domain = pick(call.params?.domain, c.domain);
+  const action = pick(call.params?.action, c.action);
+  if (domain && action) return `${domain}.${action}`;
+  const key = pick(call.key, call.params?.key);
+  if (/^[\w-]+\.[\w.-]+$/.test(key)) return key;
+  return domain || action;
+}
+
 interface ToolCallCardProps {
   call: ToolCall;
 }
@@ -105,14 +124,11 @@ function BrowseResult({ call }: { call: ToolCall }) {
 }
 
 function LensActionResult({ call }: { call: ToolCall }) {
-  const domain = String(call.params?.domain || '');
-  const action = String(call.params?.action || '');
+  const label = lensActionLabel(call);
   const result = call.result as Record<string, unknown> | null;
   return (
     <div className="space-y-1">
-      <p className="text-xs font-mono text-neon-cyan/70">
-        {domain}.{action}
-      </p>
+      {label && <p className="text-xs font-mono text-neon-cyan/70">{label}</p>}
       {result && (
         <pre className="text-xs text-gray-300 overflow-x-auto max-h-32 whitespace-pre-wrap">
           {JSON.stringify(result, null, 2).slice(0, 500)}
@@ -150,7 +166,7 @@ export function ToolCallCard({ call }: ToolCallCardProps) {
           {call.tool === 'web_search' && String(call.params?.query || '')}
           {call.tool === 'run_compute' && String(call.key || call.params?.key || '')}
           {call.tool === 'browse_url' && String(call.url || call.params?.url || '')}
-          {call.tool === 'run_lens_action' && `${call.params?.domain}.${call.params?.action}`}
+          {call.tool === 'run_lens_action' && lensActionLabel(call)}
           {call.tool === 'create_dtu' && String(call.params?.title || '')}
         </span>
         <div className="flex items-center gap-1.5 shrink-0">
