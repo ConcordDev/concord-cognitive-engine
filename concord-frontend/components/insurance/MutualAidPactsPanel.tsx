@@ -24,6 +24,12 @@ interface Pact {
 }
 interface Payout { id: string; pactId: string; cause: string; firedAt: number; totalSparks?: number; mySparks?: number; insuredUserId?: string }
 
+// The shared pact store keeps timestamps in SECONDS (pactNow in
+// server/domains/insurance.js is Date.now()/1000) — Death Insurance's
+// PactCard converts with ×1000; this panel fed the raw seconds to
+// new Date() as milliseconds and printed January 1970 (F5).
+const fmtDate = (unixSec: number): string => new Date(unixSec * 1000).toLocaleDateString();
+
 const STATUS_COLOR: Record<string, string> = {
   active: 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10',
   expired: 'text-amber-300 border-amber-500/40 bg-amber-500/10',
@@ -113,7 +119,7 @@ export function MutualAidPactsPanel({ className }: { className?: string }) {
         ) : (
           <div className="text-[11px] text-zinc-400">
             {p.beneficiaries.length} beneficiar{p.beneficiaries.length === 1 ? 'y' : 'ies'}
-            {p.expiresAt && <> · expires {new Date(p.expiresAt).toLocaleDateString()}</>}
+            {p.expiresAt && <> · expires {fmtDate(p.expiresAt)}</>}
             {p.renewCount ? <> · renewed ×{p.renewCount}</> : null}
             {p.autoRenew && <span className="text-cyan-300"> · auto-renew</span>}
           </div>
@@ -213,10 +219,10 @@ export function MutualAidPactsPanel({ className }: { className?: string }) {
           <h4 className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1.5 inline-flex items-center gap-1"><History className="w-3 h-3" /> Payout history</h4>
           <div className="space-y-1">
             {payouts.received.map((po) => (
-              <div key={po.id} className="text-[11px] text-emerald-300">Received {po.mySparks} sparks — {po.cause} ({new Date(po.firedAt).toLocaleDateString()})</div>
+              <div key={po.id} className="text-[11px] text-emerald-300">Received {po.mySparks} sparks — {po.cause} ({fmtDate(po.firedAt)})</div>
             ))}
             {payouts.paidOut.map((po) => (
-              <div key={po.id} className="text-[11px] text-zinc-400">Paid out {po.totalSparks} sparks — {po.cause} ({new Date(po.firedAt).toLocaleDateString()})</div>
+              <div key={po.id} className="text-[11px] text-zinc-400">Paid out {po.totalSparks} sparks — {po.cause} ({fmtDate(po.firedAt)})</div>
             ))}
           </div>
         </div>
