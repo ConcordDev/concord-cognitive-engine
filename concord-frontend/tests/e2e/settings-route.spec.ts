@@ -62,7 +62,8 @@ test('settings route shows the saved volumes, not zeros', async ({ page }) => {
 
   await page.goto('/settings');
   await expect(page).toHaveURL(/\/lenses\/settings/);
-  await expect(page.getByRole('heading', { name: /Your settings/ })).toBeVisible();
+  // The lens header is the lens name (9d9af6291 removed the greeting headline).
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'World & graphics' }).click();
   await expect(page.getByText('0.70').first()).toBeVisible();
   await expect(page.getByText('0.60').first()).toBeVisible();

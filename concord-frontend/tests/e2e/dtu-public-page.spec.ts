@@ -57,6 +57,7 @@ test.describe('public DTU page', () => {
     await page.context().addCookies(cookies);
     const response = await page.goto(`/dtu/${id}`, { waitUntil: 'domcontentloaded', timeout: 5000 });
     expect(response?.status()).toBe(200);
-    await expect(page.getByText(title)).toBeVisible({ timeout: 5000 });
+    // Streamed metadata also puts the title in a <title> element; assert the page heading.
+    await expect(page.getByRole('heading', { name: title })).toBeVisible({ timeout: 5000 });
   });
 });
