@@ -387,7 +387,8 @@ export default function registerAppmakerActions(registerLensAction) {
   //   workflows:   event → action rules (workflow builder)
   //   connectors:  external API/data-source bindings
   //   versions:    immutable snapshots (version history)
-  //   deployment:  { url, status, deployedAt } (real deploy)
+  //   deployment:  { url, status, deployedAt } (publish = snapshot only;
+  //                `url` is always null — no hosting infra is wired up)
   // ───────────────────────────────────────────────────────────────────
 
   function getAppState() {
@@ -887,11 +888,22 @@ export default function registerAppmakerActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
-  // ─── Real deploy → hosted URL ─────────────────────────────────────
+  // ─── Publish → snapshot (honest: no hosting infra exists) ─────────
+  //
+  // There is no reverse proxy, wildcard DNS, or static-hosting backend
+  // wired up anywhere in this codebase. Earlier code synthesized a
+  // `https://<slug>-<buildId>.apps.concord-os.org` string and presented
+  // it as a live, resolvable deployment — that URL was never actually
+  // served by anything and 404s for every visitor. "Publish" here does
+  // the one thing that IS real: snapshot the project's pages/data
+  // model/workflows into a restorable version. The snapshot remains
+  // viewable in this lens's own Preview tab (previewRender), which is
+  // a genuine renderer. `url` stays null until real hosting exists.
 
   /**
-   * deploy.publish — "deploy" the project. Produces a stable hosted URL,
-   * snapshots a version, and flips deployment status to live.
+   * deploy.publish — snapshots the current project into a restorable
+   * version and marks it "snapshotted". Does NOT provision any hosted
+   * URL (none exists) — see note above.
    */
   registerLensAction("app-maker", "deployPublish", (ctx, artifact, params) => {
     try {
@@ -900,24 +912,22 @@ export default function registerAppmakerActions(registerLensAction) {
       const proj = findProject(s, amActor(ctx), params?.projectId);
       if (!proj) return { ok: false, error: "project_not_found" };
       if (!proj.pages.length) return { ok: false, error: "no_pages_to_deploy" };
-      const slug = (proj.name || "app").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "app";
       const buildId = Math.random().toString(36).slice(2, 8);
-      const url = `https://${slug}-${buildId}.apps.concord-os.org`;
       const version = {
         id: amId("ver"),
-        label: params?.label ? amClean(params.label, 60) : `Deploy ${proj.versions.length + 1}`,
+        label: params?.label ? amClean(params.label, 60) : `Snapshot ${proj.versions.length + 1}`,
         createdAt: amNow(),
         snapshot: JSON.parse(JSON.stringify({
           pages: proj.pages, dataModel: proj.dataModel,
           workflows: proj.workflows, connectors: proj.connectors,
         })),
-        deployUrl: url,
+        deployUrl: null,
       };
       proj.versions.unshift(version);
       if (proj.versions.length > 50) proj.versions.length = 50;
       proj.deployment = {
-        status: "live",
-        url,
+        status: "snapshotted",
+        url: null,
         deployedAt: amNow(),
         buildId,
         pageCount: proj.pages.length,
