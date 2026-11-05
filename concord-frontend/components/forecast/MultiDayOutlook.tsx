@@ -28,11 +28,14 @@ interface MultiDayResult {
   outlook: OutlookDay[];
 }
 
-export function MultiDayOutlook({ worldId }: { worldId: string }) {
+export function MultiDayOutlook({ worldId, refreshKey = 0 }: { worldId: string; refreshKey?: number }) {
   const [days, setDays] = useState(7);
   const [outlook, setOutlook] = useState<OutlookDay[] | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // refreshKey is the page's compose version: when a fresh forecast is
+  // composed, the dep change re-runs this load so the outlook re-reads in
+  // session instead of holding the previous forecast until a reload (F2).
   const load = useCallback(async () => {
     setLoading(true);
     const r = await lensRun<MultiDayResult>('forecast', 'multiDay', { worldId, days });
@@ -42,7 +45,7 @@ export function MultiDayOutlook({ worldId }: { worldId: string }) {
       setOutlook([]);
     }
     setLoading(false);
-  }, [worldId, days]);
+  }, [worldId, days, refreshKey]);
 
   useEffect(() => { void load(); }, [load]);
 

@@ -126,6 +126,9 @@ describe("energy — pure-compute calculators (exact values)", () => {
     // cost = round(15.2 * 2800) = 42560
     assert.equal(r.result.estimatedCost, 42560);
     assert.equal(r.result.afterTaxCredit, Math.round(42560 * 0.7));
+    // min(1824, 900) * 12 * 0.12 = 1296. The rate is named on the result.
+    assert.equal(r.result.annualSavings, 1296);
+    assert.equal(r.result.savingsRateUsdPerKwh, 0.12);
     assert.match(r.result.recommendation, /100% of usage/);
   });
 
@@ -236,6 +239,7 @@ describe("energy — fail-closed poison (no Infinity/NaN leak, no throw)", () =>
       assert.equal(r.ok, true);
       assert.equal(r.result.maxPanels, null);
       assert.equal(r.result.estimatedCost, null);
+      assert.equal(r.result.savingsRateUsdPerKwh, null);
       assert.equal(r.result.reason, "not_recorded");
       assert.deepEqual(r.result.unavailable, ["roofAreaSqFt", "peakSunHours", "monthlyUsageKWh"]);
     }
@@ -250,6 +254,7 @@ describe("energy — fail-closed poison (no Infinity/NaN leak, no throw)", () =>
     assert.equal(r.result.coveragePercent, null);
     assert.equal(r.result.estimatedCost, null);
     assert.equal(r.result.annualSavings, null);
+    assert.equal(r.result.savingsRateUsdPerKwh, null);
     assert.equal(r.result.paybackYears, null);
     assert.equal(r.result.reason, "not_recorded");
     assert.deepEqual(r.result.unavailable, ["roofAreaSqFt", "peakSunHours", "monthlyUsageKWh"]);
@@ -259,6 +264,8 @@ describe("energy — fail-closed poison (no Infinity/NaN leak, no throw)", () =>
     const r = callCalcPanel("solarEstimate", ctxA, { roofAreaSqFt: 1000, peakSunHours: 5 });
     assert.equal(r.ok, true);
     assert.equal(r.result.maxPanels, null);
+    assert.equal(r.result.annualSavings, null);
+    assert.equal(r.result.savingsRateUsdPerKwh, null);
     assert.deepEqual(r.result.unavailable, ["monthlyUsageKWh"]);
   });
 

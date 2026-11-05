@@ -28,6 +28,22 @@ export function reputationGateTier(reputation) {
   return 10;
 }
 
+/**
+ * The next contract gate above a reputation: the smallest reputation that
+ * raises reputationGateTier, and the tier it opens. Derived by probing
+ * reputationGateTier itself, so the two can never disagree. Null when the
+ * reputation already clears the top gate.
+ */
+export function nextReputationGate(reputation) {
+  const r = Math.max(0, Math.min(100, Number(reputation) || 0));
+  const gate = reputationGateTier(r);
+  for (let probe = Math.floor(r) + 1; probe <= 100; probe++) {
+    const g = reputationGateTier(probe);
+    if (g > gate) return { atReputation: probe, gateTier: g };
+  }
+  return null;
+}
+
 /** Reputation scales the wage 0.8×–1.2× (a known name commands more). */
 export function reputationWageMultiplier(reputation) {
   const r = Math.max(0, Math.min(100, Number(reputation) || 0));

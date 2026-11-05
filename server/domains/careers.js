@@ -18,10 +18,10 @@ import { CATEGORIES, TRACKS, ladderFor, activityFor, isTrack, tierInfo } from ".
 import { resolveSession, fidelityPayMultiplier, fidelityXpMultiplier } from "../lib/career-fidelity.js";
 import { shiftPay, promotionXp, promotionReady, promotionReward } from "../lib/career-engine.js";
 import { resolveMinigame, isMinigame } from "../lib/sport-minigames.js";
-import { creditSparks } from "../lib/sparks-service.js";
+import { creditSparks, getSparks } from "../lib/sparks-service.js";
 import {
   offerContract, counterContract, acceptContract, rejectContract, listContractsFor,
-  reputationGateTier, reputationWageMultiplier, deriveWorkerReputation,
+  reputationGateTier, reputationWageMultiplier, deriveWorkerReputation, nextReputationGate,
 } from "../lib/career-contracts.js";
 import { findEmployers } from "../lib/career-employers.js";
 import { requireActor } from "../lib/lens-authz.js";
@@ -64,6 +64,18 @@ function lastShiftAt(db, uid) {
   try {
     return db.prepare(`SELECT MAX(last_shift_at) AS t FROM player_career_progress WHERE user_id = ?`).get(uid)?.t || null;
   } catch { return null; }
+}
+
+// The cooldown is a designed wait, and the surface is entitled to say so:
+// how long the rule is, and when the next paid shift opens. S1 (Product
+// Review 2's Careers pass): the duration was stated nowhere and the wait
+// was worded as a failure; these fields are what the client renders.
+function cooldownState(db, uid) {
+  const cooldownSeconds = shiftCooldownS();
+  const last = cooldownSeconds > 0 ? lastShiftAt(db, uid) : null;
+  const nowS = Math.floor(Date.now() / 1000);
+  const nextShiftAt = last && nowS - last < cooldownSeconds ? (last + cooldownSeconds) * 1000 : null;
+  return { cooldownSeconds, nextShiftAt };
 }
 
 function readProgress(db, uid, trackId) {
@@ -117,7 +129,10 @@ export default function registerCareerMacros(register) {
     const last = lastShiftAt(ctx.db, uid);
     const cooldown = shiftCooldownS();
     if (cooldown > 0 && last && nowS - last < cooldown) {
-      return { ok: false, reason: "shift_cooldown", retryAt: (last + cooldown) * 1000 };
+      return {
+        ok: false, reason: "shift_cooldown", retryAt: (last + cooldown) * 1000,
+        cooldownSeconds: cooldown, retryAfterSeconds: Math.max(1, last + cooldown - nowS),
+      };
     }
     const progress = readProgress(ctx.db, uid, trackId);
     const tier = progress.tier;
@@ -158,6 +173,10 @@ export default function registerCareerMacros(register) {
       progress: { tier: next.tier, xp: next.xp, highestTier: next.highestTier, shifts: next.shifts, saved },
       promotion, gates: promo.gates,
       nextTierXp: next.tier < 10 ? next.tier * 100 : null,
+      // The balance the shift just paid into — sparks are earned into the
+      // player's real ledger (sparks-service); the lens renders it so the
+      // winnings are visible, not only a transient result line.
+      sparksBalance: getSparks(ctx.db, "player", uid),
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { note: "careers: play a shift (skill-input → sparks + XP)" });
@@ -165,16 +184,18 @@ export default function registerCareerMacros(register) {
   register("careers", "progress", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
     const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    const cd = cooldownState(ctx.db, uid);
+    const sparksBalance = getSparks(ctx.db, "player", uid);
     if (input.trackId !== undefined) {
       if (!isTrack(input.trackId)) return { ok: false, reason: "unknown_track" };
       const p = readProgress(ctx.db, uid, input.trackId);
-      return { ok: true, trackId: input.trackId, progress: p, nextTierXp: p.tier < 10 ? p.tier * 100 : null };
+      return { ok: true, trackId: input.trackId, progress: p, nextTierXp: p.tier < 10 ? p.tier * 100 : null, sparksBalance, ...cd };
     }
     let rows = [];
     try {
       rows = ctx.db.prepare(`SELECT track_id, tier, xp, highest_tier, shifts, last_shift_day FROM player_career_progress WHERE user_id = ? ORDER BY updated_at DESC`).all(uid);
     } catch { rows = []; }
-    return { ok: true, tracks: rows.map((r) => ({ trackId: r.track_id, tier: r.tier, xp: r.xp, highestTier: r.highest_tier, shifts: r.shifts, lastShiftDay: r.last_shift_day })) };
+    return { ok: true, tracks: rows.map((r) => ({ trackId: r.track_id, tier: r.tier, xp: r.xp, highestTier: r.highest_tier, shifts: r.shifts, lastShiftDay: r.last_shift_day })), sparksBalance, ...cd };
   }, { note: "careers: my per-track tier, XP and mastery" });
 
   register("careers", "contracts", async (ctx) => {
@@ -242,7 +263,10 @@ export default function registerCareerMacros(register) {
     const wageMultiplier = reputationWageMultiplier(reputation);
     const gatedTiers = [];
     for (let t = gateTier + 1; t <= 10; t++) gatedTiers.push(t);
-    return { ok: true, trackId, reputation, gateTier, wageMultiplier, gatedTiers };
+    // The one rule, stated whole: promotion up the ladder is XP; contract
+    // hireability is reputation, and this is the next rung of THAT rule —
+    // so the surface never has to reconcile two unexplained gate numbers.
+    return { ok: true, trackId, reputation, gateTier, wageMultiplier, gatedTiers, nextGate: nextReputationGate(reputation) };
   }, { note: "careers: my reputation + which tiers it gates me out of" });
 
   register("careers", "accept", async (ctx, input = {}) => {

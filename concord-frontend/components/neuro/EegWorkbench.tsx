@@ -149,8 +149,12 @@ export function EegWorkbench() {
   const [source, setSource] = useState<SourceResult | null>(null);
 
   // stats
-  const [statA, setStatA] = useState('');
-  const [statB, setStatB] = useState('');
+  // The shipped example groups stand in the fields AS VALUES (S1/F2):
+  // they used to be placeholder text over empty fields, so the form
+  // looked filled while the first Run could only error. As values,
+  // first click from the shipped state runs the t-test they describe.
+  const [statA, setStatA] = useState('1.2, 0.9, 1.5, 1.1');
+  const [statB, setStatB] = useState('0.4, 0.6, 0.3, 0.5');
   const [stat, setStat] = useState<StatResult | null>(null);
 
   const ok = (t: string) => setFeedback({ kind: 'ok', text: t });
@@ -355,11 +359,16 @@ export function EegWorkbench() {
 
   // ── Statistics ──────────────────────────────────────────────────────
   const doStats = async () => {
-    setBusy('stats'); setFeedback(null);
+    // Validate BEFORE the busy state is set (S1/F2): the early return
+    // used to sit after setBusy('stats') and before the try/finally,
+    // so an ordinary empty-form error latched the Run button disabled
+    // until a full page reload.
+    setFeedback(null);
     const parse = (s: string) => s.split(/[\s,]+/).map(Number).filter(Number.isFinite);
     const groupA = parse(statA);
     const groupB = parse(statB);
     if (groupA.length < 2 || groupB.length < 2) { err('Each group needs at least 2 numeric values.'); return; }
+    setBusy('stats');
     try {
       const r = await lensRun<StatResult>('neuro', 'statisticalTest', { groupA, groupB });
       if (r.data?.ok && r.data.result) { setStat(r.data.result); ok(r.data.result.significance); }

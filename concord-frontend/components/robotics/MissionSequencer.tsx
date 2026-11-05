@@ -31,6 +31,7 @@ export function MissionSequencer({ robots }: { robots: RobotRow[] }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [robotId, setRobotId] = useState('');
   const [priority, setPriority] = useState('5');
@@ -50,12 +51,17 @@ export function MissionSequencer({ robots }: { robots: RobotRow[] }) {
     if (!name.trim()) { setErr('Mission name required'); return; }
     const steps = stepsText.split('\n').map(s => s.trim()).filter(Boolean);
     if (steps.length === 0) { setErr('At least one step required'); return; }
-    setBusy('create'); setErr(null);
+    setBusy('create'); setErr(null); setNotice(null);
+    const queuedName = name.trim();
     const r = await lensRun('robotics', 'missionCreate', {
-      name: name.trim(), robotId: robotId || undefined,
+      name: queuedName, robotId: robotId || undefined,
       priority: parseInt(priority) || 5, steps,
     });
-    if (r.data?.ok) { setName(''); await load(); }
+    if (r.data?.ok) {
+      setNotice(`Mission "${queuedName}" queued — ${steps.length} steps, status QUEUED. It is in the list below.`);
+      setName('');
+      await load();
+    }
     else setErr(r.data?.error || 'Create failed');
     setBusy(null);
   };
@@ -103,6 +109,8 @@ export function MissionSequencer({ robots }: { robots: RobotRow[] }) {
       </div>
 
       {err && <p className="text-xs text-red-400">{err}</p>}
+
+      {notice && <p className="text-xs text-emerald-300">{notice}</p>}
 
       {loading ? (
         <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-neon-cyan" /></div>

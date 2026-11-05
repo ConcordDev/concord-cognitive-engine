@@ -11,6 +11,7 @@ import {
   StepBack, Save, FolderOpen, Trash2, Download, Upload, Sparkles,
 } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useLensState } from '@/hooks/useLensState';
 import { ChartKit } from '@/components/viz';
 import { lensRun } from '@/lib/api/client';
 import {
@@ -21,11 +22,23 @@ import {
   type ProbEntry, type SimResult, type StepFrame, type AnalysisResult,
   type ErrorResult, type SavedCircuitMeta, type NoisePreset, type ApiCircuit,
   buildCircuit, circuitToPlaced, TEMPLATES,
+  QUANTUM_NEW_CIRCUIT_EVENT, QUANTUM_NEW_CIRCUIT_PENDING_KEY,
 } from '@/components/quantum/quantum-shared';
 
 export function ComposerPanel() {
-  const [qubits, setQubits] = useState(2);
-  const [placed, setPlaced] = useState<PlacedGate[]>([]);
+  // Working-circuit draft (F1's second half): the error boundary's
+  // recovery copy promises the working circuit survives a recovery, but
+  // the circuit lived only in mount-scoped state, so "Try again"
+  // remounted to the empty default. The draft now rides the lens-state
+  // store's customState bag — restored synchronously on mount, saved on
+  // every change — so a boundary remount (or a view switch) restores
+  // the circuit exactly as composed.
+  const { restored, save: saveLensState } = useLensState('quantum');
+  const draft = restored?.customState?.composerDraft as
+    | { qubits: number; placed: PlacedGate[] }
+    | undefined;
+  const [qubits, setQubits] = useState(draft?.qubits ?? 2);
+  const [placed, setPlaced] = useState<PlacedGate[]>(draft?.placed ?? []);
   const [gateLib, setGateLib] = useState<GateDef[]>([]);
   const [noisePresets, setNoisePresets] = useState<NoisePreset[]>([]);
   const [selectedPreset, setSelectedPreset] = useState('ideal');
@@ -41,6 +54,21 @@ export function ComposerPanel() {
 
   const [saved, setSaved] = useState<SavedCircuitMeta[]>([]);
   const [qasm, setQasm] = useState('');
+
+  // Save runs off an inline name field, not window.prompt (F4): the
+  // native dialog never returned a name in the product shell, so the
+  // old handler returned silently before saveCircuit was ever called.
+  const [saveName, setSaveName] = useState('');
+  const [savedNote, setSavedNote] = useState<string | null>(null);
+  // Saved-row delete arms first and names the circuit (the S3 guard).
+  const [confirmDelete, setConfirmDelete] = useState<SavedCircuitMeta | null>(null);
+  // "New circuit" with gates on the canvas asks first (F5's guard).
+  const [confirmNew, setConfirmNew] = useState(false);
+
+  // Persist the working circuit as the lens draft on every change.
+  useEffect(() => {
+    saveLensState({ customState: { composerDraft: { qubits, placed } } });
+  }, [qubits, placed, saveLensState]);
 
   const circuit = useMemo(() => buildCircuit(qubits, placed), [qubits, placed]);
 
@@ -116,11 +144,16 @@ export function ComposerPanel() {
   }, [run, qubits]);
 
   const handleSave = useCallback(async () => {
-    const name = window.prompt('Name this circuit', `Circuit ${new Date().toISOString().slice(0, 16)}`);
-    if (!name) return;
+    // The name comes from the inline field in the Saved Circuits panel;
+    // blank falls back to a timestamped name. No native dialog (F4).
+    const name = saveName.trim() || `Circuit ${new Date().toISOString().slice(0, 16)}`;
     const res = await run('saveCircuit', { circuit, name });
-    if (res) await refreshSaved();
-  }, [circuit, run, refreshSaved]);
+    if (res) {
+      setSavedNote(name);
+      setSaveName('');
+      await refreshSaved();
+    }
+  }, [circuit, run, refreshSaved, saveName]);
 
   const handleLoad = useCallback(async (id: string) => {
     const res = await run('loadCircuit', { id });
@@ -153,6 +186,36 @@ export function ComposerPanel() {
     }
   }, [qasm, run]);
 
+  // "New circuit" (F5): the page CTA used to only switch to the
+  // Composer view — on the Composer view itself it did nothing at all.
+  // It now reaches the panel (window event, or the pending flag when
+  // the panel was unmounted) and performs a real fresh-circuit action,
+  // guarded when the current circuit has gates that would be lost.
+  const doNewCircuit = useCallback(() => {
+    setPlaced([]);
+    setQubits(2);
+    setSim(null);
+    setFrames([]);
+    setFrameIdx(0);
+    setAnalysis(null);
+    setErrAnalysis(null);
+    setConfirmNew(false);
+  }, []);
+
+  const handleNewCircuitRequest = useCallback(() => {
+    try { sessionStorage.removeItem(QUANTUM_NEW_CIRCUIT_PENDING_KEY); } catch { /* storage unavailable */ }
+    if (placed.length > 0) setConfirmNew(true);
+    else doNewCircuit();
+  }, [placed.length, doNewCircuit]);
+
+  useEffect(() => {
+    let pending = false;
+    try { pending = sessionStorage.getItem(QUANTUM_NEW_CIRCUIT_PENDING_KEY) === '1'; } catch { /* storage unavailable */ }
+    if (pending) handleNewCircuitRequest();
+    window.addEventListener(QUANTUM_NEW_CIRCUIT_EVENT, handleNewCircuitRequest);
+    return () => window.removeEventListener(QUANTUM_NEW_CIRCUIT_EVENT, handleNewCircuitRequest);
+  }, [handleNewCircuitRequest]);
+
   useLensCommand(
     [
       { id: 'run', keys: 'mod+enter', description: 'Simulate circuit', category: 'actions',
@@ -166,15 +229,21 @@ export function ComposerPanel() {
   );
 
   const activeFrame = frames.length > 0 ? frames[frameIdx] : null;
+  // F1/F2: the render path reads the result defensively. Run crashed
+  // the whole lens on `sim.measurements.counts` and Analyze on
+  // `analysis.faultToleranceCost.includes` whenever a result arrived
+  // without those fields — one undefined read took the lens to the
+  // error boundary. A partial result now degrades to an empty render;
+  // the verb contracts themselves are pinned by tests at both ends.
   const histProbs: ProbEntry[] = activeFrame
     ? activeFrame.statevector
-    : (sim ? sim.statevector : []);
+    : (sim ? (sim.statevector ?? []) : []);
   const histData = histProbs
     .slice(0, 16)
     .map((p) => ({ state: `|${p.state}⟩`, probability: Math.round(p.probability * 10000) / 100 }));
-  const activeBloch: BlochVector[] = activeFrame ? activeFrame.bloch : (sim ? sim.bloch : []);
+  const activeBloch: BlochVector[] = activeFrame ? activeFrame.bloch : (sim ? (sim.bloch ?? []) : []);
   const shotData = sim
-    ? Object.entries(sim.measurements.counts)
+    ? Object.entries(sim.measurements?.counts ?? {})
       .sort((a, b) => b[1] - a[1])
       .slice(0, 16)
       .map(([state, count]) => ({ state: `|${state}⟩`, count }))
@@ -186,6 +255,25 @@ export function ComposerPanel() {
         <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-300">
           <span>{error}</span>
           <button aria-label="Dismiss" onClick={() => setError(null)}><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {confirmNew && (
+        <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm text-amber-200">
+          <span>
+            Start a new circuit? The current circuit ({placed.length} gate{placed.length === 1 ? '' : 's'}) will be
+            cleared. Saved circuits are not affected.
+          </span>
+          <span className="ml-auto flex gap-1.5">
+            <button onClick={doNewCircuit}
+              className="px-2.5 py-1 rounded bg-amber-500/80 text-white font-semibold hover:bg-amber-500">
+              Start new
+            </button>
+            <button onClick={() => setConfirmNew(false)}
+              className="px-2.5 py-1 rounded border border-zinc-600 text-zinc-200 hover:text-white">
+              Keep working
+            </button>
+          </span>
         </div>
       )}
 
@@ -247,9 +335,13 @@ export function ComposerPanel() {
             <h2 className="font-semibold flex items-center gap-2">
               <StepForward className="w-4 h-4 text-neon-cyan" /> Step-Through Execution
             </h2>
-            <span className="text-xs text-gray-400 font-mono">
+            <span className="flex items-center gap-2 text-xs text-gray-400 font-mono">
               Step {activeFrame.step} / {frames.length - 1}
               {' · '}<span className="text-neon-cyan">{activeFrame.gate}</span>
+              <button aria-label="Close step-through" onClick={() => { setFrames([]); setFrameIdx(0); }}
+                className="text-gray-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -331,7 +423,7 @@ export function ComposerPanel() {
             <div className="panel p-4 space-y-2">
               <h2 className="font-semibold text-sm flex items-center gap-2">
                 <Zap className="w-4 h-4 text-neon-green" />
-                Measurement Shots ({sim.measurements.shots})
+                Measurement Shots ({sim.measurements?.shots ?? 0})
               </h2>
               <ChartKit kind="bar" data={shotData} xKey="state"
                 series={[{ key: 'count', label: 'Counts', color: '#22c55e' }]}
@@ -368,8 +460,8 @@ export function ComposerPanel() {
           </div>
           <p className="text-xs text-gray-400">
             Fault tolerance:{' '}
-            <span className={analysis.faultToleranceCost.includes('Clifford-only') ? 'text-green-400' : 'text-yellow-400'}>
-              {analysis.faultToleranceCost}
+            <span className={(analysis.faultToleranceCost ?? '').includes('Clifford-only') ? 'text-green-400' : 'text-yellow-400'}>
+              {analysis.faultToleranceCost ?? 'unknown'}
             </span>
           </p>
         </div>
@@ -425,9 +517,9 @@ export function ComposerPanel() {
                 </div>
               ))}
             </div>
-            {errAnalysis.recommendations.length > 0 && (
+            {(errAnalysis.recommendations ?? []).length > 0 && (
               <div className="space-y-0.5">
-                {errAnalysis.recommendations.map((r, i) => (
+                {(errAnalysis.recommendations ?? []).map((r, i) => (
                   <p key={i} className="text-yellow-300">⚠ {r}</p>
                 ))}
               </div>
@@ -460,6 +552,25 @@ export function ComposerPanel() {
         <h2 className="font-semibold flex items-center gap-2">
           <FolderOpen className="w-4 h-4 text-neon-green" /> Saved Circuits
         </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={saveName}
+            onChange={(e) => { setSaveName(e.target.value); setSavedNote(null); }}
+            placeholder="Name this circuit"
+            aria-label="Circuit name"
+            className="flex-1 min-w-48 bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100"
+          />
+          <button onClick={handleSave} disabled={!!busy || placed.length === 0}
+            className="btn-neon flex items-center gap-1.5 disabled:opacity-40">
+            <Save className="w-4 h-4" /> Save circuit
+          </button>
+        </div>
+        {savedNote && (
+          <p className="text-xs text-emerald-300">
+            Saved &ldquo;{savedNote}&rdquo; — it is in your list below and will be here when you return.
+          </p>
+        )}
         {saved.length === 0 ? (
           <p className="text-xs text-gray-400">No saved circuits yet — compose one and click Save.</p>
         ) : (
@@ -473,18 +584,36 @@ export function ComposerPanel() {
                     {new Date(sc.updatedAt).toLocaleString()}
                   </p>
                 </div>
-                <div className="flex gap-1">
-                  <button onClick={() => handleLoad(sc.id)}
-                    className="p-1.5 rounded bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/20"
-                    title="Load">
-                    <FolderOpen className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={() => handleDelete(sc.id)}
-                    className="p-1.5 rounded bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20"
-                    title="Delete">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                {confirmDelete?.id === sc.id ? (
+                  <span className="flex items-center gap-1.5 text-xs text-red-300">
+                    Delete &ldquo;{sc.name}&rdquo;?
+                    <button
+                      onClick={async () => { await handleDelete(sc.id); setConfirmDelete(null); }}
+                      className="px-2 py-1 rounded bg-red-500/80 text-white font-semibold hover:bg-red-500"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(null)}
+                      className="px-2 py-1 rounded border border-zinc-600 text-zinc-200 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <div className="flex gap-1">
+                    <button onClick={() => handleLoad(sc.id)}
+                      className="p-1.5 rounded bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/20"
+                      title="Load">
+                      <FolderOpen className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => setConfirmDelete(sc)}
+                      className="p-1.5 rounded bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20"
+                      title="Delete">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
