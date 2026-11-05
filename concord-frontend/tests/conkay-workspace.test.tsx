@@ -269,9 +269,15 @@ describe('ConKay workspace — agent and reopen', () => {
     expect(screen.getByText('dtu_old')).toBeTruthy();
     expect(within(convo()).getByText('Earlier reply.')).toBeTruthy();
     expect((screen.getByLabelText('Study name') as HTMLInputElement).value).toBe('Frame beam');
+    // Clearing is two-step: arm, then confirm (the receipt names what was removed).
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm clear?' }));
     await waitFor(() => expect(within(convo()).queryByText('Earlier reply.')).toBeNull());
-    expect(appended).toEqual([]);
+    // The cleared conversation is not written back; only the F9 receipt (what was removed,
+    // and what was not touched) is stored as the new first message.
+    await waitFor(() => expect(appended.length).toBe(1));
+    expect(JSON.stringify(appended)).toMatch(/Conversation cleared — 1 message removed/);
+    expect(JSON.stringify(appended)).not.toMatch(/Earlier reply/);
   });
 });
 
@@ -440,8 +446,12 @@ describe('ConKay workspace — save, export, delete', () => {
     await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
     await openModels();
     await waitFor(() => expect(screen.getByText('Shop beam')).toBeTruthy());
+    // Delete is two-step (F10): the first click arms, the confirm deletes.
     fireEvent.click(screen.getByRole('button', { name: 'Delete Shop beam' }));
+    expect(screen.getByText('Shop beam')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete Shop beam' }));
     await waitFor(() => expect(screen.getByText(/No saved models/)).toBeTruthy());
+    expect(screen.getByText('Deleted “Shop beam”.')).toBeTruthy();
     expect(screen.queryByText('Shop beam')).toBeNull();
 
     cleanup();
@@ -467,6 +477,7 @@ describe('ConKay workspace — save, export, delete', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Models' }));
     await waitFor(() => expect(screen.getByText('Shop beam')).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: 'Delete Shop beam' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete Shop beam' }));
     await waitFor(() => expect(screen.getByText('This model belongs to another account.')).toBeTruthy());
     expect(screen.getByText('Shop beam')).toBeTruthy();
   });
@@ -572,5 +583,45 @@ describe('ConKay workspace — new designs from the box', () => {
     expect(within(list).getByText('Demo (no sign-in)').closest('a')?.getAttribute('href')).toBe('/conkay/demo');
     expect(within(list).getByText('Gallery: all showcase designs').closest('a')?.getAttribute('href')).toBe('/conkay/designs');
     expect(within(list).getByRole('button', { name: 'NuScale US600 facility screening' })).toBeTruthy();
+  });
+});
+
+describe('ConKay workspace — build(conkay) F3/F6/F12b', () => {
+  it('declines a buckling ask by name and substitutes no bending solve (F6)', async () => {
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    send('Run a buckling check and give me the critical buckling load');
+    await waitFor(() => expect(within(convo()).getByText(/does not run buckling/i)).toBeTruthy());
+    expect(within(convo()).getByText(/not substituted a bending solve/)).toBeTruthy();
+    expect(lensRun.mock.calls.some((c) => c[1] === 'beamStudy')).toBe(false);
+    expect(streamMock).not.toHaveBeenCalled();
+  });
+
+  it('saving twice updates the same part in place under the same name (F3)', async () => {
+    routes({ 'engineering.savePart': (input) => ok({ part: { id: 'part_1', name: input.name } }) });
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    send('save model');
+    await waitFor(() => expect(within(convo()).getByText(/Saved “I-beam” to Models \(part_1\)/)).toBeTruthy());
+    send('save model');
+    await waitFor(() => expect(within(convo()).getByText(/updated in place/)).toBeTruthy());
+    const saves = lensRun.mock.calls.filter((c) => c[1] === 'savePart');
+    expect(saves).toHaveLength(2);
+    expect(saves[0][2]).not.toHaveProperty('id');
+    expect(saves[1][2]).toMatchObject({ id: 'part_1', name: 'I-beam' });
+  });
+
+  it('the required safety factor has a visible control that reaches the solve (F12b)', async () => {
+    render(<ConKayWorkspace />);
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    const sf = screen.getByLabelText('Required safety factor') as HTMLInputElement;
+    fireEvent.change(sf, { target: { value: '2' } });
+    fireEvent.blur(sf);
+    send('run fea');
+    await waitFor(() => expect(lensRun.mock.calls.some((c) => c[1] === 'beamStudy')).toBe(true));
+    const call = lensRun.mock.calls.find((c) => c[1] === 'beamStudy');
+    expect(call?.[2]).toMatchObject({ requiredSafetyFactor: 2 });
+    fireEvent.click(screen.getByRole('button', { name: 'Clear required safety factor' }));
+    expect((screen.getByLabelText('Required safety factor') as HTMLInputElement).value).toBe('');
   });
 });

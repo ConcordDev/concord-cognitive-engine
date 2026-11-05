@@ -10,6 +10,7 @@ import {
   savePhoto, sharePhoto, listMyPhotos, listPublicPhotosInWorld, deletePhoto,
 } from "../lib/photo-gallery.js";
 import { up as upPhotos } from "../migrations/243_photo_gallery.js";
+import { up as upPhotoMetadata } from "../migrations/496_photo_metadata.js";
 
 const TMP_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "concord-photos-"));
 process.env.CONCORD_PHOTO_DIR = TMP_DIR;
@@ -20,17 +21,8 @@ after(() => {
 
 function freshDb() {
   const db = new Database(":memory:");
-  db.exec(`
-    CREATE TABLE dtus (
-      id TEXT PRIMARY KEY,
-      title TEXT,
-      type TEXT,
-      creator_id TEXT,
-      created_at INTEGER,
-      body_json TEXT
-    );
-  `);
   upPhotos(db);
+  upPhotoMetadata(db);
   return db;
 }
 
@@ -39,15 +31,28 @@ const TINY_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1
 
 describe("Phase BE1 — photo gallery", async () => {
   let db;
-  beforeEach(() => { db = freshDb(); });
+  let STATE;
+  beforeEach(() => { db = freshDb(); STATE = { dtus: new Map() }; });
 
-  it("savePhoto writes blob + row", async () => {
+  it("savePhoto writes blob + row, capturing real PNG width/height + size", async () => {
     const r = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG, caption: "hi" });
     assert.equal(r.ok, true);
     assert.ok(fs.existsSync(r.blobPath));
+    assert.equal(r.width, 1);
+    assert.equal(r.height, 1);
+    assert.ok(r.bytes > 0);
     const list = listMyPhotos(db, "u1");
     assert.equal(list.length, 1);
     assert.equal(list[0].caption, "hi");
+  });
+
+  it("savePhoto stores the original filename when the caller supplies one", async () => {
+    const r = await savePhoto(db, "u1", { dataUrl: TINY_PNG, originalFilename: "IMG_0042.heic" });
+    const row = db.prepare("SELECT original_filename, width, height, size_bytes FROM user_photos WHERE id = ?").get(r.id);
+    assert.equal(row.original_filename, "IMG_0042.heic");
+    assert.equal(row.width, 1);
+    assert.equal(row.height, 1);
+    assert.ok(row.size_bytes > 0);
   });
 
   it("rejects invalid data URL", async () => {
@@ -56,35 +61,38 @@ describe("Phase BE1 — photo gallery", async () => {
     assert.equal(r.error, "invalid_data_url");
   });
 
-  it("private hides from public feed; sharePhoto flips to public + mints DTU", async () => {
+  it("private hides from public feed; sharePhoto mints into STATE.dtus (not the dead legacy dtus table) + flips public", async () => {
     const r = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG, visibility: "private" });
     assert.equal(listPublicPhotosInWorld(db, "tunya").length, 0);
-    const s = sharePhoto(db, r.id);
+    const s = sharePhoto(db, r.id, { STATE });
     assert.equal(s.ok, true);
     assert.ok(s.dtuId.startsWith("dtu_photo_"));
     assert.equal(listPublicPhotosInWorld(db, "tunya").length, 1);
-    const dtu = db.prepare(`SELECT type, creator_id FROM dtus WHERE id = ?`).get(s.dtuId);
-    assert.equal(dtu.type, "photo");
-    assert.equal(dtu.creator_id, "u1");
+    // The real, findable object — this is what dtu.list/dtu.get actually read.
+    const dtu = STATE.dtus.get(s.dtuId);
+    assert.ok(dtu, "the minted DTU must land in the live substrate");
+    assert.equal(dtu.domain, "photos");
+    assert.equal(dtu.machine.kind, "photo");
+    assert.equal(dtu.ownerId, "u1");
+    assert.equal(dtu.visibility, "public");
+    assert.equal(dtu.scope, "global");
   });
 
-  it("does not stamp dtu_id when the dtus insert fails", async () => {
-    const bare = new Database(":memory:");
-    upPhotos(bare);
-    const r = await savePhoto(bare, "u1", { worldId: "hub", dataUrl: TINY_PNG, caption: "held" });
-    const s = sharePhoto(bare, r.id);
+  it("fails honestly with dtu_store_unavailable when no STATE.dtus substrate is reachable", async () => {
+    const r = await savePhoto(db, "u1", { worldId: "hub", dataUrl: TINY_PNG, caption: "held" });
+    const s = sharePhoto(db, r.id, { STATE: null });
     assert.equal(s.ok, false);
-    assert.equal(s.error, "dtu_insert_failed");
-    const row = bare.prepare("SELECT dtu_id, visibility FROM user_photos WHERE id = ?").get(r.id);
+    assert.equal(s.error, "dtu_store_unavailable");
+    const row = db.prepare("SELECT dtu_id, visibility FROM user_photos WHERE id = ?").get(r.id);
     assert.equal(row.dtu_id, null);
     assert.equal(row.visibility, "private");
-    assert.equal(listPublicPhotosInWorld(bare, "hub").length, 0);
+    assert.equal(listPublicPhotosInWorld(db, "hub").length, 0);
   });
 
   it("share is idempotent (re-share returns alreadyShared:true)", async () => {
     const r = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
-    sharePhoto(db, r.id);
-    const second = sharePhoto(db, r.id);
+    sharePhoto(db, r.id, { STATE });
+    const second = sharePhoto(db, r.id, { STATE });
     assert.equal(second.alreadyShared, true);
   });
 
@@ -102,9 +110,9 @@ describe("Phase BE1 — photo gallery", async () => {
 
   it("listPublicPhotosInWorld is scoped to world", async () => {
     const a = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
-    sharePhoto(db, a.id);
+    sharePhoto(db, a.id, { STATE });
     const b = await savePhoto(db, "u1", { worldId: "cyber", dataUrl: TINY_PNG });
-    sharePhoto(db, b.id);
+    sharePhoto(db, b.id, { STATE });
     assert.equal(listPublicPhotosInWorld(db, "tunya").length, 1);
     assert.equal(listPublicPhotosInWorld(db, "cyber").length, 1);
   });

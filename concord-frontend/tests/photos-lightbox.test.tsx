@@ -4,10 +4,12 @@
  * Pins that clicking a photo thumbnail opens `PhotoLightboxModal` and calls
  * the real `photos.get` macro (server/domains/photos.js) with the clicked
  * photo's id, then renders the macro's actual returned fields (caption,
- * world, visibility, DTU/royalty status) — not a client-invented summary.
- * `photos.get` returns `{ ok, photo: { id, user_id, world_id, caption,
- * taken_at, dtu_id, visibility, blob_path } }`; this test asserts against
- * that exact shape.
+ * world, visibility, DTU id + royalty status, dimensions, file size, and
+ * original filename when the row carries one) — not a client-invented
+ * summary. `photos.get` returns `{ ok, photo: { id, user_id, world_id,
+ * caption, taken_at, dtu_id, visibility, blob_path, width, height,
+ * size_bytes, original_filename } }`; this test asserts against that exact
+ * shape.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -57,6 +59,10 @@ const PHOTO_DETAIL = {
   dtu_id: 'dtu_abc123',
   visibility: 'public',
   blob_path: './data/photos/p_1.png',
+  width: 1920,
+  height: 1080,
+  size_bytes: 204800,
+  original_filename: 'IMG_0042.heic',
 };
 
 function jsonResponse(body: unknown, ok = true, status = 200) {
@@ -95,7 +101,7 @@ describe('photos lens — lightbox (photos.get wiring)', () => {
     await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('photos', 'get', { id: 'p_1' }));
   });
 
-  it('renders the real photos.get fields — caption, world, visibility, DTU/royalty status', async () => {
+  it('renders the real photos.get fields — caption, world, visibility, DTU id/royalty status, and F4 metadata (dimensions, size, original filename)', async () => {
     lensRunMock.mockReturnValue(
       Promise.resolve({ data: { ok: true, result: { ok: true, photo: PHOTO_DETAIL }, error: null } }),
     );
@@ -110,12 +116,40 @@ describe('photos lens — lightbox (photos.get wiring)', () => {
     expect(detail.textContent).toMatch(/public/);
     expect(detail.textContent).toMatch(/DTU minted/i);
     expect(detail.textContent).toMatch(/royalty active/i);
+    // F2 — the mint claim shows the actual id, not just a bare "minted" label.
+    expect(detail.textContent).toMatch(/dtu_abc123/);
+    // F4 — dimensions, file type + size, and the original filename.
+    expect(detail.textContent).toMatch(/1920.*1080/);
+    expect(detail.textContent).toMatch(/PNG/);
+    expect(detail.textContent).toMatch(/200\.0 KB/);
+    expect(detail.textContent).toMatch(/IMG_0042\.heic/);
 
     // Full-size image streams from the real image route, keyed by the same id.
     // (The gallery thumbnail shares the same alt text, so scope the query to
     // the lightbox detail panel.)
     const img = within(detail).getByAltText('Sunset over the spire') as HTMLImageElement;
     expect(img.getAttribute('src')).toBe('/api/photos/p_1/image');
+  });
+
+  it('F4: shows "unknown" for dimensions/filename rather than fabricating them when a row predates the metadata columns', async () => {
+    lensRunMock.mockReturnValue(
+      Promise.resolve({
+        data: {
+          ok: true,
+          result: { ok: true, photo: { ...PHOTO_DETAIL, width: null, height: null, size_bytes: null, original_filename: null } },
+          error: null,
+        },
+      }),
+    );
+    const view = await renderReady();
+
+    await act(async () => {
+      fireEvent.click(view.getByLabelText('View photo Sunset over the spire'));
+    });
+
+    const detail = await waitFor(() => view.getByTestId('photo-lightbox-detail'));
+    expect(detail.textContent).toMatch(/unknown/i);
+    expect(detail.textContent).not.toMatch(/IMG_0042/);
   });
 
   it('shows an honest "not shared" state when photos.get returns dtu_id: null', async () => {

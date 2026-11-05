@@ -75,7 +75,7 @@ export const ARTIFACT_TABS: {
     label: 'Engagement Records',
     artifactType: 'Engagement',
     tooltip:
-      'Freeform engagement briefs, scope notes, and fee terms — for live engagement status and time tracking, see the Engagement Tracker tab.',
+      'Freeform engagement briefs, scope notes, and fee terms — for engagement status and time tracking, see the Engagement Tracker tab.',
   },
   { id: 'proposals', label: 'Proposals', artifactType: 'Proposal' },
   { id: 'deliverables', label: 'Deliverables', artifactType: 'Deliverable' },

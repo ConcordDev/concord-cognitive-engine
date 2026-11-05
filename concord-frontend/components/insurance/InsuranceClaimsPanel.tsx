@@ -17,7 +17,9 @@ interface Claim {
   id: string; carrier: string; description: string; kind: string;
   status: string; claimAmount: number; payoutAmount?: number;
   submittedDate: string; daysSinceSubmit?: number; clientId?: string | null;
+  policyId?: string; policyNumber?: string | null; claimantName?: string | null;
 }
+interface PolicyLite { id: string; carrier: string; policyNumber: string; kind: string }
 
 const STATUS_FLOW: Record<string, string> = {
   submitted: 'under_review', under_review: 'approved', approved: 'paid',
@@ -39,9 +41,18 @@ export function InsuranceClaimsPanel({ onChange, clients = [], onClientCreated }
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ carrier: '', description: '', kind: 'collision', claimAmount: '' });
+  const [form, setForm] = useState({ carrier: '', description: '', kind: 'collision', claimAmount: '', policyId: '' });
   const [clientText, setClientText] = useState('');
   const [clientId, setClientId] = useState<string | null>(null);
+  const [policies, setPolicies] = useState<PolicyLite[]>([]);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const r = await lensRun('insurance', 'policy-list', {});
+      if (r.data?.ok !== false) setPolicies((r.data?.result?.policies as PolicyLite[]) || []);
+    })();
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -65,9 +76,10 @@ export function InsuranceClaimsPanel({ onChange, clients = [], onClientCreated }
       carrier: form.carrier.trim(), description: form.description.trim(),
       kind: form.kind, claimAmount: Number(form.claimAmount) || 0,
       clientId: clientId || undefined,
+      policyId: form.policyId || undefined,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setForm({ carrier: '', description: '', kind: 'collision', claimAmount: '' });
+    setForm({ carrier: '', description: '', kind: 'collision', claimAmount: '', policyId: '' });
     setClientText(''); setClientId(null);
     setShowAdd(false); setError(null);
     await refresh();
@@ -84,7 +96,11 @@ export function InsuranceClaimsPanel({ onChange, clients = [], onClientCreated }
     await refresh();
   };
   const deny = async (c: Claim) => { await lensRun('insurance', 'claim-update', { id: c.id, status: 'denied' }); await refresh(); };
-  const del = async (id: string) => { await lensRun('insurance', 'claim-delete', { id }); await refresh(); };
+  const del = async (id: string) => { await lensRun('insurance', 'claim-delete', { id }); setConfirmId(null); await refresh(); };
+  const pickPolicy = (policyId: string) => {
+    const p = policies.find((x) => x.id === policyId);
+    setForm((f) => ({ ...f, policyId, carrier: p ? p.carrier : f.carrier }));
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
@@ -109,6 +125,11 @@ export function InsuranceClaimsPanel({ onChange, clients = [], onClientCreated }
           <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {['collision', 'comprehensive', 'property', 'health', 'life', 'liability', 'other'].map((k) => <option key={k} value={k}>{k}</option>)}
+          </select>
+          <select aria-label="Policy (optional)" value={form.policyId} onChange={(e) => pickPolicy(e.target.value)}
+            className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+            <option value="">No linked policy</option>
+            {policies.map((p) => <option key={p.id} value={p.id}>{p.carrier} · {p.policyNumber} · {p.kind}</option>)}
           </select>
           <input placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
@@ -138,6 +159,13 @@ export function InsuranceClaimsPanel({ onChange, clients = [], onClientCreated }
                     {c.payoutAmount != null ? ` · paid $${c.payoutAmount}` : ''}
                     {c.daysSinceSubmit != null ? ` · ${c.daysSinceSubmit}d ago` : ''}
                   </p>
+                  {(c.policyNumber || c.claimantName) && (
+                    <p className="text-[11px] text-zinc-500">
+                      {c.policyNumber ? `Policy ${c.policyNumber}` : ''}
+                      {c.policyNumber && c.claimantName ? ' · ' : ''}
+                      {c.claimantName ? `Claimant ${c.claimantName}` : ''}
+                    </p>
+                  )}
                 </div>
                 <span className={cn('text-[10px] uppercase', STATUS_COLOR[c.status] || 'text-zinc-400')}>
                   {c.status.replace(/_/g, ' ')}
@@ -154,9 +182,18 @@ export function InsuranceClaimsPanel({ onChange, clients = [], onClientCreated }
                   <button type="button" onClick={() => deny(c)}
                     className="text-[11px] px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded-lg">Deny</button>
                 )}
-                <button aria-label="Delete" type="button" onClick={() => del(c.id)} className="ml-auto text-zinc-600 hover:text-rose-400">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {confirmId === c.id ? (
+                  <span className="ml-auto inline-flex items-center gap-1">
+                    <button type="button" onClick={() => void del(c.id)}
+                      className="text-[11px] px-2 py-0.5 bg-rose-600/80 text-white rounded-lg">Delete claim?</button>
+                    <button type="button" onClick={() => setConfirmId(null)}
+                      className="text-[11px] px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded-lg">Keep</button>
+                  </span>
+                ) : (
+                  <button aria-label="Delete" type="button" onClick={() => setConfirmId(c.id)} className="ml-auto text-zinc-600 hover:text-rose-400">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </li>
           ))}

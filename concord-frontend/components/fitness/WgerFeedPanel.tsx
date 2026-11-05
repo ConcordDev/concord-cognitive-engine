@@ -3,24 +3,42 @@
 /**
  * WgerFeedPanel — the in-lens list for the wger exercise feed.
  *
- * F14: pulling the "Live exercise feed" ingested real exercise DTUs
- * from wger, but they surfaced in no list — the pull reported only a
- * count. This panel lists the batch the pull actually fetched: each
- * exercise by name, fresh ingests with their full DTU id (findable,
- * citable), and already-seen rows marked as such.
+ * F14 (completed by the feed-library fix): the listing is the STORED
+ * library, not the pull response. On mount the panel reads
+ * fitness.feed-library (server state recorded at ingest: each exercise
+ * by name with its full DTU id, the seen set included), so the listing
+ * renders identically before any pull and survives reload. Pull feed
+ * ingests the day's batch and refreshes the same stored listing.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dumbbell, Loader2, Rss } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
-interface SurfacedExercise { name: string; dtuId: string | null; fresh: boolean }
-interface FeedResult { ingested: number; skipped: number; source: string; exercises?: SurfacedExercise[] }
+interface LibraryItem { name: string; dtuId: string | null; exerciseId: number }
+interface FeedResult { ingested: number; skipped: number; source: string; dtuIds?: string[]; library?: LibraryItem[] }
 
 export function WgerFeedPanel() {
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<FeedResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<LibraryItem[]>([]);
+  const [receipt, setReceipt] = useState<FeedResult | null>(null);
+  const [freshIds, setFreshIds] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      try {
+        const res = await lensRun({ domain: 'fitness', action: 'feed-library', input: {} });
+        if (live && res.data?.ok !== false) {
+          setItems((res.data?.result as { items?: LibraryItem[] })?.items ?? []);
+        }
+      } catch { /* the empty state below covers a failed first read */ }
+      finally { if (live) setLoading(false); }
+    })();
+    return () => { live = false; };
+  }, []);
 
   async function pull() {
     setBusy(true); setError(null);
@@ -28,9 +46,12 @@ export function WgerFeedPanel() {
       const res = await lensRun({ domain: 'fitness', action: 'feed', input: {} });
       if (res.data?.ok === false) {
         setError(res.data?.error || 'Feed unavailable.');
-        setResult(null);
+        setReceipt(null);
       } else {
-        setResult(res.data?.result as FeedResult);
+        const result = res.data?.result as FeedResult;
+        setReceipt(result);
+        setFreshIds(new Set(result.dtuIds ?? []));
+        if (Array.isArray(result.library)) setItems(result.library);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Feed unavailable.');
@@ -49,30 +70,28 @@ export function WgerFeedPanel() {
       </header>
       <div className="p-4">
         {error && <p role="alert" className="text-xs text-red-300">{error}</p>}
-        {!result && !error && (
-          <p className="text-xs text-gray-400">Pull the feed to ingest real exercises from the open wger workout database as DTUs — the batch lands here, by name, with its DTU ids.</p>
+        {receipt && (
+          <p role="status" className="text-xs text-emerald-300 mb-2">
+            {receipt.ingested} new DTU{receipt.ingested === 1 ? '' : 's'} from {receipt.source}
+            {receipt.skipped > 0 && <span className="text-gray-400"> · {receipt.skipped} already seen</span>}
+          </p>
         )}
-        {result && (
-          <>
-            <p role="status" className="text-xs text-emerald-300 mb-2">
-              {result.ingested} new DTU{result.ingested === 1 ? '' : 's'} from {result.source}
-              {result.skipped > 0 && <span className="text-gray-400"> · {result.skipped} already seen</span>}
-            </p>
-            {result.exercises && result.exercises.length > 0 ? (
-              <ul className="divide-y divide-white/5">
-                {result.exercises.map((ex, i) => (
-                  <li key={`${ex.name}-${i}`} className="py-1.5 flex items-baseline gap-2 text-xs">
-                    <span className="text-white flex-1">{ex.name}</span>
-                    {ex.fresh && ex.dtuId
-                      ? <span className="font-mono text-[10px] text-cyan-300 break-all">{ex.dtuId}</span>
-                      : <span className="text-[10px] text-gray-500">already ingested</span>}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-xs text-gray-400">No exercises in this batch.</p>
-            )}
-          </>
+        {loading ? (
+          <p className="text-xs text-gray-400">Loading the stored exercise library…</p>
+        ) : items.length > 0 ? (
+          <ul className="divide-y divide-white/5">
+            {items.map((ex) => (
+              <li key={`${ex.exerciseId}-${ex.dtuId ?? 'legacy'}`} className="py-1.5 flex items-baseline gap-2 text-xs">
+                <span className="text-white flex-1">{ex.name}</span>
+                {ex.dtuId && freshIds.has(ex.dtuId) && <span className="text-[10px] text-emerald-300 font-semibold">NEW</span>}
+                {ex.dtuId
+                  ? <span className="font-mono text-[10px] text-cyan-300 break-all">{ex.dtuId}</span>
+                  : <span className="text-[10px] text-gray-500">ingested before ids were kept</span>}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          !receipt && <p className="text-xs text-gray-400">Pull the feed to ingest real exercises from the open wger workout database as DTUs — every pull adds its batch to this stored library, by name, with its DTU ids, and the library stays here between visits.</p>
         )}
       </div>
     </div>
