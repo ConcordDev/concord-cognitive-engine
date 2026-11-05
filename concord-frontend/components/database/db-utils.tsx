@@ -160,3 +160,55 @@ export function MiniBarChart({ data, label, color }: { data: number[]; label: st
     </div>
   );
 }
+
+// ── DBX-5: remote-connection presentation ──────────────────────────────────
+// The server decides what a connection test actually did (DBX-3's
+// stage taxonomy); these helpers only turn that result into the one
+// honest sentence the UI shows, so the wording lives in one place and
+// is unit-testable without rendering the client.
+
+export interface ConnectionTestResultShape {
+  connected: boolean;
+  scope?: string;
+  remoteContacted?: boolean;
+  stage?: string;
+  code?: string | null;
+  error?: string;
+  engine?: string;
+  datasets?: number;
+  hostname?: string;
+  serverVersion?: string | null;
+  latencyMs?: number;
+  remoteTest?: string;
+  message?: string;
+}
+
+export function connectionTestMessage(r: ConnectionTestResultShape): { kind: 'ok' | 'err'; msg: string } {
+  if (r.scope === 'remote') {
+    if (r.remoteTest === 'not_wired_for_engine') {
+      return { kind: 'err', msg: r.message || 'Remote tests are not wired for this engine yet — nothing was contacted.' };
+    }
+    if (r.connected) {
+      return { kind: 'ok', msg: `Connected to ${r.hostname || 'the remote server'}${r.serverVersion ? ` — PostgreSQL ${r.serverVersion}` : ''}${typeof r.latencyMs === 'number' ? ` in ${r.latencyMs} ms` : ''}.` };
+    }
+    switch (r.stage) {
+      case 'guard':
+        return { kind: 'err', msg: `That address was refused before dialing: ${r.error || 'blocked by the safety guard'}` };
+      case 'credentials':
+        return { kind: 'err', msg: r.error || 'The stored password could not be read.' };
+      case 'auth':
+        return { kind: 'err', msg: `The server refused those credentials: ${r.error || 'authentication failed'}` };
+      case 'connect':
+        return { kind: 'err', msg: `Could not reach ${r.hostname || 'the server'}: ${r.error || 'connection failed'}` };
+      default:
+        return { kind: 'err', msg: r.error || 'Test failed' };
+    }
+  }
+  return { kind: 'ok', msg: `Workspace copy readable — ${r.datasets ?? 0} dataset(s). No remote server was contacted.` };
+}
+
+/** Mirrors the server predicate: a connection is remote when it is a
+ *  PostgreSQL connection pointed at a real (non-"local") host. */
+export function isRemotePostgresConnection(c: { engine: string; host: string }): boolean {
+  return c.engine === 'postgresql' && typeof c.host === 'string' && c.host.trim() !== '' && c.host !== 'local';
+}
