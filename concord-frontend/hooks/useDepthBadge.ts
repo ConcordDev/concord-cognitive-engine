@@ -72,6 +72,15 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
   /**
+   * The world vehicle fleet (spawn/mine/inspector) is a real persistent DB
+   * store, not a feed polled from an external source (F1) — so the generic
+   * REAL_LIVE caption is false here.
+   */
+  garage: {
+    label: 'Live',
+    caption: 'Real account + world state: vehicles you spawn are persisted and shared with the 3D world, not demo data.',
+  },
+  /**
    * Housing's substrate is the member's own persistent world state —
    * land claims and houses live in the platform database, owner-gated
    * in the lib (PROBE-BLOCKED at the then-missing claim surface in
