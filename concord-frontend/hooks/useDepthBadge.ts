@@ -82,6 +82,18 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace planning data: sites, spectrum, outages and drive tests are your live records; coverage, capacity and SLA figures are computed over them — not live carrier-network data.',
   },
+  /**
+   * Housing's substrate is the member's own persistent world state —
+   * land claims and houses live in the platform database, owner-gated
+   * in the lib (PROBE-BLOCKED at the then-missing claim surface in
+   * Review 3's first pass; the claim path is wired in the full build).
+   * The generic REAL_LIVE line ("polled live from an external source")
+   * is false for this lens; no external source is polled (S-HO-3).
+   */
+  housing: {
+    label: 'Live',
+    caption: 'Your world records: land claims and houses are your real persistent state in Concord’s worlds, and the tools work on your own plots and buildings. No external feed is polled.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {

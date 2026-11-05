@@ -33,6 +33,8 @@ export function WorkoutLogger() {
   const [loading, setLoading] = useState(true);
   const [restTimer, setRestTimer] = useState<number>(0);
   const [restRunning, setRestRunning] = useState(false);
+  const [newExerciseName, setNewExerciseName] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
   useEffect(() => {
@@ -68,16 +70,21 @@ export function WorkoutLogger() {
 
   function addExercise() {
     if (!active) return;
-    const name = window.prompt('Exercise name (e.g. Bench Press)') || '';
-    if (!name.trim()) return;
+    // F5: this used window.prompt — a native dialog, the fleet's
+    // dead-control class (inert under keyboard/review, hostile on
+    // mobile). The add is an inline field in the session view instead.
+    const name = newExerciseName.trim();
+    if (!name) return;
     setActive({
       ...active,
       exercises: [...active.exercises, {
         id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        name: name.trim(),
+        name,
         sets: [{ reps: 5, weight: 0, done: false }],
       }],
     });
+    setNewExerciseName('');
+    setSaveError(null);
   }
 
   function addSet(exId: string) {
@@ -118,12 +125,28 @@ export function WorkoutLogger() {
 
   async function finishWorkout() {
     if (!active) return;
+    // F5: Finish used to accept an empty session and persist "0
+    // exercises · 0 sets" as a logged workout. Refuse it here, inline —
+    // and the store refuses it too (fitness.workout-save), so no caller
+    // can write one.
+    if (active.exercises.length === 0) {
+      setSaveError('Add at least one exercise before finishing — an empty session is not a workout.');
+      return;
+    }
     const finished = { ...active, finishedAt: new Date().toISOString() };
     try {
-      await lensRun({ domain: 'fitness', action: 'workout-save', input: { workout: finished } });
+      const res = await lensRun({ domain: 'fitness', action: 'workout-save', input: { workout: finished } });
+      if (res.data?.ok === false) {
+        setSaveError(res.data?.error || 'Save failed — the session is still open.');
+        return;
+      }
+      setSaveError(null);
       setActive(null);
       await refresh();
-    } catch (e) { console.error('[Workout] save failed', e); }
+    } catch (e) {
+      console.error('[Workout] save failed', e);
+      setSaveError('Save failed — the session is still open.');
+    }
   }
 
   const totalVolume = useMemo(() => {
@@ -189,7 +212,7 @@ export function WorkoutLogger() {
       )}
       <div className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
         {active.exercises.length === 0 ? (
-          <div className="text-center py-6 text-xs text-gray-400">No exercises yet. Hit + to add.</div>
+          <div className="text-center py-6 text-xs text-gray-400">No exercises yet. Add the first one below.</div>
         ) : (
           active.exercises.map(ex => (
             <div key={ex.id} className="bg-white/[0.02] border border-white/10 rounded">
@@ -242,9 +265,23 @@ export function WorkoutLogger() {
             </div>
           ))
         )}
-        <button onClick={addExercise} className="w-full py-2 rounded border border-dashed border-white/10 text-xs text-gray-400 hover:text-white hover:border-white/30 inline-flex items-center justify-center gap-1">
-          <Plus className="w-3.5 h-3.5" /> Add exercise
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={newExerciseName}
+            onChange={e => setNewExerciseName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addExercise(); } }}
+            placeholder="Exercise name (e.g. Bench Press)"
+            aria-label="Exercise name"
+            className="flex-1 px-3 py-2 rounded border border-white/10 bg-lattice-deep text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50"
+          />
+          <button onClick={addExercise} disabled={!newExerciseName.trim()} className="px-3 py-2 rounded border border-dashed border-white/10 text-xs text-gray-300 hover:text-white hover:border-white/30 inline-flex items-center justify-center gap-1 disabled:opacity-40">
+            <Plus className="w-3.5 h-3.5" /> Add exercise
+          </button>
+        </div>
+        {saveError && (
+          <p role="alert" className="text-xs text-red-300 bg-red-500/10 border border-red-500/30 rounded px-3 py-2">{saveError}</p>
+        )}
       </div>
     </div>
   );
