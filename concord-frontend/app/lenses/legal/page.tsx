@@ -30,6 +30,7 @@
  */
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Briefcase,
   Search,
@@ -99,6 +100,13 @@ export default function LegalLensPage() {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Legal</h1>
+            {/* Labelling line (Lead ruling 2026-11-01: one practice domain,
+                two surfaces — each lens names its centre and its sibling). */}
+            <p className="mt-1 text-[13px] leading-relaxed text-zinc-400">
+              Legal is the practice surface — matters, time, billing, trust and case law.{' '}
+              Document depth (versions, redlines, e-signatures) lives in the{' '}
+              <Link href="/lenses/law" className="text-cyan-300 underline decoration-cyan-300/40 underline-offset-2 hover:text-cyan-100">Law lens</Link>.
+            </p>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />

@@ -236,4 +236,59 @@ describe('BrainModePanel', () => {
       expect(screen.getByTestId('brain-mode-select-high-power')).not.toBeDisabled();
     });
   });
+
+  describe('unknown / stale mode (chat said Private while the account was High Power)', () => {
+    it('a failed read shows UNKNOWN, not PRIVATE, and choosing Private still writes', async () => {
+      lensRunMock.mockResolvedValueOnce({ data: { ok: false, result: null, error: 'network error' } });
+      lensRunMock.mockResolvedValueOnce({
+        data: { ok: true, result: { brainMode: 'private', brainModeSetAt: 5 }, error: null },
+      });
+      render(<BrainModePanel />);
+      expect(await screen.findByTestId('brain-mode-current')).toHaveTextContent('UNKNOWN');
+      expect(screen.getByTestId('brain-mode-select-private')).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.queryByTestId('brain-mode-private-note')).toBeNull();
+
+      fireEvent.click(screen.getByTestId('brain-mode-select-private'));
+      await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('byo_keys', 'set_brain_mode', { brainMode: 'private' }));
+      await waitFor(() => expect(screen.getByTestId('brain-mode-current')).toHaveTextContent('PRIVATE'));
+    });
+
+    it('compact pill always shows a text label, including High Power', async () => {
+      lensRunMock.mockResolvedValue({
+        data: { ok: true, result: { brainMode: 'high_power', brainModeSetAt: 1 }, error: null },
+      });
+      render(<BrainModePanel compact />);
+      await waitFor(() => expect(screen.getByTestId('brain-mode-pill-label')).toHaveTextContent('High Power'));
+      expect(screen.getByTestId('brain-mode-pill-label').className).not.toMatch(/\bhidden\b/);
+    });
+
+    it('compact pill with an unreadable mode says so and a tap sets Private without a confirm', async () => {
+      lensRunMock.mockResolvedValueOnce({ data: { ok: false, result: null, error: 'network error' } });
+      lensRunMock.mockResolvedValueOnce({
+        data: { ok: true, result: { brainMode: 'private', brainModeSetAt: 7 }, error: null },
+      });
+      render(<BrainModePanel compact />);
+      await waitFor(() => expect(screen.getByTestId('brain-mode-pill-label')).toHaveTextContent('Mode?'));
+
+      fireEvent.click(screen.getByTestId('brain-mode-panel'));
+      expect(screen.queryByTestId('brain-mode-confirm')).toBeNull();
+      await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('byo_keys', 'set_brain_mode', { brainMode: 'private' }));
+      await waitFor(() => expect(screen.getByTestId('brain-mode-pill-label')).toHaveTextContent('Private'));
+    });
+
+    it('re-reads the mode when the tab regains focus (changed on another device)', async () => {
+      lensRunMock.mockResolvedValueOnce({
+        data: { ok: true, result: { brainMode: 'private', brainModeSetAt: 1 }, error: null },
+      });
+      lensRunMock.mockResolvedValueOnce({
+        data: { ok: true, result: { brainMode: 'high_power', brainModeSetAt: 2 }, error: null },
+      });
+      render(<BrainModePanel compact />);
+      await waitFor(() => expect(screen.getByTestId('brain-mode-pill-label')).toHaveTextContent('Private'));
+
+      fireEvent.focus(window);
+      await waitFor(() => expect(screen.getByTestId('brain-mode-pill-label')).toHaveTextContent('High Power'));
+      expect(lensRunMock).toHaveBeenCalledTimes(2);
+    });
+  });
 });

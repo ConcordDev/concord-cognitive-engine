@@ -17,7 +17,7 @@
  *                          given the progression on these lifts"
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dumbbell, TrendingUp, Heart, Sparkles, Send, Globe, Wand2, Save,
   Loader2, Check, AlertTriangle, Plus, X,
@@ -26,6 +26,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 
 interface LiftEntry {
   name: string;
@@ -62,19 +63,36 @@ interface ProgressionResult {
 }
 interface HrZoneResult {
   maxHr?: number;
+  method?: string;
   zones?: Array<{ zone: number; name: string; lowBpm: number; highBpm: number; purpose: string }>;
 }
 
 export function WorkoutFinishPanel() {
-  const [title, setTitle] = useState('');
-  const [lifts, setLifts] = useState<LiftEntry[]>([{ name: 'Squat', sets: [{ reps: 5, weight: 0, rir: 2 }] }]);
-  const [avgHr, setAvgHr] = useState('');
+  // F8: this panel unmounts whenever the member switches lens tabs, and
+  // every field used to live in plain useState — the form reset
+  // wholesale on remount, then the HR tile refused on the very fields
+  // it had failed to register. The draft now persists through the
+  // lens UI-state store and restores on mount.
+  const { restore, persist } = useLensStatePersistence('fitness-finish');
+  const [savedForm] = useState<Record<string, unknown>>(() => restore() ?? {});
+  const str = (v: unknown, fallback: string) => (typeof v === 'string' ? v : fallback);
+  const [title, setTitle] = useState(str(savedForm.title, ''));
+  const [lifts, setLifts] = useState<LiftEntry[]>(
+    Array.isArray(savedForm.lifts) && savedForm.lifts.length > 0
+      ? (savedForm.lifts as LiftEntry[])
+      : [{ name: 'Squat', sets: [{ reps: 5, weight: 0, rir: 2 }] }],
+  );
+  const [avgHr, setAvgHr] = useState(str(savedForm.avgHr, ''));
   // Distinct from avgHr: fitness.hr-zones computes max-HR zone bands from age
   // + RESTING HR (Tanaka/Fox/Karvonen), not from a workout's average HR.
-  const [restingHr, setRestingHr] = useState('');
-  const [age, setAge] = useState('30');
-  const [partnerId, setPartnerId] = useState('');
-  const [isPr, setIsPr] = useState(false);
+  const [restingHr, setRestingHr] = useState(str(savedForm.restingHr, ''));
+  const [age, setAge] = useState(str(savedForm.age, '30'));
+  const [partnerId, setPartnerId] = useState(str(savedForm.partnerId, ''));
+  const [isPr, setIsPr] = useState(savedForm.isPr === true);
+
+  useEffect(() => {
+    persist({ title, lifts, avgHr, restingHr, age, partnerId, isPr });
+  }, [title, lifts, avgHr, restingHr, age, partnerId, isPr, persist]);
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -142,7 +160,11 @@ export function WorkoutFinishPanel() {
     try {
       // fitness.hr-zones reads age + restingHr (Tanaka/Fox/Karvonen), not
       // workout-average HR — restingHr is a distinct field from avgHr above.
-      const r = await callMacro<HrZoneResult>('hr-zones', { age: parseInt(age, 10), restingHr: parseInt(restingHr, 10) });
+      // F11: this tile collects resting HR, so it asks for Karvonen
+      // (HR-reserve) bands — the method that actually uses resting HR —
+      // instead of silently taking the server's Tanaka %-of-max default
+      // the way it used to. The method is named on the result below.
+      const r = await callMacro<HrZoneResult>('hr-zones', { age: parseInt(age, 10), restingHr: parseInt(restingHr, 10), method: 'karvonen' });
       if (r.ok && r.result) { setHrResult(r.result); ok('HR zones computed.'); }
       else err(r.error ?? 'HR zones failed');
     } catch (e) { err(pickMessage(e)); }
@@ -171,7 +193,10 @@ export function WorkoutFinishPanel() {
         notes: '',
       };
       const r = await callMacro<{ id?: string }>('workout-save', { workout });
-      if (r.ok && r.result?.id) { setSavedWorkoutId(r.result.id); ok(`Workout saved ${r.result.id.slice(0, 8)}…`); }
+      // F6: receipts used to truncate the id ("wo_abc123…"), leaving the
+      // save findable in no list. The full id is the receipt; the save
+      // itself lands in the Log view's workout list (same store).
+      if (r.ok && r.result?.id) { setSavedWorkoutId(r.result.id); ok(`Workout saved — ${r.result.id} (find it in the Log view)`); }
       else err(r.error ?? 'save failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -204,7 +229,7 @@ export function WorkoutFinishPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Workout DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); ok(`Workout DTU minted — ${id}`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -260,7 +285,7 @@ export function WorkoutFinishPanel() {
       const id = dtu?.id ?? dtu?.dtuId;
       if (!id) { err('No DTU id returned.'); return; }
       const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`PR published ${id.slice(0, 8)}…`); }
+      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`PR published — ${id}`); }
       else err(pub.data?.error ?? 'publish flag failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -297,11 +322,11 @@ export function WorkoutFinishPanel() {
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
     { id: 'progression', label: 'Progression',   desc: 'Suggested next-session weights per lift',  icon: TrendingUp, accent: '#22c55e', handler: actProgression, disabled: !ready },
-    { id: 'hrzones',     label: 'HR zones',       desc: 'Compute zones from avg HR + age',          icon: Heart,      accent: '#ef4444', handler: actHr },
-    { id: 'save',        label: savedWorkoutId   ? 'Saved'     : 'Save workout',  desc: savedWorkoutId   ? `id ${savedWorkoutId.slice(0, 8)}…`  : 'Persist to fitness.workout-save log',          icon: Save,      accent: '#06b6d4', handler: actSave,      disabled: !ready || !!savedWorkoutId },
-    { id: 'mint',        label: mintedDtuId      ? 'Minted'    : 'Mint DTU',      desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private DTU with full set table',              icon: Sparkles,  accent: '#3b82f6', handler: actMint,      disabled: !ready || !!mintedDtuId },
+    { id: 'hrzones',     label: 'HR zones',       desc: 'Karvonen zones from resting HR + age, with a verdict for your avg HR',          icon: Heart,      accent: '#ef4444', handler: actHr },
+    { id: 'save',        label: savedWorkoutId   ? 'Saved'     : 'Save workout',  desc: savedWorkoutId   ? `id ${savedWorkoutId}`  : 'Persist to your workout log (Log view)',          icon: Save,      accent: '#06b6d4', handler: actSave,      disabled: !ready || !!savedWorkoutId },
+    { id: 'mint',        label: mintedDtuId      ? 'Minted'    : 'Mint DTU',      desc: mintedDtuId      ? `DTU ${mintedDtuId}`     : 'Private DTU with full set table',              icon: Sparkles,  accent: '#3b82f6', handler: actMint,      disabled: !ready || !!mintedDtuId },
     { id: 'dm',          label: 'DM partner',     desc: 'Send workout summary to training partner',  icon: Send,       accent: '#ec4899', handler: actDm,        disabled: !ready },
-    { id: 'publish',     label: publishedDtuId   ? 'PR published' : 'Publish PR', desc: publishedDtuId   ? `DTU ${publishedDtuId.slice(0, 8)}…` : isPr ? 'Public PR DTU + federation' : 'Mark as PR first', icon: Globe, accent: '#15803d', handler: actPublish, disabled: !ready || !isPr || !!publishedDtuId },
+    { id: 'publish',     label: publishedDtuId   ? 'PR published' : 'Publish PR', desc: publishedDtuId   ? `DTU ${publishedDtuId}` : isPr ? 'Public PR DTU + federation' : 'Mark as PR first', icon: Globe, accent: '#15803d', handler: actPublish, disabled: !ready || !isPr || !!publishedDtuId },
     { id: 'agent',       label: 'Next workout',   desc: 'Agent drafts the next session',             icon: Wand2,      accent: '#eab308', handler: actAgent,     disabled: !ready },
   ];
 
@@ -413,8 +438,23 @@ export function WorkoutFinishPanel() {
       {hrResult?.zones?.length ? (
         <div className="rounded-md border border-red-500/30 bg-red-500/5 p-2.5 space-y-1">
           <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold flex items-center gap-1.5">
-            <Heart className="w-3 h-3" /> HR zones (max ~ {hrResult.maxHr} bpm)
+            <Heart className="w-3 h-3" /> HR zones (max ~ {hrResult.maxHr} bpm) · {(hrResult.method || 'karvonen') === 'karvonen' ? 'Karvonen (HR reserve)' : hrResult.method}
           </div>
+          {(() => {
+            // F11: name the zone the entered average HR actually sits
+            // in — the verdict the tile used to omit entirely.
+            const avg = parseInt(avgHr, 10);
+            if (!avg || isNaN(avg)) return null;
+            const zones = hrResult.zones!;
+            const hit = zones.find((z, i) => avg >= z.lowBpm && (i === zones.length - 1 ? avg <= z.highBpm : avg < z.highBpm));
+            return (
+              <p className="text-[11px] text-zinc-200">
+                {hit
+                  ? <>Your avg HR <strong className="text-red-200">{avg} bpm</strong> sits in <strong className="text-red-200">Zone {hit.zone} · {hit.name}</strong> ({hit.lowBpm}–{hit.highBpm} bpm).</>
+                  : <>Your avg HR <strong className="text-red-200">{avg} bpm</strong> falls outside these bands.</>}
+              </p>
+            );
+          })()}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-1">
             {hrResult.zones.map(z => (
               <div key={z.zone} className="rounded bg-zinc-900/60 px-2 py-1 text-[10px]">

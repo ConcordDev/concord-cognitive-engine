@@ -1246,21 +1246,34 @@ export default function registerEngineeringActions(registerLensAction) {
       const updatedAt = new Date().toISOString();
       const s = engState();
       let jobId = null;
+      let keptDtuId = null;
       if (s) {
         const userId = egActor(ctx);
         const jobs = egList(s.jobs, userId);
         jobId = egId('sim');
         jobs.unshift({ id: jobId, name, type: 'fea-beam-study', status: 'completed', elapsedMs, summary: fea.summary, createdAt: updatedAt });
         if (jobs.length > 50) jobs.length = 50;
+        // Kept-state attaches to the STUDY, not the solve (ConKay F12a): the
+        // solver is deterministic, so a re-solve with identical inputs IS
+        // the solve the kept DTU records — carry its id over. Any input
+        // change starts unkept, as before.
+        const prev = s.beamStudies.get(beamStudyKey(ctx, data));
+        const requiredSf = summary.safetyCheck?.stated ? summary.safetyCheck.requiredSafetyFactor : null;
+        if (prev?.dtuId
+          && prev.material === matId && prev.support === study.support && prev.loadN === study.loadN
+          && (prev.requiredSafetyFactor ?? null) === requiredSf
+          && prev.dims && Object.keys(study.dims).every((k) => prev.dims[k] === study.dims[k])) {
+          keptDtuId = prev.dtuId;
+        }
         s.beamStudies.set(beamStudyKey(ctx, data), {
           workspaceId: egClean(data.workspaceId, 80) || null, name, dims: study.dims, material: matId, support: study.support, loadN: study.loadN,
-          requiredSafetyFactor: summary.safetyCheck?.stated ? summary.safetyCheck.requiredSafetyFactor : null,
+          requiredSafetyFactor: requiredSf,
           jobId, elapsedMs, summary, section: study.section, loadNode: study.loadNode,
-          utilizationByMember: result.utilizationByMember, analysisReceipt: study.analysisReceipt, dtuId: null, updatedAt,
+          utilizationByMember: result.utilizationByMember, analysisReceipt: study.analysisReceipt, dtuId: keptDtuId, updatedAt,
         });
         persist();
       }
-      return { ok: true, result: { jobId, name, updatedAt, ...result } };
+      return { ok: true, result: { jobId, name, updatedAt, ...result, dtuId: keptDtuId } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

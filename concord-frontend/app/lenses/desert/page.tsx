@@ -18,6 +18,7 @@ import { IncidentReportPanel } from '@/components/desert/IncidentReportPanel';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { api, lensRun } from '@/lib/api/client';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -35,6 +36,43 @@ import {
 } from 'lucide-react';
 
 type ModeTab = 'Weather' | 'Route' | 'HeatUv' | 'Resources' | 'Wildlife' | 'Incidents' | 'Solar' | 'Terrain' | 'Kit' | 'Calcs';
+
+/**
+ * The ↓.dtu export's payload, loaded at click time: this lens's own
+ * saved records (routes, resource nodes, sightings, kits) plus the
+ * viewer's DTUs minted from this lens (the conditions snapshots, source
+ * "open-meteo-desert"). Without this, the button's generic fallback
+ * read finds none of it and refuses with "this lens has no saved data"
+ * over data that verifiably exists. Returns {} only when the lens
+ * genuinely has nothing anywhere, so the refusal stays honest.
+ */
+async function prepareDesertExport(): Promise<unknown> {
+  const out: Record<string, unknown> = { source: 'desert-lens-export', exportedAt: new Date().toISOString() };
+  const lists: [string, string][] = [
+    ['routeList', 'routes'],
+    ['nodeList', 'nodes'],
+    ['sightingList', 'sightings'],
+    ['kitList', 'kits'],
+  ];
+  for (const [action, key] of lists) {
+    try {
+      const r = await lensRun<Record<string, unknown>>('desert', action, {});
+      const rows = r.data?.result?.[key];
+      if (Array.isArray(rows) && rows.length > 0) out[key] = rows;
+    } catch { /* a failed list read contributes nothing, never a fabrication */ }
+  }
+  try {
+    const res = await api.get<{ dtus?: Record<string, unknown>[]; items?: Record<string, unknown>[] }>('/api/dtus/paginated', {
+      params: { scope: 'mine', limit: 100, offset: 0 },
+    });
+    const mine = res.data?.dtus || res.data?.items || [];
+    const minted = mine.filter((d) => d.source === 'open-meteo-desert' || (Array.isArray(d.tags) && d.tags.includes('open-meteo-desert')));
+    if (minted.length > 0) {
+      out.mintedDtus = minted.map((d) => ({ id: d.id, title: d.title, source: d.source, createdAt: d.createdAt || d.created_at }));
+    }
+  } catch { /* same rule: absence of evidence stays absence */ }
+  return Object.keys(out).length > 2 ? out : {};
+}
 
 const MODE_TABS: { key: ModeTab; label: string; icon: typeof Sun }[] = [
   { key: 'Weather', label: 'Live Conditions', icon: CloudSun },
@@ -76,7 +114,7 @@ export default function DesertLensPage() {
         actions={(
           <>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="desert" data={{}} compact />
+            <DTUExportButton domain="desert" data={{}} compact prepare={prepareDesertExport} />
           </>
         )}
         tabs={MODE_TABS.map((t) => ({ id: t.key, label: t.label, icon: t.icon }))}

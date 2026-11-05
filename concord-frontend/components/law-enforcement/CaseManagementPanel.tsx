@@ -32,6 +32,7 @@ import { lensRun } from '@/lib/api/client';
 import {
   Folder, FolderOpen, FolderCheck, FolderClock, Plus, Loader2, Check,
   AlertTriangle, ArrowRight, FileText, Boxes, Fingerprint, Scale,
+  Pencil, Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -148,6 +149,16 @@ export function CaseManagementPanel() {
   const [assignedDetective, setAssignedDetective] = useState('');
   const [closureReason, setClosureReason] = useState('');
 
+  // Edit + delete (S2(ii)): caseUpdate has always carried title/synopsis
+  // edits server-side — this is their surfacing; caseDelete is the new
+  // macro. Both reset whenever the selection changes.
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editSynopsis, setEditSynopsis] = useState('');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  useEffect(() => { setEditing(false); setConfirmingDelete(false); }, [selectedId]);
+
   const refreshList = useCallback(async () => {
     setLoading(true);
     const r = await run<{ cases: CaseRec[] }>('caseList', statusFilter ? { status: statusFilter } : {});
@@ -204,6 +215,33 @@ export function CaseManagementPanel() {
     const r = await run<{ case: CaseRec }>('caseUpdate', { id, assignedDetective: name });
     if (r.ok && r.result) { setFeedback({ kind: 'ok', text: `Assigned to ${name || '(unassigned)'}.` }); await loadLinked(id); await refreshList(); }
     else setFeedback({ kind: 'err', text: r.error || 'Could not reassign.' });
+    setBusy(null);
+  }
+
+  async function saveEdit(id: string) {
+    if (!editTitle.trim()) { setFeedback({ kind: 'err', text: 'Case title cannot be blank.' }); return; }
+    setBusy('edit'); setFeedback(null);
+    const r = await run<{ case: CaseRec }>('caseUpdate', { id, title: editTitle.trim(), synopsis: editSynopsis.trim() });
+    if (r.ok && r.result) {
+      setFeedback({ kind: 'ok', text: `Case ${r.result.case.caseNumber} updated.` });
+      setEditing(false);
+      await refreshList();
+      await loadLinked(id);
+    } else setFeedback({ kind: 'err', text: r.error || 'Could not save edits.' });
+    setBusy(null);
+  }
+
+  async function removeCase(id: string, caseNo: string) {
+    setBusy('delete'); setFeedback(null);
+    const r = await run<{ deleted: boolean; linked: { reports: number; evidence: number; bookings: number; warrants: number } }>('caseDelete', { id });
+    if (r.ok && r.result) {
+      const l = r.result.linked;
+      const kept = l.reports + l.evidence + l.bookings + l.warrants;
+      setFeedback({ kind: 'ok', text: `Deleted ${caseNo}.${kept > 0 ? ` ${kept} linked record(s) stay on file under that case number.` : ''}` });
+      setConfirmingDelete(false);
+      setSelectedId(null);
+      await refreshList();
+    } else setFeedback({ kind: 'err', text: r.error || 'Could not delete case.' });
     setBusy(null);
   }
 
@@ -283,9 +321,63 @@ export function CaseManagementPanel() {
                   <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300">{selected.caseNumber}</span>
                   <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-semibold', STATUS_TONE[selected.status])}>{selected.status.replace(/_/g, ' ')}</span>
                 </div>
-                <h3 className="text-sm font-bold text-white mt-1">{selected.title}</h3>
-                {selected.synopsis && <p className="text-[11px] text-zinc-400 mt-0.5">{selected.synopsis}</p>}
+                {!editing ? (
+                  <>
+                    <h3 className="text-sm font-bold text-white mt-1">{selected.title}</h3>
+                    {selected.synopsis && <p className="text-[11px] text-zinc-400 mt-0.5">{selected.synopsis}</p>}
+                  </>
+                ) : (
+                  <div className="space-y-2 mt-1">
+                    <Field label="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Case title" />
+                    <Field label="Synopsis" value={editSynopsis} onChange={(e) => setEditSynopsis(e.target.value)} placeholder="What this case is about" />
+                    <div className="flex items-center gap-1.5">
+                      <Btn busy={busy === 'edit'} onClick={() => saveEdit(selected.id)}><Check className="w-3.5 h-3.5" /> Save</Btn>
+                      <Btn variant="ghost" onClick={() => setEditing(false)}>Cancel</Btn>
+                    </div>
+                  </div>
+                )}
                 {selected.closureReason && <p className="text-[11px] text-emerald-300 mt-0.5">Closure: {selected.closureReason}</p>}
+                {!editing && (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => { setEditTitle(selected.title); setEditSynopsis(selected.synopsis); setEditing(true); }}
+                      className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors"
+                    >
+                      <Pencil className="w-3 h-3" /> Edit title / synopsis
+                    </button>
+                    {!confirmingDelete ? (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingDelete(true)}
+                        className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-zinc-800 hover:bg-red-900/60 text-red-300 transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete case
+                      </button>
+                    ) : (
+                      <span className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] text-red-300">
+                          Delete {selected.caseNumber}? Linked records ({linked?.counts.reports ?? 0} reports · {linked?.counts.evidence ?? 0} evidence · {linked?.counts.bookings ?? 0} bookings · {linked?.counts.warrants ?? 0} warrants) stay on file.
+                        </span>
+                        <button
+                          type="button"
+                          disabled={busy === 'delete'}
+                          onClick={() => removeCase(selected.id, selected.caseNumber)}
+                          className="text-[10px] px-2 py-1 rounded bg-red-700 hover:bg-red-600 disabled:opacity-40 text-white font-semibold transition-colors"
+                        >
+                          {busy === 'delete' ? 'Deleting…' : 'Confirm delete'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmingDelete(false)}
+                          className="text-[10px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">

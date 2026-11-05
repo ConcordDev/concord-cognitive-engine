@@ -14,13 +14,14 @@
  */
 
 import { useState, useCallback } from 'react';
-import { ClipboardList, Plus, Trash2 } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, MapPin } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 
 interface ReportData {
   crisisId?: string;
   severity?: string;
   body?: string;
+  location?: string;
 }
 
 const SEVERITIES = ['info', 'minor', 'major', 'critical'];
@@ -35,11 +36,12 @@ export function IncidentReportPanel({ crisisId }: { crisisId?: string }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [severity, setSeverity] = useState('minor');
+  const [location, setLocation] = useState('');
   const [body, setBody] = useState('');
   const [saving, setSaving] = useState(false);
 
   const reset = useCallback(() => {
-    setTitle(''); setSeverity('minor'); setBody(''); setOpen(false);
+    setTitle(''); setSeverity('minor'); setLocation(''); setBody(''); setOpen(false);
   }, []);
 
   const submit = useCallback(async () => {
@@ -48,14 +50,17 @@ export function IncidentReportPanel({ crisisId }: { crisisId?: string }) {
     try {
       await create({
         title: title.trim().slice(0, 120),
-        data: { crisisId, severity, body: body.trim().slice(0, 4000) },
+        data: {
+          crisisId, severity, body: body.trim().slice(0, 4000),
+          ...(location.trim() ? { location: location.trim().slice(0, 120) } : {}),
+        },
         meta: { status: severity, tags: ['incident_report', ...(crisisId ? [`crisis:${crisisId}`] : [])] },
       });
       reset();
     } finally {
       setSaving(false);
     }
-  }, [title, body, severity, crisisId, create, reset, saving]);
+  }, [title, body, severity, location, crisisId, create, reset, saving]);
 
   // Scope to the selected crisis when one is active; otherwise show all.
   const visible = crisisId
@@ -99,6 +104,13 @@ export function IncidentReportPanel({ crisisId }: { crisisId?: string }) {
           >
             {SEVERITIES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
+          <input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Location (where — e.g. North gate, Pier 9)"
+            aria-label="Location"
+            className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-gray-100"
+          />
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
@@ -154,6 +166,11 @@ export function IncidentReportPanel({ crisisId }: { crisisId?: string }) {
                 </button>
               </div>
               {r.data?.body && <p className="mt-1 text-[11px] text-gray-300">{r.data.body}</p>}
+              {r.data?.location && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] text-gray-400">
+                  <MapPin className="h-3 w-3" />{r.data.location}
+                </p>
+              )}
             </li>
           ))}
         </ul>

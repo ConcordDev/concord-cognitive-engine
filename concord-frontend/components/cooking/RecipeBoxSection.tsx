@@ -54,6 +54,21 @@ export function RecipeBoxSection() {
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [newCollectionName, setNewCollectionName] = useState('');
   const [newShopItem, setNewShopItem] = useState({ name: '', qty: '', unit: '' });
+  // Write receipts — every successful mutation in this section announces
+  // itself here (the lens's successes used to land in silence).
+  const [notice, setNotice] = useState<string | null>(null);
+  const announce = useCallback((text: string) => {
+    setNotice(text);
+    window.dispatchEvent(new CustomEvent('cooking:changed'));
+  }, []);
+  // Two-step delete confirm (names the recipe; no native dialog).
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // Pantry inline form (replaces the native prompt()).
+  const [newPantryItem, setNewPantryItem] = useState({ name: '', qty: '', unit: '' });
+  // AI meal plan review step: the generator proposes; nothing persists
+  // until the member applies the previewed week.
+  const [aiPreference, setAiPreference] = useState('');
+  const [aiPreview, setAiPreview] = useState<{ date: string; slot: string; recipeId: string; title: string; servings: number }[] | null>(null);
 
   const dates = useMemo(() => weekDates(weekStart), [weekStart]);
 
@@ -95,14 +110,20 @@ export function RecipeBoxSection() {
     try {
       if (editRecipe._new) await lensRun({ domain: 'cooking', action: 'recipes-create', input });
       else await lensRun({ domain: 'cooking', action: 'recipes-update', input: { id: editRecipe.id, ...input } });
+      const wasNew = editRecipe._new;
       setEditRecipe(null);
       await refresh();
+      announce(wasNew ? `Recipe "${input.title}" created.` : `Recipe "${input.title}" saved.`);
     } catch (e) { console.error('[RecipeBox] saveRecipe', e); }
   }
   async function deleteRecipe(id: string) {
-    if (!confirm('Delete this recipe?')) return;
-    try { await lensRun({ domain: 'cooking', action: 'recipes-delete', input: { id } }); await refresh(); }
-    catch (e) { console.error('[RecipeBox] deleteRecipe', e); }
+    const target = recipes.find(r => r.id === id);
+    try {
+      await lensRun({ domain: 'cooking', action: 'recipes-delete', input: { id } });
+      setConfirmDeleteId(null);
+      await refresh();
+      announce(`Recipe "${target?.title ?? 'recipe'}" deleted.`);
+    } catch (e) { console.error('[RecipeBox] deleteRecipe', e); }
   }
   async function openScale(recipe: Recipe) {
     try {
@@ -127,20 +148,38 @@ export function RecipeBoxSection() {
   async function aiMealPlan() {
     setAiBusy(true);
     try {
-      const pref = prompt('Diet preference (optional — e.g. vegan, quick, italian)?') || '';
-      await lensRun({ domain: 'cooking', action: 'ai-meal-plan', input: { days: 7, slots: ['dinner'], start: dates[0], preference: pref } });
-      await refresh();
-      setTab('plan');
+      // Preview first: the generator proposes a week; nothing persists
+      // until applyAiPreview sends the reviewed assignment back.
+      const r = await lensRun({ domain: 'cooking', action: 'ai-meal-plan', input: { days: 7, slots: ['dinner'], start: dates[0], preference: aiPreference.trim() } });
+      const assigned = r.data?.result?.assigned as { date: string; slot: string; recipeId: string; title: string; servings: number }[] | undefined;
+      if (Array.isArray(assigned) && assigned.length) {
+        setAiPreview(assigned);
+        setTab('plan');
+      } else if (r.data?.error) {
+        setNotice(r.data.error);
+      }
     } catch (e) { console.error('[RecipeBox] aiMealPlan', e); }
+    finally { setAiBusy(false); }
+  }
+  async function applyAiPreview() {
+    if (!aiPreview) return;
+    setAiBusy(true);
+    try {
+      await lensRun({ domain: 'cooking', action: 'ai-meal-plan', input: { assignments: aiPreview } });
+      setAiPreview(null);
+      await refresh();
+      announce('Meal plan applied — the previewed week is now your plan.');
+    } catch (e) { console.error('[RecipeBox] applyAiPreview', e); }
     finally { setAiBusy(false); }
   }
 
   // ── Shopping ──
   async function generateShopping() {
     try {
-      await lensRun({ domain: 'cooking', action: 'shopping-list-generate', input: { start: dates[0], end: dates[6], subtractPantry: true } });
+      const r = await lensRun({ domain: 'cooking', action: 'shopping-list-generate', input: { start: dates[0], end: dates[6], subtractPantry: true } });
       await refresh();
       setTab('shopping');
+      announce(`Shopping list generated — ${r.data?.result?.itemCount ?? 0} item(s) from your plan (pantry stock subtracted).`);
     } catch (e) { console.error('[RecipeBox] genShopping', e); }
   }
   async function toggleShopItem(id: string) {
@@ -165,13 +204,25 @@ export function RecipeBoxSection() {
 
   // ── Pantry ──
   async function addPantry() {
-    const name = prompt('Pantry item?'); if (!name?.trim()) return;
-    try { await lensRun({ domain: 'cooking', action: 'pantry-add', input: { name: name.trim() } }); await refresh(); }
-    catch (e) { console.error('[RecipeBox] addPantry', e); }
+    if (!newPantryItem.name.trim()) return;
+    const name = newPantryItem.name.trim();
+    try {
+      await lensRun({
+        domain: 'cooking', action: 'pantry-add',
+        input: { name, qty: newPantryItem.qty ? Number(newPantryItem.qty) : undefined, unit: newPantryItem.unit.trim() },
+      });
+      setNewPantryItem({ name: '', qty: '', unit: '' });
+      await refresh();
+      announce(`"${name}" added to your pantry.`);
+    } catch (e) { console.error('[RecipeBox] addPantry', e); }
   }
   async function delPantry(id: string) {
-    try { await lensRun({ domain: 'cooking', action: 'pantry-delete', input: { id } }); await refresh(); }
-    catch (e) { console.error('[RecipeBox] delPantry', e); }
+    const target = pantry.find(p => p.id === id);
+    try {
+      await lensRun({ domain: 'cooking', action: 'pantry-delete', input: { id } });
+      await refresh();
+      announce(`"${target?.name ?? 'Item'}" removed from your pantry.`);
+    } catch (e) { console.error('[RecipeBox] delPantry', e); }
   }
 
   // ── Collections (recipe folders) ──
@@ -223,11 +274,19 @@ export function RecipeBoxSection() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2">
+          <input value={aiPreference} onChange={e => setAiPreference(e.target.value)} placeholder="Preference (optional)" aria-label="Meal plan preference" className="w-32 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={aiMealPlan} disabled={aiBusy} className="px-2.5 py-1 text-xs rounded border border-orange-500/30 text-orange-300 hover:bg-orange-500/10 disabled:opacity-40 inline-flex items-center gap-1">
             {aiBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}AI meal plan
           </button>
         </div>
       </header>
+
+      {notice && (
+        <div role="status" className="px-4 py-2 text-xs text-emerald-300 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center gap-2">
+          <Check className="w-3 h-3 shrink-0" />{notice}
+          <button onClick={() => setNotice(null)} aria-label="Dismiss" className="ml-auto text-emerald-300/70 hover:text-emerald-200"><X className="w-3 h-3" /></button>
+        </div>
+      )}
 
       <div className="p-4">
         {/* RECIPES */}
@@ -258,7 +317,15 @@ export function RecipeBoxSection() {
                       <div className="mt-2 flex items-center gap-1">
                         <button onClick={() => openScale(r)} className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1"><Scaling className="w-3 h-3" />Scale</button>
                         <button onClick={() => setEditRecipe({ ...r })} className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.05]">Edit</button>
-                        <button aria-label="Delete" onClick={() => deleteRecipe(r.id)} className="ml-auto opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+                        {confirmDeleteId === r.id ? (
+                          <span className="ml-auto inline-flex items-center gap-1">
+                            <span className="text-[10px] text-rose-300">Delete “{r.title}”?</span>
+                            <button onClick={() => deleteRecipe(r.id)} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-500 text-white font-semibold hover:bg-rose-400">Delete</button>
+                            <button onClick={() => setConfirmDeleteId(null)} className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.05]">Cancel</button>
+                          </span>
+                        ) : (
+                          <button aria-label={`Delete ${r.title}`} onClick={() => setConfirmDeleteId(r.id)} className="ml-auto px-1.5 py-0.5 text-[10px] rounded border border-white/10 text-rose-300 hover:bg-rose-500/20 inline-flex items-center gap-1"><Trash2 className="w-3 h-3" />Delete</button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -271,6 +338,28 @@ export function RecipeBoxSection() {
         {/* MEAL PLAN */}
         {tab === 'plan' && (
           <div className="space-y-2">
+            {aiPreview && (
+              <div className="rounded border border-orange-500/30 bg-orange-500/[0.06] p-3 space-y-2" role="group" aria-label="AI meal plan preview">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-orange-300" />
+                  <span className="text-xs font-semibold text-white">Proposed week — review before it applies</span>
+                  <span className="text-[10px] text-gray-400">Nothing is saved yet. Applying writes only these dinners; your other entries stay untouched.</span>
+                </div>
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                  {aiPreview.map(a => (
+                    <li key={`${a.date}|${a.slot}`} className="text-xs text-gray-200 flex items-center gap-2">
+                      <span className="text-[10px] text-gray-400 font-mono w-20">{new Date(a.date + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}</span>
+                      <span className="text-white">{a.title}</span>
+                      <span className="text-[10px] text-gray-500">{a.slot} · {a.servings} servings</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex items-center gap-2">
+                  <button onClick={applyAiPreview} disabled={aiBusy} className="px-2.5 py-1 text-xs rounded bg-orange-500 text-black font-semibold hover:bg-orange-400 disabled:opacity-40">Apply this week</button>
+                  <button onClick={() => setAiPreview(null)} disabled={aiBusy} className="px-2.5 py-1 text-xs rounded border border-white/10 text-gray-300 hover:bg-white/[0.05] disabled:opacity-40">Discard</button>
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Week of {dates[0]}</span>
               <button onClick={generateShopping} className="ml-auto px-2.5 py-1 text-xs rounded bg-orange-500 text-black font-semibold hover:bg-orange-400 inline-flex items-center gap-1">
@@ -359,7 +448,14 @@ export function RecipeBoxSection() {
             <div>
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Pantry · {pantry.length}</span>
-                <button onClick={addPantry} className="ml-auto px-2 py-0.5 text-[11px] rounded bg-orange-500 text-black font-bold hover:bg-orange-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Add</button>
+              </div>
+              <div className="flex items-center gap-1.5 bg-black/20 border border-white/5 rounded-lg p-1.5 mb-2">
+                <input value={newPantryItem.name} onChange={e => setNewPantryItem({ ...newPantryItem, name: e.target.value })}
+                  onKeyDown={e => { if (e.key === 'Enter') addPantry(); }}
+                  placeholder="Add a pantry item (e.g. flour)" aria-label="Pantry item name" className="flex-1 min-w-0 bg-lattice-deep border border-lattice-border rounded px-2 py-1 text-xs text-white" />
+                <input value={newPantryItem.qty} onChange={e => setNewPantryItem({ ...newPantryItem, qty: e.target.value })} placeholder="qty" aria-label="Pantry item quantity" className="w-14 bg-lattice-deep border border-lattice-border rounded px-2 py-1 text-xs text-white font-mono" />
+                <input value={newPantryItem.unit} onChange={e => setNewPantryItem({ ...newPantryItem, unit: e.target.value })} placeholder="unit" aria-label="Pantry item unit" className="w-16 bg-lattice-deep border border-lattice-border rounded px-2 py-1 text-xs text-white" />
+                <button onClick={addPantry} disabled={!newPantryItem.name.trim()} className="px-2.5 py-1 text-xs rounded bg-orange-500 text-black font-semibold hover:bg-orange-400 disabled:opacity-40 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Add</button>
               </div>
               {pantry.length === 0 ? (
                 <div className="py-6 text-center text-xs text-gray-400">Empty pantry.</div>
@@ -370,7 +466,7 @@ export function RecipeBoxSection() {
                       <Package className="w-3 h-3 text-gray-400" />
                       <span className="flex-1 text-white">{p.name}</span>
                       <span className="text-[10px] text-gray-400">{p.aisle}</span>
-                      <button aria-label="Delete" onClick={() => delPantry(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                      <button aria-label={`Remove ${p.name}`} onClick={() => delPantry(p.id)} className="text-rose-300/70 hover:text-rose-300"><Trash2 className="w-3 h-3" /></button>
                     </li>
                   ))}
                 </ul>

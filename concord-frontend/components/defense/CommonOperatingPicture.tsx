@@ -9,7 +9,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MapView, type MapMarker } from '@/components/viz';
 import { lensRun } from '@/lib/api/client';
-import { MapPin, Plus, Trash2, Loader2, Crosshair } from 'lucide-react';
+import { MapPin, Plus, Loader2, Crosshair } from 'lucide-react';
+import { ConfirmDeleteButton } from './ConfirmDeleteButton';
 
 interface CopMarker {
   id: string;
@@ -28,6 +29,10 @@ interface CopMapResult {
   markers: CopMarker[];
   count: number;
   byKind: Record<string, number>;
+  // Registry truth beside the mapped truth (C2): totals count every record
+  // in the registry; unmapped names the records that hold no coordinates.
+  totals?: { asset: number; threat: number; operation: number };
+  unmapped?: { assets: { id: string; label: string }[]; threats: { id: string; label: string }[] };
 }
 
 const AFFIL_TONE: Record<string, MapMarker['tone']> = {
@@ -43,8 +48,11 @@ const hasCoords = (m: CopMarker): m is CopMarker & { lat: number; lon: number } 
 export function CommonOperatingPicture() {
   const [markers, setMarkers] = useState<CopMarker[]>([]);
   const [byKind, setByKind] = useState<Record<string, number>>({});
+  const [totals, setTotals] = useState<{ asset: number; threat: number; operation: number } | null>(null);
+  const [unmapped, setUnmapped] = useState<{ assets: { id: string; label: string }[]; threats: { id: string; label: string }[] }>({ assets: [], threats: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const [label, setLabel] = useState('');
   const [kind, setKind] = useState<'asset' | 'threat' | 'operation'>('operation');
@@ -61,6 +69,8 @@ export function CommonOperatingPicture() {
     if (r.data?.ok && r.data.result) {
       setMarkers(r.data.result.markers || []);
       setByKind(r.data.result.byKind || {});
+      setTotals(r.data.result.totals || null);
+      setUnmapped(r.data.result.unmapped || { assets: [], threats: [] });
     } else {
       setError(r.data?.error || 'Failed to load common operating picture');
     }
@@ -99,11 +109,17 @@ export function CommonOperatingPicture() {
     setBusy(false);
   }, [kind, label, affiliation, lat, lon, note, refresh]);
 
-  const remove = useCallback(async (id: string) => {
+  const remove = useCallback(async (marker: CopMarker) => {
     setBusy(true);
-    const r = await lensRun('defense', 'cop-remove', { id });
-    if (r.data?.ok) await refresh();
-    else setError(r.data?.error || 'Marker not removable (auto-derived from asset/threat)');
+    setNotice(null);
+    setError(null);
+    const r = await lensRun('defense', 'cop-remove', { id: marker.id });
+    if (r.data?.ok) {
+      setNotice(`Removed marker — ${marker.label}`);
+      await refresh();
+    } else {
+      setError(r.data?.error || 'Marker not removable (auto-derived from asset/threat)');
+    }
     setBusy(false);
   }, [refresh]);
 
@@ -115,6 +131,20 @@ export function CommonOperatingPicture() {
     tone: AFFIL_TONE[m.affiliation || 'unknown'] || 'default',
   }));
 
+  // Counts count what they label (C2): the headline numbers are registry
+  // totals; the "on map" numbers say how many of those records are plotted.
+  // (Fallbacks cover a response without totals: count the plotted markers.)
+  const assetTotal = totals ? totals.asset : (byKind.asset || 0);
+  const threatTotal = totals ? totals.threat : (byKind.threat || 0);
+  const markerTotal = totals ? totals.operation : markers.filter((m) => m.id.startsWith('cop_')).length;
+  const assetMapped = totals
+    ? totals.asset - unmapped.assets.length
+    : markers.filter((m) => m.kind === 'asset' && hasCoords(m)).length;
+  const threatMapped = totals
+    ? totals.threat - unmapped.threats.length
+    : markers.filter((m) => m.kind === 'threat' && hasCoords(m)).length;
+  const unmappedCount = unmapped.assets.length + unmapped.threats.length;
+
   return (
     <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 space-y-3">
       <header className="flex items-center justify-between">
@@ -123,9 +153,9 @@ export function CommonOperatingPicture() {
           <h3 className="text-sm font-semibold text-white">Common Operating Picture</h3>
         </div>
         <div className="flex gap-2 text-[11px]">
-          <span className="text-green-400">{byKind.asset || 0} assets</span>
-          <span className="text-red-400">{byKind.threat || 0} threats</span>
-          <span className="text-indigo-400">{byKind.operation || 0} ops</span>
+          <span className="text-green-400">{assetTotal} assets · {assetMapped} on map</span>
+          <span className="text-red-400">{threatTotal} threats · {threatMapped} on map</span>
+          <span className="text-indigo-400">{markerTotal} markers</span>
         </div>
       </header>
 
@@ -135,12 +165,41 @@ export function CommonOperatingPicture() {
         </div>
       )}
 
+      {notice && (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400">
+          {notice}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-12 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : (
         <MapView markers={mapMarkers} height={320} />
+      )}
+
+      {/* Unmapped records are named, never silently absent (C2) */}
+      {!loading && unmappedCount > 0 && (
+        <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2.5">
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">
+            No coordinates — not on the map ({unmappedCount})
+          </div>
+          {unmapped.assets.map((a) => (
+            <div key={a.id} className="flex items-center gap-2 text-[11px] mt-0.5">
+              <MapPin className="w-3 h-3 shrink-0 text-zinc-500" />
+              <span className="text-zinc-200">{a.label}</span>
+              <span className="text-zinc-500">asset · no coordinates</span>
+            </div>
+          ))}
+          {unmapped.threats.map((t) => (
+            <div key={t.id} className="flex items-center gap-2 text-[11px] mt-0.5">
+              <MapPin className="w-3 h-3 shrink-0 text-zinc-500" />
+              <span className="text-zinc-200">{t.label}</span>
+              <span className="text-zinc-500">threat · no coordinates</span>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Plot a new marker */}
@@ -225,14 +284,12 @@ export function CommonOperatingPicture() {
                 <span className="text-[10px] text-zinc-400 shrink-0">{m.kind}</span>
               </div>
               {m.id.startsWith('cop_') && (
-                <button
-                  onClick={() => remove(m.id)}
+                <ConfirmDeleteButton
+                  ariaLabel="Remove marker"
+                  itemLabel={`marker "${m.label}"`}
                   disabled={busy}
-                  aria-label="Remove marker"
-                  className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                  onConfirm={() => remove(m)}
+                />
               )}
             </div>
           ))}

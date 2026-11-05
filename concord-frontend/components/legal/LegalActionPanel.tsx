@@ -41,13 +41,15 @@ function pickMessage(e: unknown): string {
 // deadlineCheck reads artifact.data.items[] (each with a `deadline`) and returns
 // { upcoming: [...item, daysUntil], count }. conflictCheck reads
 // artifact.data.{parties,client,opposingParty} + params.checkAgainst and returns
-// { conflicts, hasConflict, checkedAt }. complianceAudit reads
+// { conflicts, hasConflict, scope, checkedAt } — it also searches the
+// caller's workspace contacts + matters for each checked name (LG-S6).
+// complianceAudit reads
 // artifact.data.requirements[] and returns { score, rating, findings, ... }.
 // contractRenewal reads artifact.data.{expiryDate,renewalType} (single contract).
 interface DeadlineResult { upcoming?: Array<{ name?: string; deadline: string; daysUntil: number; severity?: string }>; count?: number }
 interface RenewalRow { name: string; daysUntilExpiry: number; urgency: string; autoRenewal: boolean; actionRequired: boolean }
 interface RenewalResult { renewals: RenewalRow[]; criticalCount: number }
-interface ConflictResult { hasConflict?: boolean; conflicts?: Array<{ name: string; conflictType: string }>; checkedAt?: string }
+interface ConflictResult { hasConflict?: boolean; conflicts?: Array<{ name: string; conflictType: string; detail?: string }>; scope?: string; checkedAt?: string }
 interface AuditResult { findings?: Array<{ requirement: string; reason?: string; severity?: string }>; score?: number; rating?: string; passed?: number; failed?: number }
 
 export function LegalActionPanel() {
@@ -244,7 +246,8 @@ export function LegalActionPanel() {
         {conflictResult && (
           <div className={cn('rounded-md border p-2.5', conflictResult.hasConflict ? 'border-rose-500/40 bg-rose-500/5' : 'border-emerald-500/40 bg-emerald-500/5')}>
             <div className={cn('text-[10px] uppercase tracking-wider font-semibold', conflictResult.hasConflict ? 'text-rose-300' : 'text-emerald-300')}>Conflict {conflictResult.hasConflict ? 'DETECTED' : 'clear'}</div>
-            {conflictResult.conflicts?.length ? <p className="text-[11px] text-gray-300 mt-1">{conflictResult.conflicts.map(c => `${c.name} (${c.conflictType.replace(/_/g, ' ')})`).join('; ')}</p> : null}
+            {conflictResult.conflicts?.length ? <p className="text-[11px] text-gray-300 mt-1">{conflictResult.conflicts.map(c => `${c.name} (${c.conflictType.replace(/_/g, ' ')}${c.detail ? ` — ${c.detail}` : ''})`).join('; ')}</p> : null}
+            {conflictResult.scope && <p className="text-[10px] text-gray-500 mt-1">Scope: {conflictResult.scope}.</p>}
           </div>
         )}
         {auditResult && (
@@ -252,6 +255,16 @@ export function LegalActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-semibold">Compliance{auditResult.rating ? ` · ${auditResult.rating}` : ''}</div>
             <div className="text-2xl font-bold text-gray-100 font-mono tabular-nums">{auditResult.score}<span className="text-xs text-gray-400">/100</span></div>
             {auditResult.findings?.length ? <div className="text-[10px] text-gray-400 font-mono tabular-nums">{auditResult.findings.length} findings</div> : null}
+            {auditResult.findings?.length ? (
+              <ul className="mt-1.5 space-y-1">
+                {auditResult.findings.map((f, i) => (
+                  <li key={i} className="text-[11px] text-gray-300 flex items-baseline gap-1.5">
+                    <span className={cn('text-[9px] uppercase px-1 py-0.5 rounded font-bold shrink-0', f.severity === 'high' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300')}>{f.severity || 'medium'}</span>
+                    <span><span className="text-gray-100">{f.requirement}</span>{f.reason ? <span className="text-gray-400"> — {f.reason}</span> : null}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         )}
       </div>

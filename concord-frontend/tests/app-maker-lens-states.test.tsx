@@ -76,7 +76,6 @@ vi.mock('@/components/lens/ManifestActionBar', () => ({ ManifestActionBar: () =>
 vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
 vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
 vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
-vi.mock('@/components/lens/LensFeaturePanel', () => ({ LensFeaturePanel: () => null }));
 vi.mock('@/components/lens/ConnectiveTissueBar', () => ({ ConnectiveTissueBar: () => null }));
 vi.mock('@/components/app-maker/NpmPackageSearch', () => ({ NpmPackageSearch: () => null }));
 vi.mock('@/components/app-maker/AppBuilderStudio', () => ({ AppBuilderStudio: () => null }));

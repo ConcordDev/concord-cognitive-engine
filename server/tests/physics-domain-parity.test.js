@@ -271,4 +271,32 @@ describe("physics — curriculum modules", () => {
     const r = call("pendulum-period", ctx, { length: 0 });
     assert.equal(r.ok, false);
   });
+
+  it("derives frequency from the amplitude-corrected period it headlines", () => {
+    // L=1.6, 15° amplitude — the Predict panel's own defaults. Before the
+    // fix, frequency_hz was 1/smallAnglePeriod while the surface headlined
+    // the corrected period, so the panel contradicted itself.
+    const r = call("pendulum-period", ctx, { length: 1.6, gravity: 9.81, amplitudeDeg: 15 });
+    assert.equal(r.ok, true);
+    assert.ok(r.result.correctedPeriod_s > r.result.smallAnglePeriod_s);
+    assert.ok(Math.abs(r.result.frequency_hz - 1 / r.result.correctedPeriod_s) < 1e-3,
+      `f=${r.result.frequency_hz} must equal 1/T_corrected=${1 / r.result.correctedPeriod_s}`);
+  });
+
+  it("a rod-constrained pendulum conserves energy (no constraint injection)", () => {
+    // The pendulum-lab module's own scene: before the velocity-level
+    // constraint solve, this run's energyDrift measured +37124.156 J —
+    // the integrator invented energy the module's text says stays flat.
+    const mod = call("curriculum-get", ctx, { id: "pendulum-lab" });
+    assert.equal(mod.ok, true);
+    const sc = mod.result.module.scene;
+    const r = call("simulate-scene", ctx, {
+      bodies: sc.bodies, constraints: sc.constraints,
+      fluids: sc.fluids || [], settings: sc.settings, steps: 900, substeps: 6,
+    });
+    assert.equal(r.ok, true);
+    const total0 = r.result.energyTrace[0].total;
+    assert.ok(Math.abs(r.result.energyDrift) < total0 * 0.01,
+      `drift ${r.result.energyDrift} J must stay within 1% of the total ${total0} J`);
+  });
 });

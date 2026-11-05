@@ -28,7 +28,16 @@ export type Status =
   | 'paid'
   | 'pending'
   | 'failed'
-  | 'active';
+  | 'active'
+  | 'draft'
+  | 'sent'
+  | 'accepted'
+  | 'declined'
+  | 'lead'
+  | 'inactive'
+  | 'overdue'
+  | 'passed'
+  | 'cancelled';
 
 export interface TradeArtifact {
   name: string;
@@ -78,7 +87,59 @@ export const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending: { label: 'Pending', color: 'yellow-400' },
   failed: { label: 'Failed', color: 'red-400' },
   active: { label: 'Active', color: 'green-400' },
+  draft: { label: 'Draft', color: 'zinc-400' },
+  sent: { label: 'Sent', color: 'sky-400' },
+  accepted: { label: 'Accepted', color: 'green-400' },
+  declined: { label: 'Declined', color: 'red-400' },
+  lead: { label: 'Lead', color: 'amber-400' },
+  inactive: { label: 'Inactive', color: 'zinc-400' },
+  overdue: { label: 'Overdue', color: 'red-400' },
+  passed: { label: 'Passed', color: 'green-400' },
+  cancelled: { label: 'Cancelled', color: 'zinc-400' },
 };
+
+/**
+ * Status language belongs to the object (S2 specialisation): one shared
+ * status set worn by every record type put a *client* and an *invoice* at
+ * "Scheduled". Each type now offers its own statuses; labels that differ
+ * per type (a Material is "In stock", a CodeRef "Current") override via
+ * TYPE_STATUS_LABELS. Legacy records carrying a generic status still
+ * render through STATUS_CONFIG.
+ */
+export const STATUS_BY_TYPE: Record<ArtifactType, Status[]> = {
+  Job: ['scheduled', 'in_progress', 'completed', 'cancelled'],
+  Estimate: ['draft', 'sent', 'accepted', 'declined'],
+  CodeRef: ['active', 'inactive'],
+  Material: ['active', 'pending', 'completed'],
+  Client: ['lead', 'active', 'inactive'],
+  Invoice: ['draft', 'sent', 'paid', 'overdue'],
+  Inspection: ['scheduled', 'in_progress', 'passed', 'failed'],
+  Certification: ['active', 'inactive'],
+};
+
+export const TYPE_STATUS_LABELS: Partial<Record<string, string>> = {
+  'Material:active': 'In stock',
+  'Material:pending': 'On order',
+  'Material:completed': 'Used up',
+  'CodeRef:active': 'Current',
+  'CodeRef:inactive': 'Superseded',
+  'Certification:inactive': 'Lapsed',
+};
+
+export const DEFAULT_STATUS_BY_TYPE: Record<ArtifactType, Status> = {
+  Job: 'scheduled',
+  Estimate: 'draft',
+  CodeRef: 'active',
+  Material: 'active',
+  Client: 'lead',
+  Invoice: 'draft',
+  Inspection: 'scheduled',
+  Certification: 'active',
+};
+
+export function statusLabel(type: ArtifactType, status: string): string {
+  return TYPE_STATUS_LABELS[`${type}:${status}`] || STATUS_CONFIG[status]?.label || status;
+}
 
 export const TRADE_MATERIALS = [
   'Ductwork',
