@@ -64,7 +64,7 @@ describe("Phase BE1 — photo gallery", async () => {
   it("private hides from public feed; sharePhoto mints into STATE.dtus (not the dead legacy dtus table) + flips public", async () => {
     const r = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG, visibility: "private" });
     assert.equal(listPublicPhotosInWorld(db, "tunya").length, 0);
-    const s = sharePhoto(db, r.id, { STATE });
+    const s = await sharePhoto(db, r.id, { STATE });
     assert.equal(s.ok, true);
     assert.ok(s.dtuId.startsWith("dtu_photo_"));
     assert.equal(listPublicPhotosInWorld(db, "tunya").length, 1);
@@ -80,7 +80,7 @@ describe("Phase BE1 — photo gallery", async () => {
 
   it("fails honestly with dtu_store_unavailable when no STATE.dtus substrate is reachable", async () => {
     const r = await savePhoto(db, "u1", { worldId: "hub", dataUrl: TINY_PNG, caption: "held" });
-    const s = sharePhoto(db, r.id, { STATE: null });
+    const s = await sharePhoto(db, r.id, { STATE: null });
     assert.equal(s.ok, false);
     assert.equal(s.error, "dtu_store_unavailable");
     const row = db.prepare("SELECT dtu_id, visibility FROM user_photos WHERE id = ?").get(r.id);
@@ -91,8 +91,8 @@ describe("Phase BE1 — photo gallery", async () => {
 
   it("share is idempotent (re-share returns alreadyShared:true)", async () => {
     const r = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
-    sharePhoto(db, r.id, { STATE });
-    const second = sharePhoto(db, r.id, { STATE });
+    await sharePhoto(db, r.id, { STATE });
+    const second = await sharePhoto(db, r.id, { STATE });
     assert.equal(second.alreadyShared, true);
   });
 
@@ -110,9 +110,9 @@ describe("Phase BE1 — photo gallery", async () => {
 
   it("listPublicPhotosInWorld is scoped to world", async () => {
     const a = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
-    sharePhoto(db, a.id, { STATE });
+    await sharePhoto(db, a.id, { STATE });
     const b = await savePhoto(db, "u1", { worldId: "cyber", dataUrl: TINY_PNG });
-    sharePhoto(db, b.id, { STATE });
+    await sharePhoto(db, b.id, { STATE });
     assert.equal(listPublicPhotosInWorld(db, "tunya").length, 1);
     assert.equal(listPublicPhotosInWorld(db, "cyber").length, 1);
   });
