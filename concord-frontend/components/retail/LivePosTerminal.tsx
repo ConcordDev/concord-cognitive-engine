@@ -11,7 +11,11 @@ import { onRetailCatalogChanged } from './retailCatalogEvents';
 interface Product { sku: string; name: string; price: number; stock: number }
 interface CartLine { sku: string; name: string; unitPrice: number; qty: number }
 interface Cart { id: string; lines: CartLine[]; discountPercent: number; appliedDiscountCode?: string; freeShipping?: boolean }
-interface Order { id: string; total: number; lines: CartLine[]; tenders?: { kind: string; amount: number }[]; closedAt: string; stripe?: { paymentIntentId?: string } }
+interface Order { id: string; total: number; lines: CartLine[]; tenders?: { kind: string; amount: number }[]; closedAt: string; stripe?: { paymentIntentId?: string }; tendered?: number; change?: number }
+interface CartTotals { subtotal: number; tax: number; total: number; taxRate: number; taxRateSource: string }
+
+/** 8.875 stays 8.875, 5.00 renders as 5 — the rate the server actually charged. */
+function fmtRate(r: number): string { return String(Math.round(r * 1000) / 1000); }
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 
@@ -28,9 +32,11 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 export function LivePosTerminal() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<Cart | null>(null);
-  const [total, setTotal] = useState<{ subtotal: number; tax: number; total: number } | null>(null);
+  const [total, setTotal] = useState<CartTotals | null>(null);
+  const [tendered, setTendered] = useState('');
+  const [lastSale, setLastSale] = useState<{ total: number; tendered: number; change: number } | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [lowStock, setLowStock] = useState<Product[]>([]);
+  const [lowStock, setLowStock] = useState<(Product & { atThreshold?: boolean })[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [stripePending, setStripePending] = useState(false);
   const [stripeIntent, setStripeIntent] = useState<{ clientSecret?: string; paymentIntentId?: string } | null>(null);
@@ -43,7 +49,7 @@ export function LivePosTerminal() {
       const [p, o, ls] = await Promise.all([
         callMacro<{ products: Product[] }>('product-list', {}),
         callMacro<{ orders: Order[] }>('orders-list', {}),
-        callMacro<{ lowStock: Product[] }>('low-stock', { threshold: 5 }),
+        callMacro<{ lowStock: (Product & { atThreshold?: boolean })[] }>('low-stock', { threshold: 5 }),
       ]);
       if (p.ok && p.result) setProducts(p.result.products);
       if (o.ok && o.result) setOrders(o.result.orders);
@@ -70,8 +76,8 @@ export function LivePosTerminal() {
     const env = await callMacro<{ cart: Cart }>('cart-add-line', { cartId, sku, qty: 1 });
     if (env.ok && env.result) {
       setCart(env.result.cart);
-      const t = await callMacro<{ subtotal: number; tax: number; total: number }>('cart-total', { cartId, taxRate: 8.875 });
-      if (t.ok && t.result) setTotal({ subtotal: t.result.subtotal, tax: t.result.tax, total: t.result.total });
+      const t = await callMacro<CartTotals>('cart-total', { cartId });
+      if (t.ok && t.result) setTotal(t.result);
     } else setError(env.error || 'add failed');
   };
 
@@ -84,8 +90,8 @@ export function LivePosTerminal() {
       setCart(env.result.cart);
       setDiscountMessage(`Applied ${discountCode.trim().toUpperCase()} — saved $${env.result.discountAmount.toFixed(2)}`);
       setDiscountCode('');
-      const t = await callMacro<{ subtotal: number; tax: number; total: number }>('cart-total', { cartId: cart.id, taxRate: 8.875 });
-      if (t.ok && t.result) setTotal({ subtotal: t.result.subtotal, tax: t.result.tax, total: t.result.total });
+      const t = await callMacro<CartTotals>('cart-total', { cartId: cart.id });
+      if (t.ok && t.result) setTotal(t.result);
     } else {
       setDiscountMessage(env.error || 'Discount code invalid');
     }
@@ -94,9 +100,16 @@ export function LivePosTerminal() {
 
   const tenderCash = async () => {
     if (!cart || !total) return;
-    const env = await callMacro<{ order: Order }>('cart-tender', { cartId: cart.id, taxRate: 8.875, tenders: [{ kind: 'cash', amount: total.total }] });
+    const amount = tendered.trim() === '' ? total.total : Number(tendered);
+    if (!Number.isFinite(amount) || amount < total.total - 0.001) {
+      setError(`Tendered amount must cover the $${total.total.toFixed(2)} total.`);
+      return;
+    }
+    const env = await callMacro<{ order: Order }>('cart-tender', { cartId: cart.id, tenders: [{ kind: 'cash', amount }] });
     if (env.ok && env.result) {
-      setCart(null); setTotal(null);
+      const o = env.result.order;
+      setLastSale({ total: o.total, tendered: o.tendered ?? amount, change: o.change ?? Math.round((amount - o.total) * 100) / 100 });
+      setCart(null); setTotal(null); setTendered('');
       refresh.mutate();
     } else setError(env.error || 'tender failed');
   };
@@ -105,7 +118,7 @@ export function LivePosTerminal() {
     if (!cart) return;
     setStripePending(true);
     setError(null);
-    const env = await callMacro<{ clientSecret: string; paymentIntentId: string }>('cart-create-payment-intent', { cartId: cart.id, taxRate: 8.875 });
+    const env = await callMacro<{ clientSecret: string; paymentIntentId: string }>('cart-create-payment-intent', { cartId: cart.id });
     setStripePending(false);
     if (env.ok && env.result) setStripeIntent(env.result);
     else setError(env.error || 'Stripe unavailable');
@@ -131,8 +144,8 @@ export function LivePosTerminal() {
         <div className="flex items-start gap-2 rounded-md border border-amber-500/20 bg-amber-500/5 p-2 text-[11px] text-amber-200">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5" />
           <div>
-            <div className="font-semibold">Low stock — restock soon</div>
-            <div className="font-mono text-amber-300/80">{lowStock.slice(0, 6).map((p) => `${p.sku}(${p.stock})`).join(' · ')}</div>
+            <div className="font-semibold">Stock check — low stock &amp; at reorder point</div>
+            <div className="font-mono text-amber-300/80">{lowStock.slice(0, 6).map((p) => `${p.sku}(${p.stock}${p.atThreshold ? ' · at reorder point' : ''})`).join(' · ')}</div>
           </div>
         </div>
       )}
@@ -210,11 +223,15 @@ export function LivePosTerminal() {
               {total && (
                 <div className="mt-2 rounded-md border border-cyan-500/20 bg-cyan-500/5 p-2 text-[11px] tabular-nums">
                   <div className="flex justify-between text-gray-400"><span>Subtotal</span><span className="font-mono">${total.subtotal.toFixed(2)}</span></div>
-                  <div className="flex justify-between text-gray-400"><span>Tax (8.875%)</span><span className="font-mono">${total.tax.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-gray-400"><span>{total.taxRateSource === 'none' ? 'Tax (no rate configured)' : `Tax (${fmtRate(total.taxRate)}%)`}</span><span className="font-mono">${total.tax.toFixed(2)}</span></div>
                   <div className="mt-1 flex justify-between border-t border-cyan-500/20 pt-1 text-sm font-semibold text-cyan-200"><span>Total</span><span className="font-mono">${total.total.toFixed(2)}</span></div>
                 </div>
               )}
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <input type="number" min={0} step="0.01" value={tendered} onChange={(e) => setTendered(e.target.value)}
+                  placeholder={total ? `Tendered (exact $${total.total.toFixed(2)})` : 'Tendered'}
+                  aria-label="Amount tendered"
+                  className="w-36 px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
                 <button onClick={tenderCash} disabled={!total || cart.lines.length === 0} className="inline-flex items-center gap-1 rounded border border-green-500/30 bg-green-500/10 px-2 py-1 text-[11px] text-green-300 hover:bg-green-500/20 disabled:opacity-50">
                   <Plus className="h-3 w-3" /> Cash tender
                 </button>
@@ -232,6 +249,12 @@ export function LivePosTerminal() {
           )}
         </div>
       </div>
+
+      {lastSale && (
+        <div className="rounded border border-green-500/20 bg-green-500/5 px-3 py-2 text-xs text-green-200" role="status">
+          Sale complete — total ${lastSale.total.toFixed(2)} · tendered ${lastSale.tendered.toFixed(2)} · <span className="font-semibold">change due ${lastSale.change.toFixed(2)}</span>
+        </div>
+      )}
 
       <div className="rounded-md border border-lattice-border bg-lattice-deep/40 p-3">
         <div className="mb-2 flex items-center justify-between">

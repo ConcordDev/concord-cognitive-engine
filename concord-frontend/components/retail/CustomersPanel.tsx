@@ -19,6 +19,7 @@ export function CustomersPanel() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', city: '', state: '' });
+  const [addError, setAddError] = useState<string | null>(null);
   const [activeSegment, setActiveSegment] = useState<'all' | 'new' | 'repeat' | 'vip' | 'atRisk' | 'dormant'>('all');
 
   useEffect(() => { refresh(); }, []);
@@ -37,13 +38,18 @@ export function CustomersPanel() {
   }
 
   async function add() {
-    if (!form.name.trim() || !form.email.trim()) return;
+    // Name AND email are required (the server refuses without an email);
+    // say so in the panel instead of returning in silence.
+    if (!form.name.trim()) { setAddError('Name is required.'); return; }
+    if (!form.email.trim()) { setAddError('Email is required — a customer cannot be created without one.'); return; }
     try {
-      await lensRun({ domain: 'retail', action: 'customers-add', input: form });
+      const r = await lensRun({ domain: 'retail', action: 'customers-add', input: form });
+      if (r.data?.ok === false) { setAddError(String(r.data.error || 'Could not add the customer.')); return; }
+      setAddError(null);
       setForm({ name: '', email: '', phone: '', city: '', state: '' });
       setCreating(false);
       await refresh();
-    } catch (e) { console.error('[Customers] add failed', e); }
+    } catch (e) { setAddError(e instanceof Error ? e.message : 'Could not add the customer.'); }
   }
 
   async function remove(id: string) {
@@ -100,8 +106,9 @@ export function CustomersPanel() {
 
       {creating && (
         <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
+          {addError && <div className="col-span-5 rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-300" role="alert">{addError}</div>}
           <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Email" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Email (required)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Phone" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={add} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Add</button>
           <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="City" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
