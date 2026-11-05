@@ -219,7 +219,7 @@ export const BRAIN_CONFIG = Object.freeze({
     // 30B+14B+2B weights (~32GB) comfortably resident with MAX_LOADED_MODELS=3.
     // Raise past 32k per-deployment with BRAIN_CONSCIOUS_CONTEXT (also bump
     // CONCORD_NUM_CTX_CAP — server.js#_ollamaNumCtx clamps to it).
-contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 32768, 65536),
+contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 32768, 131072),
     maxTokens: 4096,   // Full output — let it think
   },
   subconscious: {

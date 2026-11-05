@@ -59,6 +59,13 @@ export function ArtStudioSection() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  // Deep link from chat / ConKay drawings: /lenses/art?artwork=<id> opens it.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const id = new URLSearchParams(window.location.search).get('artwork');
+    if (id && /^[\w-]{1,80}$/.test(id)) setOpenArtwork(id);
+  }, []);
+
   const createArtwork = async () => {
     const title = form.title.trim();
     if (!title) {
