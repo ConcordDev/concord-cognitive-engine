@@ -13,7 +13,7 @@ import { lensRun } from '@/lib/api/client';
 
 interface Expense {
   id: string; engagementId: string; engagementName: string; description: string;
-  category: string; amount: number; reimbursable: boolean; status: string; date: string;
+  category: string; amount: number; reimbursable: boolean; billable: boolean; status: string; date: string;
 }
 interface EngagementOption { id: string; name: string }
 
@@ -26,7 +26,7 @@ const STATUS_COLOR: Record<string, string> = {
 const NEXT_STATUS = ['pending', 'approved', 'reimbursed'];
 
 export function ExpenseTracker({ engagements }: { engagements: EngagementOption[] }) {
-  const [form, setForm] = useState({ engagementId: '', description: '', category: '', amount: '', reimbursable: true });
+  const [form, setForm] = useState({ engagementId: '', description: '', category: '', amount: '', reimbursable: true, billable: false });
   const [error, setError] = useState('');
 
   const { data, isLoading, isError, error: loadError, refetch } = useQuery({
@@ -34,15 +34,15 @@ export function ExpenseTracker({ engagements }: { engagements: EngagementOption[
     queryFn: async () => {
     const r = await lensRun('consulting', 'expense-list', {});
       if (!r.data?.ok) throw new Error(r.data?.error || 'Could not load expenses');
-    const res = r.data?.result as { expenses?: Expense[]; total?: number; reimbursable?: number; approved?: number } | null;
+    const res = r.data?.result as { expenses?: Expense[]; total?: number; reimbursable?: number; billable?: number; approved?: number } | null;
       return {
         expenses: res?.expenses || [],
-        totals: { total: res?.total || 0, reimbursable: res?.reimbursable || 0, approved: res?.approved || 0 },
+        totals: { total: res?.total || 0, reimbursable: res?.reimbursable || 0, billable: res?.billable || 0, approved: res?.approved || 0 },
       };
     },
   });
   const expenses = data?.expenses || [];
-  const totals = data?.totals || { total: 0, reimbursable: 0, approved: 0 };
+  const totals = data?.totals || { total: 0, reimbursable: 0, billable: 0, approved: 0 };
 
   async function add() {
     setError('');
@@ -52,9 +52,10 @@ export function ExpenseTracker({ engagements }: { engagements: EngagementOption[
     const r = await lensRun('consulting', 'expense-create', {
       engagementId: form.engagementId, description: form.description.trim(),
       category: form.category.trim(), amount: Number(form.amount), reimbursable: form.reimbursable,
+      billable: form.billable,
     });
     if (!r.data?.ok) { setError(r.data?.error || 'Failed to add expense'); return; }
-    setForm({ engagementId: '', description: '', category: '', amount: '', reimbursable: true });
+    setForm({ engagementId: '', description: '', category: '', amount: '', reimbursable: true, billable: false });
     await refetch();
   }
   async function cycleStatus(exp: Expense) {
@@ -77,8 +78,8 @@ export function ExpenseTracker({ engagements }: { engagements: EngagementOption[
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        {([['Total', totals.total, 'text-zinc-100'], ['Reimbursable', totals.reimbursable, 'text-amber-400'], ['Approved', totals.approved, 'text-emerald-400']] as const).map(([l, v, c]) => (
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+        {([['Total', totals.total, 'text-zinc-100'], ['Reimbursable', totals.reimbursable, 'text-amber-400'], ['Billable to client', totals.billable, 'text-sky-400'], ['Approved', totals.approved, 'text-emerald-400']] as const).map(([l, v, c]) => (
           <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2 text-center">
             <p className={`text-base font-bold ${c}`}>${v.toLocaleString()}</p>
             <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{l}</p>
@@ -102,6 +103,10 @@ export function ExpenseTracker({ engagements }: { engagements: EngagementOption[
           <input type="checkbox" checked={form.reimbursable} onChange={e => setForm({ ...form, reimbursable: e.target.checked })} />
           reimb.
         </label>
+        <label className="flex items-center gap-1 text-[11px] text-zinc-400">
+          <input type="checkbox" checked={form.billable} onChange={e => setForm({ ...form, billable: e.target.checked })} />
+          billable to client
+        </label>
         <button onClick={add}
           className="px-2.5 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />Add
@@ -116,7 +121,7 @@ export function ExpenseTracker({ engagements }: { engagements: EngagementOption[
             <Receipt className="w-4 h-4 text-indigo-400 shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-zinc-100 truncate">{exp.description}</p>
-              <p className="text-[10px] text-zinc-400">{exp.engagementName} · {exp.category} · {exp.date}{exp.reimbursable ? ' · reimbursable' : ''}</p>
+              <p className="text-[10px] text-zinc-400">{exp.engagementName}{engagements.some(e => e.id === exp.engagementId) ? '' : ' (deleted)'} · {exp.category} · {exp.date}{exp.reimbursable ? ' · reimbursable' : ''}{exp.billable ? ' · billable to client' : ''}</p>
             </div>
             <span className="text-sm font-bold text-zinc-100">${exp.amount.toLocaleString()}</span>
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase ${STATUS_COLOR[exp.status] || 'text-zinc-400 bg-zinc-800'}`}>{exp.status}</span>
