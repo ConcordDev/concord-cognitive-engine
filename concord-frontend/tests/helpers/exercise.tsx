@@ -29,6 +29,13 @@ export function fakeEntity(seed = 'e1', depth = 0): Record<string, unknown> {
   });
 }
 
+/** True for buttons and for any element whose React props carry an onClick (clickable rows/cards/divs). */
+function isClickable(el: Element): boolean {
+  if (el.matches('button, [role="tab"], [role="button"]')) return true;
+  const k = Object.keys(el).find((x) => x.startsWith('__reactProps$'));
+  return !!k && typeof (el as unknown as Record<string, { onClick?: unknown }>)[k]?.onClick === 'function';
+}
+
 /** Fill every field and press every enabled control (deletes skipped), letting each async handler settle. */
 export async function exercise(opts: { passes?: number; skip?: RegExp; root?: ParentNode; text?: string } = {}) {
   const { passes = 2, skip = /delete|remove|trash|discard|cancel|close|dismiss|reset|clear|^back|^×$/i, root = document, text = 'Test' } = opts;
@@ -45,9 +52,9 @@ export async function exercise(opts: { passes?: number; skip?: RegExp; root?: Pa
       if (opt) { try { await act(async () => { fireEvent.change(sel, { target: { value: opt.value } }); }); } catch { /* noop */ } }
     }
     // buttons plus clickable rows/cards (selecting an item opens its detail view)
-    for (const el of Array.from(root.querySelectorAll('button, [role="tab"], [role="button"], [class*="cursor-pointer"], tr[class*="hover"], li[class*="hover"]')) as HTMLElement[]) {
+    for (const el of Array.from(root.querySelectorAll('*')).filter(isClickable) as HTMLElement[]) {
       if (!el.isConnected || (el as HTMLButtonElement).disabled) continue;
-      const label = (el.getAttribute('aria-label') || el.textContent || '').trim();
+      const label = (el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent || '').trim();
       if (skip.test(label)) continue;
       try { await act(async () => { fireEvent.click(el); await new Promise((r) => setTimeout(r, 0)); }); } catch { /* a control may unmount mid-pass */ }
     }
