@@ -139,18 +139,27 @@ export default function registerPodcastActions(registerLensAction) {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = pcclean(params.title, 160);
     if (!title) return { ok: false, error: "show title required" };
+    const feedUrl = pcclean(params.feedUrl, 400) || null;
+    // One library store: re-adding a feed the caller already added returns
+    // the existing show instead of minting a duplicate catalogue entry —
+    // an "Add to Library" that lands twice is a split store by another name.
+    if (feedUrl) {
+      const userId = pcaid(ctx);
+      const existing = [...s.shows.values()].find((sh) => sh.addedBy === userId && sh.feedUrl === feedUrl);
+      if (existing) return { ok: true, result: { show: existing, created: false } };
+    }
     const show = {
       id: pcid("show"), title,
       author: pcclean(params.author, 120) || null,
       category: pcclean(params.category, 60).toLowerCase() || "general",
       description: pcclean(params.description, 1000) || null,
-      feedUrl: pcclean(params.feedUrl, 400) || null,
+      feedUrl,
       addedBy: pcaid(ctx), createdAt: pcnow(),
     };
     s.shows.set(show.id, show);
     s.episodes.set(show.id, []);
     savePodState();
-    return { ok: true, result: { show } };
+    return { ok: true, result: { show, created: true } };
   });
 
   // Real subscriber count for a show: how many DISTINCT users' subscription
@@ -167,7 +176,11 @@ export default function registerPodcastActions(registerLensAction) {
     const subs = s.subscriptions.get(userId) || [];
     return {
       ...show,
-      episodeCount: (s.episodes.get(show.id) || []).length,
+      // The count must agree with what this viewer can open in the show's
+      // detail (episode-list filters by canSeeEpisode): a show whose only
+      // episode is another creator's draft reads "No episodes yet." there,
+      // so it must not claim that episode here either.
+      episodeCount: (s.episodes.get(show.id) || []).filter((e) => canSeeEpisode(e, userId)).length,
       subscribed: subs.includes(show.id),
       subscriberCount: subscriberCountFor(s, show.id),
       reviewCount: (s.reviews.get(show.id) || []).length,
@@ -308,6 +321,38 @@ export default function registerPodcastActions(registerLensAction) {
     syncEpisodeMediaPrivacy(ep);
     savePodState();
     return { ok: true, result: { episodeId: ep.id, status: ep.status } };
+  });
+
+  // The lifecycle's edit verb: create/publish/unpublish/delete all exist,
+  // so a typo'd title must be correctable too. Creator-only, mirroring
+  // episode-set-status. Status and media stay with their own paths
+  // (episode-set-status, the upload pipeline) — this edits the text and
+  // numbering fields episode-add accepts.
+  registerLensAction("podcast", "episode-update", (ctx, _a, params = {}) => {
+    const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ep = findEpisode(s, String(params.episodeId));
+    if (!ep) return { ok: false, error: "episode not found" };
+    if (ep.createdBy && ep.createdBy !== pcaid(ctx)) return { ok: false, error: "only the creator can edit this episode" };
+    if (params.title !== undefined) {
+      const title = pcclean(params.title, 200);
+      if (!title) return { ok: false, error: "episode title required" };
+      ep.title = title;
+    }
+    if (params.description !== undefined) ep.description = pcclean(params.description, 2000) || null;
+    if (params.coverArtUrl !== undefined) ep.coverArtUrl = pcclean(params.coverArtUrl, 500) || null;
+    if (params.publishDate !== undefined) ep.publishDate = pcclean(params.publishDate, 10) || ep.publishDate;
+    if (params.tags !== undefined && Array.isArray(params.tags)) {
+      ep.tags = params.tags.map((t) => pcclean(t, 40)).filter(Boolean).slice(0, 20);
+    }
+    if (params.seasonNumber !== undefined) {
+      ep.seasonNumber = Math.max(0, Math.round(pcnum(params.seasonNumber))) || null;
+    }
+    if (params.episodeNumber !== undefined) {
+      const others = (s.episodes.get(ep.showId) || []).filter((e) => e.id !== ep.id);
+      ep.episodeNumber = resolveEpisodeNumber(others, params.episodeNumber, ep.seasonNumber);
+    }
+    savePodState();
+    return { ok: true, result: { episode: ep } };
   });
 
   registerLensAction("podcast", "episode-delete", (ctx, _a, params = {}) => {

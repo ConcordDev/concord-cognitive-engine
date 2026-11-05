@@ -2331,7 +2331,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'rss', 'mp3'],
     actions: ['publish', 'schedule', 'generateRSS', 'analyzeListeners', 'transcribe', 'distributeFeed'],
     category: 'creative',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Publish a podcast.",
       caption: "Episodes, subscribers, analytics, feeds \u2014 publish, schedule, transcribe, distribute.",
