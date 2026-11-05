@@ -12,6 +12,8 @@
 // external source") would claim the pantheon itself is a feed.
 import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { getLensManifest } from '@/lib/lenses/manifest';
 import { useDepthBadge } from '@/hooks/useDepthBadge';
 
@@ -34,6 +36,13 @@ describe('Deities declaration (F1)', () => {
     const badge = renderHook(() => useDepthBadge('deities')).result.current;
     expect(badge?.caption).toContain('not authored or simulated content');
     expect(badge?.caption).toContain('Explore panel reads live from Wikipedia');
+  });
+
+  it('the integration registry agrees (deities REAL_LIVE, liveFromSubstrate)', () => {
+    const reg = readFileSync(join(__dirname, '../../server/lib/integration-registry.js'), 'utf8');
+    const line = reg.split('\n').find((l) => l.includes('deities:'));
+    expect(line).toContain('TIER.REAL_LIVE');
+    expect(line).toContain('liveFromSubstrate: true');
   });
 
   it('a control lens keeps its own declaration (aviation stays Real / REAL_FREE)', () => {
