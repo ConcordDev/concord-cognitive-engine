@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Plus, Trash2, Loader2, Search, Star, ChevronDown, ChevronRight, Play, FileText, Clock, Lock, Users, Pencil, ArrowUp, ArrowDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { catalogMatchesQuery } from '@/components/education/catalog-search';
 
 export interface Lesson {
   id: string; title: string; videoUrl: string; durationMin: number;
@@ -64,9 +65,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
     setLoading(true);
     try {
       const [a, b] = await Promise.all([
-        searchQuery.trim()
-          ? lensRun({ domain: 'education', action: 'courses-search', input: { query: searchQuery } })
-          : lensRun({ domain: 'education', action: 'courses-list', input: { ...(filterCategory ? { category: filterCategory } : {}), ...(mineOnly ? { mine: true } : {}) } }),
+        lensRun({ domain: 'education', action: 'courses-list', input: { ...(filterCategory ? { category: filterCategory } : {}), ...(mineOnly ? { mine: true } : {}) } }),
         lensRun({ domain: 'education', action: 'enrollments-list', input: {} }),
       ]);
       setCourses((a.data?.result?.courses || a.data?.result?.matches || []) as Course[]);
@@ -185,18 +184,23 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
     finally { setSavingLesson(false); }
   }
 
+  const visible = useMemo(
+    () => courses.filter((course) => catalogMatchesQuery(course, searchQuery)),
+    [courses, searchQuery],
+  );
+
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <BookOpen className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Course catalog</span>
-        <span className="ml-auto text-[10px] text-gray-400">{courses.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{visible.length}</span>
         <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
       <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
         <Search className="w-3.5 h-3.5 text-gray-400" />
-        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') refresh(); }} placeholder="Search courses…" className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search courses…" className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">All categories</option>
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -237,9 +241,11 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
           <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : courses.length === 0 ? (
           <div className="px-3 py-10 text-center text-xs text-gray-400"><BookOpen className="w-6 h-6 mx-auto mb-2 opacity-30" />No courses. Hit + to add one.</div>
+        ) : visible.length === 0 ? (
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No courses match that search.</div>
         ) : (
           <ul className="divide-y divide-white/5">
-            {courses.map(c => {
+            {visible.map(c => {
               const enrolled = enrolledIds.has(c.id);
               const expanded = expandedId === c.id;
               const detail = detailById[c.id];

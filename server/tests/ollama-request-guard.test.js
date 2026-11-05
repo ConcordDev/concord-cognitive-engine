@@ -107,3 +107,11 @@ test("reasoning-effort models: think:false becomes a low reasoning level", () =>
   // off switch
   assert.equal(send({ model: "gpt-oss:120b", think: false }, { reasoningLevel: null }), null);
 });
+
+test("Kimi K3 gets think:low instead of think:false (think:false stops it writing tool calls)", async () => {
+  const { guardBody, usesReasoningLevels } = await import("../lib/ollama-request-guard.js");
+  assert.equal(usesReasoningLevels("kimi-k3.1-pro:cloud"), true);
+  assert.equal(usesReasoningLevels("minimax-m3:cloud"), false);
+  const out = JSON.parse(guardBody(JSON.stringify({ model: "kimi-k3.1-pro:cloud", messages: [] }), { disableThink: true, reasoningLevel: "low" }));
+  assert.equal(out.think, "low");
+});

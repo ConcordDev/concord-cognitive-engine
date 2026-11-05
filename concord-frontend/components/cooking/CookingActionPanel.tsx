@@ -9,7 +9,7 @@
  * window on DM + publish, USDA result rows promote to ingredient grams.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChefHat, Apple, Calculator, Shuffle, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
@@ -75,6 +75,33 @@ export function CookingActionPanel() {
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
+  // Recipe-box loader (S-CK2-6): the bench reads the member's recipe box
+  // (cooking.recipes-list), not only minted recipe DTUs.
+  const [boxRecipes, setBoxRecipes] = useState<{ id: string; title: string; servings: number; ingredients: { name: string; qty: number | null; unit: string }[] }[]>([]);
+  const [boxPick, setBoxPick] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun({ domain: 'cooking', action: 'recipes-list', input: {} });
+        if (!cancelled) setBoxRecipes((r.data?.result?.recipes || []) as typeof boxRecipes);
+      } catch { /* the DTU loader remains available */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function loadFromBox() {
+    const r = boxRecipes.find((x) => x.id === boxPick);
+    if (!r) { err('Pick a recipe from your recipe box first.'); return; }
+    setRecipeName(r.title);
+    if (r.servings > 0) { setBaseServings(r.servings); setTargetServings(r.servings); }
+    setIngredients((r.ingredients || []).map((i) => ({
+      name: i.name ?? '', quantity: i.qty != null ? String(i.qty) : '', unit: i.unit || 'g', grams: '',
+    })));
+    ok(`Loaded "${r.title}" from your recipe box (${r.ingredients?.length ?? 0} ingredients).`);
+  }
 
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
@@ -162,8 +189,8 @@ export function CookingActionPanel() {
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) {
         setMintedDtuId(id);
-        pipe.publish('cooking.mintedDtuId', id, { label: `Recipe DTU ${id.slice(0, 8)}…` });
-        ok(`Recipe DTU ${id.slice(0, 8)}…`);
+        pipe.publish('cooking.mintedDtuId', id, { label: `Recipe DTU ${id}` });
+        ok(`Recipe DTU ${id}`);
       } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -202,8 +229,8 @@ export function CookingActionPanel() {
       });
       if (id) {
         setPublishedDtuId(id);
-        pipe.publish('cooking.publishedDtuId', id, { label: `Public recipe ${id.slice(0, 8)}…` });
-        ok(`Published ${id.slice(0, 8)}… · 30s to recall.`);
+        pipe.publish('cooking.publishedDtuId', id, { label: `Public recipe ${id}` });
+        ok(`Published ${id} · 30s to recall.`);
       }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
@@ -234,9 +261,9 @@ export function CookingActionPanel() {
     { id: 'scale' as ActionId, label: 'Scale', desc: 'scaleRecipe', icon: ChefHat, accent: '#f59e0b', handler: actScale },
     { id: 'nutr' as ActionId, label: 'Nutrition', desc: 'nutritionEstimate', icon: Calculator, accent: '#3b82f6', handler: actNutr },
     { id: 'sub' as ActionId, label: 'Substitute', desc: 'substitution', icon: Shuffle, accent: '#a855f7', handler: actSub },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private recipe DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ?? 'Private recipe DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send recipe brief', icon: Send, accent: '#ec4899', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public recipe', icon: Globe, accent: '#15803d', handler: actPublish },
+    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ?? 'Public recipe', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Tips', desc: 'Agent: tech + flavor', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
@@ -276,6 +303,18 @@ export function CookingActionPanel() {
           <div className="flex items-end justify-between gap-2">
             <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Ingredients ({ingredients.length})</label>
             <div className="flex items-center gap-1">
+              <select
+                value={boxPick}
+                onChange={(e) => setBoxPick(e.target.value)}
+                aria-label="Recipe from your recipe box"
+                className="max-w-[10rem] bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[11px] text-white"
+              >
+                <option value="">Recipe box…</option>
+                {boxRecipes.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
+              </select>
+              <button type="button" onClick={loadFromBox} disabled={!boxPick} className="px-2 py-1 text-[11px] rounded border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 disabled:opacity-40">
+                Load
+              </button>
               <LoadFromSubstrate<RecipeDtu>
                 label="Load recipe"
                 compact

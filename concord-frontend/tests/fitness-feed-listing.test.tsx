@@ -1,24 +1,26 @@
 /**
- * Fitness F14 fix — the wger feed LISTING must actually surface.
+ * Fitness F14 — the wger feed LISTING must actually surface, in the
+ * states a member can reach.
  *
- * R3's re-pass of #2190 (2026-11-04): the ingest worked ("Ingested 12
- * new DTUs from wger-exercises") but no panel listed the items — the
- * WgerFeedPanel "does not appear". Diagnosis: the panel was mounted
- * inside <CommunityRedditSlot> (renders null while the Reddit
- * community flag is off) AND the Feed tab itself was dropped from the
- * tab bar by omitCommunityRedditViews(MODE_TABS, ['Feed']). The wger
- * feed is lens-native content, not Reddit content; both gates are
- * removed for it here — the Reddit panel (FitnessFeed) keeps its own
- * gating untouched.
+ * History: #2190 built the listing into the pull response, but (a) the
+ * panel was mounted inside <CommunityRedditSlot> and the Feed tab was
+ * omitted from the tab bar (fixed by #2207, mount pins below), and
+ * (b) R3's re-check of #2207 then failed the listing itself: the seen
+ * set is corpus-level, so every reachable pull is the seen form —
+ * which carried fallback labels ("Exercise 184") and no DTU ids — and
+ * the listing died on reload. The completion fix makes the listing
+ * the STORED library (fitness.feed-library): names resolved from
+ * wger exerciseinfo, DTU ids recorded at ingest, rendered on mount.
  *
  * Pins:
- *   1. Behaviour — the panel's Pull feed lists the batch by name with
- *      full DTU ids for fresh ingests (the re-check's exact leg).
- *   2. Mount — in FitnessApp, WgerFeedPanel is NOT inside
+ *   1. Mount load — the stored listing renders on mount with NO pull:
+ *      names + full DTU ids, seen items included (reload persistence).
+ *   2. Seen-form pull — a 0-new / all-seen pull still lists names +
+ *      full DTU ids (the reachable state), not bare "already ingested".
+ *   3. Fresh pull — new ingests list by name with full ids, marked NEW.
+ *   4. Mount (structural, from #2207) — WgerFeedPanel is NOT inside
  *      CommunityRedditSlot, and the Feed view is NOT omitted from the
- *      tab bar. (The defect was structural — a mount/nav placement —
- *      so the mount itself is pinned structurally, in the fleet's
- *      ratchet style.)
+ *      tab bar.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -36,41 +38,56 @@ vi.mock('@/lib/api/client', () => ({
 
 import { WgerFeedPanel } from '@/components/fitness/WgerFeedPanel';
 
+const LIBRARY = [
+  { name: 'Deadlifts', dtuId: 'dtu_wger_full_id_184', exerciseId: 184 },
+  { name: 'Squats', dtuId: 'dtu_wger_full_id_185', exerciseId: 185 },
+];
+
+function mockActions(feedResult: unknown, libraryItems: unknown[] = []) {
+  lensRunMock.mockImplementation((arg: { action?: string }) => {
+    if (arg?.action === 'feed-library') return Promise.resolve({ data: { ok: true, result: { source: 'wger-exercises', items: libraryItems }, error: null } });
+    if (arg?.action === 'feed') return Promise.resolve({ data: { ok: true, result: feedResult, error: null } });
+    return Promise.resolve({ data: { ok: true, result: {}, error: null } });
+  });
+}
+
 beforeEach(() => { lensRunMock.mockReset(); });
 afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); });
 
-describe('F14 fix — WgerFeedPanel lists the pulled batch', () => {
-  it('renders each exercise by name with its full DTU id after Pull feed', async () => {
-    lensRunMock.mockImplementation((arg: { action?: string }) =>
-      arg?.action === 'feed'
-        ? Promise.resolve({
-            data: {
-              ok: true,
-              result: {
-                ingested: 2, skipped: 1, source: 'wger-exercises',
-                exercises: [
-                  { name: 'Squat', dtuId: 'dtu_wger_full_id_123', fresh: true },
-                  { name: 'Plank', dtuId: 'dtu_wger_full_id_456', fresh: true },
-                  { name: 'Crunch', dtuId: null, fresh: false },
-                ],
-              },
-              error: null,
-            },
-          })
-        : Promise.resolve({ data: { ok: true, result: {}, error: null } }));
+describe('F14 completion — the stored listing', () => {
+  it('renders the stored library on mount with no pull (names + full DTU ids, seen items included)', async () => {
+    mockActions(null, LIBRARY);
+    const view = render(<WgerFeedPanel />);
+    await waitFor(() => expect(view.getByText('Deadlifts')).toBeTruthy());
+    expect(view.getByText('Squats')).toBeTruthy();
+    expect(view.getByText('dtu_wger_full_id_184')).toBeTruthy();
+    expect(view.getByText('dtu_wger_full_id_185')).toBeTruthy();
+    // No pull was needed — and none was made.
+    expect(lensRunMock.mock.calls.some((c) => (c[0] as { action?: string })?.action === 'feed')).toBe(false);
+  });
+
+  it('a seen-form pull (0 new) still lists names + full DTU ids', async () => {
+    mockActions({ ingested: 0, skipped: 2, source: 'wger-exercises', dtuIds: [], library: LIBRARY }, []);
     const view = render(<WgerFeedPanel />);
     fireEvent.click(view.getByRole('button', { name: /pull feed/i }));
-    await waitFor(() => expect(view.getByText('Squat')).toBeTruthy());
-    expect(view.getByText('Plank')).toBeTruthy();
-    expect(view.getByText('dtu_wger_full_id_123')).toBeTruthy();
-    expect(view.getByText('dtu_wger_full_id_456')).toBeTruthy();
-    expect(view.getByText('Crunch')).toBeTruthy();
-    expect(view.getByText(/already ingested/)).toBeTruthy();
+    await waitFor(() => expect(view.getByText('Deadlifts')).toBeTruthy());
+    expect(view.getByText(/0 new DTUs from wger-exercises/)).toBeTruthy();
+    expect(view.getByText(/2 already seen/)).toBeTruthy();
+    expect(view.getByText('dtu_wger_full_id_184')).toBeTruthy();
+    expect(view.getByText('Squats')).toBeTruthy();
+  });
+
+  it('a fresh pull lists new ingests by name with full ids, marked NEW', async () => {
+    mockActions({ ingested: 2, skipped: 0, source: 'wger-exercises', dtuIds: ['dtu_wger_full_id_184', 'dtu_wger_full_id_185'], library: LIBRARY }, []);
+    const view = render(<WgerFeedPanel />);
+    fireEvent.click(view.getByRole('button', { name: /pull feed/i }));
+    await waitFor(() => expect(view.getByText('Deadlifts')).toBeTruthy());
     expect(view.getByText(/2 new DTUs from wger-exercises/)).toBeTruthy();
+    expect(view.getAllByText('NEW').length).toBe(2);
   });
 });
 
-describe('F14 fix — the mount: the listing is not behind the Reddit gate', () => {
+describe('F14 fix (#2207) — the mount: the listing is not behind the Reddit gate', () => {
   const src = readFileSync(path.join(process.cwd(), 'components/fitness/FitnessApp.tsx'), 'utf8');
 
   it('does not omit the Feed view from the tab bar', () => {

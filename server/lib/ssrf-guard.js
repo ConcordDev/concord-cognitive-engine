@@ -333,6 +333,137 @@ export async function fetchWithPinnedIp(check, init = {}) {
   }
 }
 
+// ── Database targets (DBX-1) ───────────────────────────────────────────────
+//
+// validateSafeFetchUrl above guards http(s) fetches. A database
+// connection is not a URL: the caller dials a raw host:port (e.g. via
+// the `pg` driver) with credentials, so it needs the same address
+// discipline plus a port allowlist — a guarded fetch may legitimately
+// reach port 443, a database dial may not. This validator reuses the
+// range tables and resolution rules above (this module stays the
+// single source of truth) and returns a pinned IP the caller dials
+// directly, so the TCP connection lands on the address that was
+// validated — the raw-TCP equivalent of fetchWithPinnedIp. (For TLS,
+// the caller passes the original hostname as the SNI servername while
+// connecting to the pinned IP.)
+
+/** Database service ports a server-side dial may target. */
+export const DB_PORT_ALLOWLIST = Object.freeze([5432, 3306, 6379, 1433, 27017, 26257]);
+
+/**
+ * Synchronous private/reserved classification for an IP literal
+ * (IPv4, IPv6, or IPv4-mapped IPv6). Non-IP input classifies as
+ * private — the defensive direction, mirroring isPrivateIPv4.
+ */
+export function isPrivateIpAddress(address) {
+  if (typeof address !== "string") return true;
+  const bare = address.replace(/^\[|\]$/g, "").split("%")[0];
+  const family = net.isIP(bare);
+  if (family === 4) return isPrivateIPv4(bare);
+  if (family === 6) return isPrivateIPv6(normalizeIPv6(bare));
+  return true;
+}
+
+/**
+ * Validate a raw database target (host + port) for a server-side dial.
+ *
+ * @param {string} host - hostname or IP literal (never a URL)
+ * @param {number|string} port
+ * @param {object} [opts]
+ * @param {Function} [opts.lookup] - dns.lookup-compatible resolver (tests inject this)
+ * @param {number[]} [opts.allowPorts] - port allowlist override
+ * @returns {Promise<{
+ *   ok: boolean, code?: string, error?: string,
+ *   hostname?: string, port?: number,
+ *   resolvedIp?: string, family?: 4 | 6,
+ *   addresses?: Array<{ address: string, family: number }>,
+ * }>} Never throws; refusals are { ok: false, code, error }.
+ */
+export async function validateDbTarget(host, port, opts = {}) {
+  const lookup = opts.lookup || dns.lookup;
+  const allowPorts = opts.allowPorts || DB_PORT_ALLOWLIST;
+
+  // Port first: the cheap checks run before any DNS work.
+  const p = Number(port);
+  if (!Number.isInteger(p) || p < 1 || p > 65535) {
+    return { ok: false, code: "invalid_port", error: `Invalid port: ${port}` };
+  }
+  if (!allowPorts.includes(p)) {
+    return { ok: false, code: "port_not_allowed", error: `Port ${p} is not an allowed database port` };
+  }
+
+  if (typeof host !== "string") {
+    return { ok: false, code: "invalid_host", error: "Host is required" };
+  }
+  const h = host.trim().toLowerCase();
+  if (!h) {
+    return { ok: false, code: "invalid_host", error: "Host is required" };
+  }
+  // A database target is a bare host — never a URL, a path, or a
+  // credential-bearing authority string.
+  if (/[\s/\\@]/.test(h) || h.includes("://")) {
+    return { ok: false, code: "invalid_host", error: "Host must be a hostname or IP address, not a URL" };
+  }
+
+  // Local and metadata names are refused before DNS: their resolution
+  // is environment-defined, which is exactly what an attacker wants.
+  if (CLOUD_METADATA_HOSTS.has(h)) {
+    return { ok: false, code: "metadata_blocked", error: "Cloud metadata endpoint blocked" };
+  }
+  if (h === "localhost" || h.endsWith(".localhost")) {
+    return { ok: false, code: "local_blocked", error: "Localhost targets are not allowed" };
+  }
+
+  // IP literal — classify directly, no DNS involved.
+  const bare = h.replace(/^\[|\]$/g, "");
+  const literalFamily = net.isIP(bare);
+  if (literalFamily === 4) {
+    if (isPrivateIPv4(bare)) {
+      return { ok: false, code: "private_address", error: "Target is a private/reserved IP" };
+    }
+    return { ok: true, hostname: h, port: p, resolvedIp: bare, family: 4, addresses: [{ address: bare, family: 4 }] };
+  }
+  if (literalFamily === 6) {
+    const normalized = normalizeIPv6(bare);
+    if (isPrivateIPv6(normalized)) {
+      return { ok: false, code: "private_address", error: "Target is a private/reserved IPv6 address" };
+    }
+    return { ok: true, hostname: h, port: p, resolvedIp: normalized, family: 6, addresses: [{ address: normalized, family: 6 }] };
+  }
+
+  // DNS name: conservative label shape, then resolve and reject if ANY
+  // address is private — the same anti-rebinding rule as the URL path.
+  if (!/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/.test(h) || h.includes("..")) {
+    return { ok: false, code: "invalid_host", error: "Host must be a hostname or IP address, not a URL" };
+  }
+  let addresses;
+  try {
+    addresses = await lookup(h, { all: true, verbatim: true });
+  } catch (err) {
+    return { ok: false, code: "unresolvable", error: `DNS lookup failed: ${err.code || err.message}` };
+  }
+  if (!addresses || addresses.length === 0) {
+    return { ok: false, code: "unresolvable", error: "Hostname did not resolve" };
+  }
+  for (const { address, family } of addresses) {
+    if (family === 4 && isPrivateIPv4(address)) {
+      return { ok: false, code: "private_address", error: `Hostname ${h} resolves to private IP ${address}` };
+    }
+    if (family === 6 && isPrivateIPv6(address)) {
+      return { ok: false, code: "private_address", error: `Hostname ${h} resolves to private IPv6 ${address}` };
+    }
+  }
+  const first = addresses[0];
+  return {
+    ok: true,
+    hostname: h,
+    port: p,
+    resolvedIp: first.address,
+    family: first.family,
+    addresses: addresses.map(({ address, family }) => ({ address, family })),
+  };
+}
+
 // ── Named exports for the older isUrlSafe / validateUrl surfaces ────────────
 
 /**

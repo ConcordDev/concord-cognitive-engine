@@ -62,21 +62,21 @@ describe("gallery.collections", () => {
 });
 
 describe("gallery.artwork-save", () => {
-  it("saves an artwork to the default collection", () => {
-    const r = call("artwork-save", ctxA, { title: "The Starry Night", artist: "Van Gogh", museum: "MoMA", refId: "vg-starry" });
+  it("saves an artwork to the default collection", async () => {
+    const r = await call("artwork-save", ctxA, { title: "The Starry Night", artist: "Van Gogh", museum: "MoMA", refId: "vg-starry" });
     assert.equal(r.ok, true);
     assert.equal(r.result.artworkCount, 1);
   });
-  it("rejects a duplicate refId in the same collection", () => {
-    call("artwork-save", ctxA, { title: "Water Lilies", refId: "monet-lilies" });
-    assert.equal(call("artwork-save", ctxA, { title: "Water Lilies copy", refId: "monet-lilies" }).ok, false);
+  it("rejects a duplicate refId in the same collection", async () => {
+    await call("artwork-save", ctxA, { title: "Water Lilies", refId: "monet-lilies" });
+    assert.equal((await call("artwork-save", ctxA, { title: "Water Lilies copy", refId: "monet-lilies" })).ok, false);
   });
-  it("rejects a titleless artwork", () => {
-    assert.equal(call("artwork-save", ctxA, {}).ok, false);
+  it("rejects a titleless artwork", async () => {
+    assert.equal((await call("artwork-save", ctxA, {})).ok, false);
   });
-  it("saves into a named collection and removes an artwork", () => {
+  it("saves into a named collection and removes an artwork", async () => {
     const c = call("collection-create", ctxA, { name: "Sculpture" }).result.collection;
-    const a = call("artwork-save", ctxA, { collectionId: c.id, title: "David", artist: "Michelangelo" }).result.artwork;
+    const a = (await call("artwork-save", ctxA, { collectionId: c.id, title: "David", artist: "Michelangelo" })).result.artwork;
     assert.equal(call("collection-detail", ctxA, { id: c.id }).result.collection.artworks.length, 1);
     call("artwork-remove", ctxA, { collectionId: c.id, artworkId: a.id });
     assert.equal(call("collection-detail", ctxA, { id: c.id }).result.collection.artworks.length, 0);
@@ -84,9 +84,9 @@ describe("gallery.artwork-save", () => {
 });
 
 describe("gallery.dashboard", () => {
-  it("aggregates collections, artworks, museums and artists", () => {
-    call("artwork-save", ctxA, { title: "A", artist: "Artist1", museum: "CMA" });
-    call("artwork-save", ctxA, { title: "B", artist: "Artist2", museum: "CMA" });
+  it("aggregates collections, artworks, museums and artists", async () => {
+    await call("artwork-save", ctxA, { title: "A", artist: "Artist1", museum: "CMA" });
+    await call("artwork-save", ctxA, { title: "B", artist: "Artist2", museum: "CMA" });
     const d = call("gallery-dashboard", ctxA, {});
     assert.equal(d.result.savedArtworks, 2);
     assert.equal(d.result.byMuseum.CMA, 2);

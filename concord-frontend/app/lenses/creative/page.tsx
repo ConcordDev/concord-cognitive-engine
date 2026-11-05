@@ -135,13 +135,14 @@ export default function CreativeLensPage() {
             </>
           )}
 
-          {view === 'bench' && (
-            <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-              <PipingProvider>
-                <CreativeActionPanel />
-              </PipingProvider>
-            </section>
-          )}
+          {/* Bench stays mounted (hidden via CSS, not unmounted) across view
+              switches — its JSON fields, macro results and mint state used
+              to wipe on every visit to Library/Community and back. */}
+          <section className={view === 'bench' ? 'rounded-2xl border border-white/10 bg-[#111] p-4' : 'hidden'}>
+            <PipingProvider>
+              <CreativeActionPanel />
+            </PipingProvider>
+          </section>
 
           {view === 'library' && (
             <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">

@@ -713,3 +713,109 @@ describe("fitness.activity-summary derived minutes from real logs (F4)", () => {
     assert.equal(day.exerciseMinutes, 25);
   });
 });
+
+describe("fitness.feed / feed-library — the stored listing (F14 completion)", () => {
+  // The wger v2 list payload carries name: null (verified live) — real
+  // names live in exerciseinfo translations. The seen set is corpus
+  // level, so the seen form is the reachable state and must carry
+  // names + full DTU ids; the listing is read back from stored state.
+  const LIST = { results: [
+    { id: 184, uuid: "uuid-184", name: null, description: null },
+    { id: 185, uuid: "uuid-185", name: null, description: null },
+  ] };
+  const NAMES = { 184: "Deadlifts", 185: "Squats" };
+  let created, realFetch;
+  function feedCtx(searchDtus = []) {
+    return {
+      actor: { userId: "user_a" }, userId: "user_a",
+      macro: { run: async (domain, action, input) => {
+        if (domain === "dtu" && action === "create") {
+          const dtu = { id: `dtu_test_${input.meta.exerciseId}`, title: input.title, meta: input.meta };
+          created.set(dtu.id, dtu);
+          return { ok: true, dtu };
+        }
+        if (domain === "dtu" && action === "search") return { ok: true, dtus: searchDtus };
+        throw new Error(`unexpected macro ${domain}.${action}`);
+      } },
+    };
+  }
+  function stubFetch() {
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      const info = u.match(/exerciseinfo\/(\d+)\//);
+      if (info) return { ok: true, json: async () => ({ translations: [{ language: 2, name: NAMES[info[1]], description: "<p>d</p>" }] }) };
+      if (u.includes("/exercise/")) return { ok: true, json: async () => LIST };
+      throw new Error("unexpected fetch " + u);
+    };
+  }
+
+  it("fresh pull records real names (exerciseinfo) + DTU ids in the stored library", async () => {
+    created = new Map(); realFetch = globalThis.fetch; stubFetch();
+    try {
+      const ctx = feedCtx();
+      const r = await call("feed", ctx, {});
+      assert.equal(r.ok, true);
+      assert.equal(r.result.ingested, 2);
+      assert.deepEqual(r.result.exercises.map((e) => e.name), ["Deadlifts", "Squats"]);
+      assert.deepEqual(r.result.exercises.map((e) => e.dtuId), ["dtu_test_184", "dtu_test_185"]);
+      assert.equal(created.get("dtu_test_184").title, "Exercise: Deadlifts");
+      const lib = await call("feed-library", ctx, {});
+      assert.deepEqual(lib.result.items, [
+        { name: "Deadlifts", dtuId: "dtu_test_184", exerciseId: 184 },
+        { name: "Squats", dtuId: "dtu_test_185", exerciseId: 185 },
+      ]);
+    } finally { globalThis.fetch = realFetch; }
+  });
+
+  it("the SEEN pull (the reachable state) still lists real names + full DTU ids", async () => {
+    created = new Map(); realFetch = globalThis.fetch; stubFetch();
+    try {
+      const ctx = feedCtx();
+      await call("feed", ctx, {});
+      const r2 = await call("feed", ctx, {});
+      assert.equal(r2.result.ingested, 0);
+      assert.equal(r2.result.skipped, 2);
+      assert.deepEqual(r2.result.exercises.map((e) => [e.name, e.dtuId, e.fresh]), [
+        ["Deadlifts", "dtu_test_184", false],
+        ["Squats", "dtu_test_185", false],
+      ]);
+    } finally { globalThis.fetch = realFetch; }
+  });
+
+  it("feed-library answers from stored state with the network down (reload persistence)", async () => {
+    created = new Map(); realFetch = globalThis.fetch; stubFetch();
+    try {
+      const ctx = feedCtx();
+      await call("feed", ctx, {});
+      globalThis.fetch = async () => { throw new Error("network down"); };
+      const lib = await call("feed-library", ctx, {});
+      assert.equal(lib.ok, true);
+      assert.equal(lib.result.items.length, 2);
+      assert.equal(lib.result.items[0].dtuId, "dtu_test_184");
+    } finally { globalThis.fetch = realFetch; }
+  });
+
+  it("a legacy batch (seen before the library existed) heals: name from exerciseinfo, id recovered by meta.exerciseId", async () => {
+    created = new Map(); realFetch = globalThis.fetch; stubFetch();
+    try {
+      const legacy = [
+        { id: "dtu_legacy_184", title: "Exercise: Exercise 184", meta: { exerciseId: 184, uuid: "uuid-184", name: "Exercise 184" } },
+        { id: "dtu_legacy_185", title: "Exercise: Exercise 185", meta: { exerciseId: 185, uuid: "uuid-185", name: "Exercise 185" } },
+      ];
+      const ctx = feedCtx(legacy);
+      const s = globalThis._concordSTATE.fitnessLens ?? (globalThis._concordSTATE.fitnessLens = {});
+      // Reach the domain state the way the handler does: one no-op call
+      // materialises the bucket, then seed the legacy seen set.
+      await call("feed-library", ctx, {});
+      s.feedSeen = new Set(["wger_uuid-184", "wger_uuid-185"]);
+      const r = await call("feed", ctx, {});
+      assert.equal(r.result.ingested, 0);
+      assert.equal(r.result.skipped, 2);
+      assert.deepEqual(r.result.exercises.map((e) => [e.name, e.dtuId]), [
+        ["Deadlifts", "dtu_legacy_184"],
+        ["Squats", "dtu_legacy_185"],
+      ]);
+      assert.equal(created.size, 0); // healed, not re-ingested — no duplicates
+    } finally { globalThis.fetch = realFetch; }
+  });
+});
