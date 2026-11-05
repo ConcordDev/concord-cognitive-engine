@@ -13,7 +13,9 @@
     "output.ok === false || output.result.totalIncidents === undefined || output.result.totalIncidents >= 0",
     "output.ok === false || output.result.clearanceRate === undefined || (Number.isFinite(output.result.clearanceRate) && output.result.clearanceRate >= 0 && output.result.clearanceRate <= 100)",
     "output.ok === false || output.result.byType === undefined || Array.isArray(output.result.byType)",
-    "output.ok === false || output.result.mostCommon === undefined || typeof output.result.mostCommon === 'string'"
+    "output.ok === false || output.result.mostCommon === undefined || typeof output.result.mostCommon === 'string'",
+    "output.ok === false || typeof output.result.scope === 'string'",
+    "output.ok === false || (output.result.sources && Number.isInteger(output.result.sources.mappedIncidents) && Number.isInteger(output.result.sources.cases) && Number.isInteger(output.result.sources.stagedRows))"
   ],
   "fuzz_cases": [
     { "input": { "artifact": { "data": { "incidents": [{ "type": "theft", "resolved": true }, { "type": "theft" }, { "type": "dui", "status": "closed" }] } } }, "expect": { "ok": true } },
@@ -21,5 +23,5 @@
     { "input": { "artifact": { "data": {} } }, "expect": { "ok": true } },
     { "input": { "artifact": { "data": { "incidents": "NaN" } } }, "expect": { "ok": true } }
   ],
-  "_note": "Pure compute, reads artifact.data (LawEnforcementActionPanel.actStats: callMacro('crimeStats',{artifact:{data:parsed}}) → peel → artifact.data). clearanceRate = round(resolved/total*100) where resolved = i.resolved || i.status==='closed'; mostCommon = highest byType bucket; trend = total>100 ? 'high-volume' : 'normal'. EMPTY incidents returns the honest { message } prompt (NOT a fabricated 0% card) — the stats card only renders when totalIncidents is present, so clearanceRate is undefined on empty (honest). The CrimeStatsResult card renders trend/clearanceRate/totalIncidents/mostCommon/byType[{type,count}] EXACTLY. Non-array incidents → empty prompt, never NaN."
+  "_note": "SCOPE (S1, written per cross-check #70(d) — no scope statement existed at any layer before this build): the population is THE LENS'S OWN RECORDS plus staged workbench rows — the caller's Crime Map incidents (mapAddIncident store; a mapped incident carries no resolution state and counts as unresolved), the caller's cases on file (caseCreate store; a case counts as cleared when closed, bucketed under type 'case'), and any incidents staged in artifact.data. result.scope names this population in words and result.sources carries the three counts; the stats card renders the scope line with the figures. Before S1 the macro computed over staged artifact rows ONLY and presented the figures unscoped (review finding F3). clearanceRate = round(resolved/total*100) over the whole population; mostCommon = highest byType bucket; trend = total>100 ? 'high-volume' : 'normal'. EMPTY population (no records, no staged rows) returns the honest { message } prompt with scope + sources (NOT a fabricated 0% card) — the stats card only renders figures when totalIncidents is present. The CrimeStatsResult card renders trend/clearanceRate/totalIncidents/mostCommon/byType[{type,count}]/scope. Non-array incidents → staged rows ignored, never NaN."
 }

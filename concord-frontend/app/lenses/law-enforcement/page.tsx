@@ -19,6 +19,7 @@ import { LawEnforcementActionPanel } from '@/components/law-enforcement/LawEnfor
 import { RmsCadConsole } from '@/components/law-enforcement/RmsCadConsole';
 import { LawEnforcementOverviewPanel } from '@/components/law-enforcement/LawEnforcementOverviewPanel';
 import { CaseManagementPanel } from '@/components/law-enforcement/CaseManagementPanel';
+import { LimitationNotice } from '@/components/law-enforcement/LimitationNotice';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensCommand } from '@/hooks/useLensCommand';
 
@@ -64,6 +65,7 @@ export default function LawEnforcementLensPage() {
         onTab={(id) => setMode(id as ModeTab)}
         cta={{ label: 'Open a case', icon: FolderPlus, onClick: () => setMode('Cases'), title: 'Open a case (N)' }}
       >
+        <LimitationNotice />
         {mode === 'Overview' && <LawEnforcementOverviewPanel />}
         {mode === 'Cases' && <CaseManagementPanel />}
         {mode === 'Console' && <RmsCadConsole />}
