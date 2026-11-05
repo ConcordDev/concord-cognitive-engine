@@ -136,7 +136,10 @@ function NaturalQueryPanel() {
     if (r.ok) {
       setRes(r.result);
       recordHistory({ kind: 'naturalQuery', input: query, answer: formatAskResult(r.result).primary });
-    } else setErr(r.error || 'Could not interpret query.');
+    } else {
+      recordHistory({ kind: 'naturalQuery', input: query, error: r.error || 'Could not interpret query.' });
+      setErr(r.error || 'Could not interpret query.');
+    }
     setBusy(false);
   }, [query]);
 
@@ -197,7 +200,12 @@ function SymbolicPanel() {
       setRes(r.result);
       const ans = r.result?.output ?? r.result?.derivative ?? r.result?.antiderivative ?? r.result?.definite;
       recordHistory({ kind: `symbolic:${op}`, input: expr, answer: ans != null ? String(ans) : null });
-    } else setErr(r.error || 'Computation failed.');
+    } else {
+      // Errored runs belong in History too (F4) — a failed integral was
+      // previously the one run the record silently dropped.
+      recordHistory({ kind: `symbolic:${op}`, input: expr, error: r.error || 'Computation failed.' });
+      setErr(r.error || 'Computation failed.');
+    }
     setBusy(false);
   }, [op, expr, variable, lower, upper]);
 
@@ -282,7 +290,10 @@ function SolvePanel() {
     if (r.ok) {
       setRes(r.result);
       recordHistory({ kind: 'stepSolve', input: `${left} = ${right}`, answer: JSON.stringify(r.result?.roots) });
-    } else setErr(r.error || 'Solver failed.');
+    } else {
+      recordHistory({ kind: 'stepSolve', input: `${left} = ${right}`, error: r.error || 'Solver failed.' });
+      setErr(r.error || 'Solver failed.');
+    }
     setBusy(false);
   }, [left, right, variable]);
 
@@ -358,7 +369,16 @@ function PlotPanel() {
       xMax: parseFloat(xMax),
       samples: 300,
     });
-    if (r.ok) setRes(r.result); else setErr(r.error || 'Plot failed.');
+    if (r.ok) {
+      setRes(r.result);
+      const pts = Array.isArray(r.result?.series)
+        ? r.result.series.reduce((s: number, x: any) => s + (x.definedPoints || 0), 0)
+        : 0;
+      recordHistory({ kind: 'plot', input: expressions.join('\n'), answer: `${expressions.length} series · ${pts} points` });
+    } else {
+      recordHistory({ kind: 'plot', input: expressions.join('\n'), error: r.error || 'Plot failed.' });
+      setErr(r.error || 'Plot failed.');
+    }
     setBusy(false);
   }, [exprText, xMin, xMax]);
 
@@ -421,7 +441,13 @@ function UnitsPanel() {
   const run = useCallback(async () => {
     setBusy(true); setErr(null); setRes(null);
     const r = await runMath('unitConvert', { value: parseFloat(value), from, to });
-    if (r.ok) setRes(r.result); else setErr(r.error || 'Conversion failed.');
+    if (r.ok) {
+      setRes(r.result);
+      recordHistory({ kind: 'unitConvert', input: `${value} ${from} → ${to}`, answer: `${r.result?.converted} ${r.result?.to}` });
+    } else {
+      recordHistory({ kind: 'unitConvert', input: `${value} ${from} → ${to}`, error: r.error || 'Conversion failed.' });
+      setErr(r.error || 'Conversion failed.');
+    }
     setBusy(false);
   }, [value, from, to]);
 
@@ -481,12 +507,32 @@ function UnitsPanel() {
 }
 
 /* ─── 6. Number theory ─── */
+function ntAnswerText(res: any): string | null {
+  if (!res) return null;
+  if (res.tool === 'fibonacci') {
+    const parts: string[] = [];
+    if (res.value !== undefined) parts.push(`F(${res.n}) = ${res.value}`);
+    if (Array.isArray(res.sequence)) parts.push(`first ${res.count} terms: ${res.sequence.join(', ')}`);
+    return parts.length ? parts.join(' · ') : null;
+  }
+  if (Array.isArray(res.primes)) return res.primes.join(', ');
+  if (Array.isArray(res.sequence)) return res.sequence.join(', ');
+  for (const key of ['gcd', 'lcm', 'factorial', 'combinations', 'permutations', 'totient']) {
+    if (res[key] !== undefined) return `${key} = ${res[key]}`;
+  }
+  if (res.isPrime !== undefined) return `${res.n} is ${res.isPrime ? 'prime' : 'composite'}`;
+  if (Array.isArray(res.divisors)) return `${res.count} divisors`;
+  if (Array.isArray(res.factorization)) return res.factorization.map((f: any) => (f.exponent > 1 ? `${f.base}^${f.exponent}` : `${f.base}`)).join(' · ');
+  return null;
+}
+
 function NumberTheoryPanel() {
   const [tool, setTool] = useState('factorize');
   const [n, setN] = useState('5040');
   const [m, setM] = useState('36');
   const [k, setK] = useState('3');
   const [count, setCount] = useState('15');
+  const [fibN, setFibN] = useState('10');
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -499,18 +545,29 @@ function NumberTheoryPanel() {
   const needsK = ['combinations', 'permutations'].includes(tool);
   const needsCount = ['primes', 'fibonacci'].includes(tool);
   const needsN = !['primes', 'fibonacci'].includes(tool);
+  const isFib = tool === 'fibonacci';
 
   const run = useCallback(async () => {
     setBusy(true); setErr(null); setRes(null);
     const input: Record<string, unknown> = { tool };
     if (needsN) input.n = parseInt(n, 10);
+    if (isFib) input.n = parseInt(fibN, 10);
     if (needsM) input.m = parseInt(m, 10);
     if (needsK) input.k = parseInt(k, 10);
     if (needsCount) input.count = parseInt(count, 10);
+    const inputDesc = isFib
+      ? `fibonacci n=${fibN} count=${count}`
+      : `${tool} ${JSON.stringify(input)}`;
     const r = await runMath('numberTheory', input);
-    if (r.ok) setRes(r.result); else setErr(r.error || 'Computation failed.');
+    if (r.ok) {
+      setRes(r.result);
+      recordHistory({ kind: `numberTheory:${tool}`, input: inputDesc, answer: ntAnswerText(r.result) });
+    } else {
+      recordHistory({ kind: `numberTheory:${tool}`, input: inputDesc, error: r.error || 'Computation failed.' });
+      setErr(r.error || 'Computation failed.');
+    }
     setBusy(false);
-  }, [tool, n, m, k, count, needsN, needsM, needsK, needsCount]);
+  }, [tool, n, m, k, count, fibN, needsN, needsM, needsK, needsCount, isFib]);
 
   return (
     <div className="space-y-3">
@@ -540,9 +597,15 @@ function NumberTheoryPanel() {
             <input className={inputCls} value={k} onChange={(e) => setK(e.target.value)} />
           </div>
         )}
+        {isFib && (
+          <div className="w-28">
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">n · term F(n)</label>
+            <input className={inputCls} value={fibN} onChange={(e) => setFibN(e.target.value)} />
+          </div>
+        )}
         {needsCount && (
           <div className="w-28">
-            <label className="text-[10px] uppercase tracking-wider text-zinc-400">count</label>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">{isFib ? 'count · first N terms' : 'count'}</label>
             <input className={inputCls} value={count} onChange={(e) => setCount(e.target.value)} />
           </div>
         )}
@@ -563,10 +626,25 @@ function NumberTheoryPanel() {
               {res.n} is {res.isPrime ? 'prime' : 'composite'}
             </div>
           )}
-          {(res.tool === 'primes' || res.tool === 'fibonacci') && (
+          {res.tool === 'primes' && (
             <div className="font-mono text-[11px] text-purple-200 break-all">
-              {(res.primes || res.sequence).join(', ')}
+              {(res.primes || []).join(', ')}
             </div>
+          )}
+          {res.tool === 'fibonacci' && (
+            <>
+              {res.value !== undefined && (
+                <div className="font-mono text-lg text-purple-200">F({res.n}) = {res.value}</div>
+              )}
+              {Array.isArray(res.sequence) && (
+                <div className="font-mono text-[11px] text-purple-200 break-all">
+                  first {res.count} terms: {res.sequence.join(', ')}
+                </div>
+              )}
+            </>
+          )}
+          {res.semantics && (
+            <div className="text-[10px] text-zinc-400">{res.semantics}</div>
           )}
           {res.tool === 'gcd' && <div className="font-mono text-lg text-purple-200">gcd = {res.gcd}</div>}
           {res.tool === 'lcm' && <div className="font-mono text-lg text-purple-200">lcm = {res.lcm}</div>}
@@ -586,7 +664,7 @@ function NumberTheoryPanel() {
 }
 
 /* ─── 7. CAS history (persistent per-user) ─── */
-interface HistoryEntry { kind?: string; input?: string; answer?: unknown; at?: string }
+interface HistoryEntry { kind?: string; input?: string; answer?: unknown; error?: string; at?: string }
 
 function historyAnswerText(answer: unknown): string | null {
   if (answer == null) return null;
@@ -602,18 +680,25 @@ function HistoryPanel({ active }: { active: boolean }) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearedNote, setClearedNote] = useState(false);
 
   const load = useCallback(async () => {
-    setBusy(true); setErr(null);
+    setBusy(true); setErr(null); setConfirmClear(false); setClearedNote(false);
     const r = await runMath('casHistory', { action: 'list', limit: 50 });
     if (r.ok) setEntries(r.result?.history || []); else setErr(r.error || 'Could not load history.');
     setBusy(false);
   }, []);
 
+  // Clear is destructive and server-persistent, so it is a two-step
+  // confirm (F5) and it leaves a receipt — previously one click wiped the
+  // record with neither.
   const clear = useCallback(async () => {
     setBusy(true);
     await runMath('casHistory', { action: 'clear' });
     setEntries([]);
+    setConfirmClear(false);
+    setClearedNote(true);
     setBusy(false);
   }, []);
 
@@ -643,21 +728,46 @@ function HistoryPanel({ active }: { active: boolean }) {
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <History className="h-3 w-3" />}
             Refresh
           </button>
-          <button
-            type="button"
-            onClick={clear}
-            disabled={busy || entries.length === 0}
-            className="flex items-center gap-1 rounded bg-red-500/10 px-2 py-1 text-[10px] text-red-300 border border-red-500/30 disabled:opacity-40"
-          >
-            <Trash2 className="h-3 w-3" />
-            Clear
-          </button>
+          {confirmClear ? (
+            <>
+              <button
+                type="button"
+                onClick={clear}
+                disabled={busy}
+                className="flex items-center gap-1 rounded bg-red-500/25 px-2 py-1 text-[10px] font-semibold text-red-200 border border-red-500/50 disabled:opacity-40"
+              >
+                <Trash2 className="h-3 w-3" />
+                Confirm clear
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmClear(false)}
+                disabled={busy}
+                className="flex items-center gap-1 rounded bg-zinc-900 px-2 py-1 text-[10px] text-zinc-300 border border-zinc-800 disabled:opacity-40"
+              >
+                Keep
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmClear(true)}
+              disabled={busy || entries.length === 0}
+              className="flex items-center gap-1 rounded bg-red-500/10 px-2 py-1 text-[10px] text-red-300 border border-red-500/30 disabled:opacity-40"
+            >
+              <Trash2 className="h-3 w-3" />
+              Clear
+            </button>
+          )}
         </div>
       </div>
+      {clearedNote && (
+        <p className="text-[11px] text-emerald-300" role="status">History cleared.</p>
+      )}
       {err && <ErrBanner text={err} />}
       {entries.length === 0 ? (
         <div className="rounded border border-dashed border-zinc-800 py-6 text-center text-[11px] text-zinc-400">
-          No computations yet — run a symbolic, solve, or ask query above.
+          No computations yet — runs from every CAS panel above land here, errors included.
         </div>
       ) : (
         <div className="space-y-1.5 max-h-80 overflow-y-auto">
@@ -676,6 +786,9 @@ function HistoryPanel({ active }: { active: boolean }) {
               <div className="mt-1 font-mono text-[11px] text-zinc-300 truncate">{e.input}</div>
               {answer != null && (
                 <div className="font-mono text-[11px] text-emerald-300 truncate">→ {answer}</div>
+              )}
+              {e.error && (
+                <div className="font-mono text-[11px] text-red-300 truncate">✗ {e.error}</div>
               )}
             </div>
             );
