@@ -4306,10 +4306,10 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_FREE',
     emptyState: {
       headline: "Supply chain ops.",
-      caption: "Orders, shipments, warehouses, routes, forecasts \u2014 SIM_GRADE_A engine.",
+      caption: "Orders, shipments, warehouses, routes, forecasts \u2014 over your live workspace state.",
       firstActionLabel: "Open the chain",
     },
     firstRunGuide: {
