@@ -1025,6 +1025,11 @@ export default function registerDomainRoutes(app, {
     return res.json(out);
   }));
 
+  app.get("/api/metacognition/domain-record", asyncHandler(async (req, res) => {
+    const out = await runMacro("metacognition", "domain_record", {}, makeCtx(req));
+    return res.json(out);
+  }));
+
   // ---- Explanation Engine ----
   app.get("/api/explanation/status", asyncHandler(async (req, res) => {
     const out = await runMacro("explanation", "status", {}, makeCtx(req));

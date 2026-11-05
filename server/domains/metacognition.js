@@ -3,6 +3,7 @@
 // learning curve modeling, and cognitive bias detection.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import {
   computeBrierScore, computeBrierSkillScore, computeLogLoss,
   computeReliabilityBins, computeECE, computeMCE, calibrationQualityLabel,
@@ -248,6 +249,23 @@ export default function registerMetacognitionActions(registerLensAction) {
     const latestPerformance = performance[performance.length - 1];
     const mastered = latestPerformance >= masteryThreshold;
 
+    // F7: the forecast is a first-class field, never a silent absence —
+    // when neither fit projects reaching the threshold, the note says
+    // why (the panel's promise is a forecast OR an honest statement
+    // that the data does not support one).
+    const forecastTrial = bestFit?.predictedMasteryTrial ?? null;
+    const forecast = mastered
+      ? { masteryTrial: trials[trials.length - 1], model: bestFit ? bestFit.model : null, note: `Current performance is already at or above the ${(masteryThreshold * 100).toFixed(0)}% threshold.` }
+      : forecastTrial != null
+        ? { masteryTrial: forecastTrial, model: bestFit.model, note: null }
+        : {
+            masteryTrial: null,
+            model: bestFit ? bestFit.model : null,
+            note: bestFit
+              ? `No ${(masteryThreshold * 100).toFixed(0)}% forecast from the current trend: the ${bestFit.model} fit does not rise toward the threshold (current performance ${(latestPerformance * 100).toFixed(0)}%). A forecast appears when the fitted curve supports one.`
+              : "No forecast yet: neither curve could fit the progress data (a fit needs at least 3 usable points).",
+          };
+
     return {
       ok: true,
       result: {
@@ -255,6 +273,7 @@ export default function registerMetacognitionActions(registerLensAction) {
         currentPerformance: r(latestPerformance),
         masteryThreshold,
         mastered,
+        forecast,
         powerLawFit: powerFit,
         exponentialFit: expFit,
         bestModel: bestFit ? bestFit.model : null,
@@ -281,11 +300,23 @@ export default function registerMetacognitionActions(registerLensAction) {
    */
   function computeBiasReport(decisions) {
     if (!decisions || decisions.length === 0) {
-      return { message: "No decision data to analyze." };
+      return {
+        message: "No decision data to analyze.",
+        evaluations: ["anchoring", "confirmation_bias", "sunk_cost"].map((type) => ({
+          type, status: "insufficient_data", decisionsAnalyzed: 0,
+          needed: "at least 2 decisions carrying the pattern's fields (anchor / evidence / invested cost)",
+        })),
+      };
     }
 
     const r = (v) => Math.round(v * 10000) / 10000;
     const biases = [];
+    // S-MC-4: every claimed pattern reports its evaluation outcome —
+    // flagged, cleared on the data, or not evaluable yet (with what it
+    // needs) — never silent absence. `biases` keeps only the flagged
+    // findings (existing consumers unchanged); `evaluations` always
+    // carries all three patterns.
+    const evaluations = [];
 
     // --- Anchoring bias: chosen option disproportionately close to initial anchor ---
     const anchoringData = decisions.filter(d => d.initialAnchor !== undefined && d.options && d.options.length > 1);
@@ -326,6 +357,19 @@ export default function registerMetacognitionActions(registerLensAction) {
           decisionsAnalyzed: anchoringData.length,
         });
       }
+      evaluations.push({
+        type: "anchoring",
+        status: anchoringRate > 0.4 ? "flagged" : "cleared",
+        decisionsAnalyzed: anchoringData.length,
+        rate: r(anchoringRate),
+      });
+    } else {
+      evaluations.push({
+        type: "anchoring",
+        status: "insufficient_data",
+        decisionsAnalyzed: anchoringData.length,
+        needed: "at least 2 decisions carrying an initial anchor and multiple scored options",
+      });
     }
 
     // --- Confirmation bias: selective weighting of supporting vs. contradicting evidence ---
@@ -365,7 +409,27 @@ export default function registerMetacognitionActions(registerLensAction) {
             decisionsAnalyzed: totalDecisions,
           });
         }
+        evaluations.push({
+          type: "confirmation_bias",
+          status: biasRate > 0.3 ? "flagged" : "cleared",
+          decisionsAnalyzed: totalDecisions,
+          rate: r(biasRate),
+        });
+      } else {
+        evaluations.push({
+          type: "confirmation_bias",
+          status: "insufficient_data",
+          decisionsAnalyzed: 0,
+          needed: "at least 2 decisions whose chosen option carries evidence",
+        });
       }
+    } else {
+      evaluations.push({
+        type: "confirmation_bias",
+        status: "insufficient_data",
+        decisionsAnalyzed: confirmationData.length,
+        needed: "at least 2 decisions whose chosen option carries evidence",
+      });
     }
 
     // --- Sunk cost bias: continuing with higher-investment options despite lower expected value ---
@@ -402,7 +466,27 @@ export default function registerMetacognitionActions(registerLensAction) {
             decisionsAnalyzed: sunkCostData.length,
           });
         }
+        evaluations.push({
+          type: "sunk_cost",
+          status: sunkCostRate > 0.2 ? "flagged" : "cleared",
+          decisionsAnalyzed: sunkCostData.length,
+          rate: r(sunkCostRate),
+        });
+      } else {
+        evaluations.push({
+          type: "sunk_cost",
+          status: "insufficient_data",
+          decisionsAnalyzed: sunkCostData.length,
+          needed: "at least 2 decisions carrying an invested cost and multiple scored options",
+        });
       }
+    } else {
+      evaluations.push({
+        type: "sunk_cost",
+        status: "insufficient_data",
+        decisionsAnalyzed: sunkCostData.length,
+        needed: "at least 2 decisions carrying an invested cost and multiple scored options",
+      });
     }
 
     // --- Overall bias score ---
@@ -415,6 +499,7 @@ export default function registerMetacognitionActions(registerLensAction) {
       decisionsAnalyzed: decisions.length,
       biasesDetected: biases.length,
       biases,
+      evaluations,
       biasIndex: r(biasIndex),
       riskLevel: biasIndex > 0.5 ? "high" : biasIndex > 0.2 ? "moderate" : "low",
       recommendations: biases.map(b => {
@@ -512,7 +597,12 @@ export default function registerMetacognitionActions(registerLensAction) {
         if (!Number.isFinite(strength)) {
           throw new Error(`option "${name}" evidence[${ei}].strength must be a finite number`);
         }
-        return { supports: e.supports, strength };
+        // Evidence carries its content (F9): an item is the evidence
+        // itself — a note or a link — not only a direction + weight.
+        // Optional, so pre-existing { supports, strength } callers
+        // keep working byte-for-byte.
+        const text = mcClean(e.text, 600);
+        return text ? { supports: e.supports, strength, text } : { supports: e.supports, strength };
       });
     }
     return { name, score, evidence };
@@ -991,5 +1081,40 @@ export default function registerMetacognitionActions(registerLensAction) {
         result: { n, overallBrier, overallAccuracy, domains, rolling },
       };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // ─── ↓.dtu export (F10) ─────────────────────────────────────────────
+  // The lens's saved objects for the shared export machinery: the
+  // caller's OWN journal decisions + reflections (the per-user
+  // substrate above). Predictions are deliberately NOT rows here —
+  // they live in the global server.js metacognition system with no
+  // per-user ownership, so exporting them to any caller would hand
+  // one user's record to another. Read-only; never the ensure*
+  // helpers' write paths.
+  registerLensExportProvider("metacognition", (ctx) => {
+    const m = getMetaState(); if (!m) return [];
+    const userId = mcActor(ctx);
+    const rows = [];
+    for (const d of mcDecisions(m, userId)) {
+      rows.push({
+        type: "decision",
+        title: d.title,
+        domain: d.domain,
+        status: d.status,
+        confidence: d.confidence,
+        ...(d.correct != null ? { correct: d.correct } : {}),
+        createdAt: d.createdAt,
+      });
+    }
+    for (const r of mcReflections(m, userId)) {
+      rows.push({
+        type: "reflection",
+        title: r.title,
+        note: r.note || "",
+        answers: Array.isArray(r.answers) ? r.answers.length : 0,
+        createdAt: r.createdAt,
+      });
+    }
+    return rows;
   });
 }

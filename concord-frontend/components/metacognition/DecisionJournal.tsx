@@ -25,7 +25,7 @@ import { ChartKit } from '@/components/viz';
 // plain strings; those legacy rows still live in state and journalList still
 // returns them exactly as stored, so `options` here is a union and every
 // render path below normalizes before use instead of assuming the rich shape.
-interface EvidenceItem { supports: boolean; strength: number }
+interface EvidenceItem { supports: boolean; strength: number; text?: string }
 interface RichOption { name: string; score: number | null; evidence: EvidenceItem[] }
 type JournalOption = string | RichOption;
 
@@ -57,7 +57,7 @@ interface JournalDecision {
 // Editable row shape for the "Advanced" option-entry form. Kept as strings
 // in state so a half-typed number ("-" or "") doesn't get coerced early;
 // submitDecision does the real numeric parsing + validation at send time.
-interface EvidenceRow { supports: boolean; strength: string }
+interface EvidenceRow { supports: boolean; strength: string; text: string }
 interface OptionRow { name: string; score: string; evidence: EvidenceRow[] }
 
 const emptyOptionRow = (): OptionRow => ({ name: '', score: '', evidence: [] });
@@ -68,11 +68,20 @@ interface BiasFinding {
   severity: 'high' | 'moderate' | 'low';
   [key: string]: unknown;
 }
+interface BiasEvaluation {
+  type: string;
+  status: 'flagged' | 'cleared' | 'insufficient_data';
+  decisionsAnalyzed: number;
+  rate?: number;
+  needed?: string;
+}
+
 interface BiasReport {
   message?: string;
   decisionsAnalyzed?: number;
   biasesDetected?: number;
   biases?: BiasFinding[];
+  evaluations?: BiasEvaluation[];
   biasIndex?: number;
   riskLevel?: 'high' | 'moderate' | 'low';
   recommendations?: string[];
@@ -147,7 +156,7 @@ export function DecisionJournal() {
     setOptionRows((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const addEvidenceRow = (optIdx: number) =>
     setOptionRows((rows) => rows.map((r, idx) =>
-      idx === optIdx ? { ...r, evidence: [...r.evidence, { supports: true, strength: '' }] } : r
+      idx === optIdx ? { ...r, evidence: [...r.evidence, { supports: true, strength: '', text: '' }] } : r
     ));
   const removeEvidenceRow = (optIdx: number, evIdx: number) =>
     setOptionRows((rows) => rows.map((r, idx) =>
@@ -196,11 +205,15 @@ export function DecisionJournal() {
     }
   };
 
+  // The whole journal loads once and filters client-side (F20): the
+  // list below is the FILTERED view, so an empty filter can say so
+  // instead of claiming the journal itself is empty. `decisions`
+  // stays the full record for the empty-state test.
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     const [listRes, calRes] = await Promise.all([
-      lensRun('metacognition', 'journalList', { status: filter }),
+      lensRun('metacognition', 'journalList', {}),
       lensRun('metacognition', 'calibrationReport', { bins: 5 }),
     ]);
     if (listRes.data.ok && listRes.data.result) {
@@ -212,9 +225,22 @@ export function DecisionJournal() {
       setReport(calRes.data.result as CalibrationReport);
     }
     setLoading(false);
-  }, [filter]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // F8: mutations refresh what other panels derived from the record —
+  // the Practice accuracy/streak panels listen for this event, and a
+  // bias report already on screen re-runs against the new record
+  // instead of stating the pre-mutation one until manually re-run.
+  const afterMutation = useCallback(() => {
+    load();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('metacognition:record-changed'));
+    }
+    if (biasReport) void runBiasDetection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load, biasReport]);
 
   const submitDecision = async () => {
     if (!title.trim()) return;
@@ -231,8 +257,14 @@ export function DecisionJournal() {
           ...(r.score.trim() !== '' ? { score: Number(r.score) } : {}),
           ...(r.evidence.length > 0
             ? { evidence: r.evidence
-                .filter((e) => e.strength.trim() !== '')
-                .map((e) => ({ supports: e.supports, strength: Number(e.strength) })) }
+                // An item survives on its strength OR its content — an
+                // evidence note with no weight still evidences (F9).
+                .filter((e) => e.strength.trim() !== '' || e.text.trim() !== '')
+                .map((e) => ({
+                  supports: e.supports,
+                  strength: e.strength.trim() === '' ? 0 : Number(e.strength),
+                  ...(e.text.trim() !== '' ? { text: e.text.trim() } : {}),
+                })) }
             : {}),
         }));
         // chosenIdx indexes into the full optionRows array (matches the
@@ -253,7 +285,7 @@ export function DecisionJournal() {
       setTitle(''); setContext(''); setPredicted(''); setConfidence(0.7); setDomain('general');
       resetAdvanced();
       setShowForm(false);
-      load();
+      afterMutation();
     } else {
       setFormError(res.data.error || 'Failed to log decision');
     }
@@ -265,15 +297,16 @@ export function DecisionJournal() {
     });
     if (res.data.ok) {
       setResolvingId(null); setActualOutcome(''); setLesson('');
-      load();
+      afterMutation();
     } else {
       setError(res.data.error || 'Failed to resolve');
     }
   };
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const remove = async (id: string) => {
     const res = await lensRun('metacognition', 'journalDelete', { id });
-    if (res.data.ok) load();
+    if (res.data.ok) { setConfirmDeleteId(null); afterMutation(); }
   };
 
   // Reliability-diagram chart data: predicted vs observed per bin.
@@ -290,6 +323,10 @@ export function DecisionJournal() {
     label: `#${h.index}`,
     brier: Math.round(h.runningBrier * 1000) / 1000,
   }));
+
+  const visibleDecisions = decisions.filter((d) =>
+    filter === 'all' ? true : filter === 'open' ? d.status === 'open' : d.status === 'resolved'
+  );
 
   if (loading) {
     return (
@@ -504,6 +541,13 @@ export function DecisionJournal() {
                               </select>
                               <input
                                 className="input-lattice flex-1 text-xs py-1"
+                                placeholder="The evidence itself — a note or a link"
+                                value={ev.text}
+                                onChange={(e) => updateEvidenceRow(i, ei, { text: e.target.value })}
+                                aria-label="Evidence content"
+                              />
+                              <input
+                                className="input-lattice w-24 text-xs py-1"
                                 placeholder="Strength (0-10)"
                                 inputMode="decimal"
                                 value={ev.strength}
@@ -594,14 +638,20 @@ export function DecisionJournal() {
           ))}
         </div>
 
-        {/* Decision list */}
+        {/* Decision list — filtered client-side from the full journal */}
         {decisions.length === 0 ? (
           <p className="text-center py-8 text-gray-400 text-sm">
             No decisions logged yet. Click &quot;Log Decision&quot; to start your journal.
           </p>
+        ) : visibleDecisions.length === 0 ? (
+          <p className="text-center py-8 text-gray-400 text-sm">
+            {filter === 'open'
+              ? 'No open decisions — everything logged here is resolved.'
+              : 'No resolved decisions yet — resolve a decision and it will appear under this filter.'}
+          </p>
         ) : (
           <div className="space-y-2">
-            {decisions.map((d) => {
+            {visibleDecisions.map((d) => {
               const isOpen = d.status === 'open';
               const isExp = expanded === d.id;
               return (
@@ -624,19 +674,30 @@ export function DecisionJournal() {
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
-                        onClick={() => setExpanded(isExp ? null : d.id)}
+                        onClick={() => { setConfirmDeleteId(null); setExpanded(isExp ? null : d.id); }}
                         className="p-1 text-gray-400 hover:text-gray-300"
                         aria-label={isExp ? `Collapse ${d.title}` : `Expand ${d.title}`}
                       >
                         {isExp ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
-                      <button
-                        onClick={() => remove(d.id)}
-                        className="p-1 text-gray-400 hover:text-red-400"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {confirmDeleteId === d.id ? (
+                        <button
+                          onClick={() => remove(d.id)}
+                          className="px-2 py-1 rounded bg-red-500/25 hover:bg-red-500/35 text-red-300 text-xs transition-colors"
+                          title="Confirm delete this decision"
+                        >
+                          Delete?
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(d.id)}
+                          className="p-1 text-gray-400 hover:text-red-400"
+                          title="Delete"
+                          aria-label={`Delete ${d.title}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -661,6 +722,15 @@ export function DecisionJournal() {
                                       {' '}— {opt.evidence.filter((e) => e.supports).length} for /{' '}
                                       {opt.evidence.filter((e) => !e.supports).length} against
                                     </span>
+                                  )}
+                                  {opt.evidence.some((e) => e.text) && (
+                                    <ul className="mt-0.5 space-y-0.5 pl-4">
+                                      {opt.evidence.filter((e) => e.text).map((e, ei) => (
+                                        <li key={ei} className="text-gray-500">
+                                          {e.supports ? 'For' : 'Against'} · strength {e.strength} — {e.text}
+                                        </li>
+                                      ))}
+                                    </ul>
                                   )}
                                 </li>
                               );
@@ -825,6 +895,25 @@ export function DecisionJournal() {
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+                {Array.isArray(biasReport.evaluations) && biasReport.evaluations.length > 0 && (
+                  <div className="space-y-1 pt-1">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Every pattern, evaluated</p>
+                    {biasReport.evaluations.map((ev, i) => (
+                      <p key={i} className="text-xs text-gray-400">
+                        <span className="capitalize text-gray-300">{ev.type.replace(/_/g, ' ')}</span>
+                        {ev.status === 'flagged' && (
+                          <> — <span className="text-yellow-400">flagged</span>{typeof ev.rate === 'number' ? ` (rate ${ev.rate.toFixed(2)} across ${ev.decisionsAnalyzed} decision${ev.decisionsAnalyzed === 1 ? '' : 's'})` : ''}</>
+                        )}
+                        {ev.status === 'cleared' && (
+                          <> — <span className="text-green-400">cleared</span> — evaluated on {ev.decisionsAnalyzed} decision{ev.decisionsAnalyzed === 1 ? '' : 's'}, not detected</>
+                        )}
+                        {ev.status === 'insufficient_data' && (
+                          <> — <span className="text-gray-500">needs data</span>{ev.needed ? ` — ${ev.needed}` : ''}</>
+                        )}
+                      </p>
+                    ))}
                   </div>
                 )}
               </>

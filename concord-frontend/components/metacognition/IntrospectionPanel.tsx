@@ -73,6 +73,14 @@ export function IntrospectionPanel() {
                 {!!latestIntrospection.message && (
                   <p className="text-sm text-gray-400">{String(latestIntrospection.message)}</p>
                 )}
+                {!!latestIntrospection.focus && (
+                  <p className="text-xs text-gray-400">
+                    Focus: <span className="text-gray-200">{String(latestIntrospection.focus)}</span>
+                    {typeof latestIntrospection.scopedCount === 'number' && typeof latestIntrospection.totalResolved === 'number'
+                      ? ` — ${String(latestIntrospection.scopedCount)} of ${String(latestIntrospection.totalResolved)} resolved predictions in scope`
+                      : ''}
+                  </p>
+                )}
                 {typeof latestIntrospection.totalPredictions === 'number' && (
                   <div className="flex flex-wrap gap-4 text-xs text-gray-400">
                     <span>Analyzed: <span className="text-gray-200 font-mono">{String(latestIntrospection.totalPredictions)}</span></span>
@@ -148,8 +156,8 @@ export function IntrospectionPanel() {
               </div>
             ) : (
               <p className="text-center py-8 text-gray-400 text-sm">
-                {typeof introData.failurePatternCount === 'number' && introData.failurePatternCount > 0
-                  ? `${introData.failurePatternCount} failure pattern(s) found in past runs. Click "Run Introspection" to re-analyze with the latest predictions.`
+                {typeof introData.patternsFound === 'number' && introData.patternsFound > 0
+                  ? `${introData.patternsFound} failure pattern(s) found across ${typeof introData.runsCount === 'number' ? introData.runsCount : introData.failurePatternCount} past run(s). Click "Run Introspection" to re-analyze with the latest predictions.`
                   : 'No introspection results yet. Click "Run Introspection" to begin.'}
               </p>
             )}

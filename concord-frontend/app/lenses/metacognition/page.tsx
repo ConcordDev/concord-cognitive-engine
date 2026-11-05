@@ -72,6 +72,15 @@ export default function MetacognitionLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } =
     useRealtimeLens('metacognition');
   const [active, setActive] = useState<MetacogView>('awareness');
+  // F17: visited views stay MOUNTED (hidden), so in-progress panel
+  // state — a half-written prediction, a journal form, a toolkit
+  // result — survives a view switch instead of being discarded by
+  // an unmount. Unvisited views mount on first open.
+  const [visited, setVisited] = useState<MetacogView[]>(['awareness']);
+  const goTo = (v: MetacogView) => {
+    setActive(v);
+    setVisited((prev) => (prev.includes(v) ? prev : [...prev, v]));
+  };
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -79,12 +88,10 @@ export default function MetacognitionLensPage() {
       keys: v.keys,
       description: `${v.label} — ${v.hint}`,
       category: 'navigation' as const,
-      action: () => setActive(v.id),
+      action: () => goTo(v.id),
     })),
     { lensId: 'metacognition' },
   );
-
-  const Panel = PANELS[active];
 
   return (
     <LensShell lensId="metacognition" asMain={false}>
@@ -114,7 +121,7 @@ export default function MetacognitionLensPage() {
               <button
                 key={v.id}
                 type="button"
-                onClick={() => setActive(v.id)}
+                onClick={() => goTo(v.id)}
                 aria-current={on ? 'page' : undefined}
                 className={cn(
                   'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
@@ -129,9 +136,15 @@ export default function MetacognitionLensPage() {
           })}
         </nav>
 
-        <section key={active} className="min-w-0">
-          <Panel />
-        </section>
+        {VIEWS.filter((v) => visited.includes(v.id)).map((v) => {
+          const Panel = PANELS[v.id];
+          const on = active === v.id;
+          return (
+            <section key={v.id} className="min-w-0" hidden={!on} aria-hidden={!on}>
+              <Panel />
+            </section>
+          );
+        })}
 
         {realtimeData && (
           <RealtimeDataPanel
@@ -148,7 +161,7 @@ export default function MetacognitionLensPage() {
 
         <button
           type="button"
-          onClick={() => setActive('predictions')}
+          onClick={() => goTo('predictions')}
           title="Log a prediction"
           className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
         >

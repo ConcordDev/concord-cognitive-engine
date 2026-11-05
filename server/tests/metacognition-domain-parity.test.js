@@ -178,3 +178,97 @@ describe("metacognition bias checklist + strategy library", () => {
     assert.ok(filtered.result.strategies.every((s) => s.category === cat));
   });
 });
+
+describe("metacognition build — bias evaluations (S-MC-4)", () => {
+  const richDecision = (title) => ({
+    title,
+    confidence: 0.7,
+    domain: "forecasting",
+    options: [
+      { name: "A", score: 90, evidence: [{ supports: true, strength: 8 }] },
+      { name: "B", score: 40, evidence: [] },
+    ],
+    chosen: "A",
+    initialAnchor: 10,
+    investedCost: 500,
+  });
+
+  it("every claimed pattern reports flagged / cleared / insufficient — never silence", () => {
+    call("journalLog", ctxA, richDecision("D1"));
+    call("journalLog", ctxA, richDecision("D2"));
+    const r = call("journalBiasDetection", ctxA, {});
+    assert.equal(r.ok, true);
+    const byType = Object.fromEntries(r.result.evaluations.map((e) => [e.type, e]));
+    // Supporting-only evidence on the chosen option, both decisions.
+    assert.equal(byType.confirmation_bias.status, "flagged");
+    assert.equal(byType.confirmation_bias.decisionsAnalyzed, 2);
+    // Chosen score (90) sits far from the anchor (10) on a 50-wide range.
+    assert.equal(byType.anchoring.status, "cleared");
+    assert.equal(byType.anchoring.decisionsAnalyzed, 2);
+    // The chosen option IS the best-scoring one — no sunk-cost signal.
+    assert.equal(byType.sunk_cost.status, "cleared");
+    // The flagged list itself is unchanged in shape.
+    assert.ok(r.result.biases.some((b) => b.type === "confirmation_bias"));
+  });
+
+  it("a thin journal reports insufficient_data with what each pattern needs", () => {
+    call("journalLog", ctxA, { title: "plain", confidence: 0.5 });
+    const r = call("journalBiasDetection", ctxA, {});
+    assert.equal(r.result.evaluations.length, 3);
+    assert.ok(r.result.evaluations.every((e) => e.status === "insufficient_data" && e.needed));
+  });
+
+  it("an empty journal still carries the three evaluations", () => {
+    const r = call("journalBiasDetection", ctxB, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.evaluations.length, 3);
+  });
+});
+
+describe("metacognition build — evidence carries content (S-MC-6)", () => {
+  it("journalLog stores evidence text and journalList returns it", () => {
+    call("journalLog", ctxA, {
+      title: "with evidence",
+      confidence: 0.6,
+      options: [
+        { name: "X", score: 10, evidence: [{ supports: true, strength: 5, text: "Q3 report, p.12" }, { supports: false, strength: 3 }] },
+        { name: "Y", score: 5, evidence: [] },
+      ],
+      chosen: "X",
+    });
+    const list = call("journalList", ctxA, {});
+    const d = list.result.decisions.find((x) => x.title === "with evidence");
+    assert.equal(d.options[0].evidence[0].text, "Q3 report, p.12");
+    assert.ok(!("text" in d.options[0].evidence[1]), "no text key is invented for items without content");
+  });
+});
+
+describe("metacognition build — learning-curve forecast (S-MC-5 / F7)", () => {
+  it("a rising curve yields a numeric forecast with no apology note", () => {
+    const progress = [0.3, 0.45, 0.6, 0.72, 0.81].map((p, i) => ({ trial: i + 1, performance: p }));
+    const r = call("learningCurve", ctxA, { data: { progress } }, {});
+    assert.equal(typeof r.result.forecast.masteryTrial, "number");
+    assert.equal(r.result.forecast.note, null);
+  });
+
+  it("a falling curve states why there is no forecast instead of staying silent", () => {
+    const progress = [0.8, 0.7, 0.6, 0.5, 0.42].map((p, i) => ({ trial: i + 1, performance: p }));
+    const r = call("learningCurve", ctxA, { data: { progress } }, {});
+    assert.equal(r.result.forecast.masteryTrial, null);
+    assert.match(r.result.forecast.note, /forecast/i);
+  });
+});
+
+describe("metacognition build — export provider (S-MC-7 / F10)", () => {
+  it("the caller's decisions + reflections are exportable rows; another caller's are not", async () => {
+    const { collectLensExport } = await import("../lib/lens-export.js");
+    call("journalLog", ctxA, { title: "exportable decision", confidence: 0.5 });
+    call("reflectionSave", ctxA, { title: "exportable reflection", note: "noted" });
+    const out = await collectLensExport({ runMacro: async () => ({ ok: true, artifacts: [] }), domain: "metacognition", ctx: ctxA, limit: 50 });
+    const titles = (out.artifacts || []).map((a) => a.title);
+    assert.ok(titles.includes("exportable decision"));
+    assert.ok(titles.includes("exportable reflection"));
+    const other = await collectLensExport({ runMacro: async () => ({ ok: true, artifacts: [] }), domain: "metacognition", ctx: ctxB, limit: 50 });
+    assert.ok(!(other.artifacts || []).some((a) => a.title === "exportable decision"));
+  });
+});
