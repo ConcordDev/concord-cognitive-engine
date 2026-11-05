@@ -1568,7 +1568,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['reorderCheck', 'pipelineValue', 'customerLTV', 'slaStatus', 'inventoryForecast', 'priceOptimize', 'promotionROI', 'churnPredict'],
     category: 'operations',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Retail & commerce.",
       caption: "Products, orders, customers, leads, tickets \u2014 reorder, forecast, retain.",

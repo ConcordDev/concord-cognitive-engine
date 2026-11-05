@@ -72,6 +72,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
   /**
+   * Retail's store is the account's own live store — products, orders and
+   * stock are the merchant's real records. The generic REAL_FREE line
+   * ("static / open-access dataset") was false about the machinery in both
+   * directions, and REAL_LIVE's generic caption ("polled live from an
+   * external source") would be false too: nothing here is polled.
+   */
+  retail: {
+    label: 'Live',
+    caption: 'Your own live store: products, orders and stock are your account’s real records, updated as you sell.',
+  },
+  /**
    * Housing's substrate is the member's own persistent world state —
    * land claims and houses live in the platform database, owner-gated
    * in the lib (PROBE-BLOCKED at the then-missing claim surface in
