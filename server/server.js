@@ -112,6 +112,7 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { censusAccess } from "./lib/macro-access.js";
 import { buildAnalyticsGroundingBlock, groundingUserId } from "./lib/lens-grounding.js";
 import { createSqliteBridgeService } from "./lib/dtu-bridge/service.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
@@ -22675,6 +22676,24 @@ if (process.env.CONCORD_DISABLE_GHOST_FLEET !== "true") {
           } else {
             structuredLog("info", "macro_registry_validated", { domains: rep.domains, macros: rep.macros });
           }
+        // Cohesive R-2 phase 1 — declared-access census (report-only).
+        // Declarations ride spec.access on Gate D's chassis; nothing
+        // here enforces or infers — the census is the baseline every
+        // later declaration moves, and an invalid declaration is named
+        // loudly because it looks like evidence and is not.
+        try {
+          const ac = censusAccess(MACROS);
+          structuredLog("info", "macro_access_census", {
+            total: ac.total, declared: ac.declared, invalid: ac.invalid, undeclared: ac.undeclared,
+          });
+          if (ac.invalid > 0) {
+            logger.error("macro-access", "invalid access declarations", {
+              count: ac.invalid, violations: ac.violations.slice(0, 20),
+            });
+          }
+        } catch (e) {
+          logger.error("macro-access", "access census failed", { error: e?.message });
+        }
         } catch (e) {
           logger.error("macro-contract", "registry validation failed", { error: e?.message });
         }
