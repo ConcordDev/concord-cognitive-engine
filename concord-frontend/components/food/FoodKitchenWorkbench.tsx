@@ -160,6 +160,43 @@ const PANTRY_LOCATIONS = ['Refrigerator', 'Freezer', 'Pantry Shelf', 'Spice Rack
 
 const seedData: { title: string; data: Record<string, unknown> }[] = [];
 
+/**
+ * Parse the Recipe editor's Ingredients textarea (one per line,
+ * "name qty unit" — the same line format the Ops bench uses) into the
+ * workbench's ingredient shape. A line without a qty/unit tail is kept
+ * as a name-only ingredient rather than dropped: the text the user
+ * typed is the record. (food.md S1: the dialog collected no ingredients
+ * at all while the lens's downstream — shopping-list generation, the
+ * scaler, the dashboard's food-cost math — is made of them.)
+ */
+export function parseIngredientLines(text: string): { item: string; qty: string; unit: string; cost: number }[] {
+  return text
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .map(line => {
+      const m = line.match(/^(.+?)\s+([\d.]+)\s+(\S+)$/);
+      if (m) return { item: m[1], qty: m[2], unit: m[3], cost: 0 };
+      return { item: line, qty: '', unit: '', cost: 0 };
+    });
+}
+
+/**
+ * The messages a refused save shows. The lens.create validation path
+ * answers 422 with { error: "validation_failed", errors: [...] } where
+ * each error names its field/value ("Invalid status \"prep\" for domain
+ * \"food\"…") — those strings are the form's answer; the bare code is a
+ * wall. Falls back to the envelope's single error, then the message.
+ */
+export function saveErrorMessages(e: unknown): string[] {
+  const ax = e as { response?: { data?: { errors?: unknown; error?: string } }; message?: string };
+  const errs = ax?.response?.data?.errors;
+  if (Array.isArray(errs) && errs.length) return errs.map(String);
+  const single = ax?.response?.data?.error;
+  if (typeof single === 'string' && single) return [single];
+  return [ax?.message || 'Save failed.'];
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -260,6 +297,8 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
   const [formProtein, setFormProtein] = useState('');
   const [formCarbs, setFormCarbs] = useState('');
   const [formFat, setFormFat] = useState('');
+  const [formIngredients, setFormIngredients] = useState('');
+  const [saveErrors, setSaveErrors] = useState<string[]>([]);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
 
   // Labor tracking
@@ -321,6 +360,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     setFormShiftStart(''); setFormShiftEnd(''); setFormStation('Grill'); setFormHourlyRate('15');
     setFormPopularity('50'); setFormSalesVolume('0');
     setFormCalories(''); setFormProtein(''); setFormCarbs(''); setFormFat('');
+    setFormIngredients(''); setSaveErrors([]);
     setEditorOpen(true);
   };
 
@@ -344,10 +384,13 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     setFormSalesVolume(String(d.salesVolume || '0'));
     setFormCalories(d.calories ? String(d.calories) : ''); setFormProtein(d.protein ? String(d.protein) : '');
     setFormCarbs(d.carbs ? String(d.carbs) : ''); setFormFat(d.fat ? String(d.fat) : '');
+    setFormIngredients((d.ingredients || []).map(ing => `${ing.item} ${ing.qty} ${ing.unit}`.trim()).join('\n'));
+    setSaveErrors([]);
     setEditorOpen(true);
   };
 
   const handleSave = async () => {
+    setSaveErrors([]);
     const base: Record<string, unknown> = {
       name: formName, type: activeArtifactType, status: formStatus,
       description: formDescription, category: formCategory,
@@ -357,6 +400,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
       Object.assign(base, {
         servings: parseInt(formServings) || 1, prepTime: parseInt(formPrepTime) || 0, cookTime: parseInt(formCookTime) || 0, section: formSection,
         calories: parseFloat(formCalories) || 0, protein: parseFloat(formProtein) || 0, carbs: parseFloat(formCarbs) || 0, fat: parseFloat(formFat) || 0,
+        ingredients: parseIngredientLines(formIngredients),
       });
     } else if (activeArtifactType === 'MealPlan') {
       Object.assign(base, { day: formSection, mealType: formCategory, recipeRef: formNotes });
@@ -374,10 +418,20 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
       Object.assign(base, { employee: formEmployee, role: formRole, shiftStart: formShiftStart, shiftEnd: formShiftEnd, station: formStation, hourlyRate: parseFloat(formHourlyRate) || 15 });
     }
     const payload = { title: formName, data: base as Partial<FoodArtifact>, meta: { status: formStatus, tags: [activeArtifactType, formCategory || formSection || ''] } };
-    if (activeArtifactType === 'MealPlan') {
-      if (editingItem) { await updateMealPlan(editingItem.id, payload); } else { await createMealPlan(payload); }
-    } else {
-      if (editingItem) { await update(editingItem.id, payload); } else { await create(payload); }
+    try {
+      if (activeArtifactType === 'MealPlan') {
+        if (editingItem) { await updateMealPlan(editingItem.id, payload); } else { await createMealPlan(payload); }
+      } else {
+        if (editingItem) { await update(editingItem.id, payload); } else { await create(payload); }
+      }
+    } catch (e) {
+      // S1 (food.md F2): a refused save names its fields. The server's
+      // validation errors ride the 422 body (errors[]) — surface them in
+      // the editor and keep it open, instead of the old shape where the
+      // rejection vanished and the dialog just sat there (or closed over
+      // a create that never landed).
+      setSaveErrors(saveErrorMessages(e));
+      return;
     }
     setEditorOpen(false);
   };
@@ -2193,7 +2247,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
               </div>
               <div>
                 <label className={ds.label}>Description</label>
-                <DraftedTextarea lensId="food" draftKey="recipe-description" initial={formDescription} onValueChange={setFormDescription} rows={2} className={ds.textarea} placeholder="Description..." />
+                <DraftedTextarea lensId="food" draftKey={`food-description-${activeArtifactType.toLowerCase()}`} initial={formDescription} onValueChange={setFormDescription} rows={2} className={ds.textarea} placeholder="Description..." />
               </div>
               <div className={ds.grid3}>
                 <div>
@@ -2263,6 +2317,10 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
                         <input type="number" value={formFat} onChange={e => setFormFat(e.target.value)} className={ds.input} placeholder="0" />
                       </div>
                     </div>
+                  </div>
+                  <div>
+                    <label className={ds.label}>Ingredients (one per line: name qty unit)</label>
+                    <textarea value={formIngredients} onChange={e => setFormIngredients(e.target.value)} rows={4} className={ds.textarea} placeholder={'flour 200 g\nsugar 100 g'} />
                   </div>
                 </>
               )}
@@ -2339,11 +2397,11 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
                   <div className={ds.grid2}>
                     <div>
                       <label className={ds.label}>Expiry Date</label>
-                      <input type="date" value={formDateTime} onChange={e => setFormDateTime(e.target.value)} className={ds.input} />
+                      <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" value={formDateTime} onChange={e => setFormDateTime(e.target.value)} className={ds.input} />
                     </div>
                     <div>
                       <label className={ds.label}>Purchase Date</label>
-                      <input type="date" value={formShiftStart} onChange={e => setFormShiftStart(e.target.value)} className={ds.input} />
+                      <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" value={formShiftStart} onChange={e => setFormShiftStart(e.target.value)} className={ds.input} />
                     </div>
                   </div>
                 </>
@@ -2451,9 +2509,17 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
 
               <div>
                 <label className={ds.label}>Notes</label>
-                <DraftedTextarea lensId="food" draftKey="recipe-notes" initial={formNotes} onValueChange={setFormNotes} rows={2} className={ds.textarea} placeholder="Notes..." />
+                <DraftedTextarea lensId="food" draftKey={`food-notes-${activeArtifactType.toLowerCase()}`} initial={formNotes} onValueChange={setFormNotes} rows={2} className={ds.textarea} placeholder="Notes..." />
               </div>
             </div>
+            {saveErrors.length > 0 && (
+              <div className="mx-6 mb-4 rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] text-red-300" role="alert">
+                <p className="font-semibold">Couldn’t save — the server refused:</p>
+                <ul className="list-disc pl-5">
+                  {saveErrors.map((msg, i) => <li key={i}>{msg}</li>)}
+                </ul>
+              </div>
+            )}
             <div className="flex items-center justify-between p-6 border-t border-lattice-border">
               <div className="flex items-center gap-2">
                 {activeTab === 'recipes' && editingItem && (
