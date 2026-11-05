@@ -13,7 +13,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { Loader2, Waves, RefreshCw, AlertTriangle, ArrowUp, ArrowDown } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Prediction {
@@ -32,14 +32,11 @@ const STATIONS = [
   { id: '1611400', name: 'Nawiliwili, HI' },
 ];
 
-async function runMacro<T>(name: string, input: Record<string, unknown> = {}): Promise<T | null> {
-  try {
-    const r = await api.post('/api/lens/run', { domain: 'ocean', name, input });
-    return r?.data as T;
-  } catch {
-    return null;
-  }
-}
+// The panel reads the handler result through lensRun, which unwraps the
+// { ok, result } envelope. (It previously posted raw and read the fields
+// off the envelope itself — predictions live at data.result, so every
+// load settled at 'fetch_failed' beside siblings reading the same source
+// live. Ocean S1 / F2.)
 
 export function NoaaTidesPanel({ className }: { className?: string }) {
   const [station, setStation] = useState(STATIONS[0].id);
@@ -52,14 +49,15 @@ export function NoaaTidesPanel({ className }: { className?: string }) {
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const r = await runMacro<{
+    const env = await lensRun<{
       ok: boolean; predictions?: Prediction[]; reason?: string; fetchedAt?: number;
-    }>('live_tides', { station });
-    if (r?.ok && Array.isArray(r.predictions)) {
+    }>('ocean', 'live_tides', { station });
+    const r = env.data?.result;
+    if (env.data?.ok && r?.ok && Array.isArray(r.predictions)) {
       setPredictions(r.predictions);
       setUpdatedAt(r.fetchedAt || Math.floor(Date.now() / 1000));
     } else {
-      setError(r?.reason || 'fetch_failed');
+      setError(r?.reason || env.data?.error || 'fetch_failed');
     }
     setLoading(false);
   }, [station]);
@@ -132,7 +130,7 @@ export function NoaaTidesPanel({ className }: { className?: string }) {
       {error && (
         <div className="px-3 py-3 text-xs text-rose-300/80">
           <AlertTriangle className="inline w-3.5 h-3.5 mr-1" aria-hidden="true" />
-          NOAA unreachable ({error})
+          NOAA tide predictions unreachable ({error})
         </div>
       )}
 
