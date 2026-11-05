@@ -400,6 +400,20 @@ export default function registerMentorshipActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
+  // Withdraw the caller's own mentor profile — the profile's exit. Removes
+  // ONLY the caller's directory record; reviews and session history are
+  // other parties' records too and are not deleted.
+  registerLensAction("mentorship", "mentor-withdraw", (ctx, _a, _params = {}) => {
+    try {
+      const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = mAid(ctx);
+      if (!s.mentors.has(userId)) return { ok: false, error: "no mentor profile to withdraw" };
+      s.mentors.delete(userId);
+      saveState();
+      return { ok: true, result: { withdrawn: true } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
   // ── 2. Request → accept matching flow ─────────────────────────────────
   // Mentee sends a connection request to a mentor.
   // Topic + message are required user fields — never invent defaults for them
@@ -780,7 +794,9 @@ export default function registerMentorshipActions(registerLensAction) {
         detail: mClean(params.detail, 800),
         targetDate: mClean(params.targetDate, 20),
         progress: Math.min(100, Math.max(0, Math.round(mNum(params.progress)))),
-        status: "active",
+        // Born coherent: a goal created at full progress is done (the same
+        // contract goal-checkin enforces on every later write).
+        status: Math.min(100, Math.max(0, Math.round(mNum(params.progress)))) >= 100 ? "done" : "active",
         checkIns: [],
         createdAt: mNow(),
         updatedAt: mNow(),
@@ -801,11 +817,16 @@ export default function registerMentorshipActions(registerLensAction) {
       if (!goal) return { ok: false, error: "goal not found" };
       if (params.progress != null) goal.progress = Math.min(100, Math.max(0, Math.round(mNum(params.progress))));
       if (params.status && GOAL_STATUS.includes(params.status)) goal.status = params.status;
+      // Goal coherence contract (the lens's one write path carries it):
+      // status and progress can never contradict — reaching 100 completes
+      // the goal, and marking a goal done SETS its progress to 100, so the
+      // header's achieved count and the goal's own progress always agree.
+      if (goal.progress >= 100 && goal.status === "active") goal.status = "done";
+      if (goal.status === "done") goal.progress = 100;
       const note = mClean(params.note, 600);
       if (note) {
         goal.checkIns.push({ id: mId("ci"), note, progress: goal.progress, at: mNow() });
       }
-      if (goal.progress >= 100 && goal.status === "active") goal.status = "done";
       goal.updatedAt = mNow();
       saveState();
       return { ok: true, result: { goal } };
