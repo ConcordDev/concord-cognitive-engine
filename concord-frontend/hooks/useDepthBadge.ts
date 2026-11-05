@@ -114,6 +114,18 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Live: your recipes, meal plan, pantry and shopping lists are your own data, saved as you work. The reference datasets (USDA FoodData Central, TheMealDB recipe feed) are real but static open-access data.',
   },
   /**
+   * Real Estate declared REAL_FREE ("Real but static / open-access")
+   * over a live, writable, persistent listing store — Review 5's
+   * first pass reclassed it as a mis-scoped declaration (F1). The
+   * listings are the member's own live records; the one external
+   * feed is the US Census Bureau's ACS, named here and at the feed
+   * surface itself.
+   */
+  realestate: {
+    label: 'Live',
+    caption: 'Live workspace: your listings, tours and notes are your real persistent records in Concord, and the tools work on them. The home-value feed is real too — US Census Bureau American Community Survey data, named at the feed.',
+  },
+  /**
    * Housing's substrate is the member's own persistent world state —
    * land claims and houses live in the platform database, owner-gated
    * in the lib (PROBE-BLOCKED at the then-missing claim surface in
