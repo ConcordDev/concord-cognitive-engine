@@ -46,6 +46,13 @@ export function RevenueRetentionPanel() {
   const [period, setPeriod] = useState(30);
   const [revenue, setRevenue] = useState<RevenueResult | null>(null);
   const [retention, setRetention] = useState<RetentionResult | null>(null);
+  // Staleness: results describe the rows as they were at Analyze time.
+  // The fingerprint of the analyzed inputs is kept; any later edit to
+  // the rows (or the period) marks the displayed figures stale instead
+  // of letting them pose as current.
+  const [analyzedFingerprint, setAnalyzedFingerprint] = useState<string | null>(null);
+  const inputFingerprint = JSON.stringify({ appts, clients, period });
+  const stale = (revenue !== null || retention !== null) && analyzedFingerprint !== null && analyzedFingerprint !== inputFingerprint;
 
   const analyze = useMutation({
     mutationFn: async () => {
@@ -63,6 +70,7 @@ export function RevenueRetentionPanel() {
       ]);
       setRevenue(r);
       setRetention(t);
+      if (r !== null || t !== null) setAnalyzedFingerprint(JSON.stringify({ appts, clients, period }));
       // callSvc swallows transport errors to null. If we asked the backend to
       // compute (non-empty input) but BOTH calculators came back null, surface
       // an honest failure instead of silently dropping back to the pre-analyze
@@ -98,7 +106,7 @@ export function RevenueRetentionPanel() {
           <h2 className="text-sm font-semibold text-white">Revenue + retention</h2>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">services.revenueByProvider + clientRetentionReport</span>
         </div>
-        {(revenue || retention) && (
+        {(revenue || retention) && !stale && (
           <SaveAsDtuButton
             compact
             apiSource="concord-services-revenue-retention"
@@ -161,7 +169,13 @@ export function RevenueRetentionPanel() {
 
       {analyze.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Analysis failed.</div>}
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      {stale && (
+        <div className="rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          Inputs changed since this analysis — the figures below describe the rows as they were when you ran Analyze, not the rows as they are now. Run Analyze again to refresh them.
+        </div>
+      )}
+
+      <div className={`grid grid-cols-1 gap-3 lg:grid-cols-2 ${stale ? 'opacity-60' : ''}`}>
         <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3">
           <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><DollarSign className="h-3 w-3" />Revenue by provider</div>
           {!revenue && <div className="text-[11px] text-zinc-400">Analyze to compute.</div>}

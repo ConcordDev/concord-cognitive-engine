@@ -7,7 +7,7 @@
  * (desk | suite | feed | retention).
  */
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -54,7 +54,6 @@ import {
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { BookingActionDock, EndOfDayClose } from '@/components/services/BookingActionDock';
@@ -78,6 +77,11 @@ import {
   type TransactionData,
   type ProductData,
   type ArtifactDataUnion,
+  isLowStock,
+  DEFAULT_REORDER_LEVEL,
+  normalizeClientKey,
+  type SuiteBooking,
+  type SuiteClientProfile,
 } from '@/components/services/services-model';
 
 export function ServicesDeskPanel() {
@@ -116,6 +120,40 @@ export function ServicesDeskPanel() {
   const { items: staff } = useLensData<StaffMemberData>('services', 'StaffMember', { seed: [] });
   const { items: transactions } = useLensData<TransactionData>('services', 'Transaction', { seed: [] });
   const { items: products } = useLensData<ProductData>('services', 'Product', { seed: [] });
+
+  /* ---- booking-suite plane: the union --------------------------------
+   * The Booking Grid / Self-Booking keep their own store server-side.
+   * The Desk reads that store through the same lensRun calls the suite
+   * itself uses, and both panels project through services-model, so the
+   * Desk, the suite, and the Dashboard all read one book. */
+  const [suiteBookings, setSuiteBookings] = useState<SuiteBooking[]>([]);
+  const [suiteProfiles, setSuiteProfiles] = useState<SuiteClientProfile[]>([]);
+  const loadSuite = useCallback(async () => {
+    const [b, p] = await Promise.all([
+      lensRun<{ bookings: SuiteBooking[] }>('services', 'bookingGridList', {}),
+      lensRun<{ profiles: SuiteClientProfile[] }>('services', 'clientProfileList', {}),
+    ]);
+    if (b.data.ok && b.data.result) setSuiteBookings(b.data.result.bookings || []);
+    if (p.data.ok && p.data.result) setSuiteProfiles(p.data.result.profiles || []);
+  }, []);
+  useEffect(() => { loadSuite(); }, [loadSuite]);
+
+  const visibleSuiteBookings = useMemo(() => {
+    if (currentType !== 'Appointment') return [];
+    let list = suiteBookings;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(b => b.client.toLowerCase().includes(q) || b.service.toLowerCase().includes(q));
+    }
+    if (statusFilter !== 'all') list = list.filter(b => b.status === statusFilter);
+    return list;
+  }, [suiteBookings, currentType, searchQuery, statusFilter]);
+
+  const orphanProfiles = useMemo(() => {
+    if (currentType !== 'Client') return [];
+    const deskKeys = new Set(clients.map(c => normalizeClientKey(c.title)));
+    return suiteProfiles.filter(p => !deskKeys.has(p.clientKey));
+  }, [suiteProfiles, currentType, clients]);
 
   /* ---- filtering ---- */
   const filtered = useMemo(() => {
@@ -210,7 +248,7 @@ export function ServicesDeskPanel() {
         payload = {
           materials: products.map(p => {
             const d = p.data as unknown as ProductData;
-            return { name: p.title, currentStock: d.stockLevel ?? 0, reorderPoint: d.reorderLevel ?? 5, supplier: d.supplier || '' };
+            return { name: p.title, currentStock: d.stockLevel ?? 0, reorderPoint: d.reorderLevel ?? DEFAULT_REORDER_LEVEL, supplier: d.supplier || '' };
           }),
         };
       } else if (action === 'scheduleOptimize') {
@@ -248,7 +286,17 @@ export function ServicesDeskPanel() {
 
   /* ---- dashboard stats ---- */
   const dashboardStats = useMemo(() => {
-    const todaysAppts = appointments.filter(i => i.meta.status === 'booked' || i.meta.status === 'confirmed').length;
+    // Today's appointments across BOTH books: Desk records dated today in an
+    // upcoming lifecycle state, plus today's suite bookings. (Before the
+    // union this counted every Desk appointment ever booked/confirmed —
+    // no date filter — and never saw the suite's book at all.)
+    const todayKey = calendarDateKey();
+    const deskToday = appointments.filter(i => {
+      const d = i.data as unknown as AppointmentData;
+      return d.date === todayKey && ['booked', 'confirmed', 'in_progress'].includes(i.meta.status as string);
+    }).length;
+    const suiteToday = suiteBookings.filter(b => b.date === todayKey && b.status === 'booked').length;
+    const todaysAppts = deskToday + suiteToday;
 
     const revenueToday = transactions.reduce((sum, i) => {
       const d = i.data as unknown as TransactionData;
@@ -280,16 +328,14 @@ export function ServicesDeskPanel() {
       return sum + (d.salesVelocity || 0) * (d.retailPrice || 0);
     }, 0);
 
-    const lowStock = products.filter(i => {
-      const d = i.data as unknown as ProductData;
-      return d.stockLevel <= d.reorderLevel;
-    }).length;
+    const lowStock = products.filter(i => isLowStock(i.data as unknown as ProductData)).length;
 
-    const totalClients = clients.length;
+    const deskClientKeys = new Set(clients.map(c => normalizeClientKey(c.title)));
+    const totalClients = clients.length + suiteProfiles.filter(p => !deskClientKeys.has(p.clientKey)).length;
     const totalServices = serviceItems.length;
 
     return { todaysAppts, revenueToday, noShowRate, topServices, staffUtilization, productSales, lowStock, totalClients, totalServices };
-  }, [appointments, transactions, staff, products, clients, serviceItems]);
+  }, [appointments, transactions, staff, products, clients, serviceItems, suiteBookings, suiteProfiles]);
 
   /* ================================================================ */
   /*  Form fields                                                      */
@@ -300,6 +346,26 @@ export function ServicesDeskPanel() {
       case 'Appointment':
         return (
           <>
+            <div>
+              <label className={ds.label}>Client Record (links this appointment for reminders)</label>
+              <select className={ds.select} value={(formData.clientId as string) || ''} onChange={e => {
+                const c = clients.find(x => x.id === e.target.value);
+                if (c) {
+                  const cd = c.data as unknown as ClientData;
+                  setFormData({ ...formData, clientId: c.id, clientName: c.title, clientUserId: cd.userId || '' });
+                } else {
+                  setFormData({ ...formData, clientId: '', clientUserId: '' });
+                }
+              }}>
+                <option value="">No linked client (walk-in)</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+              </select>
+              {(formData.clientId as string) && (
+                <p className={ds.textMuted}>{(formData.clientUserId as string)
+                  ? 'Reminders can DM this client — their Concord user ID is on the client record.'
+                  : 'This client has no Concord user ID yet — add it on the Clients tab to enable DM reminders for this appointment.'}</p>
+              )}
+            </div>
             <div className={ds.grid2}>
               <div><label className={ds.label}>Client Name</label><input className={ds.input} value={(formData.clientName as string) || ''} onChange={e => setFormData({ ...formData, clientName: e.target.value })} /></div>
               <div><label className={ds.label}>Service Type</label><input className={ds.input} value={(formData.serviceType as string) || ''} onChange={e => setFormData({ ...formData, serviceType: e.target.value })} /></div>
@@ -335,6 +401,10 @@ export function ServicesDeskPanel() {
       case 'Client':
         return (
           <>
+            <div>
+              <label className={ds.label}>Concord User ID (optional — enables DM reminders for this client&apos;s appointments)</label>
+              <input className={ds.input} value={(formData.userId as string) || ''} onChange={e => setFormData({ ...formData, userId: e.target.value })} placeholder="The client's Concord account ID" />
+            </div>
             <div className={ds.grid2}>
               <div><label className={ds.label}>Phone</label><input className={ds.input} value={(formData.phone as string) || ''} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="555-0100" /></div>
               <div><label className={ds.label}>Email</label><input type="email" className={ds.input} value={(formData.email as string) || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} /></div>
@@ -734,7 +804,6 @@ export function ServicesDeskPanel() {
 
       {/* Real-time Enhancement Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
         <DTUExportButton domain="services" data={realtimeData || {}} compact />
         {realtimeAlerts.length > 0 && (
           <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
@@ -840,8 +909,8 @@ export function ServicesDeskPanel() {
           <button onClick={() => runReport('scheduleOptimize')} className={ds.btnSecondary} disabled={!!reportBusy}>
             <CalendarCheck className="w-4 h-4" /> Optimize Schedule
           </button>
-          <button onClick={() => runReport('reminderGenerate')} className={ds.btnSecondary} disabled={!!reportBusy}>
-            <Bell className="w-4 h-4" /> Generate Reminders
+          <button onClick={() => runReport('reminderGenerate')} className={ds.btnSecondary} disabled={!!reportBusy} title="Reminders for booked and confirmed appointments in the next 24 hours">
+            <Bell className="w-4 h-4" /> Generate Reminders (24h)
           </button>
           <button onClick={() => runReport('dailyCloseReport')} className={ds.btnSecondary} disabled={!!reportBusy}>
             <Receipt className="w-4 h-4" /> Daily Close Report
@@ -866,7 +935,7 @@ export function ServicesDeskPanel() {
             <div className="flex items-center justify-center py-20">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-pink-400" />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : filtered.length === 0 && visibleSuiteBookings.length === 0 && orphanProfiles.length === 0 ? (
             <div className="text-center py-20">
               <Scissors className="w-12 h-12 text-gray-600 mx-auto mb-3" />
               <p className={ds.heading3}>No {currentType}s found</p>
@@ -876,7 +945,46 @@ export function ServicesDeskPanel() {
               </button>
             </div>
           ) : (
-            <div className={ds.grid3}>{filtered.map(renderCard)}</div>
+            <div className="space-y-4">
+              {filtered.length > 0 && <div className={ds.grid3}>{filtered.map(renderCard)}</div>}
+              {visibleSuiteBookings.length > 0 && (
+                <div className="space-y-2">
+                  <p className={ds.textMuted}>From the booking suite — the same book, kept by the Booking Grid and Self-Booking. Open the Booking Suite view to confirm, move, or cancel these.</p>
+                  <div className={ds.grid3}>{visibleSuiteBookings.map(b => (
+                    <div key={b.id} className={ds.panel}>
+                      <div className={ds.sectionHeader}>
+                        <h3 className={cn(ds.heading3, 'line-clamp-1')}>{b.client}</h3>
+                        {renderStatusBadge(b.status)}
+                      </div>
+                      <div className="mt-2 space-y-1 text-sm text-gray-300">
+                        <p>{b.service} · {b.staff}</p>
+                        <p>{b.date} at {b.time} · {b.duration} min · ${b.price}</p>
+                        <p><span className={ds.badge('purple-400')}>{b.source === 'self-booking' ? 'Self-booking' : b.source === 'waitlist' ? 'Waitlist' : 'Booking grid'}</span></p>
+                      </div>
+                    </div>
+                  ))}</div>
+                </div>
+              )}
+              {orphanProfiles.length > 0 && (
+                <div className="space-y-2">
+                  <p className={ds.textMuted}>Booking-suite client profiles with no Desk client record yet — the same clients, kept by the Booking Suite. Add a Desk client with the same name to link the two records.</p>
+                  <div className={ds.grid3}>{orphanProfiles.map(p => (
+                    <div key={p.clientKey} className={ds.panel}>
+                      <div className={ds.sectionHeader}>
+                        <h3 className={cn(ds.heading3, 'line-clamp-1')}>{p.name}</h3>
+                        <span className={ds.badge('purple-400')}>Suite profile</span>
+                      </div>
+                      <div className="mt-2 space-y-1 text-sm text-gray-300">
+                        {p.email && <p>{p.email}</p>}
+                        {p.phone && <p>{p.phone}</p>}
+                        {p.preferredProvider && <p>Prefers {p.preferredProvider}</p>}
+                        {p.preferences && <p className="text-gray-400">{p.preferences}</p>}
+                      </div>
+                    </div>
+                  ))}</div>
+                </div>
+              )}
+            </div>
           )}
         </>
       )}
@@ -917,6 +1025,7 @@ export function ServicesDeskPanel() {
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan">{String(actionResult.count)}</p>
                   <p className="text-[10px] text-gray-400">Reminders Generated</p>
+                  <p className="text-[10px] text-gray-500">Booked &amp; confirmed appointments in the next 24 hours{Number(actionResult.count) === 0 ? ' — none are due in that window' : ''}</p>
                 </div>
                 {(actionResult.reminders as {client:string;service:string;date:string}[]).slice(0,4).map((r, i) => (
                   <div key={i} className="px-2 py-1 bg-lattice-surface rounded text-xs">
@@ -1007,10 +1116,24 @@ export function ServicesDeskPanel() {
                     <p className="text-[10px] text-gray-400">Total Commission</p>
                   </div>
                 </div>
+                {/* The rate is printed, never implied: the tiers the calc
+                    actually applied, and the blended effective rate. The
+                    Desk passes no custom tiers, so these are the calc's
+                    built-in defaults — and they are labelled as such. */}
+                <div className="p-2 bg-lattice-surface rounded text-xs text-gray-300 space-y-1">
+                  <p>Effective rate: <span className="text-green-400 font-semibold">{String(actionResult.effectiveRate ?? 0)}%</span> of total sales.</p>
+                  {Array.isArray(actionResult.tiers) && (
+                    <p className="text-gray-400">
+                      Default tiers applied (no custom tiers set): {(actionResult.tiers as { min: number; max: number; rate: number }[]).map((t, i) => (
+                        <span key={i}>{i > 0 ? ' · ' : ''}{Math.round(t.rate * 100)}% on ${Number(t.min).toLocaleString()}–{Number.isFinite(t.max) ? `$${Number(t.max).toLocaleString()}` : 'up'}</span>
+                      ))}
+                    </p>
+                  )}
+                </div>
                 {(actionResult.bySalesperson as {salesperson:string;totalSales:number;totalCommission:number}[]).slice(0,5).map((s, i) => (
                   <div key={i} className="flex items-center justify-between px-2 py-1 bg-lattice-surface rounded text-xs">
                     <span className="text-gray-300">{s.salesperson}</span>
-                    <span className="text-green-400">${s.totalCommission.toLocaleString()} of ${s.totalSales.toLocaleString()}</span>
+                    <span className="text-green-400">${s.totalCommission.toLocaleString()} of ${s.totalSales.toLocaleString()}{s.totalSales > 0 ? ` (${Math.round((s.totalCommission / s.totalSales) * 10000) / 100}%)` : ''}</span>
                   </div>
                 ))}
                 {(actionResult.bySalesperson as unknown[]).length === 0 && <p className={ds.textMuted}>No transactions to calculate commission from yet.</p>}
