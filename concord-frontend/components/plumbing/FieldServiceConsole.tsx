@@ -35,6 +35,7 @@ interface Assignment {
   id: string; jobTitle: string; client: string; clientId?: string | null; address: string;
   techId: string | null; date: string; startHour: number; durationHours: number;
   priority: string; status: string; partsUsed?: { name: string; deducted: number }[];
+  workflow?: { progress: number; completedAt: string | null } | null;
 }
 interface Lane { techId: string; techName: string; baseColor: string; assignments: Assignment[]; loadHours: number; }
 interface PriceItem { id: string; name: string; kind: string; unit: string; cost: number; markupPct: number; price: number; sku: string; }
@@ -129,6 +130,7 @@ export function FieldServiceConsole() {
   const [unassigned, setUnassigned] = useState<Assignment[]>([]);
   const [emergencyCount, setEmergencyCount] = useState(0);
   const [priceItems, setPriceItems] = useState<PriceItem[]>([]);
+  const [avgMarkup, setAvgMarkup] = useState(0);
   const [avgMargin, setAvgMargin] = useState(0);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [arOutstanding, setArOutstanding] = useState(0);
@@ -237,8 +239,8 @@ export function FieldServiceConsole() {
   }, []);
 
   const refreshPriceBook = useCallback(async () => {
-    const r = await run<{ items: PriceItem[]; avgMarginPct: number }>('priceBookList');
-    if (r) { setPriceItems(r.items); setAvgMargin(r.avgMarginPct); }
+    const r = await run<{ items: PriceItem[]; avgMarkupPct: number; avgMarginPct: number }>('priceBookList');
+    if (r) { setPriceItems(r.items); setAvgMarkup(r.avgMarkupPct); setAvgMargin(r.avgMarginPct); }
   }, []);
 
   const refreshInvoices = useCallback(async () => {
@@ -341,8 +343,10 @@ export function FieldServiceConsole() {
     await refreshPriceBook();
   });
 
+  const [confirmRemovePb, setConfirmRemovePb] = useState<string | null>(null);
   const removePriceItem = (id: string) => guarded(async () => {
     await run('priceItemRemove', { itemId: id });
+    setConfirmRemovePb(null);
     await refreshPriceBook();
   });
 
@@ -395,6 +399,7 @@ export function FieldServiceConsole() {
     if (!r) { setErr('workflowStart failed'); return; }
     setActiveWf(r.workflow);
     setWfProgress(0);
+    await refreshDispatch();
   });
 
   const loadWorkflow = (assignmentId: string) => guarded(async () => {
@@ -403,6 +408,16 @@ export function FieldServiceConsole() {
     if (r) { setActiveWf(r.workflow); setWfProgress(r.progress); }
     else { setActiveWf(null); setWfProgress(0); }
   });
+
+  // F5: selecting an assignment with no workflow yet is the normal pre-start
+  // state, not an error — the board marker (assignment.workflow) says which
+  // assignments have one, so no workflowGet probe fires for the rest.
+  const selectAssignment = (assignmentId: string) => {
+    const a = allAssignmentsRef.current.find((x) => x.id === assignmentId);
+    if (a?.workflow) { loadWorkflow(assignmentId); return; }
+    setWfAssignment(assignmentId);
+    setActiveWf(null); setWfProgress(0);
+  };
 
   const toggleCheck = (idx: number, done: boolean) => guarded(async () => {
     if (!activeWf) return;
@@ -521,6 +536,17 @@ export function FieldServiceConsole() {
     () => [...lanes.flatMap((l) => l.assignments), ...unassigned],
     [lanes, unassigned],
   );
+  const allAssignmentsRef = useMemo(() => ({ current: allAssignments }), [allAssignments]);
+
+  // F5 (state half): workflow progress persists server-side; opening the
+  // Tech Workflow section restores the first in-progress workflow so a
+  // reload shows the checklist as it stands instead of a reset view.
+  useEffect(() => {
+    if (section !== 'workflow' || activeWf || wfAssignment) return;
+    const open = allAssignments.find((a) => a.workflow && !a.workflow.completedAt);
+    if (open) loadWorkflow(open.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section, allAssignments]);
   const loadChart = useMemo(
     () => lanes.map((l) => ({ tech: l.techName, hours: l.loadHours, jobs: l.assignments.length })),
     [lanes],
@@ -598,6 +624,11 @@ export function FieldServiceConsole() {
                       </span>
                       <button onClick={() => removeTech(t.id)} aria-label="Remove technician" className="text-zinc-600 hover:text-rose-400"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
+                    {(t.skills?.length > 0 || t.phone) && (
+                      <div className="mt-0.5 truncate text-[11px] text-zinc-500">
+                        {t.skills?.length > 0 ? t.skills.join(', ') : ''}{t.skills?.length > 0 && t.phone ? ' · ' : ''}{t.phone || ''}
+                      </div>
+                    )}
                     <TechCertifications
                       techId={t.id}
                       techName={t.name}
@@ -676,7 +707,7 @@ export function FieldServiceConsole() {
       {section === 'pricebook' && (
         <div className="space-y-4">
           <div className={cardCls}>
-            <h4 className="mb-2 text-xs font-semibold text-white">Add Price Book Item · avg margin {avgMargin}%</h4>
+            <h4 className="mb-2 text-xs font-semibold text-white">Add Price Book Item · avg markup {avgMarkup}% · avg margin {avgMargin}%</h4>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
               <input className={inputCls} placeholder="Name" value={piName} onChange={(e) => setPiName(e.target.value)} />
               <select className={inputCls} value={piKind} onChange={(e) => setPiKind(e.target.value)}>
@@ -702,7 +733,9 @@ export function FieldServiceConsole() {
                         onBlur={(e) => { const v = Number(e.target.value); if (v !== i.markupPct) updateMarkup(i.id, v); }} />
                     </td>
                     <td className="font-medium text-emerald-300">${i.price.toFixed(2)}</td>
-                    <td><button onClick={() => removePriceItem(i.id)} aria-label="Remove item" className="text-zinc-600 hover:text-rose-400"><Trash2 className="h-3.5 w-3.5" /></button></td>
+                    <td>{confirmRemovePb === i.id
+                      ? <button onClick={() => removePriceItem(i.id)} className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-medium text-white hover:bg-rose-500">Confirm remove?</button>
+                      : <button onClick={() => setConfirmRemovePb(i.id)} aria-label="Remove item" className="text-zinc-600 hover:text-rose-400"><Trash2 className="h-3.5 w-3.5" /></button>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -772,11 +805,13 @@ export function FieldServiceConsole() {
           <div className={cardCls}>
             <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-white"><ClipboardCheck className="h-3.5 w-3.5 text-blue-400" /> On-Site Technician Workflow</h4>
             <div className="flex flex-wrap items-center gap-2">
-              <select className={inputCls} value={wfAssignment} onChange={(e) => loadWorkflow(e.target.value)}>
+              <select className={inputCls} value={wfAssignment} onChange={(e) => selectAssignment(e.target.value)}>
                 <option value="">Select assignment…</option>
-                {allAssignments.map((a) => <option key={a.id} value={a.id}>{a.jobTitle} · {a.client || 'no client'}</option>)}
+                {allAssignments.map((a) => <option key={a.id} value={a.id}>{a.jobTitle} · {a.client || 'no client'}{a.workflow ? ` · workflow ${a.workflow.progress}%` : ''}</option>)}
               </select>
-              <button className={btnCls} onClick={startWorkflow} disabled={busy || !wfAssignment}>Start Workflow</button>
+              {allAssignments.find((a) => a.id === wfAssignment)?.workflow && !activeWf
+                ? <button className={btnCls} onClick={() => loadWorkflow(wfAssignment)} disabled={busy || !wfAssignment}>Open Workflow</button>
+                : <button className={btnCls} onClick={startWorkflow} disabled={busy || !wfAssignment || !!activeWf}>Start Workflow</button>}
             </div>
           </div>
           {activeWf && (
@@ -985,6 +1020,7 @@ export function FieldServiceConsole() {
                     {i.jobFound ? i.jobTitle : <span className="text-amber-400">job no longer on dispatch board</span>} · {i.jurisdiction} · {i.inspector} · {i.scheduledDate}
                   </div>
                   {i.permitNumber && <div className="text-zinc-600">Permit #{i.permitNumber}</div>}
+                  {i.notes && <div className="mt-0.5 text-[11px] text-zinc-500">Notes: {i.notes}</div>}
                   {i.result === 'fail' && (
                     <div className="mt-1 flex items-start gap-1 rounded bg-rose-500/10 px-1.5 py-1 text-[11px] text-rose-300">
                       <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />

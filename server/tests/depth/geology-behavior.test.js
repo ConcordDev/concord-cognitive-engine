@@ -77,21 +77,26 @@ describe("geology — calc contracts (exact computed values)", () => {
     });
     assert.equal(r.ok, true);
     assert.equal(r.result.specimen, "Quartz");
-    // score = 25 (hardness>0) + 20 (streak) + 20 (cleavage) + 20 (sg>0) + 15 (color) = 100
-    assert.equal(r.result.identificationConfidence, 100);
+    // Geology build (#2158): species-match scoring. Best species (quartz) earns
+    // 30 (hardness 7) + 25 (sg 2.65) + 15 (streak white) + 10 (cleavage none)
+    // + 5 (colour is corroborating only: 10 * 0.5) = 85; fracture was not supplied.
+    assert.equal(r.result.identificationConfidence, 85);
     assert.equal(r.result.properties.hardness, 7);
-    assert.equal(r.result.classification, "silicate-likely"); // >= 7
-    assert.deepEqual(r.result.testsRecommended, []); // score >= 60
-    // testsPerformed counts truthy/non-zero properties: hardness, streak, cleavage, sg = 4
-    assert.equal(r.result.testsPerformed, 4);
+    assert.equal(r.result.identification.species, "quartz");
+    assert.equal(r.result.classification, "silicate-species"); // identified: family-species
+    assert.deepEqual(r.result.testsRecommended, []); // match >= 85
+    // testsPerformed counts supplied properties: hardness, streak, cleavage, sg, colour = 5
+    assert.equal(r.result.testsPerformed, 5);
   });
 
   it("mineralId: sparse data scores low → carbonate classification + recommended tests", async () => {
     const r = await lensRun("geology", "mineralId", {
       data: { name: "Calcite?", hardness: 3 },
     });
-    // score = 25 only → < 60
-    assert.equal(r.result.identificationConfidence, 25);
+    // one property only: hardness 3 earns 30 for the best-matching species
+    // (30 * 1, within 0.25 Mohs); a single test is never an identification.
+    assert.equal(r.result.identificationConfidence, 30);
+    assert.equal(r.result.identification, null);
     assert.equal(r.result.classification, "carbonate-or-sulfate"); // >=3 <7
     assert.ok(r.result.testsRecommended.length > 0);
   });
