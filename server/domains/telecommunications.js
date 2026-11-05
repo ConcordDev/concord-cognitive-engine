@@ -111,8 +111,6 @@ function rangeForBudget(budgetDb, f, hb, hm, terrain) {
   return Math.round(lo * 1000) / 1000;
 }
 
-const TERRAIN_ATTEN = { urban: 0.62, suburban: 0.82, rural: 1.0, water: 1.08 };
-
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerTelecommunicationsActions(registerLensAction) {
@@ -133,6 +131,16 @@ export default function registerTelecommunicationsActions(registerLensAction) {
       const perUserMbps = unavailable.length
         ? null
         : Math.round((bandwidth * 1000 * (1 - utilization / 100)) / users * 10) / 10;
+      // The USED side of the same inputs (F3): the walked surface printed only
+      // the available (headroom) per-user figure, so 10 Gbps at 60% over 4,000
+      // users read "1 Mbps/user" with the used 1.5 Mbps/user nowhere on the
+      // surface. Both sides print now, labelled.
+      const usedGbps = unavailable.length
+        ? null
+        : Math.round(bandwidth * (utilization / 100) * 100) / 100;
+      const usedPerUserMbps = unavailable.length
+        ? null
+        : Math.round((bandwidth * 1000 * (utilization / 100)) / users * 10) / 10;
       return {
         ok: true,
         result: {
@@ -140,6 +148,8 @@ export default function registerTelecommunicationsActions(registerLensAction) {
           utilization: utilization == null ? null : `${utilization}%`,
           activeUsers: users == null ? null : users,
           availablePerUser: perUserMbps == null ? null : `${perUserMbps} Mbps`,
+          usedThroughput: usedGbps == null ? null : `${usedGbps} Gbps`,
+          usedPerUser: usedPerUserMbps == null ? null : `${usedPerUserMbps} Mbps`,
           headroom: utilization == null ? null : `${Math.round(100 - utilization)}%`,
           status: utilization == null ? null : utilization > 85 ? "critical" : utilization > 70 ? "high" : "normal",
           upgrade: utilization == null ? null : utilization > 80 ? "Capacity upgrade recommended" : "Sufficient capacity",
@@ -242,13 +252,30 @@ export default function registerTelecommunicationsActions(registerLensAction) {
             marginPercent: null,
             profitable: null,
             breakeven: null,
+            breakevenMonths: null,
+            monthlyRevenue: null,
+            infrastructurePerSubscriber: null,
+            costBasis: null,
             reason: "not_recorded",
             unavailable,
           },
         };
       }
+      // Cost basis, stated (F8): infrastructure amortised straight-line over
+      // 60 months plus monthly operations, spread over subscribers. The /60
+      // was previously an unstated amortisation inside the blended figure.
       const costPerSub = (infrastructure / 60 + operations) / subscribers;
       const margin = arpu - costPerSub;
+      // Breakeven (F8): months for the monthly net (ARPU − ops per sub,
+      // across ALL subscribers) to recover the infrastructure outlay. The
+      // previous formula divided the outlay by the PER-SUBSCRIBER margin and
+      // then by 12 — subscriber-months mislabelled as months — printing
+      // "421 months" on inputs that recover in ≈1 month. No positive monthly
+      // net → no breakeven exists; null, never a fabricated month count.
+      const monthlyNet = (arpu - operations / subscribers) * subscribers;
+      const breakevenMonths = monthlyNet > 0
+        ? Math.round((infrastructure / monthlyNet) * 100) / 100
+        : null;
       return {
         ok: true,
         result: {
@@ -258,8 +285,11 @@ export default function registerTelecommunicationsActions(registerLensAction) {
           margin: Math.round(margin * 100) / 100,
           marginPercent: arpu === 0 ? null : Math.round((margin / arpu) * 100),
           profitable: margin > 0,
-          breakeven:
-            Math.ceil(infrastructure / (arpu - operations / subscribers) / 12) + " months",
+          breakeven: breakevenMonths == null ? null : `${Math.ceil(breakevenMonths)} months`,
+          breakevenMonths,
+          monthlyRevenue: Math.round(arpu * subscribers * 100) / 100,
+          infrastructurePerSubscriber: Math.round((infrastructure / subscribers) * 100) / 100,
+          costBasis: "Infrastructure amortised over 60 months + monthly operations, per subscriber",
         },
       };
     } catch (e) {
@@ -361,9 +391,15 @@ export default function registerTelecommunicationsActions(registerLensAction) {
         const terrain = t.terrain || "suburban";
         const f = num(t.freqMhz, 1800);
         const hb = num(t.heightM, 30);
-        const rawRangeKm = rangeForBudget(budgetDb, f, hb, mobileHeightM, terrain);
-        const atten = TERRAIN_ATTEN[terrain] ?? 0.85;
-        const effRangeKm = Math.round(rawRangeKm * atten * 1000) / 1000;
+        // The range IS the budget-derived range of the stated model (F4):
+        // terrain enters through the COST-231 environment correction inside
+        // pathLossDb (urban +3 dB · suburban 0 dB · open −4 dB). A post-solve
+        // terrain multiplier (suburban ×0.82) previously sat unstated in this
+        // chain, printing a radius ~18% below the model's own derivation and
+        // an edge RSRP inconsistent with the printed budget; it is retired so
+        // propagation, interference and drive-test prediction all read the
+        // one stated chain.
+        const effRangeKm = rangeForBudget(budgetDb, f, hb, mobileHeightM, terrain);
         // received power at cell edge
         const edgeLoss = pathLossDb(effRangeKm, f, hb, mobileHeightM, terrain);
         const rsrpEdgeDbm = Math.round((eirpDbm - edgeLoss) * 10) / 10;
@@ -386,7 +422,7 @@ export default function registerTelecommunicationsActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          model: "COST-231 Hata + terrain attenuation",
+          model: "COST-231 Hata",
           cells,
           totalCoverageKm2: totalKm2,
           assumptions: { rxSensitivityDbm, mobileHeightM, fadeMarginDb },
@@ -416,9 +452,9 @@ export default function registerTelecommunicationsActions(registerLensAction) {
         const budgetDb = eirpDbm - -100 - 8;
         const terrain = t.terrain || "suburban";
         const f = num(t.freqMhz, 1800);
-        const r =
-          rangeForBudget(budgetDb, f, num(t.heightM, 30), mobileHeightM, terrain) *
-          (TERRAIN_ATTEN[terrain] ?? 0.85);
+        // Same stated chain as propagationModel (F4): the budget-derived
+        // COST-231 range, no post-solve terrain multiplier.
+        const r = rangeForBudget(budgetDb, f, num(t.heightM, 30), mobileHeightM, terrain);
         return {
           id: t.id || t.name,
           name: t.name || t.id,
@@ -853,6 +889,24 @@ export default function registerTelecommunicationsActions(registerLensAction) {
     }
   });
 
+  registerLensAction("telecommunications", "outageDelete", (ctx, _artifact, params) => {
+    try {
+      const s = ensureState();
+      const userId = uid(ctx);
+      const outages = list(s.outages, userId);
+      const id = String(params?.id || "");
+      // The exit path the surface lacked (F9): a resolved outage record —
+      // and the incident-timeline entry rendered from it — persisted forever
+      // because no delete verb existed. Owner-scoped like towerDelete.
+      const next = outages.filter((o) => o.id !== id);
+      if (!id || next.length === outages.length) return { ok: false, error: "not_found" };
+      s.outages.set(userId, next);
+      return { ok: true, result: { removed: 1 } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   registerLensAction("telecommunications", "slaReport", (ctx, _artifact, params) => {
     try {
       const s = ensureState();
@@ -864,12 +918,18 @@ export default function registerTelecommunicationsActions(registerLensAction) {
       const since = now - windowMs;
       const inWindow = outages.filter((o) => (o.resolvedAt || now) >= since);
       let downtimeMs = 0;
+      let openDowntimeMs = 0;
       let mttrSum = 0;
       let resolvedCount = 0;
       for (const o of inWindow) {
         const start = Math.max(o.startedAt, since);
         const end = o.resolvedAt || now;
-        downtimeMs += Math.max(0, end - start);
+        const span = Math.max(0, end - start);
+        downtimeMs += span;
+        // Downtime still accruing from open incidents is named separately
+        // (F2): the report must show what an open incident is costing NOW,
+        // not read as a clean 100% while one stands open.
+        if (!o.resolvedAt) openDowntimeMs += span;
         if (o.resolvedAt) {
           mttrSum += o.resolvedAt - o.startedAt;
           resolvedCount++;
@@ -880,7 +940,11 @@ export default function registerTelecommunicationsActions(registerLensAction) {
       const mttrHours = resolvedCount
         ? Math.round((mttrSum / resolvedCount / 3600000) * 100) / 100
         : null;
-      const breachMs = Math.max(0, windowMs * (1 - slaTargetPct / 100) - downtimeMs) * -1;
+      // Hours of downtime OVER the target's budget. The previous expression
+      // negated a clamped remainder and so read 0 on every input — a breach
+      // banner that could never name its overage (F2).
+      const budgetMs = windowMs * (1 - slaTargetPct / 100);
+      const breachMs = Math.max(0, downtimeMs - budgetMs);
       return {
         ok: true,
         result: {
@@ -888,12 +952,12 @@ export default function registerTelecommunicationsActions(registerLensAction) {
           slaTargetPercent: slaTargetPct,
           availabilityPercent: availabilityPct,
           downtimeHours: Math.round((downtimeMs / 3600000) * 100) / 100,
+          openDowntimeHours: Math.round((openDowntimeMs / 3600000) * 100) / 100,
           incidents: inWindow.length,
           openIncidents: inWindow.filter((o) => o.status === "open").length,
           mttrHours,
           slaMet: availabilityPct >= slaTargetPct,
-          breachBudgetHours:
-            breachMs > 0 ? Math.round((breachMs / 3600000) * 100) / 100 : 0,
+          breachBudgetHours: Math.round((breachMs / 3600000) * 100) / 100,
           bySeverity: ["critical", "major", "minor"].map((sev) => ({
             severity: sev,
             count: inWindow.filter((o) => o.severity === sev).length,
@@ -934,7 +998,9 @@ export default function registerTelecommunicationsActions(registerLensAction) {
         });
         imported++;
       }
-      return { ok: true, result: { imported, total: store.length } };
+      // Skipped rows are counted, not silently dropped (F6): the surface
+      // reports imported vs skipped so a malformed file can't no-op quietly.
+      return { ok: true, result: { imported, skipped: rows.length - imported, total: store.length } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
