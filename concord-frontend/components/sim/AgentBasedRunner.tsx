@@ -9,6 +9,7 @@
 
 import { useCallback, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { recordStudioRun } from '@/lib/sim/studio-activity';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -93,6 +94,7 @@ export function AgentBasedRunner() {
     const r = await lensRun<ABMResult>('sim', 'agentBased', params);
     if (r.data.ok && r.data.result) {
       setResult(r.data.result);
+      recordStudioRun();
     } else {
       setResult(null);
       setError(r.data.error || 'Agent simulation failed.');
@@ -199,6 +201,17 @@ export function AgentBasedRunner() {
                 <Stat label="Peak Predators" value={result.peakPredators} />
               )}
               <Stat label="Steps Run" value={result.steps} />
+            </div>
+          )}
+
+          {/* sim.md F7: the SIR run previously stopped at peak/total stats
+              and never printed the final numeric S/I/R counts the series
+              chart ends on. finalState carries them directly. */}
+          {kind === 'sir' && result.finalState && (
+            <div className="grid grid-cols-3 gap-3">
+              <Stat label="Final Susceptible" value={result.finalState.susceptible ?? 0} />
+              <Stat label="Final Infected" value={result.finalState.infected ?? 0} />
+              <Stat label="Final Recovered" value={result.finalState.recovered ?? 0} />
             </div>
           )}
 
