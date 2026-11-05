@@ -194,8 +194,10 @@ const STRUCT_DEFAULTS = {
   conn: { boltDiameter: 0.75 as Num, boltGrade: 'a325', numBolts: 4 as Num, loadType: 'single' },
   result: null as StructRes | null,
   resultAt: null as string | null,
+  resultSig: '',
   connResult: null as CalcResult | null,
   connAt: null as string | null,
+  connSig: '',
 };
 
 function StructuralSection() {
@@ -207,18 +209,26 @@ function StructuralSection() {
   const [connectionLoading, setConnectionLoading] = useState(false);
   const [connectionError, setConnectionError] = useState('');
 
+  // The inputs a structural run actually sends — a displayed result is
+  // scoped to these; editing any of them afterwards marks it stale.
+  const structInputs = () => ({
+    loadKips: n(i.loadKips, 0), lengthFt: n(i.lengthFt, 1), modulusE: n(i.modulusE, 1), momentI: n(i.momentI, 1), kFactor: n(i.kFactor, 1),
+    windMph: n(i.windMph, 0), wallHeightFt: n(i.wallHeightFt, 1), wallThicknessIn: n(i.wallThicknessIn, 1),
+    concreteFc: n(i.concreteFc, 4000), rebarSpacingIn: n(i.rebarSpacingIn, 12), rebarSize: parseInt(i.rebarSize, 10),
+    weldSize: n(i.weldSize, 0.25), length: n(i.weldLength, 1), material: i.weldMaterial,
+  });
+  const structStale = !!st.result && st.resultSig !== '' && st.resultSig !== JSON.stringify(structInputs());
+  const connInputs = () => ({ boltDiameter: n(c.boltDiameter, 0.75), boltGrade: c.boltGrade, numBolts: n(c.numBolts, 1), loadType: c.loadType });
+  const connStale = !!st.connResult && st.connSig !== '' && st.connSig !== JSON.stringify(connInputs());
+
   const run = async () => {
     setLoading(true); setError('');
+    const sent = structInputs();
     const r = await lensRun<{ ok: boolean; results: StructRes }>(
       'engineering', 'structuralCheck',
-      {
-        loadKips: n(i.loadKips, 0), lengthFt: n(i.lengthFt, 1), modulusE: n(i.modulusE, 1), momentI: n(i.momentI, 1), kFactor: n(i.kFactor, 1),
-        windMph: n(i.windMph, 0), wallHeightFt: n(i.wallHeightFt, 1), wallThicknessIn: n(i.wallThicknessIn, 1),
-        concreteFc: n(i.concreteFc, 4000), rebarSpacingIn: n(i.rebarSpacingIn, 12), rebarSize: parseInt(i.rebarSize, 10),
-        weldSize: n(i.weldSize, 0.25), length: n(i.weldLength, 1), material: i.weldMaterial,
-      },
+      sent,
     );
-    if (r.data.ok && r.data.result) setSt((s) => ({ ...s, result: r.data.result!.results, resultAt: new Date().toISOString() }));
+    if (r.data.ok && r.data.result) setSt((s) => ({ ...s, result: r.data.result!.results, resultAt: new Date().toISOString(), resultSig: JSON.stringify(sent) }));
     else setError(r.data.error || 'Structural check failed');
     setLoading(false);
   };
@@ -226,11 +236,12 @@ function StructuralSection() {
   // ── Bolted connection (AISC allowable shear) — engineering.connectionCheck ──
   const runConnection = async () => {
     setConnectionLoading(true); setConnectionError('');
+    const sent = connInputs();
     const r = await lensRun<CalcResult>(
       'engineering', 'connectionCheck',
-      { boltDiameter: n(c.boltDiameter, 0.75), boltGrade: c.boltGrade, numBolts: n(c.numBolts, 1), loadType: c.loadType },
+      sent,
     );
-    if (r.data.ok && r.data.result) setSt((s) => ({ ...s, connResult: r.data.result!, connAt: new Date().toISOString() }));
+    if (r.data.ok && r.data.result) setSt((s) => ({ ...s, connResult: r.data.result!, connAt: new Date().toISOString(), connSig: JSON.stringify(sent) }));
     else setConnectionError(r.data.error || 'Connection check failed');
     setConnectionLoading(false);
   };
@@ -274,7 +285,13 @@ function StructuralSection() {
       {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
       {st.result && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          {structStale && (
+            <p role="alert" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              Stale — the structural inputs changed after this result was computed. It describes the earlier
+              inputs; run the check again for the current ones.
+            </p>
+          )}
+          <div className={`grid grid-cols-1 md:grid-cols-3 gap-2 ${structStale ? 'opacity-50' : ''}`}>
             <ResultCard title="Column — critical buckling load (Pcr)" result={st.result.buckling} />
             <ResultCard title="Wall — shear factor of safety" result={st.result.bending} />
             <ResultCard title="Weld — allowable shear capacity" result={st.result.weld} />
@@ -304,7 +321,13 @@ function StructuralSection() {
         {connectionError && <p role="alert" className="text-xs text-red-400">{connectionError}</p>}
         {st.connResult && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            {connStale && (
+              <p role="alert" className="text-xs text-amber-300">
+                Stale — the connection inputs changed after this result was computed; check again for the
+                current ones.
+              </p>
+            )}
+            <div className={`grid grid-cols-1 md:grid-cols-3 gap-2 ${connStale ? 'opacity-50' : ''}`}>
               <ResultCard title="Connection — allowable shear capacity" result={st.connResult} />
             </div>
             <Computed at={st.connAt} testId="calc-connection-at" />
