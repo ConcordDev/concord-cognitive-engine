@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Play, CheckCircle, BookOpen, Loader2, ChevronRight, FileText, Clock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { lessonCompleteNotice, playerEmptyCopy } from '@/components/education/lesson-complete';
 
 interface Lesson {
   id: string;
@@ -39,6 +40,7 @@ export function LessonPlayer() {
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState<string | null>(null);
   const [position, setPosition] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const completedRef = useRef(false);
@@ -48,8 +50,8 @@ export function LessonPlayer() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (courseId) loadCourse(courseId); }, [courseId]);
 
-  async function refreshEnrollments() {
-    setLoading(true);
+  async function refreshEnrollments(quiet = false) {
+    if (!quiet) setLoading(true);
     try {
       const res = await lensRun({ domain: 'education', action: 'enrollments-list', input: {} });
       const data = (res.data?.result?.enrollments || []) as Enrollment[];
@@ -62,29 +64,31 @@ export function LessonPlayer() {
   async function loadCourse(cid: string) {
     try {
       const res = await lensRun({ domain: 'education', action: 'lessons-list', input: { courseId: cid } });
-      const ls = ((res.data?.result?.lessons || []) as Lesson[]).sort((a, b) => a.order - b.order);
+      const result = res.data?.result as { lessons?: Lesson[]; completedLessonIds?: string[] } | undefined;
+      const ls = ((result?.lessons || []) as Lesson[]).sort((a, b) => a.order - b.order);
+      const done = new Set((result?.completedLessonIds || []).filter((id) => ls.some(l => l.id === id)));
       setLessons(ls);
+      setCompletedIds(done);
       setActiveLesson(ls[0] || null);
-      completedRef.current = false;
-
-      // Track completed lessons from enrollments aggregate (best-effort)
-      const enr = enrollments.find(e => e.courseId === cid);
-      if (enr && enr.completedLessons >= ls.length) {
-        setCompletedIds(new Set(ls.map(l => l.id)));
-      } else {
-        // We don't have a per-lesson "completed" macro yet; reset on course change
-        setCompletedIds(new Set());
-      }
+      completedRef.current = !!ls[0] && done.has(ls[0].id);
+      setNotice(null);
     } catch (e) { console.error('[LessonPlayer] lessons failed', e); }
   }
 
   async function markComplete(lessonId: string) {
     if (!courseId || completedIds.has(lessonId)) return;
     try {
-      await lensRun({ domain: 'education', action: 'lessons-complete', input: { courseId, lessonId } });
+      const res = await lensRun({ domain: 'education', action: 'lessons-complete', input: { courseId, lessonId } });
+      if (res.data?.ok === false) {
+        setNotice(res.data.error || 'Could not complete this lesson.');
+        return;
+      }
+      const awarded = Number(res.data?.result?.pointsAwarded);
+      const already = res.data?.result?.alreadyCompleted === true;
       setCompletedIds(prev => new Set([...prev, lessonId]));
-      await refreshEnrollments();
-    } catch (e) { console.error('[LessonPlayer] complete failed', e); }
+      setNotice(lessonCompleteNotice(Number.isFinite(awarded) ? awarded : 0, already));
+      await refreshEnrollments(true);
+    } catch (e) { console.error('[LessonPlayer] complete failed', e); setNotice('Could not complete this lesson.'); }
   }
 
   function onTimeUpdate() {
@@ -135,14 +139,14 @@ export function LessonPlayer() {
       ) : enrollments.length === 0 ? (
         <div className="px-3 py-10 text-center text-xs text-gray-400">
           <GraduationCapEmpty />
-          Enroll in a course to start watching lessons.
+          {playerEmptyCopy(false, 0)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
           {/* Lesson list (left rail) */}
           <aside className="border-r border-white/10 max-h-[28rem] overflow-y-auto">
             {lessons.length === 0 ? (
-              <div className="px-3 py-6 text-center text-[11px] text-gray-400">No lessons in this course yet.</div>
+              <div className="px-3 py-6 text-center text-[11px] text-gray-400">{playerEmptyCopy(true, 0)}</div>
             ) : (
               <ul className="divide-y divide-white/5">
                 {lessons.map(l => {
@@ -189,19 +193,18 @@ export function LessonPlayer() {
                     <div className="flex flex-col items-center justify-center h-full text-gray-400 text-xs">
                       <FileText className="w-8 h-8 mb-2 opacity-30" />
                       <div>{activeLesson.kind === 'video' ? 'No video URL set for this lesson.' : `This is a ${activeLesson.kind} lesson.`}</div>
-                      <button
-                        onClick={() => markComplete(activeLesson.id)}
-                        disabled={completedIds.has(activeLesson.id)}
-                        className="mt-3 px-3 py-1 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40"
-                      >
-                        {completedIds.has(activeLesson.id) ? 'Completed' : 'Mark complete'}
-                      </button>
                     </div>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm text-white font-semibold flex-1 truncate">{activeLesson.title}</h3>
-                  {completedIds.has(activeLesson.id) && <span className="text-[10px] text-emerald-400 inline-flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Completed</span>}
+                  <button
+                    onClick={() => markComplete(activeLesson.id)}
+                    disabled={completedIds.has(activeLesson.id)}
+                    className="px-2 py-1 text-[10px] rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40"
+                  >
+                    {completedIds.has(activeLesson.id) ? 'Completed' : 'Mark complete'}
+                  </button>
                   <button
                     onClick={() => {
                       const next = lessons[lessons.findIndex(l => l.id === activeLesson.id) + 1];
@@ -212,6 +215,7 @@ export function LessonPlayer() {
                     Next <ChevronRight className="w-3 h-3" />
                   </button>
                 </div>
+                {notice && <p role="status" className="text-[11px] text-gray-300">{notice}</p>}
                 {activeEnrollment && (
                   <div className="text-[10px] text-gray-400 flex items-center gap-2">
                     <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
@@ -225,7 +229,9 @@ export function LessonPlayer() {
                 )}
               </>
             ) : (
-              <div className="flex items-center justify-center py-16 text-xs text-gray-400">Pick a lesson to start.</div>
+              <div className="flex items-center justify-center py-16 text-xs text-gray-400 px-4 text-center">
+                {lessons.length === 0 ? playerEmptyCopy(true, 0) : 'Pick a lesson to start.'}
+              </div>
             )}
           </main>
         </div>

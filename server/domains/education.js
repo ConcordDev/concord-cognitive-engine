@@ -1174,7 +1174,9 @@ Constraints:
     const courseId = String(params.courseId || "");
     const course = courseStore(ctx, s).get(courseId);
     if (!course || !courseVisibleTo(course, userId)) return { ok: false, error: "course not found" };
-    return { ok: true, result: { lessons: course.lessons || [] } };
+    const progress = ensureEduBucket(s, "lessonProgress", userId);
+    const completedLessonIds = progress.filter(p => p.courseId === courseId).map(p => p.lessonId);
+    return { ok: true, result: { lessons: course.lessons || [], completedLessonIds } };
   });
 
   registerLensAction("education", "lessons-create", (ctx, _a, params = {}) => {
@@ -1272,16 +1274,19 @@ Constraints:
     if (!courseId || !lessonId) return { ok: false, error: "courseId and lessonId required" };
     const progressMap = ensureEduBucket(s, "lessonProgress", userId);
     const existing = progressMap.find(p => p.courseId === courseId && p.lessonId === lessonId);
+    const already = !!existing;
     if (existing) {
       existing.completedAt = new Date().toISOString();
     } else {
       progressMap.push({ courseId, lessonId, completedAt: new Date().toISOString() });
     }
-    // Award energy points + check streak
-    const points = ensureEduBucket(s, "energyPoints", userId);
-    points.push({ amount: 50, source: "lesson_complete", lessonId, timestamp: new Date().toISOString() });
+    // First completion awards the stated 50. A repeat does not mint more.
+    const pointsAwarded = already ? 0 : 50;
+    if (pointsAwarded > 0) {
+      ensureEduBucket(s, "energyPoints", userId).push({ amount: pointsAwarded, source: "lesson_complete", lessonId, timestamp: new Date().toISOString() });
+    }
     saveStateIfAvailable();
-    return { ok: true, result: { completedAt: new Date().toISOString(), pointsAwarded: 50 } };
+    return { ok: true, result: { completedAt: new Date().toISOString(), pointsAwarded, alreadyCompleted: already } };
   });
 
   // ── Enrollments + course progress ─────────────────────────────
