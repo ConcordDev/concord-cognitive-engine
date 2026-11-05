@@ -27,7 +27,16 @@ export function PropublicaSearch() {
   const [orgs, setOrgs] = useState<Org[]>([]);
   const search = useMutation({
     mutationFn: async () => callMacro<{ orgs: Org[] }>('search-orgs', state ? { query: query.trim(), state } : { query: query.trim() }),
-    onSuccess: (env) => { if (env.ok && env.result) setOrgs(env.result.orgs); else setOrgs([]); },
+    // F1: ProPublica returns each org's EIN as an INTEGER (its string form
+    // is the separate `strein` field) and search-orgs maps it through
+    // untouched — this surface then called o.ein.replace(...) in render,
+    // throwing on the first successful search and taking the whole lens
+    // surface to the error page (deterministically, twice in the walk).
+    // Normalize the org at the boundary: EIN is a string here, always.
+    onSuccess: (env) => {
+      if (env.ok && env.result) setOrgs(env.result.orgs.map((o) => ({ ...o, ein: String(o.ein ?? '') })));
+      else setOrgs([]);
+    },
   });
 
   return (

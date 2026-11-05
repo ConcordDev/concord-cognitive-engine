@@ -1747,7 +1747,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xlsx'],
     actions: ['donorRetention', 'grantReporting', 'volunteerMatch', 'campaignProgress', 'impactReport', 'taxReceipt', 'eventROI', 'memberEngagement'],
     category: 'social',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Run your nonprofit.",
       caption: "Donors, grants, volunteers, campaigns, impact \u2014 retain, report, match, measure.",

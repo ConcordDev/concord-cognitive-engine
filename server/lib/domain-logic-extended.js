@@ -1330,7 +1330,10 @@ EXTENDED_DOMAIN_RULES.set("music", {
 
 // === Nonprofit ===
 EXTENDED_DOMAIN_RULES.set("nonprofit", {
-  types: ["campaign", "donor", "grant", "volunteer", "report"],
+  // "capture" admitted on the retail/environment precedent: Quick Capture
+  // failed validation_failed here (the capture genus's eighth domain,
+  // cross-check #77(f)) because the rule admitted no capture type.
+  types: ["campaign", "donor", "grant", "volunteer", "report", "capture"],
   validStatuses: ["draft", "active", "funded", "completed", "archived"],
   transitions: { draft: ["active", "archived"], active: ["funded", "completed", "archived"], funded: ["completed", "archived"], completed: ["archived"], archived: [] },
   requiredFields: { campaign: ["title"] },
