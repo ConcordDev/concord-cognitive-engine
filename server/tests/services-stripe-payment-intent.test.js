@@ -311,13 +311,18 @@ describe("services — paymentCapture (quick pay-on-site path) stays honest alon
     assert.notEqual(r.result.payment.status, "captured");
   });
 
-  it("card + Stripe configured: quick-capture still can't confirm a charge (no token), points at the real flow", () => {
+  it("card + Stripe key present: quick-capture still can't confirm a charge (no token); the note states presence + no-charge and names no internals", () => {
     process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
     const r = call("paymentCapture", ctxA, { client: "Gia", subtotal: 40, method: "card", cardLast4: "4242" });
     assert.equal(r.ok, true);
     assert.equal(r.result.authStatus, "unprovisioned");
     assert.notEqual(r.result.payment.status, "captured");
-    assert.match(r.result.note, /bookingCreatePaymentIntent/);
+    // F4 contract (services full build): the note must not assert
+    // "Stripe is configured" (presence is not validity) and must not
+    // leak internal macro names to the user.
+    assert.match(r.result.note, /Stripe key is present/);
     assert.match(r.result.note, /without charge/i);
+    assert.doesNotMatch(r.result.note, /Stripe is configured/);
+    assert.doesNotMatch(r.result.note, /bookingCreatePaymentIntent|bookingConfirmPayment/);
   });
 });
