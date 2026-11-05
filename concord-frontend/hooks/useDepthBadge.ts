@@ -72,6 +72,16 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
   /**
+   * ConKay's member path is live (determination probe 2026-10-31: solves
+   * derive from member inputs, edits re-solve, saves persist); the generic
+   * REAL_FREE line describes only its reference/showcase corpus. The
+   * declaration is scoped to both halves (F1).
+   */
+  conkay: {
+    label: 'Live · Real data',
+    caption: 'Your studies are live: solves run on your inputs and saves persist. The reference materials and precomputed showcase designs are a real, static open-access dataset.',
+  },
+  /**
    * Housing's substrate is the member's own persistent world state —
    * land claims and houses live in the platform database, owner-gated
    * in the lib (PROBE-BLOCKED at the then-missing claim surface in
