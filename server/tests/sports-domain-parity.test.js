@@ -93,6 +93,61 @@ describe("sports.espn-schedule (calendar)", () => {
     assert.ok(r.result.upcoming >= 1);
     assert.equal(r.result.fixtures[0].home, "LAL");
   });
+
+  it("keeps a completed game from the day before and collapses a repeated event id", async () => {
+    const seen = [];
+    globalThis.fetch = async (url) => {
+      const m = String(url).match(/dates=(\d{8})/);
+      const day = m ? m[1] : "";
+      seen.push(day);
+      const onFinalDay = day === "20261102";
+      const events = day === "20261104"
+        ? [{
+            id: "future",
+            shortName: "BOS @ NYK",
+            name: "Celtics at Knicks",
+            date: "2026-11-04T00:30:00Z",
+            status: { type: { description: "Scheduled", state: "pre", completed: false } },
+            competitions: [{ competitors: [
+              { team: { abbreviation: "NYK" }, homeAway: "home" },
+              { team: { abbreviation: "BOS" }, homeAway: "away" },
+            ] }],
+          }]
+        : [{
+            id: "final-1",
+            shortName: "LAL @ GSW",
+            name: "Lakers at Warriors",
+            date: "2026-11-02T03:00:00Z",
+            status: {
+              type: {
+                description: onFinalDay ? "Final" : "Scheduled",
+                state: onFinalDay ? "post" : "pre",
+                completed: onFinalDay,
+              },
+            },
+            competitions: [{ competitors: [
+              { team: { abbreviation: "GSW" }, score: onFinalDay ? "110" : null, homeAway: "home" },
+              { team: { abbreviation: "LAL" }, score: onFinalDay ? "104" : null, homeAway: "away" },
+            ] }],
+          }];
+      return { ok: true, json: async () => ({ events }) };
+    };
+    const r = await call("espn-schedule", ctxA, { sport: "nba", days: 2, date: "20261103" });
+    assert.equal(r.ok, true);
+    assert.ok(seen.includes("20261102"), `lookback missing: ${seen.join(",")}`);
+    assert.ok(seen.includes("20261103"));
+    assert.ok(seen.includes("20261104"));
+    assert.equal(r.result.fromDay, "20261102");
+    assert.equal(r.result.toDay, "20261104");
+    const finals = r.result.fixtures.filter((f) => f.id === "final-1");
+    assert.equal(finals.length, 1);
+    assert.equal(finals[0].completed, true);
+    assert.equal(finals[0].status, "Final");
+    assert.equal(finals[0].homeScore, 110);
+    const upcoming = r.result.fixtures.filter((f) => f.id === "future");
+    assert.equal(upcoming.length, 1);
+    assert.equal(upcoming[0].completed, false);
+  });
 });
 
 describe("sports.espn-standings", () => {

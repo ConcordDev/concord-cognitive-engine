@@ -5,9 +5,14 @@ import { useMutation } from '@tanstack/react-query';
 import { Trophy, Loader2, Circle, ChevronRight } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { isFinalScore, isLiveScore, scoreboardDateLabel, scoreboardStatusLabel } from '@/components/sports/scoreboard-card';
 
 interface Competitor { team?: string; abbrev?: string; score?: number | null; homeAway?: string; winner?: boolean; record?: string }
-interface GameEvent { id: string; name?: string; shortName?: string; date?: string; status?: { type?: { state?: string; completed?: boolean; description?: string }; period?: number; displayClock?: string }; teams?: Competitor[] }
+interface GameEvent {
+  id: string; name?: string; shortName?: string; date?: string;
+  status?: string | null; state?: string | null; completed?: boolean; clock?: string | null;
+  teams?: Competitor[];
+}
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 
@@ -35,13 +40,18 @@ export function LiveScoreboard() {
     mutationFn: async () => {
       setError(null);
       const env = await callMacro<{ events: GameEvent[] }>('scoreboard', { sport });
-      if (env.ok && env.result) setEvents(env.result.events);
-      else { setEvents([]); setError(env.error || 'failed'); }
+      if (env.ok && env.result) setEvents(env.result.events || []);
+      else setError(env.error || 'failed');
     },
   });
 
   useEffect(() => {
+    setEvents([]);
     load.mutate();
+    // ESPN is not a Concord channel. Refetch the live board so a game that
+    // ends on this tab settles to Final instead of keeping the mid-game card.
+    const id = window.setInterval(() => { load.mutate(); }, 60_000);
+    return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sport]);
 
@@ -64,7 +74,7 @@ export function LiveScoreboard() {
               title={`${sport.toUpperCase()} scoreboard — ${events.length} games`}
               content={events.map((e) => {
                 const [a, b] = e.teams || [];
-                return `${a?.abbrev || a?.team || '?'} ${a?.score ?? '-'} - ${b?.score ?? '-'} ${b?.abbrev || b?.team || '?'} (${e.status?.type?.description || '?'})`;
+                return `${a?.abbrev || a?.team || '?'} ${a?.score ?? '-'} - ${b?.score ?? '-'} ${b?.abbrev || b?.team || '?'} (${scoreboardStatusLabel(e)})`;
               }).join('\n')}
               extraTags={['sports', sport, 'scoreboard']}
               rawData={{ sport, events }}
@@ -79,15 +89,19 @@ export function LiveScoreboard() {
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         {events.map((e) => {
           const [a, b] = e.teams || [];
-          const live = e.status?.type?.state === 'in';
-          const completed = e.status?.type?.completed;
+          const live = isLiveScore(e);
+          const completed = isFinalScore(e);
+          const when = scoreboardDateLabel(e.date);
           return (
             <article key={e.id} className={`rounded-lg border ${live ? 'border-red-500/30 bg-red-500/5' : completed ? 'border-zinc-800 bg-zinc-950/40' : 'border-cyan-500/20 bg-zinc-950/40'} p-3`}>
-              <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-zinc-400">
-                <span>{e.shortName || e.name}</span>
-                <span className={`flex items-center gap-1 font-mono ${live ? 'text-red-300' : completed ? 'text-zinc-400' : 'text-cyan-300'}`}>
+              <div className="mb-2 flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-zinc-400">
+                <span className="min-w-0">
+                  <span className="block truncate">{e.shortName || e.name}</span>
+                  {when && <span className="mt-0.5 block font-mono normal-case tracking-normal text-zinc-500">{when}</span>}
+                </span>
+                <span className={`flex shrink-0 items-center gap-1 font-mono ${live ? 'text-red-300' : completed ? 'text-zinc-400' : 'text-cyan-300'}`}>
                   {live && <Circle className="h-2 w-2 animate-pulse fill-red-300 text-red-300" />}
-                  {e.status?.type?.description}{live && e.status?.displayClock ? ` · ${e.status.displayClock}` : ''}
+                  {scoreboardStatusLabel(e)}
                 </span>
               </div>
               <Row team={a} winner={!!a?.winner} live={live} />
