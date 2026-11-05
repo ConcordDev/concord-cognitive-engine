@@ -19,6 +19,12 @@ export type PaymentMethod = 'cash' | 'credit' | 'debit' | 'check' | 'gift_card' 
 
 export interface AppointmentData {
   clientName: string;
+  /** Link to the Desk Client record this appointment belongs to (F5: the
+   *  reminder pipeline resolves its recipient through this link). */
+  clientId?: string;
+  /** Snapshot of the linked client's Concord user ID, when the client
+   *  record carries one — the identity the ActionDock's DM reminder sends to. */
+  clientUserId?: string;
   serviceType: string;
   provider: string;
   date: string;
@@ -33,6 +39,9 @@ export interface AppointmentData {
 }
 
 export interface ClientData {
+  /** The client's Concord account ID, when known — lets appointment
+   *  reminders reach them by DM (see AppointmentData.clientUserId). */
+  userId?: string;
   phone: string;
   email: string;
   visitHistory: number;
@@ -133,6 +142,78 @@ export const STATUS_COLORS: Record<string, string> = {
   active: 'green-400',
   inactive: 'gray-400',
 };
+
+/* ================================================================== */
+/*  Booking-suite plane (server/domains/services.js svcStore)          */
+/*                                                                     */
+/*  The lens keeps two record planes: Desk artifacts (above) and the   */
+/*  booking suite's own store. The helpers below are the ONE shared    */
+/*  projection both panels use, so the Desk, the suite, and the        */
+/*  Dashboard all read the same book, the same clients, and the same   */
+/*  stock truth.                                                       */
+/* ================================================================== */
+
+export interface SuiteBooking {
+  id: string;
+  client: string;
+  clientUserId?: string | null;
+  service: string;
+  staff: string;
+  date: string;
+  time: string;
+  duration: number;
+  price: number;
+  status: string;
+  source: string;
+  contact?: { phone?: string; email?: string };
+  waitlistId?: string;
+}
+
+export interface SuiteClientProfile {
+  clientKey: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+  preferences?: string;
+  allergies?: string;
+  preferredProvider?: string;
+}
+
+/** The suite joins clients by normalized name (clientHistory does the
+ *  same server-side) — the union uses that same key. */
+export const normalizeClientKey = (name: string): string => (name || '').trim().toLowerCase();
+
+/** Reorder level the Inventory Check (supplyCheck) applies when a
+ *  product record carries none. */
+export const DEFAULT_REORDER_LEVEL = 5;
+
+/** One low-stock truth for the Dashboard and the Inventory Check. */
+export function isLowStock(p: { stockLevel?: number; reorderLevel?: number }): boolean {
+  return (p.stockLevel ?? 0) <= (p.reorderLevel ?? DEFAULT_REORDER_LEVEL);
+}
+
+/** Project a Desk appointment artifact into the suite booking shape. */
+export function deskAppointmentAsBooking(item: {
+  id: string;
+  meta: { status?: string };
+  data: AppointmentData;
+}): SuiteBooking {
+  const d = item.data;
+  return {
+    id: item.id,
+    client: d.clientName || 'Client',
+    clientUserId: d.clientUserId || null,
+    service: d.serviceType || 'Service',
+    staff: d.provider || 'Unassigned',
+    date: d.date || '',
+    time: d.time || '',
+    duration: d.duration || 30,
+    price: d.price || 0,
+    status: (item.meta.status as string) || 'booked',
+    source: 'desk',
+  };
+}
 
 export function getStatusesForTab(tab: ModeTab): string[] {
   switch (tab) {

@@ -47,7 +47,7 @@ interface Cohort {
   enroled_at?: number;
 }
 
-type CohortCard = 'create' | 'enrol' | 'submit' | 'list';
+type CohortCard = 'create' | 'enrol' | 'list';
 
 function teacherLabel(c: Cohort): string {
   const named = c.teacher_display_name?.trim();
@@ -126,7 +126,6 @@ export default function ClassroomPage() {
   const [studying, setStudying] = useState<Cohort[]>([]);
   const [createForm, setCreateForm] = useState({ name: '', rubricDtuId: '' });
   const [enrolForm, setEnrolForm] = useState({ cohortId: '', studentUserId: '' });
-  const [submitForm, setSubmitForm] = useState({ cohortId: '', dtuId: '' });
   const [status, setStatus] = useState<string | null>(null);
   // A server refusal stays on the card that caused it. Success toasts clear;
   // refusals do not, and the form fields stay so the attempt is visible.
@@ -189,13 +188,6 @@ export default function ClassroomPage() {
     const r = await macro('classroom', 'enrol', { cohortId: Number(enrolForm.cohortId), studentUserId: enrolForm.studentUserId || undefined });
     if (r?.ok) { noteOk('✓ Enrolled'); await refresh(); }
     else noteRefusal('enrol', r);
-  };
-
-  const submit = async () => {
-    if (!submitForm.cohortId || !submitForm.dtuId) return;
-    const r = await macro('classroom', 'submit_homework', { cohortId: Number(submitForm.cohortId), dtuId: submitForm.dtuId });
-    if (r?.ok) noteOk(`✓ Submitted (#${r.submissionId})`);
-    else noteRefusal('submit', r);
   };
 
   const archive = async (cohortId: number) => {
@@ -300,7 +292,7 @@ export default function ClassroomPage() {
 
         {view === 'cohorts' && (
           <div className="space-y-5">
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-2">
               <section className={cn(cardCls, 'space-y-2.5')}>
                 <h2 className="text-[13px] font-medium text-zinc-300">Create a cohort</h2>
                 <input id="classroom-cohort-name" type="text" placeholder="Cohort name" value={createForm.name}
@@ -319,16 +311,8 @@ export default function ClassroomPage() {
                 <button onClick={enrol} disabled={!enrolForm.cohortId} className={submitCls}>Enrol</button>
                 {refusal('enrol')}
               </section>
-              <section className={cn(cardCls, 'space-y-2.5')}>
-                <h2 className="text-[13px] font-medium text-zinc-300">Submit homework</h2>
-                <input type="text" placeholder="Cohort id" value={submitForm.cohortId}
-                  onChange={(e) => setSubmitForm({ ...submitForm, cohortId: e.target.value })} className={inputCls} />
-                <input type="text" placeholder="DTU id" value={submitForm.dtuId}
-                  onChange={(e) => setSubmitForm({ ...submitForm, dtuId: e.target.value })} className={inputCls} />
-                <button onClick={submit} disabled={!submitForm.cohortId || !submitForm.dtuId} className={submitCls}>Submit</button>
-                {refusal('submit')}
-              </section>
             </div>
+            <p className="text-[13px] text-zinc-500">Hand work in on an assignment in the workspace. This view does not take a homework DTU.</p>
 
             {loading && <div role="status" aria-busy="true" className="text-[13px] italic text-zinc-500">Loading classroom cohorts…</div>}
             {refusal('list')}

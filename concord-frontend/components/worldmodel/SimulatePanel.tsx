@@ -6,7 +6,7 @@ import { Loader2, Play, Plus, Trash2 } from 'lucide-react';
 import { ChartKit } from '@/components/viz';
 import {
   type WmEntity, type WmSim,
-  btn, btnGhost, card, input, useTrajectoryChart, wmRun, WM_QUERY_KEYS,
+  btn, btnGhost, card, input, PerEntityTable, useTrajectoryChart, wmRun, WM_QUERY_KEYS,
 } from '@/components/worldmodel/wm-shared';
 
 // ─── Simulate tab ───────────────────────────────────────────────────────
@@ -30,7 +30,11 @@ export function SimulatePanel() {
 
   const exec = useMutation({
     mutationFn: () => wmRun<WmSim>('run_scenario', { name, steps, growth, shocks }),
-    onSuccess: (sim) => { setViewSim(sim); qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.sims }); },
+    onSuccess: (sim) => {
+      setViewSim(sim);
+      qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.sims });
+      qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.status });
+    },
   });
   const loadSim = useMutation({
     mutationFn: (id: string) => wmRun<WmSim>('get_sim', { id }),
@@ -73,6 +77,14 @@ export function SimulatePanel() {
             Trajectory · {viewSim.name} <span className="text-emerald-700">(total {viewSim.total})</span>
           </h3>
           <ChartKit kind="line" data={chart.data} xKey="step" series={chart.series} height={280} />
+          <PerEntityTable sim={viewSim} />
+          <p className="mt-3 text-[11px] leading-relaxed text-emerald-700">
+            How a run advances: each step, an entity&rsquo;s value is multiplied by (1 + growth
+            {viewSim.params ? ` = ${(1 + viewSim.params.growth).toFixed(2)} here` : ''}); then, for every
+            relation pointing at it, it gains the source entity&rsquo;s value × that relation&rsquo;s
+            weight × 0.1. Shocks add their delta at their step. Values are capped at ±1e12 so a run
+            always stays finite.
+          </p>
         </div>
       )}
 

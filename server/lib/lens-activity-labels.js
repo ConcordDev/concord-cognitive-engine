@@ -210,6 +210,19 @@ export const LENS_ACTIVITY = {
     "pain-list": Q, "intervention-list": Q, "theme-list": Q,
     "trend-view": Q,
   },
+  // Classroom's Stream already names a quiz and a material in the
+  // domain journal. Activity is the platform log. List loads were
+  // recording, so the newest rows were "quiz list" and "material
+  // list" and the write sat under them. Quiet the reads. The write
+  // row uses the same words as the Stream line and the title the
+  // caller sent.
+  classroom: {
+    "quiz-create": { label: "quiz posted", object: { paths: ["input.title", "result.quiz.title"] } },
+    "material-add": { label: "material added", object: { paths: ["input.title", "result.material.title"] } },
+    "assignment-list": Q, "stream-list": Q, gradebook: Q, "material-list": Q,
+    todo: Q, "quiz-list": Q, "quiz-get": Q, "quiz-attempts": Q,
+    list_cohorts: Q,
+  },
 };
 
 function specFor(domain, action) {

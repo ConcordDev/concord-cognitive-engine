@@ -42,7 +42,7 @@ function ok(result: unknown) {
 const EMPTY_OPS = { jobsToday: 0, openJobs: 0, unassigned: 0, outstandingAR: 0, collected: 0, activePlans: 0, recurringRevenue: 0, lowStockParts: 0 };
 const EMPTY_TECHS = { techs: [], count: 0 };
 const EMPTY_BOARD = { lanes: [], unassigned: [], totalAssignments: 0, emergencyCount: 0 };
-const EMPTY_PRICEBOOK = { items: [], count: 0, avgMarginPct: 0 };
+const EMPTY_PRICEBOOK = { items: [], count: 0, avgMarkupPct: 0, avgMarginPct: 0 };
 const EMPTY_INVOICES = { invoices: [], count: 0, outstanding: 0, collected: 0 };
 const EMPTY_PLANS = { plans: [], count: 0, dueSoon: 0, recurringRevenue: 0 };
 const EMPTY_NOTICES = { notices: [], count: 0, byKind: {} };

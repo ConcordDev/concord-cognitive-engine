@@ -99,6 +99,36 @@ export function ComparePanel() {
             <h4 className="mb-2 text-xs font-semibold text-emerald-300">Per-entity delta (counterfactual − baseline)</h4>
             <ChartKit kind="bar" data={result.delta as unknown as Record<string, unknown>[]} xKey="step" series={series} height={240} />
           </div>
+          <div className={card}>
+            <h4 className="mb-2 text-xs font-semibold text-emerald-300">Per-entity final values</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-wider text-emerald-700">
+                    <th className="py-1 pr-3 font-medium">Entity</th>
+                    <th className="py-1 pr-3 font-medium">Baseline final</th>
+                    <th className="py-1 pr-3 font-medium">Counterfactual final</th>
+                    <th className="py-1 font-medium">Delta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.keys(result.entityNames).map((id) => {
+                    const b = Number(result.baseline.finalState?.[id] ?? 0);
+                    const c = Number(result.counterfactual.finalState?.[id] ?? 0);
+                    const d = Number((c - b).toFixed(4));
+                    return (
+                      <tr key={id} className="border-t border-emerald-900/30">
+                        <td className="py-1 pr-3 text-emerald-100">{result.entityNames[id]}</td>
+                        <td className="py-1 pr-3 font-mono text-indigo-300">{b.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+                        <td className="py-1 pr-3 font-mono text-amber-300">{c.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+                        <td className={`py-1 font-mono ${d > 0 ? 'text-emerald-300' : d < 0 ? 'text-rose-300' : 'text-emerald-600'}`}>{d > 0 ? '+' : ''}{d.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </>
       )}
     </div>

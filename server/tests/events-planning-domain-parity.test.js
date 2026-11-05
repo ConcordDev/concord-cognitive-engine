@@ -86,6 +86,28 @@ describe("events.dashboard", () => {
     assert.equal(d.result.totalEvents, 2);
     assert.equal(d.result.totalBudget, 15000);
     assert.equal(d.result.openTasks, 1);
+    assert.equal(d.result.statedNet, 0);
+    assert.equal(d.result.formula, "Budgeted − Actual = Net");
+  });
+
+  it("states one net: budgeted minus actual", () => {
+    const e = newEvent(ctxA, { budget: 1000 });
+    call("budget-line-add", ctxA, { eventId: e.id, label: "Venue", category: "venue", kind: "expense", budgeted: 600, actual: 100 });
+    call("budget-line-add", ctxA, { eventId: e.id, label: "Food", category: "food", kind: "expense", budgeted: 400, actual: 150 });
+    call("budget-line-add", ctxA, { eventId: e.id, label: "Grant", category: "grant", kind: "revenue", budgeted: 9000, actual: 9000 });
+    const summary = call("budget-summary", ctxA, { eventId: e.id }).result;
+    assert.equal(summary.budgetedExpense, 1000);
+    assert.equal(summary.actualExpense, 250);
+    assert.equal(summary.statedNet, 750);
+    assert.equal(summary.formula, "Budgeted − Actual = Net");
+    assert.equal(summary.byCategory.venue.budgeted, 600);
+    assert.equal(summary.byCategory.food.actual, 150);
+    assert.equal(summary.byCategory.grant, undefined);
+    const dash = call("events-dashboard", ctxA, {}).result;
+    assert.equal(dash.statedBudgeted, 1000);
+    assert.equal(dash.statedActual, 250);
+    assert.equal(dash.statedNet, 750);
+    assert.equal(dash.formula, summary.formula);
   });
 });
 

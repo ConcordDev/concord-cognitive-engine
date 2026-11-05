@@ -20,6 +20,7 @@
 
 import { useCallback, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { recordStudioRun } from '@/lib/sim/studio-activity';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -127,7 +128,7 @@ function FormulaTool() {
       if (k && v !== undefined && Number.isFinite(Number(v))) variables[k] = Number(v);
     }
     const r = await lensRun<{ value: number }>('sim', 'evaluateFormula', { expression: expr, variables });
-    if (r.data.ok && r.data.result) { setValue(r.data.result.value); }
+    if (r.data.ok && r.data.result) { setValue(r.data.result.value); recordStudioRun(); }
     else { setValue(null); setError(r.data.error || 'Formula error'); }
     setBusy(false);
   }, [expr, varsText]);
@@ -200,7 +201,7 @@ function GoalSeekTool() {
       expression: expr, parameter: param, constants: consts,
       objective, target: objective === 'target' ? target : undefined, min, max,
     });
-    if (r.data.ok && r.data.result) { setRes(r.data.result); }
+    if (r.data.ok && r.data.result) { setRes(r.data.result); recordStudioRun(); }
     else { setRes(null); setError(r.data.error || 'Goal seek failed'); }
     setBusy(false);
   }, [expr, param, constants, objective, target, min, max]);
@@ -321,7 +322,7 @@ function CompareTool() {
     const r = await lensRun<DiffResult>('sim', 'scenarioDiff', {
       sampleA: parse(aText), sampleB: parse(bText),
     });
-    if (r.data.ok && r.data.result) { setRes(r.data.result); }
+    if (r.data.ok && r.data.result) { setRes(r.data.result); recordStudioRun(); }
     else { setRes(null); setError(r.data.error || 'Comparison failed'); }
     setBusy(false);
   }, [aText, bText]);
@@ -435,7 +436,7 @@ function CalibrateTool() {
       tunable: [{ name: paramName, min: paramMin, max: paramMax }],
       passes: 8,
     });
-    if (r.data.ok && r.data.result) { setRes(r.data.result); }
+    if (r.data.ok && r.data.result) { setRes(r.data.result); recordStudioRun(); }
     else { setRes(null); setError(r.data.error || 'Calibration failed'); }
     setBusy(false);
   }, [stockName, initial, flowExpr, paramName, paramMin, paramMax, observedText]);
@@ -555,7 +556,7 @@ function ScenarioRunTool() {
     const initialState = parseStateLines(stateText);
     const rules = parseRuleLines(rulesText);
     const r = await lensRun<ScenarioRunResult>('sim', 'scenarioRun', { initialState, rules, steps });
-    if (r.data.ok && r.data.result) { setRes(r.data.result); }
+    if (r.data.ok && r.data.result) { setRes(r.data.result); recordStudioRun(); }
     else { setRes(null); setError(r.data.error || 'Scenario run failed'); }
     setBusy(false);
   }, [stateText, rulesText, steps]);
@@ -641,7 +642,7 @@ function ParameterSweepTool() {
     const r = await lensRun<SweepResult>('sim', 'parameterSweep', {
       baseState, parameter: param, range: { min, max, step }, rules, steps,
     });
-    if (r.data.ok && r.data.result) { setRes(r.data.result); }
+    if (r.data.ok && r.data.result) { setRes(r.data.result); recordStudioRun(); }
     else { setRes(null); setError(r.data.error || 'Parameter sweep failed'); }
     setBusy(false);
   }, [baseText, param, min, max, step, rulesText, steps]);
@@ -759,7 +760,7 @@ function MonteCarloBackendTool() {
     const input: Record<string, unknown> = { trials, variables, formula };
     if (useSeed) input.seed = seed;
     const r = await lensRun<MonteCarloBackendResult>('sim', 'monteCarlo', input);
-    if (r.data.ok && r.data.result) { setRes(r.data.result); }
+    if (r.data.ok && r.data.result) { setRes(r.data.result); recordStudioRun(); }
     else { setRes(null); setError(r.data.error || 'Monte Carlo failed'); }
     setBusy(false);
   }, [trials, varsText, formula, useSeed, seed]);
@@ -875,7 +876,7 @@ function ElasticityTool() {
     const baseState = parseStateLines(stateText);
     const rules = parseRuleLines(rulesText);
     const r = await lensRun<ElasticityResult>('sim', 'sensitivityAnalysis', { baseState, rules, perturbation, steps });
-    if (r.data.ok && r.data.result) { setRes(r.data.result); }
+    if (r.data.ok && r.data.result) { setRes(r.data.result); recordStudioRun(); }
     else { setRes(null); setError(r.data.error || 'Elasticity analysis failed'); }
     setBusy(false);
   }, [stateText, rulesText, perturbation, steps]);
