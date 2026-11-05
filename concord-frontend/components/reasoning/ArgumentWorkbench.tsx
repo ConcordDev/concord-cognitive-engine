@@ -128,6 +128,7 @@ export function ArgumentWorkbench() {
   const [premiseResult, setPremiseResult] = useState<PremiseResult | null>(null);
   const [mintDtuId, setMintDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
+  const [confirmPublish, setConfirmPublish] = useState(false);
   const [dmRecipient, setDmRecipient] = useState('');
   const [agentReply, setAgentReply] = useState<string | null>(null);
 
@@ -155,7 +156,7 @@ export function ArgumentWorkbench() {
     try {
       const derived = await classify();
       if (!derived || derived.premises.length === 0) {
-        err('No clear premises found — try phrasing with "because"/"since"/"therefore".');
+        err('No clear premises found — state the supporting sentences and a conclusion.');
         return;
       }
       const r = await callMacro<ValidateResult>('logicValidate', { premises: derived.premises, conclusion: derived.conclusion });
@@ -167,13 +168,31 @@ export function ArgumentWorkbench() {
     finally { setBusy(null); }
   }
 
+  // Claim ids in a strength map are the derived graph's (claim-root = the
+  // conclusion, claim-pN = premise N) — render the text they stand for,
+  // never the raw id (Review 3, S-RS-4: the Map shows its score against
+  // the claims, in user language).
+  function claimLabel(id: string): string {
+    if (id === 'claim-root') {
+      const c = extractedConclusion(premiseResult);
+      return c ? `conclusion: ${c.slice(0, 60)}` : 'conclusion';
+    }
+    const m = id.match(/^claim-p(\d+)$/);
+    if (m) {
+      const premises = extractedPremises(premiseResult);
+      const t = premises[Number(m[1])] || '';
+      return t ? `premise ${Number(m[1]) + 1}: ${t.slice(0, 60)}` : `premise ${Number(m[1]) + 1}`;
+    }
+    return id;
+  }
+
   async function actMap() {
     if (!ready) { err('Enter an argument.'); return; }
     setBusy('map'); setFeedback(null);
     try {
       const derived = await classify();
       if (!derived || derived.premises.length === 0) {
-        err('No clear claims found — try phrasing with "because"/"since"/"therefore".');
+        err('No clear claims found — state the supporting sentences and a conclusion.');
         return;
       }
       const rootId = 'claim-root';
@@ -299,10 +318,16 @@ export function ArgumentWorkbench() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
+      if (!id) {
+        // A rejection states its reason (Review 3, F21): surface whatever
+        // the create returned instead of an opaque failure.
+        const reason = r.data?.error || r.data?.result?.error || r.data?.result?.reason || r.data?.reason;
+        err(reason ? `Publish was not accepted: ${reason}` : 'Publish was not accepted and no reason was returned.');
+        return;
+      }
       const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
       if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Proof published ${id.slice(0, 8)}…`); }
-      else err(pub.data?.error ?? 'publish flag failed');
+      else err(pub.data?.error ? `Publish was not accepted: ${pub.data.error}` : 'Publish was not accepted and no reason was returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -331,7 +356,12 @@ export function ArgumentWorkbench() {
       if (reply) {
         setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Counter-derivation ready.');
-      } else err('Agent returned empty.');
+      } else {
+        // Bounded, honest outcome (Review 3, S-RS-9 / F7): an empty agent
+        // reply is a stated result with the fallback named, not a bare
+        // "Agent returned empty." after a long silent lock.
+        err('The cross-check agent returned no counter-derivation this time. Your argument is unchanged - the deterministic checks (Validate, Fallacies, Premises) stand on their own.');
+      }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -343,7 +373,7 @@ export function ArgumentWorkbench() {
     { id: 'premise',  label: 'Premises',    desc: 'Classify sentences: premise / conclusion',        icon: ListChecks,   accent: '#8b5cf6', handler: actPremise,  disabled: !ready },
     { id: 'mint',     label: mintDtuId      ? 'Saved' : 'Mint derivation',  desc: mintDtuId      ? `DTU ${mintDtuId.slice(0, 8)}…`      : 'Private DTU with full analysis',         icon: Sparkles,     accent: '#3b82f6', handler: actMint,     disabled: !ready || !!mintDtuId },
     { id: 'dm',       label: 'DM for review', desc: 'DM premises + verdict to another user',         icon: Send,         accent: '#ec4899', handler: actDm,       disabled: !ready },
-    { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish proof', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public DTU + federation flag',         icon: Globe,        accent: '#15803d', handler: actPublish,  disabled: !ready || !!publishedDtuId },
+    { id: 'publish',  label: publishedDtuId ? 'Published' : confirmPublish ? 'Confirm publish?' : 'Publish proof', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public DTU + federation flag',         icon: Globe,        accent: '#15803d', handler: () => { if (confirmPublish) { setConfirmPublish(false); void actPublish(); } else setConfirmPublish(true); },  disabled: !ready || !!publishedDtuId },
     { id: 'agent',    label: 'Cross-check',  desc: 'Agent returns strongest counter-derivation',     icon: Wand2,        accent: '#eab308', handler: actAgent,    disabled: !ready },
   ];
 
@@ -463,12 +493,12 @@ export function ArgumentWorkbench() {
               <GitFork className="w-3 h-3" /> Argument map ({mapResult.totalClaims ?? 0} claims)
             </div>
             {mapResult.strengthMap && Object.entries(mapResult.strengthMap).slice(0, 8).map(([id, s]) => (
-              <div key={id} className="text-[11px] text-zinc-300 font-mono">
-                <span className="text-cyan-300">{id}</span>
+              <div key={id} className="text-[11px] text-zinc-300">
+                <span className="text-cyan-300">{claimLabel(id)}</span>
                 <span className="text-zinc-400"> strength {s.strength} (support {s.support} / counter {s.counter})</span>
               </div>
             ))}
-            {mapResult.strongestClaim && <div className="text-[11px] text-emerald-300">strongest: {mapResult.strongestClaim}</div>}
+            {mapResult.strongestClaim && <div className="text-[11px] text-emerald-300">strongest: {claimLabel(mapResult.strongestClaim)}</div>}
             {!mapResult.strengthMap && mapResult.message && <p className="text-[11px] text-zinc-400">{mapResult.message}</p>}
           </div>
         )}
