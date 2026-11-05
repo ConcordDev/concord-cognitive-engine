@@ -14,7 +14,7 @@ import { lensRun } from '@/lib/api/client';
 import { TreeDiagram, type TreeNode } from '@/components/viz';
 import {
   BookOpen, Play, Search, Trash2, CheckCircle2, XCircle, AlertTriangle,
-  Sparkles, ListTree, HelpCircle, GitBranch, Loader2, RefreshCw, Zap,
+  Sparkles, ListTree, HelpCircle, GitBranch, Loader2, RefreshCw, Zap, Pencil,
 } from 'lucide-react';
 
 // ── Macro result shapes ───────────────────────────────────────────────
@@ -84,6 +84,10 @@ export function RuleEngineWorkbench() {
 
   // Editor state
   const [draft, setDraft] = useState('');
+  // F8: deletes confirm in place; F7: edit-in-place state.
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [priority, setPriority] = useState(0);
   const [checkRows, setCheckRows] = useState<CheckRow[] | null>(null);
   const [addMsg, setAddMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -151,14 +155,21 @@ export function RuleEngineWorkbench() {
           ? `Added ${addedCount} clause${addedCount === 1 ? '' : 's'} to the knowledge base.`
           : `Added ${addedCount}, rejected ${errorCount}: ${errors.map((e) => e.error).join('; ')}`,
       });
-      if (addedCount > 0) setDraft('');
+      if (addedCount > 0) {
+        setDraft('');
+        // F7: saving an edit replaces the original clause.
+        if (editingId) {
+          await lensRun('inference', 'kb-remove', { id: editingId });
+          setEditingId(null);
+        }
+      }
       setCheckRows(null);
       await loadKb();
     } else {
       setAddMsg({ ok: false, text: r.data.error || 'kb-add failed' });
     }
     setEditorBusy(false);
-  }, [draft, priority, loadKb]);
+  }, [draft, priority, loadKb, editingId]);
 
   const handleSeed = useCallback(async () => {
     setEditorBusy(true);
@@ -169,16 +180,28 @@ export function RuleEngineWorkbench() {
   }, [loadKb]);
 
   const handleRemove = useCallback(async (id: string) => {
+    // F8: first click arms (the button names the item), second removes.
+    if (confirmRemoveId !== id) { setConfirmRemoveId(id); return; }
+    setConfirmRemoveId(null);
     await lensRun('inference', 'kb-remove', { id });
     await loadKb();
-  }, [loadKb]);
+  }, [loadKb, confirmRemoveId]);
+
+  const handleEdit = useCallback((id: string, text: string) => {
+    setEditingId(id);
+    setDraft(text);
+    setAddMsg({ ok: true, text: 'Editing — change the clause, then Add to replace the original.' });
+  }, []);
 
   const handleClear = useCallback(async () => {
+    // F8: clear-all confirms, naming the scope it erases.
+    if (!confirmClear) { setConfirmClear(true); return; }
+    setConfirmClear(false);
     await lensRun('inference', 'kb-clear', {});
     setAddMsg(null);
     setCheckRows(null);
     await loadKb();
-  }, [loadKb]);
+  }, [loadKb, confirmClear]);
 
   // ── Query ───────────────────────────────────────────────────────────
   const handleQuery = useCallback(async () => {
@@ -383,7 +406,7 @@ export function RuleEngineWorkbench() {
                 disabled={factCount + ruleCount === 0}
                 className="flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/5 px-2 py-1 text-[11px] text-rose-300 hover:bg-rose-500/15 disabled:opacity-40"
               >
-                <Trash2 className="h-3 w-3" /> Clear all
+                <Trash2 className="h-3 w-3" /> {confirmClear ? `Erase ${factCount} facts + ${ruleCount} rules? Click again` : 'Clear all'}
               </button>
             </div>
 
@@ -406,13 +429,22 @@ export function RuleEngineWorkbench() {
                     <span className="font-mono text-[11px] text-emerald-300">
                       {f.predicate}({f.args.join(',')})
                     </span>
-                    <button
-                      onClick={() => handleRemove(f.id)}
-                      className="text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100 hover:text-rose-400"
-                      aria-label={`Remove fact ${f.predicate}`}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                    <span className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleEdit(f.id, `${f.predicate}(${f.args.join(', ')})`)}
+                        className="text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100 hover:text-cyan-300"
+                        aria-label={`Edit fact ${f.predicate}`}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => handleRemove(f.id)}
+                        className={confirmRemoveId === f.id ? 'text-[10px] text-rose-300' : 'text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100 hover:text-rose-400'}
+                        aria-label={`Remove fact ${f.predicate}`}
+                      >
+                        {confirmRemoveId === f.id ? `Remove ${f.predicate}(…)?` : <Trash2 className="h-3 w-3" />}
+                      </button>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -427,13 +459,22 @@ export function RuleEngineWorkbench() {
                         {r.name} · prio {r.priority}
                       </span>
                     </div>
-                    <button
-                      onClick={() => handleRemove(r.id)}
-                      className="text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100 hover:text-rose-400"
-                      aria-label={`Remove rule ${r.name}`}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                    <span className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleEdit(r.id, r.text)}
+                        className="text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100 hover:text-cyan-300"
+                        aria-label={`Edit rule ${r.name}`}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => handleRemove(r.id)}
+                        className={confirmRemoveId === r.id ? 'text-[10px] text-rose-300' : 'text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100 hover:text-rose-400'}
+                        aria-label={`Remove rule ${r.name}`}
+                      >
+                        {confirmRemoveId === r.id ? `Remove ${r.name}?` : <Trash2 className="h-3 w-3" />}
+                      </button>
+                    </span>
                   </div>
                 ))}
               </div>
