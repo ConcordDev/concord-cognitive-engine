@@ -5583,7 +5583,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // of existing getters — no new tables, no mutation. `actions` is
   // intentionally empty for the same reason as ops-telemetry: there is no
   // authoring/mutation action on this surface, only observation.
-  { domain: 'world-observatory', label: 'World Observatory', artifacts: ['world_state'], macros: { list: 'worldstate.overview', get: 'worldstate.world_detail' }, exports: ['json'], actions: [], category: 'operations' },
+  { domain: 'world-observatory', label: 'World Observatory', artifacts: ['world_state'], macros: { list: 'worldstate.overview', get: 'worldstate.world_detail' }, exports: ['json'], actions: [], category: 'operations', dataTier: 'REAL_LIVE' },
   // Concord Link Frontier is a read-only news/royalty-flow surface, REST-backed
   // by design (the ops-telemetry precedent) — `/api/cross-world/feed` and
   // `/api/cross-world/royalty-flow` (server/lib/cross-world-feed.js) are real
