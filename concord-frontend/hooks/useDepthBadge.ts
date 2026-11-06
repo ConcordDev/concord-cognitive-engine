@@ -58,6 +58,15 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  * chip names the two surfaces that actually are simulations.
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
+  'collab': {
+    label: 'Live',
+    // Collab's rooms are the caller's OWN records (title + note kept on
+    // the account, dual-stored server-side) and its sessions are live
+    // when collaborators join — not an external feed, so REAL_LIVE's
+    // generic "polled live from an external source" caption would
+    // misdescribe the source. Declared REAL_LIVE in the registry.
+    caption: 'Live — your rooms and sessions, kept on your account.',
+  },
   /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
