@@ -33,6 +33,9 @@ import {
   createPost,
   deletePost,
   getUserPosts,
+  getUserBookmarks,
+  getLikedPosts,
+  getUserDtus,
 } from "../emergent/social-layer.js";
 import {
   editPost,
@@ -159,6 +162,57 @@ export default function createSocialCoreRoutes({ db, requireAuth }) {
       offset: Number(req.query.offset || 0),
       viewerId,
     }));
+  });
+
+  // The profile's own collections (F9): posts the user reacted to, and
+  // DTUs the user authored — the tabs read these, not the posts list.
+  router.get("/posts/liked/:userId", (req, res) => {
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(getLikedPosts(STATE, req.params.userId, {
+      limit: Number(req.query.limit || 30),
+      offset: Number(req.query.offset || 0),
+      viewerId,
+    }));
+  });
+
+  router.get("/dtus/user/:userId", (req, res) => {
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    const viewerId = req.user?.id || req.actor?.userId || null;
+    res.json(getUserDtus(STATE, req.params.userId, {
+      limit: Number(req.query.limit || 30),
+      offset: Number(req.query.offset || 0),
+      viewerId,
+    }));
+  });
+
+  // Own-records export (F10): everything the caller owns in this lens,
+  // in labelled sections — the export whose contents are the records.
+  router.get("/export", auth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
+    const STATE = stateOf();
+    if (!STATE) return res.status(503).json({ ok: false, error: "state unavailable" });
+    const profile = getProfile(STATE, userId, userId);
+    const posts = getUserPosts(STATE, userId, { limit: 500, offset: 0, viewerId: userId });
+    const bookmarks = getUserBookmarks(STATE, userId, { limit: 500, offset: 0 });
+    const drafts = listDrafts(STATE, userId);
+    res.json({
+      ok: true,
+      kind: "social-my-records",
+      exportedAt: new Date().toISOString(),
+      profile: profile?.profile || profile || null,
+      posts: posts.posts || [],
+      bookmarks: bookmarks.posts || [],
+      drafts: drafts.drafts || [],
+      counts: {
+        posts: posts.total ?? (posts.posts || []).length,
+        bookmarks: bookmarks.total ?? 0,
+        drafts: (drafts.drafts || []).length,
+      },
+    });
   });
 
   router.get("/notifications", auth, (req, res) => {

@@ -363,7 +363,43 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, onOpenPost, clas
         });
         return (res.data.media || []) as FeedItem[];
       }
-      // For posts/dtus/liked, use the user's posts endpoint (route is /posts/user/:userId)
+      if (activeTab === 'liked') {
+        // The Liked tab reads the posts this user actually reacted to
+        // (GET /posts/liked/:userId) — not the posts list (Social F9).
+        const res = await api.get(`/api/social/posts/liked/${userId}`, { params: { limit: 20 } });
+        const rows = (res.data.posts || []) as Array<Record<string, unknown>>;
+        return rows.map((row) => ({
+          id: row.id as string,
+          dtuId: '',
+          title: '',
+          content: (row.content as string) || (row.body as string) || '',
+          userId: row.userId as string,
+          authorId: row.userId as string,
+          authorName: (row.displayName as string) || (row.username as string) || '',
+          tags: (row.hashtags as string[]) || [],
+          tier: 'regular',
+          createdAt: (row.createdAt as string) || '',
+          citationCount: 0,
+        })) as FeedItem[];
+      }
+      if (activeTab === 'dtus') {
+        // The DTUs tab reads the user's authored DTUs (GET
+        // /dtus/user/:userId) — the collection the DTUs counter counts.
+        const res = await api.get(`/api/social/dtus/user/${userId}`, { params: { limit: 20 } });
+        const rows = (res.data.dtus || []) as Array<{ id: string; title: string; createdAt: string | null }>;
+        return rows.map((row) => ({
+          id: row.id,
+          dtuId: row.id,
+          title: row.title,
+          content: '',
+          authorId: userId,
+          authorName: '',
+          tags: [],
+          tier: 'regular',
+          createdAt: row.createdAt || '',
+          citationCount: 0,
+        })) as FeedItem[];
+      }
       const res = await api.get(`/api/social/posts/user/${userId}`, { params: { limit: 20 } });
       return (res.data.posts || res.data.feed || []) as FeedItem[];
     },
