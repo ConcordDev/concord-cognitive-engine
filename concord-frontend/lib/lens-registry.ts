@@ -2774,7 +2774,7 @@ export const LENS_REGISTRY: LensEntry[] = [
     id: 'ux-suite',
     name: 'UX Suite',
     icon: Sparkles,
-    description: '20 absorbed UX components in a tabbed suite (settings / progress / world / ops / shell).',
+    description: '19 absorbed UX components in a tabbed suite (settings / progress / world / ops / shell).',
     category: 'system',
     showInSidebar: false,
     showInCommandPalette: true,

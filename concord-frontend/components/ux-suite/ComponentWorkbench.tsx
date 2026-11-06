@@ -30,6 +30,12 @@ import {
 
 const DOMAIN = 'ux-suite';
 
+/** Numbers render rounded to at most 2dp — never a raw float (F8). */
+function fmtVal(v: unknown): string {
+  if (typeof v === 'number') return String(Math.round(v * 100) / 100);
+  return String(v);
+}
+
 interface CatalogComponent {
   name: string; group: string; description: string;
   homePath: string; homeLabel: string; importPath: string;
@@ -72,6 +78,7 @@ export function ComponentWorkbench() {
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [query, setQuery] = useState('');
   const [activeGroup, setActiveGroup] = useState('all');
+  const [starredOnly, setStarredOnly] = useState(false);
   const [searchHits, setSearchHits] = useState<string[] | null>(null);
 
   // ── selection ─────────────────────────────────────────────────────
@@ -88,7 +95,8 @@ export function ComponentWorkbench() {
   const [hasOverrides, setHasOverrides] = useState(false);
   const [snippet, setSnippet] = useState<Record<string, string> | null>(null);
   const [a11y, setA11y] = useState<{
-    score: number; summary: Record<string, number>;
+    score: number | null; summary: Record<string, number>;
+    declarations?: A11yFinding[]; scoreFormula?: string; scoreNote?: string; basis?: string;
     findings: A11yFinding[]; responsive: ResponsiveCheck[]; standard: string;
   } | null>(null);
   const [variants, setVariants] = useState<Variant[]>([]);
@@ -136,22 +144,33 @@ export function ComponentWorkbench() {
   }, [query, activeGroup]);
 
   const visible = useMemo(() => {
-    if (searchHits === null) return components;
-    const set = new Set(searchHits);
-    return components.filter((c) => set.has(c.name));
-  }, [components, searchHits]);
+    let list = components;
+    if (searchHits !== null) {
+      const set = new Set(searchHits);
+      list = list.filter((c) => set.has(c.name));
+    }
+    // S-UX-4 (F5): stars aggregate — a Starred filter over the catalog.
+    if (starredOnly) list = list.filter((c) => favourites.includes(c.name));
+    return list;
+  }, [components, searchHits, starredOnly, favourites]);
+
+  // ── the audit runs against the CONFIGURATION (S-UX-1) ─────────────
+  const runAudit = useCallback(async (name: string, props: PropValues, state: string) => {
+    const ac = await lensRun(DOMAIN, 'a11y-check', { component: name, props, state });
+    if (ac.data?.ok) setA11y(ac.data.result as typeof a11y);
+  }, []);
 
   // ── load all panels for the selected component ────────────────────
   const loadComponent = useCallback(async (name: string, state: string) => {
     setBusy(true);
-    const [pv, ps, sn, ac, vg] = await Promise.all([
+    const [pv, ps, sn, vg] = await Promise.all([
       lensRun(DOMAIN, 'preview', { component: name, state }),
       lensRun(DOMAIN, 'props-schema', { component: name }),
       lensRun(DOMAIN, 'usage-snippet', { component: name }),
-      lensRun(DOMAIN, 'a11y-check', { component: name }),
       lensRun(DOMAIN, 'variant-gallery', { component: name }),
     ]);
     if (pv.data?.ok) setPreview(pv.data.result as Record<string, unknown>);
+    let current: PropValues = {};
     if (ps.data?.ok && ps.data.result) {
       const res = ps.data.result as {
         schema: PropSchemaEntry[]; defaults: PropValues; current: PropValues; hasOverrides: boolean;
@@ -159,17 +178,18 @@ export function ComponentWorkbench() {
       setSchema(res.schema || []);
       setPropDefaults(res.defaults || {});
       setPropValues(res.current || {});
+      current = res.current || {};
       setHasOverrides(res.hasOverrides);
       setPropsDirty(false);
     }
     if (sn.data?.ok) setSnippet(sn.data.result as Record<string, string>);
-    if (ac.data?.ok) setA11y(ac.data.result as typeof a11y);
     if (vg.data?.ok && vg.data.result) {
       setVariants((vg.data.result as { variants: Variant[] }).variants || []);
     }
+    // The audit measures the configuration the workbench actually holds.
+    await runAudit(name, current, state);
     setBusy(false);
-     
-  }, []);
+  }, [runAudit]);
 
   useEffect(() => {
     if (selected) { setPreviewState('default'); loadComponent(selected, 'default'); }
@@ -183,7 +203,10 @@ export function ComponentWorkbench() {
 
   function onPickState(state: string) {
     setPreviewState(state);
-    if (selected) refreshPreview(selected, state, propValues);
+    if (selected) {
+      refreshPreview(selected, state, propValues);
+      void runAudit(selected, propValues, state);
+    }
   }
 
   function onPropChange(key: string, value: unknown) {
@@ -203,6 +226,8 @@ export function ComponentWorkbench() {
       // refresh snippet so the usage code reflects saved props
       const sn = await lensRun(DOMAIN, 'usage-snippet', { component: selected });
       if (sn.data?.ok) setSnippet(sn.data.result as Record<string, string>);
+      // and re-audit: the saved configuration is what the audit measures
+      await runAudit(selected, propValues, previewState);
     }
     setBusy(false);
   }
@@ -272,6 +297,13 @@ export function ComponentWorkbench() {
                 className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${activeGroup === 'all' ? 'border-fuchsia-500/50 bg-fuchsia-500/15 text-fuchsia-200' : 'border-zinc-800 text-zinc-400 hover:border-zinc-700'}`}
               >
                 All ({components.length})
+              </button>
+              <button
+                onClick={() => setStarredOnly(!starredOnly)}
+                aria-pressed={starredOnly}
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${starredOnly ? 'border-amber-400/60 bg-amber-400/15 text-amber-200' : 'border-zinc-800 text-zinc-400 hover:border-zinc-700'}`}
+              >
+                ★ Starred ({favourites.length})
               </button>
               {groups.map((g) => (
                 <button
@@ -383,13 +415,20 @@ export function ComponentWorkbench() {
                       <span className="h-2 w-2 rounded-full bg-rose-500/60" />
                       <span className="h-2 w-2 rounded-full bg-amber-500/60" />
                       <span className="h-2 w-2 rounded-full bg-emerald-500/60" />
-                      <span className="ml-1">isolated sandbox · {selComp.name} [{previewState}]</span>
+                      <span className="ml-1">component inspector · {selComp.name} [{previewState}] — shell + props; the component itself runs at its live mount</span>
                     </div>
                     <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/60 p-5 text-center">
                       <p className="font-mono text-sm text-zinc-200">&lt;{selComp.name} /&gt;</p>
                       <p className="mt-1 text-[11px] text-zinc-400">
                         State: <span className="text-fuchsia-300">{previewState}</span>
                       </p>
+                      {typeof preview?.liveMount === 'string' && (
+                        <p className="mb-2 text-[11px]">
+                          <a href={preview.liveMount as string} className="text-fuchsia-300 underline">
+                            See {selComp.name} running at its live mount →
+                          </a>
+                        </p>
+                      )}
                       {preview?.props != null && (
                         <pre className="mt-3 overflow-x-auto rounded bg-black/40 p-2 text-left text-[10px] text-zinc-400">
 {JSON.stringify(preview.props, null, 2)}
@@ -416,7 +455,7 @@ export function ComponentWorkbench() {
                       <div key={p.key} className="rounded-md border border-zinc-800 bg-zinc-950 p-2.5">
                         <div className="mb-1.5 flex items-center justify-between">
                           <label className="text-[11px] font-medium text-zinc-200">{p.label}</label>
-                          <span className="font-mono text-[10px] text-fuchsia-300">{String(propValues[p.key])}</span>
+                          <span className="font-mono text-[10px] text-fuchsia-300">{fmtVal(propValues[p.key])}</span>
                         </div>
                         {p.type === 'boolean' && (
                           <button
@@ -450,8 +489,10 @@ export function ComponentWorkbench() {
                             ))}
                           </div>
                         )}
-                        {propDefaults[p.key] !== propValues[p.key] && (
-                          <p className="mt-1 text-[9px] text-zinc-400">default: {String(propDefaults[p.key])}</p>
+                        {propDefaults[p.key] !== propValues[p.key] ? (
+                          <p className="mt-1 text-[9px] text-zinc-400">catalog default: {fmtVal(propDefaults[p.key])}</p>
+                        ) : (
+                          <p className="mt-1 text-[9px] text-zinc-500">catalog default</p>
                         )}
                       </div>
                     ))}
@@ -505,9 +546,9 @@ export function ComponentWorkbench() {
               {tab === 'a11y' && a11y && (
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-3">
-                    <div className={`rounded-lg border px-3 py-2 ${a11y.score >= 80 ? TONE.emerald : a11y.score >= 50 ? TONE.amber : TONE.rose}`}>
+                    <div className={`rounded-lg border px-3 py-2 ${a11y.score === null ? TONE.slate : a11y.score >= 80 ? TONE.emerald : a11y.score >= 50 ? TONE.amber : TONE.rose}`}>
                       <div className="text-[9px] uppercase tracking-wider opacity-70">a11y score</div>
-                      <div className="font-mono text-xl">{a11y.score}</div>
+                      <div className="font-mono text-xl">{a11y.score === null ? '—' : a11y.score}</div>
                     </div>
                     <div className="flex gap-3 text-[11px]">
                       <span className="text-emerald-400">{a11y.summary.passes} pass</span>
@@ -515,6 +556,13 @@ export function ComponentWorkbench() {
                       <span className="text-rose-400">{a11y.summary.errors} error</span>
                     </div>
                   </div>
+                  {/* S-UX-1: the score ships with its formula and its basis,
+                      or it does not ship. */}
+                  <p className="text-[10px] text-zinc-400">
+                    Measured over your configuration (props as saved + the preview state).
+                    {a11y.scoreFormula ? ` ${a11y.scoreFormula}.` : ''}
+                    {a11y.scoreNote ? ` ${a11y.scoreNote}` : ''}
+                  </p>
                   <div className="space-y-1.5">
                     {a11y.findings.map((f, i) => {
                       const Icon = SEV_ICON[f.severity] || Info;
@@ -530,6 +578,27 @@ export function ComponentWorkbench() {
                       );
                     })}
                   </div>
+                  {Array.isArray(a11y.declarations) && a11y.declarations.length > 0 && (
+                    <div>
+                      <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                        Catalog declarations — what the catalog entry claims (not measurements, unscored)
+                      </h4>
+                      <div className="space-y-1.5">
+                        {a11y.declarations.map((f, i) => {
+                          const Icon = SEV_ICON[f.severity] || Info;
+                          return (
+                            <div key={i} className="flex items-start gap-2 rounded-md border border-zinc-900 bg-zinc-950 px-2.5 py-1.5 opacity-80">
+                              <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${SEV_COLOR[f.severity] || 'text-zinc-400'}`} />
+                              <div className="min-w-0">
+                                <span className="font-mono text-[10px] text-zinc-400">{f.rule}</span>
+                                <p className="text-[11px] text-zinc-400">{f.detail}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Responsive</h4>
                     <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
