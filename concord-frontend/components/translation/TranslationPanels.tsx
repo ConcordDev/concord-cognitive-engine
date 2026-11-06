@@ -48,6 +48,10 @@ export interface SavedTranslation {
 
 const DOMAIN = 'translation';
 
+// Mirrors the server cap (server/domains/translation.js MAX_TEXT_LEN):
+// the limit is stated on the surface and enforced before the call.
+export const MAX_TEXT_LEN = 8000;
+
 export const selStyle: React.CSSProperties = {
   marginTop: 4,
   padding: '6px 8px',
@@ -105,6 +109,7 @@ export function SingleTranslatePanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [misses, setMisses] = useState<GlossaryMiss[]>([]);
+  const [sameLanguage, setSameLanguage] = useState(false);
   const [copied, setCopied] = useState(false);
   const kept = translationKeptRecord({ source, target, formality, input: text, output });
 
@@ -114,13 +119,15 @@ export function SingleTranslatePanel({
     setError(null);
     setOutput('');
     setMisses([]);
+    setSameLanguage(false);
     setCopied(false);
     try {
-      const res = await lensRun<{ translated: string; glossaryMisses?: GlossaryMiss[] }>(DOMAIN, 'translate', {
+      const res = await lensRun<{ translated: string; glossaryMisses?: GlossaryMiss[]; sameLanguage?: boolean }>(DOMAIN, 'translate', {
         text, sourceLanguage: source, targetLanguage: target, formality, ...glossaryInput(glossary),
       });
       if (res.data?.ok && res.data.result?.translated) {
         setOutput(res.data.result.translated);
+        setSameLanguage(!!res.data.result.sameLanguage);
         setMisses(res.data.result.glossaryMisses || []);
         addToast({ type: 'success', message: 'Translation ready', duration: 2500 });
       } else {
@@ -175,8 +182,13 @@ export function SingleTranslatePanel({
         style={{ width: '100%', padding: 12, fontSize: 14, borderRadius: 8, border: '1px solid #444', background: 'transparent', color: 'inherit', marginBottom: 12 }}
       />
 
+      <div data-testid="translation-char-count" style={{ fontSize: 12, opacity: text.length > MAX_TEXT_LEN ? 1 : 0.6, color: text.length > MAX_TEXT_LEN ? '#f88' : 'inherit', marginBottom: 8 }}>
+        {text.length.toLocaleString()} / {MAX_TEXT_LEN.toLocaleString()} characters
+        {text.length > MAX_TEXT_LEN && ' — over the engine limit; shorten the text to translate it.'}
+      </div>
+
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-        <button aria-label="Translate text" onClick={handleTranslate} disabled={busy || !text.trim()} style={btnStyle(true)}>
+        <button aria-label="Translate text" onClick={handleTranslate} disabled={busy || !text.trim() || text.length > MAX_TEXT_LEN} style={btnStyle(true)}>
           {busy ? 'Working…' : 'Translate'}
         </button>
         <button aria-label="Detect language" onClick={handleDetect} disabled={busy || !text.trim()} style={btnStyle(false)}>
@@ -205,6 +217,11 @@ export function SingleTranslatePanel({
           <div style={{ padding: 16, borderRadius: 8, border: '1px solid #444', whiteSpace: 'pre-wrap', fontSize: 15 }}>
             {output}
           </div>
+          {sameLanguage && (
+            <p data-testid="translation-same-language" style={{ fontSize: 12, opacity: 0.75, margin: '6px 0' }}>
+              The text is already in the target language — returned unchanged.
+            </p>
+          )}
           <GlossaryWarning misses={misses} />
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             <button
@@ -523,25 +540,102 @@ export function GlossaryEditor({
 // ── Saved ─────────────────────────────────────────────────────────────────────
 
 export function SavedTranslations({
-  saved, onRemove,
+  saved, onRemove, onUpdate,
 }: {
   saved: { id: string; title: string; data: SavedTranslation }[];
   onRemove: (id: string) => void;
+  onUpdate?: (id: string, data: SavedTranslation) => void;
 }) {
+  const [query, setQuery] = useState('');
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   if (saved.length === 0) return null;
+  const q = query.trim().toLowerCase();
+  const rows = q
+    ? saved.filter((it) => `${it.data.input} ${it.data.output} ${it.data.source} ${it.data.target}`.toLowerCase().includes(q))
+    : saved;
   return (
     <section data-testid="translation-saved" aria-label="Saved translations" style={{ marginTop: 8 }}>
       <h2 style={{ fontSize: 14, fontWeight: 600, opacity: 0.8, marginBottom: 8 }}>Saved translations</h2>
+      <input
+        aria-label="Search saved translations"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search saved translations…"
+        style={{ ...selStyle, width: '100%', marginBottom: 8 }}
+      />
+      {rows.length === 0 && (
+        <p data-testid="translation-saved-nomatch" style={{ fontSize: 13, opacity: 0.6 }}>No saved translations match.</p>
+      )}
       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {saved.map((it) => (
-          <li key={it.id} style={{ padding: 10, borderRadius: 8, border: '1px solid #333', fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-            <span style={{ opacity: 0.9 }}>
-              <strong>{it.data.output}</strong>
-              <span style={{ opacity: 0.6 }}> · {it.data.source} → {it.data.target}</span>
-            </span>
-            <button aria-label={`Delete saved translation ${it.title}`} onClick={() => onRemove(it.id)} style={btnStyle(false)}>
-              Delete
-            </button>
+        {rows.map((it) => (
+          <li key={it.id} style={{ padding: 10, borderRadius: 8, border: '1px solid #333', fontSize: 13 }}>
+            <div style={{ opacity: 0.65, fontSize: 12, marginBottom: 2 }}>{it.data.input}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+              <span style={{ opacity: 0.9 }}>
+                <strong>{it.data.output}</strong>
+                <span style={{ opacity: 0.6 }}> · {it.data.source} → {it.data.target}</span>
+              </span>
+              <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                {onUpdate && editId !== it.id && (
+                  <button
+                    aria-label={`Edit saved translation ${it.title}`}
+                    onClick={() => { setEditId(it.id); setEditText(it.data.output); setConfirmId(null); }}
+                    style={{ ...btnStyle(false), padding: '4px 10px', fontSize: 12 }}
+                  >
+                    Edit
+                  </button>
+                )}
+                {confirmId === it.id ? (
+                  <>
+                    <span style={{ fontSize: 12, alignSelf: 'center' }}>Delete this saved translation?</span>
+                    <button
+                      data-testid="saved-delete-confirm"
+                      aria-label={`Confirm delete saved translation ${it.title}`}
+                      onClick={() => { onRemove(it.id); setConfirmId(null); }}
+                      style={{ ...btnStyle(false), padding: '4px 10px', fontSize: 12 }}
+                    >
+                      Delete
+                    </button>
+                    <button aria-label="Keep saved translation" onClick={() => setConfirmId(null)} style={{ ...btnStyle(false), padding: '4px 10px', fontSize: 12 }}>
+                      Keep
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    data-testid="saved-delete"
+                    aria-label={`Delete saved translation ${it.title}`}
+                    onClick={() => { setConfirmId(it.id); setEditId(null); }}
+                    style={{ ...btnStyle(false), padding: '4px 10px', fontSize: 12 }}
+                  >
+                    Delete
+                  </button>
+                )}
+              </span>
+            </div>
+            {onUpdate && editId === it.id && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
+                <input
+                  aria-label="Edit saved translation output"
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  style={{ ...selStyle, flex: 1 }}
+                />
+                <button
+                  data-testid="saved-edit-save"
+                  aria-label="Save edited translation"
+                  disabled={!editText.trim()}
+                  onClick={() => { onUpdate(it.id, { ...it.data, output: editText.trim() }); setEditId(null); }}
+                  style={{ ...btnStyle(false), padding: '4px 10px', fontSize: 12 }}
+                >
+                  Save
+                </button>
+                <button aria-label="Cancel edit" onClick={() => setEditId(null)} style={{ ...btnStyle(false), padding: '4px 10px', fontSize: 12 }}>
+                  Cancel
+                </button>
+              </div>
+            )}
           </li>
         ))}
       </ul>

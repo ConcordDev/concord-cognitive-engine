@@ -346,6 +346,7 @@ export const REGISTRY = Object.freeze({
   "code-quality": { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real code quality scoring" },
   vote:          { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real council votes" },
   answers:       { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real Q&A" },
+  translation:   { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "local LLM translation on the member's own server — saved translations and glossaries are the member's own records" },
   anon:          { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real anon mode" },
   all:           { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real cross-lens roll-up" },
   root:          { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real root navigation" },
