@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { SafetyNote } from './SafetyNote';
 
 async function callElec<T>(action: string, data: Record<string, unknown>): Promise<T | null> {
   try {
@@ -393,8 +394,12 @@ function SafetyChecklist() {
 
   const compute = useMutation({
     mutationFn: async () => {
-      const inspectionItems = items.filter((i) => i.name.trim()).map((i) => ({
-        name: i.name, necCode: i.necCode, passed: i.passed, critical: i.critical, notes: i.notes,
+      // F4: EVERY editor row is part of the inspection as run — the old
+      // name filter silently dropped unnamed rows (a Pass-checked row
+      // vanished from both counts while sitting in the editor). Blank
+      // names carry a positional label so the row counts and reads.
+      const inspectionItems = items.map((i, idx) => ({
+        name: i.name.trim() || `Item ${idx + 1}`, necCode: i.necCode, passed: i.passed, critical: i.critical, notes: i.notes,
       }));
       const r = await callElec<InspectionResult>('safetyInspection', { inspectionItems });
       setResult(r);
@@ -464,6 +469,7 @@ function SafetyChecklist() {
 export function NecCodeCalc() {
   return (
     <div className="space-y-4">
+      <SafetyNote />
       <PanelLoadCalc />
       <VoltageDropChart />
       <CircuitMap />
