@@ -121,6 +121,17 @@ function llmText(res) {
   return String(res?.text || res?.content || "").trim();
 }
 
+// Resolve a caller-supplied language (code or display name) to its ISO
+// code in the catalog; null when it is not a catalog language.
+function codeOf(input) {
+  if (!input) return null;
+  const lc = String(input).trim().toLowerCase();
+  const byCode = LANGUAGES.find((l) => l.code === lc);
+  if (byCode) return byCode.code;
+  const byName = LANGUAGES.find((l) => l.name.toLowerCase() === lc);
+  return byName ? byName.code : null;
+}
+
 // ── Deterministic offline language detector ─────────────────────────────────
 // A REAL detector, not a stub: it scores text on (1) Unicode script ranges
 // (Han/Hiragana/Katakana/Hangul/Cyrillic/Arabic/Hebrew/Greek/Thai/Devanagari)
@@ -274,12 +285,18 @@ export default function registerTranslationMacros(_register) {
           const m = raw.match(/\{[\s\S]*\}/);
           const parsed = m ? JSON.parse(m[0]) : null;
           if (parsed && parsed.language) {
+            const code = parsed.code ? String(parsed.code).toLowerCase() : offline.code;
             return {
               ok: true,
               result: {
-                language: String(parsed.language),
-                code: parsed.code ? String(parsed.code).toLowerCase() : offline.code,
-                confidence: typeof parsed.confidence === "number" ? parsed.confidence : offline.confidence,
+                // The refinement may correct the verdict; the confidence
+                // stays the offline detector's COMPUTED figure — a model's
+                // self-reported confidence is a constant dressed as a
+                // measurement (F5). The label resolves through the
+                // catalog so it is always the language's name.
+                language: (code && NAME_BY_CODE.get(code)) || String(parsed.language),
+                code,
+                confidence: offline.confidence,
                 method: "llm",
               },
             };
@@ -321,6 +338,37 @@ export default function registerTranslationMacros(_register) {
       if (text.length > MAX_TEXT_LEN) {
         return { ok: false, error: `text too long (${text.length} > ${MAX_TEXT_LEN} chars)` };
       }
+
+      // Same-language short-circuit: when the source IS the target (an
+      // explicit source, or the offline detector on a decisive/strong
+      // verdict), the translation of the text is the text — returned
+      // unchanged, labelled, with no engine call and NO glossary check
+      // (the checker's same-language false positive dies here too).
+      const tgtCode = codeOf(data.targetLanguage || data.target || data.to);
+      let srcCode = null;
+      if (sourceLanguage && String(sourceLanguage).toLowerCase() !== "auto") {
+        srcCode = codeOf(sourceLanguage);
+      } else {
+        const det = detectOffline(text);
+        if (det.code && (det.method === "script" || det.confidence >= 0.6)) srcCode = det.code;
+      }
+      if (srcCode && tgtCode && srcCode === tgtCode) {
+        return {
+          ok: true,
+          result: {
+            translated: text,
+            sameLanguage: true,
+            targetLanguage,
+            sourceLanguage: targetLanguage,
+            formality,
+            chars: text.length,
+            model: "none (same language)",
+            glossaryApplied: 0,
+            glossaryMisses: [],
+          },
+        };
+      }
+
       if (!ctx?.llm?.chat) return { ok: false, error: "translation_unavailable" };
 
       const system = TASK_PROMPTS.machineTranslate({
@@ -330,16 +378,43 @@ export default function registerTranslationMacros(_register) {
         preserveFormatting,
         glossary,
       });
+      const maxTokens = Math.min(4096, Math.ceil(text.length / 2) + 512);
+      // Deterministic decoding for a deterministic task (temperature 0):
+      // the same input must return the same translation across re-runs.
+      const attempt = async (extra) => {
+        const res = await ctx.llm.chat({
+          system: extra ? `${system}
+${extra}` : system,
+          messages: [{ role: "user", content: text }],
+          temperature: 0,
+          maxTokens,
+          slot: "utility",
+        });
+        return { out: llmText(res), model: res?.model || res?.brain || "utility" };
+      };
 
-      const res = await ctx.llm.chat({
-        system,
-        messages: [{ role: "user", content: text }],
-        temperature: 0.2,
-        maxTokens: Math.min(4096, Math.ceil(text.length / 2) + 512),
-        slot: "utility",
-      });
-      const translated = llmText(res);
+      let { out: translated, model } = await attempt(null);
       if (!translated) return { ok: false, error: "translation_unavailable" };
+      let misses = glossaryMisses(glossary, text, translated);
+      let glossaryAttempts = 1;
+      if (glossary.length && misses.length) {
+        // S3 — enforcement at generation: ONE bounded corrective re-ask
+        // naming the missed terms as mandatory. The better attempt is
+        // returned; whatever still misses is reported by the checker.
+        const fix = misses.map((g) => `"${g.source}" -> "${g.target}"`).join(", ");
+        const retry = await attempt(
+          `CORRECTION: a previous attempt violated the mandatory glossary. These renderings are REQUIRED wherever the source term appears: ${fix}. Translate the text again in full, honouring every one.`
+        );
+        glossaryAttempts = 2;
+        if (retry.out) {
+          const retryMisses = glossaryMisses(glossary, text, retry.out);
+          if (retryMisses.length <= misses.length) {
+            translated = retry.out;
+            model = retry.model;
+            misses = retryMisses;
+          }
+        }
+      }
       return {
         ok: true,
         result: {
@@ -348,9 +423,10 @@ export default function registerTranslationMacros(_register) {
           sourceLanguage: resolveLanguageName(sourceLanguage) || "auto",
           formality,
           chars: text.length,
-          model: res?.model || res?.brain || "utility",
+          model,
           glossaryApplied: glossary.length,
-          glossaryMisses: glossaryMisses(glossary, text, translated),
+          glossaryAttempts,
+          glossaryMisses: misses,
         },
       };
     } catch (e) {
@@ -379,34 +455,56 @@ export default function registerTranslationMacros(_register) {
         TASK_PROMPTS.machineTranslate({ targetLanguage, formality, preserveFormatting: true, glossary }) +
         `\nThe user message is a JSON array of strings. Return ONLY a JSON array of the same length, in the same order, each element the translation of the corresponding input. No other text.`;
 
-      const res = await ctx.llm.chat({
-        system,
-        messages: [{ role: "user", content: JSON.stringify(items) }],
-        temperature: 0.2,
-        maxTokens: Math.min(4096, Math.ceil(totalLen / 2) + 512),
-        slot: "utility",
-      });
-      const raw = llmText(res);
-      let arr = null;
-      try {
-        const m = raw.match(/\[[\s\S]*\]/);
-        arr = m ? JSON.parse(m[0]) : null;
-      } catch {
-        arr = null;
-      }
-      if (!Array.isArray(arr) || arr.length !== items.length) {
-        return { ok: false, error: "batch_translation_malformed" };
+      const batchMaxTokens = Math.min(4096, Math.ceil(totalLen / 2) + 512);
+      const runBatch = async (extra) => {
+        const res = await ctx.llm.chat({
+          system: extra ? `${system}
+${extra}` : system,
+          messages: [{ role: "user", content: JSON.stringify(items) }],
+          temperature: 0,
+          maxTokens: batchMaxTokens,
+          slot: "utility",
+        });
+        const raw = llmText(res);
+        try {
+          const m = raw.match(/\[[\s\S]*\]/);
+          const parsed = m ? JSON.parse(m[0]) : null;
+          return Array.isArray(parsed) && parsed.length === items.length ? parsed : null;
+        } catch {
+          return null;
+        }
+      };
+      const collectMisses = (translations) => {
+        const misses = [];
+        translations.forEach((t, i) => {
+          for (const g of glossaryMisses(glossary, items[i], t)) misses.push({ index: i, ...g });
+        });
+        return misses;
+      };
+      let arr = await runBatch(null);
+      if (!arr) return { ok: false, error: "batch_translation_malformed" };
+      let translations = arr.map((x) => String(x ?? ""));
+      let misses = collectMisses(translations);
+      let glossaryAttempts = 1;
+      if (glossary.length && misses.length) {
+        // S3 — one bounded corrective re-ask for the batch, as translate.
+        const fix = [...new Set(misses.map((g) => `"${g.source}" -> "${g.target}"`))].join(", ");
+        const retry = await runBatch(
+          `CORRECTION: a previous attempt violated the mandatory glossary. These renderings are REQUIRED wherever the source term appears: ${fix}. Translate the array again in full, honouring every one.`
+        );
+        glossaryAttempts = 2;
+        if (retry) {
+          const retryTranslations = retry.map((x) => String(x ?? ""));
+          const retryMisses = collectMisses(retryTranslations);
+          if (retryMisses.length <= misses.length) {
+            translations = retryTranslations;
+            misses = retryMisses;
+          }
+        }
       }
       return {
         ok: true,
-        result: (() => {
-          const translations = arr.map((x) => String(x ?? ""));
-          const misses = [];
-          translations.forEach((t, i) => {
-            for (const g of glossaryMisses(glossary, items[i], t)) misses.push({ index: i, ...g });
-          });
-          return { translations, targetLanguage, formality, count: arr.length, glossaryApplied: glossary.length, glossaryMisses: misses };
-        })(),
+        result: { translations, targetLanguage, formality, count: translations.length, glossaryApplied: glossary.length, glossaryAttempts, glossaryMisses: misses },
       };
     } catch (e) {
       return { ok: false, error: "translation_unavailable", detail: String(e?.message || e) };
