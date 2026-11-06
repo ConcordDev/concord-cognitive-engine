@@ -42,6 +42,7 @@
 // no figure is presented as lens-wide that was computed over less.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 import crypto from "node:crypto";
 
 // ---- store ---------------------------------------------------------------
@@ -85,6 +86,22 @@ function nowISO() {
   return new Date().toISOString();
 }
 
+function holderNameFor(ctx, holder) {
+  // Close-out A7 (identity-display): the custody holder's name, resolved
+  // at the read through the platform resolver. A holder entered as free
+  // text (a transfer target's name) is not an account id and does not
+  // resolve — the surface keeps the entered text in that case and falls
+  // back to a neutral label only for an unresolved account id. Null here
+  // means "no resolved name"; the raw account id is never the display.
+  try {
+    const db = ctx?.db || globalThis._concordSTATE?.db || null;
+    return lookupUserIdentity(db, holder).displayName;
+  } catch { return null; }
+}
+function withHolderName(ctx, rec) {
+  if (!rec) return rec;
+  return { ...rec, currentHolderName: holderNameFor(ctx, rec.currentHolder) };
+}
 function actorId(ctx) {
   return ctx?.actor?.userId || ctx?.userId || "anon";
 }
@@ -467,7 +484,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
         ],
       };
       if (!putRecord(evidence, id, rec)) return { ok: false, error: "record_cap" };
-      return { ok: true, result: { evidence: rec } };
+      return { ok: true, result: { evidence: withHolderName(ctx, rec) } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -512,7 +529,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
       rec.currentHolder = to;
       rec.locker = entry.locker;
       if (entry.event === "release" || entry.event === "destroyed") rec.status = entry.event === "destroyed" ? "destroyed" : "released";
-      return { ok: true, result: { evidence: rec, transfer: entry } };
+      return { ok: true, result: { evidence: withHolderName(ctx, rec), transfer: entry } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -521,7 +538,7 @@ export default function registerLawEnforcementActions(registerLensAction) {
   registerLensAction("law-enforcement", "evidenceList", (ctx, _artifact, params) => {
     try {
       const p = params || {};
-      let list = [...userMap("evidence", actorId(ctx)).values()];
+      let list = [...userMap("evidence", actorId(ctx)).values()].map((e) => withHolderName(ctx, e));
       const caseFilter = str(p.caseNumber);
       if (caseFilter) list = list.filter((e) => e.caseNumber === caseFilter);
       const q = str(p.search).toLowerCase();
@@ -557,7 +574,11 @@ export default function registerLawEnforcementActions(registerLensAction) {
         result: {
           evidenceId: rec.id,
           barcode: rec.barcode,
-          chain: rec.custody,
+          chain: (rec.custody || []).map((c) => ({
+            ...c,
+            fromName: holderNameFor(ctx, c.from),
+            toName: holderNameFor(ctx, c.to),
+          })),
           transferCount: rec.custody.length,
           chainIntact: intact,
           currentHolder: rec.currentHolder,
