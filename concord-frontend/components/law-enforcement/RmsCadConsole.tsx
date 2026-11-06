@@ -314,10 +314,20 @@ function CadTab() {
 // Evidence chain-of-custody
 // ===========================================================================
 
-interface CustodyEntry { event: string; from: string; to: string; locker: string; signature: string; at: string; note: string; }
+interface CustodyEntry { event: string; from: string; to: string; locker: string; signature: string; at: string; note: string; fromName?: string | null; toName?: string | null; }
 interface EvidenceRec {
   id: string; barcode: string; caseNumber: string; description: string; category: string;
-  locker: string; status: string; currentHolder: string; intakeAt: string; custody: CustodyEntry[];
+  locker: string; status: string; currentHolder: string; currentHolderName?: string | null; intakeAt: string; custody: CustodyEntry[];
+}
+
+// Close-out A7 (identity-display): a custody holder renders as their
+// resolved name; a holder entered as free text (a transfer target's
+// name) renders as entered; an unresolved account id renders as a
+// neutral label — the raw UUID is never the display.
+const ACCOUNT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function holderText(name: string | null | undefined, raw: string): string {
+  if (name) return name;
+  return ACCOUNT_ID_RE.test(raw || '') ? 'an officer' : (raw || 'an officer');
 }
 
 function EvidenceTab() {
@@ -372,7 +382,7 @@ function EvidenceTab() {
   }
 
   const chainEvents: TimelineEvent[] = (selected?.chain || []).map((c, i) => ({
-    id: `${selected!.id}-${i}`, label: `${c.event}: ${c.from} → ${c.to}`, time: c.at,
+    id: `${selected!.id}-${i}`, label: `${c.event}: ${holderText(c.fromName, c.from)} → ${holderText(c.toName, c.to)}`, time: c.at,
     tone: c.event === 'destroyed' ? 'bad' : c.event === 'intake' ? 'info' : 'good',
     detail: `Locker ${c.locker} · signed ${c.signature}`,
   }));
@@ -425,7 +435,7 @@ function EvidenceTab() {
                   <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300">{e.barcode}</span>
                   <span className="text-xs font-semibold text-white truncate">{e.description}</span>
                 </div>
-                <p className="text-[10px] text-zinc-400 truncate">{e.caseNumber || 'no case'} · {e.locker} · holder {e.currentHolder} · {e.status}</p>
+                <p className="text-[10px] text-zinc-400 truncate">{e.caseNumber || 'no case'} · {e.locker} · holder {holderText(e.currentHolderName, e.currentHolder)} · {e.status}</p>
                 <p className="text-[9px] text-zinc-400 font-mono">{e.id}</p>
               </div>
               <Btn busy={busy === e.id} onClick={() => viewChain(e.id)}><Scale className="w-3 h-3" /> Chain</Btn>
