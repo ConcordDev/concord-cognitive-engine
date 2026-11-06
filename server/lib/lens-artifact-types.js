@@ -72,5 +72,21 @@ export function reconcileArtifactTypes(rules) {
       if (!rule.types.includes(t)) { rule.types.push(t); added++; }
     }
   }
+  // A8 (shared validation): the platform's own capture type. Quick
+  // Capture (shared chrome) posts lens.create(domain, { type:
+  // "capture", … }) into EVERY lens's domain — "capture" is a platform
+  // type, not a lens vocabulary item, so no per-lens list should have
+  // to carry it. Before this line, only the four domains whose rules
+  // happened to name it (science · environment · nonprofit · retail)
+  // accepted a capture; the other 118 ruled domains rejected valid
+  // captures with validation_failed (ML F11 is the named instance;
+  // the Reasoning F11/F12 signature is the same mechanism). Accept it
+  // for every ruled domain here, where the merge already runs.
+  for (const rule of rules.values()) {
+    if (rule && Array.isArray(rule.types) && !rule.types.includes("capture")) {
+      rule.types.push("capture");
+      added++;
+    }
+  }
   return added;
 }
