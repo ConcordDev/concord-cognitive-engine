@@ -231,7 +231,7 @@ export const REGISTRY = Object.freeze({
   wellness:      { tier: TIER.REAL_FREE, sources: ["wikipedia.wellness", "nih.medlineplus"], note: "MedlinePlus + Wikipedia" },
   mental_health: { tier: TIER.REAL_LIVE, liveFromSubstrate: true, sources: ["nih.medlineplus"], note: "user's own tracked mood/sleep/practice substrate is live; MedlinePlus is static reference content, scoped to the resource browser" },
   "mental-health": { tier: TIER.REAL_LIVE, liveFromSubstrate: true, sources: ["nih.medlineplus"], note: "user's own tracked mood/sleep/practice substrate is live; MedlinePlus is static reference content, scoped to the resource browser" },
-  meditation:    { tier: TIER.REAL_FREE, sources: ["wikipedia.meditation"], note: "Wikipedia" },
+  meditation:    { tier: TIER.REAL_LIVE, liveFromSubstrate: true, groundedSchema: "meditation/practice", note: "the member's own practice record — sessions they sit and check-ins they make, kept server-side; only performed time counts toward minutes and streak" },
   household:     { tier: TIER.REAL_FREE, sources: ["wikipedia.household"], note: "Wikipedia" },
   parenting:     { tier: TIER.REAL_FREE, sources: ["aap.api", "wikipedia.parenting"], note: "AAP guidelines + Wikipedia" },
   retail:        { tier: TIER.REAL_FREE, sources: ["wikipedia.retail"], note: "Wikipedia retail trends" },

@@ -4,10 +4,18 @@
  * CoursesPanel — multi-session courses / structured day-by-day programs.
  * Wires meditation.courses (list + enrollment state), meditation.enrollCourse,
  * meditation.courseProgress (per-day detail) and meditation.completeCourseDay.
+ *
+ * A day completes by PRACTISING it (S-MED-1): Practise routes the
+ * day's own session into the Session player, and the performed log
+ * completes the day server-side — the old one-click Complete
+ * credited a full session that never ran. Progress is reversible
+ * (un-complete a day, unenroll) per S-MED-3. Day session lengths and
+ * titles come from the one library of record the server serves.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { GraduationCap, Loader2, Check, ChevronRight, CircleDot } from 'lucide-react';
+import type { PractisePreset } from './SessionPlayerPanel';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -16,13 +24,17 @@ interface CourseSummary {
   dayCount: number; enrolled: boolean; completedDays: number; startedAt: string | null;
 }
 interface CourseDay { day: number; title: string; sessionId: string; note: string; completed: boolean }
+interface LibSession { id: string; title: string; category: string; durationMin: number }
 interface CourseDetail {
   courseId: string; title: string; subtitle: string; goal: string;
   startedAt: string | null; enrolled: boolean; days: CourseDay[];
   completedCount: number; dayCount: number; nextDay: number | null; finished: boolean;
 }
 
-export function CoursesPanel({ onPractice }: { onPractice?: () => void }) {
+export function CoursesPanel({ onPractice, onPractise }: {
+  onPractice?: () => void;
+  onPractise?: (preset: PractisePreset) => void;
+}) {
   const [courses, setCourses] = useState<CourseSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -57,9 +69,36 @@ export function CoursesPanel({ onPractice }: { onPractice?: () => void }) {
     setBusy(false);
   }, [loadCourses, openId]);
 
-  const completeDay = useCallback(async (courseId: string, day: number) => {
+  // Practise a day: route its own session into the Session player.
+  // The day completes when the performed session is logged (the
+  // server refuses completion without a sit behind it).
+  const practiseDay = useCallback(async (courseId: string, d: CourseDay) => {
+    const lib = await lensRun('meditation', 'library', {});
+    const sessions = (lib.data?.result?.sessions as LibSession[]) || [];
+    const track = sessions.find((x) => x.id === d.sessionId);
+    onPractise?.({
+      sessionId: d.sessionId,
+      title: track?.title || d.title,
+      category: track?.category || 'guided',
+      minutes: track?.durationMin || 5,
+      courseId,
+      day: d.day,
+    });
+  }, [onPractise]);
+
+  const uncompleteDay = useCallback(async (courseId: string, day: number) => {
     setBusy(true);
-    await lensRun('meditation', 'completeCourseDay', { courseId, day });
+    await lensRun('meditation', 'uncompleteCourseDay', { courseId, day });
+    const r = await lensRun('meditation', 'courseProgress', { courseId });
+    setDetail((r.data?.result as CourseDetail) || null);
+    await loadCourses();
+    setBusy(false);
+    onPractice?.();
+  }, [loadCourses, onPractice]);
+
+  const unenroll = useCallback(async (courseId: string) => {
+    setBusy(true);
+    await lensRun('meditation', 'unenrollCourse', { courseId });
     const r = await lensRun('meditation', 'courseProgress', { courseId });
     setDetail((r.data?.result as CourseDetail) || null);
     await loadCourses();
@@ -134,10 +173,15 @@ export function CoursesPanel({ onPractice }: { onPractice?: () => void }) {
                                   </p>
                                   <p className="text-[10px] text-zinc-400 truncate">{d.note}</p>
                                 </div>
-                                {!d.completed && (
-                                  <button type="button" onClick={() => completeDay(c.id, d.day)} disabled={busy}
+                                {!d.completed ? (
+                                  <button type="button" onClick={() => practiseDay(c.id, d)} disabled={busy}
                                     className="text-[10px] px-2 py-0.5 rounded bg-amber-600/80 hover:bg-amber-500 text-white disabled:opacity-50 flex-shrink-0">
-                                    Complete
+                                    Practise
+                                  </button>
+                                ) : (
+                                  <button type="button" onClick={() => uncompleteDay(c.id, d.day)} disabled={busy}
+                                    className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-50 flex-shrink-0">
+                                    Undo
                                   </button>
                                 )}
                               </li>
@@ -147,6 +191,12 @@ export function CoursesPanel({ onPractice }: { onPractice?: () => void }) {
                       )}
                       {detail.enrolled && detail.finished && (
                         <p className="mt-2 text-center text-xs text-emerald-300">Course complete — beautifully done.</p>
+                      )}
+                      {detail.enrolled && (
+                        <button type="button" onClick={() => unenroll(c.id)} disabled={busy}
+                          className="mt-2 w-full px-3 py-1.5 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-50">
+                          Unenroll (progress is kept in your practice record)
+                        </button>
                       )}
                     </>
                   )}
