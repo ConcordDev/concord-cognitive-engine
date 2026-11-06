@@ -210,6 +210,24 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Broadcasts are composed live from this world’s own signals — ecosystem score, refusal-field strength, and drift events — and each dispatch is recorded with the inputs it was composed from. A quiet world reads quiet: identical dispatches mean the signals have not moved, not that the feed is simulated.',
   },
   /**
+   * World Creator's declaration follows its DETERMINATION (the
+   * compilation's form — S1 priced on the determination's result):
+   * the authoring execution is real (drafts persist in the platform
+   * store with the full editor verb set; playtest mints a real world
+   * via /api/worlds and routes the creator into it), so the old
+   * Simulated banner was a taxonomy error. But the cross-lens seam
+   * (A3) is NOT wired: a published draft is discoverable in this
+   * lens's own Discover and does not yet surface in Sub-Worlds'
+   * discovery — the two lenses keep separate stores. The caption
+   * states both halves in the open rather than letting REAL_LIVE
+   * imply the loop is closed; the seam bridge is priced separately
+   * at the Lead.
+   */
+  'world-creator': {
+    label: 'Live',
+    caption: 'Drafts here are your real records — sculpted scenes, props, spawn points, zones, NPCs and factions persist, and playtest mints a real world you enter in the World lens. Published drafts are discoverable in this lens; they do not yet surface in Sub-Worlds’ discovery.',
+  },
+  /**
    * Retail's store is the account's own live store — products, orders and
    * stock are the merchant's real records. The generic REAL_FREE line
    * ("static / open-access dataset") was false about the machinery in both
