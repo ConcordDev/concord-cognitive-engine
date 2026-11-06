@@ -117,6 +117,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
       'Your question log lives here — your own entries, kept in the platform store until you mark them answered. Nothing is polled from an external source; the platform\'s emergent entities are system content, labelled separately on this page.',
   },
   /**
+   * The lens presents as Moments — the member's own moment journal
+   * (Lead ruling 2026-11-01: the rename path). Its records are the
+   * member's own dated notes, persisted server-side; the generic
+   * REAL_LIVE caption ("polled from an external source") would be
+   * false here, and any replay framing would be falser.
+   */
+  'cognitive-replay': {
+    label: 'Live',
+    caption: 'Live: your moment journal — the moments you add are your own records, kept with their dates and saved server-side. Nothing here is recorded from your sessions or replayed.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic
