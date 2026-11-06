@@ -1,5 +1,16 @@
 'use client';
 
+/**
+ * LiveIndicator — the lens header's CONNECTION sign.
+ *
+ * It reports socket health only (LiveIndicator ← useRealtimeLens ←
+ * useSocket): whether this client is connected right now. It says
+ * nothing about the lens's data — that is the tier banner's claim, from
+ * a different source. The sign's vocabulary therefore names the
+ * connection ("Connected" / "Offline"), never "LIVE": the old word
+ * painted a data claim beside banners reading Simulated or static
+ * (B4's pattern determination; close-out A6).
+ */
 interface LiveIndicatorProps {
   isLive: boolean;
   lastUpdated: string | null;
@@ -19,7 +30,7 @@ export function LiveIndicator({ isLive, lastUpdated, compact }: LiveIndicatorPro
             isLive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
           }`}
         />
-        {isLive ? 'LIVE' : 'OFF'}
+        {isLive ? 'Connected' : 'Offline'}
       </span>
     );
   }
@@ -32,7 +43,7 @@ export function LiveIndicator({ isLive, lastUpdated, compact }: LiveIndicatorPro
         }`}
       />
       <span className={isLive ? 'text-green-400' : 'text-zinc-400'}>
-        {isLive ? 'LIVE' : 'Disconnected'}
+        {isLive ? 'Connected' : 'Disconnected'}
       </span>
       {timeAgo && (
         <span className="text-zinc-400">
