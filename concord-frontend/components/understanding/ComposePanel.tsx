@@ -105,7 +105,7 @@ export function ComposePanel({
               className="w-full bg-black/60 border border-white/10 rounded px-3 py-2 text-sm"
             >
               <option value="rules">rules (deterministic)</option>
-              <option value="llm">llm (subconscious brain)</option>
+              <option value="llm">llm (subconscious brain) — not yet wired</option>
             </select>
           </Field>
           {subjectKind !== 'raw' && (
