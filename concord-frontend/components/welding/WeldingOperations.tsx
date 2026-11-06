@@ -18,7 +18,7 @@
  * Every value rendered comes from a real macro call. No mock data.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays, FileText, Receipt, BookOpen, Award, Camera,
   Search, Loader2, Plus, Trash2, Send, ArrowRightCircle,
@@ -86,6 +86,11 @@ async function run<T = any>(action: string, input: Record<string, unknown> = {})
   return r.data.result;
 }
 
+// Tabs bump this after any mutation so the header stats (ops-summary) are
+// refetched in the same view — the header used to refresh only on tab
+// switches, so its figures lagged every view's own numbers (F8).
+const OpsRefreshCtx = createContext<() => void>(() => {});
+
 const fmt = (n: number | undefined) => `$${(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 const inputCls = 'rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white';
 const btnCls = 'inline-flex items-center gap-1 rounded bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-400 disabled:opacity-40';
@@ -137,6 +142,28 @@ function PortalLinkBanner({ token, label }: { token: string; label: string }) {
   );
 }
 
+// Two-step delete: the first click arms, the second deletes — the fleet's
+// confirm pattern for destructive controls (no native dialogs).
+function DeleteButton({ onDelete, label = 'Delete' }: { onDelete: () => void | Promise<void>; label?: string }) {
+  const [arm, setArm] = useState(false);
+  if (!arm) {
+    return <button type="button" className={ghostBtn} onClick={() => setArm(true)}><Trash2 className="h-3 w-3" /> {label}</button>;
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <button type="button" className="inline-flex items-center gap-1 rounded bg-rose-500/80 px-2 py-1 text-[11px] font-semibold text-white hover:bg-rose-400" onClick={() => { void onDelete(); }}>Confirm delete</button>
+      <button type="button" className={ghostBtn} onClick={() => setArm(false)}>Keep</button>
+    </span>
+  );
+}
+
+interface Pqr {
+  id: string; pqrNumber: string; wpsNumber?: string; process: string;
+  baseMetal: string; couponThickness?: string; welder?: string;
+  testDate?: string; tensileResult?: string; bendResult?: string;
+  qualifiedRange?: string; code: string;
+}
+
 function StandingBadge({ standing }: { standing?: string }) {
   const map: Record<string, string> = {
     valid: 'bg-emerald-500/20 text-emerald-200',
@@ -150,6 +177,9 @@ function StandingBadge({ standing }: { standing?: string }) {
 // ── Schedule tab ────────────────────────────────────────────────────
 function ScheduleTab() {
   const [cal, setCal] = useState<{ days: CalendarDay[]; unscheduled: { id: string; title: string; client?: string }[]; crewLoad: Record<string, number>; scheduledCount: number } | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const bumpOps = useContext(OpsRefreshCtx);
   const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState('');
   const [client, setClient] = useState('');
@@ -159,7 +189,9 @@ function ScheduleTab() {
 
   const reload = useCallback(async () => {
     setBusy(true);
-    setCal(await run('calendar', { rangeDays: 30 }));
+    const [c, jl] = await Promise.all([run('calendar', { rangeDays: 30 }), run<{ jobs: Job[] }>('job-list')]);
+    setCal(c);
+    setJobs(jl?.jobs || []);
     setBusy(false);
   }, []);
   useEffect(() => { void reload(); }, [reload]);
@@ -173,6 +205,7 @@ function ScheduleTab() {
     });
     setTitle(''); setClient(''); setDate(''); setCrew(''); setDuration('1');
     await reload();
+    bumpOps();
   };
 
   const crewLoad = cal ? Object.entries(cal.crewLoad).map(([name, days]) => ({ name, days })) : [];
@@ -212,7 +245,7 @@ function ScheduleTab() {
                 <div key={d.date} className={`min-h-[64px] rounded border p-1 ${d.jobs.length ? 'border-orange-500/30 bg-orange-500/5' : 'border-zinc-800 bg-zinc-950/40'}`}>
                   <div className="text-[9px] text-zinc-400">{day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
                   {d.jobs.map((j) => (
-                    <div key={j.id} className="mt-0.5 truncate rounded bg-orange-500/20 px-1 py-0.5 text-[9px] text-orange-100" title={`${j.title}${j.client ? ` · ${j.client}` : ''}`}>{j.title}</div>
+                    <button key={j.id} type="button" onClick={() => setSelectedId(j.id)} className="mt-0.5 block w-full truncate rounded bg-orange-500/20 px-1 py-0.5 text-left text-[9px] text-orange-100 hover:bg-orange-500/30" title={`${j.title}${j.client ? ` · ${j.client}` : ''} — open job`}>{j.title}</button>
                   ))}
                 </div>
               );
@@ -229,6 +262,84 @@ function ScheduleTab() {
           )}
         </>
       )}
+
+      {/* The job's own surface (F5): every job, openable and operable here —
+          the calendar above is a projection, not the only door. */}
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
+        <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Jobs ({jobs.length})</div>
+        {jobs.length === 0 && <div className="text-[11px] text-zinc-400">No jobs yet — schedule one above, or convert an estimate in Quotes.</div>}
+        <div className="space-y-1">
+          {jobs.map((j) => (
+            <button key={j.id} type="button" onClick={() => setSelectedId(j.id === selectedId ? null : j.id)} className={`flex w-full items-center justify-between rounded border px-2 py-1.5 text-left text-[11px] ${j.id === selectedId ? 'border-orange-500/40 bg-orange-500/10 text-orange-100' : 'border-zinc-800 bg-zinc-950/40 text-zinc-200 hover:border-orange-500/30'}`}>
+              <span className="min-w-0 truncate">{j.title}{j.client ? ` · ${j.client}` : ''}</span>
+              <span className="ml-2 shrink-0 text-[10px] text-zinc-400">{j.scheduledDate || 'unscheduled'} · {j.status || 'scheduled'}</span>
+            </button>
+          ))}
+        </div>
+        {(() => {
+          const sel = jobs.find((j) => j.id === selectedId);
+          return sel ? <JobDetail key={sel.id} job={sel} onChanged={reload} onClose={() => setSelectedId(null)} /> : null;
+        })()}
+      </div>
+    </div>
+  );
+}
+
+// The job detail editor: status, date, duration, crew and notes ride the
+// registered job-update verb; delete rides job-delete (F3/F5).
+function JobDetail({ job, onChanged, onClose }: { job: Job; onChanged: () => void; onClose: () => void }) {
+  const [status, setStatus] = useState(job.status || 'scheduled');
+  const [date, setDate] = useState(job.scheduledDate || '');
+  const [duration, setDuration] = useState(String(job.durationDays || 1));
+  const [crew, setCrew] = useState((job.crew || []).join(', '));
+  const [notes, setNotes] = useState(job.notes || '');
+  const [busy, setBusy] = useState(false);
+  const bumpOps = useContext(OpsRefreshCtx);
+
+  const save = async () => {
+    setBusy(true);
+    await run('job-update', {
+      jobId: job.id, status, scheduledDate: date,
+      durationDays: Number(duration) || 1,
+      crew: crew.split(',').map((c) => c.trim()).filter(Boolean), notes,
+    });
+    setBusy(false);
+    bumpOps();
+    onChanged();
+  };
+  const del = async () => {
+    await run('job-delete', { jobId: job.id });
+    bumpOps();
+    onChanged();
+    onClose();
+  };
+
+  return (
+    <div className="mt-2 rounded-lg border border-orange-500/25 bg-zinc-950/60 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="min-w-0">
+          <div className="truncate text-[12px] font-medium text-white">{job.title}</div>
+          <div className="text-[10px] text-zinc-400">
+            {job.client || 'no client'}{job.address ? ` · ${job.address}` : ''}
+            {job.contractValue != null ? ` · contract ${fmt(job.contractValue)}` : ''}
+            {job.estimateId ? ' · from estimate' : ''}{job.invoiceId ? ' · invoiced' : ''}
+          </div>
+        </div>
+        <button type="button" className={ghostBtn} onClick={onClose}>Close</button>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-4">
+        <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Job status">
+          {['scheduled', 'in_progress', 'completed', 'cancelled'].map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+        </select>
+        <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Scheduled date" />
+        <input type="number" min={1} className={inputCls} value={duration} onChange={(e) => setDuration(e.target.value)} aria-label="Duration (days)" />
+        <input className={inputCls} placeholder="Crew (comma-separated)" value={crew} onChange={(e) => setCrew(e.target.value)} />
+      </div>
+      <textarea className={`${inputCls} mt-2 w-full`} rows={2} placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <div className="mt-2 flex items-center gap-1.5">
+        <button type="button" className={btnCls} onClick={save} disabled={busy}>Save changes</button>
+        <DeleteButton onDelete={del} label="Delete job" />
+      </div>
     </div>
   );
 }
@@ -236,11 +347,13 @@ function ScheduleTab() {
 function UnscheduledRow({ job, onAssigned }: { job: { id: string; title: string; client?: string }; onAssigned: () => void }) {
   const [date, setDate] = useState('');
   const [busy, setBusy] = useState(false);
+  const bumpOps = useContext(OpsRefreshCtx);
   const assign = async () => {
     if (!date) return;
     setBusy(true);
     await run('job-update', { jobId: job.id, scheduledDate: date });
     setBusy(false);
+    bumpOps();
     onAssigned();
   };
   return (
@@ -255,6 +368,7 @@ function UnscheduledRow({ job, onAssigned }: { job: { id: string; title: string;
 // ── Quotes tab ──────────────────────────────────────────────────────
 function QuotesTab() {
   const [data, setData] = useState<{ estimates: Estimate[]; pipelineValue: number; wonValue: number } | null>(null);
+  const bumpOps = useContext(OpsRefreshCtx);
   const [busy, setBusy] = useState(false);
   const [title, setTitle] = useState('');
   const [client, setClient] = useState('');
@@ -281,15 +395,23 @@ function QuotesTab() {
     setTitle(''); setClient(''); setTaxRate('0');
     setItems([{ description: '', quantity: '1', unitPrice: '0', kind: 'labor' }]);
     await reload();
+    bumpOps();
   };
   const send = async (id: string) => {
     const r = await run<{ portalToken: string }>('estimate-send', { estimateId: id });
     if (r?.portalToken) setPortal(r.portalToken);
     await reload();
+    bumpOps();
   };
   const convert = async (id: string) => {
     await run('estimate-to-job', { estimateId: id });
     await reload();
+    bumpOps();
+  };
+  const del = async (id: string) => {
+    await run('estimate-delete', { estimateId: id });
+    await reload();
+    bumpOps();
   };
 
   return (
@@ -340,10 +462,20 @@ function QuotesTab() {
                 <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">{e.status}</span>
               </div>
             </div>
+            {/* The estimate prints its own arithmetic (F6): subtotal and tax
+                stand beside the total they compose. */}
+            <div className="mt-1 text-[10px] text-zinc-400">
+              Subtotal <span className="font-mono text-zinc-200">{fmt(e.subtotal)}</span>
+              {' · '}Tax ({Math.round((e.taxRate || 0) * 1000) / 10}%) <span className="font-mono text-zinc-200">{fmt(e.tax)}</span>
+              {' · '}Total <span className="font-mono text-emerald-300">{fmt(e.total)}</span>
+            </div>
             <div className="mt-1.5 flex items-center gap-1.5">
               {e.status === 'draft' && <button type="button" className={ghostBtn} onClick={() => send(e.id)}><Send className="h-3 w-3" /> Send to client</button>}
-              {(e.status === 'sent' || e.status === 'accepted') && !e.jobId && <button type="button" className={ghostBtn} onClick={() => convert(e.id)}><ArrowRightCircle className="h-3 w-3" /> Convert to job</button>}
+              {/* Conversion is not behind the send door (F6): the verb accepts
+                  a draft and marks it accepted itself. */}
+              {(e.status === 'draft' || e.status === 'sent' || e.status === 'accepted') && !e.jobId && <button type="button" className={ghostBtn} onClick={() => convert(e.id)}><ArrowRightCircle className="h-3 w-3" /> Convert to job</button>}
               {e.jobId && <span className="text-[10px] text-emerald-400">linked to job</span>}
+              <span className="ml-auto"><DeleteButton onDelete={() => del(e.id)} label="Delete" /></span>
             </div>
           </div>
         ))}
@@ -357,6 +489,7 @@ function QuotesTab() {
 function InvoicesTab() {
   const [data, setData] = useState<{ invoices: Invoice[]; outstanding: number; collected: number; overdueCount: number } | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const bumpOps = useContext(OpsRefreshCtx);
   const [busy, setBusy] = useState(false);
   const [jobId, setJobId] = useState('');
   const [amount, setAmount] = useState('');
@@ -384,6 +517,7 @@ function InvoicesTab() {
     if (r?.invoice?.portalToken) setPortal(r.invoice.portalToken);
     setJobId(''); setAmount('');
     await reload();
+    bumpOps();
   };
 
   return (
@@ -420,6 +554,7 @@ function InvoiceRow({ invoice, onPaid }: { invoice: Invoice; onPaid: () => void 
   const [amt, setAmt] = useState('');
   const [method, setMethod] = useState('card');
   const [busy, setBusy] = useState(false);
+  const bumpOps = useContext(OpsRefreshCtx);
   const pay = async () => {
     const n = Number(amt);
     if (!n || n <= 0) return;
@@ -427,6 +562,12 @@ function InvoiceRow({ invoice, onPaid }: { invoice: Invoice; onPaid: () => void 
     await run('invoice-payment', { invoiceId: invoice.id, amount: n, method });
     setAmt('');
     setBusy(false);
+    bumpOps();
+    onPaid();
+  };
+  const del = async () => {
+    await run('invoice-delete', { invoiceId: invoice.id });
+    bumpOps();
     onPaid();
   };
   return (
@@ -453,6 +594,7 @@ function InvoiceRow({ invoice, onPaid }: { invoice: Invoice; onPaid: () => void 
       {invoice.payments.length > 0 && (
         <div className="mt-1 text-[10px] text-zinc-400">{invoice.payments.length} payment(s): {invoice.payments.map((p) => `${fmt(p.amount)} ${p.method}`).join(', ')}</div>
       )}
+      <div className="mt-1.5 flex justify-end"><DeleteButton onDelete={del} label="Delete invoice" /></div>
     </div>
   );
 }
@@ -460,6 +602,7 @@ function InvoiceRow({ invoice, onPaid }: { invoice: Invoice; onPaid: () => void 
 // ── WPS tab ─────────────────────────────────────────────────────────
 function WpsTab() {
   const [list, setList] = useState<Wps[]>([]);
+  const bumpOps = useContext(OpsRefreshCtx);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     wpsNumber: '', process: 'SMAW', baseMetal: 'mild-steel', baseMetalSpec: '',
@@ -481,6 +624,7 @@ function WpsTab() {
     await run('wps-create', { ...form, positions: form.positions.split(',').map((p) => p.trim()).filter(Boolean) });
     setForm((f) => ({ ...f, wpsNumber: '', fillerMetal: '', amperageRange: '', voltageRange: '', thicknessRange: '', preheat: '' }));
     await reload();
+    bumpOps();
   };
   const approve = async (id: string) => {
     const r = await lensRun('welding', 'wps-approve', { wpsId: id });
@@ -489,6 +633,12 @@ function WpsTab() {
       alert(r.data.error === 'incomplete_wps' ? 'WPS incomplete — fill filler metal, amperage range and thickness range.' : (r.data.error || 'approve failed'));
     }
     await reload();
+    bumpOps();
+  };
+  const del = async (id: string) => {
+    await run('wps-delete', { wpsId: id });
+    await reload();
+    bumpOps();
   };
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -525,12 +675,92 @@ function WpsTab() {
               <div className="flex items-center gap-2">
                 <span className={`rounded px-1.5 py-0.5 text-[10px] ${w.status === 'approved' ? 'bg-emerald-500/20 text-emerald-200' : 'bg-zinc-700 text-zinc-300'}`}>{w.status}</span>
                 {w.status !== 'approved' && <button type="button" className={ghostBtn} onClick={() => approve(w.id)}><ShieldCheck className="h-3 w-3" /> Approve</button>}
+                <DeleteButton onDelete={() => del(w.id)} label="Delete" />
               </div>
             </div>
             {w.approvedBy && <div className="mt-1 text-[10px] text-emerald-400">approved by {w.approvedBy}</div>}
           </div>
         ))}
         {!busy && list.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No WPS documents yet.</div>}
+      </div>
+
+      <PqrSection />
+    </div>
+  );
+}
+
+// ── PQR records — the qualification evidence a WPS stands on ────────
+function PqrSection() {
+  const [list, setList] = useState<Pqr[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({
+    pqrNumber: '', wpsNumber: '', process: 'SMAW', baseMetal: '', couponThickness: '',
+    welder: '', testDate: '', tensileResult: 'not_recorded', bendResult: 'not_recorded', qualifiedRange: '',
+  });
+
+  const reload = useCallback(async () => {
+    setBusy(true);
+    const r = await run<{ pqr: Pqr[] }>('pqr-list');
+    setList(r?.pqr || []);
+    setBusy(false);
+  }, []);
+  useEffect(() => { void reload(); }, [reload]);
+
+  const create = async () => {
+    setBusy(true);
+    await run('pqr-create', { ...form });
+    setForm({ pqrNumber: '', wpsNumber: '', process: 'SMAW', baseMetal: '', couponThickness: '', welder: '', testDate: '', tensileResult: 'not_recorded', bendResult: 'not_recorded', qualifiedRange: '' });
+    await reload();
+  };
+  const del = async (id: string) => {
+    await run('pqr-delete', { pqrId: id });
+    await reload();
+  };
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const outcomeCls = (v?: string) => v === 'pass' ? 'bg-emerald-500/20 text-emerald-200' : v === 'fail' ? 'bg-rose-500/20 text-rose-200' : 'bg-zinc-700 text-zinc-300';
+
+  return (
+    <div className="space-y-3 border-t border-zinc-800 pt-3">
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">Procedure Qualification Records (PQR)</div>
+      <div className="grid gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 sm:grid-cols-4">
+        <input className={inputCls} placeholder="PQR number (auto)" value={form.pqrNumber} onChange={set('pqrNumber')} />
+        <input className={inputCls} placeholder="Supports WPS #" value={form.wpsNumber} onChange={set('wpsNumber')} />
+        <select className={inputCls} value={form.process} onChange={set('process')}>{['SMAW', 'GMAW', 'GTAW', 'FCAW', 'SAW'].map((p) => <option key={p}>{p}</option>)}</select>
+        <input className={inputCls} placeholder="Base metal" value={form.baseMetal} onChange={set('baseMetal')} />
+        <input className={inputCls} placeholder="Coupon thickness" value={form.couponThickness} onChange={set('couponThickness')} />
+        <input className={inputCls} placeholder="Welder" value={form.welder} onChange={set('welder')} />
+        <label className="text-[10px] text-zinc-400">Test date<input type="date" className={`${inputCls} mt-0.5 w-full`} value={form.testDate} onChange={set('testDate')} /></label>
+        <input className={inputCls} placeholder="Qualified range" value={form.qualifiedRange} onChange={set('qualifiedRange')} />
+        <label className="text-[10px] text-zinc-400">Tensile test
+          <select className={`${inputCls} mt-0.5 w-full`} value={form.tensileResult} onChange={set('tensileResult')}>
+            <option value="not_recorded">not recorded</option><option value="pass">pass</option><option value="fail">fail</option>
+          </select>
+        </label>
+        <label className="text-[10px] text-zinc-400">Bend test
+          <select className={`${inputCls} mt-0.5 w-full`} value={form.bendResult} onChange={set('bendResult')}>
+            <option value="not_recorded">not recorded</option><option value="pass">pass</option><option value="fail">fail</option>
+          </select>
+        </label>
+        <button type="button" className={`${btnCls} sm:col-span-2`} onClick={create} disabled={busy}><Plus className="h-3.5 w-3.5" /> Record PQR</button>
+      </div>
+
+      <div className="space-y-1.5">
+        {list.map((p) => (
+          <div key={p.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950/40 p-2.5">
+            <div className="min-w-0">
+              <div className="text-[12px] font-medium text-white">{p.pqrNumber} <span className="font-normal text-zinc-400">· {p.process} · {p.code}</span></div>
+              <div className="truncate text-[10px] text-zinc-400">
+                {p.wpsNumber ? `supports ${p.wpsNumber} · ` : ''}{p.baseMetal}{p.couponThickness ? ` · coupon ${p.couponThickness}` : ''}{p.welder ? ` · ${p.welder}` : ''}{p.testDate ? ` · ${p.testDate}` : ''}{p.qualifiedRange ? ` · qualified ${p.qualifiedRange}` : ''}
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span className={`rounded px-1.5 py-0.5 text-[10px] ${outcomeCls(p.tensileResult)}`}>tensile {p.tensileResult === 'not_recorded' ? '—' : p.tensileResult}</span>
+              <span className={`rounded px-1.5 py-0.5 text-[10px] ${outcomeCls(p.bendResult)}`}>bend {p.bendResult === 'not_recorded' ? '—' : p.bendResult}</span>
+              <DeleteButton onDelete={() => del(p.id)} label="Delete" />
+            </div>
+          </div>
+        ))}
+        {!busy && list.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No PQRs recorded yet — a WPS stands on the PQR that qualified it.</div>}
       </div>
     </div>
   );
@@ -539,6 +769,7 @@ function WpsTab() {
 // ── Certs tab ───────────────────────────────────────────────────────
 function CertsTab() {
   const [data, setData] = useState<{ certs: Cert[]; alerts: CertAlert[]; validCount: number; atRiskCount: number } | null>(null);
+  const bumpOps = useContext(OpsRefreshCtx);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ welder: '', certType: 'AWS D1.1 Structural', certNumber: '', process: '', position: '', issuedBy: '', issuedDate: '', expiryDate: '' });
 
@@ -555,10 +786,17 @@ function CertsTab() {
     await run('cert-add', { ...form });
     setForm({ welder: '', certType: 'AWS D1.1 Structural', certNumber: '', process: '', position: '', issuedBy: '', issuedDate: '', expiryDate: '' });
     await reload();
+    bumpOps();
   };
   const renew = async (id: string, expiry: string) => {
     await run('cert-renew', { certId: id, expiryDate: expiry });
     await reload();
+    bumpOps();
+  };
+  const del = async (id: string) => {
+    await run('cert-delete', { certId: id });
+    await reload();
+    bumpOps();
   };
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -596,14 +834,14 @@ function CertsTab() {
 
       <div className="space-y-1.5">
         {busy && !data && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
-        {data?.certs.map((c) => <CertRow key={c.id} cert={c} onRenew={renew} />)}
+        {data?.certs.map((c) => <CertRow key={c.id} cert={c} onRenew={renew} onDelete={del} />)}
         {data && data.certs.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No certifications tracked.</div>}
       </div>
     </div>
   );
 }
 
-function CertRow({ cert, onRenew }: { cert: Cert; onRenew: (id: string, expiry: string) => void }) {
+function CertRow({ cert, onRenew, onDelete }: { cert: Cert; onRenew: (id: string, expiry: string) => void; onDelete: (id: string) => void }) {
   const [expiry, setExpiry] = useState('');
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-2.5">
@@ -621,6 +859,7 @@ function CertRow({ cert, onRenew }: { cert: Cert; onRenew: (id: string, expiry: 
       <div className="mt-1.5 flex items-center gap-1.5">
         <input type="date" className={inputCls} value={expiry} onChange={(e) => setExpiry(e.target.value)} />
         <button type="button" className={ghostBtn} onClick={() => onRenew(cert.id, expiry)} disabled={!expiry}><RefreshCw className="h-3 w-3" /> Renew / log continuity</button>
+        <span className="ml-auto"><DeleteButton onDelete={() => onDelete(cert.id)} label="Delete" /></span>
       </div>
     </div>
   );
@@ -771,12 +1010,17 @@ function CodesTab() {
 export function WeldingOperations() {
   const [tab, setTab] = useState<OpsTab>('schedule');
   const [ops, setOps] = useState<{ activeJobs: number; completedJobs: number; pipelineValue: number; outstanding: number; collected: number; overdueInvoices: number; certAtRisk: number } | null>(null);
+  // F8: the header refetches when a tab reports a mutation (opsTick), not
+  // only when the tab changes — its figures used to lag every view's own
+  // numbers until a tab switch remounted the read.
+  const [opsTick, setOpsTick] = useState(0);
+  const bumpOps = useCallback(() => setOpsTick((t) => t + 1), []);
 
   useEffect(() => {
     let alive = true;
     run<typeof ops>('ops-summary').then((r) => { if (alive) setOps(r); });
     return () => { alive = false; };
-  }, [tab]);
+  }, [tab, opsTick]);
 
   const stats = useMemo(() => ops ? [
     { label: 'Active jobs', value: String(ops.activeJobs), tone: 'text-orange-300' },
@@ -789,6 +1033,7 @@ export function WeldingOperations() {
   ] : [], [ops]);
 
   return (
+    <OpsRefreshCtx.Provider value={bumpOps}>
     <div className="space-y-3">
       <header className="flex items-center gap-2 border-b border-orange-500/15 pb-2">
         <CheckCircle2 className="h-4 w-4 text-orange-400" />
@@ -827,5 +1072,6 @@ export function WeldingOperations() {
       {tab === 'photos' && <PhotosTab />}
       {tab === 'codes' && <CodesTab />}
     </div>
+    </OpsRefreshCtx.Provider>
   );
 }
