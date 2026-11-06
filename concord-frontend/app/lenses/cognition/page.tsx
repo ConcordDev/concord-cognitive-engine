@@ -16,6 +16,7 @@
  * relationship to the platform's emergent-entity store (D3).
  */
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -397,9 +398,9 @@ export default function CognitionPage() {
               entities — system content, spawned and run by the platform&apos;s own emergent layer, not questions of yours and not
               activity counts. This lens is their named home; their working view lives in Attention.
             </p>
-            <a href="/lenses/attention" className="mt-3 inline-block text-[13px] text-teal-300 underline">
+            <Link href="/lenses/attention" className="mt-3 inline-block text-[13px] text-teal-300 underline">
               Browse the entities in Attention&apos;s Cognition view →
-            </a>
+            </Link>
           </section>
         )}
 

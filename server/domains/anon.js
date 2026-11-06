@@ -163,22 +163,7 @@ export default function registerAnonActions(registerLensAction) {
     return "server";
   }
 
-  function memberView(s, member, userId) {
-    // Resolve to the member's CURRENT identity first (via the
-    // conversation's memberUserIds): after an identity rotation the stored
-    // snapshot's anonId belongs to an identity that no longer exists, and
-    // resolving through it rendered the caller's OLD pseudonym as a ghost
-    // participant in their own thread. The snapshot remains the fallback
-    // for members whose identity is gone entirely.
-    const current = userId ? s.identities.get(userId) : null;
-    if (current) {
-      return {
-        anonId: current.anonId,
-        alias: current.alias,
-        publicKey: current.publicKey,
-        keyCustody: keyCustodyOf(current),
-      };
-    }
+  function memberView(s, member) {
     const ident = findIdentityByAnonId(s, member.anonId);
     if (!ident) {
       return {
@@ -449,12 +434,6 @@ export default function registerAnonActions(registerLensAction) {
         avgClassSize: Math.round((groupSizes.reduce((s, v) => s + v, 0) / groupSizes.length) * 100) / 100,
         recordCount: records.length,
         anonymizedSample: anonymized.slice(0, 5),
-        // The full generalized set, not only the sample: the Lab renders
-        // the table it graded, and its printed k (minClassSize) must equal
-        // the smallest class size the user can see. Datasets here are
-        // user-built (tens of rows), so the full return is bounded by the
-        // surface's own shape.
-        anonymizedRecords: anonymized,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1005,7 +984,7 @@ export default function registerAnonActions(registerLensAction) {
           conversationId: convId,
           kind: conv.kind,
           title: conv.title,
-          members: conv.members.map((m, i) => memberView(s, m, conv.memberUserIds?.[i])),
+          members: conv.members.map((m) => memberView(s, m)),
           disappearDefaultSec,
         },
       };
@@ -1035,7 +1014,7 @@ export default function registerAnonActions(registerLensAction) {
           conversationId: conv.id,
           kind: conv.kind,
           title: conv.title,
-          members: conv.members.map((m, i) => memberView(s, m, conv.memberUserIds?.[i])),
+          members: conv.members.map((m) => memberView(s, m)),
           memberCount: conv.members.length,
           disappearDefaultSec: conv.disappearDefaultSec,
           messageCount: conv.messages.length,
@@ -1206,7 +1185,7 @@ export default function registerAnonActions(registerLensAction) {
           conversationId: conv.id,
           kind: conv.kind,
           title: conv.title,
-          members: conv.members.map((mm, i) => memberView(s, mm, conv.memberUserIds?.[i])),
+          members: conv.members.map((mm) => memberView(s, mm)),
           disappearDefaultSec: conv.disappearDefaultSec,
           messages,
           messageCount: messages.length,

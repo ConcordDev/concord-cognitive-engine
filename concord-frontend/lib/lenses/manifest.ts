@@ -807,7 +807,6 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'md'],
     actions: ['merge', 'lock', 'unlock', 'summarize_thread', 'run_council', 'extract_actions', 'resolve_conflict', 'version_diff'],
     category: 'social',
-    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: 'No collab sessions yet.',
       caption: 'Start a session to co-author with another user. Locks, version diffs, and conflict resolution are first-class.',

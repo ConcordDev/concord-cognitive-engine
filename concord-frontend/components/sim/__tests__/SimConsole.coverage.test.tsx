@@ -62,7 +62,7 @@ vi.mock('@/components/sim/SimRepos', () => ({ SimRepos: () => <div /> }));
 vi.mock('@/components/sim/StudioPanel', () => ({ StudioPanel: () => <div data-testid="studio" /> }));
 vi.mock('@/components/common/EmptyState', () => ({ ErrorState: () => <div role="alert" /> }));
 
-import { SimConsole, extractRunArtifactId } from '../SimConsole';
+import { SimConsole } from '../SimConsole';
 
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
 const mount = () => render(
@@ -106,7 +106,4 @@ describe('SimConsole', () => {
     expect(view.container.textContent).toBeTruthy();
   });
 
-  it('exports extractRunArtifactId', () => {
-    expect(typeof extractRunArtifactId).toBe('function');
-  });
 });
