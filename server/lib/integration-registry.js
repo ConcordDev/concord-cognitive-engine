@@ -264,7 +264,7 @@ export const REGISTRY = Object.freeze({
   game:          { tier: TIER.SIM_GRADE_A, groundedSchema: "game/session" },
   "game-design": { tier: TIER.SIM_GRADE_A, groundedSchema: "game/design" },
   game_design:   { tier: TIER.SIM_GRADE_A, groundedSchema: "game/design" },
-  genesis:       { tier: TIER.SIM_GRADE_A, groundedSchema: "world/genesis" },
+  genesis:       { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "the platform's own emergent substrate: identities, observations, communications and activity recorded by the live emergent system in its own tables" },
   foundry:       { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real foundry-built apps" },
   "world-creator": { tier: TIER.SIM_GRADE_A, groundedSchema: "world/spec" },
   world_creator: { tier: TIER.SIM_GRADE_A, groundedSchema: "world/spec" },
