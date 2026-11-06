@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Layers, CheckCircle2, Clock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { subscribeDocsWorkspace } from './docsSession';
 import { DocsWorkspace } from '@/components/docs/DocsWorkspace';
 
 export function WorkspacePanel() {
@@ -17,14 +18,26 @@ export function WorkspacePanel() {
     words: number; openTodos: number; doneTodos: number;
   } | null>(null);
 
+  // The stats describe the workspace NOW (S-DOCS-2 / F11): fetched on
+  // mount and refetched (debounced) whenever DocsWorkspace publishes a
+  // new workspace snapshot — page/block mutations land there — so the
+  // cards move as work happens instead of describing arrival time.
   useEffect(() => {
     let alive = true;
-    void lensRun('docs', 'docs-dashboard', {}).then((r) => {
-      if (alive && r.data?.ok) {
-        setDocsStats(r.data.result as typeof docsStats);
-      }
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const fetchStats = () => {
+      void lensRun('docs', 'docs-dashboard', {}).then((r) => {
+        if (alive && r.data?.ok) {
+          setDocsStats(r.data.result as typeof docsStats);
+        }
+      });
+    };
+    fetchStats();
+    const unsubscribe = subscribeDocsWorkspace(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(fetchStats, 400);
     });
-    return () => { alive = false; };
+    return () => { alive = false; if (timer) clearTimeout(timer); unsubscribe(); };
   }, []);
 
   return (
