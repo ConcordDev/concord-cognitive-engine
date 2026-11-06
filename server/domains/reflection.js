@@ -335,12 +335,14 @@ export default function registerReflectionActions(registerLensAction) {
           overall: r(meanSent),
           trend: sentimentTrend,
           slope: r(sentimentSlope),
+          basis: "Slope of each entry's word-list sentiment score, entries in date order (oldest first); 'improving' when the slope is above 0.005, 'declining' below -0.005.",
           timeline: sentiments.length <= 30 ? sentiments : sentiments.filter((_, i) => i % Math.ceil(sentiments.length / 30) === 0),
         },
         vocabularyDiversity: {
           avgTTR: r(meanTTR),
           trend: vocabTrend,
           slope: r(ttrSlope),
+          basis: "Slope of each entry's unique-word ratio (types/tokens), entries in date order; 'expanding' above 0.002, 'contracting' below -0.002. Short entries naturally repeat fewer words, so a short new entry can pull this down.",
           totalUniqueTerms: seenTerms.size,
         },
         topicExpansion: {
@@ -353,6 +355,7 @@ export default function registerReflectionActions(registerLensAction) {
           avgWordCount: Math.round(avgLength),
           trend: depthTrend,
           slope: r(lengthSlope),
+          basis: "Slope of entry word counts, entries in date order, in words per entry; 'deepening' when entries grow by more than 1 word per entry on trend, 'shallowing' when they shrink by the same.",
         },
         growthWindows: windows.length <= 15 ? windows : windows.filter((_, i) => i % Math.ceil(windows.length / 15) === 0),
       },
@@ -765,6 +768,12 @@ export default function registerReflectionActions(registerLensAction) {
       const text = rfClean(params.text, 20000);
       if (!text) return { ok: false, error: "entry text cannot be empty" };
       entry.text = text;
+      // S-REFL-6: once the writer replaces a template draft's body with
+      // their own text, the entry counts as written.
+      if (entry.fromTemplate) {
+        const tpl = RF_TEMPLATES.find((t) => t.id === entry.fromTemplate);
+        if (!tpl || text !== tpl.body) delete entry.fromTemplate;
+      }
     }
     if (params.title != null) entry.title = rfClean(params.title, 140) || null;
     if (params.mood != null) {
@@ -820,7 +829,7 @@ export default function registerReflectionActions(registerLensAction) {
   registerLensAction("reflection", "journal-streak", (ctx, _a, params = {}) => {
   try {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const dates = (s.entries.get(rfAid(ctx)) || []).map((e) => e.date);
+    const dates = (s.entries.get(rfAid(ctx)) || []).filter((e) => !e.fromTemplate).map((e) => e.date);
     return {
       ok: true,
       result: {
@@ -899,6 +908,7 @@ export default function registerReflectionActions(registerLensAction) {
     }
     const entry = {
       id: rfId("ent"), journalId, text: tpl.body, title: tpl.name,
+      fromTemplate: tpl.id, // S-REFL-6: a one-click draft is not a written entry (F12)
       mood: null, tags: [tpl.category], location: null, weather: null,
       photoCount: 0, promptText: null,
       date: rfExplicitDay(params.date) || rfExplicitDay(params.today) || rfDay(rfNow()), at: rfNow(), updatedAt: rfNow(),
@@ -978,8 +988,12 @@ export default function registerReflectionActions(registerLensAction) {
       "If a friend wrote this, what would you want to ask them?",
       "What does this entry tell you about what you need right now?",
     ];
-    let questions = deterministic;
-    let composer = "deterministic";
+    // S-REFL-1 (D2): the deterministic prompts are the follow-ups — they
+    // presuppose nothing the writer did not write. Brain-composed questions
+    // return SEPARATELY as assistedQuestions so the surface can label them
+    // as the assistant's words; they never replace the grounded set (the
+    // pass's F2: follow-ups presupposing invented content).
+    let assistedQuestions = null;
     if (ctx?.llm?.chat) {
       try {
         const out = await ctx.llm.chat({
@@ -988,10 +1002,10 @@ export default function registerReflectionActions(registerLensAction) {
         });
         const lines = String(out?.content || out || "")
           .split("\n").map((l) => l.replace(/^[\d.\-)\s]+/, "").trim()).filter(Boolean);
-        if (lines.length >= 3) { questions = lines.slice(0, 3); composer = "brain"; }
-      } catch (_e) { /* fall back to deterministic */ }
+        if (lines.length >= 3) assistedQuestions = lines.slice(0, 3);
+      } catch (_e) { /* deterministic only */ }
     }
-    return { ok: true, result: { entryId: entry.id, questions, composer } };
+    return { ok: true, result: { entryId: entry.id, questions: deterministic, assistedQuestions } };
   });
 
   registerLensAction("reflection", "entry-summarize", async (ctx, _a, params = {}) => {
@@ -999,8 +1013,13 @@ export default function registerReflectionActions(registerLensAction) {
     const entry = (s.entries.get(rfAid(ctx)) || []).find((e) => e.id === params.id);
     if (!entry) return { ok: false, error: "entry not found" };
     const sentences = entry.text.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
-    let summary = sentences.slice(0, 2).join(" ") || entry.text.slice(0, 160);
-    let composer = "deterministic";
+    // S-REFL-1 (D2): the summary is EXTRACTIVE — the writer's own sentences,
+    // verbatim. A brain rewording, when available, returns separately as
+    // `assisted` so the surface labels it as the assistant's words; it never
+    // replaces the extractive summary (the pass's F1: generated text wearing
+    // the user's first person, presented as the summary).
+    const summary = sentences.slice(0, 2).join(" ") || entry.text.slice(0, 160);
+    let assisted = null;
     if (ctx?.llm?.chat) {
       try {
         const out = await ctx.llm.chat({
@@ -1008,10 +1027,10 @@ export default function registerReflectionActions(registerLensAction) {
           messages: [{ role: "user", content: entry.text.slice(0, 2000) }],
         });
         const text = rfClean(String(out?.content || out || ""), 400);
-        if (text) { summary = text; composer = "brain"; }
-      } catch (_e) { /* fall back to deterministic */ }
+        if (text && text !== summary) assisted = text;
+      } catch (_e) { /* extractive only */ }
     }
-    return { ok: true, result: { entryId: entry.id, summary, composer } };
+    return { ok: true, result: { entryId: entry.id, summary, assisted } };
   });
 
   // ── Goal ────────────────────────────────────────────────────────────
@@ -1046,7 +1065,7 @@ export default function registerReflectionActions(registerLensAction) {
     const s = getRfState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = rfAid(ctx);
     const entries = s.entries.get(userId) || [];
-    const dates = entries.map((e) => e.date);
+    const dates = entries.filter((e) => !e.fromTemplate).map((e) => e.date); // S-REFL-6: streaks count written entries
     const today = rfClientToday(params);
     const weekAgo = rfShiftDay(today, -7);
     const idx = Math.floor(Date.parse(`${today}T00:00:00Z`) / RF_DAY) % RF_PROMPTS.length;
@@ -1447,9 +1466,9 @@ export default function registerReflectionActions(registerLensAction) {
         entryCount: yEntries.length,
         totalWords,
         avgWordsPerEntry: Math.round(totalWords / yEntries.length),
-        daysJournaled: new Set(yEntries.map((e) => e.date)).size,
+        daysJournaled: new Set(yEntries.filter((e) => !e.fromTemplate).map((e) => e.date)).size,
         photoCount,
-        longestStreak: rfLongestStreak(yEntries.map((e) => e.date)),
+        longestStreak: rfLongestStreak(yEntries.filter((e) => !e.fromTemplate).map((e) => e.date)),
         moodAverage: moodN ? Math.round((moodSum / moodN) * 100) / 100 : null,
         moodDistribution: byMood,
         byMonth: MONTHS.map((name, i) => ({ month: name, count: byMonth[String(i + 1).padStart(2, "0")] || 0 })),

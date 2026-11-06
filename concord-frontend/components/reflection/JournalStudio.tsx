@@ -68,7 +68,7 @@ function deviceId(): string {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────
-export function JournalStudio() {
+export function JournalStudio({ onChange }: { onChange?: () => void } = {}) {
   const [tab, setTab] = useState<TabId>('compose');
   const [entries, setEntries] = useState<RfEntry[]>([]);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -85,6 +85,15 @@ export function JournalStudio() {
   }, []);
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
+
+  // F5: every Studio mutation reloads its own list through loadEntries;
+  // routing those reloads through this wrapper also refreshes the Journal
+  // header totals in the parent section, so a Studio save no longer
+  // leaves the header stating the old counts.
+  const notifyChange = useCallback(async () => {
+    await loadEntries();
+    onChange?.();
+  }, [loadEntries, onChange]);
 
   // Multi-device check-in once on mount (real platform state).
   useEffect(() => {
@@ -147,7 +156,7 @@ export function JournalStudio() {
         })}
       </nav>
 
-      {tab === 'compose' && <ComposeTab entries={entries} onChange={loadEntries} ok={ok} err={err} />}
+      {tab === 'compose' && <ComposeTab entries={entries} onChange={notifyChange} ok={ok} err={err} />}
       {tab === 'browse' && <BrowseTab ok={ok} err={err} />}
       {tab === 'reminders' && <RemindersTab ok={ok} err={err} />}
       {tab === 'sync' && <SyncTab ok={ok} err={err} />}
@@ -175,7 +184,7 @@ function ComposeTab({
 }: { entries: RfEntry[]; onChange: () => void; ok: (t: string) => void; err: (t: string) => void }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [mood, setMood] = useState<RfEntry['mood']>('good');
+  const [mood, setMood] = useState<RfEntry['mood']>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -185,7 +194,7 @@ function ComposeTab({
     if (!body.trim()) { err('Write something first.'); return; }
     setBusy('create');
     const r = await rf<{ entry: RfEntry }>('entry-create', {
-      text: body.trim(), title: title.trim() || undefined, mood, date: calendarDateKey(),
+      text: body.trim(), title: title.trim() || undefined, mood: mood ?? undefined, date: calendarDateKey(),
     });
     setBusy(null);
     if (r.ok && r.result) {
@@ -205,10 +214,11 @@ function ComposeTab({
           className="md:col-span-2 rounded border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40"
         />
         <select
-          value={mood ?? 'good'} onChange={(e) => setMood(e.target.value as RfEntry['mood'])}
+          value={mood ?? ''} onChange={(e) => setMood((e.target.value || null) as RfEntry['mood'])}
           className="rounded border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white"
         >
-          {MOODS.map((m) => <option key={m ?? 'good'} value={m ?? 'good'}>{m}</option>)}
+          <option value="">Mood… (optional)</option>
+          {MOODS.map((m) => <option key={m ?? 'none'} value={m ?? ''}>{m}</option>)}
         </select>
       </div>
       <textarea
@@ -464,7 +474,7 @@ function EntryEnrichPanel({
           )}
         </div>
         <p className="text-[10px] text-zinc-400">
-          The passphrase is never stored — losing it means losing the entry.
+          Encryption seals the entry&apos;s text and title. Location, weather, and media captions stay visible — they are how the entry is found and placed. The passphrase is never stored — losing it means losing the entry.
         </p>
       </section>
     </div>

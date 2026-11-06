@@ -47,9 +47,14 @@ export function RfPromptsPanel({ onChange }: { onChange: () => void }) {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const [shuffled, setShuffled] = useState(false);
   const shuffle = async () => {
     const r = await lensRun('reflection', 'prompt-random', activeCat ? { category: activeCat } : {});
-    if (r.data?.result?.prompt) setToday(r.data.result.prompt as Prompt);
+    if (r.data?.result?.prompt) { setToday(r.data.result.prompt as Prompt); setShuffled(true); }
+  };
+  const backToToday = async () => {
+    const r = await lensRun('reflection', 'prompt-today', { today: calendarDateKey() });
+    if (r.data?.result?.prompt) { setToday(r.data.result.prompt as Prompt); setShuffled(false); }
   };
 
   const applyTemplate = async (id: string) => {
@@ -78,12 +83,19 @@ export function RfPromptsPanel({ onChange }: { onChange: () => void }) {
         <div className="bg-gradient-to-br from-indigo-900/50 to-zinc-900/70 border border-indigo-900/50 rounded-xl p-4">
           <div className="flex items-center justify-between mb-1.5">
             <span className="flex items-center gap-1 text-[11px] font-semibold text-indigo-300 uppercase tracking-wide">
-              <Lightbulb className="w-3.5 h-3.5" /> Prompt of the day
+              <Lightbulb className="w-3.5 h-3.5" /> {shuffled ? 'Shuffled prompt' : 'Prompt of the day'}
             </span>
-            <button type="button" onClick={shuffle}
-              className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-indigo-300">
-              <Shuffle className="w-3 h-3" /> Shuffle
-            </button>
+            {shuffled ? (
+              <button type="button" onClick={backToToday}
+                className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-indigo-300">
+                Back to today&apos;s (fixed by date)
+              </button>
+            ) : (
+              <button type="button" onClick={shuffle}
+                className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-indigo-300">
+                <Shuffle className="w-3 h-3" /> Shuffle
+              </button>
+            )}
           </div>
           <p className="text-sm text-zinc-100">{today.text}</p>
           <p className="text-[10px] text-zinc-400 mt-1 capitalize">{today.category}</p>

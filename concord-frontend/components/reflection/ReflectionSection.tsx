@@ -106,7 +106,7 @@ export function ReflectionSection() {
         {tab === 'insights' && <RfInsightsPanel />}
         {tab === 'analytics' && <RfAnalyticsPanel />}
         {tab === 'prompts' && <RfPromptsPanel onChange={refreshDash} />}
-        {tab === 'studio' && <JournalStudio />}
+        {tab === 'studio' && <JournalStudio onChange={refreshDash} />}
         {tab === 'share' && (
           <PipingProvider>
             <JournalActionPanel />
