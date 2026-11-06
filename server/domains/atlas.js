@@ -6,10 +6,15 @@
 
 const OVERPASS_BASE = "https://overpass-api.de/api";
 const OSM_FETCH_TIMEOUT_MS = 30_000;
+// S3 (F4): the interactive enrichment verbs (transit, route-stops,
+// place-details, overpass-poi) fail FAST on a 10-second budget — a
+// 60-second spin is not a failure mode, it's a wait. Their honest
+// failure speech already exists and is unchanged.
+const OSM_INTERACTIVE_TIMEOUT_MS = 10_000;
 
 // Overpass + OSRM: SSRF-guarded fetch with a hard timeout (no new cache).
-function osmFetch(url, init = {}) {
-  return fetchPublicUrl(url, { ...init, signal: init.signal || AbortSignal.timeout(OSM_FETCH_TIMEOUT_MS) });
+function osmFetch(url, init = {}, timeoutMs = OSM_FETCH_TIMEOUT_MS) {
+  return fetchPublicUrl(url, { ...init, signal: init.signal || AbortSignal.timeout(timeoutMs) });
 }
 
 import { nominatimSearch, nominatimReverse, osmUserAgent, geocoderUnavailable } from "../lib/geo-feed-sources.js";
@@ -680,7 +685,7 @@ export default function registerAtlasActions(registerLensAction) {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": osmUserAgent() },
         body: `data=${encodeURIComponent(query)}`,
-      });
+      }, OSM_INTERACTIVE_TIMEOUT_MS);
       if (!r.ok) {
         if (r.status === 429) return { ok: false, error: "overpass rate limit exceeded — try again later" };
         throw new Error(`overpass ${r.status}`);
@@ -766,6 +771,14 @@ export default function registerAtlasActions(registerLensAction) {
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
       return { ok: false, error: "valid lat/lng required" };
     }
+    // S2: a duplicate (same name at the same coordinates) is refused
+    // with the standing place named — the walk's duplicate was accepted
+    // silently and then broke the Directions combobox downstream
+    // ('option_ambiguous'); the cost is paid here instead.
+    const dupe = listAt(s.places, userId).find(
+      (p) => p.name.toLowerCase() === name.toLowerCase() && p.lat === lat && p.lng === lng
+    );
+    if (dupe) return { ok: false, error: `already saved: "${dupe.name}" (${dupe.number}) is at these coordinates` };
     const seq = ensureSeqAt(s, userId);
     const place = {
       id: uidAt("place"),
@@ -978,7 +991,10 @@ export default function registerAtlasActions(registerLensAction) {
       const r = await osmFetch(url, { headers: { Accept: 'application/json' } });
       if (!r.ok) return { ok: false, error: `OSRM ${r.status}` };
       const data = await r.json();
+      if (data.code === 'NoRoute' || data.code === 'NoSegment') return { ok: false, error: 'no land route between these points' };
       if (data.code !== 'Ok' || !data.routes?.[0]) return { ok: false, error: `OSRM: ${data.code || 'no route'}` };
+      const refusal = snapRefusal(data, waypoints);
+      if (refusal) return { ok: false, error: refusal };
       const route = data.routes[0];
       return {
         ok: true,
@@ -1019,11 +1035,16 @@ export default function registerAtlasActions(registerLensAction) {
     const profile = ['driving', 'walking', 'cycling'].includes(params.mode) ? params.mode : 'driving';
     try {
       const coords = `${Number(start.lng)},${Number(start.lat)};${Number(end.lng)},${Number(end.lat)}`;
-      const routeR = await osmFetch(`https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson&steps=false`, { headers: { Accept: 'application/json' } });
+      const routeR = await osmFetch(`https://router.project-osrm.org/route/v1/${profile}/${coords}?overview=full&geometries=geojson&steps=false`, { headers: { Accept: 'application/json' } }, OSM_INTERACTIVE_TIMEOUT_MS);
       if (!routeR.ok) return { ok: false, error: `OSRM ${routeR.status}` };
       const routeData = await routeR.json();
       const route = routeData.routes?.[0];
+      if (routeData.code === 'NoRoute' || routeData.code === 'NoSegment') return { ok: false, error: 'no land route between these points' };
       if (routeData.code !== 'Ok' || !route) return { ok: false, error: `OSRM: ${routeData.code || 'no route'}` };
+      // S1: the stops are suggested along THIS route — if the geometry
+      // never reaches the destination, the suggestions are fiction too.
+      const rsRefusal = snapRefusal(routeData, [start, end]);
+      if (rsRefusal) return { ok: false, error: rsRefusal };
       const line = route.geometry?.coordinates || [];
       if (line.length < 2) return { ok: false, error: "route had no geometry" };
       const mid = line[Math.floor(line.length / 2)]; // [lng, lat]
@@ -1034,7 +1055,7 @@ export default function registerAtlasActions(registerLensAction) {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": osmUserAgent() },
         body: `data=${encodeURIComponent(query)}`,
-      });
+      }, OSM_INTERACTIVE_TIMEOUT_MS);
       if (!poiR.ok) return { ok: false, error: `overpass ${poiR.status}` };
       const poiData = await poiR.json();
       const haversineKm = (la1, lo1, la2, lo2) => {
@@ -1140,11 +1161,16 @@ export default function registerAtlasActions(registerLensAction) {
       return { ok: true, result: { itinerary, prompt, days, source: 'deterministic', narration: `Distributed ${places.length} saved places across ${itinerary.length} day(s), ranked by relevance to "${prompt}".` } };
     }
     try {
-      const placeList = places.map(p => `${p.name} (${p.category}${p.rating ? `, ${p.rating}★` : ''})`).join('; ');
+      // S4 (F7): the narration describes THE computed itinerary — the
+      // day-by-day plan is final and the text must not re-sequence it
+      // (the walk's narrative ordered day 1 Poughkeepsie / day 2 Paris
+      // while the cards led day 1 with the Eiffel Tower: two
+      // presentations of one plan, derived from two orderings).
+      const planText = itinerary.map(d => `Day ${d.day}: ${d.stops.map(x => x.name).join('; ')}`).join('\n');
       const r = await brain({
         messages: [
-          { role: 'system', content: "You are a trip planner. Given a user's saved places and a request, write 2-3 sentences of advice on how to sequence them. Use ONLY the places listed — never invent new ones. NOT a booking service." },
-          { role: 'user', content: `Saved places: ${placeList}\n\nRequest: ${prompt} (${days} day trip)` },
+          { role: 'system', content: "You are a trip planner. The day-by-day itinerary given to you is FINAL — write 2-3 sentences of advice for following THAT plan, in that order. Never re-sequence the days, never move a place to a different day, and use ONLY the places in the plan — never invent new ones. NOT a booking service." },
+          { role: 'user', content: `Itinerary:\n${planText}\n\nRequest context: ${prompt} (${days} day trip)` },
         ],
         temperature: 0.4, maxTokens: 500,
       });
@@ -1176,7 +1202,40 @@ export default function registerAtlasActions(registerLensAction) {
     cycling: "https://routing.openstreetmap.de/routed-bike",
   };
 
-  async function osrmRoute(profile, coords, withSteps) {
+  // S1 (F1): OSRM snaps each waypoint to the nearest segment in its
+  // graph; for an out-of-coverage waypoint the snap can be an ocean
+  // away, and the returned route then "reaches" the snapped point —
+  // not the requested destination (Paris→Poughkeepsie rendered Iberian
+  // geometry: the Europe-only foot/bike graphs snap a New York
+  // waypoint to Portugal). The engine's own refusal (NoRoute) is
+  // honoured in words, and every snap is verified against its request:
+  // a route is only a route if it reaches the places it was asked for.
+  const MAX_SNAP_KM = 50;
+  class UnroutableRoute extends Error {}
+  function snapRefusal(data, waypoints) {
+    if (!Array.isArray(waypoints) || waypoints.length < 2) return null;
+    const pairs = [];
+    if (Array.isArray(data?.waypoints)) {
+      waypoints.forEach((w, i) => {
+        const loc = data.waypoints[i]?.location;
+        if (Array.isArray(loc)) pairs.push([w, loc]);
+      });
+    }
+    const coordsArr = data?.routes?.[0]?.geometry?.coordinates;
+    if (Array.isArray(coordsArr) && coordsArr.length >= 2) {
+      pairs.push([waypoints[0], coordsArr[0]]);
+      pairs.push([waypoints[waypoints.length - 1], coordsArr[coordsArr.length - 1]]);
+    }
+    for (const [w, loc] of pairs) {
+      const dKm = haversineKm(Number(w.lat), Number(w.lng), Number(loc[1]), Number(loc[0]));
+      if (Number.isFinite(dKm) && dKm > MAX_SNAP_KM) {
+        return `no route reaches the requested destination — the nearest routable point is ${Math.round(dKm)} km from it, so this pair has no land route (for example, across an ocean)`;
+      }
+    }
+    return null;
+  }
+
+  async function osrmRoute(profile, coords, withSteps, waypoints) {
     const host = OSRM_HOSTS[profile] || OSRM_HOSTS.driving;
     // openstreetmap.de routers expect the literal profile name in the path differently.
     const apiProfile = host.includes("project-osrm") ? profile
@@ -1185,7 +1244,12 @@ export default function registerAtlasActions(registerLensAction) {
     const r = await osmFetch(url, { headers: { Accept: "application/json", "User-Agent": osmUserAgent() } });
     if (!r.ok) throw new Error(`OSRM ${r.status}`);
     const data = await r.json();
+    if (data.code === "NoRoute" || data.code === "NoSegment") {
+      throw new UnroutableRoute("no land route between these points");
+    }
     if (data.code !== "Ok" || !data.routes?.[0]) throw new Error(`OSRM: ${data.code || "no route"}`);
+    const refusal = snapRefusal(data, waypoints);
+    if (refusal) throw new UnroutableRoute(refusal);
     return data.routes[0];
   }
 
@@ -1201,7 +1265,7 @@ export default function registerAtlasActions(registerLensAction) {
     const profile = ["driving", "walking", "cycling"].includes(params.mode) ? params.mode : "driving";
     const coords = waypoints.map((w) => `${Number(w.lng)},${Number(w.lat)}`).join(";");
     try {
-      const route = await osrmRoute(profile, coords, true);
+      const route = await osrmRoute(profile, coords, true, waypoints);
       const steps = [];
       for (const leg of route.legs || []) {
         for (const st of leg.steps || []) {
@@ -1232,6 +1296,7 @@ export default function registerAtlasActions(registerLensAction) {
         },
       };
     } catch (e) {
+      if (e instanceof UnroutableRoute) return { ok: false, error: e.message };
       return { ok: false, error: `routing unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
@@ -1265,7 +1330,7 @@ export default function registerAtlasActions(registerLensAction) {
     const utcHour = new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
     const localHour = ((utcHour + Number(waypoints[0].lng) / 15) % 24 + 24) % 24;
     try {
-      const route = await osrmRoute(profile, coords, false);
+      const route = await osrmRoute(profile, coords, false, waypoints);
       const { factor, level } = congestionFactor(localHour, profile);
       const freeFlowSec = Math.round(route.duration);
       const trafficSec = Math.round(freeFlowSec * factor);
@@ -1298,6 +1363,7 @@ export default function registerAtlasActions(registerLensAction) {
         },
       };
     } catch (e) {
+      if (e instanceof UnroutableRoute) return { ok: false, error: e.message };
       return { ok: false, error: `traffic eta unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
@@ -1322,7 +1388,7 @@ export default function registerAtlasActions(registerLensAction) {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": osmUserAgent() },
         body: `data=${encodeURIComponent(stopQuery(la, lo))}`,
-      });
+      }, OSM_INTERACTIVE_TIMEOUT_MS);
       if (!r.ok) throw new Error(`overpass ${r.status}`);
       const data = await r.json();
       const stops = (data.elements || [])
@@ -1442,7 +1508,7 @@ export default function registerAtlasActions(registerLensAction) {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": osmUserAgent() },
         body: `data=${encodeURIComponent(q)}`,
-      });
+      }, OSM_INTERACTIVE_TIMEOUT_MS);
       if (!r.ok) throw new Error(`overpass ${r.status}`);
       const data = await r.json();
       const el = (data.elements || [])[0];
@@ -1477,7 +1543,7 @@ export default function registerAtlasActions(registerLensAction) {
           const lang = colon > 0 ? wp.slice(0, colon) : "en";
           const title = colon > 0 ? wp.slice(colon + 1) : wp;
           const wikiUrl = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
-          const wr = await fetch(wikiUrl, { headers: { Accept: "application/json", "User-Agent": osmUserAgent() } });
+          const wr = await fetch(wikiUrl, { headers: { Accept: "application/json", "User-Agent": osmUserAgent() }, signal: AbortSignal.timeout(OSM_INTERACTIVE_TIMEOUT_MS) });
           if (wr.ok) {
             const wd = await wr.json();
             details.summary = wd.extract || null;
@@ -1606,7 +1672,7 @@ export default function registerAtlasActions(registerLensAction) {
     const profile = ["driving", "walking", "cycling"].includes(params.mode) ? params.mode : "driving";
     const coords = waypoints.map((w) => `${Number(w.lng)},${Number(w.lat)}`).join(";");
     try {
-      const route = await osrmRoute(profile, coords, true);
+      const route = await osrmRoute(profile, coords, true, waypoints);
       const steps = [];
       for (const leg of route.legs || []) {
         for (const st of leg.steps || []) {
@@ -1637,6 +1703,7 @@ export default function registerAtlasActions(registerLensAction) {
       saveAtlas();
       return { ok: true, result: { session } };
     } catch (e) {
+      if (e instanceof UnroutableRoute) return { ok: false, error: e.message };
       return { ok: false, error: `nav-start routing unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
