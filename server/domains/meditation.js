@@ -9,17 +9,21 @@ export default function registerMeditationActions(registerLensAction) {
    * pickTrack — return a deterministic Calm-shape track for a goal.
    *   params.goal: 'focus' | 'sleep' | 'anxiety' | 'gratitude' | 'breath'
    *   params.minutes: integer 1–60
-   *   Returns: { trackId, title, narrator, durationMinutes, goal, vibe }
+   *   Returns: { trackId, title, durationMinutes, goal, vibe }
    */
   registerLensAction("meditation", "pickTrack", (_ctx, _artifact, params = {}) => {
     const goal = (params.goal || "focus").toLowerCase();
     const minutes = Math.min(60, Math.max(1, parseInt(params.minutes, 10) || 10));
+    // No narrator field anywhere (S-MED-2): these are timed silent
+    // sits with an optional synthesized tone bed. "Narrated by"
+    // credits return only where recorded narration exists — none
+    // does today, so no entry carries the claim.
     const tracks = {
-      focus:    [{ title: "Single-pointed attention",   narrator: "Tara Brach",       vibe: "steady" }, { title: "Open monitoring", narrator: "Sharon Salzberg", vibe: "spacious" }],
-      sleep:    [{ title: "Body scan for sleep",        narrator: "Jon Kabat-Zinn",  vibe: "soft"   }, { title: "Yoga nidra",      narrator: "Tracee Stanley",  vibe: "deep"     }],
-      anxiety:  [{ title: "Soften, soothe, allow",      narrator: "Kristin Neff",    vibe: "warm"   }, { title: "Grounding breath", narrator: "Pema Chödrön",    vibe: "stable"   }],
-      gratitude:[{ title: "Five gratitudes",            narrator: "Rick Hanson",     vibe: "open"   }],
-      breath:   [{ title: "Box breathing",              narrator: "—",                vibe: "rhythmic" }, { title: "4-7-8 breath",   narrator: "—",               vibe: "rhythmic" }],
+      focus:    [{ title: "Single-pointed attention",   vibe: "steady" }, { title: "Open monitoring", vibe: "spacious" }],
+      sleep:    [{ title: "Body scan for sleep",        vibe: "soft"   }, { title: "Yoga nidra",      vibe: "deep"     }],
+      anxiety:  [{ title: "Soften, soothe, allow",      vibe: "warm"   }, { title: "Grounding breath", vibe: "stable"   }],
+      gratitude:[{ title: "Five gratitudes",            vibe: "open"   }],
+      breath:   [{ title: "Box breathing",              vibe: "rhythmic" }, { title: "4-7-8 breath",   vibe: "rhythmic" }],
     };
     const pool = tracks[goal] || tracks.focus;
     const pick = pool[(minutes + goal.length) % pool.length];
@@ -28,7 +32,6 @@ export default function registerMeditationActions(registerLensAction) {
       result: {
         trackId: `med-${goal}-${minutes}-${pool.indexOf(pick)}`,
         title: pick.title,
-        narrator: pick.narrator,
         durationMinutes: minutes,
         goal,
         vibe: pick.vibe,
@@ -55,7 +58,25 @@ export default function registerMeditationActions(registerLensAction) {
    */
   registerLensAction("meditation", "sessionLog", (ctx, _artifact, params = {}) => {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const minutes = Math.max(0, parseInt(params.minutes, 10) || 0);
+    const list = medList(s.sessions, medActor(ctx));
+    // Idempotent logging (F11): a caller that sends a logKey gets the
+    // standing entry back instead of a duplicate — a second click on
+    // Log can no longer double-count a performed session.
+    const logKey = params.logKey ? String(params.logKey).slice(0, 120) : null;
+    if (logKey) {
+      const existing = list.find((x) => x.logKey === logKey);
+      if (existing) return { ok: true, result: { entry: existing, total: list.length, duplicate: true } };
+    }
+    // Performed time (S-MED-1): when the caller measured the practice
+    // (the breathwork pacer does, in seconds), the entry stores the
+    // exact seconds and credits FLOORED whole minutes — a 44-second
+    // practice counts as a session and zero minutes, never the
+    // catalog length.
+    const performedSeconds = params.performedSeconds != null && Number.isFinite(Number(params.performedSeconds))
+      ? Math.max(0, Math.round(Number(params.performedSeconds))) : null;
+    const minutes = performedSeconds != null
+      ? Math.floor(performedSeconds / 60)
+      : Math.max(0, parseInt(params.minutes, 10) || 0);
     const rating = params.rating ? Math.min(5, Math.max(1, parseInt(params.rating, 10))) : null;
     const entry = {
       id: medId("ms"),
@@ -68,13 +89,42 @@ export default function registerMeditationActions(registerLensAction) {
       // not by its track.
       goal: params.goal ? String(params.goal).trim().slice(0, 40) : null,
       durationMin: minutes,
+      durationSec: performedSeconds,
       moodAfter: rating,
+      // The reflective record (S-MED-4): the journal the completion
+      // flow collects is stored ON the entry and read back by history
+      // — it used to reach only the Mint DTU's meta and vanish.
+      journal: params.journal ? String(params.journal).trim().slice(0, 2000) : "",
+      dtuId: params.dtuId ? String(params.dtuId).slice(0, 80) : null,
+      logKey,
       completedAt: params.completedAt || medNow(),
     };
-    const list = medList(s.sessions, medActor(ctx));
     list.push(entry);
     saveMed();
     return { ok: true, result: { entry, total: list.length } };
+  });
+
+  // sessionDelete — remove one of the caller's own practice entries
+  // (S-MED-3: the record the lens creates is correctable).
+  registerLensAction("meditation", "sessionDelete", (ctx, _artifact, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = medList(s.sessions, medActor(ctx));
+    const idx = list.findIndex((x) => x.id === params.entryId);
+    if (idx < 0) return { ok: false, error: "session not found" };
+    list.splice(idx, 1);
+    saveMed();
+    return { ok: true, result: { deleted: params.entryId, total: list.length } };
+  });
+
+  // sessionSetDtu — attach the minted DTU's id to a logged entry, so
+  // the history row keeps the link after a reload (S-MED-4).
+  registerLensAction("meditation", "sessionSetDtu", (ctx, _artifact, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const entry = medList(s.sessions, medActor(ctx)).find((x) => x.id === params.entryId);
+    if (!entry) return { ok: false, error: "session not found" };
+    entry.dtuId = params.dtuId ? String(params.dtuId).slice(0, 80) : null;
+    saveMed();
+    return { ok: true, result: { entry } };
   });
 
   /**
@@ -148,17 +198,17 @@ export default function registerMeditationActions(registerLensAction) {
   // ─── Calm / Headspace 2026 session substrate (per-user, STATE) ───────
 
   const LIBRARY = [
-    { id: "g-focus-10", title: "Single-Pointed Focus", category: "guided", durationMin: 10, narrator: "Tara Brach", goal: "focus" },
-    { id: "g-anx-8", title: "Soften, Soothe, Allow", category: "guided", durationMin: 8, narrator: "Kristin Neff", goal: "anxiety" },
-    { id: "g-grat-5", title: "Five Gratitudes", category: "guided", durationMin: 5, narrator: "Rick Hanson", goal: "gratitude" },
-    { id: "g-body-15", title: "Full Body Scan", category: "guided", durationMin: 15, narrator: "Jon Kabat-Zinn", goal: "relax" },
-    { id: "g-morn-7", title: "Morning Intention", category: "guided", durationMin: 7, narrator: "Sharon Salzberg", goal: "focus" },
+    { id: "g-focus-10", title: "Single-Pointed Focus", category: "guided", durationMin: 10, goal: "focus" },
+    { id: "g-anx-8", title: "Soften, Soothe, Allow", category: "guided", durationMin: 8, goal: "anxiety" },
+    { id: "g-grat-5", title: "Five Gratitudes", category: "guided", durationMin: 5, goal: "gratitude" },
+    { id: "g-body-15", title: "Full Body Scan", category: "guided", durationMin: 15, goal: "relax" },
+    { id: "g-morn-7", title: "Morning Intention", category: "guided", durationMin: 7, goal: "focus" },
     { id: "b-box-5", title: "Box Breathing", category: "breathwork", durationMin: 5, pattern: "box", goal: "calm" },
     { id: "b-478-4", title: "4-7-8 Wind Down", category: "breathwork", durationMin: 4, pattern: "478", goal: "sleep" },
     { id: "b-coh-6", title: "Coherent Breathing", category: "breathwork", durationMin: 6, pattern: "coherent", goal: "calm" },
-    { id: "s-rain-30", title: "A Walk in Light Rain", category: "sleep_story", durationMin: 30, narrator: "Calm Voices", goal: "sleep" },
-    { id: "s-train-45", title: "The Midnight Train", category: "sleep_story", durationMin: 45, narrator: "Calm Voices", goal: "sleep" },
-    { id: "s-nidra-20", title: "Yoga Nidra Descent", category: "sleep_story", durationMin: 20, narrator: "Tracee Stanley", goal: "sleep" },
+    { id: "s-rain-30", title: "A Walk in Light Rain", category: "sleep_story", durationMin: 30, goal: "sleep" },
+    { id: "s-train-45", title: "The Midnight Train", category: "sleep_story", durationMin: 45, goal: "sleep" },
+    { id: "s-nidra-20", title: "Yoga Nidra Descent", category: "sleep_story", durationMin: 20, goal: "sleep" },
     { id: "sc-rain", title: "Rainfall", category: "soundscape", durationMin: 60, goal: "sleep" },
     { id: "sc-ocean", title: "Ocean Waves", category: "soundscape", durationMin: 60, goal: "relax" },
     { id: "sc-white", title: "White Noise", category: "soundscape", durationMin: 480, goal: "sleep" },
@@ -205,24 +255,42 @@ export default function registerMeditationActions(registerLensAction) {
     };
   });
 
+  // play — SAVE AN INTENT, never a credit (S-MED-1, the F1 fix at
+  // the verb). This used to append the track's FULL catalog duration
+  // to the practice ledger on a bare call: a click on a 30-minute
+  // sleep story "practised" 30 minutes. The practice record now
+  // credits performed time only, written by sessionLog; a click here
+  // records the session as PLANNED — visible, and outside every
+  // practice total (streak, dashboard, milestones read the ledger,
+  // never this list).
   registerLensAction("meditation", "play", (ctx, _a, params = {}) => {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const track = LIBRARY.find((x) => x.id === params.sessionId);
     if (!track) return { ok: false, error: "session not found in library" };
     const mood = params.mood != null && Number.isFinite(Number(params.mood))
       ? Math.max(1, Math.min(5, Math.round(Number(params.mood)))) : null;
-    const entry = {
-      id: medId("ms"),
+    if (!(s.intents instanceof Map)) s.intents = new Map(); // userId -> Array<intent>
+    const list = medList(s.intents, medActor(ctx));
+    const intent = {
+      id: medId("mi"),
       sessionId: track.id,
       title: track.title,
       category: track.category,
       durationMin: track.durationMin,
-      moodAfter: mood,
-      completedAt: medNow(),
+      mood,
+      savedAt: medNow(),
     };
-    medList(s.sessions, medActor(ctx)).push(entry);
+    list.push(intent);
     saveMed();
-    return { ok: true, result: { session: entry } };
+    return { ok: true, result: { intent, credited: false } };
+  });
+
+  // intents — the caller's saved-for-later sessions (outside the totals).
+  registerLensAction("meditation", "intents", (ctx, _a, _params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.intents instanceof Map)) s.intents = new Map();
+    const list = [...medList(s.intents, medActor(ctx))].reverse().slice(0, 50);
+    return { ok: true, result: { intents: list, count: list.length } };
   });
 
   registerLensAction("meditation", "history", (ctx, _a, _params = {}) => {
@@ -265,7 +333,13 @@ export default function registerMeditationActions(registerLensAction) {
 
   registerLensAction("meditation", "mood-checkin", (ctx, _a, params = {}) => {
     const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const mood = Math.max(1, Math.min(5, Math.round(Number(params.mood) || 3)));
+    // A check-in requires a CHOSEN mood (F5): the old `|| 3` default
+    // recorded the midpoint feeling the user never reported, and the
+    // honest average then averaged a fabricated input.
+    if (params.mood == null || !Number.isFinite(Number(params.mood))) {
+      return { ok: false, error: "mood_required" };
+    }
+    const mood = Math.max(1, Math.min(5, Math.round(Number(params.mood))));
     const entry = {
       id: medId("md"),
       mood,
@@ -275,6 +349,19 @@ export default function registerMeditationActions(registerLensAction) {
     medList(s.moods, medActor(ctx)).push(entry);
     saveMed();
     return { ok: true, result: { checkin: entry } };
+  });
+
+  // moodDelete — remove one of the caller's own check-ins (S-MED-3;
+  // including the kind recorded by accident, which F5's guard now
+  // prevents and this verb makes correctable for the standing ones).
+  registerLensAction("meditation", "moodDelete", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = medList(s.moods, medActor(ctx));
+    const idx = list.findIndex((x) => x.id === params.checkinId);
+    if (idx < 0) return { ok: false, error: "check-in not found" };
+    list.splice(idx, 1);
+    saveMed();
+    return { ok: true, result: { deleted: params.checkinId, count: list.length } };
   });
 
   registerLensAction("meditation", "mood-history", (ctx, _a, _params = {}) => {
@@ -486,29 +573,24 @@ export default function registerMeditationActions(registerLensAction) {
     const userEnroll = map.get(userId);
     if (!userEnroll.has(course.id)) userEnroll.set(course.id, { completedDays: [], startedAt: medNow() });
     const e = userEnroll.get(course.id);
-    // Q22: completion is idempotent END TO END. completedDays was
-    // already deduped, but the practice-ledger push below ran on every
-    // call — re-completing a day inflated totalSessions / totalMinutes
-    // / streak inputs while course progress stayed correct. The
-    // session is logged only when the day is newly completed.
+    // Completion requires the day's session to have been PRACTISED
+    // (S-MED-1): the old body pushed the day's full catalog duration
+    // into the practice ledger on the click — a one-click "Complete"
+    // was a full session credit for a session that never ran (Q22
+    // made the push idempotent; it was still unperformed). This verb
+    // now writes NOTHING to the ledger. The caller passes the id of
+    // the performed practice entry (logged by sessionLog when the
+    // session actually ran) whose track is the day's session; the
+    // entry is stamped with its course provenance for the record.
     const newlyCompleted = !e.completedDays.includes(day);
     if (newlyCompleted) {
-      e.completedDays.push(day);
-      // Also log the underlying session into the practice ledger.
-      const track = LIBRARY.find((x) => x.id === dayDef.sessionId);
-      if (track) {
-        medList(s.sessions, userId).push({
-          id: medId("ms"),
-          sessionId: track.id,
-          title: track.title,
-          category: track.category,
-          durationMin: track.durationMin,
-          moodAfter: null,
-          completedAt: medNow(),
-          courseId: course.id,
-          courseDay: day,
-        });
+      const entry = medList(s.sessions, userId).find((x) => x.id === params.sessionEntryId);
+      if (!entry || entry.sessionId !== dayDef.sessionId) {
+        return { ok: false, error: "session_not_run" };
       }
+      entry.courseId = course.id;
+      entry.courseDay = day;
+      e.completedDays.push(day);
     }
     saveMed();
     return {
@@ -523,6 +605,43 @@ export default function registerMeditationActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // unenrollCourse — leave a course, progress and all (S-MED-3:
+  // enrollment was one-way). Practice entries already logged stay in
+  // the ledger — they were performed; only the enrollment goes.
+  registerLensAction("meditation", "unenrollCourse", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const course = COURSES.find((c) => c.id === params.courseId);
+    if (!course) return { ok: false, error: "course not found" };
+    const userEnroll = courseEnrollMap(s).get(medActor(ctx));
+    if (!userEnroll || !userEnroll.has(course.id)) return { ok: false, error: "not enrolled" };
+    userEnroll.delete(course.id);
+    saveMed();
+    return { ok: true, result: { courseId: course.id, enrolled: false } };
+  });
+
+  // uncompleteCourseDay — reverse a day's completion (S-MED-3). The
+  // performed entry keeps its place in the practice ledger (the
+  // practice happened); its course provenance is cleared.
+  registerLensAction("meditation", "uncompleteCourseDay", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const course = COURSES.find((c) => c.id === params.courseId);
+    if (!course) return { ok: false, error: "course not found" };
+    const day = parseInt(params.day, 10);
+    const userId = medActor(ctx);
+    const userEnroll = courseEnrollMap(s).get(userId);
+    const e = userEnroll ? userEnroll.get(course.id) : null;
+    if (!e || !e.completedDays.includes(day)) return { ok: false, error: "day not completed" };
+    e.completedDays = e.completedDays.filter((d) => d !== day);
+    for (const entry of medList(s.sessions, userId)) {
+      if (entry.courseId === course.id && entry.courseDay === day) {
+        entry.courseId = null;
+        entry.courseDay = null;
+      }
+    }
+    saveMed();
+    return { ok: true, result: { courseId: course.id, day, completedCount: e.completedDays.length } };
+  });
 
   // ─── Reminders / scheduled practice ─────────────────────────────────
 
@@ -604,6 +723,30 @@ export default function registerMeditationActions(registerLensAction) {
     list.splice(idx, 1);
     saveMed();
     return { ok: true, result: { deleted: params.reminderId, count: list.length } };
+  });
+
+  // updateReminder — edit a reminder in place (S-MED-3: the lifecycle
+  // offered create/disable/delete but no edit, so fixing a time meant
+  // delete + recreate). Only the fields sent are changed.
+  registerLensAction("meditation", "updateReminder", (ctx, _a, params = {}) => {
+    const s = getMedState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = medList(reminderMap(s), medActor(ctx));
+    const r = list.find((x) => x.id === params.reminderId);
+    if (!r) return { ok: false, error: "reminder not found" };
+    if (params.time != null) {
+      const time = String(params.time);
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return { ok: false, error: "time must be HH:MM (24h)" };
+      r.time = time;
+    }
+    if (params.days != null) {
+      const days = Array.isArray(params.days) ? params.days.map((d) => String(d).toLowerCase()).filter((d) => DOW.includes(d)) : [];
+      if (days.length === 0) return { ok: false, error: "days_required" };
+      r.days = days;
+    }
+    if (params.label != null) r.label = String(params.label).trim().slice(0, 80);
+    if (params.enabled != null) r.enabled = !!params.enabled;
+    saveMed();
+    return { ok: true, result: { reminder: r } };
   });
 
   // ─── Sleep timer + sleep-story mode with fade-out ───────────────────

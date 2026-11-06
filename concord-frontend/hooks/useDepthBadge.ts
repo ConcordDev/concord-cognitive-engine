@@ -59,6 +59,16 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
   /**
+   * Meditation's data is the member's own practice record — the
+   * generic REAL_LIVE caption ("polled from an external source")
+   * would be false here. The caption states the lens's one rule:
+   * only performed time counts.
+   */
+  meditation: {
+    label: 'Live',
+    caption: 'Live: your own practice record — the sessions you sit and the check-ins you make, kept on your account. Only performed time counts toward your minutes and streak.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic
