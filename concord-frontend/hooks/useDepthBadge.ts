@@ -96,6 +96,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Entries, insights and analytics here are computed live from your own journal records in the platform store; the Self-Critique Log holds the engine\'s own evaluation records. The only outside data is Studio weather, fetched live when you pin a place.',
   },
   /**
+   * Inference's knowledge bases are the member's own persisted records
+   * and its engines (the desk's syllogism/forward chain, the Rule
+   * Engine's Prolog) run in-process — REAL_LIVE's generic "polled from
+   * an external source" caption would be false for this lens.
+   */
+  inference: {
+    label: 'Live',
+    caption:
+      'Facts, rules and derivations here are your own records in the platform store, reasoned over by engines that run in-process. Nothing is polled from an external source; the only live outside data is the Frameworks view\'s GitHub reads, labelled there.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic
