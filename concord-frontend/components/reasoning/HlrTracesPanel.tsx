@@ -242,7 +242,9 @@ export function HlrTracesPanel({
               className="rounded border border-cyan-500/30 bg-zinc-950 px-2 py-1.5 text-xs text-cyan-100"
             >
               <option value="all">All modes ({traces.length})</option>
-              {modes.map((m) => <option key={m} value={m}>{m}</option>)}
+              {modes.map((m) => (
+                <option key={m} value={m}>{m} ({traces.filter((t) => t.mode === m).length})</option>
+              ))}
             </select>
           </div>
 
