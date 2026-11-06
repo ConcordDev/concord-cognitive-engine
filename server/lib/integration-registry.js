@@ -277,7 +277,7 @@ export const REGISTRY = Object.freeze({
   "expedition-journal": { tier: TIER.SIM_GRADE_A, groundedSchema: "expedition/journal" },
   ghost_tracker: { tier: TIER.SIM_GRADE_A, groundedSchema: "ghost/track" },
   "ghost-tracker": { tier: TIER.SIM_GRADE_A, groundedSchema: "ghost/track" },
-  deities:       { tier: TIER.SIM_GRADE_A, groundedSchema: "deities/pantheon" },
+  deities:       { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "player-composed deities: live records in the platform STATE store; Explore panel reads live Wikipedia" },
   crisis_ops:    { tier: TIER.SIM_GRADE_A, groundedSchema: "crisis/incident" },
   "crisis-ops":  { tier: TIER.SIM_GRADE_A, groundedSchema: "crisis/incident" },
   psyops:        { tier: TIER.SIM_GRADE_A, groundedSchema: "psyops/campaign" },
