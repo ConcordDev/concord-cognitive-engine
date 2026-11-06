@@ -12,6 +12,7 @@
 //     Free, no key. Cached aggressively (≥6h TTL) via cachedFetchJson.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 
 const SPACEX_BASE = "https://api.spacexdata.com/v4";
@@ -152,6 +153,35 @@ export default function registerSpaceActions(registerLensAction) {
   const spClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const spWatch = (s, userId) => { if (!s.watch.has(userId)) s.watch.set(userId, []); return s.watch.get(userId); };
   const spSatellites = (s, userId) => { if (!s.satellites.has(userId)) s.satellites.set(userId, []); return s.satellites.get(userId); };
+
+  // A9 (export genus): Space's user-owned records (tracked satellites +
+  // launch watchlist) live in this state, outside lens artifacts and
+  // DTUs — so the shared export collection (menu · download · the
+  // DTUExportButton fallback) could not see them and answered with its
+  // not-included notice over a lens holding real records (Space F10).
+  // Register them, caller-scoped; the anonymous bucket is shared
+  // scratch and is never exported.
+  registerLensExportProvider("space", (ctx) => {
+    const s = getSpaceState(); if (!s) return [];
+    const uid = spActor(ctx);
+    if (!uid || uid === "anon") return [];
+    const rows = [];
+    for (const sat of spSatellites(s, uid)) {
+      rows.push({
+        id: sat.id, type: "tracked_satellite", title: sat.name,
+        content: `${sat.name} — ${sat.altitudeKm} km · ${sat.inclinationDeg}°${sat.notes ? ` · ${sat.notes}` : ""}`,
+        createdAt: sat.trackedAt,
+      });
+    }
+    for (const w of spWatch(s, uid)) {
+      rows.push({
+        id: w.id, type: "launch_watch", title: w.name,
+        content: `${w.name} — ${w.provider}${w.net ? ` · NET ${w.net}` : ""}${w.pad ? ` · ${w.pad}` : ""}${w.note ? ` · ${w.note}` : ""}`,
+        createdAt: w.trackedAt,
+      });
+    }
+    return rows;
+  });
 
   registerLensAction("space", "launch-track", (ctx, _a, params = {}) => {
     const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
