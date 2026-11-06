@@ -10,6 +10,7 @@
 // hypotheses) lives in globalThis._concordSTATE.hypothesisLens, keyed by userId.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { addTest as engineAddTest, updateTestResult as engineUpdateTestResult } from "../emergent/hypothesis-engine.js";
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerHypothesisActions(rawRegister) {
   rawRegister = saveAfterWrites(guardAnonWrites(rawRegister)); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -1292,6 +1293,9 @@ export default function registerHypothesisActions(rawRegister) {
       const id = rid("ds");
       const dataset = {
         id, name,
+        // S3 (F4): a dataset may be linked to a hypothesis; runs against
+        // a linked dataset record themselves on it as tests.
+        hypothesisId: typeof params.hypothesisId === "string" && params.hypothesisId ? params.hypothesisId : null,
         rowCount: dataRows.length,
         columnCount: columns.length,
         columns,
@@ -1320,6 +1324,7 @@ export default function registerHypothesisActions(rawRegister) {
       const datasets = bucket(hstate().datasets, uid);
       const list = [...datasets.values()].map(d => ({
         id: d.id, name: d.name, rowCount: d.rowCount, columnCount: d.columnCount,
+        hypothesisId: d.hypothesisId || null,
         columns: d.columns.map(c => ({ name: c.name, type: c.type })),
         createdAt: d.createdAt,
       })).sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
@@ -1366,6 +1371,19 @@ export default function registerHypothesisActions(rawRegister) {
    * params.groupColumn + params.valueColumn  (for ANOVA grouped by a categorical column)
    * params.alpha
    */
+  registerLensAction("hypothesis", "datasetSetHypothesis", (ctx, _artifact, params) => {
+    try {
+      const uid = userIdOf(ctx);
+      const datasets = bucket(hstate().datasets, uid);
+      const d = datasets.get(params.datasetId);
+      if (!d) return { ok: false, error: "Dataset not found." };
+      d.hypothesisId = typeof params.hypothesisId === "string" && params.hypothesisId ? params.hypothesisId : null;
+      return { ok: true, result: { datasetId: d.id, hypothesisId: d.hypothesisId } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   registerLensAction("hypothesis", "runTestOnDataset", (ctx, artifact, params) => {
     try {
       const uid = userIdOf(ctx);
@@ -1376,6 +1394,29 @@ export default function registerHypothesisActions(rawRegister) {
       const colByName = (n) => d.columns.find(c => c.name === n);
       const test = params.test;
       const alpha = params.alpha || 0.05;
+
+      const attachIfLinked = (out) => {
+        if (!d.hypothesisId || !out || out.ok === false) return out;
+        try {
+          const inner = (out.result && typeof out.result === "object") ? out.result : out;
+          const p = typeof inner.pValue === "number" ? inner.pValue
+            : typeof inner.p === "number" ? inner.p : null;
+          const stat = inner.statistic != null ? inner.statistic
+            : inner.fStatistic != null ? inner.fStatistic
+            : inner.tStatistic != null ? inner.tStatistic : null;
+          const desc = `Dataset test: ${test} on "${d.name}"`
+            + (stat != null ? ` — statistic ${stat}` : "")
+            + (p != null ? `, p = ${p}` : "")
+            + ` (α = ${alpha})`;
+          const added = engineAddTest(d.hypothesisId, desc);
+          if (added && added.ok && added.testId) {
+            const verdict = p != null ? (p < alpha ? "passed" : "inconclusive") : "inconclusive";
+            engineUpdateTestResult(d.hypothesisId, added.testId, verdict);
+            return { ...out, attachedToHypothesis: { hypothesisId: d.hypothesisId, testId: added.testId, verdict } };
+          }
+        } catch { /* the run's own result stands regardless */ }
+        return out;
+      };
 
       if (test === "anova" && params.groupColumn && params.valueColumn) {
         const gc = colByName(params.groupColumn);
@@ -1390,7 +1431,7 @@ export default function registerHypothesisActions(rawRegister) {
           buckets.get(key).push(v);
         });
         const groups = [...buckets.entries()].map(([label, values]) => ({ label, values }));
-        return runAnovaInline(ctx, groups, alpha);
+        return attachIfLinked(runAnovaInline(ctx, groups, alpha));
       }
 
       const cols = (params.columns || []).map(colByName);
@@ -1399,14 +1440,15 @@ export default function registerHypothesisActions(rawRegister) {
       if (test === "tTest") {
         const s1 = toNumbers(cols[0]?.values);
         const s2 = cols[1] ? toNumbers(cols[1].values) : [];
-        return dispatchTTest(ctx, { sample1: s1, sample2: s2, alpha, kind: params.kind, alternative: params.alternative });
+        return attachIfLinked(dispatchTTest(ctx, { sample1: s1, sample2: s2, alpha, kind: params.kind, alternative: params.alternative }));
       }
       if (test === "correlation" || test === "regression") {
         if (cols.length < 2) return { ok: false, error: `${test} needs two numeric columns.` };
         const x = toNumbers(cols[0].values), y = toNumbers(cols[1].values);
-        return test === "correlation"
+        const out = test === "correlation"
           ? dispatchCorrelation(ctx, { x, y, alpha })
           : dispatchRegression(ctx, { x, y, alpha });
+        return attachIfLinked(out);
       }
       return { ok: false, error: `Unsupported test "${test}" for runTestOnDataset.` };
     } catch (e) {
@@ -1599,7 +1641,8 @@ export default function registerHypothesisActions(rawRegister) {
 
       if (kind === "tTest") {
         title = "Independent/Paired Samples t-Test";
-        statSentence = `A ${result.testType} t-test was conducted. ` +
+        const testTypeLabel = ({ welch: "Welch", "one-sample": "one-sample", "two-sample": "two-sample", paired: "paired-samples" })[result.testType] || result.testType;
+        statSentence = `A ${testTypeLabel} t-test was conducted. ` +
           `The test was ${result.reject ? "" : "not "}statistically significant, ` +
           `t(${apaNum(result.degreesOfFreedom)}) = ${apaNum(result.tStatistic)}, ${apaP(result.pValue)}, ` +
           `d = ${apaNum(result.effectSize)} (${result.effectMagnitude} effect). ` +
