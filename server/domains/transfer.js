@@ -819,6 +819,15 @@ export default function registerTransferActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // Stable identity for a transformed row (key order normalized), used by
+  // incremental dedup: a row already at the destination under this identity
+  // is the same row, however the source ordered its keys.
+  function rowKey(row) {
+    if (!row || typeof row !== "object") return JSON.stringify(row);
+    const keys = Object.keys(row).sort();
+    return JSON.stringify(keys.map(k => [k, row[k]]));
+  }
+
   // ── Transformation engine ─────────────────────────────────────────────
 
   // Apply a single transform op to a value.
@@ -1137,12 +1146,38 @@ export default function registerTransferActions(registerLensAction) {
         else quarantined.push({ row: out, sourceRow: allRows[i], failures: v.failures });
       });
 
+      // Incremental dedup (S-TR-2): a transformed row already at the
+      // destination is skipped and counted, never written twice. Scoped to
+      // incremental runs — full refresh keeps its append semantics. The CDC
+      // cursor above still narrows candidates when a key is configured;
+      // this is the backstop that covers keyless pipelines and the
+      // post-full-run cursor gap (a cursor only advances on incremental
+      // runs, so a destination filled by a full run would otherwise be
+      // duplicated by the first incremental one).
+      const dst = pipe.destConnectorId ? connMap?.get(pipe.destConnectorId) : null;
+      let toWrite = written;
+      let rowsSkippedDuplicates = 0;
+      let destinationRows = null;
+      if (dst) {
+        const existingDst = readConnectorRows(dst);
+        if (incremental) {
+          const seen = new Set(existingDst.map(rowKey));
+          toWrite = [];
+          for (const row of written) {
+            const k = rowKey(row);
+            if (seen.has(k)) { rowsSkippedDuplicates++; continue; }
+            seen.add(k);
+            toWrite.push(row);
+          }
+        }
+        destinationRows = existingDst.length + toWrite.length;
+      }
+
       // Route good rows to the destination connector (a real write).
       if (pipe.destConnectorId) {
-        const dst = connMap?.get(pipe.destConnectorId);
         if (dst) {
           const existingDst = readConnectorRows(dst);
-          const merged = existingDst.concat(written);
+          const merged = existingDst.concat(toWrite);
           if (dst.kind === "json") dst.payload = JSON.stringify(merged, null, 2);
           else if (dst.kind === "inline") dst.rows = merged;
           else if (dst.kind === "csv") {
@@ -1165,11 +1200,13 @@ export default function registerTransferActions(registerLensAction) {
         pipelineName: pipe.name,
         startedAt,
         finishedAt: nowIso(),
-        mode: incremental && cdcKey ? "incremental" : "full",
-        status: quarantined.length === 0 ? "success" : (written.length === 0 ? "failed" : "partial"),
-        rowsRead: incremental && cdcKey ? totalRead : totalRead,
+        mode: incremental ? "incremental" : "full",
+        status: quarantined.length === 0 ? "success" : (toWrite.length === 0 && rowsSkippedDuplicates === 0 ? "failed" : "partial"),
+        rowsRead: totalRead,
         rowsProcessed: allRows.length,
-        rowsWritten: written.length,
+        rowsWritten: dst ? toWrite.length : written.length,
+        rowsSkippedDuplicates,
+        destinationRows,
         rowsQuarantined: quarantined.length,
         cdcCursor: pipe.cdcCursor,
         errors: quarantined.slice(0, 25).map(q => ({ failures: q.failures, sourceRow: q.sourceRow })),
@@ -1185,7 +1222,7 @@ export default function registerTransferActions(registerLensAction) {
         ok: true,
         result: {
           run,
-          writtenSample: written.slice(0, 10),
+          writtenSample: (dst ? toWrite : written).slice(0, 10),
         },
       };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }

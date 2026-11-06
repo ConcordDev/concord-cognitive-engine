@@ -17602,11 +17602,19 @@ register("transfer", "classify_domain", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("transfer_classify");
   const dtuId = String(input.dtuId || "");
-  if (!dtuId) return { ok: false, error: "dtuId required" };
-  const dtu = ctx.state.dtus?.get(dtuId);
-  if (!dtu) return { ok: false, error: "DTU not found" };
-  const domain = classifyDomain(dtu);
-  return { ok: true, dtuId, domain };
+  if (dtuId) {
+    const dtu = ctx.state.dtus?.get(dtuId);
+    if (!dtu) return { ok: false, error: "DTU not found" };
+    const detailed = classifyDomainDetailed(dtu);
+    return { ok: true, dtuId, domain: detailed.domain, matchedKeywords: detailed.matchedKeywords, scores: detailed.scores, basis: "dtu" };
+  }
+  // The lens collects free content, not an id: classify the content in the
+  // box through the same classifier, over a pseudo-DTU built from it (the
+  // routes/system.js precedent), and return the evidence with the verdict.
+  const content = String(input.content || "").trim();
+  if (!content) return { ok: false, error: "content or dtuId required" };
+  const detailed = classifyDomainDetailed({ title: content, human: { summary: content }, tags: [] });
+  return { ok: true, domain: detailed.domain, matchedKeywords: detailed.matchedKeywords, scores: detailed.scores, basis: "content" };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
@@ -17630,10 +17638,10 @@ register("transfer", "list_patterns", (ctx, _input = {}) => {
 register("transfer", "find_analogies", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("transfer_analogies");
-  const targetDomain = String(input.domain || "general");
-  const query = String(input.query || "");
-  const results = findAnalogousPatterns(targetDomain, query);
-  return { ok: true, results };
+  const targetDomain = String(input.target || input.domain || "general");
+  const query = String(input.source || input.query || "");
+  const found = findAnalogousPatterns(targetDomain, query);
+  return { ok: true, results: found.results, scanned: found.scanned };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
@@ -82339,34 +82347,45 @@ function ensureTransferEngine() {
 }
 
 // Classify DTU into domain
-function classifyDomain(dtu) {
-  if (!dtu) return DOMAIN_TYPES.GENERAL;
+const TRANSFER_DOMAIN_KEYWORDS = {
+  [DOMAIN_TYPES.TECHNICAL]: ["code", "programming", "software", "api", "algorithm", "data", "system", "server", "database"],
+  [DOMAIN_TYPES.SCIENTIFIC]: ["research", "hypothesis", "experiment", "theory", "study", "evidence", "analysis", "scientific"],
+  [DOMAIN_TYPES.BUSINESS]: ["business", "market", "revenue", "customer", "strategy", "profit", "company", "product"],
+  [DOMAIN_TYPES.CREATIVE]: ["art", "design", "creative", "story", "music", "visual", "aesthetic", "writing"],
+  [DOMAIN_TYPES.PERSONAL]: ["personal", "life", "health", "habit", "goal", "routine", "self", "wellness"],
+  [DOMAIN_TYPES.SOCIAL]: ["social", "relationship", "community", "team", "communication", "people", "network"],
+  [DOMAIN_TYPES.PHILOSOPHICAL]: ["philosophy", "ethics", "meaning", "existence", "truth", "value", "moral", "wisdom"],
+  [DOMAIN_TYPES.PROCEDURAL]: ["process", "workflow", "step", "procedure", "method", "how to", "guide", "instruction"]
+};
+
+// The classifier's receipt: the winning domain, every domain's score, and
+// the keywords that matched the winner — so a classification can show its
+// work instead of asserting a label.
+function classifyDomainDetailed(dtu) {
+  if (!dtu) return { domain: DOMAIN_TYPES.GENERAL, scores: {}, matchedKeywords: [] };
 
   const text = [String(dtu.title || ""), String(dtu.human?.summary || ""), ...(dtu.tags || [])].join(" ").toLowerCase();
 
-  const domainKeywords = {
-    [DOMAIN_TYPES.TECHNICAL]: ["code", "programming", "software", "api", "algorithm", "data", "system", "server", "database"],
-    [DOMAIN_TYPES.SCIENTIFIC]: ["research", "hypothesis", "experiment", "theory", "study", "evidence", "analysis", "scientific"],
-    [DOMAIN_TYPES.BUSINESS]: ["business", "market", "revenue", "customer", "strategy", "profit", "company", "product"],
-    [DOMAIN_TYPES.CREATIVE]: ["art", "design", "creative", "story", "music", "visual", "aesthetic", "writing"],
-    [DOMAIN_TYPES.PERSONAL]: ["personal", "life", "health", "habit", "goal", "routine", "self", "wellness"],
-    [DOMAIN_TYPES.SOCIAL]: ["social", "relationship", "community", "team", "communication", "people", "network"],
-    [DOMAIN_TYPES.PHILOSOPHICAL]: ["philosophy", "ethics", "meaning", "existence", "truth", "value", "moral", "wisdom"],
-    [DOMAIN_TYPES.PROCEDURAL]: ["process", "workflow", "step", "procedure", "method", "how to", "guide", "instruction"]
-  };
-
   let bestDomain = DOMAIN_TYPES.GENERAL;
   let bestScore = 0;
+  const scores = {};
+  const matches = {};
 
-  for (const [domain, keywords] of Object.entries(domainKeywords)) {
-    const score = keywords.filter(kw => text.includes(kw)).length;
-    if (score > bestScore) {
-      bestScore = score;
+  for (const [domain, keywords] of Object.entries(TRANSFER_DOMAIN_KEYWORDS)) {
+    const matched = keywords.filter(kw => text.includes(kw));
+    scores[domain] = matched.length;
+    matches[domain] = matched;
+    if (matched.length > bestScore) {
+      bestScore = matched.length;
       bestDomain = domain;
     }
   }
 
-  return bestDomain;
+  return { domain: bestDomain, scores, matchedKeywords: matches[bestDomain] || [] };
+}
+
+function classifyDomain(dtu) {
+  return classifyDomainDetailed(dtu).domain;
 }
 
 // Extract structural pattern from a set of related DTUs
@@ -82435,7 +82454,11 @@ function findCommonElements(arrays) {
   );
 }
 
-// Find analogous patterns for a target domain
+// Find analogous patterns for a target domain. Results are mapping-shaped
+// (D2): every result carries the element pairs it claims — a pattern's
+// stored template components/relationships, or a DTU's shared terms with
+// the query, named as the relation — so the surface renders inspectable
+// cards, never a bare list of nouns.
 function findAnalogousPatterns(targetDomain, query = "") {
   ensureTransferEngine();
 
@@ -82464,11 +82487,48 @@ function findAnalogousPatterns(targetDomain, query = "") {
       sourceDomain: pattern.sourceDomain,
       targetDomain,
       relevance: clamp(relevance, 0, 1),
-      template: pattern.template
+      template: pattern.template,
+      kind: "pattern",
+      mapping: [
+        ...(pattern.template?.components || []).map(c => ({ from: c.term, to: targetDomain, relation: c.role || "concept" })),
+        ...(pattern.template?.relationships || []).map(r => ({ from: r.value, to: targetDomain, relation: r.type || "tagged" })),
+      ],
     });
   }
 
-  return results.sort((a, b) => b.relevance - a.relevance).slice(0, 10);
+  // DTU-derived analogies: DTUs the platform holds whose own terms overlap
+  // the query. The mapping is the shared terms themselves — retrieval with
+  // its relation stated, labelled kind:"dtu" so the surface can say what
+  // kind of analogy each card is.
+  const queryTokens = new Set(tokenizeText(query));
+  let dtusScanned = 0;
+  if (queryTokens.size > 0 && STATE.dtus) {
+    for (const dtu of STATE.dtus.values()) {
+      dtusScanned++;
+      const sourceDomain = classifyDomain(dtu);
+      if (sourceDomain === targetDomain) continue;
+      const text = [String(dtu.title || ""), String(dtu.human?.summary || ""), ...(dtu.tags || [])].join(" ");
+      const dtuTokens = new Set(tokenizeText(text));
+      const shared = [...queryTokens].filter(t => dtuTokens.has(t));
+      if (shared.length === 0) continue;
+      results.push({
+        patternId: null,
+        dtuId: dtu.id,
+        patternName: dtu.title || "Untitled DTU",
+        sourceDomain,
+        targetDomain,
+        relevance: clamp(0.3 + shared.length * 0.15, 0, 0.95),
+        kind: "dtu",
+        sharedTerms: shared,
+        mapping: shared.map(term => ({ from: term, to: targetDomain, relation: "shared term" })),
+      });
+    }
+  }
+
+  return {
+    results: results.sort((a, b) => b.relevance - a.relevance).slice(0, 10),
+    scanned: { patterns: STATE.transfer.patterns.size, dtus: dtusScanned },
+  };
 }
 
 // Apply a pattern to create new DTU suggestions in target domain
