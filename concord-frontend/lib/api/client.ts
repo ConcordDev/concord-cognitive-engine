@@ -1790,6 +1790,12 @@ export const apiHelpers = {
       api.post('/api/grounding/actions', data),
     approveAction: (actionId: string) =>
       api.post(`/api/grounding/actions/${actionId}/approve`, {}),
+    removeSensor: (sensorId: string) =>
+      api.post(`/api/grounding/sensors/${sensorId}/remove`, {}),
+    removeReading: (readingId: string) =>
+      api.post(`/api/grounding/readings/${readingId}/remove`, {}),
+    withdrawAction: (actionId: string) =>
+      api.post(`/api/grounding/actions/${actionId}/withdraw`, {}),
     actions: { pending: () => api.get('/api/grounding/actions/pending') },
   },
 

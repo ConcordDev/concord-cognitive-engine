@@ -139,7 +139,7 @@ export function FactGroundingWorkbench() {
   const [addedUrls, setAddedUrls] = useState<Set<string>>(new Set());
 
   // bias
-  const [biasUrls, setBiasUrls] = useState('');
+  const [biasUrls, setBiasUrls] = useState('reuters.com\nfoxnews.com\ntheguardian.com');
   const [sourceBias, setSourceBias] = useState<SourceBiasResult | null>(null);
 
   // trending
@@ -256,7 +256,7 @@ export function FactGroundingWorkbench() {
       sources: aggregate.citations.map((c) => c.sourceUrl).filter(Boolean),
     });
     if (r.data.ok && r.data.result) {
-      setSavedNote(`Recorded to audit trail (${r.data.result.recorded.id.slice(0, 12)}…)`);
+      setSavedNote(`Recorded to audit trail (${r.data.result.recorded.id})`);
       await loadAudit();
     } else fail(r.data.error || 'record failed');
     setBusy(null);
@@ -528,10 +528,13 @@ export function FactGroundingWorkbench() {
                     <div className="h-2 w-32 overflow-hidden rounded-full bg-zinc-800">
                       <div className="h-full rounded-full bg-cyan-400" style={{ width: `${aggregate.probabilityTrue * 100}%` }} />
                     </div>
-                    <span className="font-mono text-xs text-zinc-300">{Math.round(aggregate.probabilityTrue * 100)}% likely true</span>
+                    <span className="font-mono text-xs text-zinc-300">{Math.round(aggregate.probabilityTrue * 100)}% evidence-weighted support</span>
                   </div>
                   <p className="mt-0.5 text-[10px] text-zinc-400">
                     {aggregate.sourceCount} sources · {aggregate.knownSourceCount} rated · spectrum: {aggregate.spectrumCoverage}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-zinc-500">
+                    The bar is the source-weighted share of decisive evidence (supporting vs contradicting; neutral excluded) — an evidence measure, not a measured probability that the claim is true.
                   </p>
                 </div>
               </div>
@@ -590,7 +593,7 @@ export function FactGroundingWorkbench() {
                 <span className="font-mono text-xs text-zinc-400">{Math.round(confidence.confidence * 100)}%</span>
               </div>
               <p className="text-[11px] text-zinc-400">
-                95%-style interval: {Math.round(confidence.interval.lower * 100)}% –{' '}
+                Evidence-pool interval: {Math.round(confidence.interval.lower * 100)}% –{' '}
                 {Math.round(confidence.interval.upper * 100)}% (±{Math.round(confidence.interval.margin * 100)}pts)
               </p>
               <div className="grid grid-cols-4 gap-1.5 text-center">
@@ -789,7 +792,7 @@ export function FactGroundingWorkbench() {
                   <p className="text-2xl font-bold text-cyan-300">
                     {audit.stats.avgProbabilityTrue != null ? `${Math.round(audit.stats.avgProbabilityTrue * 100)}%` : '—'}
                   </p>
-                  <p className="text-[10px] text-zinc-400">Avg probability true</p>
+                  <p className="text-[10px] text-zinc-400">Avg evidence support</p>
                 </div>
               </div>
 
@@ -829,8 +832,8 @@ export function FactGroundingWorkbench() {
                       }`}>{c.verdict}</span>
                     </div>
                     <div className="mt-1 flex items-center gap-3 text-[9px] text-zinc-400">
-                      {c.probabilityTrue != null && <span>{Math.round(c.probabilityTrue * 100)}% true</span>}
-                      {c.confidence != null && <span>conf {Math.round(c.confidence * 100)}%</span>}
+                      {c.probabilityTrue != null && <span>{Math.round(c.probabilityTrue * 100)}% evidence support</span>}
+                      {c.confidence != null && <span>evidence score {Math.round(c.confidence * 100)}%</span>}
                       <span>{c.sourceCount} sources</span>
                       <span>{new Date(c.checkedAt).toLocaleString()}</span>
                     </div>
