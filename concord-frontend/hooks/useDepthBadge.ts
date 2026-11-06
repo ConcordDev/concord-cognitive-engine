@@ -38,6 +38,12 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
     caption: 'Real but static / open-access dataset.',
     tone: 'free',
   },
+  REAL_WORKSPACE: {
+    tier: 'REAL_WORKSPACE',
+    label: 'Workspace',
+    caption: 'Your own live records, saved in your workspace on Concord’s backend.',
+    tone: 'live',
+  },
   SIM_GRADE_A: {
     tier: 'SIM_GRADE_A',
     label: 'Simulated',
@@ -58,6 +64,28 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  * chip names the two surfaces that actually are simulations.
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
+  /**
+   * Close-out A5 — the declaration flip's scoped captions. These lenses
+   * flipped to REAL_WORKSPACE (their write layers persist per-account);
+   * each caption names the second half its surface also carries, which
+   * the generic Workspace line alone would blur.
+   */
+  creative: {
+    label: 'Workspace',
+    caption: 'Your own production records — boards, call sheets and deliverables are saved in your workspace. The bench’s template generators and the corpus library are not your data; the panels say which is which.',
+  },
+  mentorship: {
+    label: 'Workspace',
+    caption: 'Your own records: your mentor profile, goals and sessions are saved in your workspace. The directory’s listed mentors are a public dataset, not Concord members.',
+  },
+  hvac: {
+    label: 'Workspace',
+    caption: 'Your own business records: clients, jobs, invoices and inspections are saved in your workspace. The code and materials references are published tables, not live feeds.',
+  },
+  physics: {
+    label: 'Workspace',
+    caption: 'Your own bench: experiments and notes are saved in your workspace. The reference data is drawn from arXiv and Wikipedia.',
+  },
   /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
