@@ -177,12 +177,21 @@ describe("experience — participant recruitment / panel", () => {
 
 describe("experience — highlight reels / clip sharing", () => {
   it("createClip + listClips + buildReel produce shareable tokens", () => {
-    const clip1 = call("createClip", ctxA, { runId: "run1", label: "Confusion", startMs: 1000, endMs: 5000, sentiment: "negative" });
-    const clip2 = call("createClip", ctxA, { runId: "run1", label: "Delight", startMs: 6000, endMs: 8000, sentiment: "positive" });
+    // Clips cut from a recorded run (S4: createClip validates the runId
+    // against the caller's recorded runs — seed a real run first).
+    const seededTest = call("createTest", ctxA, { name: "Clip source", tasks: ["Do the thing"] });
+    const seededRun = call("recordRun", ctxA, {
+      testId: seededTest.result.test.id,
+      participant: "P1",
+      tasks: [{ taskId: seededTest.result.test.tasks[0].id, success: true, durationMs: 8000, events: [] }],
+    });
+    const runId = seededRun.result.run.id;
+    const clip1 = call("createClip", ctxA, { runId, label: "Confusion", startMs: 1000, endMs: 5000, sentiment: "negative" });
+    const clip2 = call("createClip", ctxA, { runId, label: "Delight", startMs: 6000, endMs: 8000, sentiment: "positive" });
     assert.equal(clip1.ok, true);
     assert.ok(clip1.result.shareUrl.includes("/share/clip/"));
 
-    const clips = call("listClips", ctxA, { runId: "run1" });
+    const clips = call("listClips", ctxA, { runId });
     assert.equal(clips.result.count, 2);
     assert.equal(clips.result.bySentiment.negative, 1);
 
