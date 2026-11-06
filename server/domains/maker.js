@@ -120,6 +120,71 @@ export default function registerMakerMacros(register) {
     }
   }, { note: "rename or edit the spec of a make" });
 
+  // ─── F5 fix return (2026-11-05): the displaced pre-build records ──
+  // Before this domain existed, the Bench read/wrote through
+  // app-maker's project store (projectCreate with a name only — no
+  // template, no origin stamp). The build severed that read, so those
+  // records still sit in STATE.appMakerLens.projects, invisible to
+  // maker.list. They carry NO discriminator from genuine App Maker
+  // projects (field-for-field identical), so no automatic migration
+  // can honestly tell a make from an app — the owner is the only
+  // discriminator. reclaimables names the caller's unreclaimed
+  // app-maker projects on the Bench (origin carried); reclaim copies
+  // ONE into maker_pieces at the owner's act and stamps the source
+  // project so it is never re-offered. The project itself is not
+  // deleted or altered in App Maker beyond that marker — no app
+  // content (pages, workflows) can be destroyed by a reclaim.
+  function appMakerProjects(userId) {
+    const s = globalThis._concordSTATE?.appMakerLens;
+    if (!s || !(s.projects instanceof Map)) return [];
+    return s.projects.get(userId) || [];
+  }
+
+  /**
+   * maker.reclaimables — the caller's app-maker projects not yet
+   * imported onto the bench.
+   */
+  register("maker", "reclaimables", async (ctx) => {
+    const userId = actorId(ctx);
+    if (!userId) return { ok: false, reason: "no_user" };
+    const projects = appMakerProjects(userId)
+      .filter((p) => p && typeof p.id === "string" && typeof p.name === "string" && p.name.trim() && !p.reclaimedAsMake)
+      .map((p) => ({ id: p.id, name: p.name, createdAt: p.createdAt || null }));
+    return { ok: true, projects };
+  }, { note: "the caller's pre-Bench records still sitting in App Maker" });
+
+  /**
+   * maker.reclaim — import one of the caller's app-maker projects
+   * onto the bench as a make. input: { projectId }
+   */
+  register("maker", "reclaim", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = actorId(ctx);
+    if (!userId) return { ok: false, reason: "no_user" };
+    const projectId = clampStr(input.projectId, 128);
+    if (!projectId) return { ok: false, reason: "no_project" };
+    const proj = appMakerProjects(userId).find((p) => p && p.id === projectId);
+    if (!proj) return { ok: false, reason: "not_found" };
+    if (proj.reclaimedAsMake) return { ok: false, reason: "already_reclaimed" };
+    const name = clampStr(proj.name, 120).trim();
+    if (!name) return { ok: false, reason: "no_name" };
+    const id = makeId();
+    const ts = nowIso();
+    try {
+      db.prepare(
+        `INSERT INTO maker_pieces (id, user_id, name, spec, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+      ).run(id, userId, name, "", ts, ts);
+    } catch (e) {
+      return { ok: false, reason: e?.message || "reclaim_failed" };
+    }
+    proj.reclaimedAsMake = id;
+    if (typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch { /* best effort */ }
+    }
+    return { ok: true, make: { id, name, spec: "", createdAt: ts, updatedAt: ts } };
+  }, { note: "import one of the caller's App Maker records onto the bench as a make" });
+
   /**
    * maker.delete — remove a make the caller owns.
    */
