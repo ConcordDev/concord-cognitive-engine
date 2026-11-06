@@ -347,6 +347,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your own live store: products, orders and stock are your account’s real records, updated as you sell.',
   },
   /**
+   * Hypothesis' registry is the platform's hypothesis engine — the
+   * generic REAL_LIVE line ("polled live from an external source") was
+   * false about it: nothing is polled. Facts promoted on confirmation
+   * land in the canonical DTU store (F2 fix).
+   */
+  hypothesis: {
+    label: 'Live',
+    caption:
+      "Hypotheses here are live records in the platform's hypothesis engine — proposed, evidenced, tested, and promoted to Facts retrievable in the Global Library. Statistics run in-process; the only outside data is the arXiv feed, labelled at its panel.",
+  },
+  /**
    * Emergency Services' registry is the user's own live substrate —
    * units, incidents and agency records persist per account on
    * Concord's backend — so the generic REAL_FREE line ("static /
