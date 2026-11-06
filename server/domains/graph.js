@@ -7,6 +7,7 @@ import { requireList } from "../lib/lens-inputs.js";
 import { initIntegrityTable, createIntegritySystem } from "../lib/dtu-integrity.js";
 import { convergeUserMaps } from "../lib/map-convergence.js";
 import { substrateCounts } from "../lib/substrate-counts.js";
+import { collectGraphNodes } from "../lib/graph-nodes.js";
 export default function registerGraphActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -907,6 +908,22 @@ export default function registerGraphActions(registerLensAction) {
       if (STATE.graphLens) STATE.graphLens.lastConvergenceError = String(e?.message || e);
     }
   }
+
+  // A4 Leg C: the fabric's registered nodes — saved work a lens has
+  // registered into the graph through lib/graph-nodes.js (its own store,
+  // caller-scoped by each provider). CrossDomainConnections merges
+  // these with its DTU sources; without a provider a domain simply has
+  // no registered nodes (an honest empty, not an error).
+  registerLensAction("graph", "registered-nodes", async (ctx, _artifact, params = {}) => {
+    try {
+      const domain = typeof params.domain === "string" ? params.domain.trim() : "";
+      if (!domain) return { ok: false, error: "domain_required" };
+      const { nodes, errors } = await collectGraphNodes({ domain, ctx });
+      return { ok: true, result: { nodes, count: nodes.length, ...(Object.keys(errors).length ? { errors } : {}) } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 
   registerLensAction("graph", "node-add", (ctx, _a, params = {}) => {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };

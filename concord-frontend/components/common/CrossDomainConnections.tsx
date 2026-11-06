@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useLensTool } from '@/lib/lens-dock';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Network, X, ChevronRight, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -177,10 +177,46 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
     retry: 1,
   });
 
+  // ---- Registered graph nodes (A4 Leg C) ----
+  // Saved work a lens registered into the fabric from its own store
+  // (lib/graph-nodes.js) — e.g. Commonsense's thread checks. A distinct
+  // source from the DTU paths above: these are the lens's OWN saved
+  // work, grouped under their home lens and labelled as registered.
+  // A failing or empty registration leg changes nothing else here.
+  const { data: registeredData } = useQuery({
+    queryKey: ['cross-domain-registered', domain],
+    queryFn: async () => {
+      try {
+        const r = await lensRun<{ result?: { nodes?: Array<{ id: string; title: string; domain: string; summary?: string }> } }>(
+          'graph',
+          'registered-nodes',
+          { domain },
+        );
+        return r?.result?.nodes || [];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 60_000,
+    enabled: open,
+    retry: 0,
+  });
+
   // ---- Normalise results ----
   const connections: ConnectionItem[] = useMemo(() => {
-    return connectionData?.items || [];
-  }, [connectionData]);
+    const base = connectionData?.items || [];
+    const seen = new Set(base.map((i) => i.id));
+    const registered: ConnectionItem[] = (registeredData || [])
+      .filter((n) => !seen.has(n.id))
+      .map((n) => ({
+        id: n.id,
+        title: n.title,
+        sourceDomain: n.domain,
+        similarity: 0,
+        excerpt: n.summary || undefined,
+      }));
+    return [...base, ...registered];
+  }, [connectionData, registeredData]);
 
   // ---- Group by source domain ----
   const grouped: Record<string, ConnectionItem[]> = useMemo(() => {
