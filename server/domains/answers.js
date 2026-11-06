@@ -35,6 +35,12 @@ export default function registerAnswersActions(registerLensAction) {
   const clean = (v, max = 280) => String(v == null ? "" : v).trim().slice(0, max);
   const num = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const list = (s, userId) => { if (!s.questions.has(userId)) s.questions.set(userId, []); return s.questions.get(userId); };
+  // Soft delete (S1): a deleted record keeps its row with deletedAt set;
+  // every read/write path below works on LIVE records only — delete and
+  // restore are the two verbs that address the raw list.
+  const liveQs = (s, userId) => list(s, userId).filter((q) => !q.deletedAt);
+  const findLive = (s, userId, id) => liveQs(s, userId).find((q) => q.id === id);
+  const liveAnswers = (q) => q.answers.filter((a) => !a.deletedAt);
   const rep = (s, userId) => s.reputation.get(userId) || 0;
   function addRep(s, userId, delta) { s.reputation.set(userId, Math.max(0, rep(s, userId) + delta)); }
   function parseTags(raw) {
@@ -145,6 +151,7 @@ export default function registerAnswersActions(registerLensAction) {
       flags: [],
       duplicateOf: null,
       revisions: [],
+      deletedAt: null,
       createdAt: aNow(),
       updatedAt: aNow(),
     };
@@ -163,57 +170,72 @@ export default function registerAnswersActions(registerLensAction) {
 
   registerLensAction("answers", "question-list", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    let qs = [...list(s, actor(ctx))];
+    let qs = [...liveQs(s, actor(ctx))];
+    const mySubs = s.subscriptions.get(actor(ctx)) || new Set();
     if (params.tag) {
       const t = clean(params.tag, 35).toLowerCase();
       qs = qs.filter((q) => q.tags.includes(t));
     }
     const query = clean(params.query, 120).toLowerCase();
     if (query) qs = qs.filter((q) => q.title.toLowerCase().includes(query) || q.body.toLowerCase().includes(query));
-    if (params.filter === "unanswered") qs = qs.filter((q) => q.answers.length === 0);
+    if (params.filter === "unanswered") qs = qs.filter((q) => liveAnswers(q).length === 0);
     else if (params.filter === "accepted") qs = qs.filter((q) => q.acceptedAnswerId);
     else if (params.filter === "bountied") qs = qs.filter((q) => q.bounty > 0);
     const sort = params.sort || "newest";
     if (sort === "votes") qs.sort((a, b) => b.votes - a.votes);
     else if (sort === "active") qs.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    else if (sort === "answers") qs.sort((a, b) => b.answers.length - a.answers.length);
+    else if (sort === "answers") qs.sort((a, b) => liveAnswers(b).length - liveAnswers(a).length);
     else qs.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     const summary = qs.map((q) => ({
       id: q.id, title: q.title, tags: q.tags, votes: q.votes, views: q.views,
-      answerCount: q.answers.length, hasAccepted: !!q.acceptedAnswerId, bounty: q.bounty,
-      excerpt: q.body.slice(0, 160), createdAt: q.createdAt,
+      answerCount: liveAnswers(q).length, hasAccepted: !!q.acceptedAnswerId, bounty: q.bounty,
+      excerpt: q.body.slice(0, 160), createdAt: q.createdAt, subscribed: mySubs.has(q.id),
     }));
     return { ok: true, result: { questions: summary, count: summary.length } };
   });
 
   registerLensAction("answers", "question-detail", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const q = list(s, actor(ctx)).find((x) => x.id === params.id);
+    const q = findLive(s, actor(ctx), params.id);
     if (!q) return { ok: false, error: "question not found" };
     q.views += 1;
     save();
-    const answers = [...q.answers].sort((a, b) => {
+    const answers = [...liveAnswers(q)].sort((a, b) => {
       if (a.id === q.acceptedAnswerId) return -1;
       if (b.id === q.acceptedAnswerId) return 1;
       return b.votes - a.votes;
     });
-    return { ok: true, result: { question: { ...q, answers } } };
+    return { ok: true, result: { question: { ...q, answers, deletedAt: null } } };
   });
 
   registerLensAction("answers", "question-delete", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = list(s, actor(ctx));
-    const i = arr.findIndex((q) => q.id === params.id);
-    if (i < 0) return { ok: false, error: "question not found" };
-    arr.splice(i, 1);
+    const q = list(s, actor(ctx)).find((x) => x.id === params.id);
+    if (!q) return { ok: false, error: "question not found" };
+    if (q.deletedAt) return { ok: false, error: "question already deleted" };
+    // Soft delete: the record stays, stamped; reads exclude it and the
+    // restore verb below reverses the act — a recorded, reversible delete.
+    q.deletedAt = aNow();
+    q.updatedAt = aNow();
     save();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: q.id, title: q.title, deletedAt: q.deletedAt } };
+  });
+
+  registerLensAction("answers", "question-restore", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const q = list(s, actor(ctx)).find((x) => x.id === params.id);
+    if (!q) return { ok: false, error: "question not found" };
+    if (!q.deletedAt) return { ok: false, error: "question is not deleted" };
+    q.deletedAt = null;
+    q.updatedAt = aNow();
+    save();
+    return { ok: true, result: { restored: q.id, title: q.title } };
   });
 
   // ── Answers ────────────────────────────────────────────────────────
   registerLensAction("answers", "answer-post", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const q = list(s, actor(ctx)).find((x) => x.id === params.questionId);
+    const q = findLive(s, actor(ctx), params.questionId);
     if (!q) return { ok: false, error: "question not found" };
     if (q.closed) return { ok: false, error: "question is closed" };
     const body = clean(params.body, 8000);
@@ -228,6 +250,7 @@ export default function registerAnswersActions(registerLensAction) {
       comments: [],
       flags: [],
       revisions: [],
+      deletedAt: null,
       createdAt: aNow(),
     };
     q.answers.push(ans);
@@ -244,29 +267,46 @@ export default function registerAnswersActions(registerLensAction) {
       }
     }
     save();
-    return { ok: true, result: { answer: ans, answerCount: q.answers.length } };
+    return { ok: true, result: { answer: ans, answerCount: liveAnswers(q).length } };
   });
 
   registerLensAction("answers", "answer-delete", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const q = list(s, actor(ctx)).find((x) => x.id === params.questionId);
+    const q = findLive(s, actor(ctx), params.questionId);
     if (!q) return { ok: false, error: "question not found" };
-    const i = q.answers.findIndex((x) => x.id === params.answerId);
-    if (i < 0) return { ok: false, error: "answer not found" };
-    if (q.acceptedAnswerId === params.answerId) q.acceptedAnswerId = null;
-    q.answers.splice(i, 1);
+    const ans = q.answers.find((x) => x.id === params.answerId);
+    if (!ans) return { ok: false, error: "answer not found" };
+    if (ans.deletedAt) return { ok: false, error: "answer already deleted" };
+    // Soft delete, as question-delete: stamped, excluded from reads,
+    // reversible via answer-restore. A deleted accepted answer clears
+    // the acceptance (the +15 stays — as the hard delete before it did).
+    ans.deletedAt = aNow();
+    if (q.acceptedAnswerId === ans.id) { q.acceptedAnswerId = null; ans.accepted = false; }
     q.updatedAt = aNow();
     save();
-    return { ok: true, result: { deleted: params.answerId } };
+    return { ok: true, result: { deleted: ans.id, deletedAt: ans.deletedAt } };
+  });
+
+  registerLensAction("answers", "answer-restore", (ctx, _a, params = {}) => {
+    const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const q = findLive(s, actor(ctx), params.questionId);
+    if (!q) return { ok: false, error: "question not found" };
+    const ans = q.answers.find((x) => x.id === params.answerId);
+    if (!ans) return { ok: false, error: "answer not found" };
+    if (!ans.deletedAt) return { ok: false, error: "answer is not deleted" };
+    ans.deletedAt = null;
+    q.updatedAt = aNow();
+    save();
+    return { ok: true, result: { restored: ans.id } };
   });
 
   registerLensAction("answers", "answer-accept", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
-    const q = list(s, userId).find((x) => x.id === params.questionId);
+    const q = findLive(s, userId, params.questionId);
     if (!q) return { ok: false, error: "question not found" };
     if (q.authorId !== userId) return { ok: false, error: "only the question author can accept an answer" };
-    const ans = q.answers.find((x) => x.id === params.answerId);
+    const ans = liveAnswers(q).find((x) => x.id === params.answerId);
     if (!ans) return { ok: false, error: "answer not found" };
     // toggle: if already accepted, un-accept
     if (q.acceptedAnswerId === ans.id) {
@@ -295,17 +335,31 @@ export default function registerAnswersActions(registerLensAction) {
     const userId = actor(ctx);
     const targetType = params.targetType === "answer" ? "answer" : "question";
     const dir = params.direction === "down" ? -1 : 1;
-    const q = list(s, userId).find((x) => x.id === params.questionId || x.id === params.targetId);
+    const q = findLive(s, userId, params.questionId || params.targetId);
     if (!q) return { ok: false, error: "question not found" };
     let target = q;
     if (targetType === "answer") {
-      target = q.answers.find((x) => x.id === params.targetId);
+      target = liveAnswers(q).find((x) => x.id === params.targetId);
       if (!target) return { ok: false, error: "answer not found" };
     }
     if (!s.voteLog.has(userId)) s.voteLog.set(userId, new Set());
     const voteSet = s.voteLog.get(userId);
     const key = `${targetType}:${target.id}`;
-    if (voteSet.has(`${key}:${dir}`)) {
+    const isUndo = voteSet.has(`${key}:${dir}`);
+    if (!isUndo) {
+      // S1 — the ladder enforces: casting a vote (a fresh cast or a
+      // direction switch) needs the advertised privilege, and no one
+      // votes on their own post. Undoing an existing vote stays open.
+      const priv = dir > 0 ? "vote_up" : "vote_down";
+      if (!hasPrivilege(s, userId, priv)) {
+        const need = dir > 0 ? 50 : 125;
+        return { ok: false, error: `need ${need} reputation to vote ${dir > 0 ? "up" : "down"}` };
+      }
+      if (target.authorId === userId) {
+        return { ok: false, error: "you cannot vote on your own posts" };
+      }
+    }
+    if (isUndo) {
       // undo
       voteSet.delete(`${key}:${dir}`);
       target.votes -= dir;
@@ -325,13 +379,13 @@ export default function registerAnswersActions(registerLensAction) {
   registerLensAction("answers", "comment-add", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
-    const q = list(s, userId).find((x) => x.id === params.questionId);
+    const q = findLive(s, userId, params.questionId);
     if (!q) return { ok: false, error: "question not found" };
     const body = clean(params.body, 600);
     if (!body) return { ok: false, error: "comment body required" };
     const comment = { id: aId("c"), body, authorId: userId, createdAt: aNow() };
     if (params.targetType === "answer") {
-      const ans = q.answers.find((x) => x.id === params.targetId);
+      const ans = liveAnswers(q).find((x) => x.id === params.targetId);
       if (!ans) return { ok: false, error: "answer not found" };
       ans.comments.push(comment);
     } else {
@@ -346,7 +400,7 @@ export default function registerAnswersActions(registerLensAction) {
   registerLensAction("answers", "tag-list", (ctx, _a, _params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const counts = {};
-    for (const q of list(s, actor(ctx))) {
+    for (const q of liveQs(s, actor(ctx))) {
       for (const t of q.tags) {
         if (!counts[t]) counts[t] = { tag: t, questionCount: 0, answeredCount: 0 };
         counts[t].questionCount += 1;
@@ -361,10 +415,18 @@ export default function registerAnswersActions(registerLensAction) {
   registerLensAction("answers", "bounty-start", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
-    const q = list(s, userId).find((x) => x.id === params.questionId);
+    const q = findLive(s, userId, params.questionId);
     if (!q) return { ok: false, error: "question not found" };
+    // S2 — two different numbers, kept separate: 75 reputation is the
+    // PRIVILEGE to start a bounty; the amount (50–500) is a SPEND of
+    // reputation, checked as a balance, never as the gate.
+    if (!hasPrivilege(s, userId, "bounty")) {
+      return { ok: false, error: "need 75 reputation to start bounties" };
+    }
     const amount = Math.max(50, Math.min(500, Math.round(num(params.amount, 50) / 50) * 50));
-    if (rep(s, userId) < amount) return { ok: false, error: `need ${amount} reputation to start this bounty` };
+    if (rep(s, userId) < amount) {
+      return { ok: false, error: `a ${amount} reputation bounty costs ${amount} reputation — you have ${rep(s, userId)}` };
+    }
     addRep(s, userId, -amount);
     q.bounty += amount;
     q.updatedAt = aNow();
@@ -377,13 +439,13 @@ export default function registerAnswersActions(registerLensAction) {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const query = clean(params.query, 120).toLowerCase();
     if (!query) return { ok: false, error: "query required" };
-    const results = list(s, actor(ctx))
+    const results = liveQs(s, actor(ctx))
       .map((q) => {
         let score = 0;
         if (q.title.toLowerCase().includes(query)) score += 5;
         if (q.body.toLowerCase().includes(query)) score += 2;
         if (q.tags.some((t) => t.includes(query))) score += 3;
-        for (const a of q.answers) if (a.body.toLowerCase().includes(query)) score += 1;
+        for (const a of liveAnswers(q)) if (a.body.toLowerCase().includes(query)) score += 1;
         return { q, score };
       })
       .filter((r) => r.score > 0)
@@ -391,7 +453,7 @@ export default function registerAnswersActions(registerLensAction) {
       .slice(0, 25)
       .map((r) => ({
         id: r.q.id, title: r.q.title, tags: r.q.tags, votes: r.q.votes,
-        answerCount: r.q.answers.length, hasAccepted: !!r.q.acceptedAnswerId, score: r.score,
+        answerCount: liveAnswers(r.q).length, hasAccepted: !!r.q.acceptedAnswerId, score: r.score,
       }));
     return { ok: true, result: { results, count: results.length } };
   });
@@ -399,9 +461,9 @@ export default function registerAnswersActions(registerLensAction) {
   registerLensAction("answers", "user-reputation", (ctx, _a, _params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
-    const qs = list(s, userId);
-    const answersPosted = qs.reduce((n, q) => n + q.answers.filter((a) => a.authorId === userId).length, 0);
-    const accepted = qs.reduce((n, q) => n + q.answers.filter((a) => a.authorId === userId && a.accepted).length, 0);
+    const qs = liveQs(s, userId);
+    const answersPosted = qs.reduce((n, q) => n + liveAnswers(q).filter((a) => a.authorId === userId).length, 0);
+    const accepted = qs.reduce((n, q) => n + liveAnswers(q).filter((a) => a.authorId === userId && a.accepted).length, 0);
     const reputation = rep(s, userId);
     const badge = reputation >= 1000 ? "trusted" : reputation >= 200 ? "established" : reputation >= 50 ? "contributor" : "newcomer";
     return {
@@ -413,14 +475,14 @@ export default function registerAnswersActions(registerLensAction) {
   registerLensAction("answers", "dashboard", (ctx, _a, _params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
-    const qs = list(s, userId);
+    const qs = liveQs(s, userId);
     return {
       ok: true,
       result: {
         questions: qs.length,
-        unanswered: qs.filter((q) => q.answers.length === 0).length,
+        unanswered: qs.filter((q) => liveAnswers(q).length === 0).length,
         answered: qs.filter((q) => q.acceptedAnswerId).length,
-        totalAnswers: qs.reduce((n, q) => n + q.answers.length, 0),
+        totalAnswers: qs.reduce((n, q) => n + liveAnswers(q).length, 0),
         totalViews: qs.reduce((n, q) => n + q.views, 0),
         openBounties: qs.filter((q) => q.bounty > 0).length,
         reputation: rep(s, userId),
@@ -471,7 +533,7 @@ export default function registerAnswersActions(registerLensAction) {
   registerLensAction("answers", "question-edit", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
-    const q = list(s, userId).find((x) => x.id === params.id);
+    const q = findLive(s, userId, params.id);
     if (!q) return { ok: false, error: "question not found" };
     if (q.authorId !== userId && !hasPrivilege(s, userId, "edit")) {
       return { ok: false, error: "need 300 reputation to edit another author's post" };
@@ -503,9 +565,9 @@ export default function registerAnswersActions(registerLensAction) {
   registerLensAction("answers", "answer-edit", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
-    const q = list(s, userId).find((x) => x.id === params.questionId);
+    const q = findLive(s, userId, params.questionId);
     if (!q) return { ok: false, error: "question not found" };
-    const ans = q.answers.find((x) => x.id === params.answerId);
+    const ans = liveAnswers(q).find((x) => x.id === params.answerId);
     if (!ans) return { ok: false, error: "answer not found" };
     if (ans.authorId !== userId && !hasPrivilege(s, userId, "edit")) {
       return { ok: false, error: "need 300 reputation to edit another author's post" };
@@ -524,12 +586,12 @@ export default function registerAnswersActions(registerLensAction) {
   registerLensAction("answers", "revisions", (ctx, _a, params = {}) => {
   try {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const q = list(s, actor(ctx)).find((x) => x.id === params.questionId);
+    const q = findLive(s, actor(ctx), params.questionId);
     if (!q) return { ok: false, error: "question not found" };
     let target = q;
     let currentBody = q.body;
     if (params.answerId) {
-      target = q.answers.find((x) => x.id === params.answerId);
+      target = liveAnswers(q).find((x) => x.id === params.answerId);
       if (!target) return { ok: false, error: "answer not found" };
       currentBody = target.body;
     }
@@ -554,7 +616,7 @@ export default function registerAnswersActions(registerLensAction) {
   registerLensAction("answers", "find-duplicates", (ctx, _a, params = {}) => {
   try {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const qs = list(s, actor(ctx));
+    const qs = liveQs(s, actor(ctx));
     let probeVec, excludeId = null;
     if (params.questionId) {
       const q = qs.find((x) => x.id === params.questionId);
@@ -576,7 +638,7 @@ export default function registerAnswersActions(registerLensAction) {
       .slice(0, 8)
       .map((m) => ({
         id: m.q.id, title: m.q.title, tags: m.q.tags, votes: m.q.votes,
-        answerCount: m.q.answers.length, hasAccepted: !!m.q.acceptedAnswerId,
+        answerCount: liveAnswers(m.q).length, hasAccepted: !!m.q.acceptedAnswerId,
         similarity: Math.round(m.similarity * 1000) / 1000,
       }));
     return { ok: true, result: { matches, count: matches.length, threshold } };
@@ -585,7 +647,7 @@ export default function registerAnswersActions(registerLensAction) {
 
   registerLensAction("answers", "link-duplicate", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const qs = list(s, actor(ctx));
+    const qs = liveQs(s, actor(ctx));
     const q = qs.find((x) => x.id === params.questionId);
     if (!q) return { ok: false, error: "question not found" };
     if (params.duplicateOf === null || params.duplicateOf === "") {
@@ -634,7 +696,7 @@ export default function registerAnswersActions(registerLensAction) {
   registerLensAction("answers", "question-subscribe", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
-    const q = list(s, userId).find((x) => x.id === params.questionId);
+    const q = findLive(s, userId, params.questionId);
     if (!q) return { ok: false, error: "question not found" };
     if (!s.subscriptions.has(userId)) s.subscriptions.set(userId, new Set());
     const set = s.subscriptions.get(userId);
@@ -674,7 +736,7 @@ export default function registerAnswersActions(registerLensAction) {
   registerLensAction("answers", "related", (ctx, _a, params = {}) => {
   try {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const qs = list(s, actor(ctx));
+    const qs = liveQs(s, actor(ctx));
     const q = qs.find((x) => x.id === params.questionId);
     if (!q) return { ok: false, error: "question not found" };
     const probeVec = questionVector(q);
@@ -690,7 +752,7 @@ export default function registerAnswersActions(registerLensAction) {
       .sort((a, b) => b.score - a.score)
       .slice(0, 6)
       .map((r) => ({
-        id: r.x.id, title: r.x.title, votes: r.x.votes, answerCount: r.x.answers.length,
+        id: r.x.id, title: r.x.title, votes: r.x.votes, answerCount: liveAnswers(r.x).length,
         hasAccepted: !!r.x.acceptedAnswerId, sharedTags: r.sharedTags,
         relevance: Math.round(r.score * 1000) / 1000,
       }));
@@ -708,12 +770,12 @@ export default function registerAnswersActions(registerLensAction) {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
     if (!hasPrivilege(s, userId, "flag")) return { ok: false, error: "need 25 reputation to flag posts" };
-    const q = list(s, userId).find((x) => x.id === params.questionId);
+    const q = findLive(s, userId, params.questionId);
     if (!q) return { ok: false, error: "question not found" };
     const reason = FLAG_REASONS.includes(params.reason) ? params.reason : FLAG_REASONS[0];
     let target = q, targetType = "question";
     if (params.answerId) {
-      target = q.answers.find((x) => x.id === params.answerId);
+      target = liveAnswers(q).find((x) => x.id === params.answerId);
       if (!target) return { ok: false, error: "answer not found" };
       targetType = "answer";
     }
@@ -736,7 +798,7 @@ export default function registerAnswersActions(registerLensAction) {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
     if (!hasPrivilege(s, userId, "close_vote")) return { ok: false, error: "need 500 reputation to cast close votes" };
-    const q = list(s, userId).find((x) => x.id === params.questionId);
+    const q = findLive(s, userId, params.questionId);
     if (!q) return { ok: false, error: "question not found" };
     if (q.closed) return { ok: false, error: "question is already closed" };
     const reason = CLOSE_REASONS.includes(params.reason) ? params.reason : CLOSE_REASONS[0];
@@ -767,7 +829,7 @@ export default function registerAnswersActions(registerLensAction) {
   registerLensAction("answers", "reopen", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
-    const q = list(s, userId).find((x) => x.id === params.questionId);
+    const q = findLive(s, userId, params.questionId);
     if (!q) return { ok: false, error: "question not found" };
     if (q.authorId !== userId && !hasPrivilege(s, userId, "close_vote")) {
       return { ok: false, error: "need 500 reputation to reopen another author's question" };
@@ -786,7 +848,7 @@ export default function registerAnswersActions(registerLensAction) {
     const userId = actor(ctx);
     if (!hasPrivilege(s, userId, "moderate")) return { ok: false, error: "need 1000 reputation to access the moderation queue" };
     const items = [];
-    for (const q of list(s, userId)) {
+    for (const q of liveQs(s, userId)) {
       for (const f of (q.flags || [])) {
         if (f.status === "pending") {
           items.push({ ...f, questionId: q.id, questionTitle: q.title, answerId: null, excerpt: q.body.slice(0, 140) });
@@ -816,11 +878,11 @@ export default function registerAnswersActions(registerLensAction) {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
     if (!hasPrivilege(s, userId, "moderate")) return { ok: false, error: "need 1000 reputation to resolve flags" };
-    const q = list(s, userId).find((x) => x.id === params.questionId);
+    const q = findLive(s, userId, params.questionId);
     if (!q) return { ok: false, error: "question not found" };
     let target = q;
     if (params.answerId) {
-      target = q.answers.find((x) => x.id === params.answerId);
+      target = liveAnswers(q).find((x) => x.id === params.answerId);
       if (!target) return { ok: false, error: "answer not found" };
     }
     const flag = (target.flags || []).find((f) => f.id === params.flagId);
