@@ -63,6 +63,34 @@ export interface BatchStatusResult {
   estimatedRemaining: number;
 }
 
+export interface IngestedDtuRow {
+  id: string;
+  title: string;
+  domain: string | null;
+  tags: string[];
+  createdAt: string | number | null;
+  preview: string;
+}
+
+export interface IngestReceipt {
+  title: string | null;
+  totalChunks: number;
+  created: { chunkIndex: number; dtuId: string }[];
+  createdCount: number;
+  deduped: { chunkIndex: number; dtuId: string }[];
+  dedupedCount: number;
+  failures: number;
+}
+
+export interface IngestedDtuDetail {
+  id: string;
+  title: string;
+  content: string;
+  domain: string | null;
+  tags: string[];
+  createdAt: string | number | null;
+}
+
 export interface IngestJob {
   id: string;
   filename?: string;
