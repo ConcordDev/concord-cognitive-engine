@@ -48,6 +48,13 @@ describe('lattice build pins', () => {
     expect(src).toContain('canEdit');
     expect(src).toContain('Schedule change refused');
   });
+  it('the grant direction confirms with scope + count; revoke never confirms (F9)', () => {
+    const src = read('components/lattice/ConsentPanel.tsx');
+    expect(src).toContain('Grant consent for all');
+    expect(src).toContain('armGrant');
+    expect(src).toContain('Revoke all');
+    expect(src).not.toContain('armRevoke');
+  });
   it('the floating CTA opens a brain picker, not a bare section switch', () => {
     const src = read('app/lenses/lattice/page.tsx');
     expect(src).toContain('brainPickerOpen');
