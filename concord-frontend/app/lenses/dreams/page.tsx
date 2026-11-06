@@ -1,14 +1,18 @@
 'use client';
 
 /**
- * /lenses/dreams — north-star look (serif title, pill tabs, teal CTA that opens the latest dream). Browse, read, interpret, tag, search + publish your dreams.
+ * /lenses/dreams — north-star look (serif title, pill tabs, teal CTA that opens the latest dream). Browse, read, summarise and tag the dream engine's records.
  *
- * Each dream is a deterministic prose record of one night's substrate state.
- * The list comes from `dreams.recent`; the reader/interpret/tag/publish flow
- * runs through `dreams.detail` / `dreams.interpret` / `dreams.tag` /
- * `dreams.publish` / `dreams.reprice` / `dreams.unpublish`; search + timeline
- * use `dreams.search` / `dreams.tags` / `dreams.timeline`; the forward-looking
- * counterpart uses `dreams.predictions` (Layer 10 forward-sim). Currency: CC.
+ * Each dream is a deterministic prose record of one night's substrate state,
+ * composed by the dream engine — an engine-corpus surface (Lead disposition,
+ * 2026-11-01): the dreams are the engine's, and the member's own layer is
+ * the tags they add. There is no marketplace listing for dreams (ruled out
+ * on provenance grounds — a member cannot list what they did not author).
+ * The list comes from `dreams.recent`; the reader/summary/tag flow runs
+ * through `dreams.detail` / `dreams.interpret` / `dreams.tag`; search +
+ * timeline use `dreams.search` / `dreams.tags` / `dreams.timeline`; the
+ * forward-looking counterpart uses `dreams.predictions` (Layer 10
+ * forward-sim).
  *
  * Scope boundary: this lens is the player's own Layer 9 embodied-dream
  * substrate (`dreams` table, one composed record per offline pass). It does
@@ -43,6 +47,7 @@ interface Dream {
   composer?: string;
   composed_at: number;
   tags?: string[];
+  tagsAuthor?: string | null;
   dtu?: DreamDtu | null;
 }
 
@@ -51,7 +56,7 @@ type Tab = 'recent' | 'library';
 const CTA = 'fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-50';
 
 const TABS: { id: Tab; label: string; keys: string; hint: string; icon: typeof Moon }[] = [
-  { id: 'recent', label: 'Recent', keys: '1', hint: 'Your latest dreams', icon: Moon },
+  { id: 'recent', label: 'Recent', keys: '1', hint: 'The engine’s latest dreams', icon: Moon },
   { id: 'library', label: 'Search & Timeline', keys: '2', hint: 'Search, tags and timeline', icon: Library },
 ];
 
@@ -123,10 +128,10 @@ export default function DreamsPage() {
         </nav>
 
         <p className="mb-5 max-w-3xl text-[13px] leading-relaxed text-zinc-500">
-          Each is a deterministic prose record of one night&apos;s substrate state. Read it, interpret it, tag it, and publish to sell on the marketplace — royalty cascade pays you on every purchase. <strong className="font-medium text-zinc-400">Currency: CC.</strong>
+          Each is a deterministic prose record of one night&apos;s substrate state, composed by the dream engine from your activity — the engine&apos;s record, not a dream you wrote. Read it, see the substrate counts it replays, and annotate it with your own tags.
         </p>
 
-        {loading && <div role="status" className="rounded-2xl border border-white/10 bg-[#111] p-8 text-zinc-400">Loading your dreams…</div>}
+        {loading && <div role="status" className="rounded-2xl border border-white/10 bg-[#111] p-8 text-zinc-400">Loading dreams…</div>}
 
         {!loading && tab === 'recent' && (
           dreams.length === 0 ? (
@@ -142,10 +147,13 @@ export default function DreamsPage() {
                     <div className="min-w-0">
                       <h3 className="truncate text-sm font-bold text-zinc-100">{title}</h3>
                       <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
-                        {d.fragment_count ?? 0} fragments · {d.composer} · {new Date(d.composed_at * 1000).toLocaleString()}
+                        {d.fragment_count ?? 0} substrate events · {d.composer} · {new Date(d.composed_at * 1000).toLocaleString()}
                       </p>
                       {d.tags && d.tags.length > 0 && (
-                        <div className="mt-1.5 flex flex-wrap gap-1">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                          {d.tagsAuthor && (
+                            <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-500">your tags:</span>
+                          )}
                           {d.tags.map((t) => (
                             <span key={t} className="rounded bg-white/5 px-1 font-mono text-[9px] text-zinc-400">{t}</span>
                           ))}
