@@ -912,29 +912,41 @@ export default function registerFeedActions(registerLensAction) {
     const userId = feedActor(ctx);
     const rows = [];
     const folders = s.folders.get(userId);
-    if (folders) for (const f of folders.values()) {
-      rows.push({ id: f.id, type: "bookmark-folder", title: f.name || "Bookmark folder", createdAt: f.createdAt, updatedAt: f.createdAt, data: f });
+    if (folders) {
+      for (const f of folders.values()) {
+        rows.push({ id: f.id, type: "bookmark-folder", title: f.name || "Bookmark folder", createdAt: f.createdAt, updatedAt: f.createdAt, data: f });
+      }
     }
     const searches = s.savedSearches.get(userId);
-    if (searches) for (const q of searches.values()) {
-      rows.push({ id: q.id, type: "saved-search", title: q.query || "Saved search", createdAt: q.createdAt, updatedAt: q.lastChecked || q.createdAt, data: q });
+    if (searches) {
+      for (const q of searches.values()) {
+        rows.push({ id: q.id, type: "saved-search", title: q.query || "Saved search", createdAt: q.createdAt, updatedAt: q.lastChecked || q.createdAt, data: q });
+      }
     }
     const lists = s.lists.get(userId);
-    if (lists) for (const l of lists.values()) {
-      rows.push({ id: l.id, type: "list", title: l.name || "List", createdAt: l.createdAt, updatedAt: l.createdAt, data: l });
+    if (lists) {
+      for (const l of lists.values()) {
+        rows.push({ id: l.id, type: "list", title: l.name || "List", createdAt: l.createdAt, updatedAt: l.createdAt, data: l });
+      }
     }
     const threads = s.threads.get(userId);
-    if (threads) for (const n of threads.values()) {
-      const body = String(n.body || "");
-      rows.push({ id: n.id, type: "thread-node", title: body ? (body.length > 120 ? `${body.slice(0, 117)}…` : body) : "Thread node", createdAt: n.createdAt, updatedAt: n.createdAt, data: n });
+    if (threads) {
+      for (const n of threads.values()) {
+        const body = String(n.body || "");
+        rows.push({ id: n.id, type: "thread-node", title: body ? (body.length > 120 ? `${body.slice(0, 117)}…` : body) : "Thread node", createdAt: n.createdAt, updatedAt: n.createdAt, data: n });
+      }
     }
     const polls = s.polls.get(userId);
-    if (polls) for (const p of polls.values()) {
-      rows.push({ id: p.id, type: "poll", title: p.question || "Poll", createdAt: p.createdAt, updatedAt: p.createdAt, data: p });
+    if (polls) {
+      for (const p of polls.values()) {
+        rows.push({ id: p.id, type: "poll", title: p.question || "Poll", createdAt: p.createdAt, updatedAt: p.createdAt, data: p });
+      }
     }
     const spaces = s.spaces.get(userId);
-    if (spaces) for (const sp of spaces.values()) {
-      rows.push({ id: sp.id, type: "space", title: sp.title || "Space", createdAt: sp.createdAt, updatedAt: sp.endedAt || sp.createdAt, data: sp });
+    if (spaces) {
+      for (const sp of spaces.values()) {
+        rows.push({ id: sp.id, type: "space", title: sp.title || "Space", createdAt: sp.createdAt, updatedAt: sp.endedAt || sp.createdAt, data: sp });
+      }
     }
     if (s.controls.has(userId)) {
       const c = s.controls.get(userId);

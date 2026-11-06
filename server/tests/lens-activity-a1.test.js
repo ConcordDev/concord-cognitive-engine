@@ -12,6 +12,7 @@
 // artifact-route call shape the coverage half adds: an artifact
 // create records "create: <title>", a quiet read records nothing,
 // an anonymous actor records nothing.
+import vm from "node:vm";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -85,10 +86,9 @@ function loadRecorder() {
   const body = src.slice(start, end + 3);
   const rows = [];
   const log = (type, message, meta, userId) => rows.push({ type, message, meta, userId });
-  const factory = new Function(
+  const factory = vm.compileFunction(`${body}; return _recordLensActivity;`, [
     "isQuietLensAction", "lensActivityLabel", "lensActivityObject", "log",
-    `${body}; return _recordLensActivity;`,
-  );
+  ]);
   return { record: factory(isQuietLensAction, lensActivityLabel, lensActivityObject, log), rows };
 }
 
