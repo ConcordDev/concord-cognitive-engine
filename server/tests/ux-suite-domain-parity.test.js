@@ -34,7 +34,10 @@ describe("ux-suite.catalog (auto-generated)", () => {
     assert.ok(r.result.components.length > 0);
     assert.ok(Array.isArray(r.result.groups));
     assert.equal(r.result.total, r.result.components.length);
-    assert.match(r.result.source, /code-derived/);
+    // F7 (deliberate change): the catalog source line renders in the UI —
+    // it must not leak a server path.
+    assert.doesNotMatch(r.result.source, /server\/domains/);
+    assert.match(r.result.source, /component catalog/);
   });
 
   it("every group count sums to the component total", () => {
@@ -132,12 +135,19 @@ describe("ux-suite.usage-snippet", () => {
 
 describe("ux-suite.a11y-check", () => {
   it("produces a deterministic rule-based audit", () => {
+    // S-UX-1 contract (deliberate change): without a configuration the
+    // audit returns the catalog declarations UNSCORED (score null) —
+    // a score ships only over measured configuration findings.
     const r = call("a11y-check", ctxA, { component: "AccessibilityPanel" });
     assert.equal(r.ok, true);
-    assert.ok(typeof r.result.score === "number");
+    assert.equal(r.result.score, null);
     assert.ok(Array.isArray(r.result.findings));
+    assert.ok(Array.isArray(r.result.declarations));
+    assert.ok(r.result.declarations.length >= 3);
     assert.ok(Array.isArray(r.result.responsive));
     assert.equal(r.result.responsive.length, 3);
+    const withProps = call("a11y-check", ctxA, { component: "AccessibilityPanel", props: { fontScale: 1, reduceMotion: false, highContrast: false }, state: "default" });
+    assert.ok(typeof withProps.result.score === "number");
   });
 
   it("flags MobileCompanion as not fitting desktop", () => {

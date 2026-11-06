@@ -148,6 +148,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Live: your own practice record — the sessions you sit and the check-ins you make, kept on your account. Only performed time counts toward your minutes and streak.',
   },
   /**
+   * UX Suite: the catalogue and the member's saved prop overrides live
+   * in the platform store. REAL_LIVE's generic "polled from an external
+   * source" caption would be false here (the GitHub browser inside the
+   * lens is the labelled exception).
+   */
+  'ux-suite': {
+    label: 'Live',
+    caption:
+      'The component catalogue and your saved prop overrides live here, in the platform store. Nothing is polled from an external source; the GitHub browser inside the lens reads live from GitHub, labelled there.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic
