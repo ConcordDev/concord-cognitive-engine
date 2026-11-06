@@ -17988,7 +17988,11 @@ register("grounding", "link_calendar", (ctx, input = {}) => {
 register("grounding", "propose_action", (ctx, input = {}) => {
   enforceEthosInvariant("grounding_propose");
   const _proposer = lensRequireActor(ctx);
-  return proposeAction({ ...input, proposedBy: _proposer.ok ? _proposer.actorId : null });
+  // A11: an action whose proposer cannot be stamped is not created.
+  // The unstamped (legacy) shape is withdrawable under the legacy
+  // rule alone; minting new ones would keep that population growing.
+  if (!_proposer.ok) return { ok: false, error: "auth_required" };
+  return proposeAction({ ...input, proposedBy: _proposer.actorId });
 }, { public: false });
 
 register("grounding", "remove_sensor", (ctx, input = {}) => {
@@ -18000,7 +18004,13 @@ register("grounding", "remove_sensor", (ctx, input = {}) => {
   // "not found", the same discipline record_reading applies.
   const _sn = STATE.grounding?.sensors?.get?.(sensorId);
   if (!_sn) return { ok: false, error: "Sensor not found" };
-  if (_sn.ownerId && !lensRequireOwner(ctx, _sn.ownerId).ok) return { ok: false, error: "Sensor not found" };
+  if (_sn.ownerId) {
+    if (!lensRequireOwner(ctx, _sn.ownerId).ok) return { ok: false, error: "Sensor not found" };
+  } else if (!["owner", "admin", "founder"].includes(ctx.actor?.role)) {
+    // A11 (legacy unstamped): a pre-stamping sensor carries no owner;
+    // it is NOT public — removal is role-held, mirroring the approve gate.
+    return { ok: false, error: "Sensor not found" };
+  }
   return removeSensor(sensorId);
 }, { public: false });
 
@@ -18013,7 +18023,13 @@ register("grounding", "remove_reading", (ctx, input = {}) => {
   const _rd = STATE.grounding?.readings?.find?.(r => r.id === readingId);
   if (!_rd) return { ok: false, error: "Reading not found" };
   const _sn = STATE.grounding?.sensors?.get?.(_rd.sensorId);
-  if (_sn?.ownerId && !lensRequireOwner(ctx, _sn.ownerId).ok) return { ok: false, error: "Reading not found" };
+  if (_sn?.ownerId) {
+    if (!lensRequireOwner(ctx, _sn.ownerId).ok) return { ok: false, error: "Reading not found" };
+  } else if (!["owner", "admin", "founder"].includes(ctx.actor?.role)) {
+    // A11 (legacy unstamped): the parent sensor carries no owner —
+    // the reading's removal is role-held, as the sensor's is.
+    return { ok: false, error: "Reading not found" };
+  }
   return removeReading(readingId);
 }, { public: false });
 
@@ -18026,13 +18042,18 @@ register("grounding", "withdraw_action", (ctx, input = {}) => {
   if (!_act) return { ok: false, error: "Action not found" };
   // The proposer's own exit, taken before any consent decision. Actions
   // proposed since proposer-stamping are owner-scoped (an owner/admin/
-  // founder may also withdraw, mirroring the approve gate); actions
-  // proposed before stamping carry no proposer and may be withdrawn by
-  // any signed-in account.
+  // founder may also withdraw, mirroring the approve gate).
   if (_act.proposedBy) {
     const _own = lensRequireOwner(ctx, _act.proposedBy).ok;
     const _role = ["owner", "admin", "founder"].includes(ctx.actor?.role);
     if (!_own && !_role) return { ok: false, error: "Only the proposer can withdraw this action" };
+  } else if (!["owner", "admin", "founder"].includes(ctx.actor?.role)) {
+    // A11 (legacy unstamped withdrawal): an action proposed before
+    // stamping carries no proposer. It is NOT withdrawable by any
+    // signed-in account — only the roles the approve gate trusts may
+    // withdraw it, so a legacy item keeps a role-held exit and loses
+    // its public one.
+    return { ok: false, error: "Only the proposer can withdraw this action" };
   }
   return withdrawAction(actionId);
 }, { public: false });

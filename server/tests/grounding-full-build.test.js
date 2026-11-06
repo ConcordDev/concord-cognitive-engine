@@ -9,8 +9,8 @@
 //     remove_reading are owner-scoped (another account's object reads as
 //     "not found", the record_reading precedent), sensor removal cascades
 //     its readings, propose_action stamps its proposer, and withdraw_action
-//     is the proposer's exit (legacy unstamped actions withdrawable by any
-//     signed-in account, as filed in the premise).
+//     is the proposer's exit (legacy unstamped actions are role-held under
+//     A11 — the register's pricing superseding the build premise's filing).
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -189,13 +189,19 @@ describe("grounding full build — Reality Anchor exits (S2)", () => {
     assert.equal(STATE.grounding.actionHistory[0].status, "withdrawn");
   });
 
-  it("a legacy unstamped action is withdrawable by any signed-in account; unknown ids answer honestly", () => {
+  it("a legacy unstamped action is role-held under A11 (a plain account is refused); unknown ids answer honestly", () => {
     const { STATE, ctxFor, macro } = buildRig();
     macro("propose_action", ctxFor("user_a"), { type: "notification", description: "x" });
     // Simulate a pre-stamping action: no proposer recorded.
     delete STATE.grounding.pendingActions[0].proposedBy;
     const aid = STATE.grounding.pendingActions[0].id;
-    const done = macro("withdraw_action", ctxFor("user_b"), { actionId: aid });
+    // A11 (superseding this case's original expectation, which filed the
+    // hole as design): a plain signed-in account is refused; the exit is
+    // role-held.
+    const refused = macro("withdraw_action", ctxFor("user_b"), { actionId: aid });
+    assert.deepEqual(refused, { ok: false, error: "Only the proposer can withdraw this action" });
+    assert.equal(STATE.grounding.pendingActions.length, 1);
+    const done = macro("withdraw_action", ctxFor("user_b", "admin"), { actionId: aid });
     assert.equal(done.ok, true);
     assert.deepEqual(macro("withdraw_action", ctxFor("user_b"), { actionId: "action_nope" }), { ok: false, error: "Action not found" });
   });
