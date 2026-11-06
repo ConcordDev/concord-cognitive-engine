@@ -12,6 +12,7 @@
 //  - pairTrend          : historical resonance trend series per pair
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 export default function registerResonanceActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── Per-user persistent store ──────────────────────────────────────
@@ -35,6 +36,20 @@ export default function registerResonanceActions(registerLensAction) {
   const rsClean = (v, max = 2000) => String(v == null ? "" : v).trim().slice(0, max);
   const rsRound = (v) => Math.round(v * 10000) / 10000;
   const rsList = (m, userId) => { if (!m.has(userId)) m.set(userId, []); return m.get(userId); };
+
+  const mkSide = (side) => ({
+    id: rsId("node"),
+    domain: rsClean(side.domain, 80),
+    title: rsClean(side.title, 240),
+    description: rsClean(side.description, 1200),
+    invariants: Array.isArray(side.invariants)
+      ? side.invariants.map((v) => rsClean(v, 200)).filter(Boolean).slice(0, 24)
+      : [],
+  });
+  const pairKey = (x) => {
+    const sk = (sd) => `${String(sd.domain || "").toLowerCase()}|${String(sd.title || "").toLowerCase()}`;
+    return `${sk(x.a)}=>${sk(x.b)}`;
+  };
 
   // Tokenise free text into a comparable invariant/constraint set.
   function tokenSet(text) {
@@ -598,15 +613,6 @@ export default function registerResonanceActions(registerLensAction) {
         return { ok: false, error: "Both sides require a domain and a title." };
       }
       const s = getResonanceState();
-      const mkSide = (side) => ({
-        id: rsId("node"),
-        domain: rsClean(side.domain, 80),
-        title: rsClean(side.title, 240),
-        description: rsClean(side.description, 1200),
-        invariants: Array.isArray(side.invariants)
-          ? side.invariants.map((v) => rsClean(v, 200)).filter(Boolean).slice(0, 24)
-          : [],
-      });
       const pair = recomputePair({
         id: rsId("pair"),
         a: mkSide(a),
@@ -616,6 +622,15 @@ export default function registerResonanceActions(registerLensAction) {
         source: "authored",
       });
       const list = rsList(s.pairs, userId);
+      // Duplicate refusal (Paper's library standard): the same two sides in
+      // either orientation are one alignment, not two — accepting them
+      // double-counts one signal in the stats.
+      const key = pairKey(pair);
+      const keyRev = pairKey({ a: pair.b, b: pair.a });
+      const dup = list.find((x) => pairKey(x) === key || pairKey(x) === keyRev);
+      if (dup) {
+        return { ok: false, error: `That pair already exists — "${dup.a.title}" ⇔ "${dup.b.title}" (${dup.a.domain} ↔ ${dup.b.domain}). Edit it from the pairs list instead of proposing it again.` };
+      }
       list.unshift(pair);
       if (list.length > 200) list.length = 200;
 
@@ -638,6 +653,71 @@ export default function registerResonanceActions(registerLensAction) {
       }
       saveResonance();
       return { ok: true, result: { pair, alerted, totalPairs: list.length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * deletePair — remove one authored pair (its trend samples live on the
+   * pair and go with it; alerts raised by it are removed too, so no alert
+   * points at a pair that no longer exists).
+   * params: { pairId }
+   */
+  registerLensAction("resonance", "deletePair", (ctx, artifact, params) => {
+    try {
+      const p = { ...(artifact?.data || {}), ...(params || {}) };
+      const userId = rsActor(ctx);
+      const s = getResonanceState();
+      const list = rsList(s.pairs, userId);
+      const idx = list.findIndex((x) => x.id === p.pairId);
+      if (idx < 0) return { ok: false, error: "Pair not found." };
+      const [removed] = list.splice(idx, 1);
+      const alerts = rsList(s.alerts, userId);
+      const keptAlerts = alerts.filter((a) => a.pairId !== removed.id);
+      if (keptAlerts.length !== alerts.length) s.alerts.set(userId, keptAlerts);
+      saveResonance();
+      return { ok: true, result: { deleted: removed.id, totalPairs: list.length } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  /**
+   * updatePair — edit an authored pair's sides/note and recompute in place.
+   * The pair keeps its id, createdAt and trend history; a rename onto
+   * another pair's sides is refused as a duplicate.
+   * params: { pairId, a, b, note? }
+   */
+  registerLensAction("resonance", "updatePair", (ctx, artifact, params) => {
+    try {
+      const p = { ...(artifact?.data || {}), ...(params || {}) };
+      const userId = rsActor(ctx);
+      const a = p.a || {};
+      const b = p.b || {};
+      if (!a.domain || !a.title || !b.domain || !b.title) {
+        return { ok: false, error: "Both sides require a domain and a title." };
+      }
+      const s = getResonanceState();
+      const list = rsList(s.pairs, userId);
+      const pair = list.find((x) => x.id === p.pairId);
+      if (!pair) return { ok: false, error: "Pair not found." };
+      const next = { a: mkSide(a), b: mkSide(b) };
+      next.a.id = pair.a.id;
+      next.b.id = pair.b.id;
+      const key = pairKey(next);
+      const keyRev = pairKey({ a: next.b, b: next.a });
+      const dup = list.find((x) => x.id !== pair.id && (pairKey(x) === key || pairKey(x) === keyRev));
+      if (dup) {
+        return { ok: false, error: `Another pair already holds those sides — "${dup.a.title}" ⇔ "${dup.b.title}".` };
+      }
+      pair.a = next.a;
+      pair.b = next.b;
+      if (typeof p.note === "string") pair.note = rsClean(p.note, 600);
+      pair.updatedAt = rsNow();
+      recomputePair(pair);
+      saveResonance();
+      return { ok: true, result: { pair, totalPairs: list.length } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
@@ -990,5 +1070,37 @@ export default function registerResonanceActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
+  });
+
+  // The lens's records for the generic export (lib/lens-export.js). Pairs
+  // and insights live in STATE.resonanceLens, not in lens artifacts — with
+  // no provider registered the shared export menu answered "Nothing to
+  // export yet" minutes after pairs and hypotheses were created.
+  registerLensExportProvider("resonance", (ctx) => {
+    const userId = rsActor(ctx);
+    const s = getResonanceState();
+    const rows = [];
+    for (const pair of rsList(s.pairs, userId)) {
+      rows.push({
+        type: "resonance_pair",
+        title: `${pair.a.title} ⇔ ${pair.b.title}`,
+        content: [
+          `${pair.a.domain}: ${pair.a.title}${pair.a.description ? ` — ${pair.a.description}` : ""}`,
+          `${pair.b.domain}: ${pair.b.title}${pair.b.description ? ` — ${pair.b.description}` : ""}`,
+          `Resonance ${(pair.resonance * 100).toFixed(1)} (${pair.classification}); shared invariants: ${(pair.sharedInvariants || []).join("; ") || "none"}`,
+          pair.note ? `Note: ${pair.note}` : "",
+        ].filter(Boolean).join("\n"),
+        createdAt: pair.createdAt,
+      });
+    }
+    for (const ins of rsList(s.insights, userId)) {
+      rows.push({
+        type: "resonance_insight",
+        title: ins.title || "Cross-domain resonance insight",
+        content: ins.layers?.human || "",
+        createdAt: ins.createdAt,
+      });
+    }
+    return rows;
   });
 }

@@ -2230,7 +2230,7 @@ export const apiHelpers = {
   // interior crispness, constraint gradient, coherence direction, and the
   // ranked cross-domain invariant-alignment pairs the lens visualizes).
   resonance: {
-    boundary: (params?: { window?: number }) =>
+    boundary: (params?: { window?: number; pairsOffset?: number; pairsLimit?: number }) =>
       api.get('/api/resonance/boundary', { params }),
     scan: (params?: { window?: number }) =>
       api.post('/api/resonance/scan', params || {}),
