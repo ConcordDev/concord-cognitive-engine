@@ -33,6 +33,7 @@ import {
   buildContentLicensePayload,
   type ContentClass,
 } from '@/components/dtu/ContentClassLicenseFields';
+import { DtuId } from '@/components/dtu/DtuId';
 
 export interface SaveAsDtuButtonProps {
   /**
@@ -287,6 +288,15 @@ export function SaveAsDtuButton({
         )}
         {!compact && <span>{savedId ? 'Saved' : 'Save as DTU'}</span>}
       </button>
+
+      {/* A9 (full-ID display): the receipt names the DTU it made, in
+          full — the ID is the only handle the user has to find the
+          item again, and a checkmark alone strands it. */}
+      {savedId && (
+        <span className="inline-flex items-baseline gap-1 text-[10px] text-zinc-400">
+          Saved as DTU <DtuId id={savedId} />
+        </span>
+      )}
 
       {open && <SaveModal
         apiSource={apiSource}
