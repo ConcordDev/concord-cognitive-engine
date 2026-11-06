@@ -4,6 +4,13 @@
 // mechanic surface (recent / detail / publish / unpublish / reprice / tag /
 // tags / search / timeline / interpret / predictions). Exercises each macro
 // against a real in-memory dreams + dtus schema and asserts the { ok } envelope.
+//
+// DECLARED CHANGE (S-DRM-4, Lead disposition 2026-11-01): publish / reprice
+// are REFUSED under the marketplace-for-dreams provenance ruling — the
+// cases below re-pin to the refusal (they previously pinned listing at a
+// custom CC price). Unpublish stays live as the withdrawal direction and
+// is seeded with a directly-patched public scope, as a legacy listing
+// would stand.
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
@@ -201,39 +208,72 @@ describe("dreams.detail (full-text reader)", () => {
   });
 });
 
-describe("dreams.publish / reprice / unpublish", () => {
-  it("publishes at a custom CC price", async () => {
+describe("dreams.publish / reprice / unpublish (S-DRM-4 provenance ruling)", () => {
+  // Seed a legacy listing the way an already-published dream stands:
+  // scope/price patched straight into the dream DTU's data blob.
+  function seedPublic(id) {
+    const row = db.prepare(`SELECT data FROM dtus WHERE id = ?`).get(`dream_dtu_${id}`);
+    const data = { ...JSON.parse(row.data), scope: "public", priceCc: 10 };
+    db.prepare(`UPDATE dtus SET data = ? WHERE id = ?`).run(JSON.stringify(data), `dream_dtu_${id}`);
+  }
+  it("refuses to publish — a member cannot list engine-authored content", async () => {
     const r = await call("publish", ctxA(), { dreamId: "drm_1", priceCc: 25 });
-    assert.equal(r.ok, true);
-    assert.equal(r.priceCc, 25);
-    assert.equal(r.scope, "public");
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "marketplace_for_dreams_ruled_out");
     const detail = await call("detail", ctxA(), { dreamId: "drm_1" });
-    assert.equal(detail.dream.scope, "public");
-    assert.equal(detail.dream.priceCc, 25);
+    assert.equal(detail.dream.scope, "personal");
+    assert.equal(detail.dream.priceCc, null);
   });
-  it("clamps an out-of-range price", async () => {
+  it("refuses to publish at any price, including a clamped one", async () => {
     const r = await call("publish", ctxA(), { dreamId: "drm_2", priceCc: 0 });
-    assert.equal(r.ok, true);
-    assert.ok(r.priceCc >= 1);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "marketplace_for_dreams_ruled_out");
   });
-  it("reprices an already-published dream", async () => {
-    await call("publish", ctxA(), { dreamId: "drm_1", priceCc: 10 });
+  it("refuses to reprice an already-listed dream — the listing cannot be maintained", async () => {
+    seedPublic("drm_1");
     const r = await call("reprice", ctxA(), { dreamId: "drm_1", priceCc: 99 });
-    assert.equal(r.ok, true);
-    assert.equal(r.priceCc, 99);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "marketplace_for_dreams_ruled_out");
+    const detail = await call("detail", ctxA(), { dreamId: "drm_1" });
+    assert.equal(detail.dream.priceCc, 10);
   });
-  it("refuses to reprice an unpublished dream", async () => {
+  it("refuses to reprice an unpublished dream under the same ruling", async () => {
     const r = await call("reprice", ctxA(), { dreamId: "drm_2", priceCc: 50 });
     assert.equal(r.ok, false);
-    assert.equal(r.reason, "not_published");
+    assert.equal(r.reason, "marketplace_for_dreams_ruled_out");
   });
-  it("unpublishes back to personal scope", async () => {
-    await call("publish", ctxA(), { dreamId: "drm_1", priceCc: 10 });
+  it("unpublishes back to personal scope — withdrawal stays live", async () => {
+    seedPublic("drm_1");
     const r = await call("unpublish", ctxA(), { dreamId: "drm_1" });
     assert.equal(r.ok, true);
     assert.equal(r.scope, "personal");
     const detail = await call("detail", ctxA(), { dreamId: "drm_1" });
     assert.equal(detail.dream.scope, "personal");
+    assert.equal(detail.dream.priceCc, null);
+  });
+});
+
+describe("dreams tag attribution (S-DRM-5)", () => {
+  it("recent / detail / search name the tags' author", async () => {
+    await call("tag", ctxA(), { dreamId: "drm_1", tags: ["combat", "vivid"] });
+    const recent = await call("recent", ctxA(), { limit: 10 });
+    const mine = recent.dreams.find((d) => d.id === "drm_1");
+    assert.deepEqual(mine.tags.sort(), ["combat", "vivid"]);
+    assert.equal(mine.tagsAuthor, "user_a");
+    const untagged = recent.dreams.find((d) => d.id === "drm_2");
+    assert.deepEqual(untagged.tags, []);
+    assert.equal(untagged.tagsAuthor, null);
+    const detail = await call("detail", ctxA(), { dreamId: "drm_1" });
+    assert.equal(detail.dream.tagsAuthor, "user_a");
+    const search = await call("search", ctxA(), { tag: "vivid" });
+    assert.equal(search.dreams[0].tagsAuthor, "user_a");
+  });
+  it("another user's reads carry only their own (empty) annotation", async () => {
+    await call("tag", ctxA(), { dreamId: "drm_1", tags: ["combat"] });
+    const recentB = await call("recent", ctxB(), { limit: 10 });
+    const bDream = recentB.dreams.find((d) => d.id === "drm_b");
+    assert.deepEqual(bDream.tags, []);
+    assert.equal(bDream.tagsAuthor, null);
   });
 });
 
