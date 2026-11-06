@@ -2,8 +2,11 @@
  * /lenses/concord-link-frontier — the frontier link.
  *
  * Open the link stores a name. The bearing and the mark show only after
- * link-detail returns them. A second link stays on the board. The feed
- * and the royalty ledger stay off this card.
+ * link-detail returns them. A second link stays on the board. The
+ * cross-world feed and the royalty ledger mount below the board
+ * (founder's ruling, 2026-11-06 — this suite's two absence assertions
+ * flipped to presence with the mount build; the feed's own states are
+ * graded in tests/concord-link-frontier-feed.test.tsx).
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -77,8 +80,8 @@ describe('concord link frontier', () => {
     expect(view.getByRole('heading', { name: 'Concord Link Frontier' })).toBeInTheDocument();
     expect(view.getByRole('button', { name: 'Open the link' })).toBeEnabled();
     expect(view.container.querySelector('input')).toBeNull();
-    expect(view.queryByText('Royalty flow')).toBeNull();
-    expect(view.queryByText('Cross-world feed')).toBeNull();
+    expect(view.getByText('Royalty flow')).toBeInTheDocument();
+    expect(view.getByText('Cross-world feed')).toBeInTheDocument();
   });
 
   it('WARMING: a shed list retries and then shows the empty grid', async () => {
