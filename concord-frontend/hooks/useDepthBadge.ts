@@ -59,6 +59,16 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
   /**
+   * Codex's canon is first-party authored lore — hand-written files
+   * served exactly as recorded. REAL_FREE's generic "open-access
+   * dataset" caption would misdescribe it in both directions (it is
+   * neither external nor open-access), so the caption names the truth.
+   */
+  codex: {
+    label: 'Real',
+    caption: 'The authored Concordia canon: hand-written lore, served exactly as recorded — nothing here is generated or polled.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic
