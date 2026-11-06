@@ -108,6 +108,24 @@ describe("telecommunications — RF propagation & interference (physics)", () =>
     assert.match(r.result.error, /no towers/i);
   });
 
+  it("propagationModel: the range is the stated model's budget-derived range (F4)", async () => {
+    // Review 5 F4: EIRP 62 dBm and budget 154 dB are reference-exact, but a
+    // post-solve terrain multiplier (suburban ×0.82) printed 2.629 km against
+    // the ≈3.206 km the model + budget derive. The multiplier is retired;
+    // terrain enters via the COST-231 environment correction only.
+    const ctx = await depthCtx("telecom-prop-f4");
+    const towers = [
+      { id: "w", name: "Walked", lat: 0, lon: 0, powerWatts: 40, gainDbi: 16, freqMhz: 1800, heightM: 30, terrain: "suburban" },
+    ];
+    const r = await lensRun("telecommunications", "propagationModel", { params: { towers } }, ctx);
+    assert.equal(r.ok, true);
+    const c = r.result.cells[0];
+    assert.ok(Math.abs(c.effectiveRangeKm - 3.206) < 0.01, `range ${c.effectiveRangeKm}`);
+    // edge RSRP = rx sensitivity (−100) + fade margin (8) by construction.
+    assert.ok(Math.abs(c.edgeRsrpDbm + 92) <= 0.2, `edge RSRP ${c.edgeRsrpDbm}`);
+    assert.equal(r.result.model, "COST-231 Hata");
+  });
+
   it("interferenceAnalysis: co-located co-channel towers flag a co-channel conflict", async () => {
     const ctx = await depthCtx("telecom-interf");
     const towers = [
@@ -252,6 +270,30 @@ describe("telecommunications — outage & SLA tracking", () => {
     const r = await lensRun("telecommunications", "outageResolve", { params: { id: "nope_999" } }, ctx);
     assert.equal(r.result.ok, false);
     assert.match(r.result.error, /not found/i);
+  });
+
+  it("slaReport: an OPEN outage accrues downtime and breaches (F2); outageDelete exits the record (F9)", async () => {
+    const ctx2 = await depthCtx("telecom-sla-open");
+    const now = Date.now();
+    const rep = await lensRun("telecommunications", "outageReport", {
+      params: { site: "Site-9", cause: "power loss", severity: "major", affectedSubscribers: 100, startedAt: now - 5 * 3600 * 1000 },
+    }, ctx2);
+    assert.equal(rep.ok, true);
+    const sla = await lensRun("telecommunications", "slaReport", {
+      params: { windowDays: 30, slaTargetPercent: 99.9 },
+    }, ctx2);
+    assert.equal(sla.ok, true);
+    assert.equal(sla.result.downtimeHours, 5);
+    assert.equal(sla.result.openDowntimeHours, 5);
+    assert.equal(sla.result.slaMet, false);
+    assert.equal(sla.result.breachBudgetHours, 4.28);
+
+    const del = await lensRun("telecommunications", "outageDelete", {
+      params: { id: rep.result.outage.id },
+    }, ctx2);
+    assert.equal(del.ok, true);
+    const after = await lensRun("telecommunications", "outageList", {}, ctx2);
+    assert.equal(after.result.outages.length, 0);
   });
 });
 

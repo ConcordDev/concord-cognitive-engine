@@ -27,7 +27,7 @@ type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'cap' | 'sig' | 'cov' | 'cost' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
-interface CapResult { totalBandwidth: string; utilization: string; activeUsers: number; availablePerUser: string; headroom: string; status: string; upgrade: string }
+interface CapResult { totalBandwidth: string; utilization: string; activeUsers: number; availablePerUser: string; usedThroughput: string; usedPerUser: string; headroom: string; status: string; upgrade: string }
 interface SigResult { snr: string; bitErrorRate: number; latencyMs: number; jitterMs: number; mosScore: number; voiceQuality: string; videoCapable: boolean }
 interface CovResult {
   towers?: number;
@@ -49,7 +49,7 @@ function coverageLine(c: CovResult): string {
   const techs = (c.technologies ?? []).join(', ');
   return `${c.activeTowers ?? '—'}/${c.towers ?? '—'} active · ${coverageKm(c.totalCoverageKm2)} km²${why}${techs ? ` · ${techs}` : ''}`;
 }
-interface CostResult { subscribers: number; arpu: number; costPerSubscriber: number; margin: number; marginPercent: number; profitable: boolean; breakeven: string }
+interface CostResult { subscribers: number; arpu: number; costPerSubscriber: number; margin: number; marginPercent: number; profitable: boolean; breakeven: string | null; breakevenMonths: number | null; monthlyRevenue: number; infrastructurePerSubscriber: number; costBasis: string }
 
 // No seeded data — every input starts empty.
 export function TelecommunicationsActionPanel() {
@@ -90,7 +90,7 @@ export function TelecommunicationsActionPanel() {
     setBusy('cap'); setFeedback(null);
     try {
       const r = await callMacro<CapResult>('networkCapacity', { artifact: { data: { bandwidthGbps: b, utilizationPercent: u, activeUsers: n } } });
-      if (r.ok && r.result) { setCapResult(r.result); pipe.publish('telecom.cap', r.result, { label: `Cap ${r.result.utilization}` }); ok(`${r.result.availablePerUser}/user · ${r.result.status}.`); } else err(r.error ?? 'cap failed');
+      if (r.ok && r.result) { setCapResult(r.result); pipe.publish('telecom.cap', r.result, { label: `Cap ${r.result.utilization}` }); ok(`${r.result.usedPerUser}/user used · ${r.result.status}.`); } else err(r.error ?? 'cap failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSig() {
@@ -130,7 +130,7 @@ export function TelecommunicationsActionPanel() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`📡 NOC brief`, '',
-      capResult ? `Capacity: ${capResult.totalBandwidth} · ${capResult.utilization} util · ${capResult.availablePerUser}/user · ${capResult.status}` : '',
+      capResult ? `Capacity: ${capResult.totalBandwidth} · ${capResult.utilization} util · ${capResult.usedPerUser}/user used (${capResult.availablePerUser} avail) · ${capResult.status}` : '',
       sigResult ? `Signal: MOS ${sigResult.mosScore} (${sigResult.voiceQuality}) · latency ${sigResult.latencyMs}ms · video ${sigResult.videoCapable ? '✓' : '✗'}` : '',
       covResult ? `Coverage: ${coverageLine(covResult)}` : '',
       costResult ? `Unit econ: ARPU $${costResult.arpu} · cost $${costResult.costPerSubscriber} · margin ${costResult.marginPercent}%` : '',
@@ -163,7 +163,7 @@ export function TelecommunicationsActionPanel() {
   async function actAgent() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
-      const task = `Network ops review. ${capResult ? `Capacity ${capResult.utilization} (${capResult.status}), per-user ${capResult.availablePerUser}.` : ''} ${sigResult ? `MOS ${sigResult.mosScore} (${sigResult.voiceQuality}), latency ${sigResult.latencyMs}ms.` : ''} ${costResult ? `Margin ${costResult.marginPercent}%${costResult.profitable ? '' : ' UNPROFITABLE'}.` : ''} Identify the single most urgent capex or opex action. Plain text, 3 sentences max.`;
+      const task = `Network ops review. ${capResult ? `Capacity ${capResult.utilization} (${capResult.status}), per-user ${capResult.usedPerUser} used.` : ''} ${sigResult ? `MOS ${sigResult.mosScore} (${sigResult.voiceQuality}), latency ${sigResult.latencyMs}ms.` : ''} ${costResult ? `Margin ${costResult.marginPercent}%${costResult.profitable ? '' : ' UNPROFITABLE'}.` : ''} Identify the single most urgent capex or opex action. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Action ready.'); } else err('Agent returned empty.');
@@ -249,8 +249,8 @@ export function TelecommunicationsActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Capacity · {capResult.status}</div>
             <div className={cn('text-2xl font-bold', STATUS_COLOR[capResult.status])}>{capResult.utilization}</div>
-            <div className="text-[10px] text-zinc-400">{capResult.totalBandwidth} → {capResult.availablePerUser}/user</div>
-            <div className="text-[10px] text-zinc-400">{capResult.activeUsers.toLocaleString()} users · headroom {capResult.headroom}</div>
+            <div className="text-[10px] text-zinc-400">{capResult.totalBandwidth} · used {capResult.usedThroughput}</div>
+            <div className="text-[10px] text-zinc-400">{capResult.activeUsers.toLocaleString()} users · {capResult.usedPerUser}/user used · {capResult.availablePerUser}/user avail · headroom {capResult.headroom}</div>
             <div className="text-[10px] text-blue-200 italic">{capResult.upgrade}</div>
           </div>
         )}
@@ -287,7 +287,9 @@ export function TelecommunicationsActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Unit econ</div>
             <div className={cn('text-2xl font-bold', costResult.profitable ? 'text-emerald-300' : 'text-red-300')}>{costResult.marginPercent}% <span className="text-xs text-zinc-400">margin</span></div>
             <div className="text-[10px] text-zinc-400">ARPU ${costResult.arpu} - cost ${costResult.costPerSubscriber} = ${costResult.margin}</div>
-            <div className="text-[10px] text-zinc-400">breakeven: {costResult.breakeven}</div>
+            <div className="text-[10px] text-zinc-400">Revenue ${costResult.monthlyRevenue.toLocaleString()}/mo · infra ${costResult.infrastructurePerSubscriber}/line</div>
+            <div className="text-[10px] text-zinc-400">breakeven: {costResult.breakeven ?? 'never at the current margin'}{costResult.breakevenMonths != null ? ` (${costResult.breakevenMonths} mo of margin)` : ''}</div>
+            <div className="text-[10px] text-zinc-500 italic">Basis: {costResult.costBasis}</div>
           </div>
         )}
       </div>
