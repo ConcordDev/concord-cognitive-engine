@@ -114,6 +114,13 @@ function dtuClaims(dtu) {
 /**
  * Lift a list of free-text claims into the same internal claim shape.
  */
+export function splitSentences(text) {
+  return String(text)
+    .split(/\n+|(?<=[.!?])\s+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
 function liftClaims(rawClaims) {
   if (!Array.isArray(rawClaims)) return [];
   const out = [];
@@ -246,6 +253,14 @@ export function parseUnderstanding(input = {}) {
   }
   if (input.claims) {
     for (const c of liftClaims(input.claims)) addClaim(c);
+  }
+  // Raw-text subjects (the lens Compose panel's default mode): each
+  // sentence of input.text is a claim. Before this leg the engine
+  // gathered claims only from a DTU / related DTUs / an explicit
+  // claims array and never read `text` at all — a raw compose could
+  // only ever mint an EMPTY unit, even where the call reached it.
+  if (typeof input.text === "string" && input.text.trim()) {
+    for (const c of liftClaims(splitSentences(input.text))) addClaim(c);
   }
 
   // Step 2: Extract entities, relations, constraints from claim text.
