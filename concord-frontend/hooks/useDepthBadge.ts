@@ -59,6 +59,18 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
   /**
+   * World-Observatory reads live simulation state from the platform's
+   * own world stores (the worldstate macros) — REAL_LIVE's generic
+   * "polled from an external source" caption would be false, and the
+   * caption must answer the pass's standing question: what kind of
+   * numbers these are.
+   */
+  'world-observatory': {
+    label: 'Live',
+    caption:
+      'Simulation state here is read live from the platform\'s own world stores — population, factions, realms and districts as the simulation currently holds them. A young realm\'s figures may still sit at the values it was seeded with; that is its current state, not a placeholder. Worlds named as test or harness data are badged TEST wherever they appear.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic
