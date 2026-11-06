@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { LayoutGrid, Plus, Trash2, Loader2, Gauge } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SafetyNote } from './SafetyNote';
 
 interface Circuit {
   id: string; position: number; name: string; description: string;
@@ -115,6 +116,10 @@ export function PanelScheduleBuilder() {
         </div>
         <button type="button" onClick={() => setShowNew((s) => !s)} className="inline-flex items-center gap-1 rounded bg-indigo-500 px-2 py-1 text-xs font-semibold text-white hover:bg-indigo-400"><Plus className="h-3 w-3" />New panel</button>
       </header>
+
+      <div className="px-4 pt-3">
+        <SafetyNote />
+      </div>
 
       <div className="p-4 space-y-3">
         {showNew && (
