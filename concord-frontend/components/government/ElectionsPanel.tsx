@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Vote, Loader2, UserCheck, MapPin, CalendarClock, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { LocalRecordNotice } from './LocalRecordNotice';
 
 interface Registration {
   id: string; fullName: string; residentialAddress: string; dateOfBirth: string; stateCode: string;
@@ -99,6 +100,9 @@ export function ElectionsPanel() {
           </div>
         ) : (
           <div className="space-y-2">
+            <LocalRecordNotice channelLabel="vote.gov" channelHref="https://vote.gov">
+              Local record only — this does not register you to vote. Concord is not an election office, and nothing entered here is sent to one; the record is saved only in your Concord workspace.
+            </LocalRecordNotice>
             <div className="grid grid-cols-6 gap-2">
               <input value={regForm.fullName} onChange={e => setRegForm({ ...regForm, fullName: e.target.value })} placeholder="Full legal name" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
               <input value={regForm.dateOfBirth} onChange={e => setRegForm({ ...regForm, dateOfBirth: e.target.value })} type="date" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
