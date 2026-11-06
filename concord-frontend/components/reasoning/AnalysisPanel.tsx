@@ -35,6 +35,11 @@ interface Chain {
   id: string;
   question: string;
   type?: string;
+  // The list_chains payload carries stepCount + status (not a steps
+  // array, not a conclusion object) — reading the wrong fields showed
+  // Steps "0" and status "Open" for every chain (Review 3, F5/F10).
+  stepCount?: number;
+  status?: string;
   steps?: string[];
   conclusion?: { statement?: string; confidence?: number } | null;
 }
@@ -165,13 +170,13 @@ export function AnalysisPanel() {
                   <td className="py-1.5 px-3">
                     <span className="text-[10px] px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{chain.type || 'deductive'}</span>
                   </td>
-                  <td className="py-1.5 px-3 text-gray-400">{chain.steps?.length || 0}</td>
+                  <td className="py-1.5 px-3 text-gray-400">{chain.stepCount ?? chain.steps?.length ?? 0}</td>
                   <td className="py-1.5 px-3">
                     <span className={cn(
                       'text-[10px] px-2 py-0.5 rounded',
-                      chain.conclusion ? 'bg-green-400/20 text-green-400' : 'bg-neon-blue/20 text-neon-blue',
+                      (chain.status === 'concluded' || chain.conclusion) ? 'bg-green-400/20 text-green-400' : 'bg-neon-blue/20 text-neon-blue',
                     )}>
-                      {chain.conclusion ? 'Concluded' : 'Open'}
+                      {(chain.status === 'concluded' || chain.conclusion) ? 'Concluded' : 'Open'}
                     </span>
                   </td>
                 </tr>

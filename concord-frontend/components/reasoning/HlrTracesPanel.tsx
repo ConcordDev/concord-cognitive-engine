@@ -126,6 +126,14 @@ export function HlrTracesPanel({
     } catch { /* detail fetch is best-effort; list stays usable */ }
   };
 
+  // Refusals read as sentences, never as engine codes (Review 3, S-RS-1:
+  // a refusal is a sentence, not a protocol dump).
+  const RUN_ERROR_LINES: Record<string, string> = {
+    topic_or_question_required: 'Enter a topic or question first — the engine needs something to reason about.',
+    invalid_mode: 'That reasoning mode is not available. Pick one of the seven listed modes and run again.',
+    run_failed: 'The reasoning run did not complete. Your topic is unchanged — try again.',
+  };
+
   const runPass = async () => {
     const topic = runTopic.trim();
     if (!topic) return;
@@ -134,16 +142,18 @@ export function HlrTracesPanel({
     try {
       const r = await lensRun('reasoning', 'run', { topic, question: topic, mode: runMode, depth: 3 });
       if (!r.data.ok) {
-        setRunError(r.data.error || 'run_failed');
+        setRunError(RUN_ERROR_LINES[r.data.error || ''] || RUN_ERROR_LINES.run_failed);
         return;
       }
       const result = (r.data.result || {}) as Record<string, unknown>;
       const traceId = String(result.traceId || '');
-      setRunTopic('');
+      // The topic survives the run under both arms (Review 3, S-RS-1:
+      // a run must not eat its input) — the field keeps the question the
+      // trace answers, so it can be re-run or edited in place.
       await refresh();
       if (traceId) await openTrace(traceId);
-    } catch (e) {
-      setRunError(e instanceof Error ? e.message : 'run_failed');
+    } catch {
+      setRunError(RUN_ERROR_LINES.run_failed);
     } finally {
       setRunBusy(false);
     }
@@ -306,7 +316,7 @@ export function HlrTracesPanel({
             </header>
 
             {agentTraces.length === 0 ? (
-              <p className="text-xs text-zinc-500">No agent deliberations recorded — the agent is on instinct (or none deployed). Set CONCORD_AWARENESS_LOOP=1 + deploy an agent.</p>
+              <p className="text-xs text-zinc-500">No agent deliberations recorded yet. When an agent reasons on the platform, its deliberations are recorded here.</p>
             ) : (
               <>
                 <AwarenessCurve traces={agentTraces} />
