@@ -210,11 +210,14 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
                       <Bot className="w-8 h-8 text-neon-cyan" />
                     </div>
                     <p className="text-sm text-gray-300 font-medium mb-1">
-                      {domainLabel} Specialist
+                      {domainLabel} Assistant
                     </p>
                     <p className="text-xs text-gray-400 max-w-xs">
-                      Ask me anything about {domainLabel.toLowerCase()}. I have
-                      domain-specific context to help you. Press{' '}
+                      Ask me anything about {domainLabel.toLowerCase()}. My
+                      answers come from Concord’s general assistant — they
+                      aren’t grounded in this lens’s own records, so for
+                      what’s saved here, the lens’s own panels are the
+                      source. Press{' '}
                       <kbd className="px-1 py-0.5 text-[10px] font-mono bg-lattice-surface border border-lattice-border rounded">
                         {modKey} /
                       </kbd>{' '}
@@ -297,7 +300,7 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={`Ask the ${domainLabel.toLowerCase()} specialist...`}
+                    placeholder={`Ask about ${domainLabel.toLowerCase()}...`}
                     rows={1}
                     className="flex-1 px-3 py-2 bg-lattice-bg border border-lattice-border rounded-xl text-sm text-white placeholder-gray-500 resize-none focus:outline-none focus:border-neon-cyan max-h-28"
                     disabled={isLoading}
