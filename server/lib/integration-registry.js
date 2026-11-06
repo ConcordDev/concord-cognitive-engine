@@ -217,7 +217,7 @@ export const REGISTRY = Object.freeze({
   pets:         { tier: TIER.REAL_FREE, sources: ["petfinder.api"], note: "PetFinder API" },
   veterinary:   { tier: TIER.REAL_FREE, sources: ["wikipedia.veterinary"], note: "Wikipedia veterinary" },
   nonprofit:    { tier: TIER.REAL_FREE, sources: ["propublica.nonprofits"], note: "ProPublica Nonprofit Explorer" },
-  government:   { tier: TIER.REAL_FREE, sources: ["data.gov", "propublica.congress"], note: "data.gov + ProPublica Congress" },
+  government:   { tier: TIER.REAL_LIVE, liveFromSubstrate: true, sources: ["api.congress.gov", "api.usaspending.gov", "api.gsa.gov/technology/datagov", "api.weather.gov"], note: "per-user civic caseload substrate + live Congress.gov bills/members, USAspending, data.gov via the GSA v3 gateway, NWS alerts" },
   energy:        { tier: TIER.REAL_FREE, sources: ["eia.api"], note: "EIA energy data" },
   transportation: { tier: TIER.REAL_FREE, sources: ["dot.bts"], note: "DOT BTS" },
   global:        { tier: TIER.REAL_FREE, sources: ["finance-fred-rates", "worldbank.api"], note: "World Bank + FRED" },
