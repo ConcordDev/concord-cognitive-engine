@@ -37,6 +37,10 @@ import { TagWatchPanel } from './TagWatchPanel';
 interface QSummary {
   id: string; title: string; tags: string[]; votes: number; views: number;
   answerCount: number; hasAccepted: boolean; bounty: number; excerpt: string; createdAt: string;
+  subscribed?: boolean;
+}
+interface DupMatch {
+  id: string; title: string; similarity: number; answerCount: number; hasAccepted: boolean;
 }
 interface Comment { id: string; body: string; createdAt: string }
 interface Answer {
@@ -116,6 +120,14 @@ export function AnswersQA() {
   const [showDuplicates, setShowDuplicates] = useState(false);
   const [closeReason, setCloseReason] = useState(CLOSE_REASONS[0]);
   const [detailMsg, setDetailMsg] = useState('');
+  // soft-delete two-step + receipts (S1)
+  const [confirmQDelete, setConfirmQDelete] = useState(false);
+  const [confirmAnswerId, setConfirmAnswerId] = useState<string | null>(null);
+  const [listNotice, setListNotice] = useState<{ id: string; title: string } | null>(null);
+  const [answerUndo, setAnswerUndo] = useState<{ questionId: string; answerId: string } | null>(null);
+  // ask-time duplicate steering (S4)
+  const [dupMatches, setDupMatches] = useState<DupMatch[] | null>(null);
+  const [dupFor, setDupFor] = useState('');
 
   const refreshList = useCallback(async () => {
     setLoading(true);
@@ -152,6 +164,9 @@ export function AnswersQA() {
       setShowDuplicates(false);
       setEditAnswerId(null);
       setDetailMsg('');
+      setConfirmQDelete(false);
+      setConfirmAnswerId(null);
+      setAnswerUndo(null);
     }
   }, []);
 
@@ -161,14 +176,33 @@ export function AnswersQA() {
     if (r.data?.ok) setDetail(r.data.result?.question as QDetail);
   }
 
-  async function submitAsk() {
-    setAskErr('');
+  async function doPost() {
     const r = await lensRun('answers', 'question-ask', {
       title: askTitle, body: askBody, tags: askTags, bodyFormat: 'markdown',
     });
     if (!r.data?.ok) { setAskErr(r.data?.error || 'Could not post question.'); return; }
     setAskTitle(''); setAskBody(''); setAskTags('');
+    setDupMatches(null); setDupFor('');
     await openDetail(r.data.result?.question.id);
+  }
+  async function submitAsk() {
+    setAskErr('');
+    // S4 — steer before posting: probe the duplicates machinery with
+    // the draft itself. A match surfaces with links; posting anyway
+    // stays one click away.
+    const key = `${askTitle}\n${askBody}`;
+    if (dupMatches === null || dupFor !== key) {
+      const r = await lensRun('answers', 'find-duplicates', { title: askTitle, body: askBody, threshold: 0.3 });
+      const matches = (r.data?.result?.matches as DupMatch[]) || [];
+      if (r.data?.ok && matches.length > 0) {
+        setDupMatches(matches);
+        setDupFor(key);
+        return;
+      }
+      setDupMatches([]);
+      setDupFor(key);
+    }
+    await doPost();
   }
 
   async function vote(targetType: 'question' | 'answer', targetId: string, direction: 'up' | 'down') {
@@ -244,21 +278,40 @@ export function AnswersQA() {
     await reloadDetail();
   }
 
-  // ── delete (question / answer) ───────────────────────────────────
+  // ── delete (question / answer) — soft, two-step, receipted (S1) ──
   async function deleteQuestion() {
     if (!detail) return;
-    if (!window.confirm('Delete this question and all its answers? This cannot be undone.')) return;
     const r = await lensRun('answers', 'question-delete', { id: detail.id });
     if (!r.data?.ok) { setDetailMsg(r.data?.error || 'Could not delete question.'); return; }
+    const notice = { id: detail.id, title: detail.title };
+    setConfirmQDelete(false);
     setDetail(null);
     setView('list');
+    setListNotice(notice);
+    await refreshList();
+  }
+  async function undoQuestionDelete() {
+    if (!listNotice) return;
+    const r = await lensRun('answers', 'question-restore', { id: listNotice.id });
+    if (!r.data?.ok) return;
+    setListNotice(null);
     await refreshList();
   }
   async function deleteAnswer(answerId: string) {
     if (!detail) return;
-    if (!window.confirm('Delete this answer?')) return;
     const r = await lensRun('answers', 'answer-delete', { questionId: detail.id, answerId });
     if (!r.data?.ok) { setDetailMsg(r.data?.error || 'Could not delete answer.'); return; }
+    setConfirmAnswerId(null);
+    setAnswerUndo({ questionId: detail.id, answerId });
+    setDetailMsg('Answer deleted.');
+    await reloadDetail();
+  }
+  async function undoAnswerDelete() {
+    if (!answerUndo) return;
+    const r = await lensRun('answers', 'answer-restore', answerUndo);
+    if (!r.data?.ok) { setDetailMsg(r.data?.error || 'Could not restore answer.'); return; }
+    setAnswerUndo(null);
+    setDetailMsg('Answer restored.');
     await reloadDetail();
   }
 
@@ -272,13 +325,13 @@ export function AnswersQA() {
         <h3 className="text-sm font-bold text-zinc-100">Ask a question</h3>
         <input
           value={askTitle}
-          onChange={(e) => setAskTitle(e.target.value)}
+          onChange={(e) => { setAskTitle(e.target.value); setDupMatches(null); }}
           placeholder="Be specific — imagine you're asking another person"
           className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
         />
         <RichMarkdownEditor
           value={askBody}
-          onChange={setAskBody}
+          onChange={(v) => { setAskBody(v); setDupMatches(null); }}
           placeholder="Include all the information someone would need to answer your question — supports **markdown** and ```code blocks```"
           rows={8}
         />
@@ -289,9 +342,39 @@ export function AnswersQA() {
           className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
         />
         {askErr && <p className="text-xs text-rose-400">{askErr}</p>}
-        <button onClick={submitAsk} className="px-4 py-2 text-sm font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white">
-          Post your question
-        </button>
+        {dupMatches && dupMatches.length > 0 && (
+          <div data-testid="ask-duplicate-steering" className="rounded-lg border border-amber-900/40 bg-amber-950/20 p-3 space-y-2">
+            <p className="text-xs text-amber-300">
+              This looks like a question that may already have been asked:
+            </p>
+            {dupMatches.map((m) => (
+              <div key={m.id} className="flex items-center gap-2 text-xs">
+                <button
+                  onClick={() => openDetail(m.id)}
+                  className="text-orange-300 hover:text-orange-200 underline truncate"
+                >
+                  {m.title}
+                </button>
+                <span className="ml-auto shrink-0 text-[10px] text-zinc-400">
+                  {Math.round(m.similarity * 100)}% similar · {m.answerCount} answer{m.answerCount === 1 ? '' : 's'}
+                </span>
+              </div>
+            ))}
+            <p className="text-[11px] text-zinc-400">
+              If one of these is your question, open it instead — otherwise post yours anyway.
+            </p>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <button onClick={submitAsk} className="px-4 py-2 text-sm font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white">
+            {dupMatches && dupMatches.length > 0 ? 'Post anyway' : 'Post your question'}
+          </button>
+          {dupMatches && dupMatches.length > 0 && (
+            <button onClick={() => { setDupMatches(null); setDupFor(''); }} className="text-xs text-zinc-400 hover:text-zinc-200">
+              Keep editing
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -370,10 +453,17 @@ export function AnswersQA() {
                         <Pencil className="w-2.5 h-2.5" />Edit
                       </button>
                     )}
-                    {isAuthor && (
-                      <button onClick={deleteQuestion} className="text-[10px] text-zinc-400 hover:text-rose-300 inline-flex items-center gap-0.5">
+                    {isAuthor && !confirmQDelete && (
+                      <button data-testid="q-delete" onClick={() => setConfirmQDelete(true)} className="text-[10px] text-zinc-400 hover:text-rose-300 inline-flex items-center gap-0.5">
                         <Trash2 className="w-2.5 h-2.5" />Delete
                       </button>
+                    )}
+                    {isAuthor && confirmQDelete && (
+                      <span data-testid="q-delete-confirm" className="inline-flex items-center gap-1.5 text-[10px] text-rose-300">
+                        Delete “{detail.title}”? You can restore it from the list afterwards.
+                        <button data-testid="q-delete-confirm-btn" onClick={deleteQuestion} className="px-1.5 py-0.5 rounded bg-rose-700 text-white hover:bg-rose-600">Delete</button>
+                        <button onClick={() => setConfirmQDelete(false)} className="text-zinc-400 hover:text-zinc-200">Keep</button>
+                      </span>
                     )}
                     <button
                       onClick={() => setRevisionTarget(revisionTarget && !revisionTarget.answerId ? null : {})}
@@ -438,7 +528,16 @@ export function AnswersQA() {
             </div>
           )}
 
-          {detailMsg && <p className="text-[11px] text-amber-400">{detailMsg}</p>}
+          {detailMsg && (
+            <p className="text-[11px] text-amber-400">
+              {detailMsg}
+              {answerUndo && (
+                <button data-testid="a-delete-undo" onClick={undoAnswerDelete} className="ml-2 underline hover:text-amber-300">
+                  Undo
+                </button>
+              )}
+            </p>
+          )}
 
           <div className="flex items-center gap-2 border-t border-zinc-800 pt-3">
             <h4 className="text-sm font-semibold text-zinc-200">
@@ -490,12 +589,21 @@ export function AnswersQA() {
                       >
                         <Pencil className="w-2.5 h-2.5" />Edit
                       </button>
-                      <button
-                        onClick={() => deleteAnswer(a.id)}
-                        className="text-[10px] text-zinc-400 hover:text-rose-300 inline-flex items-center gap-0.5"
-                      >
-                        <Trash2 className="w-2.5 h-2.5" />Delete
-                      </button>
+                      {confirmAnswerId === a.id ? (
+                        <span data-testid="a-delete-confirm" className="inline-flex items-center gap-1.5 text-[10px] text-rose-300">
+                          Delete this answer? You can undo it below.
+                          <button data-testid="a-delete-confirm-btn" onClick={() => deleteAnswer(a.id)} className="px-1.5 py-0.5 rounded bg-rose-700 text-white hover:bg-rose-600">Delete</button>
+                          <button onClick={() => setConfirmAnswerId(null)} className="text-zinc-400 hover:text-zinc-200">Keep</button>
+                        </span>
+                      ) : (
+                        <button
+                          data-testid="a-delete"
+                          onClick={() => setConfirmAnswerId(a.id)}
+                          className="text-[10px] text-zinc-400 hover:text-rose-300 inline-flex items-center gap-0.5"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />Delete
+                        </button>
+                      )}
                       <button
                         onClick={() => setRevisionTarget(
                           revisionTarget?.answerId === a.id ? null : { answerId: a.id }
@@ -642,6 +750,18 @@ export function AnswersQA() {
         )}
       </div>
 
+      {listNotice && (
+        <div data-testid="q-deleted-notice" className="flex items-center gap-2 px-4 py-2 border-b border-zinc-800 bg-rose-950/20 text-[11px] text-rose-300">
+          <span className="truncate">Question deleted: “{listNotice.title}”</span>
+          <button data-testid="q-delete-undo" onClick={undoQuestionDelete} className="ml-auto shrink-0 underline hover:text-rose-200">
+            Undo
+          </button>
+          <button onClick={() => setListNotice(null)} className="shrink-0 text-zinc-500 hover:text-zinc-300" aria-label="Dismiss">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+
       <div className="divide-y divide-zinc-800">
         {loading ? (
           <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
@@ -671,7 +791,7 @@ export function AnswersQA() {
                   {q.bounty > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/40 text-amber-300">+{q.bounty}</span>}
                 </div>
               </button>
-              <SubscribeButton questionId={q.id} onChanged={() => setNotifKey((k) => k + 1)} />
+              <SubscribeButton key={`${q.id}:${q.subscribed ? 1 : 0}`} questionId={q.id} initialSubscribed={Boolean(q.subscribed)} onChanged={() => setNotifKey((k) => k + 1)} />
             </div>
           ))
         )}
@@ -696,8 +816,12 @@ function PanelToggle({ active, onClick, label }: { active: boolean; onClick: () 
   );
 }
 
-function SubscribeButton({ questionId, onChanged }: { questionId: string; onChanged?: () => void }) {
-  const [subscribed, setSubscribed] = useState(false);
+function SubscribeButton({ questionId, initialSubscribed, onChanged }: { questionId: string; initialSubscribed?: boolean; onChanged?: () => void }) {
+  // S3 — the server persists the follow (question-subscribe); the list
+  // carries the actor's state per question and the parent keys this
+  // button by it, so a refetch re-initialises from the server's word
+  // instead of the button assuming unfollowed on every mount.
+  const [subscribed, setSubscribed] = useState(Boolean(initialSubscribed));
   const [busy, setBusy] = useState(false);
   async function toggle() {
     setBusy(true);
