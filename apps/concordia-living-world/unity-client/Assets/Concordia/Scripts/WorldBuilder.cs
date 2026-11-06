@@ -872,6 +872,7 @@ System.Collections.IEnumerator DressHubPostReadyStaged()
                 yield return null;
             }
             Debug.Log("[Concordia] LeanPlay: DressCrowdStaged done walkers=" + walkers + " stalls=" + stalls + " sit=" + sitters);
+            HubResidents.Bind();
         }
 
         void DressCrowd()

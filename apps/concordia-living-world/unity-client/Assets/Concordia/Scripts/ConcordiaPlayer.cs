@@ -97,7 +97,10 @@ namespace Concordia
         float _dmgMul = 1f;
         GameObject _heldKit;
         TrainingDummy _pendingKernelTarget;
+        float _blockSentAt;
         float _moveSentAt;
+        float _moveIdleAt;
+        Vector3 _moveSentPos = new Vector3(float.NaN, 0f, 0f);
         WorldId _fightWorld = (WorldId)(-1);
         Vector3 _forceWalk = Vector3.forward;
         float _forceWalkT;
@@ -129,7 +132,7 @@ namespace Concordia
             var seatedVehicle = GetComponentInParent<VehicleEntity>();
             if (seatedVehicle && seatedVehicle.gameObject != gameObject)
             {
-                if (KeyDown(KeyCode.E)) Interact();
+                if (ConcordiaInput.Down(ConcordiaInput.Interact)) Interact();
                 return;
             }
 
@@ -158,7 +161,7 @@ namespace Concordia
             HandleMenuKeys();
             LookInput();
             var axes = Busy ? Vector2.zero : MoveAxes();
-            var sprint = !Busy && KeyHeld(KeyCode.LeftShift);
+            var sprint = !Busy && ConcordiaInput.Held(ConcordiaInput.Sprint);
             var speed = (sprint ? 8.1f : 5.2f) * style.speedMul;
             var fwd = cam.PlanarForward;
             var right = cam.PlanarRight;
@@ -186,8 +189,8 @@ namespace Concordia
             {
                 Move = axes,
                 Sprint = sprint,
-                Jump = !Busy && KeyDown(KeyCode.Space) && _coyote > 0f,
-                Ascend = !Busy && KeyHeld(KeyCode.Space),
+                Jump = !Busy && ConcordiaInput.Down(ConcordiaInput.Jump) && _coyote > 0f,
+                Ascend = !Busy && ConcordiaInput.Held(ConcordiaInput.Jump),
                 Descend = !Busy && KeyHeld(KeyCode.LeftControl),
                 Brake = KeyHeld(KeyCode.S)
             };
@@ -219,7 +222,7 @@ namespace Concordia
             }
             // Dodge now injects momentum into the gameplay-core motor; the motor performs the
             // single authoritative CharacterController.Move for this frame.
-            if (!Busy && KeyDown(KeyCode.X))
+            if (!Busy && ConcordiaInput.Down(ConcordiaInput.Dodge))
             {
                 _body.Stamina = stamina;
                 if (_action.TryBegin(DodgeAction, _body))
@@ -233,10 +236,26 @@ namespace Concordia
                     if (client != null) client.SendDodge();
                 }
             }
-            if (!Busy && KeyHeld(KeyCode.C))
+            // The server's guard (combat:block) lasts ~0.8 s per message, so a held
+            // guard re-sends it; letting go sends one release.
+            var guardHeld = ConcordiaInput.Held(ConcordiaInput.Guard);
+            if (guardHeld && Time.time >= _blockSentAt + 0.5f)
+            {
+                _blockSentAt = Time.time;
+                ConcordClient.Live?.SendBlock(true);
+            }
+            else if (!guardHeld && _blockSentAt > 0f)
+            {
+                _blockSentAt = 0f;
+                ConcordClient.Live?.SendBlock(false);
+            }
+            if (!Busy && guardHeld)
             {
                 _body.Stamina = stamina;
-                if (_action.CanAct) _action.TryBegin(GuardAction, _body);
+                // The opening of a guard is the parry window; the server's
+                // npc:attack resolution reads it from combat:dodge (wasParry).
+                if (_action.CanAct && _action.TryBegin(GuardAction, _body))
+                    ConcordClient.Live?.SendDodge(true);
             }
             if (person && wish.sqrMagnitude > 0.04f) person.Sit(false);
             if (LivingBody.Hero && sprint && wish.sqrMagnitude > 0.04f)
@@ -272,9 +291,15 @@ namespace Concordia
             avatar?.SetGait(planar.magnitude, grounded, _vel.y);
             person?.SetGait(planar.magnitude, grounded, _vel.y);
 
-            if (Time.time >= _moveSentAt)
+            // ~12 Hz while moving; standing still sends one keep-alive a second.
+            // The gateway allows 20 messages a second per user, shared with
+            // every other event, so idle frames must not spend it.
+            var movedEnough = float.IsNaN(_moveSentPos.x) || (transform.position - _moveSentPos).sqrMagnitude > 0.0025f;
+            if (Time.time >= _moveSentAt && (movedEnough || Time.time >= _moveIdleAt))
             {
                 _moveSentAt = Time.time + 0.08f;
+                _moveIdleAt = Time.time + 1f;
+                _moveSentPos = transform.position;
                 var client = ConcordClient.Live;
                 // The headless world host is not a player — it must never appear in
                 // everyone's city:positions.
@@ -301,10 +326,10 @@ namespace Concordia
                 if (KitBag.Art == 2) TrySpecial();
                 else TryAttack(KitBag.Art == 1);
             }
-            if (!Busy && KeyDown(KeyCode.F)) TryAttack(true);
-            if (!Busy && KeyDown(KeyCode.G)) TrySpecial();
-            if (!talkOpen && KeyDown(KeyCode.E)) Interact();
-            if (!Busy && KeyDown(KeyCode.Q)) CycleKit();
+            if (!Busy && ConcordiaInput.Down(ConcordiaInput.Heavy)) TryAttack(true);
+            if (!Busy && ConcordiaInput.Down(ConcordiaInput.Special)) TrySpecial();
+            if (!talkOpen && ConcordiaInput.Down(ConcordiaInput.Interact)) Interact();
+            if (!Busy && ConcordiaInput.Down(ConcordiaInput.CycleKit)) CycleKit();
 
             prompt = nearPrompt;
             if (_toastT > 0) _toastT -= dt;
@@ -491,16 +516,16 @@ namespace Concordia
         void HandleMenuKeys()
         {
             if (talkOpen && KeyDown(KeyCode.Return)) SubmitTalk();
-            if (KeyDown(KeyCode.I) && !talkOpen) ToggleMenu();
-            if (KeyDown(KeyCode.K) && !talkOpen) ToggleSkillSheet();
+            if (ConcordiaInput.Down(ConcordiaInput.Menu) && !talkOpen) ToggleMenu();
+            if (ConcordiaInput.Down(ConcordiaInput.Skills) && !talkOpen) ToggleSkillSheet();
             if (talkOpen) return;
-            if (KeyDown(KeyCode.Alpha1)) { SkillLattice.SelectSlot(0); Toast(SkillLattice.HudLine()); }
-            if (KeyDown(KeyCode.Alpha2)) { SkillLattice.SelectSlot(1); Toast(SkillLattice.HudLine()); }
-            if (KeyDown(KeyCode.Alpha3)) { SkillLattice.SelectSlot(2); Toast(SkillLattice.HudLine()); }
-            if ((menuOpen || skillOpen) && KeyDown(KeyCode.LeftBracket)) SkillLattice.CycleGroup(-1);
-            if ((menuOpen || skillOpen) && KeyDown(KeyCode.RightBracket)) SkillLattice.CycleGroup(1);
-            if (!Busy && KeyDown(KeyCode.H)) ConcordClient.Live?.RequestRunStart("horde");
-            if (!Busy && KeyDown(KeyCode.J)) ConcordClient.Live?.RequestRunStart("extraction");
+            if (ConcordiaInput.Down(ConcordiaInput.Slot1)) { SkillLattice.SelectSlot(0); Toast(SkillLattice.HudLine()); }
+            if (ConcordiaInput.Down(ConcordiaInput.Slot2)) { SkillLattice.SelectSlot(1); Toast(SkillLattice.HudLine()); }
+            if (ConcordiaInput.Down(ConcordiaInput.Slot3)) { SkillLattice.SelectSlot(2); Toast(SkillLattice.HudLine()); }
+            if ((menuOpen || skillOpen) && ConcordiaInput.Down(ConcordiaInput.GroupPrev)) SkillLattice.CycleGroup(-1);
+            if ((menuOpen || skillOpen) && ConcordiaInput.Down(ConcordiaInput.GroupNext)) SkillLattice.CycleGroup(1);
+            if (!Busy && ConcordiaInput.Down(ConcordiaInput.Horde)) ConcordClient.Live?.RequestRunStart("horde");
+            if (!Busy && ConcordiaInput.Down(ConcordiaInput.Extraction)) ConcordClient.Live?.RequestRunStart("extraction");
         }
 
         void TryAttack(bool heavy)
@@ -697,7 +722,8 @@ namespace Concordia
         }
 
         /// <summary>Apply combat:attack:ack from the Concord kernel. Never invent HP.</summary>
-        public void ApplyKernelAttackAck(bool ok, bool refused, float damage, string error, string reason)
+        public void ApplyKernelAttackAck(bool ok, bool refused, float damage, string error, string reason,
+            bool serverHp = false, float hpBefore = 0f, float hpAfter = 0f, bool died = false, string lootBagId = null)
         {
             var dummy = _pendingKernelTarget;
             _pendingKernelTarget = null;
@@ -708,12 +734,63 @@ namespace Concordia
             }
             if (!ok)
             {
-                Toast("Concord {ok:false, error:'" + (error ?? "rejected") + "'}");
+                if (error == "target_dead" && dummy) Toast(dummy.GuestLabel + " is already down.");
+                else Toast("Concord {ok:false, error:'" + (error ?? "rejected") + "'}");
                 return;
             }
-            if (dummy) dummy.ApplyServerHit(damage, world);
+            if (dummy)
+            {
+                if (serverHp) dummy.ApplyServerHp(hpBefore, hpAfter, world);
+                else dummy.ApplyServerHit(damage, world);
+            }
             HubObjectives.NoteArenaHit();
-            if (dummy) Toast(dummy.GuestLabel + "  " + Mathf.Ceil(dummy.hp));
+            if (!dummy) return;
+            if (died) Toast(dummy.GuestLabel + " down" + (string.IsNullOrEmpty(lootBagId) ? "." : " — spoils on the ground."));
+            else Toast(dummy.GuestLabel + "  " + Mathf.Ceil(dummy.hp));
+        }
+
+        /// <summary>npc:attack:ack, decoded by ConcordiaGame.</summary>
+        public struct ServerStrike
+        {
+            public bool ok, evaded, blocked, killed;
+            public string error, npcId;
+            public float finalDamage, playerHp, playerMaxHp;
+        }
+
+        /// <summary>
+        /// A server creature's strike (C-21). The server resolved dodge, block,
+        /// cap and death; this presents its result and takes hp from its bar.
+        /// </summary>
+        public void ApplyServerStrike(ServerStrike s)
+        {
+            var from = TrainingDummy.FindServerNpc(s.npcId);
+            var who = from ? from.GuestLabel : "Something";
+            var feel = GetComponent<CombatFeel>();
+            var at = transform.position + transform.forward * 1.15f + Vector3.up * 1.05f;
+            if (!s.ok)
+            {
+                if (s.error == "concordant_law_refusal")
+                {
+                    FlowerBurst();
+                    Toast("The ground refuses " + who + ".");
+                }
+                // npc_out_of_reach / rate_limited / npc_dead: the server did not land it.
+                return;
+            }
+            if (s.evaded)
+            {
+                feel?.Present(new Core.HitResult { Outcome = Core.DefenseOutcome.Dodged }, at);
+                Toast("the cut passes through");
+                return;
+            }
+            // The server bar's scale may differ from the local 100; keep the fraction.
+            if (s.playerMaxHp > 0f) hp = Mathf.Clamp(100f * s.playerHp / s.playerMaxHp, 0f, 100f);
+            Toast((s.blocked ? "Guarded — " : who + " hits — ") + Mathf.Ceil(s.finalDamage) + " damage.");
+            _vel -= transform.forward * 1.8f;
+            person?.Hurt();
+            avatar?.Hit();
+            feel?.ApplyAck(true, Mathf.Min(s.finalDamage * 0.08f, 2.4f), false, false);
+            if (s.killed || hp <= 0f) FallAndRespawn();
         }
 
         static TrainingDummy FindDummy(RaycastHit[] hits)
@@ -847,6 +924,11 @@ namespace Concordia
             }
             feel?.ApplyAck(true, impulse > 0f ? impulse : Mathf.Min(result.DamageDealt * 0.08f, 2.4f), false, false);
             if (hp > 0f) return;
+            FallAndRespawn();
+        }
+
+        void FallAndRespawn()
+        {
             hp = 100f;
             _body.Health = 100f;
             poise = 12f;
@@ -944,8 +1026,12 @@ namespace Concordia
 
         Vector2 MoveAxes()
         {
-            float x = 0, y = 0;
 #if ENABLE_INPUT_SYSTEM
+            // WASD composite or the gamepad left stick, whichever moved last (B-06).
+            var pad = ConcordiaInput.Axis(ConcordiaInput.Move);
+            if (pad.sqrMagnitude > 0.0001f) return pad;
+
+            float x = 0, y = 0;
             if (Keyboard.current != null)
             {
                 if (Keyboard.current.aKey.isPressed) x -= 1;
@@ -953,34 +1039,33 @@ namespace Concordia
                 if (Keyboard.current.wKey.isPressed) y += 1;
                 if (Keyboard.current.sKey.isPressed) y -= 1;
             }
-#else
-            x = Input.GetAxisRaw("Horizontal");
-            y = Input.GetAxisRaw("Vertical");
-#endif
             return new Vector2(x, y);
+#else
+            return new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+#endif
         }
 
         void LookInput()
         {
-            if (talkOpen && KeyDown(KeyCode.Escape))
+            if (talkOpen && ConcordiaInput.Down(ConcordiaInput.Cancel))
             {
                 CloseTalk();
                 return;
             }
-            if (skillOpen && KeyDown(KeyCode.Escape))
+            if (skillOpen && ConcordiaInput.Down(ConcordiaInput.Cancel))
             {
                 skillOpen = false;
                 LockCursor();
                 return;
             }
-            if (menuOpen && KeyDown(KeyCode.Escape))
+            if (menuOpen && ConcordiaInput.Down(ConcordiaInput.Cancel))
             {
                 menuOpen = false;
                 LockCursor();
                 return;
             }
             if (Busy) return;
-            if (KeyDown(KeyCode.Escape) || KeyDown(KeyCode.Tab))
+            if (ConcordiaInput.Down(ConcordiaInput.Cancel))
             {
                 Cursor.lockState = Cursor.lockState == CursorLockMode.Locked ? CursorLockMode.None : CursorLockMode.Locked;
                 Cursor.visible = Cursor.lockState != CursorLockMode.Locked;
@@ -1008,63 +1093,12 @@ namespace Concordia
 
         static bool MouseOverHud() => Live != null && Live.Busy;
 
-#if ENABLE_INPUT_SYSTEM
-        static Key? ToKey(KeyCode k) => k switch
-        {
-            KeyCode.LeftShift => Key.LeftShift,
-            KeyCode.Space => Key.Space,
-            KeyCode.X => Key.X,
-            KeyCode.C => Key.C,
-            KeyCode.F => Key.F,
-            KeyCode.G => Key.G,
-            KeyCode.Q => Key.Q,
-            KeyCode.E => Key.E,
-            KeyCode.I => Key.I,
-            KeyCode.K => Key.K,
-            KeyCode.H => Key.H,
-            KeyCode.J => Key.J,
-            KeyCode.Return => Key.Enter,
-            KeyCode.Alpha1 => Key.Digit1,
-            KeyCode.Alpha2 => Key.Digit2,
-            KeyCode.Alpha3 => Key.Digit3,
-            KeyCode.LeftBracket => Key.LeftBracket,
-            KeyCode.RightBracket => Key.RightBracket,
-            KeyCode.Escape => Key.Escape,
-            KeyCode.Tab => Key.Tab,
-            _ => null
-        };
-#endif
+        // Input is read through ConcordiaInput (B-06): the raw key stays authoritative for the
+        // keyboard, the action asset adds the gamepad binding and the press log.
+        bool KeyDown(KeyCode k) => ConcordiaInput.Down(k);
 
-        bool KeyDown(KeyCode k)
-        {
-#if ENABLE_INPUT_SYSTEM
-            if (Keyboard.current == null) return false;
-            var key = ToKey(k);
-            return key.HasValue && Keyboard.current[key.Value].wasPressedThisFrame;
-#else
-            return Input.GetKeyDown(k);
-#endif
-        }
+        bool KeyHeld(KeyCode k) => ConcordiaInput.Held(k);
 
-        bool KeyHeld(KeyCode k)
-        {
-#if ENABLE_INPUT_SYSTEM
-            if (Keyboard.current == null) return false;
-            var key = ToKey(k);
-            return key.HasValue && Keyboard.current[key.Value].isPressed;
-#else
-            return Input.GetKey(k);
-#endif
-        }
-
-        bool MouseDown(int b)
-        {
-#if ENABLE_INPUT_SYSTEM
-            if (Mouse.current == null) return false;
-            return b == 0 ? Mouse.current.leftButton.wasPressedThisFrame : Mouse.current.rightButton.wasPressedThisFrame;
-#else
-            return Input.GetMouseButtonDown(b);
-#endif
-        }
+        bool MouseDown(int b) => ConcordiaInput.MouseDown(b);
     }
 }
