@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
 import type { CandidatePost } from '@/components/feed/FeedToolsPanel';
 
 export type FeedTab = 'for-you' | 'following' | 'releases' | 'trending';
@@ -79,6 +80,27 @@ export const pickGrad = (i: number) => gradients[i % gradients.length];
 const PAGE_SIZE = 20;
 
 export function useFeedPosts(tab: FeedTab, _fallbackItems: FeedPost[] = []) {
+  const { user } = useAuth();
+  // The caller's real bookmark set (GET /api/social/bookmarks is
+  // auth-scoped server-side). Until this overlay existed, every mapped
+  // post hardcoded bookmarked: false, so an article never showed its own
+  // bookmarked state even after the bookmark landed (R4 Feed F4's FE
+  // half). The bookmark mutation invalidates this key on toggle.
+  const bookmarksQuery = useQuery({
+    queryKey: ['feed-my-bookmarks'],
+    queryFn: async (): Promise<string[]> => {
+      const res = await api.get('/api/social/bookmarks', { params: { limit: 500 } }).catch(() => null);
+      const posts = (res?.data?.posts || []) as Array<{ id?: string }>;
+      return posts.map((p) => p.id).filter((id): id is string => typeof id === 'string');
+    },
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  const bookmarkedIds = useMemo(
+    () => new Set(bookmarksQuery.data || []),
+    [bookmarksQuery.data],
+  );
+
   const query = useInfiniteQuery<FeedPost[]>({
     queryKey: ['feed-posts', tab],
     initialPageParam: 0,
@@ -140,7 +162,11 @@ export function useFeedPosts(tab: FeedTab, _fallbackItems: FeedPost[] = []) {
     },
   });
 
-  const feedPosts = useMemo(() => query.data?.pages.flat() ?? [], [query.data]);
+  const feedPosts = useMemo(() => {
+    const flat = query.data?.pages.flat() ?? [];
+    if (bookmarkedIds.size === 0) return flat;
+    return flat.map((p) => (bookmarkedIds.has(p.id) && !p.bookmarked ? { ...p, bookmarked: true } : p));
+  }, [query.data, bookmarkedIds]);
 
   const candidates: CandidatePost[] = useMemo(
     () =>
