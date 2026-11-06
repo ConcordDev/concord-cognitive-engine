@@ -5294,7 +5294,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Browse the UX suite.",
-      caption: "20 absorbed components \u2014 Settings, Progress, World, Ops, Shell tabs.",
+      caption: "19 absorbed components \u2014 Settings, Progress, World, Ops, Shell tabs.",
       firstActionLabel: "Browse components",
     },
     firstRunGuide: {
