@@ -433,6 +433,16 @@ export default function registerNewsActions(registerLensAction) {
     if (articles.length < 2) {
       return { ok: true, result: { message: "Need at least 2 articles to track narrative." } };
     }
+    // F4/D4 — the honest null its sibling engines return: narrative
+    // tracking compares framing ACROSS TIME, so a set whose articles
+    // share a single timestamp (or carry none) has no time windows —
+    // stability/shift figures over it would be verdict-shaped decoration.
+    const distinctTs = new Set(
+      articles.map((a) => new Date(a.date).getTime()).filter((t) => !Number.isNaN(t)),
+    );
+    if (distinctTs.size < 2) {
+      return { ok: true, result: { message: "Not available: narrative tracking compares framing across time, and this set's articles share a single timestamp (or carry none) — there are no time windows to compare. Add headlines spread over time." } };
+    }
 
     const windowSize = params.windowSize || 3;
     const r = (v) => Math.round(v * 10000) / 10000;
