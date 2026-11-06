@@ -95,6 +95,13 @@ export interface LensManifest {
   /** Data-tier label. DepthBadge renders the corresponding chip. */
   dataTier?: DataTier;
 
+  /** Platform Chrome II (S-PA-3) — this lens's records are a minor's data.
+   *  The shared Share & Publish dialog reads it: non-public visibility by
+   *  default, a what-will-be-shared preview naming this lens's artifact
+   *  classes, and the minor-privacy statement. Absent means the generic
+   *  share shape, unchanged. */
+  minorData?: boolean;
+
   /** Socket event names this lens listens to for live tile updates. useTilePush key list. */
   realtimeEvents?: string[];
 
@@ -2179,6 +2186,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['milestoneTracker', 'growthChart', 'vaccineSchedule', 'sleepAnalysis', 'developmentTips', 'schoolReadiness'],
     category: 'lifestyle',
     dataTier: 'REAL_FREE',
+    minorData: true,
     emptyState: {
       headline: 'No child profiles yet.',
       caption: 'Add a child profile; track milestones, schedule, vaccines, sleep. AAP guidelines power the milestone + vaccine timelines.',

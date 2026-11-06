@@ -155,8 +155,8 @@ export function Topbar({ trailing }: { trailing?: ReactNode } = {}) {
         )}
 
         {/* Social indicators: DM + Notifications */}
-        <DMIndicator userId={userData?.id || userData?._id} />
-        <NotificationBell userId={userData?.id || userData?._id} />
+        <DMIndicator userId={userData?.user?.id || userData?.id || userData?._id} />
+        <NotificationBell userId={userData?.user?.id || userData?.id || userData?._id} />
         {/* The panel toggle moves out of the bar on phones so the avatar stays on screen. */}
         {trailing && <div className="hidden items-center gap-1.5 sm:flex">{trailing}</div>}
 

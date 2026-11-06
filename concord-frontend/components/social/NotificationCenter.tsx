@@ -53,6 +53,10 @@ interface Notification {
   read: boolean;
   createdAt: string;
   metadata?: Record<string, unknown>;
+  /** Which store the row came from (Platform Chrome II, F16): the panel lists
+   *  the social store and the platform notification queue as one list, and
+   *  mutations route back to the owning store. Absent means social. */
+  source?: 'social' | 'platform';
 }
 
 interface GroupedNotification extends Notification {
@@ -397,7 +401,42 @@ function NotificationCenter({
     refetchInterval: 30000,
   });
 
-  const notifications = useMemo(() => notificationsQuery.data || [], [notificationsQuery.data]);
+  // Platform Chrome II (F16) — the platform notification queue joins the
+  // list. Fired alerts, reminders and platform events land in this store
+  // (enqueueNotification), which until now had a count route but no list
+  // route; the panel reads both stores and presents one list.
+  const platformQuery = useQuery({
+    queryKey: ['platform-notifications', userId],
+    queryFn: async () => {
+      const res = await api.get('/api/notifications', { params: { limit: 50 } });
+      const items = (res.data.notifications || []) as Array<Record<string, unknown>>;
+      return items.map((n): Notification => {
+        const payload = (n.payload || {}) as Record<string, unknown>;
+        return {
+          id: String(n.id),
+          type: 'system',
+          title: String(n.title || 'Notification'),
+          message: String(payload.message || payload.description || payload.why || n.title || ''),
+          read: !!n.readAt,
+          createdAt: String(n.createdAt || ''),
+          source: 'platform',
+        };
+      });
+    },
+    refetchInterval: 30000,
+  });
+
+  const notifications = useMemo(() => {
+    const merged = [...(notificationsQuery.data || []), ...(platformQuery.data || [])];
+    merged.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    return merged;
+  }, [notificationsQuery.data, platformQuery.data]);
+
+  const sourceOf = useCallback(
+    (id: string): 'social' | 'platform' =>
+      (platformQuery.data || []).some((n) => n.id === id) ? 'platform' : 'social',
+    [platformQuery.data]
+  );
 
   // ── Real-time socket subscription ───────────────────────────────────
 
@@ -409,6 +448,8 @@ function NotificationCenter({
       const unsub = subscribe('queue:notifications:new' as SocketEvent, () => {
         queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
         queryClient.invalidateQueries({ queryKey: ['notification-count', userId] });
+        queryClient.invalidateQueries({ queryKey: ['platform-notifications', userId] });
+        queryClient.invalidateQueries({ queryKey: ['notification-platform-count', userId] });
       });
 
       return unsub;
@@ -435,74 +476,100 @@ function NotificationCenter({
 
   const markReadMutation = useMutation({
     mutationFn: async (notificationId: string) => {
-      await api.post(`/api/social/notifications/${notificationId}/read`, { userId });
+      if (sourceOf(notificationId) === 'platform') {
+        await api.post(`/api/notifications/${notificationId}/read`, {});
+      } else {
+        await api.post(`/api/social/notifications/${notificationId}/read`, { userId });
+      }
     },
     onMutate: async (notificationId: string) => {
       await queryClient.cancelQueries({ queryKey: ['notifications', userId] });
-      queryClient.setQueryData(['notifications', userId], (old: Notification[] | undefined) => {
-        if (!old) return [];
-        return old.map((n) => (n.id === notificationId ? { ...n, read: true } : n));
-      });
-      // Also update count cache
+      await queryClient.cancelQueries({ queryKey: ['platform-notifications', userId] });
+      const mark = (old: Notification[] | undefined) =>
+        (old || []).map((n) => (n.id === notificationId ? { ...n, read: true } : n));
+      queryClient.setQueryData(['notifications', userId], mark);
+      queryClient.setQueryData(['platform-notifications', userId], mark);
+      // Also update count caches
       queryClient.setQueryData(
         ['notification-count', userId],
         (old: { count: number } | undefined) => ({
           count: Math.max(0, (old?.count ?? 1) - 1),
         })
       );
+      queryClient.setQueryData(['notification-platform-count', userId], (old: number | undefined) =>
+        Math.max(0, (old ?? 1) - 1)
+      );
     },
     onError: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
+      queryClient.invalidateQueries({ queryKey: ['platform-notifications', userId] });
     },
   });
 
   const markAllReadMutation = useMutation({
     mutationFn: async () => {
       await api.post('/api/social/notifications/read-all', { userId });
+      await api.post('/api/notifications/read-all', {});
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['notifications', userId] });
-      queryClient.setQueryData(['notifications', userId], (old: Notification[] | undefined) => {
-        if (!old) return [];
-        return old.map((n) => ({ ...n, read: true }));
-      });
+      await queryClient.cancelQueries({ queryKey: ['platform-notifications', userId] });
+      const markAll = (old: Notification[] | undefined) =>
+        (old || []).map((n) => ({ ...n, read: true }));
+      queryClient.setQueryData(['notifications', userId], markAll);
+      queryClient.setQueryData(['platform-notifications', userId], markAll);
       queryClient.setQueryData(['notification-count', userId], { count: 0 });
+      queryClient.setQueryData(['notification-platform-count', userId], 0);
     },
     onError: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
+      queryClient.invalidateQueries({ queryKey: ['platform-notifications', userId] });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (notificationId: string) => {
-      await api.delete(`/api/social/notifications/${notificationId}`);
+      if (sourceOf(notificationId) === 'platform') {
+        await api.delete(`/api/notifications/${notificationId}`);
+      } else {
+        await api.delete(`/api/social/notifications/${notificationId}`);
+      }
     },
     onMutate: async (notificationId: string) => {
       await queryClient.cancelQueries({ queryKey: ['notifications', userId] });
+      await queryClient.cancelQueries({ queryKey: ['platform-notifications', userId] });
       const previous = queryClient.getQueryData<Notification[]>(['notifications', userId]);
-      queryClient.setQueryData(['notifications', userId], (old: Notification[] | undefined) => {
-        if (!old) return [];
-        return old.filter((n) => n.id !== notificationId);
-      });
-      return { previous };
+      const previousPlatform = queryClient.getQueryData<Notification[]>(['platform-notifications', userId]);
+      const drop = (old: Notification[] | undefined) =>
+        (old || []).filter((n) => n.id !== notificationId);
+      queryClient.setQueryData(['notifications', userId], drop);
+      queryClient.setQueryData(['platform-notifications', userId], drop);
+      return { previous, previousPlatform };
     },
     onError: (_err, _id, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['notifications', userId], context.previous);
       }
+      if (context?.previousPlatform) {
+        queryClient.setQueryData(['platform-notifications', userId], context.previousPlatform);
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-count', userId] });
+      queryClient.invalidateQueries({ queryKey: ['notification-platform-count', userId] });
     },
   });
 
   const clearAllMutation = useMutation({
     mutationFn: async () => {
       await api.post('/api/social/notifications/read-all', { userId });
+      await api.post('/api/notifications/read-all', {});
     },
     onMutate: async () => {
       queryClient.setQueryData(['notifications', userId], []);
+      queryClient.setQueryData(['platform-notifications', userId], []);
       queryClient.setQueryData(['notification-count', userId], { count: 0 });
+      queryClient.setQueryData(['notification-platform-count', userId], 0);
     },
   });
 
