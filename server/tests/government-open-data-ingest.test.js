@@ -35,24 +35,36 @@ const FAKE_CKAN_RECORD = {
   metadata_modified: "2026-01-15T09:30:00.000000",
 };
 
+// Records every URL the handlers fetch, so tests can pin WHICH endpoint
+// was hit (the retired CKAN host vs the GSA v3 gateway).
+const fetchedUrls = [];
+
+// Mirror the two CKAN shapes the macros consume:
+//   package_show   → { result: <record> }
+//   package_search → { result: { results: [<record>, ...] } }
+const ckanTransport = async (url) => {
+  fetchedUrls.push(String(url));
+  const body = /package_search/.test(url)
+    ? { result: { results: [FAKE_CKAN_RECORD] } }
+    : { result: FAKE_CKAN_RECORD };
+  return { ok: true, status: 200, json: async () => body };
+};
+
 before(() => {
+  // The open-data handlers require a data.gov API key since the build
+  // moved them off the retired open CKAN endpoint (see the sourceUrl pin
+  // below); the suite supplies a dummy key so the fetch path runs.
+  process.env.DATA_GOV_API_KEY = "test-key";
   // Install the module-scope transport so government.js#fetchJsonGov's
   // fetchPublicUrl(url, {...}, {}) call (no per-call opts) returns our mock.
   // NOTE: the seam skips the SSRF guard by design (caller owns egress) — the
   // guard orchestration is proven separately in public-fetch.test.js. No real
   // network is touched here.
-  __setPublicFetchTestTransport(async (url) => {
-    // Mirror the two CKAN shapes the macro consumes:
-    //   package_show   → { result: <record> }
-    //   package_search → { result: { results: [<record>, ...] } }
-    const body = /package_search/.test(url)
-      ? { result: { results: [FAKE_CKAN_RECORD] } }
-      : { result: FAKE_CKAN_RECORD };
-    return { ok: true, status: 200, json: async () => body };
-  });
+  __setPublicFetchTestTransport(ckanTransport);
 });
 
 after(() => {
+  delete process.env.DATA_GOV_API_KEY;
   __setPublicFetchTestTransport(null); // restore the real guarded path
 });
 
@@ -88,9 +100,15 @@ test("open-data-ingest: fetch → stamp → validate → verify, provenance is r
   assert.match(prov.contentSha256, /^[a-f0-9]{64}$/, "contentSha256 must be 64-hex");
 
   // 4) sourceUrl is the URL the macro actually fetched (the CKAN package_show URL).
+  // PIN UPDATED (government build, 2026-11-05): data.gov retired its open
+  // CKAN Action API (catalog.data.gov/api/3 answers 404), so the handler
+  // now fetches through GSA's v3 CKAN-compatible gateway
+  // (api.gsa.gov/technology/datagov/v3/action) with an X-Api-Key header.
+  // The pin follows the fetched URL, as it must — provenance records the
+  // real source, never the retired one.
   assert.strictEqual(
     prov.sourceUrl,
-    "https://catalog.data.gov/api/3/action/package_show?id=ussteel-bridge-loads",
+    "https://api.gsa.gov/technology/datagov/v3/action/package_show?id=ussteel-bridge-loads",
     "provenance sourceUrl must be the fetched CKAN URL",
   );
   assert.strictEqual(prov.sourceId, "ussteel-bridge-loads", "sourceId must be the upstream record id");
@@ -121,6 +139,55 @@ test("open-data-ingest: tampering with the ingested content is detectable post-h
   const ver = protocol.verify(dtu);
   assert.strictEqual(ver.verified, false, "tampered ingest DTU must not verify");
   assert.strictEqual(ver.provenance.match, false, "provenance sub-check must catch the tamper");
+});
+
+test("open-data-search: returns shaped rows fetched through the GSA v3 gateway, key in the header not the URL", async () => {
+  fetchedUrls.length = 0;
+  const r = await lensRun("government", "open-data-search", {
+    params: { query: "bridge loads" },
+  });
+  assert.strictEqual(r.ok, true, `search must succeed, got: ${JSON.stringify(r)}`);
+  assert.strictEqual(r.result.results.length, 1);
+  assert.strictEqual(r.result.results[0].title, "US Steel Bridge Load Dataset");
+  assert.strictEqual(r.result.source, "data.gov CKAN API");
+  assert.strictEqual(fetchedUrls.length, 1);
+  assert.ok(
+    fetchedUrls[0].startsWith("https://api.gsa.gov/technology/datagov/v3/action/package_search"),
+    `search must hit the v3 gateway, fetched: ${fetchedUrls[0]}`,
+  );
+  assert.ok(!fetchedUrls[0].includes("test-key"), "the API key rides the X-Api-Key header, never the URL");
+});
+
+test("open-data-search: without DATA_GOV_API_KEY it declines honestly and fetches nothing", async () => {
+  delete process.env.DATA_GOV_API_KEY;
+  fetchedUrls.length = 0;
+  try {
+    const r = await lensRun("government", "open-data-search", {
+      params: { query: "bridge loads" },
+    });
+    const inner = r.result ?? r;
+    assert.strictEqual(inner.ok, false, "no key must fail honestly (no fabricated datasets)");
+    assert.match(String(inner.error), /DATA_GOV_API_KEY/);
+    assert.match(String(inner.error), /retired/);
+    assert.strictEqual(fetchedUrls.length, 0, "no fetch may be attempted without a key");
+  } finally {
+    process.env.DATA_GOV_API_KEY = "test-key";
+  }
+});
+
+test("open-data-search: an unreachable gateway is a user-language failure, not a transport dump", async () => {
+  __setPublicFetchTestTransport(async () => { throw new Error("socket hang up"); });
+  try {
+    const r = await lensRun("government", "open-data-search", {
+      params: { query: "bridge loads" },
+    });
+    const inner = r.result ?? r;
+    assert.strictEqual(inner.ok, false);
+    assert.match(String(inner.error), /could not reach data\.gov/);
+    assert.doesNotMatch(String(inner.error), /socket hang up|HTTP \d/);
+  } finally {
+    __setPublicFetchTestTransport(ckanTransport);
+  }
 });
 
 test("open-data-ingest: missing id AND query is an honest failure (no fabrication)", async () => {

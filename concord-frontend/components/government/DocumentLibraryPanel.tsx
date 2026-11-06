@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { FileSignature, Loader2, Plus, Trash2, PenLine, ShieldCheck, FileText } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { LocalRecordNotice } from './LocalRecordNotice';
 
 interface Signature { id: string; signerName: string; signerEmail: string; signedAt: string; fingerprint: string }
 interface GovDocument {
@@ -90,6 +91,11 @@ export function DocumentLibraryPanel() {
         </div>
         <input value={form.fileUrl} onChange={e => setForm({ ...form, fileUrl: e.target.value })} placeholder="Attachment URL (optional)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <textarea value={form.bodyText} onChange={e => setForm({ ...form, bodyText: e.target.value })} placeholder="Document body / form text" rows={3} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <div className="mb-2">
+          <LocalRecordNotice>
+            Local record only — publishing here posts the document inside your Concord workspace only. It is not an official filing, gazette notice, or public record with any authority, and a signature flag here signs nothing.
+          </LocalRecordNotice>
+        </div>
         {pubError && <div className="text-[10px] text-rose-400">{pubError}</div>}
         <button onClick={publish} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Publish document</button>
       </div>

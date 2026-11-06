@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Megaphone, Loader2, Phone, Mail, MessageSquare, FileText, Trash2, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { LocalRecordNotice } from './LocalRecordNotice';
 
 interface AdvocacyAction {
   id: string; billId: string; billTitle: string;
@@ -99,6 +100,11 @@ export function AdvocacyPanel() {
         {form.channel !== 'call' && (
           <textarea value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder="Your message to your representative" rows={2} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         )}
+        <div className="mb-2">
+          <LocalRecordNotice>
+            Logging an action here records it in your workspace only — Concord does not send your message to any representative. To deliver it, contact your representative through their official office (find them under My reps).
+          </LocalRecordNotice>
+        </div>
         {error && <div className="text-[10px] text-rose-400">{error}</div>}
         <button onClick={record} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center gap-1">
           <Megaphone className="w-3 h-3" />Log advocacy action

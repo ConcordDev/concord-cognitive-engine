@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { FileText, Plus, Loader2, Check, X, Send } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { LocalRecordNotice } from './LocalRecordNotice';
 import { cn } from '@/lib/utils';
 
 interface Permit {
@@ -72,6 +73,11 @@ export function PermitsPanel() {
         <span className="ml-auto text-[10px] text-gray-400">{permits.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2">
+        <div className="col-span-4">
+          <LocalRecordNotice>
+            Local record only — this does not apply for a permit with any permitting office. The application is saved only in your Concord workspace; no fee is collected by an authority and no permit is issued.
+          </LocalRecordNotice>
+        </div>
         <input value={form.applicantName} onChange={e => setForm({ ...form, applicantName: e.target.value })} placeholder="Applicant name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.applicantEmail} onChange={e => setForm({ ...form, applicantEmail: e.target.value })} placeholder="Email" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value })} placeholder="Kind (building / fence / business_license / event)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />

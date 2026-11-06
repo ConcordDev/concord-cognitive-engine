@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { LocalRecordNotice } from './LocalRecordNotice';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
@@ -164,6 +165,10 @@ export function GovernmentActionPanel() {
         <h3 className="text-sm font-semibold text-white">Civic workbench</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">govtrack · usaspending</span>
       </header>
+
+      <LocalRecordNotice>
+        These tools work inside Concord only: a civic brief DM goes to another Concord user, a published guide is a Concord document, and a drafted letter stays a draft. Nothing here is sent to any representative, agency, or official channel.
+      </LocalRecordNotice>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <input type="text" maxLength={5} value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="ZIP" />
