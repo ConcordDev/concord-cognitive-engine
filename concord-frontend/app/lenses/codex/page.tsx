@@ -48,7 +48,7 @@ function CodexLensInner() {
     [
       { id: 'codex-spine', keys: 'p', description: 'The Three Pillars', category: 'navigation', action: () => setActive('spine') },
       { id: 'codex-browse', keys: 'b', description: 'Browse canon', category: 'navigation', action: () => setActive('browse') },
-      { id: 'codex-open', keys: 'o', description: 'Open a codex page (search)', category: 'actions', action: openPage },
+      { id: 'codex-open', keys: 'o', description: 'Search the canon', category: 'actions', action: openPage },
     ],
     { lensId: 'codex' },
   );
@@ -105,18 +105,23 @@ function CodexLensInner() {
         </nav>
 
         {active === 'spine' && <SpinePanel spine={spine} />}
-        {active === 'browse' && <BrowsePanel facets={facets} onFacets={onFacets} />}
+        {/* Browse stays mounted across view switches (hidden, not
+            unmounted) so an expanded entry stays expanded on the
+            Browse → Pillars → Browse round-trip. */}
+        <div className={active === 'browse' ? undefined : 'hidden'}>
+          <BrowsePanel facets={facets} onFacets={onFacets} />
+        </div>
 
         <CrossLensRecentsPanel lensId="codex" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
 
         <button
           type="button"
           onClick={openPage}
-          title="Open a codex page (O)"
+          title="Search the canon (O)"
           className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
         >
           <Plus className="h-4 w-4" />
-          Open a page
+          Search the canon
         </button>
       </div>
     </LensShell>
