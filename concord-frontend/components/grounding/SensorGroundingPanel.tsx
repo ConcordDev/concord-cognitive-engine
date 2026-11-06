@@ -91,6 +91,7 @@ export function SensorGroundingPanel() {
       setSName(''); setSUnit('');
       qc.invalidateQueries({ queryKey: ['grounding-sensors'] });
       qc.invalidateQueries({ queryKey: ['grounding-status'] });
+      qc.invalidateQueries({ queryKey: ['grounding-context'] });
     },
     onError: (e) => note('err', pickMessage(e)),
   });
@@ -108,6 +109,7 @@ export function SensorGroundingPanel() {
       qc.invalidateQueries({ queryKey: ['grounding-readings'] });
       qc.invalidateQueries({ queryKey: ['grounding-sensors'] });
       qc.invalidateQueries({ queryKey: ['grounding-status'] });
+      qc.invalidateQueries({ queryKey: ['grounding-context'] });
     },
     onError: (e) => note('err', pickMessage(e)),
   });
@@ -124,6 +126,7 @@ export function SensorGroundingPanel() {
       note('ok', `DTU ${groundDtuId} grounded.`);
       setGroundDtuId(''); setGroundContext('');
       qc.invalidateQueries({ queryKey: ['grounding-status'] });
+      qc.invalidateQueries({ queryKey: ['grounding-context'] });
     },
     onError: (e) => note('err', pickMessage(e)),
   });

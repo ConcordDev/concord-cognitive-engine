@@ -9,6 +9,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 
+const invalidateSpy = vi.hoisted(() => vi.fn());
 const q: Record<string, unknown> = vi.hoisted(() => ({
   'grounding-status': { sensors: 1, readings: 1, groundedDtus: 0, pendingActions: 1, calendarEvents: 0, invariants: { ACTION_CONSENT: true } },
   'grounding-sensors': [{ id: 'sensor_1', name: 'PR2 Grounding Sensor 1031', type: 'temperature', unit: 'C', lastReading: 21.5, status: 'active' }],
@@ -38,7 +39,7 @@ vi.mock('@tanstack/react-query', () => ({
     },
     isPending: false,
   }),
-  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  useQueryClient: () => ({ invalidateQueries: invalidateSpy }),
 }));
 
 const groundingApi = vi.hoisted(() => ({
@@ -91,6 +92,22 @@ describe('grounding full build — Reality Anchor exits (S2)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
     await waitFor(() => expect(groundingApi.withdrawAction).toHaveBeenCalledWith('action_1'));
     await screen.findByText('Action withdrawn.');
+  });
+});
+
+describe('grounding full build — CURRENT CONTEXT moves (F8)', () => {
+  it('registering a sensor and adding a reading each invalidate the context query', async () => {
+    render(<SensorGroundingPanel />);
+    fireEvent.change(screen.getByLabelText('Sensor name'), { target: { value: 'New sensor' } });
+    fireEvent.click(screen.getByRole('button', { name: /Register sensor/ }));
+    await waitFor(() => expect(groundingApi.registerSensor).toHaveBeenCalled());
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['grounding-context'] }));
+    invalidateSpy.mockClear();
+    fireEvent.change(screen.getByLabelText('Sensor'), { target: { value: 'sensor_1' } });
+    fireEvent.change(screen.getByPlaceholderText('Value'), { target: { value: '19.5' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add reading/ }));
+    await waitFor(() => expect(groundingApi.addReading).toHaveBeenCalled());
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['grounding-context'] }));
   });
 });
 
