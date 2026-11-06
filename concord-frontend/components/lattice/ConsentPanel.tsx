@@ -66,7 +66,7 @@ export function ConsentPanel() {
       ) : (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <Stat label="My DTUs" value={myCorpus.data!.total} />
-          <Stat label="Consented" value={myCorpus.data!.consented} />
+          <Stat label="Consented (my DTU rows)" value={myCorpus.data!.consented} />
           <Stat label="Consent ratio" value={`${(myCorpus.data!.ratio * 100).toFixed(1)}%`} />
         </div>
       )}
