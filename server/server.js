@@ -17987,7 +17987,75 @@ register("grounding", "link_calendar", (ctx, input = {}) => {
 
 register("grounding", "propose_action", (ctx, input = {}) => {
   enforceEthosInvariant("grounding_propose");
-  return proposeAction(input);
+  const _proposer = lensRequireActor(ctx);
+  // A11: an action whose proposer cannot be stamped is not created.
+  // The unstamped (legacy) shape is withdrawable under the legacy
+  // rule alone; minting new ones would keep that population growing.
+  if (!_proposer.ok) return { ok: false, error: "auth_required" };
+  return proposeAction({ ...input, proposedBy: _proposer.actorId });
+}, { public: false });
+
+register("grounding", "remove_sensor", (ctx, input = {}) => {
+  enforceEthosInvariant("grounding_sensor_remove");
+  const sensorId = String(input.sensorId || "");
+  if (!sensorId) return { ok: false, error: "sensorId required" };
+  ensureGroundingEngine();
+  // Removal is the owner's exit: another account's sensor reads as
+  // "not found", the same discipline record_reading applies.
+  const _sn = STATE.grounding?.sensors?.get?.(sensorId);
+  if (!_sn) return { ok: false, error: "Sensor not found" };
+  if (_sn.ownerId) {
+    if (!lensRequireOwner(ctx, _sn.ownerId).ok) return { ok: false, error: "Sensor not found" };
+  } else if (!["owner", "admin", "founder"].includes(ctx.actor?.role)) {
+    // A11 (legacy unstamped): a pre-stamping sensor carries no owner;
+    // it is NOT public — removal is role-held, mirroring the approve gate.
+    return { ok: false, error: "Sensor not found" };
+  }
+  return removeSensor(sensorId);
+}, { public: false });
+
+register("grounding", "remove_reading", (ctx, input = {}) => {
+  enforceEthosInvariant("grounding_reading_remove");
+  const readingId = String(input.readingId || "");
+  if (!readingId) return { ok: false, error: "readingId required" };
+  ensureGroundingEngine();
+  // Ownership derives via the parent sensor, as record_reading checks it.
+  const _rd = STATE.grounding?.readings?.find?.(r => r.id === readingId);
+  if (!_rd) return { ok: false, error: "Reading not found" };
+  const _sn = STATE.grounding?.sensors?.get?.(_rd.sensorId);
+  if (_sn?.ownerId) {
+    if (!lensRequireOwner(ctx, _sn.ownerId).ok) return { ok: false, error: "Reading not found" };
+  } else if (!["owner", "admin", "founder"].includes(ctx.actor?.role)) {
+    // A11 (legacy unstamped): the parent sensor carries no owner —
+    // the reading's removal is role-held, as the sensor's is.
+    return { ok: false, error: "Reading not found" };
+  }
+  return removeReading(readingId);
+}, { public: false });
+
+register("grounding", "withdraw_action", (ctx, input = {}) => {
+  enforceEthosInvariant("grounding_withdraw");
+  const actionId = String(input.actionId || "");
+  if (!actionId) return { ok: false, error: "actionId required" };
+  ensureGroundingEngine();
+  const _act = STATE.grounding?.pendingActions?.find?.(a => a.id === actionId);
+  if (!_act) return { ok: false, error: "Action not found" };
+  // The proposer's own exit, taken before any consent decision. Actions
+  // proposed since proposer-stamping are owner-scoped (an owner/admin/
+  // founder may also withdraw, mirroring the approve gate).
+  if (_act.proposedBy) {
+    const _own = lensRequireOwner(ctx, _act.proposedBy).ok;
+    const _role = ["owner", "admin", "founder"].includes(ctx.actor?.role);
+    if (!_own && !_role) return { ok: false, error: "Only the proposer can withdraw this action" };
+  } else if (!["owner", "admin", "founder"].includes(ctx.actor?.role)) {
+    // A11 (legacy unstamped withdrawal): an action proposed before
+    // stamping carries no proposer. It is NOT withdrawable by any
+    // signed-in account — only the roles the approve gate trusts may
+    // withdraw it, so a legacy item keeps a role-held exit and loses
+    // its public one.
+    return { ok: false, error: "Only the proposer can withdraw this action" };
+  }
+  return withdrawAction(actionId);
 }, { public: false });
 
 register("grounding", "approve_action", (ctx, input = {}) => {
@@ -82873,6 +82941,7 @@ function proposeAction(input) {
     description: String(input.description || "").slice(0, 500),
     payload: input.payload || {},
     goalId,
+    proposedBy: input.proposedBy || null,
     status: STATE.grounding.config.requireActionConsent ? "pending_consent" : "approved",
     proposedAt: nowISO(),
     executedAt: null,
@@ -82932,6 +83001,65 @@ function approveAction(actionId) {
   saveStateDebounced();
 
   return { ok: true, action, result };
+}
+
+// Remove a sensor and its readings (the exit for registerSensor)
+function removeSensor(sensorId) {
+  ensureGroundingEngine();
+
+  const sensor = STATE.grounding.sensors.get(sensorId);
+  if (!sensor) return { ok: false, error: "Sensor not found" };
+
+  STATE.grounding.sensors.delete(sensorId);
+  const before = STATE.grounding.readings.length;
+  STATE.grounding.readings = STATE.grounding.readings.filter(r => r.sensorId !== sensorId);
+  const readingsRemoved = before - STATE.grounding.readings.length;
+
+  saveStateDebounced();
+  return { ok: true, removed: { sensorId, readingsRemoved } };
+}
+
+// Remove a single reading (the exit for recordSensorReading)
+function removeReading(readingId) {
+  ensureGroundingEngine();
+
+  const idx = STATE.grounding.readings.findIndex(r => r.id === readingId);
+  if (idx === -1) return { ok: false, error: "Reading not found" };
+
+  const [reading] = STATE.grounding.readings.splice(idx, 1);
+  // Keep the sensor's lastReading honest: if the removed reading was its
+  // latest, fall back to the newest remaining one (or none).
+  const sensor = STATE.grounding.sensors.get(reading.sensorId);
+  if (sensor && sensor.lastReading && sensor.lastReading.id === reading.id) {
+    const remaining = STATE.grounding.readings.filter(r => r.sensorId === reading.sensorId);
+    sensor.lastReading = remaining.length ? remaining[remaining.length - 1] : null;
+  }
+
+  saveStateDebounced();
+  return { ok: true, removed: { readingId } };
+}
+
+// Withdraw a pending action (the exit for proposeAction — the proposer's
+// retraction, taken before any consent decision; the withdrawal itself is
+// kept in the action history so the exit stays auditable)
+function withdrawAction(actionId) {
+  ensureGroundingEngine();
+
+  const actionIndex = STATE.grounding.pendingActions.findIndex(a => a.id === actionId);
+  if (actionIndex === -1) return { ok: false, error: "Action not found" };
+
+  const [action] = STATE.grounding.pendingActions.splice(actionIndex, 1);
+  action.status = "withdrawn";
+  action.withdrawnAt = nowISO();
+  STATE.grounding.actionHistory.push(action);
+
+  // Cap history
+  if (STATE.grounding.actionHistory.length > STATE.grounding.config.maxActionHistory) {
+    STATE.grounding.actionHistory = STATE.grounding.actionHistory.slice(-STATE.grounding.config.maxActionHistory);
+  }
+
+  saveStateDebounced();
+  return { ok: true, action };
 }
 
 function executeNotificationAction(action) {
