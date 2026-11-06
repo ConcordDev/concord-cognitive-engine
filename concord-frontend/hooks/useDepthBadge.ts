@@ -59,6 +59,19 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
   /**
+   * Urban Planning's workspace records (parcels, scenarios, projects,
+   * comments) are the account's own persisted data, and its County Data
+   * tab pulls live US Census ACS + HUD figures for its six preset metro
+   * counties — neither half is simulation (Review 5's Step-0a finding:
+   * the lens shipped a Simulated banner over a live-data surface). The
+   * generic REAL_LIVE caption names only the external half, so the
+   * override names both.
+   */
+  'urban-planning': {
+    label: 'Live',
+    caption: 'Live: your own parcels, scenarios, projects and comments, saved as you work — plus live US Census ACS and HUD figures for the six preset metro counties in County Data.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic
