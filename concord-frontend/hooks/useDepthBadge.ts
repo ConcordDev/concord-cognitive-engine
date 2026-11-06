@@ -199,6 +199,18 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace data: campaigns, donors, volunteers and pages are your live records; 990 research data is ProPublica’s open-access IRS dataset.',
   },
+  /**
+   * Feed's timeline is the platform's own social store — posts by the
+   * people on this instance — and its tools state (lists, polls, folders,
+   * saved searches, threads, controls) persists per account on Concord's
+   * backend. The generic REAL_LIVE line ("polled live from an external
+   * source") is false for this lens; the one external surface is the HN
+   * view, labelled there.
+   */
+  feed: {
+    label: 'Live',
+    caption: 'The timeline is this instance’s own social store: posts by the people here, and your lists, polls, folders and saved searches persist on Concord’s backend. Nothing here is polled from an external source; the HN view is the one external feed and says so.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
