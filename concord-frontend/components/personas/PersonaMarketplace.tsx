@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { runPersona } from './persona-envelope';
+import { useAuth } from '@/hooks/useAuth';
 
 interface PersonaCard {
   id: string;
@@ -26,6 +27,8 @@ interface PersonaCard {
 interface Facet { name: string; count: number }
 
 export function PersonaMarketplace({ onOpen }: { onOpen: (personaId: string) => void }) {
+  const { user } = useAuth();
+  const [note, setNote] = useState<string | null>(null);
   const [rows, setRows] = useState<PersonaCard[]>([]);
   const [total, setTotal] = useState(0);
   const [tags, setTags] = useState<Facet[]>([]);
@@ -154,12 +157,13 @@ export function PersonaMarketplace({ onOpen }: { onOpen: (personaId: string) => 
       ) : (
         <>
           <p className="text-[11px] text-zinc-400">{total} persona{total === 1 ? '' : 's'}</p>
+          {note && <p role="status" className="text-[11px] text-cyan-200">{note}</p>}
           <ul className="grid gap-2 sm:grid-cols-2">
             {rows.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 hover:border-purple-700/60">
                 <button
                   type="button" onClick={() => onOpen(p.id)}
-                  className="w-full text-left flex gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 hover:border-purple-700/60"
+                  className="w-full text-left flex gap-3"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={p.portrait} alt={p.name} className="h-14 w-14 rounded-lg flex-shrink-0" />
@@ -171,6 +175,22 @@ export function PersonaMarketplace({ onOpen }: { onOpen: (personaId: string) => 
                     </div>
                   </div>
                 </button>
+                {user?.id && p.authorUserId !== user.id && (
+                  <button
+                    type="button"
+                    aria-label={`Install ${p.name}`}
+                    onClick={async () => {
+                      const r = await runPersona('install', { personaId: p.id });
+                      if (r.ok) {
+                        setNote(`Installed "${p.name}" (v${(r.data as any)?.version}).`);
+                        await load();
+                      } else {
+                        setNote(`Install failed: ${r.error || 'unknown error'}`);
+                      }
+                    }}
+                    className="mt-2 text-[11px] px-2.5 py-1 rounded-md bg-cyan-800 hover:bg-cyan-700 text-cyan-100"
+                  >Install</button>
+                )}
               </li>
             ))}
           </ul>

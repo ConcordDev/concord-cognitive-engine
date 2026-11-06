@@ -236,6 +236,15 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Live group requests posted by players across Concord’s worlds, read from the board itself — an empty board means nobody is looking right now.',
   },
   /**
+   * Personas are authored by users on the platform and traded in its own
+   * marketplace — the store is the source, not an external poll. Chat
+   * replies carry their own basis labels in the chat itself.
+   */
+  personas: {
+    label: 'Live',
+    caption: 'Personas authored by you and other authors, read live from the platform’s own store — an empty marketplace means nobody has published one yet.',
+  },
+  /**
    * Nonprofit's own records (campaigns, donors, volunteers, pages, events)
    * are live per-user workspace data; the 990 research data is ProPublica's
    * open-access IRS dataset — real, but static reference data. The generic
