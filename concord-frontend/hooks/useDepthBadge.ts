@@ -85,6 +85,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Live: residues are the world\'s real drift events, read from live world state as they occur — an empty plane means the world is quiet right now, not a simulation or a dead feed. Your hunts, dossiers and confront history are your own records.',
   },
   /**
+   * Reflection holds two systems: the member's own journal (entries,
+   * insights, analytics computed from those records) and the engine's
+   * self-critique log. Nothing is polled from an external source — the
+   * generic REAL_LIVE caption would be false here; the only outside data
+   * is Studio weather, fetched live when a place is pinned.
+   */
+  reflection: {
+    label: 'Live',
+    caption: 'Entries, insights and analytics here are computed live from your own journal records in the platform store; the Self-Critique Log holds the engine\'s own evaluation records. The only outside data is Studio weather, fetched live when you pin a place.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic

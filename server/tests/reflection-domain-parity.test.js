@@ -188,15 +188,65 @@ describe("reflection AI helpers", () => {
   it("reflect-deepen falls back to deterministic questions", async () => {
     const c = call("entry-create", ctxA, { text: "I felt overwhelmed at work today." });
     const r = await call("reflect-deepen", ctxA, { id: c.result.entry.id });
-    assert.equal(r.result.composer, "deterministic");
     assert.equal(r.result.questions.length, 3);
+    assert.equal(r.result.assistedQuestions, null);
   });
 
   it("entry-summarize falls back to deterministic summary", async () => {
     const c = call("entry-create", ctxA, { text: "First sentence here. Second sentence too. Third one." });
     const r = await call("entry-summarize", ctxA, { id: c.result.entry.id });
-    assert.equal(r.result.composer, "deterministic");
-    assert.ok(r.result.summary.length > 0);
+    assert.equal(r.result.summary, "First sentence here. Second sentence too.");
+    assert.equal(r.result.assisted, null);
+  });
+
+  // S-REFL-1 (D2): with a brain present, its text returns SEPARATELY as
+  // `assisted` — the summary stays the writer's own sentences, verbatim,
+  // and the grounded question set is never replaced.
+  it("a brain rewording never replaces the extractive summary or the grounded questions", async () => {
+    const brainCtx = {
+      ...ctxA,
+      llm: { chat: async ({ system }) => system.includes("follow-up questions")
+        ? "What about the challenge you mentioned?\nAnd the gratitude?\nAnd tomorrow?"
+        : "An invented challenge and gratitude, rewritten." },
+    };
+    const c = call("entry-create", ctxA, { text: "I walked the river path at dawn. The water was flat and grey." });
+    const sum = await call("entry-summarize", brainCtx, { id: c.result.entry.id });
+    assert.equal(sum.result.summary, "I walked the river path at dawn. The water was flat and grey.");
+    assert.equal(sum.result.assisted, "An invented challenge and gratitude, rewritten.");
+    const deep = await call("reflect-deepen", brainCtx, { id: c.result.entry.id });
+    assert.deepEqual(deep.result.questions, [
+      "What part of this still feels unresolved?",
+      "If a friend wrote this, what would you want to ask them?",
+      "What does this entry tell you about what you need right now?",
+    ]);
+    assert.equal(deep.result.assistedQuestions.length, 3);
+  });
+});
+
+describe("reflection metric integrity (S-REFL-6)", () => {
+  it("a template draft does not move the streak; writing over it does", () => {
+    const tpl = call("templates-list", ctxA, {});
+    const draft = call("entry-from-template", ctxA, { templateId: tpl.result.templates[0].id, date: today() });
+    assert.equal(draft.result.entry.fromTemplate, tpl.result.templates[0].id);
+    let dash = call("reflection-dashboard", ctxA, { today: today() });
+    assert.equal(dash.result.currentStreak, 0);
+    call("entry-update", ctxA, { id: draft.result.entry.id, text: "My own words about today, written out in full." });
+    dash = call("reflection-dashboard", ctxA, { today: today() });
+    assert.equal(dash.result.currentStreak, 1);
+  });
+
+  it("growth metrics carry their rule (basis) for every label (S-REFL-3)", () => {
+    call("entry-create", ctxA, { text: "A hard day, worried and tired.", date: dayOffset(-2) });
+    call("entry-create", ctxA, { text: "A great day, grateful and happy, thankful for progress.", date: dayOffset(-1) });
+    call("entry-create", ctxA, { text: "Another wonderful day, proud and accomplished, hopeful and strong.", date: today() });
+    const g = ACTIONS.get("reflection.growthMetrics")(ctxA, { id: null, meta: {}, data: { entries: [
+      { text: "A hard day, worried and tired.", date: dayOffset(-2) },
+      { text: "A great day, grateful and happy, thankful for progress.", date: dayOffset(-1) },
+      { text: "Another wonderful day, proud and accomplished, hopeful and strong.", date: today() },
+    ] } }, {});
+    assert.match(g.result.sentiment.basis, /date order/);
+    assert.match(g.result.vocabularyDiversity.basis, /unique-word ratio/);
+    assert.match(g.result.entryDepth.basis, /word counts/);
   });
 });
 
