@@ -35,7 +35,7 @@ export function OverviewPanel() {
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             <Stat label="Total rows" value={corpusStats.data!.totals.total} />
-            <Stat label="Consented" value={corpusStats.data!.totals.consented} />
+            <Stat label="Consented (DTU rows)" value={corpusStats.data!.totals.consented} />
             <Stat label="Consent ratio" value={`${(corpusStats.data!.totals.ratio * 100).toFixed(1)}%`} />
           </div>
           <div className="mt-3">

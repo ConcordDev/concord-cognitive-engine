@@ -20,7 +20,7 @@ import {
   AlertTriangle, RefreshCw,
 } from 'lucide-react';
 
-const BRAINS = ['conscious', 'subconscious', 'utility', 'repair'] as const;
+const BRAINS = ['conscious', 'subconscious', 'utility', 'repair', 'multimodal', 'lattice'] as const;
 
 function ErrorRow({ message, onRetry, retrying }: { message: string; onRetry: () => void; retrying?: boolean }) {
   return (
@@ -70,11 +70,20 @@ async function getJSON<T>(url: string): Promise<T> {
   return r.json() as Promise<T>;
 }
 function postJSON<T = any>(url: string, body: unknown): Promise<T> {
+  // S1 (F1): a refusal must THROW — the retired form resolved on any
+  // response (the admin gate's 403 body included), so the mutation
+  // "succeeded", invalidated, and the control snapped back in silence.
   return fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  }).then((r) => r.json());
+  }).then(async (r) => {
+    const data = await r.json().catch(() => null);
+    if (!r.ok || (data && data.ok === false)) {
+      throw new Error(data?.error || `${r.status} ${r.statusText}`);
+    }
+    return data as T;
+  });
 }
 function fmt(ts: number | null): string {
   return ts ? new Date(ts * 1000).toLocaleString() : '—';
@@ -88,9 +97,10 @@ export function RefreshSchedule() {
 
   const schedule = useQuery({
     queryKey: ['lattice-schedule'],
-    queryFn: () => getJSON<{ ok: boolean; schedule: ScheduleRow[] }>('/api/brains/schedule'),
+    queryFn: () => getJSON<{ ok: boolean; canEdit?: boolean; schedule: ScheduleRow[] }>('/api/brains/schedule'),
     refetchInterval: 60_000,
   });
+  const canEdit = schedule.data?.canEdit !== false;
 
   const abTests = useQuery({
     queryKey: ['lattice-ab-tests'],
@@ -102,7 +112,9 @@ export function RefreshSchedule() {
     mutationFn: (b: { brain: string; enabled: boolean; cadence: string }) =>
       postJSON('/api/brains/schedule', b),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['lattice-schedule'] }),
+    onError: (e) => setScheduleError(e instanceof Error ? e.message : 'Schedule change refused'),
   });
+  const [scheduleError, setScheduleError] = useState('');
 
   const startAB = useMutation({
     mutationFn: () =>
@@ -141,6 +153,17 @@ export function RefreshSchedule() {
           manual trigger. Enabled brains run on their cadence; the next-run time advances
           after each pass.
         </p>
+        {!schedule.isLoading && !schedule.isError && !canEdit && (
+          <p className="mb-3 rounded border border-fuchsia-900/40 bg-fuchsia-950/20 px-3 py-2 text-xs text-fuchsia-300">
+            Schedule changes are admin-gated — the same gate as the manual refresh trigger.
+            You can read the current cadence; an admin can change it.
+          </p>
+        )}
+        {scheduleError && (
+          <p role="alert" className="mb-3 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+            Schedule change refused: {scheduleError}
+          </p>
+        )}
         {schedule.isLoading ? (
           <Loader2 role="status" aria-label="Loading schedule" className="h-4 w-4 animate-spin text-fuchsia-500" />
         ) : schedule.isError ? (
@@ -167,6 +190,7 @@ export function RefreshSchedule() {
                     <td className="px-3 py-2 text-fuchsia-300">{r.brain_id}</td>
                     <td className="px-3 py-2">
                       <select
+                        disabled={!canEdit}
                         value={r.cadence}
                         onChange={(e) =>
                           setSchedule.mutate({
@@ -194,7 +218,7 @@ export function RefreshSchedule() {
                             cadence: r.cadence,
                           })
                         }
-                        disabled={setSchedule.isPending}
+                        disabled={!canEdit || setSchedule.isPending}
                         className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 ${
                           r.enabled
                             ? 'bg-emerald-700/40 text-emerald-200'
