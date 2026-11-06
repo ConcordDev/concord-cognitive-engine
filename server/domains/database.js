@@ -1,5 +1,7 @@
 // server/domains/database.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { encryptKeySync, decryptKeySync } from "../lib/byo-crypto.js";
+import { testRemotePostgres } from "../lib/db-dial.js";
 export default function registerDatabaseActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // The analysis quartet reads its input from the artifact when one is
@@ -372,18 +374,49 @@ export default function registerDatabaseActions(registerLensAction) {
 
   // ── Connection manager ────────────────────────────────────────────────
 
+  // DBX-2 (Database §8): a connection password is stored ONLY as a
+  // byo-crypto v2 ciphertext (AES-GCM, per-user key — the same module
+  // that wraps BYO provider keys; no second cipher). The blob is
+  // base64-wrapped because connection records live in the JSON state
+  // bucket, not a BLOB column. No macro ever returns the ciphertext or
+  // the plaintext: summaries carry hasPassword and nothing else. If the
+  // credential store is unfit (production JWT_SECRET gate), creation
+  // refuses honestly — there is no plaintext fallback.
+  // The domain's macros are synchronous, so the vault uses
+  // byo-crypto's sync twin — identical BYOv2 bytes, openable by the
+  // canonical async decryptKey (and vice versa).
+  function dbEncryptPassword(ctx, password) {
+    const blob = encryptKeySync(dbActor(ctx), password);
+    return Buffer.from(blob).toString("base64");
+  }
+  function dbPortParam(v) {
+    if (v == null || v === "") return { port: null };
+    const p = Number(v);
+    if (!Number.isInteger(p) || p < 1 || p > 65535) return { error: "port must be an integer between 1 and 65535" };
+    return { port: p };
+  }
+
   registerLensAction("database", "connection-create", (ctx, _a, params = {}) => {
     const s = getDbStore(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = dbClean(params.name, 80);
     if (!name) return { ok: false, error: "connection name required" };
+    const { port, error: portError } = dbPortParam(params.port);
+    if (portError) return { ok: false, error: portError };
+    let passwordEnc = null;
+    if (typeof params.password === "string" && params.password.length > 0) {
+      try { passwordEnc = dbEncryptPassword(ctx, params.password); }
+      catch { return { ok: false, error: "credential_store_unavailable", message: "The credential store is unavailable, so the password was not saved and the connection was not created. No plaintext is ever stored as a fallback." }; }
+    }
     const conn = {
       id: dbId("conn"),
       name,
       engine: ["sqlite", "postgresql", "mysql", "in-memory"].includes(params.engine) ? params.engine : "in-memory",
       host: dbClean(params.host, 200) || "local",
+      port,
       database: dbClean(params.database, 120) || name,
       // credentials stored per-user (never leaves the user's STATE bucket)
       username: dbClean(params.username, 120) || "",
+      passwordEnc,
       readOnly: params.readOnly !== false,
       relations: [],
       indexes: [],
@@ -399,8 +432,8 @@ export default function registerDatabaseActions(registerLensAction) {
 
   function connSummary(c) {
     return {
-      id: c.id, name: c.name, engine: c.engine, host: c.host, database: c.database,
-      username: c.username, readOnly: c.readOnly, color: c.color,
+      id: c.id, name: c.name, engine: c.engine, host: c.host, port: c.port ?? null, database: c.database,
+      username: c.username, hasPassword: !!c.passwordEnc, readOnly: c.readOnly, color: c.color,
       datasetCount: c.datasets.length,
       rowTotal: c.datasets.reduce((n, d) => n + d.rows.length, 0),
       createdAt: c.createdAt, lastUsedAt: c.lastUsedAt,
@@ -419,8 +452,22 @@ export default function registerDatabaseActions(registerLensAction) {
     if (!c) return { ok: false, error: "connection not found" };
     if (params.name != null) c.name = dbClean(params.name, 80) || c.name;
     if (params.host != null) c.host = dbClean(params.host, 200);
+    if (params.port !== undefined) {
+      const { port, error: portError } = dbPortParam(params.port);
+      if (portError) return { ok: false, error: portError };
+      c.port = port;
+    }
     if (params.database != null) c.database = dbClean(params.database, 120);
     if (params.username != null) c.username = dbClean(params.username, 120);
+    // Password semantics: a non-empty string REPLACES the stored
+    // ciphertext; clearPassword:true REMOVES it; an absent password
+    // field preserves what is stored (summaries never echo it back, so
+    // an edit form round-trip cannot clobber it).
+    if (params.clearPassword === true) c.passwordEnc = null;
+    else if (typeof params.password === "string" && params.password.length > 0) {
+      try { c.passwordEnc = dbEncryptPassword(ctx, params.password); }
+      catch { return { ok: false, error: "credential_store_unavailable", message: "The credential store is unavailable, so the password was not changed. No plaintext is ever stored as a fallback." }; }
+    }
     if (params.readOnly != null) c.readOnly = params.readOnly !== false;
     if (params.color != null) c.color = dbClean(params.color, 16) || c.color;
     saveDatabase();
@@ -443,10 +490,40 @@ export default function registerDatabaseActions(registerLensAction) {
     if (!c) return { ok: false, error: "connection not found" };
     c.lastUsedAt = new Date().toISOString();
     saveDatabase();
-    // Datasets live in Concord's workspace store; host/database/username are labels.
-    // This confirms the workspace copy is readable — it never contacts a remote server.
+    // DBX-3 (§8): a PostgreSQL connection pointed at a real host gets a
+    // real test — SSRF-guarded, dialed on the validated IP, reported
+    // by stage. That branch is async; everything else keeps the
+    // synchronous workspace answer below, word for word: the datasets
+    // live in Concord's workspace store and no remote is contacted.
+    const remoteHost = typeof c.host === "string" && c.host.trim() !== "" && c.host !== "local";
+    if (remoteHost && c.engine === "postgresql") return dbRemoteTest(ctx, c);
+    if (remoteHost && c.engine === "mysql") {
+      return { ok: true, result: { connected: false, scope: "remote", remoteContacted: false, engine: c.engine, remoteTest: "not_wired_for_engine", message: "Remote connection tests are wired for PostgreSQL so far, so this MySQL server was not contacted. The connection's workspace copy is unaffected." } };
+    }
     return { ok: true, result: { connected: true, scope: "workspace", remoteContacted: false, engine: c.engine, datasets: c.datasets.length } };
   });
+
+  // The remote half of connection-test. The stored password is
+  // decrypted in memory only (never returned, never logged); a blob
+  // that no longer opens is an honest credentials-stage refusal —
+  // nothing is dialed with a wrong or unreadable secret.
+  async function dbRemoteTest(ctx, c) {
+    let password = "";
+    if (c.passwordEnc) {
+      password = decryptKeySync(dbActor(ctx), Buffer.from(c.passwordEnc, "base64"));
+      if (password == null) {
+        return { ok: true, result: { connected: false, scope: "remote", remoteContacted: false, stage: "credentials", engine: c.engine, error: "The stored password could not be read — it may have been saved under a different sign-in, or the credential store has changed. Re-enter the password on the connection and test again; nothing was contacted." } };
+      }
+    }
+    const r = await testRemotePostgres({
+      host: c.host,
+      port: c.port ?? 5432,
+      user: c.username || undefined,
+      password: password || undefined,
+      database: c.database || undefined,
+    });
+    return { ok: true, result: { connected: r.connected, scope: "remote", remoteContacted: r.remoteContacted, stage: r.stage, code: r.code, error: r.error, engine: c.engine, hostname: r.hostname, resolvedIp: r.resolvedIp, port: r.port, latencyMs: r.latencyMs, serverVersion: r.serverVersion } };
+  }
 
   // ── Datasets (tables) — typed columns + real rows ─────────────────────
 
