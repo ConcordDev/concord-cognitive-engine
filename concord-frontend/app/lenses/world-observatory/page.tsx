@@ -52,6 +52,7 @@ import {
 interface WorldSummary {
   worldId: string;
   name: string;
+  isTestWorld?: boolean;
   activeUsers: number;
   factionCount: number;
   realmCount: number;
@@ -115,6 +116,8 @@ interface HealthFinding {
 }
 
 interface WorldDetail {
+  worldName?: string | null;
+  isTestWorld?: boolean;
   worldId: string;
   population: { activeUsers: number };
   factions: { count: number; states: FactionState[]; relations: FactionRelation[] };
@@ -163,6 +166,37 @@ const OBS_TABS: { id: ObsView; label: string; keys: string; hint: string; icon: 
   { id: 'liveness', label: 'Liveness', keys: '5', hint: 'Faction scheduler liveness findings', icon: ShieldAlert },
 ];
 
+// S3 (F5): the export carries the DISPLAYED state — the header's
+// generic artifact export rode a kind with no rows and produced token
+// files. This one serializes what the reader is looking at.
+// F8: loyalty values render rounded to one decimal — whole numbers
+// stay whole ("60"), leaked floats die ("36.13999999999999" → "36.1").
+function fmtLoyalty(n: unknown): string {
+  const v = Math.round(Number(n) * 10) / 10;
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+
+function exportObservatory(format: 'json' | 'csv', overview: WorldSummary[], detail: WorldDetail | null) {
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  let blob: Blob; let name: string;
+  if (format === 'json') {
+    blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), worlds: overview, detail }, null, 2)], { type: 'application/json' });
+    name = `world-observatory-${stamp}.json`;
+  } else {
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [
+      ['world', 'test_data', 'active_users', 'factions', 'realms', 'districts', 'stuck_schedulers'].join(','),
+      ...overview.map((w) => [esc(w.name), w.isTestWorld ? 'yes' : 'no', w.activeUsers, w.factionCount, w.realmCount, w.districtCount, w.stuckFactionSchedulers].join(',')),
+    ];
+    blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    name = `world-observatory-${stamp}.csv`;
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
 export default function WorldObservatoryPage() {
   const [view, setView] = useState<ObsView>('worlds');
   const [overview, setOverview] = useState<WorldSummary[]>([]);
@@ -172,6 +206,10 @@ export default function WorldObservatoryPage() {
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  /** S4 (F8): a MANUAL refresh receipt, distinct from the auto scan —
+   * the retired surface advanced one stamp for both, so a refresh
+   * could never be verified from the surface. */
+  const [lastManualRefresh, setLastManualRefresh] = useState<Date | null>(null);
 
   const [selectedWorldId, setSelectedWorldId] = useState<string | null>(null);
   const [detail, setDetail] = useState<WorldDetail | null>(null);
@@ -261,6 +299,11 @@ export default function WorldObservatoryPage() {
     if (selectedWorldId) loadDetail(selectedWorldId);
   }, [refreshOverview, selectedWorldId, loadDetail]);
 
+  const manualRefresh = useCallback(() => {
+    setLastManualRefresh(new Date());
+    refreshAll();
+  }, [refreshAll]);
+
   useEffect(() => {
     void Promise.resolve().then(refreshOverview);
   }, [refreshOverview]);
@@ -276,7 +319,7 @@ export default function WorldObservatoryPage() {
 
   useLensCommand(
     [
-      { id: 'refresh', keys: 'r', description: 'Refresh the observatory now', category: 'actions', action: refreshAll },
+      { id: 'refresh', keys: 'r', description: 'Refresh the observatory now', category: 'actions', action: manualRefresh },
       ...OBS_TABS.map((t) => ({
         id: `obs-${t.id}`,
         keys: t.keys,
@@ -356,7 +399,10 @@ export default function WorldObservatoryPage() {
               </span>
             )}
             {lastRefresh && <span>scanned {lastRefresh.toLocaleTimeString()}</span>}
-            <span>{overview.length} world{overview.length === 1 ? '' : 's'}</span>
+            {lastManualRefresh && <span className="text-cyan-300">manual refresh {lastManualRefresh.toLocaleTimeString()}</span>}
+            <span>{overview.filter((w) => !w.isTestWorld).length} world{overview.filter((w) => !w.isTestWorld).length === 1 ? '' : 's'}{overview.some((w) => w.isTestWorld) ? ` · ${overview.filter((w) => w.isTestWorld).length} test` : ''}</span>
+            <button type="button" onClick={() => exportObservatory('json', overview, detail)} className="rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10" title="Download the displayed observatory state as JSON">Export JSON</button>
+            <button type="button" onClick={() => exportObservatory('csv', overview, detail)} className="rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10" title="Download the world grid as CSV">Export CSV</button>
             <span>{totalActiveUsers} active user{totalActiveUsers === 1 ? '' : 's'}</span>
           </div>
         }
@@ -367,7 +413,7 @@ export default function WorldObservatoryPage() {
         cta={{
           label: overviewLoading ? 'Refreshing…' : 'Refresh observatory',
           icon: RefreshCcw,
-          onClick: refreshAll,
+          onClick: manualRefresh,
           title: 'Rescan all worlds (R)',
           disabled: overviewLoading,
         }}
@@ -410,6 +456,9 @@ export default function WorldObservatoryPage() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate text-[13px] font-semibold text-slate-100">{w.name}</span>
+                        {w.isTestWorld && (
+                          <span className="shrink-0 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-200">Test data</span>
+                        )}
                         {stuck ? (
                           <span className="flex shrink-0 items-center gap-1 rounded-full bg-red-500/20 px-1.5 py-0.5 text-[9px] font-medium text-red-200">
                             <ShieldAlert className="h-3 w-3" aria-hidden="true" />
@@ -474,6 +523,11 @@ export default function WorldObservatoryPage() {
 
               {detail && detail.worldId === selectedWorldId && (
                 <>
+              {detail.isTestWorld && (
+                <p className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+                  TEST DATA — this world is test/harness data, not a canon world. Its figures are shown for completeness and are badged everywhere they appear.
+                </p>
+              )}
               {view === 'factions' && (
                 <div className="mb-4 flex flex-wrap gap-3">
                   <Metric label="active users" value={String(detail.population.activeUsers)} />
@@ -517,8 +571,15 @@ export default function WorldObservatoryPage() {
                         {detail.factions.relations.length === 0 ? (
                           <p className="text-[11px] text-slate-500">No tracked relations between these factions yet.</p>
                         ) : (
-                          <div className="flex flex-wrap gap-1.5">
-                            {detail.factions.relations.map((r) => (
+                          <div className="space-y-2">
+                            <p className="text-[11px] text-slate-400">
+                              Relations touching this world&rsquo;s factions. Edges whose other side has no living presence here are grouped as cross-world — they are not this world&rsquo;s internal relations.
+                            </p>
+                            {[{ label: 'Within this world', items: detail.factions.relations.filter((r) => !r.crossWorld) }, { label: 'Cross-world relations', items: detail.factions.relations.filter((r) => r.crossWorld) }].filter((g) => g.items.length > 0).map((g) => (
+                            <div key={g.label}>
+                              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{g.label}</p>
+                              <div className="flex flex-wrap gap-1.5">
+                            {g.items.map((r) => (
                               <span
                                 key={`${r.a}:${r.b}`}
                                 className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] ${relationTone(r.kind)}`}
@@ -536,6 +597,9 @@ export default function WorldObservatoryPage() {
                                   </span>
                                 )}
                               </span>
+                            ))}
+                              </div>
+                            </div>
                             ))}
                           </div>
                         )}
@@ -579,7 +643,7 @@ export default function WorldObservatoryPage() {
                                 <span>no citizens tracked</span>
                               ) : (
                                 <span>
-                                  {r.citizens.count} citizen{r.citizens.count === 1 ? '' : 's'} · loyalty avg {r.citizens.avg} (range {r.citizens.low}–{r.citizens.high})
+                                  {r.citizens.count} citizen{r.citizens.count === 1 ? '' : 's'} · loyalty avg {fmtLoyalty(r.citizens.avg)} (range {fmtLoyalty(r.citizens.low)}–{fmtLoyalty(r.citizens.high)})
                                 </span>
                               )}
                             </div>
