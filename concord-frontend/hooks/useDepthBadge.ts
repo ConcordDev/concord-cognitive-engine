@@ -498,6 +498,18 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your world records: land claims and houses are your real persistent state in Concord’s worlds, and the tools work on your own plots and buildings. No external feed is polled.',
   },
   /**
+   * Experience's portfolio and research records are the account's own,
+   * kept in the platform store and computed in-process; published
+   * portfolios surface in the Directory for peer endorsement. The
+   * generic REAL_LIVE line ("polled live from an external source") is
+   * false for that substrate — the one live outside read is the Atlas's
+   * GitHub pull, named here and labelled at its panel.
+   */
+  experience: {
+    label: 'Live',
+    caption: 'Your portfolio and research records live here, in the platform store; published portfolios appear in the Directory for peers to endorse. The Atlas reads live from GitHub, labelled there.',
+  },
+  /**
    * Nonprofit's own records (campaigns, donors, volunteers, pages, events)
    * are live per-user workspace data; the 990 research data is ProPublica's
    * open-access IRS dataset — real, but static reference data. The generic

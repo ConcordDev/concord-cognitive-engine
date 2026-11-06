@@ -662,6 +662,12 @@ export default function registerExperienceActions(registerLensAction) {
       const x = xState();
       const runId = clean(params.runId, 80);
       if (!runId) return { ok: false, error: "runId required" };
+      // S4: a clip is a cut FROM a recorded run — refuse a runId that is not
+      // among the caller's own recorded runs, with the run named in the
+      // error (the pass's F5: clips stood against nonexistent runs).
+      if (!arr(x.runs, uid(ctx)).some(r => r.id === runId)) {
+        return { ok: false, error: `run not found: ${runId} — clips cut from your recorded runs only` };
+      }
       const startMs = Math.max(0, num(params.startMs));
       const endMs = Math.max(startMs + 1, num(params.endMs, startMs + 1000));
       const clip = {
@@ -730,6 +736,16 @@ export default function registerExperienceActions(registerLensAction) {
         if (r) return { ok: true, result: { kind: "reel", reel: { name: r.name, totalDurationMs: r.totalDurationMs, clips: (r.clips || []).map(pub) } } };
       }
       return { ok: false, error: "share not found" };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("experience", "listReels", (ctx, _a, _params = {}) => {
+    try {
+      const x = xState();
+      const reels = arr(x.reels, uid(ctx)).map(r => ({
+        id: r.id, name: r.name, clipCount: r.clipCount, totalDurationMs: r.totalDurationMs,
+      }));
+      return { ok: true, result: { reels, count: reels.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -855,6 +871,139 @@ export default function registerExperienceActions(registerLensAction) {
           hotspots,
         },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // 8. Lifecycle exits (S3) — every suite object type is deletable by its
+  //    owner. Each verb removes from the caller's OWN per-user collection
+  //    only (the Maps are keyed by userId), refuses an unknown id in
+  //    words, and states what was removed. Cascades are named in the
+  //    result: deleting a test removes its runs and the clips cut from
+  //    them; deleting a survey removes its responses; deleting a study
+  //    removes the study object itself (its clicks/submissions live on
+  //    the object); deleting a prototype removes it with its recorded
+  //    interactions; deleting a reel removes the reel, never its clips.
+  // ════════════════════════════════════════════════════════════════════
+  function removeFrom(map, userId, id) {
+    const rows = arr(map, userId);
+    const idx = rows.findIndex(r => r.id === id);
+    if (idx < 0) return null;
+    return rows.splice(idx, 1)[0];
+  }
+
+  registerLensAction("experience", "deleteTest", (ctx, _a, params = {}) => {
+    try {
+      const x = xState();
+      const u = uid(ctx);
+      const test = removeFrom(x.tests, u, clean(params.testId, 80));
+      if (!test) return { ok: false, error: "test not found" };
+      const runs = arr(x.runs, u);
+      const removedRunIds = new Set(runs.filter(r => r.testId === test.id).map(r => r.id));
+      x.runs.set(u, runs.filter(r => r.testId !== test.id));
+      const clips = arr(x.clips, u);
+      const keptClips = clips.filter(c => !removedRunIds.has(c.runId));
+      x.clips.set(u, keptClips);
+      save();
+      return { ok: true, result: { deleted: test.id, removedRuns: removedRunIds.size, removedClips: clips.length - keptClips.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("experience", "deleteRun", (ctx, _a, params = {}) => {
+    try {
+      const x = xState();
+      const u = uid(ctx);
+      const run = removeFrom(x.runs, u, clean(params.runId, 80));
+      if (!run) return { ok: false, error: "run not found" };
+      const clips = arr(x.clips, u);
+      const keptClips = clips.filter(c => c.runId !== run.id);
+      x.clips.set(u, keptClips);
+      save();
+      return { ok: true, result: { deleted: run.id, removedClips: clips.length - keptClips.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("experience", "deleteHeatmapStudy", (ctx, _a, params = {}) => {
+    try {
+      const x = xState();
+      const study = removeFrom(x.heatmaps, uid(ctx), clean(params.studyId, 80));
+      if (!study) return { ok: false, error: "study not found" };
+      save();
+      return { ok: true, result: { deleted: study.id, removedClicks: (study.clicks || []).length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("experience", "deleteCardSort", (ctx, _a, params = {}) => {
+    try {
+      const x = xState();
+      const study = removeFrom(x.sorts, uid(ctx), clean(params.studyId, 80));
+      if (!study) return { ok: false, error: "study not found" };
+      save();
+      return { ok: true, result: { deleted: study.id, removedSubmissions: (study.submissions || []).length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("experience", "deleteSurvey", (ctx, _a, params = {}) => {
+    try {
+      const x = xState();
+      const u = uid(ctx);
+      const survey = removeFrom(x.surveys, u, clean(params.surveyId, 80));
+      if (!survey) return { ok: false, error: "survey not found" };
+      const responses = arr(x.responses, u);
+      const kept = responses.filter(r => r.surveyId !== survey.id);
+      x.responses.set(u, kept);
+      save();
+      return { ok: true, result: { deleted: survey.id, removedResponses: responses.length - kept.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("experience", "deleteResponse", (ctx, _a, params = {}) => {
+    try {
+      const x = xState();
+      const response = removeFrom(x.responses, uid(ctx), clean(params.responseId, 80));
+      if (!response) return { ok: false, error: "response not found" };
+      save();
+      return { ok: true, result: { deleted: response.id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("experience", "deleteParticipant", (ctx, _a, params = {}) => {
+    try {
+      const x = xState();
+      const participant = removeFrom(x.panel, uid(ctx), clean(params.participantId, 80));
+      if (!participant) return { ok: false, error: "participant not found" };
+      save();
+      return { ok: true, result: { deleted: participant.id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("experience", "deleteClip", (ctx, _a, params = {}) => {
+    try {
+      const x = xState();
+      const clip = removeFrom(x.clips, uid(ctx), clean(params.clipId, 80));
+      if (!clip) return { ok: false, error: "clip not found" };
+      save();
+      return { ok: true, result: { deleted: clip.id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("experience", "deleteReel", (ctx, _a, params = {}) => {
+    try {
+      const x = xState();
+      const reel = removeFrom(x.reels, uid(ctx), clean(params.reelId, 80));
+      if (!reel) return { ok: false, error: "reel not found" };
+      save();
+      return { ok: true, result: { deleted: reel.id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("experience", "deletePrototype", (ctx, _a, params = {}) => {
+    try {
+      const x = xState();
+      const proto = removeFrom(x.protos, uid(ctx), clean(params.prototypeId, 80));
+      if (!proto) return { ok: false, error: "prototype not found" };
+      save();
+      return { ok: true, result: { deleted: proto.id, removedInteractions: (proto.interactions || []).length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 }

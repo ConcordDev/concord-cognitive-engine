@@ -14,9 +14,10 @@
 //      runAction.mutateAsync({ id: <their portfolio id>, action: 'endorse',
 //      ... }) — distinct from acting on the caller's own portfolio.
 //
-// useLensData is called TWICE by the component with different `limit`
-// options (limit: 1 for "my portfolio", limit: 50 for the directory) — the
-// mock below dispatches on that to return the right fixture for each call.
+// useLensData is called TWICE by the component (the caller's list, from
+// which My Portfolio is selected by ownerId, and the directory list) —
+// the mock below dispatches on the fixture identity to return the right
+// list for each call.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
@@ -55,17 +56,20 @@ const otherPortfolio = {
 
 const updateMock = vi.fn().mockResolvedValue({ ok: true });
 const createMock = vi.fn().mockResolvedValue({ ok: true });
+const removeMock = vi.fn().mockResolvedValue({ ok: true });
 
 /**
- * @param mine   items returned for the "my portfolio" useLensData(...,{limit:1}) call
- * @param directory  items returned for the directory useLensData(...,{limit:50}) call
+ * @param mine   items returned for the "my portfolio" useLensData call
+ *               (the component selects its OWN artifact from this list by
+ *               ownerId — the list also carries peers' published rows)
+ * @param directory  items returned for the directory useLensData call
  */
 function routeLensData(mine: unknown[], directory: unknown[]) {
   useLensDataMock.mockImplementation((_domain: string, _type: string, opts: { limit?: number } = {}) => {
-    if (opts.limit === 1) {
-      return { items: mine, isLoading: false, create: createMock, update: updateMock };
+    if (opts.limit === 50 && mine !== directory) {
+      return { items: directory, isLoading: false, create: createMock, update: updateMock, remove: removeMock };
     }
-    return { items: directory, isLoading: false, create: createMock, update: updateMock };
+    return { items: mine, isLoading: false, create: createMock, update: updateMock, remove: removeMock };
   });
 }
 
@@ -149,5 +153,37 @@ describe('CareerPortfolio — peer endorsement directory', () => {
 
     fireEvent.click(await screen.findByRole('tab', { name: /directory/i }));
     expect(await screen.findByText(/no published portfolios yet/i)).toBeInTheDocument();
+  });
+
+  it('My Portfolio: a peer\'s published portfolio heading the list is never adopted as my own (F1/F2)', async () => {
+    // The lens list serves published peers alongside the caller's own
+    // rows. With the peer's record FIRST, My Portfolio must still select
+    // the caller's own artifact — the old items[0] adoption served the
+    // peer's record as the viewer's own (and wrote into it).
+    routeLensData([otherPortfolio, myPortfolio], [myPortfolio, otherPortfolio]);
+    render(<CareerPortfolio />);
+
+    expect(await screen.findByText(/mixing/i)).toBeInTheDocument();
+    expect(screen.queryByText(/mastering/i)).not.toBeInTheDocument();
+    // Writes target the caller's own artifact id.
+    fireEvent.click(screen.getByRole('button', { name: /publish my portfolio/i }));
+    await waitFor(() => expect(updateMock).toHaveBeenCalledWith('p_mine', { meta: { visibility: 'published' } }));
+  });
+
+  it('My Portfolio: with only a peer\'s portfolio in the list, the create state shows — nothing is adopted', async () => {
+    routeLensData([otherPortfolio], [otherPortfolio]);
+    render(<CareerPortfolio />);
+
+    expect(await screen.findByText(/build a verifiable portfolio/i)).toBeInTheDocument();
+    expect(screen.queryByText(/mastering/i)).not.toBeInTheDocument();
+  });
+
+  it('Portfolio delete: two-step confirm calls remove with my own portfolio id', async () => {
+    routeLensData([myPortfolio], [myPortfolio]);
+    render(<CareerPortfolio />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /delete portfolio/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /delete this portfolio and its contents/i }));
+    await waitFor(() => expect(removeMock).toHaveBeenCalledWith('p_mine'));
   });
 });
