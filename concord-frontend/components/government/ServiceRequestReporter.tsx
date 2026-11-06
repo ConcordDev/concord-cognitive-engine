@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { MapPinned, Loader2, Send, Crosshair } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { LocalRecordNotice } from './LocalRecordNotice';
 
 const PinDropMap = dynamic(() => import('./PinDropMap').then(m => m.PinDropMap), { ssr: false });
 
@@ -112,6 +113,9 @@ export function ServiceRequestReporter() {
             <input value={form.reporterName} onChange={e => setForm({ ...form, reporterName: e.target.value })} placeholder="Your name (optional)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
             <input value={form.reporterEmail} onChange={e => setForm({ ...form, reporterEmail: e.target.value })} placeholder="Email for updates (optional)" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           </div>
+          <LocalRecordNotice>
+            Local record only — this report is not sent to your city or county 311 or to any agency. It is saved only in your Concord workspace.
+          </LocalRecordNotice>
           {error && <div className="text-[10px] text-rose-400">{error}</div>}
           <button onClick={submit} disabled={submitting} className="w-full px-3 py-2 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
             {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}Submit report

@@ -80,6 +80,64 @@ function mapCongressMember(m) {
   };
 }
 
+// data.gov retired its open CKAN Action API — the catalog.data.gov
+// /api/3/action/* endpoints now answer 404 (verified live). GSA's
+// CKAN-compatible gateway keeps the same request/response contract
+// behind an api.data.gov key, the same keyed-source pattern this domain
+// already uses for Congress.gov. The key travels in the X-Api-Key
+// header, never the URL, so ingest provenance URLs stay clean.
+const DATAGOV_API_BASE = "https://api.gsa.gov/technology/datagov/v3/action";
+function dataGovApiKey() {
+  return String(process.env.DATA_GOV_API_KEY || "").trim();
+}
+
+// Last successful USAspending budget-function aggregate per fiscal year.
+// The upstream aggregation is slow even when healthy; the figures are
+// annual fiscal-year aggregates, so a per-process cache is honest.
+const SPENDING_CACHE = new Map();
+
+// USPS ZIP3 sectional ranges (first three ZIP digits → state). Public
+// postal geography, used only to resolve the state a ZIP belongs to for
+// the representatives lookup; a handful of ZIP3 areas straddle a state
+// line, in which case the majority state wins — the lookup result names
+// the state it resolved, so a boundary ZIP is visible, never silent.
+const ZIP3_STATE_RANGES = [
+  [5, 5, "NY"], [6, 9, "PR"], [10, 27, "MA"], [28, 29, "RI"],
+  [30, 38, "NH"], [39, 49, "ME"], [50, 59, "VT"], [60, 69, "CT"],
+  [70, 89, "NJ"], [100, 149, "NY"], [150, 196, "PA"], [197, 199, "DE"],
+  [200, 205, "DC"], [206, 219, "MD"], [220, 246, "VA"], [247, 268, "WV"],
+  [270, 289, "NC"], [290, 299, "SC"], [300, 319, "GA"], [320, 349, "FL"],
+  [350, 369, "AL"], [370, 385, "TN"], [386, 397, "MS"], [398, 399, "GA"],
+  [400, 427, "KY"], [430, 459, "OH"], [460, 479, "IN"], [480, 499, "MI"],
+  [500, 528, "IA"], [530, 549, "WI"], [550, 567, "MN"], [570, 577, "SD"],
+  [580, 588, "ND"], [590, 599, "MT"], [600, 629, "IL"], [630, 658, "MO"],
+  [660, 679, "KS"], [680, 693, "NE"], [700, 715, "LA"], [716, 729, "AR"],
+  [730, 749, "OK"], [750, 799, "TX"], [800, 816, "CO"], [820, 831, "WY"],
+  [832, 838, "ID"], [840, 847, "UT"], [850, 865, "AZ"], [870, 884, "NM"],
+  [885, 885, "TX"], [889, 898, "NV"], [900, 961, "CA"], [967, 968, "HI"],
+  [969, 969, "GU"], [970, 979, "OR"], [980, 994, "WA"], [995, 999, "AK"],
+];
+
+function stateFromZipOrAddress(input) {
+  const text = String(input || "").trim();
+  if (!text) return "";
+  const zipMatch = /\b(\d{5})(?:-\d{4})?\b/.exec(text);
+  if (zipMatch) {
+    const zip3 = Number(zipMatch[1].slice(0, 3));
+    for (const [lo, hi, st] of ZIP3_STATE_RANGES) {
+      if (zip3 >= lo && zip3 <= hi) return st;
+    }
+    return "";
+  }
+  // No ZIP: accept a trailing state code ("Albany, NY" / "NY" alone).
+  const codeMatch = /\b([A-Za-z]{2})\s*$/.exec(text.replace(/,\s*$/, ""));
+  if (codeMatch) {
+    const code = codeMatch[1].toUpperCase();
+    if (CONGRESS_STATE_NAMES[code]) return code;
+  }
+  return "";
+}
+
 export default function registerGovernmentActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // Field-alias note (Wave 3 audit, docs/lens-specs/government-capability-
@@ -189,13 +247,22 @@ export default function registerGovernmentActions(registerLensAction) {
    * /v3/member ignores a stateCode query param; the state list is
    * /v3/member/{stateCode}. Pages with offset so a delegation larger
    * than one page is not silently cut off. total is the filtered count.
+   *
+   * The surface's field is labelled "Address or ZIP" and sends `address`;
+   * the state is resolved from the input when no explicit `state` is
+   * given — a 5-digit ZIP resolves through the USPS ZIP3 sectional
+   * ranges below, and an address may carry its state code ("Albany, NY"
+   * / "…, NY 12203"). F10: the labelled input must work as labelled.
    */
   registerLensAction("government", "representatives-find", async (_ctx, _artifact, params = {}) => {
     const apiKey = process.env.CONGRESS_GOV_API_KEY;
     if (!apiKey) {
       return { ok: false, error: "CONGRESS_GOV_API_KEY env var required (free signup at https://api.congress.gov/sign-up/)" };
     }
-    const state = String(params.state || "").trim().toUpperCase();
+    let state = String(params.state || "").trim().toUpperCase();
+    if (!state || state.length !== 2) {
+      state = stateFromZipOrAddress(params.zip || params.address || params.query || "");
+    }
     if (!state || state.length !== 2) {
       return { ok: false, error: "state required as 2-letter code (e.g. CA, NY, TX)" };
     }
@@ -421,23 +488,53 @@ export default function registerGovernmentActions(registerLensAction) {
     }
     // USAspending.gov v2: spending by category, fiscal year.
     // Endpoint returns budget functions (Treasury OMB Function Code).
+    // The API requires a fiscal `period` (or `quarter`) beside `fy` —
+    // without one it answers 400 ("Missing required parameter, provide
+    // either \"period\" or \"quarter\""), which is exactly the failure the
+    // first pass recorded. A completed fiscal year reads at period 12;
+    // the current fiscal year reads at its latest closed period.
+    const nowDate = new Date();
+    const currentFy = nowDate.getMonth() >= 9 ? nowDate.getFullYear() + 1 : nowDate.getFullYear();
+    const period = year < currentFy
+      ? 12
+      : Math.max(1, ((nowDate.getMonth() + 3) % 12) || 12);
+    const cacheKey = `federal:${year}:${period}`;
+    const cachedSpending = SPENDING_CACHE.get(cacheKey);
+    if (cachedSpending) {
+      return { ok: true, result: { ...cachedSpending, fromCache: true } };
+    }
     const url = `https://api.usaspending.gov/api/v2/spending/`;
-    // Bound the network call well under the macro-layer's own timeout budgets
+    // Bound the network call under the macro-layer's own timeout budgets
     // (the adversarial/fuzz harness enforces an 8s ceiling) so a slow/blocked
-    // upstream returns an honest failure instead of hanging the caller.
+    // upstream returns an honest failure instead of hanging the caller. The
+    // aggregation is slow even when healthy, so the bound sits at 7s, still
+    // inside the ceiling; a successful answer is cached per fiscal year
+    // (annual aggregates — staleness is bounded by the fiscal year itself).
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const timer = setTimeout(() => ctrl.abort(), 7000);
     try {
       const r = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "budget_function",
-          filters: { fy: String(year) },
+          filters: { fy: String(year), period: String(period) },
         }),
         signal: ctrl.signal,
       });
-      if (!r.ok) throw new Error(`usaspending ${r.status}`);
+      if (!r.ok) {
+        let detail = "";
+        try {
+          const j = await r.json();
+          if (typeof j?.detail === "string") detail = j.detail;
+        } catch (_e) { /* body unreadable — the status alone is reported */ }
+        return {
+          ok: false,
+          error: detail
+            ? `Federal spending data could not be loaded — USAspending reports: ${detail} Try again shortly.`
+            : `Federal spending data could not be loaded — USAspending returned an error (${r.status}). Try again shortly.`,
+        };
+      }
       const data = await r.json();
       const results = data?.results || [];
       const totalDollars = results.reduce((s, c) => s + (Number(c.amount) || 0), 0);
@@ -447,20 +544,19 @@ export default function registerGovernmentActions(registerLensAction) {
         amountBillions: (Number(c.amount) || 0) / 1e9,
         pctOfTotal: totalDollars > 0 ? (Number(c.amount) / totalDollars) * 100 : 0,
       })).sort((a, b) => b.amountBillions - a.amountBillions);
-      return {
-        ok: true,
-        result: {
-          scope: "federal", year, totalBillions, categories,
-          source: "usaspending.gov",
-        },
+      const result = {
+        scope: "federal", year, totalBillions, categories,
+        source: "usaspending.gov",
       };
+      SPENDING_CACHE.set(cacheKey, result);
+      return { ok: true, result };
     } catch (e) {
       const timedOut = e?.name === "AbortError";
       return {
         ok: false,
         error: timedOut
-          ? "usaspending unreachable: request timed out"
-          : `usaspending unreachable: ${e instanceof Error ? e.message : String(e)}`,
+          ? "Federal spending data is taking too long to answer — USAspending did not respond in time. Try again shortly."
+          : "Federal spending data is unavailable right now — USAspending could not be reached. Try again shortly.",
       };
     } finally {
       clearTimeout(timer);
@@ -941,9 +1037,13 @@ export default function registerGovernmentActions(registerLensAction) {
   registerLensAction("government", "open-data-search", async (_ctx, _a, params = {}) => {
     const query = String(params.query || "").trim();
     if (!query) return { ok: false, error: "query required" };
+    const apiKey = dataGovApiKey();
+    if (!apiKey) {
+      return { ok: false, error: "Open data search is not configured on this server — it needs a free data.gov API key (DATA_GOV_API_KEY) since data.gov retired its open catalog endpoint. No datasets can be fetched until one is set." };
+    }
     try {
-      const url = `https://catalog.data.gov/api/3/action/package_search?q=${encodeURIComponent(query)}&rows=20`;
-      const data = await fetchJsonGov(url);
+      const url = `${DATAGOV_API_BASE}/package_search?q=${encodeURIComponent(query)}&rows=20`;
+      const data = await fetchJsonGov(url, { "X-Api-Key": apiKey });
       const results = (data?.result?.results || []).map(r => ({
         id: r.id, name: r.name, title: r.title,
         organization: r.organization?.title || "",
@@ -962,7 +1062,7 @@ export default function registerGovernmentActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return { ok: false, error: `data.gov unreachable: ${e instanceof Error ? e.message : "network"}` };
+      return { ok: false, error: "Open data search could not reach data.gov just now. Try again shortly." };
     }
   });
 
@@ -977,11 +1077,15 @@ export default function registerGovernmentActions(registerLensAction) {
     const datasetId = String(params.id || params.datasetId || "").trim();
     const query = String(params.query || "").trim();
     if (!datasetId && !query) return { ok: false, error: "id or query required" };
+    const apiKey = dataGovApiKey();
+    if (!apiKey) {
+      return { ok: false, error: "Open data ingest is not configured on this server — it needs a free data.gov API key (DATA_GOV_API_KEY) since data.gov retired its open catalog endpoint." };
+    }
     try {
       const url = datasetId
-        ? `https://catalog.data.gov/api/3/action/package_show?id=${encodeURIComponent(datasetId)}`
-        : `https://catalog.data.gov/api/3/action/package_search?q=${encodeURIComponent(query)}&rows=1`;
-      const data = await fetchJsonGov(url);
+        ? `${DATAGOV_API_BASE}/package_show?id=${encodeURIComponent(datasetId)}`
+        : `${DATAGOV_API_BASE}/package_search?q=${encodeURIComponent(query)}&rows=1`;
+      const data = await fetchJsonGov(url, { "X-Api-Key": apiKey });
       const record = datasetId ? data?.result : data?.result?.results?.[0];
       if (!record || typeof record !== "object") {
         return { ok: false, error: "no data.gov record found for that id/query" };
@@ -1015,7 +1119,7 @@ export default function registerGovernmentActions(registerLensAction) {
         },
       };
     } catch (e) {
-      return { ok: false, error: `data.gov ingest failed: ${e instanceof Error ? e.message : "network"}` };
+      return { ok: false, error: "Open data ingest could not reach data.gov just now. Try again shortly." };
     }
   });
 

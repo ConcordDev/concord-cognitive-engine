@@ -134,6 +134,14 @@ export function EstimateInvoiceFlow() {
     },
   });
 
+  // F6: invoices were the family's only record with no exit.
+  const deleteInvoice = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      await lensRun('electrical', 'invoiceDelete', { invoiceId });
+      await refreshInvoices();
+    },
+  });
+
   const onPickMaterial = (priceId: string) => {
     const mp = priceList.find((m) => m.id === priceId);
     setMaterial((m) => ({
@@ -289,6 +297,7 @@ export function EstimateInvoiceFlow() {
                   ) : (
                     <button type="button" onClick={() => markPaid.mutate(inv.id)} disabled={markPaid.isPending} className="rounded bg-emerald-500 px-2 py-0.5 text-[10px] font-semibold text-black hover:bg-emerald-400 disabled:opacity-50">Mark paid</button>
                   )}
+                  <button type="button" onClick={() => deleteInvoice.mutate(inv.id)} disabled={deleteInvoice.isPending} aria-label={`Delete ${inv.invoiceNumber}`} className="rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:border-rose-500/50 hover:text-rose-300 disabled:opacity-50"><Trash2 className="h-3 w-3" /></button>
                 </div>
               </div>
             ))}

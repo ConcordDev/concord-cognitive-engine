@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Megaphone, Plus, Loader2, MapPin, CheckCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { lensRun } from '@/lib/api/client';
+import { LocalRecordNotice } from './LocalRecordNotice';
 import { cn } from '@/lib/utils';
 
 const ServiceRequestsMap = dynamic(() => import('./ServiceRequestsMap').then(m => m.ServiceRequestsMap), { ssr: false });
@@ -93,6 +94,11 @@ export function ServiceRequestsPanel() {
       </div>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
+        <div className="col-span-6">
+          <LocalRecordNotice>
+            Local record only — this is not a filing with your city or county 311. The request is saved only in your Concord workspace; no agency is notified or dispatched.
+          </LocalRecordNotice>
+        </div>
         <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           {CATEGORIES.map(c => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)}
         </select>

@@ -1203,6 +1203,49 @@ export function getUserBookmarks(STATE, userId, { limit = 30, offset = 0 } = {})
   return { ok: true, posts: bookmarked.slice(offset, offset + limit).map(serializePost), total: bookmarked.length };
 }
 
+// ── Liked posts + authored DTUs (the profile's own collections) ──────
+// R4's Social F9: the profile's Liked and DTUs tabs rendered the posts
+// collection under other titles. These reads return the collections
+// the tabs name: posts the user has reacted to (any reaction kind),
+// and DTUs the user authored — the same authorship test the profile
+// stats' dtuCount uses, so the tab and the counter agree.
+
+export function getLikedPosts(STATE, userId, { limit = 30, offset = 0, viewerId = null } = {}) {
+  const social = getSocialState(STATE);
+  const viewer = viewerId || userId;
+  const liked = [];
+  for (const post of social.posts.values()) {
+    if (!post.reactions) continue;
+    let has = false;
+    for (const users of post.reactions.values()) {
+      if (users && typeof users.has === "function" && users.has(userId)) { has = true; break; }
+    }
+    if (has && canViewPost(viewer, post, STATE)) liked.push(post);
+  }
+  liked.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return { ok: true, posts: liked.slice(offset, offset + limit).map(serializePost), total: liked.length };
+}
+
+export function getUserDtus(STATE, userId, { limit = 30, offset = 0, viewerId = null } = {}) {
+  const social = getSocialState(STATE);
+  const viewer = viewerId || userId;
+  const mine = viewer === userId;
+  const rows = [];
+  if (STATE.dtus) {
+    for (const dtu of STATE.dtus.values()) {
+      if (!(dtu.author === userId || dtu.meta?.authorId === userId)) continue;
+      if (!mine && !(social.publicDtus && social.publicDtus.has(dtu.id))) continue;
+      rows.push({
+        id: dtu.id,
+        title: dtu.title || (typeof dtu.content === "string" ? dtu.content.slice(0, 80) : "") || dtu.id,
+        createdAt: dtu.createdAt || dtu.timestamp || null,
+      });
+    }
+  }
+  rows.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  return { ok: true, dtus: rows.slice(offset, offset + limit), total: rows.length };
+}
+
 // ── Feed Algorithm ───────────────────────────────────────────────────────
 
 function getEngagementScore(post) {
@@ -1799,7 +1842,13 @@ export function getCreatorAnalytics(STATE, userId, viewerId = null) {
   return {
     ok: true,
     totalReach,
-    engagementRate: totalPosts > 0 ? Math.round((totalEngagement / Math.max(totalReach, 1)) * 10000) / 100 : 0,
+    // The rate is engagement OVER reach. With no reach there is no
+    // rate — dividing by a floored 1 manufactured percentages out of
+    // single reactions (R4's Social F1: one like + one reply read as
+    // 500%). Zero reach reports 0, and the basis rides along so the
+    // surface can print what the figure is computed from.
+    engagementRate: totalReach > 0 ? Math.round((totalEngagement / totalReach) * 10000) / 100 : 0,
+    engagementBasis: { totalEngagement: Math.round(totalEngagement * 10) / 10, totalReach },
     followerGrowth: recentFollowers,
     totalFollowers: followerSet.size,
     topPosts: postScores.slice(0, 10),
@@ -2241,6 +2290,7 @@ export function getCreatorAnalyticsView(STATE, userId) {
     ok: true,
     overview: {
       engagementRate: raw.engagementRate,
+      engagementBasis: raw.engagementBasis || null,
       totalReach: raw.totalReach,
       followerCount: raw.totalFollowers,
       followerTrend: gained > 0 ? "up" : "stable",

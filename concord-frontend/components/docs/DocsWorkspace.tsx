@@ -57,6 +57,41 @@ export function requestNewDoc() {
   window.dispatchEvent(new Event(DOCS_NEW_EVENT));
 }
 
+/**
+ * The page title field (S-DOCS-3 / F13). Edits are local and commit on
+ * blur/Enter — the previous form fired page-update per keystroke. An
+ * empty title is refused visibly (the server keeps the stored title,
+ * so accepting the keystrokes would desync editor and list silently),
+ * and a server refusal (a duplicate title — [[title]] links resolve
+ * by title) reverts the field and names the reason.
+ */
+function PageTitleField({ title, pageId, onCommit, onNotice }: {
+  title: string;
+  pageId: string;
+  onCommit: (t: string) => Promise<boolean>;
+  onNotice: (msg: string | null) => void;
+}) {
+  const [draft, setDraft] = useState(title);
+  useEffect(() => { setDraft(title); }, [title, pageId]);
+  const commit = async () => {
+    const t = draft.trim();
+    if (t === title) return;
+    if (!t) {
+      setDraft(title);
+      onNotice('A page needs a title — the rename was reverted.');
+      return;
+    }
+    const ok = await onCommit(t);
+    if (!ok) setDraft(title);
+  };
+  return (
+    <input value={draft} onChange={e => setDraft(e.target.value)} onBlur={() => void commit()}
+      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+      aria-label="Page title"
+      className="flex-1 bg-transparent text-lg font-bold text-zinc-100 focus:outline-none border-b border-transparent focus:border-zinc-700" />
+  );
+}
+
 export function DocsWorkspace() {
   const [pages, setPages] = useState<PageMeta[]>([]);
   const [active, setActive] = useState<Page | null>(null);
@@ -69,6 +104,7 @@ export function DocsWorkspace() {
   const [side, setSide] = useState<SidePanel>('none');
   const [showTemplates, setShowTemplates] = useState(false);
   const [openCommentCount, setOpenCommentCount] = useState(0);
+  const [titleNotice, setTitleNotice] = useState<string | null>(null);
 
   const refreshTree = useCallback(async () => {
     const r = await lensRun('docs', 'page-list', {});
@@ -158,11 +194,15 @@ export function DocsWorkspace() {
       },
     });
   }
-  async function renamePage(title: string) {
-    if (!active) return;
+  async function renamePage(title: string): Promise<{ ok: boolean; error?: string }> {
+    if (!active) return { ok: false };
+    const r = await lensRun('docs', 'page-update', { id: active.id, title });
+    if (!r.data?.ok) {
+      return { ok: false, error: r.data?.error || 'Rename failed.' };
+    }
     setActive({ ...active, title });
-    await lensRun('docs', 'page-update', { id: active.id, title });
     await refreshTree();
+    return { ok: true };
   }
   async function setIcon(icon: string) {
     if (!active || !icon.trim()) return;
@@ -319,12 +359,16 @@ export function DocsWorkspace() {
               <div className="flex items-center gap-2 mb-2">
                 <input value={active.icon} onChange={e => setIcon(e.target.value)} maxLength={4}
                   className="w-9 text-center text-xl bg-transparent" />
-                <input value={active.title} onChange={e => renamePage(e.target.value)}
-                  className="flex-1 bg-transparent text-lg font-bold text-zinc-100 focus:outline-none border-b border-transparent focus:border-zinc-700" />
+                <PageTitleField title={active.title} pageId={active.id}
+                  onCommit={async (t) => { const r = await renamePage(t); if (!r.ok) setTitleNotice(r.error ?? 'Rename failed.'); else setTitleNotice(null); return r.ok; }}
+                  onNotice={setTitleNotice} />
                 <ConfirmDeleteButton itemLabel={active.title || 'Untitled page'} deleteTitle="Delete page"
                   onConfirm={() => deletePage(active.id)} iconClassName="w-4 h-4"
                   className="p-1 text-rose-400 hover:bg-rose-500/10 rounded" />
               </div>
+              {titleNotice && (
+                <p className="text-[11px] text-amber-300 mb-1">{titleNotice}</p>
+              )}
 
               {/* page toolbar */}
               <div className="flex flex-wrap items-center gap-1 mb-3 pb-2 border-b border-zinc-800">

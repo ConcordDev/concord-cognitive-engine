@@ -26,6 +26,37 @@ async function wikiFetch(url) {
 }
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+const MONTH = "(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)";
+const fullDateA = new RegExp(`\\b\\d{1,2}\\s+${MONTH}\\s+(\\d{3,4})\\s?(BCE?|BC)?\\b`, "i");
+const fullDateB = new RegExp(`\\b${MONTH}\\s+\\d{1,2},?\\s+(\\d{3,4})\\s?(BCE?|BC)?\\b`, "i");
+const monthYear = new RegExp(`\\b${MONTH}\\s+(\\d{3,4})\\s?(BCE?|BC)?\\b`, "i");
+const bceYear = /\b(\d{1,4})\s?(BCE|BC)\b/;
+const UNIT_AFTER = /^\s?(million|billion|thousand|km|kilomet|miles|mi\b|%|percent|people|men|women|children|soldiers|officers|defectors|prisoners|deaths|casualties|dollars|euros|tonnes|tons|kg|hours|minutes|seconds)\b/i;
+const CURRENT_YEAR = new Date().getFullYear();
+export function extractHistoryYear(sent) {
+  for (const re of [fullDateA, fullDateB, monthYear]) {
+    const m = sent.match(re);
+    if (m) {
+      let y = parseInt(m[1], 10);
+      if (m[2]) y = -Math.abs(y);
+      if (y !== 0 && y <= CURRENT_YEAR + 1) return y;
+    }
+  }
+  const bce = sent.match(bceYear);
+  if (bce) return -Math.abs(parseInt(bce[1], 10));
+  for (const m of sent.matchAll(/(?<![\d,])(\d{3,4})(?![\d,])/g)) {
+    const y = parseInt(m[1], 10);
+    if (y < 1000 || y > CURRENT_YEAR + 1) continue;
+    const before = sent.slice(Math.max(0, m.index - 2), m.index);
+    const after = sent.slice(m.index + m[1].length, m.index + m[1].length + 12);
+    if (/\d:\s?$/.test(before) || after.startsWith(":")) continue; // clock fragment
+    if (/\.$/.test(before) || after.startsWith(".")) continue; // decimal fragment
+    if (UNIT_AFTER.test(after)) continue; // a quantity, not a year
+    return y;
+  }
+  return null;
+}
+
 export default function registerHistoryActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("history", "timelineBuild", (ctx, artifact, _params) => {
@@ -44,12 +75,28 @@ export default function registerHistoryActions(registerLensAction) {
     const typeScore = type === "primary" ? 90 : type === "secondary" ? 60 : 30;
     const biasScore = bias === "none" || bias === "low" ? 90 : bias === "moderate" ? 50 : 20;
     const reliability = Math.round((typeScore * 0.4 + biasScore * 0.3 + (author ? 20 : 0) + (date ? 10 : 0)));
-    return { ok: true, result: { title: source.title || artifact.title, type, author, date, bias, reliabilityScore: reliability, classification: reliability >= 70 ? "highly-reliable" : reliability >= 40 ? "use-with-caution" : "questionable", corroborationNeeded: reliability < 60, evaluation: { sourceType: typeScore, biasAssessment: biasScore, authorAttribution: author ? "yes" : "missing", dateProvenance: date ? "yes" : "missing" } } };
+    return { ok: true, result: { title: source.title || artifact.title, type, author, date, bias, reliabilityScore: reliability, formula: "reliability = 0.4 × source-type score (primary 90 · secondary 60 · other 30) + 0.3 × bias score (none/low 90 · moderate 50 · other 20) + 20 with an author named + 10 with a date", classification: reliability >= 70 ? "highly-reliable" : reliability >= 40 ? "use-with-caution" : "questionable", corroborationNeeded: reliability < 60, evaluation: { sourceType: typeScore, biasAssessment: biasScore, authorAttribution: author ? "yes" : "missing", dateProvenance: date ? "yes" : "missing" } } };
   });
   registerLensAction("history", "comparePeriods", (ctx, artifact, _params) => {
     const periods = artifact.data?.periods || [];
     if (periods.length < 2) return { ok: true, result: { message: "Add at least 2 historical periods to compare." } };
-    const compared = periods.map(p => ({ name: p.name, startYear: p.startYear, endYear: p.endYear, duration: (parseInt(p.endYear) || 0) - (parseInt(p.startYear) || 0), keyFeatures: p.features || [], population: p.population || "unknown", technology: p.technology || "unknown", governance: p.governance || "unknown" }));
+    for (const p of periods) {
+      // S3 (F3): the evaluator validates its years — the retired form
+      // coerced "abc" through parseInt||0 and compared against year 0.
+      const sy = Number(p.startYear), ey = Number(p.endYear);
+      if (!Number.isFinite(sy) || !Number.isFinite(ey)) {
+        return { ok: false, error: `period "${p.name || "(unnamed)"}" has a non-numeric start or end year` };
+      }
+    }
+    const compared = periods.map(p => {
+      // S5 (F10): absent dimensions are OMITTED, never stamped with an
+      // "unknown" token the surface renders as data.
+      const row = { name: p.name, startYear: p.startYear, endYear: p.endYear, duration: Number(p.endYear) - Number(p.startYear), keyFeatures: p.features || [] };
+      if (p.population) row.population = p.population;
+      if (p.technology) row.technology = p.technology;
+      if (p.governance) row.governance = p.governance;
+      return row;
+    });
     return { ok: true, result: { periods: compared, longestPeriod: compared.sort((a, b) => b.duration - a.duration)[0]?.name, shortestPeriod: compared.sort((a, b) => a.duration - b.duration)[0]?.name, sharedFeatures: compared.reduce((shared, p) => { if (shared === null) return new Set(p.keyFeatures); return new Set([...shared].filter(f => p.keyFeatures.includes(f))); }, null) || [] } };
   });
   registerLensAction("history", "causeEffect", (ctx, artifact, _params) => {
@@ -201,7 +248,14 @@ export default function registerHistoryActions(registerLensAction) {
   const hsNow = () => new Date().toISOString();
   const hsActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const hsClean = (v, max = 2000) => String(v == null ? "" : v).trim().slice(0, max);
-  const hsYear = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.round(n) : null; };
+  const hsYear = (v) => {
+    // S3 (F3): null/empty/non-numeric REFUSE (return null) — the retired
+    // form computed Number(null) === 0, so an FE-side NaN arrived as a
+    // real year 0 on the timeline.
+    if (v == null || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.round(n) : null;
+  };
   const hsList = (s, userId) => { if (!s.timelines.has(userId)) s.timelines.set(userId, []); return s.timelines.get(userId); };
   const hsFigureList = (s, userId) => { if (!s.figures.has(userId)) s.figures.set(userId, []); return s.figures.get(userId); };
 
@@ -209,6 +263,10 @@ export default function registerHistoryActions(registerLensAction) {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = hsClean(params.title, 200);
     if (!title) return { ok: false, error: "timeline title required" };
+    if (params.force !== true) {
+      const dup = hsList(s, hsActor(ctx)).find((x) => x.title.trim().toLowerCase() === title.trim().toLowerCase());
+      if (dup) return { ok: false, error: "duplicate_title", message: `A timeline titled "${dup.title}" already exists.`, duplicateOf: dup.id };
+    }
     const timeline = {
       id: hsId("tl"), title,
       description: hsClean(params.description, 1000),
@@ -299,7 +357,7 @@ export default function registerHistoryActions(registerLensAction) {
     const event = t.events.find((e) => e.id === params.eventId);
     if (!event) return { ok: false, error: "event not found" };
     if (params.title != null) event.title = hsClean(params.title, 200) || event.title;
-    if (params.year != null) { const y = hsYear(params.year); if (y != null) event.year = y; }
+    if (params.year != null) { const y = hsYear(params.year); if (y == null) return { ok: false, error: "invalid event year" }; event.year = y; }
     if (params.dateLabel != null) event.dateLabel = hsClean(params.dateLabel, 60) || event.dateLabel;
     if (params.category != null) event.category = hsClean(params.category, 60) || event.category;
     if (params.description != null) event.description = hsClean(params.description, 2000);
@@ -325,10 +383,14 @@ export default function registerHistoryActions(registerLensAction) {
     if (!t) return { ok: false, error: "timeline not found" };
     const name = hsClean(params.name, 120);
     if (!name) return { ok: false, error: "era name required" };
+    const startYear = hsYear(params.startYear);
+    const endYear = hsYear(params.endYear);
+    if (startYear == null || endYear == null) return { ok: false, error: "era requires a numeric start and end year" };
+    if (startYear > endYear) return { ok: false, error: `era start year ${startYear} is after its end year ${endYear}` };
     const era = {
       id: hsId("era"), name,
-      startYear: hsYear(params.startYear),
-      endYear: hsYear(params.endYear),
+      startYear,
+      endYear,
       color: hsClean(params.color, 9) || "#8b5cf6",
     };
     t.eras.push(era);
@@ -697,6 +759,37 @@ export default function registerHistoryActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  registerLensAction("history", "timeline-publish-status", (ctx, _a, params = {}) => {
+    // S4 (F4): publish state has ONE source — the published-snapshot
+    // map the dashboard KPI counts. The Publish tab held its own copy
+    // in component state (null on every mount), so after a reload the
+    // tab read "unpublished" while the KPI read PUBLISHED = 1. The tab
+    // now reads this verb. `stale` flags a workspace that has moved
+    // since its snapshot, so divergence arrives as information, not as
+    // two surfaces disagreeing in silence.
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const t = findTimeline(s, ctx, params.timelineId);
+    if (!t) return { ok: false, error: "timeline not found" };
+    const pub = getPublicMap(s);
+    for (const [sid, snap] of pub) {
+      if (snap.timelineId === t.id && snap.owner === hsActor(ctx)) {
+        const signature = (evs) => evs.map((e) => `${e.year}|${e.title}`).sort().join("\n");
+        const stale = signature(snap.events) !== signature(t.events);
+        const base = process.env.PUBLIC_BASE_URL || "https://concord-os.org";
+        return {
+          ok: true,
+          result: {
+            published: true, shareId: sid,
+            shareUrl: `${base}/lenses/history?share=${sid}`,
+            embedCode: `<iframe src="${base}/embed/history/${sid}" width="100%" height="480" frameborder="0" title="${snap.title}"></iframe>`,
+            publishedAt: snap.publishedAt, eventCount: snap.events.length, stale,
+          },
+        };
+      }
+    }
+    return { ok: true, result: { published: false } };
+  });
+
   registerLensAction("history", "timeline-unpublish", (ctx, _a, params = {}) => {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const pub = getPublicMap(s);
@@ -744,23 +837,25 @@ export default function registerHistoryActions(registerLensAction) {
       return { ok: false, error: `Wikipedia article not found or empty: ${title}` };
     }
     const text = String(page.extract);
-    // Split into sentences and keep ones that name a 1-4 digit year, optionally BC/BCE.
+    // S1 (F1): extract REAL dates. The retired extractor took the FIRST
+    // 1–4 digit token of each sentence as its year — "1 April 1952"
+    // became year 1 and "3.5 million" became year 3, a fabricated
+    // chronology presented as fact. The replacement tries, in order:
+    // a full date (day + month + year, either order), a month + year,
+    // an explicit BCE year, then a bare year in the plausible range
+    // that is not part of a quantity, a decimal, a clock time, or a
+    // thousands-grouped number. A sentence with no real date yields
+    // NO event — declining beats inventing.
     const sentences = text
       .replace(/\n+/g, " ")
       .split(/(?<=[.!?])\s+/)
       .map((x) => x.trim())
       .filter((x) => x.length >= 12 && x.length <= 400);
-    const yearRe = /\b(\d{1,4})\s?(BCE?|BC)?\b/;
     const seenYears = new Set();
     const extracted = [];
     for (const sent of sentences) {
-      const m = sent.match(yearRe);
-      if (!m) continue;
-      let year = parseInt(m[1], 10);
-      if (!Number.isFinite(year) || year === 0) continue;
-      if (m[2]) year = -Math.abs(year); // BC / BCE
-      // Filter implausible page/section numbers: positive years above current+1.
-      if (year > new Date().getFullYear() + 1) continue;
+      const year = extractHistoryYear(sent);
+      if (year == null) continue;
       const key = `${year}|${sent.slice(0, 40)}`;
       if (seenYears.has(key)) continue;
       seenYears.add(key);
@@ -797,6 +892,8 @@ export default function registerHistoryActions(registerLensAction) {
     return {
       ok: true,
       result: {
+        createdNewTimeline: true,
+        extraction: { sentences: sentences.length, eventsExtracted: picked.length },
         timeline: {
           id: timeline.id, title: timeline.title, description: timeline.description,
           eventCount: timeline.events.length, sourceArticle: page.title,
@@ -866,7 +963,14 @@ export default function registerHistoryActions(registerLensAction) {
         if (res?.ok && res.dtu) { ingested++; dtuIds.push(res.dtu.id); s.feedSeen.add(key); }
       }
       saveHistory();
-      return { ok: true, result: { ingested, skipped, source: "wikimedia-on-this-day", dtuIds } };
+      return {
+        ok: true,
+        result: {
+          ingested, skipped, source: "wikimedia-on-this-day", dtuIds,
+          available: (data.events || []).length, limit,
+          selectionRule: `the first ${limit} of today's ${(data.events || []).length} listed events, skipping any already ingested`,
+        },
+      };
     } catch (e) {
       return { ok: false, error: `wikimedia feed unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }

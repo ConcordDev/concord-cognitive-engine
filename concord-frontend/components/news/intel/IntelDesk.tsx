@@ -18,7 +18,7 @@
  * honest error/empty state — never fabricated headlines.
  */
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -40,6 +40,7 @@ import { CitationChainPanel } from './CitationChainPanel';
 import { MyReaderDesk } from '../MyReaderDesk';
 import {
   fetchHeadlines, fetchDailyBriefing, NEWS_CATEGORIES,
+  loadAnalysisSet, saveAnalysisSet,
   type NewsCategory, type Headline,
 } from './intel-api';
 
@@ -67,7 +68,12 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
   const [mode, setMode] = useState<DeskMode>('live');
   const [category, setCategory] = useState<NewsCategory>(initialCategory);
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // F6/D6: the analysis set persists. The picked headline OBJECTS live in
+  // localStorage, so the set survives a reload — and pool rotation, which
+  // would strand a bare id list.
+  const [analysisSet, setAnalysisSet] = useState<Headline[]>(() => loadAnalysisSet());
+  const selectedIds = useMemo(() => new Set(analysisSet.map((h) => h.id)), [analysisSet]);
+  useEffect(() => { saveAnalysisSet(analysisSet); }, [analysisSet]);
   const [pullCount, setPullCount] = useState(0); // bumps to refresh the citation panel
 
   // Rotation cursor per category. "Refresh feed" passes the server's nextCursor so the user
@@ -126,10 +132,9 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
     [headlines, sourceFilter],
   );
 
-  const selected = useMemo(
-    () => headlines.filter((h) => selectedIds.has(h.id)),
-    [headlines, selectedIds],
-  );
+  // The workbench analyzes the stored set itself — what the user picked,
+  // whether or not the current feed window still holds those headlines.
+  const selected = analysisSet;
 
   const countries = useMemo(
     () => new Set(headlines.map((h) => h.sourceCountry).filter(Boolean)).size,
@@ -137,11 +142,10 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
   );
 
   function toggleSelect(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+    setAnalysisSet((prev) => {
+      if (prev.some((h) => h.id === id)) return prev.filter((h) => h.id !== id);
+      const h = headlines.find((x) => x.id === id);
+      return h ? [...prev, h] : prev;
     });
   }
 
@@ -424,6 +428,23 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
             <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
               Analysis workbench
             </h2>
+            {analysisSet.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1">
+                {analysisSet.map((h) => (
+                  <span key={h.id} className="inline-flex max-w-full items-center gap-1 rounded border border-cyan-500/30 bg-cyan-500/5 px-1.5 py-0.5 text-[10px] text-cyan-200">
+                    <span className="max-w-[10rem] truncate">{h.title}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggleSelect(h.id)}
+                      aria-label={`Remove from analysis set: ${h.title}`}
+                      className="text-cyan-400 hover:text-white"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <AnalysisWorkbench selected={selected} />
           </div>
 
@@ -443,7 +464,7 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
   );
 }
 
-function BriefingCard({
+export function BriefingCard({
   briefing,
   loading,
 }: {
@@ -470,9 +491,15 @@ function BriefingCard({
       </div>
     );
   }
-  const sections = [briefing.topStories, briefing.business, briefing.tech, briefing.science].filter(
-    (s) => s && s.bullets?.length,
-  );
+  const allSections = [briefing.topStories, briefing.business, briefing.tech, briefing.science].filter(Boolean);
+  const sections = allSections.filter((s) => s.bullets?.length);
+  // F3/D3: a briefing with no stories must SAY so, from the payload's own
+  // status — greeting + date + sign-off alone reads as a quiet news day.
+  const warming = briefing.degradedReason === 'warming'
+    || allSections.some((s) => s.unavailableReason === 'warming');
+  const emptyNote = warming
+    ? 'Still warming up — the first pulls have not landed yet, so there are no stories to brief. The briefing fills in as real headlines arrive; nothing is substituted.'
+    : `No stories reached the briefing this time${briefing.degradedReason ? ` (${briefing.degradedReason})` : ''} — a source is unavailable or the wire is quiet. Refresh the feed and the briefing rebuilds from what lands.`;
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
       <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
@@ -480,21 +507,32 @@ function BriefingCard({
       </h2>
       <p className="mt-2 text-xs text-zinc-300">{briefing.greeting}</p>
       <p className="text-[10px] text-zinc-500">{briefing.date}</p>
-      <div className="mt-2 space-y-2">
-        {sections.map((s) => (
-          <div key={s.heading}>
-            <p className="text-[10px] font-medium uppercase tracking-wider text-cyan-400/80">{s.heading}</p>
-            <ul className="mt-0.5 space-y-0.5">
-              {s.bullets.slice(0, 3).map((b, i) => (
-                <li key={i} className="line-clamp-2 text-[11px] text-zinc-400">
-                  · {b}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-      <p className="mt-2 border-t border-zinc-800 pt-2 text-[11px] italic text-zinc-400">{briefing.closing}</p>
+      {briefing.stale && (
+        <p className="mt-1 text-[10px] uppercase tracking-wide text-amber-300">
+          Stale — showing the last good briefing while a refresh is pending
+        </p>
+      )}
+      {sections.length === 0 ? (
+        <p className="mt-2 text-[11px] text-zinc-400">{emptyNote}</p>
+      ) : (
+        <div className="mt-2 space-y-2">
+          {sections.map((s) => (
+            <div key={s.heading}>
+              <p className="text-[10px] font-medium uppercase tracking-wider text-cyan-400/80">{s.heading}</p>
+              <ul className="mt-0.5 space-y-0.5">
+                {s.bullets.slice(0, 3).map((b, i) => (
+                  <li key={i} className="line-clamp-2 text-[11px] text-zinc-400">
+                    · {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+      {sections.length > 0 && (
+        <p className="mt-2 border-t border-zinc-800 pt-2 text-[11px] italic text-zinc-400">{briefing.closing}</p>
+      )}
       <p className="mt-1 text-[10px] text-zinc-600">Source: {briefing.source}</p>
     </div>
   );

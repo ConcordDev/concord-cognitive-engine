@@ -127,6 +127,7 @@ import {
   addSpoFact as _inferenceAddSpoFact,
   querySpoFacts as _inferenceQuerySpoFacts,
   getDeskStatus as _inferenceGetDeskStatus,
+  noteDeskOperation as _inferenceNoteDeskOperation,
   actorIdFromCtx as _inferenceActorId,
 } from "./lib/inference-lens-kb.js";
 import { validateMimeType } from "./lib/upload-mime.js";
@@ -18130,8 +18131,15 @@ register("inference", "syllogism", (ctx, input = {}) => {
 register("inference", "forward_chain", (ctx, input = {}) => {
   enforceEthosInvariant("inference_forward_chain");
   const derivations = forwardChain(input.maxIterations);
+  if (derivations.length > 0) _inferenceNoteDeskOperation(_inferenceActorId(ctx), "derivation", derivations.length);
   return {
     ok: true,
+    // S-INF-3 (F5): the persistence contract, stated in the result —
+    // derivations are kept in the engine's derived store (the count is
+    // its size); the desk Facts list shows asserted facts, and the
+    // derived facts answer queries alongside them.
+    derivedTotal: STATE.reasoning?.knowledgeBase?.derived?.size ?? 0,
+    persistence: "Derivations are kept in the engine's derived store and count toward the Derived total; the Facts list shows asserted facts only.",
     derivations: derivations.map(d => ({
       subject: d.subject,
       predicate: d.predicate,
@@ -18238,6 +18246,7 @@ async function _hypothesisEngineCall(method, args) {
 }
 register("hypothesis", "metrics", () => _hypothesisEngineCall("getHypothesisMetrics", []), { public: true });
 register("hypothesis", "add_test", (_ctx, input = {}) => _hypothesisEngineCall("addTest", [input.hypothesisId, input.description]), { public: false });
+register("hypothesis", "delete", (_ctx, input = {}) => _hypothesisEngineCall("deleteHypothesis", [input.id]), { public: false });
 register("hypothesis", "add_evidence", (_ctx, input = {}) => _hypothesisEngineCall("addEvidence", [
   input.hypothesisId, input.side, input.dtuId, input.weight, input.summary,
 ]), { public: false });
@@ -21982,7 +21991,7 @@ async function initGhostFleet() {
     // registrations at ~9709/9735/9745 with the full implementation
     // from ./emergent/hypothesis-engine.js. Marked with note so the
     // duplicate-registration warning in register() stays quiet.
-    register("hypothesis", "propose", (_ctx, input = {}) => hypo.proposeHypothesis(input.statement, input.domain, input.priority), { note: "ghost_fleet_shadow_ok" });
+    register("hypothesis", "propose", (_ctx, input = {}) => hypo.proposeHypothesis(input.statement, input.domain, input.priority, { force: input.force === true }), { note: "ghost_fleet_shadow_ok" });
     register("hypothesis", "get", (_ctx, input = {}) => {
       // Always return an envelope, never raw null — getHypothesis(undefined) and
       // unknown ids return null, which violates the macro contract (a macro must
@@ -22000,6 +22009,7 @@ async function initGhostFleet() {
     register("hypothesis", "reject", (_ctx, input = {}) => hypo.rejectHypothesis(input.id, input.reason));
     register("hypothesis", "refine", (_ctx, input = {}) => hypo.refineHypothesis(input.id, input.newStatement));
     register("hypothesis", "archive", (_ctx, input = {}) => hypo.archiveHypothesis(input.id));
+    register("hypothesis", "delete", (_ctx, input = {}) => hypo.deleteHypothesis(input.id));
     register("hypothesis", "metrics", () => hypo.getHypothesisMetrics(), { note: "intentional_shadow_ok" });
 
     structuredLog("info", "ghost_fleet_module_loaded", { name: "hypothesis-engine", macros: 13 });
@@ -83340,7 +83350,29 @@ function addInferenceFact(input = {}, userId = "anon") {
   saveStateDebounced();
 
   const derived = forwardChain();
-  return { ok: true, fact: desk.fact, newDerivations: derived.length };
+  // S-INF-2 (F4): the receipt counts only the derivations THIS fact
+  // caused — the transitive closure over derivedFrom.factId starting at
+  // the new fact. The raw chain delta also fires standing rules over old
+  // facts, which is how an unmatched fact once reported "4".
+  const caused = new Set([desk.fact.id]);
+  let attributable = 0;
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const d of derived) {
+      if (d.derivedFrom?.factId && caused.has(d.derivedFrom.factId) && !caused.has(d.id)) {
+        caused.add(d.id);
+        attributable++;
+        grew = true;
+      }
+    }
+  }
+  return {
+    ok: true,
+    fact: desk.fact,
+    newDerivations: attributable,
+    ...(desk.contradiction ? { contradiction: desk.contradiction } : {}),
+  };
 }
 
 // Add an inference rule
@@ -83632,24 +83664,108 @@ function syllogisticReason(input = {}, userId = "anon") {
   const category = _singularizeCategory(majorMatch[1].toLowerCase());
   const property = majorMatch[2].toLowerCase();
 
-  // Parse minor premise (Z is X)
+  // S-INF-2 (F2): category matching is morphology-tolerant — the major's
+  // category and the minor's are compared on a stem (singularized, with
+  // the ie/y variation folded), so razzy / razzies / razzie are one
+  // category to the user, as they should be.
+  const stem = (w) => _singularizeCategory(String(w).toLowerCase()).replace(/ie$/, "y");
+
+  // Parse minor premise — two supported shapes, stated up front in the
+  // view: singular ("Z is X") and the canonical universal Barbara
+  // ("All Z are X"), which the form once refused outright.
+  const minorUniversal = String(minorPremise || "").match(/^all\s+(\w+)\s+are\s+(.+)$/i);
   const minorMatch = String(minorPremise || "").match(/^(?:a\s+)?(\w+)\s+is\s+(?:a\s+)?(\w+)$/i);
-  if (!minorMatch) {
-    return { ok: false, error: "Minor premise must be in form 'X is Y'" };
+  if (!minorUniversal && !minorMatch) {
+    return { ok: false, step: "parse", error: "Minor premise must be in form 'X is Y' or 'All X are Y'" };
   }
+
+  if (minorUniversal) {
+    // Canonical Barbara: All Z are X + All X are Y ⊢ All Z are Y.
+    const minorCategoryTyped = minorUniversal[1];
+    const minorObject = minorUniversal[2].toLowerCase();
+    if (stem(minorObject) !== stem(category)) {
+      return {
+        ok: false,
+        step: "category",
+        error: `Category mismatch: "${minorObject}" does not match "${category}"`
+      };
+    }
+    const minorCategory = _singularizeCategory(minorCategoryTyped.toLowerCase());
+    addInferenceFact({
+      subject: category, predicate: "is", object: property, universal: true, source: "major_premise"
+    }, userId);
+    addInferenceFact({
+      subject: minorCategory, predicate: "is", object: category, universal: true, source: "minor_premise"
+    }, userId);
+    addInferenceRule({
+      name: `All ${category} are ${property}`,
+      type: "implication",
+      antecedent: { predicate: "is", object: category },
+      consequent: { predicate: "is", object: property },
+      confidence: 1.0
+    });
+    _inferenceNoteDeskOperation(userId, "inference");
+    // The universal conclusion is entailed directly (transitivity of the
+    // two universals); it is recorded in the derived store so re-runs
+    // find it standing — the same determinism contract as the singular
+    // path (S-INF-1).
+    const kbU = STATE.reasoning.knowledgeBase;
+    const standingU = [...kbU.facts.values(), ...kbU.derived.values()].find(d =>
+      d.subject === minorCategory && d.predicate === "is" && d.object === property && d.universal
+    );
+    if (!standingU) {
+      const derivedFact = {
+        id: uid("derived"),
+        subject: minorCategory,
+        predicate: "is",
+        object: property,
+        universal: true,
+        negated: false,
+        confidence: 1.0,
+        createdAt: nowISO(),
+        derivedFrom: { rule: "syllogism-barbara", factId: null }
+      };
+      kbU.derived.set(derivedFact.id, derivedFact);
+      kbU.stats.factsDeduced++;
+      _inferenceNoteDeskOperation(userId, "derivation");
+      saveStateDebounced();
+    }
+    return {
+      ok: true,
+      conclusion: `All ${minorCategoryTyped.toLowerCase()} are ${property}`,
+      derivation: {
+        majorPremise,
+        minorPremise,
+        conclusion: `all ${minorCategory} are ${property}`,
+        rule: "Syllogistic reasoning (Barbara): transitivity of universal premises",
+        confidence: 1.0,
+        derivedThisRun: !standingU,
+        alreadyDerived: Boolean(standingU)
+      },
+      kbWrites: {
+        premisesStored: [`all ${category} are ${property}`, `all ${minorCategory} are ${category}`],
+        ruleAdded: `All ${category} are ${property}`,
+        conclusionStored: true
+      }
+    };
+  }
+
   const subject = minorMatch[1].toLowerCase();
   const subjectCategory = minorMatch[2].toLowerCase();
 
   // Check if minor premise's category matches major premise's subject
-  if (subjectCategory !== category) {
+  if (stem(subjectCategory) !== stem(category)) {
     return {
       ok: false,
+      step: "category",
       error: `Category mismatch: "${subjectCategory}" does not match "${category}"`
     };
   }
 
-  // Add facts and rule to knowledge base (desk store + legacy engine)
-  addInferenceFact({
+  // Add facts and rule to knowledge base (desk store + legacy engine).
+  // S-INF-3 (F5): the writes are DISCLOSED in the result (kbWrites) —
+  // the syllogism view states what a run stores, where it happens.
+  const majorAdd = addInferenceFact({
     subject: category,
     predicate: "is",
     object: property,
@@ -83657,7 +83773,7 @@ function syllogisticReason(input = {}, userId = "anon") {
     source: "major_premise"
   }, userId);
 
-  addInferenceFact({
+  const minorAdd = addInferenceFact({
     subject,
     predicate: "is",
     object: category,
@@ -83671,32 +83787,78 @@ function syllogisticReason(input = {}, userId = "anon") {
     consequent: { predicate: "is", object: property },
     confidence: 1.0
   });
+  _inferenceNoteDeskOperation(userId, "inference");
 
   // Perform inference
   const derivations = forwardChain();
 
-  // Look for the conclusion
-  const conclusion = derivations.find(d =>
+  // S-INF-1 (F1): the conclusion is looked up in the STANDING knowledge
+  // base (facts + derived), not only in this run's delta. forwardChain
+  // returns only NEW derivations — its seen-set is seeded with every
+  // previously derived fact — so a delta-only search derived correctly
+  // exactly once and then refused every identical re-run for the rest of
+  // the session, across reloads (the persisted derived set was the
+  // poison). Determinism is definitional here: the same premises derive
+  // the same conclusion on the 1st, 2nd and 10th run.
+  const kb = STATE.reasoning.knowledgeBase;
+  const inDelta = derivations.find(d =>
     d.subject === subject && d.predicate === "is" && d.object === property
   );
+  const standing = [...kb.facts.values(), ...kb.derived.values()].find(d =>
+    d.subject === subject && d.predicate === "is" && d.object === property
+  );
+  const conclusion = inDelta || standing;
 
   if (conclusion) {
+    // S-INF-2 (F2): conclusions render in the minor's number — a singular
+    // subject does not take a plural property ("bloop is lazzies").
+    const renderedProperty = /^\w+$/.test(property) ? _singularizeCategory(property) : property;
+    // Desk counters: derivations this run caused (closure over the two
+    // premise facts through the delta's derivedFrom chain).
+    const causedByRun = new Set([majorAdd?.fact?.id, minorAdd?.fact?.id].filter(Boolean));
+    let runDerived = 0;
+    let grewRun = true;
+    while (grewRun) {
+      grewRun = false;
+      for (const d of derivations) {
+        if (d.derivedFrom?.factId && causedByRun.has(d.derivedFrom.factId) && !causedByRun.has(d.id)) {
+          causedByRun.add(d.id);
+          runDerived++;
+          grewRun = true;
+        }
+      }
+    }
+    if (runDerived > 0) _inferenceNoteDeskOperation(userId, "derivation", runDerived);
     return {
       ok: true,
-      conclusion: `${subject.charAt(0).toUpperCase() + subject.slice(1)} is ${property}`,
+      conclusion: `${subject.charAt(0).toUpperCase() + subject.slice(1)} is ${renderedProperty}`,
+      kbWrites: {
+        premisesStored: [`all ${category} are ${property}`, `${subject} is ${category}`],
+        ruleAdded: `All ${category} are ${property}`,
+        conclusionStored: true
+      },
       derivation: {
         majorPremise,
         minorPremise,
         conclusion: `${subject} is ${property}`,
         rule: "Syllogistic reasoning via universal instantiation and modus ponens",
-        confidence: conclusion.confidence
+        confidence: conclusion.confidence,
+        // D3: determinism made visible — whether this run derived the
+        // conclusion fresh or it already stood derived from the same
+        // premises (the answer is the same either way, and says so).
+        derivedThisRun: Boolean(inDelta),
+        alreadyDerived: !inDelta
       }
     };
   }
 
+  // D1: a failure names its step — the parse and category steps returned
+  // above; this is the derive step, and it says what the chain held and
+  // what it was looking for.
   return {
     ok: false,
-    error: "Could not derive conclusion",
+    step: "derive",
+    error: `Derivation step: the chain ran over ${kb.facts.size} facts and ${kb.rules.size} rules and no path derives "${subject} is ${property}" — the middle term "${category}" connects "${subject}" to the rule, but the rule's consequent does not reach "${property}" from the standing facts.`,
     derivations: derivations.map(d => `${d.subject} ${d.predicate} ${d.object}`)
   };
 }

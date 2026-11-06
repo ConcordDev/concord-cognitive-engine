@@ -125,7 +125,11 @@ export function FiguresNotebook() {
     }
   }
 
+  const [armDeleteFigure, setArmDeleteFigure] = useState<string | null>(null);
   async function handleDelete(id: string) {
+    // S2 (F5): figure deletes join the fleet's two-step standard.
+    if (armDeleteFigure !== id) { setArmDeleteFigure(id); return; }
+    setArmDeleteFigure(null);
     if (selectedId === id) setSelectedId(null);
     await lensRun('history', 'figure-delete', { id });
     await loadFigures();
@@ -255,6 +259,7 @@ export function FiguresNotebook() {
                 key={selected.id}
                 figure={selected}
                 onDelete={() => handleDelete(selected.id)}
+                deleteArmed={armDeleteFigure === selected.id}
                 onBioSave={(bio) => handleBioSave(selected.id, bio)}
                 onUnlink={(timelineId, eventId) => handleUnlink(selected.id, timelineId, eventId)}
                 onLink={(timelineId, eventId) => handleLink(selected.id, timelineId, eventId)}
@@ -276,12 +281,14 @@ export function FiguresNotebook() {
 function FigureDetail({
   figure,
   onDelete,
+  deleteArmed,
   onBioSave,
   onUnlink,
   onLink,
 }: {
   figure: Figure;
   onDelete: () => void;
+  deleteArmed?: boolean;
   onBioSave: (bio: string) => Promise<void>;
   onUnlink: (timelineId: string, eventId: string) => Promise<void>;
   onLink: (timelineId: string, eventId: string) => Promise<boolean>;
@@ -291,7 +298,7 @@ function FigureDetail({
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-white">{figure.name}</h3>
         <button type="button" onClick={onDelete} aria-label={`Delete ${figure.name}`}
-          className="text-rose-400 hover:text-rose-300 shrink-0"><Trash2 className="w-4 h-4" /></button>
+          className="text-rose-400 hover:text-rose-300 shrink-0">{deleteArmed ? <span className="text-[10px]">Delete?</span> : <Trash2 className="w-4 h-4" />}</button>
       </div>
       {figure.role && <p className="text-xs text-amber-300">{figure.role}</p>}
       <p className="text-xs text-zinc-400 font-mono">

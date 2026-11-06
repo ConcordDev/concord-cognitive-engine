@@ -12,12 +12,22 @@
  * The open id is stored in localStorage and read back on the next load.
  * The next step advances one sequence and calls playSequence with the
  * sequence trigger.
+ *
+ * Lifecycle (S1, Shape A): the walker can step BACK to the previous
+ * sequence, START OVER mid-walk, and — at the final sequence, where the
+ * panel states the ending — WALK IT AGAIN, which restarts the trail
+ * and clears the journal. Completion is an ending, not a lockout. The
+ * counter counts steps WALKED (the journal records a step when it is
+ * stepped onto), and says so.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
+import { DepthBadge } from '@/components/lens/DepthBadge';
+import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
+import type { KeptRecord } from '@/components/lens/recordKeep';
 
 const OPEN_KEY = 'concordia:narrative-walk:open';
 const WATCHED_KEY = 'concordia:narrative-walk:watched';
@@ -29,6 +39,19 @@ interface Step {
   trigger: string;
   name: string;
   comment: string;
+}
+
+/**
+ * The two authored sets splice into one playlist, and every beat's
+ * comment already says which set it belongs to ("Phase W — fires
+ * when…" / "Concordia Phase 15 — bespoke cinematic…"). The eyebrow is
+ * derived from that self-label — nothing is invented for a beat whose
+ * comment carries neither.
+ */
+function setLabel(step: Step): string | null {
+  if (step.comment.startsWith('Phase W')) return 'Event template';
+  if (step.comment.includes('Concordia Phase 15')) return 'Concordia cinematic';
+  return null;
 }
 
 function readStoredId(): string | null {
@@ -66,6 +89,7 @@ export default function NarrativeWalkLensPage() {
   const [open, setOpen] = useState<Step | null>(null);
   const [watched, setWatched] = useState<string[]>([]);
   const [actionError, setActionError] = useState('');
+  const [note, setNote] = useState('');
 
   const load = useCallback(() => {
     setPhase('loading');
@@ -102,6 +126,7 @@ export default function NarrativeWalkLensPage() {
 
   const show = useCallback(async (step: Step) => {
     setActionError('');
+    setNote('');
     const journal = writeJournal(step.id, readWatched());
     const stored = readStoredId();
     if (stored !== step.id) {
@@ -129,19 +154,63 @@ export default function NarrativeWalkLensPage() {
     if (next) void show(next);
   }, [catalog, open, show]);
 
+  const restart = useCallback(() => {
+    try {
+      localStorage.removeItem(OPEN_KEY);
+      localStorage.removeItem(WATCHED_KEY);
+    } catch { /* storage unavailable — state below still resets */ }
+    setOpen(null);
+    setWatched([]);
+    setActionError('');
+    setNote('The trail is open again. Begin when you are ready.');
+  }, []);
+
+  const goBack = useCallback(() => {
+    if (!open) return;
+    const index = catalog.findIndex((step) => step.id === open.id);
+    const prev = catalog[index - 1];
+    if (prev) void show(prev);
+  }, [catalog, open, show]);
+
   const openIndex = open ? catalog.findIndex((step) => step.id === open.id) : -1;
   const atEnd = !!open && openIndex === catalog.length - 1;
   // Count only journal ids still in the catalog (a renamed sequence drops out).
   const watchedCount = catalog.filter((step) => watched.includes(step.id)).length;
-  const cta = open && !atEnd ? 'The next step' : 'Begin the walk';
+  const cta = atEnd ? 'Walk it again' : open ? 'The next step' : 'Begin the walk';
+  const primaryAction = atEnd ? restart : beginOrAdvance;
+
+  // The completed walk, keepable as a private DTU through the
+  // platform's record-keep handoff — the record of a walk belongs to
+  // the walker. Built only at the ending, from the real catalog.
+  const walkRecord: KeptRecord | null = atEnd && catalog.length > 0 ? {
+    title: 'Narrative trail — a completed walk',
+    body: [
+      'Walked the Narrative trail to its end.',
+      '',
+      'The beats, in order:',
+      ...catalog.map((step, i) => `${i + 1}. ${step.name}`),
+      '',
+      `Completed: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+    ].join('\n'),
+    tags: ['narrative-walk', 'walk-record'],
+    source: 'narrative-walk',
+    createdFrom: 'narrative-walk completion',
+    machine: { lens: 'narrative-walk', steps: catalog.map((step) => step.id), stepsWalked: watchedCount },
+    draftTitle: 'My completed Narrative trail walk',
+  } : null;
 
   useLensCommand(
-    [{ id: 'narrative-begin', keys: 'b', description: cta, category: 'actions', action: beginOrAdvance }],
+    [
+      { id: 'narrative-begin', keys: 'b', description: cta, category: 'actions', action: primaryAction },
+      { id: 'narrative-back', keys: 'p', description: 'The step before', category: 'actions', action: goBack },
+      { id: 'narrative-restart', keys: 'r', description: 'Start over', category: 'actions', action: restart },
+    ],
     { lensId: 'narrative-walk' },
   );
 
   return (
     <LensShell lensId="narrative-walk" asMain={false}>
+      <DepthBadge lensId="narrative-walk" size="sm" className="ml-2" />
       <div data-lens-theme="narrative-walk" className="relative min-h-full bg-black px-8 pb-28 pt-6">
         <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Narrative trail</h1>
 
@@ -165,19 +234,39 @@ export default function NarrativeWalkLensPage() {
           {phase === 'ready' && !open && (
             <div data-testid="narrative-empty">
               <p className="text-[14px] text-zinc-500">No walk open.</p>
+              <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-zinc-400">
+                Eleven authored story beats, read as the shot direction they were written in. Walk them in
+                order — you can step back at any point, and when the trail ends you can walk it again.
+              </p>
               <div className="mt-6 h-px w-2/3 bg-white/10" aria-hidden="true" />
               <div className="mt-3 h-px w-1/2 bg-white/10" aria-hidden="true" />
             </div>
           )}
           {phase === 'ready' && open && (
             <div data-testid="narrative-step">
+              {setLabel(open) ? (
+                <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-zinc-500">{setLabel(open)}</p>
+              ) : null}
               <h2 className="font-vault text-[1.5rem] text-zinc-100">{open.name}</h2>
               {open.comment ? (
                 <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-zinc-400">{open.comment}</p>
               ) : null}
               <p data-testid="narrative-progress" className="mt-6 text-[13px] tabular-nums text-zinc-500">
-                Step {openIndex + 1} of {catalog.length} · {watchedCount} watched
+                Step {openIndex + 1} of {catalog.length} · {watchedCount} walked
               </p>
+              {atEnd && (
+                <div className="mt-6">
+                  <p className="max-w-xl text-[14px] leading-relaxed text-zinc-300">
+                    The trail ends here — you have walked all {catalog.length} beats. The walk is yours to
+                    walk again whenever you like.
+                  </p>
+                  {walkRecord && (
+                    <div className="mt-4">
+                      <KeepRecordActions record={walkRecord} saveLabel="Keep the walk record" />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           {actionError ? (
@@ -185,10 +274,28 @@ export default function NarrativeWalkLensPage() {
           ) : null}
         </section>
 
+        {phase === 'ready' && open && (
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            {openIndex > 0 && (
+              <button type="button" onClick={goBack} className="text-[13px] text-zinc-400 underline decoration-zinc-600 underline-offset-4 transition-colors hover:text-zinc-100">
+                The step before
+              </button>
+            )}
+            {!atEnd && (
+              <button type="button" onClick={restart} className="text-[13px] text-zinc-400 underline decoration-zinc-600 underline-offset-4 transition-colors hover:text-zinc-100">
+                Start over
+              </button>
+            )}
+          </div>
+        )}
+        {note ? (
+          <p role="status" className="mt-4 text-[13px] text-zinc-400">{note}</p>
+        ) : null}
+
         <button
           type="button"
-          onClick={beginOrAdvance}
-          disabled={phase !== 'ready' || catalog.length === 0 || atEnd}
+          onClick={primaryAction}
+          disabled={phase !== 'ready' || catalog.length === 0}
           className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
         >
           {cta}

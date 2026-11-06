@@ -70,14 +70,18 @@ interface SuggestedUser {
   specialization?: string[];
 }
 
-interface SearchResult {
-  id: string;
-  title: string;
-  type: 'dtu' | 'media' | 'user' | 'topic';
-  subtitle?: string;
-  tags?: string[];
-  score?: number;
+// The Explore search reads the social store itself (GET /api/social/search
+// → searchSocial): people by handle/name, posts by content/hashtags,
+// hashtag counts — the collections this lens holds. (It previously read
+// the DTU-corpus search, a different store whose emptiness answered
+// every social query — R4's Social F2.)
+interface SocialSearchData {
+  people: Array<{ id: string; username: string; displayName: string }>;
+  posts: Array<{ id: string; userId: string; content: string; createdAt: string }>;
+  hashtags: Array<{ tag: string; count: number }>;
 }
+
+const EMPTY_SOCIAL_SEARCH: SocialSearchData = { people: [], posts: [], hashtags: [] };
 
 type CategoryFilter = 'all' | 'audio' | 'video' | 'image' | 'document' | 'text';
 
@@ -496,13 +500,18 @@ function Discovery({
   });
 
   const searchQuery_ = useQuery({
-    queryKey: ['search', searchQuery],
-    queryFn: async () => {
-      if (!searchQuery.trim()) return [];
-      const res = await api.get('/api/connective-tissue/search', {
-        params: { q: searchQuery.trim(), limit: 10 },
+    queryKey: ['social-search', searchQuery],
+    queryFn: async (): Promise<SocialSearchData> => {
+      if (!searchQuery.trim()) return EMPTY_SOCIAL_SEARCH;
+      const res = await api.get('/api/social/search', {
+        params: { q: searchQuery.trim() },
       });
-      return (res.data.results || []) as SearchResult[];
+      const data = (res.data || {}) as Partial<SocialSearchData>;
+      return {
+        people: Array.isArray(data.people) ? data.people : [],
+        posts: Array.isArray(data.posts) ? data.posts : [],
+        hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
+      };
     },
     enabled: searchQuery.trim().length >= 2,
   });
@@ -547,7 +556,7 @@ function Discovery({
         />
         <input
           type="text"
-          placeholder="Search DTUs, users, topics..."
+          placeholder="Search posts, people, topics..."
           onChange={(e) => handleSearchChange(e.target.value)}
           onFocus={() => setIsSearchFocused(true)}
           onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
@@ -572,34 +581,73 @@ function Discovery({
                 <div className="flex items-center justify-center py-6">
                   <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
                 </div>
-              ) : searchQuery_.data && searchQuery_.data.length > 0 ? (
-                searchQuery_.data.map((result) => (
-                  <button
-                    key={result.id}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-lattice-deep transition-colors text-left"
-                    onClick={() => {
-                      if (result.type === 'user') onNavigateToUser?.(result.id);
-                      else onNavigateToContent?.(result.id);
-                    }}
-                  >
-                    <div className="p-1.5 rounded-lg bg-lattice-deep">
-                      {result.type === 'user' ? (
-                        <Users className="w-4 h-4 text-neon-purple" />
-                      ) : result.type === 'media' ? (
-                        <Play className="w-4 h-4 text-neon-cyan" />
-                      ) : (
-                        <BookOpen className="w-4 h-4 text-gray-400" />
-                      )}
+              ) : searchQuery_.data && (searchQuery_.data.people.length > 0 || searchQuery_.data.posts.length > 0 || searchQuery_.data.hashtags.length > 0) ? (
+                <div>
+                  {searchQuery_.data.people.length > 0 && (
+                    <div className="py-1">
+                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-500">People</p>
+                      {searchQuery_.data.people.map((person) => (
+                        <button
+                          key={person.id}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-lattice-deep transition-colors text-left"
+                          onClick={() => onNavigateToUser?.(person.id)}
+                        >
+                          <div className="p-1.5 rounded-lg bg-lattice-deep">
+                            <Users className="w-4 h-4 text-neon-purple" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-white truncate">{person.displayName}</div>
+                            {person.username && person.username !== person.displayName && (
+                              <div className="text-xs text-gray-400 truncate">@{person.username}</div>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-400">person</span>
+                        </button>
+                      ))}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-white truncate">{result.title}</div>
-                      {result.subtitle && (
-                        <div className="text-xs text-gray-400 truncate">{result.subtitle}</div>
-                      )}
+                  )}
+                  {searchQuery_.data.posts.length > 0 && (
+                    <div className="py-1">
+                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-500">Posts</p>
+                      {searchQuery_.data.posts.map((post) => (
+                        <button
+                          key={post.id}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-lattice-deep transition-colors text-left"
+                          onClick={() => onOpenPost?.(post.id)}
+                        >
+                          <div className="p-1.5 rounded-lg bg-lattice-deep">
+                            <BookOpen className="w-4 h-4 text-gray-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-white truncate">{post.content || 'Post'}</div>
+                            <div className="text-xs text-gray-400 truncate">{new Date(post.createdAt).toLocaleDateString()}</div>
+                          </div>
+                          <span className="text-xs text-gray-400">post</span>
+                        </button>
+                      ))}
                     </div>
-                    <span className="text-xs text-gray-400 capitalize">{result.type}</span>
-                  </button>
-                ))
+                  )}
+                  {searchQuery_.data.hashtags.length > 0 && (
+                    <div className="py-1">
+                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-500">Topics</p>
+                      {searchQuery_.data.hashtags.map((tag) => (
+                        <button
+                          key={tag.tag}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-lattice-deep transition-colors text-left"
+                          onClick={() => setSearchQuery(`#${tag.tag}`)}
+                        >
+                          <div className="p-1.5 rounded-lg bg-lattice-deep">
+                            <Hash className="w-4 h-4 text-neon-cyan" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-white truncate">#{tag.tag}</div>
+                          </div>
+                          <span className="text-xs text-gray-400">{tag.count} post{tag.count === 1 ? '' : 's'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="py-6 text-center text-gray-400 text-sm">No results found</div>
               )}

@@ -2,14 +2,16 @@
 
 /**
  * RemindersPanel — scheduled practice reminders. Wires meditation.setReminder,
- * meditation.reminders (list + next-fire computation), meditation.toggleReminder
- * and meditation.deleteReminder. The browser Notification API is used to fire a
+ * meditation.reminders (list + next-fire computation), meditation.toggleReminder,
+ * meditation.updateReminder (edit in place, S-MED-3 — fixing a time used to
+ * mean delete + recreate) and meditation.deleteReminder (two-step: a delete
+ * confirms first, per F4). The browser Notification API is used to fire a
  * local notification when a reminder's next-fire time arrives while the tab is
  * open.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Bell, BellOff, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +36,11 @@ export function RemindersPanel() {
   const [label, setLabel] = useState('');
   const [days, setDays] = useState<string[]>(['mon', 'tue', 'wed', 'thu', 'fri']);
   const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editTime, setEditTime] = useState('08:00');
+  const [editLabel, setEditLabel] = useState('');
+  const [editDays, setEditDays] = useState<string[]>([]);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const firedRef = useRef<Set<string>>(new Set());
 
   const load = useCallback(async () => {
@@ -99,9 +106,31 @@ export function RemindersPanel() {
   const remove = useCallback(async (id: string) => {
     setBusy(true);
     await lensRun('meditation', 'deleteReminder', { reminderId: id });
+    setConfirmDeleteId(null);
     await load();
     setBusy(false);
   }, [load]);
+
+  const beginEdit = useCallback((r: Reminder) => {
+    setEditId(r.id);
+    setEditTime(r.time);
+    setEditLabel(r.label);
+    setEditDays(r.days);
+    setConfirmDeleteId(null);
+  }, []);
+
+  const saveEdit = useCallback(async (id: string) => {
+    setBusy(true);
+    await lensRun('meditation', 'updateReminder', {
+      reminderId: id, time: editTime, days: editDays, label: editLabel.trim() || undefined,
+    });
+    setEditId(null);
+    await load();
+    setBusy(false);
+  }, [editTime, editDays, editLabel, load]);
+
+  const toggleEditDay = (d: string) =>
+    setEditDays((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
 
   if (loading) {
     return <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
@@ -161,7 +190,7 @@ export function RemindersPanel() {
         <ul className="space-y-1.5">
           {data.reminders.map((r) => (
             <li key={r.id}
-              className={cn('flex items-center gap-2.5 rounded-lg px-2.5 py-2 border',
+              className={cn('flex flex-wrap items-center gap-2.5 rounded-lg px-2.5 py-2 border',
                 r.enabled ? 'bg-zinc-900/60 border-zinc-800' : 'bg-zinc-950/50 border-zinc-900 opacity-60')}>
               <span className="text-sm font-mono text-zinc-100 w-12">{r.time}</span>
               <div className="flex-1 min-w-0">
@@ -174,10 +203,50 @@ export function RemindersPanel() {
                 className="p-1 rounded hover:bg-zinc-800" aria-label={r.enabled ? 'Disable' : 'Enable'}>
                 {r.enabled ? <Bell className="w-3.5 h-3.5 text-rose-300" /> : <BellOff className="w-3.5 h-3.5 text-zinc-400" />}
               </button>
-              <button type="button" onClick={() => remove(r.id)} disabled={busy}
-                className="p-1 rounded hover:bg-zinc-800" aria-label="Delete">
-                <Trash2 className="w-3.5 h-3.5 text-zinc-400 hover:text-rose-400" />
+              <button type="button" onClick={() => beginEdit(r)} disabled={busy}
+                className="p-1 rounded hover:bg-zinc-800" aria-label="Edit">
+                <Pencil className="w-3.5 h-3.5 text-zinc-400 hover:text-rose-300" />
               </button>
+              {confirmDeleteId === r.id ? (
+                <>
+                  <button type="button" onClick={() => remove(r.id)} disabled={busy}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-rose-600 text-white">Delete?</button>
+                  <button type="button" onClick={() => setConfirmDeleteId(null)} disabled={busy}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">Keep</button>
+                </>
+              ) : (
+                <button type="button" onClick={() => setConfirmDeleteId(r.id)} disabled={busy}
+                  className="p-1 rounded hover:bg-zinc-800" aria-label="Delete">
+                  <Trash2 className="w-3.5 h-3.5 text-zinc-400 hover:text-rose-400" />
+                </button>
+              )}
+              {editId === r.id && (
+                <div className="basis-full mt-2 bg-zinc-950/60 border border-zinc-800 rounded-lg p-2.5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)}
+                      className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-100" />
+                    <input type="text" value={editLabel} onChange={(e) => setEditLabel(e.target.value)}
+                      placeholder="Label (optional)"
+                      className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-rose-500/40" />
+                  </div>
+                  <div className="flex gap-1 items-center">
+                    {DOW.map((d) => (
+                      <button key={d.id} type="button" onClick={() => toggleEditDay(d.id)}
+                        className={cn('w-7 h-7 rounded text-[11px]', editDays.includes(d.id) ? 'bg-rose-600 text-white' : 'bg-zinc-950 text-zinc-400')}>
+                        {d.label}
+                      </button>
+                    ))}
+                    <button type="button" onClick={() => saveEdit(r.id)} disabled={busy || editDays.length === 0}
+                      className="ml-auto px-2.5 py-1 text-[11px] rounded bg-rose-600 hover:bg-rose-500 text-white disabled:opacity-40">
+                      Save changes
+                    </button>
+                    <button type="button" onClick={() => setEditId(null)} disabled={busy}
+                      className="px-2.5 py-1 text-[11px] rounded bg-zinc-800 text-zinc-300">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </li>
           ))}
         </ul>

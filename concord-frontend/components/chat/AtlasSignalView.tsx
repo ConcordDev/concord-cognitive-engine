@@ -42,6 +42,7 @@ interface ClassifiedSignal {
   frequency: number;
   adjustability: string;
   classified_at: string;
+  description?: string | null;
 }
 
 // ── Category Colors ─────────────────────────────────────────────────────────
@@ -119,6 +120,9 @@ function TaxonomyView({ data }: { data: NonNullable<SignalViewData['taxonomy']> 
             </span>
             <span className="text-zinc-400">{sig.frequency} MHz</span>
             <span className="text-zinc-600">{sig.purpose}</span>
+            {sig.description && (
+              <span className="text-zinc-500 truncate max-w-[16rem]" title={sig.description}>{sig.description}</span>
+            )}
             <span className={adjustColors[sig.adjustability] || 'text-zinc-400'}>
               {sig.adjustability === 'ADJUST_FORBIDDEN' ? '⛔' :
                sig.adjustability === 'ADJUST_RESTRICTED' ? '⚠' :

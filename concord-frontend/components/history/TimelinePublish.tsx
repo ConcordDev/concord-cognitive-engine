@@ -6,11 +6,13 @@
  * history.timeline-publish / timeline-unpublish. No hardcoded data.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Share2, Copy, Check, Globe2, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface PublishResult {
+  published?: boolean;
+  stale?: boolean;
   shareId: string;
   shareUrl: string;
   embedCode: string;
@@ -24,10 +26,21 @@ export function TimelinePublish({ timelineId, title }: { timelineId: string; tit
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<'url' | 'embed' | null>(null);
 
+  // S4 (F4): publish state reads from the server's snapshot map — the
+  // same source the dashboard KPI counts — not from this component's
+  // memory, so a reload restores the publish state instead of
+  // contradicting the KPI.
+  const loadStatus = useCallback(async () => {
+    const r = await lensRun<PublishResult & { published: boolean }>('history', 'timeline-publish-status', { timelineId });
+    if (r.data?.ok && r.data.result?.published) setPub(r.data.result as PublishResult);
+    else if (r.data?.ok) setPub(null);
+  }, [timelineId]);
+  useEffect(() => { void loadStatus(); }, [loadStatus]);
+
   const publish = useCallback(async () => {
     setBusy(true); setError('');
     const r = await lensRun<PublishResult>('history', 'timeline-publish', { timelineId });
-    if (r.data?.ok && r.data.result) setPub(r.data.result);
+    if (r.data?.ok && r.data.result) { setPub(r.data.result); void loadStatus(); }
     else setError(r.data?.error || 'Publish failed');
     setBusy(false);
   }, [timelineId]);
@@ -65,6 +78,9 @@ export function TimelinePublish({ timelineId, title }: { timelineId: string; tit
             Published · {pub.eventCount} event{pub.eventCount !== 1 ? 's' : ''} ·{' '}
             {new Date(pub.publishedAt).toLocaleString()}
           </p>
+          {pub.stale && (
+            <p className="text-[10px] text-amber-300">This timeline has changed since it was published — the share still shows the published snapshot. Publish again to update it.</p>
+          )}
           <div>
             <p className="text-[10px] text-zinc-400 mb-0.5">Share link</p>
             <div className="flex gap-1">

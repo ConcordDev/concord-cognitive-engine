@@ -13,6 +13,24 @@ interface AllocationEntry {
   focused?: boolean;
 }
 
+/**
+ * The allocator payload is not reliably an array: before the first
+ * allocation runs it can arrive as a domain-keyed map. Coerce both
+ * shapes to a list; anything else is an empty allocation, never a
+ * crash (the lens entry crash was `x.slice is not a function` on a
+ * map-shaped payload).
+ */
+function toAllocationList(v: unknown): AllocationEntry[] {
+  if (Array.isArray(v)) return v as AllocationEntry[];
+  if (v && typeof v === 'object') {
+    return Object.values(v as Record<string, unknown>).filter(
+      (e): e is AllocationEntry =>
+        !!e && typeof e === 'object' && typeof (e as AllocationEntry).domain === 'string',
+    );
+  }
+  return [];
+}
+
 function AttentionPanel() {
   const [allocation, setAllocation] = useState<AllocationEntry[]>([]);
   const [focusOverride, setFocusOverride] = useState<{
@@ -21,6 +39,7 @@ function AttentionPanel() {
     expiresAt: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     apiHelpers.attentionAlloc
@@ -28,19 +47,19 @@ function AttentionPanel() {
       .then((resp) => {
         const data = resp.data;
         if (data?.lastAllocation?.allocation) {
-          setAllocation(data.lastAllocation.allocation);
+          setAllocation(toAllocationList(data.lastAllocation.allocation));
         }
         if (data?.focusOverride) setFocusOverride(data.focusOverride);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => { setLoadFailed(true); setLoading(false); });
 
     const socket = getSocket();
     const handler = (data: {
-      allocation: AllocationEntry[];
+      allocation: unknown;
       focusOverride: typeof focusOverride;
     }) => {
-      if (data.allocation) setAllocation(data.allocation);
+      if (data.allocation) setAllocation(toAllocationList(data.allocation));
       if (data.focusOverride !== undefined) setFocusOverride(data.focusOverride);
     };
     socket.on('attention:allocation', handler);
@@ -88,6 +107,13 @@ function AttentionPanel() {
 
       {loading ? (
         <p className="text-xs text-gray-400">Loading...</p>
+      ) : loadFailed ? (
+        <p className="text-xs text-gray-400">
+          The allocator&rsquo;s live state could not be loaded. This is an operator view of how
+          the engine divides its attention across domains — nothing here needs your input.
+        </p>
+      ) : allocation.length === 0 ? (
+        <p className="text-xs text-gray-400">No allocation has been computed yet.</p>
       ) : (
         <div className="space-y-1.5">
           {allocation.slice(0, 12).map((a) => (

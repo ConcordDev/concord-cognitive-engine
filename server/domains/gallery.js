@@ -12,6 +12,7 @@ const CMA_BASE = "https://openaccess-api.clevelandart.org/api";
 const SI_BASE = "https://api.si.edu/openaccess/api/v1.0";
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 export default function registerGalleryActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -207,6 +208,46 @@ export default function registerGalleryActions(registerLensAction) {
     }
     return list;
   }
+
+  // Export read (gallery re-pass F7): the shared Export menu and the
+  // ↓.dtu control read through lib/lens-export.js — canonical lens
+  // artifacts plus a registered provider. Hung works are neither: they
+  // live in this lens's state, and the DTU each hang mints is a
+  // canonical DTU, not a lens artifact — so without this provider the
+  // export read returned zero rows under standing works and answered
+  // with the honest-empty refusal. Rows are the caller's own artworks,
+  // keyed by the wired DTU id when one stands, so the bundle the menu
+  // advertises is the DTUs the hang mints. Read-only: an export never
+  // creates the caller's default collection.
+  registerLensExportProvider("gallery", (ctx) => {
+    const s = getGalleryState();
+    if (!s) return [];
+    const collections = s.collections.get(glActor(ctx)) || [];
+    const rows = [];
+    for (const collection of collections) {
+      for (const artwork of collection.artworks || []) {
+        rows.push({
+          id: artwork.dtuId || artwork.id,
+          type: "gallery-artwork",
+          title: artwork.title,
+          createdAt: artwork.savedAt || null,
+          updatedAt: artwork.savedAt || null,
+          data: {
+            artworkId: artwork.id,
+            dtuId: artwork.dtuId || null,
+            refId: artwork.refId,
+            artist: artwork.artist,
+            date: artwork.date,
+            image: artwork.image,
+            museum: artwork.museum,
+            collectionId: collection.id,
+            collectionName: collection.name,
+          },
+        });
+      }
+    }
+    return rows;
+  });
 
   registerLensAction("gallery", "collection-create", (ctx, _a, params = {}) => {
     const s = getGalleryState(); if (!s) return { ok: false, error: "STATE unavailable" };

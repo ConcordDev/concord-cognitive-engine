@@ -111,6 +111,7 @@ export function normalizePost(raw: unknown): SocialPost | null {
     repostCount,
     viewerReaction: typeof row.viewerReaction === 'string' ? row.viewerReaction : null,
     viewerReposted: row.viewerReposted === true,
+    isPinned: row.isPinned === true,
     editedAt: typeof row.editedAt === 'string' ? row.editedAt : null,
   };
 }

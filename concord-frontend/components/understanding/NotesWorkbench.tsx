@@ -501,8 +501,12 @@ function NoteEditor({
     }
   }
 
+  const [armDelete, setArmDelete] = useState(false);
   async function remove() {
-    if (!window.confirm('Delete this note and all its links?')) return;
+    // Two-step in-page confirm — the retired form gated this wired
+    // verb behind a native confirm dialog, the dead-control
+    // class (the walk's clicks produced nothing at all).
+    if (!armDelete) { setArmDelete(true); return; }
     setBusy(true);
     try {
       const r = await lensRun('understanding', 'remove', { id: noteId });
@@ -646,8 +650,16 @@ function NoteEditor({
             disabled={busy}
             className="px-3 py-1.5 text-xs bg-rose-700/40 hover:bg-rose-700/60 border border-rose-700 rounded text-rose-200 inline-flex items-center gap-1 ml-auto"
           >
-            <Trash2 className="w-3 h-3" /> Delete
+            <Trash2 className="w-3 h-3" /> {armDelete ? 'Delete this note and its links? Click again to confirm' : 'Delete'}
           </button>
+          {armDelete && (
+            <button
+              onClick={() => setArmDelete(false)}
+              className="px-3 py-1.5 text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded text-white/70"
+            >
+              Keep
+            </button>
+          )}
         </div>
         <p className="text-[11px] text-white/40 mt-2">
           {note.wordCount} words · {note.revisionCount} revision{note.revisionCount === 1 ? '' : 's'}

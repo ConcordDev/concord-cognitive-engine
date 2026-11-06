@@ -17,6 +17,8 @@ export interface ForumPost {
   format?: string;
   images?: string[];
   author: string;
+  authorId?: string;
+  editedAt?: string;
   score: number;
   depth?: number;
   createdAt?: string;
@@ -27,16 +29,19 @@ export interface ForumPost {
 const EMPTY_DRAFT: RichDraft = { body: '', format: 'plain', images: [] };
 
 export function FmCommentTree({
-  nodes, locked, savedIds,
-  onVote, onReply, onAward, onSave,
+  nodes, locked, savedIds, viewerId = null,
+  onVote, onReply, onAward, onSave, onEdit, onDelete,
 }: {
   nodes: ForumPost[];
   locked: boolean;
   savedIds: Set<string>;
+  viewerId?: string | null;
   onVote: (postId: string, direction: number) => void;
   onReply: (parentId: string, draft: RichDraft) => Promise<void>;
   onAward: (postId: string) => void;
   onSave: (postId: string) => void;
+  onEdit?: (postId: string, draft: RichDraft) => Promise<void>;
+  onDelete?: (postId: string) => Promise<void>;
 }) {
   if (nodes.length === 0) {
     return <p className="text-[11px] text-zinc-400 italic py-4 text-center">No replies yet.</p>;
@@ -44,30 +49,38 @@ export function FmCommentTree({
   return (
     <ul className="space-y-2">
       {nodes.map((n) => (
-        <CommentNode key={n.id} node={n} locked={locked} savedIds={savedIds}
-          onVote={onVote} onReply={onReply} onAward={onAward} onSave={onSave} />
+        <CommentNode key={n.id} node={n} locked={locked} savedIds={savedIds} viewerId={viewerId}
+          onVote={onVote} onReply={onReply} onAward={onAward} onSave={onSave}
+          onEdit={onEdit} onDelete={onDelete} />
       ))}
     </ul>
   );
 }
 
 function CommentNode({
-  node, locked, savedIds, onVote, onReply, onAward, onSave,
+  node, locked, savedIds, viewerId = null, onVote, onReply, onAward, onSave, onEdit, onDelete,
 }: {
   node: ForumPost;
   locked: boolean;
   savedIds: Set<string>;
+  viewerId?: string | null;
   onVote: (postId: string, direction: number) => void;
   onReply: (parentId: string, draft: RichDraft) => Promise<void>;
   onAward: (postId: string) => void;
   onSave: (postId: string) => void;
+  onEdit?: (postId: string, draft: RichDraft) => Promise<void>;
+  onDelete?: (postId: string) => Promise<void>;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [replying, setReplying] = useState(false);
   const [draft, setDraft] = useState<RichDraft>(EMPTY_DRAFT);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState<RichDraft>(EMPTY_DRAFT);
+  const [armDelete, setArmDelete] = useState(false);
   const kids = node.replies || [];
   const saved = savedIds.has(node.id);
+  const mine = !!viewerId && !!node.authorId && node.authorId === viewerId;
 
   const submitReply = async () => {
     if (!draft.body.trim() || busy) return;
@@ -76,6 +89,14 @@ function CommentNode({
     setBusy(false);
     setDraft(EMPTY_DRAFT);
     setReplying(false);
+  };
+
+  const submitEdit = async () => {
+    if (!onEdit || !editDraft.body.trim() || busy) return;
+    setBusy(true);
+    await onEdit(node.id, editDraft);
+    setBusy(false);
+    setEditing(false);
   };
 
   return (
@@ -100,6 +121,7 @@ function CommentNode({
               {collapsed ? <Plus className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
             </button>
             <span className="text-[10px] font-medium text-orange-300">{node.author}</span>
+            {node.editedAt && <span className="text-[10px] text-zinc-500">edited</span>}
             {kids.length > 0 && (
               <span className="text-[10px] text-zinc-400">
                 {countDescendants(node)} repl{countDescendants(node) === 1 ? 'y' : 'ies'}
@@ -113,7 +135,21 @@ function CommentNode({
           {!collapsed && (
             <>
               <div className="mt-1">
-                <FmMarkdown text={node.body} format={node.format} />
+                {editing ? (
+                  <div className="space-y-2">
+                    <FmRichEditor value={editDraft} onChange={setEditDraft} rows={2} placeholder="Edit your reply…" />
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={() => setEditing(false)}
+                        className="px-2.5 py-1 text-[11px] text-zinc-400 hover:text-zinc-200">Cancel edit</button>
+                      <button type="button" onClick={submitEdit} disabled={busy || !editDraft.body.trim()}
+                        className="px-3 py-1 text-[11px] font-medium bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white rounded-lg">
+                        Save changes
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <FmMarkdown text={node.body} format={node.format} />
+                )}
               </div>
               {(node.images || []).length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -139,6 +175,31 @@ function CommentNode({
                   className={`flex items-center gap-1 text-[10px] ${saved ? 'text-orange-400' : 'text-zinc-400 hover:text-orange-300'}`}>
                   <Bookmark className="w-3 h-3" /> {saved ? 'Saved' : 'Save'}
                 </button>
+                {mine && onEdit && !editing && (
+                  <button type="button" onClick={() => { setEditDraft({ body: node.body, format: (node.format as 'plain' | 'markdown') || 'plain', images: node.images || [] }); setEditing(true); }}
+                    className="text-[10px] text-zinc-400 hover:text-orange-300">
+                    Edit
+                  </button>
+                )}
+                {mine && onDelete && (
+                  armDelete ? (
+                    <span className="flex items-center gap-1.5">
+                      <button type="button" onClick={() => { void onDelete(node.id); }}
+                        className="text-[10px] font-medium text-rose-300 hover:text-rose-200">
+                        Delete this reply? Click again to confirm
+                      </button>
+                      <button type="button" onClick={() => setArmDelete(false)}
+                        className="text-[10px] text-zinc-400 hover:text-zinc-200">
+                        Keep
+                      </button>
+                    </span>
+                  ) : (
+                    <button type="button" onClick={() => setArmDelete(true)}
+                      className="text-[10px] text-zinc-400 hover:text-rose-300">
+                      Delete
+                    </button>
+                  )
+                )}
               </div>
 
               {replying && (
@@ -157,8 +218,9 @@ function CommentNode({
 
               {kids.length > 0 && (
                 <div className="mt-2">
-                  <FmCommentTree nodes={kids} locked={locked} savedIds={savedIds}
-                    onVote={onVote} onReply={onReply} onAward={onAward} onSave={onSave} />
+                  <FmCommentTree nodes={kids} locked={locked} savedIds={savedIds} viewerId={viewerId}
+                    onVote={onVote} onReply={onReply} onAward={onAward} onSave={onSave}
+                    onEdit={onEdit} onDelete={onDelete} />
                 </div>
               )}
             </>

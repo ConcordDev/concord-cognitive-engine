@@ -2209,4 +2209,39 @@ export default function registerAgricultureActions(registerLensAction) {
       return { ok: false, error: `worldbank unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // feed-list — the display half of the feed verb above (F3 join). The
+  // ingested DTUs cannot reach the global feed route: dtu.create stores
+  // them at local scope (its scope coercion admits only personal|local;
+  // the caller's global intent lands in federation_tier), while
+  // selectGlobalFeed admits only scope "global" / isGlobal rows — a
+  // contract gap in platform code that orphans every domain feed verb of
+  // this shape. Until that layer is cured, the lens lists its own ingest
+  // through the sanctioned dtu.list read, pinned to this handler's mint
+  // (source "worldbank-feed"), so the section that promises the items is
+  // the section that shows them.
+  registerLensAction("agriculture", "feed-list", async (ctx, _a, params = {}) => {
+    const limit = Math.max(1, Math.min(50, Math.round(Number(params.limit) || 20)));
+    const res = await ctx.macro.run("dtu", "list", { tags: "crop-yield", limit: 100 });
+    const rows = Array.isArray(res?.dtus) ? res.dtus : [];
+    const items = rows
+      .filter((d) => d && d.source === "worldbank-feed")
+      .map((d) => ({
+        id: d.id,
+        title: d.title,
+        summary: (Array.isArray(d.core?.claims) && d.core.claims.length > 0)
+          ? d.core.claims.join(" · ")
+          : (d.core?.definitions?.[0] || ""),
+        sourceName: "World Bank Open Data",
+        sourceUrl: "https://data.worldbank.org/indicator/AG.YLD.CREL.KG",
+        publishedAt: d.createdAt || null,
+        country: d.meta?.country || null,
+        year: d.meta?.year || null,
+        yieldKgHa: d.meta?.yieldKgHa ?? null,
+        tags: (d.tags || []).filter((t) => t !== "feed"),
+      }))
+      .sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime())
+      .slice(0, limit);
+    return { ok: true, result: { items, total: items.length } };
+  });
 };

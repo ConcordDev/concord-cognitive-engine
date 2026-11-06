@@ -6,7 +6,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -64,7 +64,26 @@ export default function AnonLensPage() {
   // structured record data — driven by a small real table editor here and
   // run directly via lensRun (the input becomes the macro's artifact.data),
   // rather than round-tripping through the unrelated generic artifact store.
-  const [records, setRecords] = useState<PrivacyRecord[]>([]);
+  // The lab dataset persists in this browser (build(anon) S7/F7): the
+  // Messenger half of this lens persists server-side, and a dataset that
+  // silently died on reload lost work with no notice. Scope is stated on
+  // the panel: this browser only, never sent anywhere but the compute
+  // actions the user runs.
+  const [records, setRecords] = useState<PrivacyRecord[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = window.localStorage.getItem('concord.anon.labRecords.v1');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as PrivacyRecord[];
+      return Array.isArray(parsed)
+        ? parsed.filter((r) => typeof r?.age === 'number' && typeof r?.zipcode === 'string')
+        : [];
+    } catch { return []; /* a corrupt stash reads as an empty dataset */ }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem('concord.anon.labRecords.v1', JSON.stringify(records)); } catch { /* storage full/blocked: the session still works */ }
+  }, [records]);
+  const [labError, setLabError] = useState('');
   const [newRecord, setNewRecord] = useState({ age: '', zipcode: '', condition: '' });
   const [epsilon, setEpsilon] = useState(1.0);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
@@ -77,6 +96,11 @@ export default function AnonLensPage() {
   const addRecord = () => {
     const age = Number(newRecord.age);
     if (!Number.isFinite(age) || !newRecord.zipcode.trim()) return;
+    if (!/^\d+$/.test(newRecord.zipcode.trim())) {
+      setLabError('Zipcode must be numeric — the row was not added.');
+      return;
+    }
+    setLabError('');
     setRecords((prev) => [...prev, { age, zipcode: newRecord.zipcode.trim(), condition: newRecord.condition.trim() || 'unspecified' }]);
     setNewRecord({ age: '', zipcode: '', condition: '' });
   };
@@ -104,6 +128,30 @@ export default function AnonLensPage() {
     ],
     { lensId: 'anon' },
   );
+
+  // The header export carries the caller's own anon records (S8/F6):
+  // identity (alias + fingerprint — never key material), conversations
+  // (rosters + counts, no message bodies), and the lab dataset. An empty
+  // account returns {} so the button's honest refusal still governs.
+  const prepareAnonExport = async (): Promise<unknown> => {
+    try {
+      const [idRes, convRes] = await Promise.all([
+        lensRun('anon', 'identity', {}),
+        lensRun('anon', 'listConversations', {}),
+      ]);
+      const identity = (idRes.data?.result ?? null) as { alias?: string; fingerprint?: string } | null;
+      const conversations = ((convRes.data?.result as { conversations?: unknown[] })?.conversations ?? []) as unknown[];
+      if (!identity && conversations.length === 0 && records.length === 0) return {};
+      return {
+        identity: identity ? { alias: identity.alias, fingerprint: identity.fingerprint } : null,
+        conversations,
+        labDataset: records,
+        exportedAt: new Date().toISOString(),
+      };
+    } catch {
+      return {};
+    }
+  };
 
   const handleAnonAction = async (action: 'anonymize' | 'privacyRisk' | 'differentialPrivacy') => {
     if (records.length === 0) {
@@ -146,7 +194,7 @@ export default function AnonLensPage() {
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="anon" data={realtimeData || {}} compact />
+            <DTUExportButton domain="anon" data={{}} prepare={prepareAnonExport} compact />
           </div>
         </div>
 
@@ -191,7 +239,8 @@ export default function AnonLensPage() {
           <p className="text-xs text-gray-400">
             Run k-anonymity generalization, re-identification risk (prosecutor / journalist /
             marketer attack models), and Laplace-mechanism differential privacy against a real
-            dataset below.
+            dataset below. The dataset is saved in this browser and restored on reload; it
+            leaves the browser only when you run an action on it.
           </p>
 
           {/* Dataset editor */}
@@ -228,6 +277,7 @@ export default function AnonLensPage() {
                 <Plus className="h-3.5 w-3.5" /> Add row
               </button>
             </div>
+            {labError && <p className="text-[11px] text-red-400" role="alert">{labError}</p>}
             {records.length > 0 && (
               <div className="max-h-32 space-y-1 overflow-y-auto">
                 {records.map((r, i) => (
@@ -313,8 +363,8 @@ export default function AnonLensPage() {
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                     <div className="rounded bg-lattice-surface p-2 text-center">
-                      <p className="text-sm font-bold text-neon-green">{actionResult.k as number}</p>
-                      <p className="text-[10px] text-gray-400">K-Anonymity</p>
+                      <p className="text-sm font-bold text-neon-green">{actionResult.minClassSize as number}</p>
+                      <p className="text-[10px] text-gray-400">K achieved (smallest class) · requested {actionResult.k as number}</p>
                     </div>
                     <div className="rounded bg-lattice-surface p-2 text-center">
                       <p className="text-sm font-bold text-neon-cyan">
@@ -358,6 +408,31 @@ export default function AnonLensPage() {
                       </span>
                     )}
                   </div>
+                  {/* The generalized dataset itself — the artefact the grade
+                      describes (S5/F4). Printed k above is the smallest
+                      class size in this table. */}
+                  {(() => {
+                    const rows = ((actionResult.anonymizedRecords as Record<string, unknown>[])?.length
+                      ? (actionResult.anonymizedRecords as Record<string, unknown>[])
+                      : (actionResult.anonymizedSample as Record<string, unknown>[]) || []);
+                    if (rows.length === 0) return null;
+                    const cols = Object.keys(rows[0]);
+                    return (
+                      <div className="overflow-x-auto">
+                        <p className="mb-1 text-[11px] font-semibold text-gray-300">Generalized records ({rows.length})</p>
+                        <table className="w-full text-left text-[11px] text-gray-300">
+                          <thead>
+                            <tr>{cols.map((c) => <th key={c} className="border-b border-white/10 px-1.5 py-1 font-medium text-gray-400">{c}</th>)}</tr>
+                          </thead>
+                          <tbody>
+                            {rows.map((row, i) => (
+                              <tr key={i}>{cols.map((c) => <td key={c} className="px-1.5 py-1 font-mono">{String(row[c] ?? '')}</td>)}</tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -383,8 +458,20 @@ export default function AnonLensPage() {
                         %
                       </div>
                       <span className="rounded px-2 py-0.5 text-xs font-medium uppercase">
-                        {actionResult.overallRiskLevel as string} risk
+                        {actionResult.overallRiskLevel as string} risk · prosecutor (worst case)
                       </span>
+                    </div>
+                    <div className="space-y-1">
+                      {(['prosecutor', 'journalist', 'marketer'] as const).map((model) => {
+                        const m = (actionResult.attackModels as Record<string, { risk?: number; description?: string }>)?.[model];
+                        if (!m) return null;
+                        return (
+                          <div key={model} className="flex items-baseline justify-between gap-2 rounded bg-lattice-surface px-2 py-1.5 text-xs">
+                            <span className="text-gray-200"><span className="font-semibold capitalize">{model}</span> <span className="text-gray-400">— {m.description}</span></span>
+                            <span className="font-mono font-bold text-white">{m.risk}%</span>
+                          </div>
+                        );
+                      })}
                     </div>
                     {(actionResult.recommendations as string[])?.length > 0 && (
                       <div className="space-y-1">
@@ -440,9 +527,26 @@ export default function AnonLensPage() {
                             ?.queriesProcessed as number
                         }
                       </p>
-                      <p className="text-[10px] text-gray-400">Queries</p>
+                      <p className="text-[10px] text-gray-400">Queries processed</p>
                     </div>
                   </div>
+                  {/* The answers themselves (S3/F2): a named statistic and
+                      its noisy value beside the budget debit. The dataset
+                      is the caller's own, so the true value is shown for
+                      the comparison that teaches what epsilon costs. */}
+                  {Array.isArray(actionResult.results) && (
+                    <div className="space-y-1">
+                      {(actionResult.results as { type: string; trueAnswer: number; noisyAnswer: number; confidenceInterval95: number; relativeError: number | null }[]).map((r, i) => (
+                        <div key={i} className="flex flex-wrap items-baseline justify-between gap-2 rounded bg-lattice-surface px-2 py-1.5 text-xs">
+                          <span className="font-semibold capitalize text-gray-200">{r.type} of ages</span>
+                          <span className="font-mono text-gray-300">
+                            true {r.trueAnswer} · <span className="font-bold text-white">noisy {r.noisyAnswer}</span> · ±{r.confidenceInterval95} (95%)
+                            {r.relativeError != null && <span className="text-gray-400"> · err {r.relativeError}%</span>}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

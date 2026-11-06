@@ -15,8 +15,14 @@
  *   • Save-as-DTU on each tier
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { getLensState, useLensStatePersistence } from '@/lib/lens-state-persistence';
+
+/** Display name from the parts the decode actually returned — an absent
+ *  field renders as absent, never as the literal word "null". */
+const nameOf = (v: { year?: string | null; make?: string | null; model?: string | null }) =>
+  [v.year, v.make, v.model].filter(Boolean).join(' ');
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Car, Loader2, AlertTriangle, ShieldCheck,
@@ -76,9 +82,12 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 export function VinDecoder() {
-  const [vinInput, setVinInput] = useState('');
+  const { persist: persistVin } = useLensStatePersistence('automotive-vin-decoder');
+  const [vinInput, setVinInput] = useState(() => (getLensState('automotive-vin-decoder')?.vin as string | undefined) ?? '');
+  useEffect(() => { persistVin({ vin: vinInput }); }, [vinInput, persistVin]);
   const [vehicle, setVehicle] = useState<VinData | null>(null);
   const [recalls, setRecalls] = useState<Recall[]>([]);
+  const [recallGap, setRecallGap] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const vinValid = /^[A-HJ-NPR-Z0-9]{17}$/.test(vinInput.toUpperCase());
@@ -89,14 +98,21 @@ export function VinDecoder() {
       if (env.ok && env.result) {
         setVehicle(env.result);
         setError(null);
-        // Auto-fetch recalls
-        if (env.result.make && env.result.model && env.result.year) {
-          const recEnv = await callMacro<{ recalls: Recall[] }>('recall-lookup', {
+        setRecalls([]);
+        setRecallGap(null);
+        // Auto-fetch recalls. A partial decode (no model — common for
+        // older VINs) still runs the lookup: the server answers with an
+        // explicit gap instead of a refusal, and the gap is shown.
+        if (env.result.make && env.result.year) {
+          const recEnv = await callMacro<{ recalls: Recall[]; gap?: string }>('recall-lookup', {
             make: env.result.make,
-            model: env.result.model,
+            model: env.result.model || undefined,
             year: Number(env.result.year),
           });
-          if (recEnv.ok && recEnv.result) setRecalls(recEnv.result.recalls);
+          if (recEnv.ok && recEnv.result) {
+            setRecalls(recEnv.result.recalls);
+            setRecallGap(recEnv.result.gap ?? null);
+          }
         }
       } else {
         setVehicle(null);
@@ -174,7 +190,7 @@ export function VinDecoder() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <h3 className="text-2xl font-semibold text-white">
-                  {vehicle.year} {vehicle.make} {vehicle.model}
+                  {nameOf(vehicle)}
                 </h3>
                 <p className="mt-0.5 text-xs text-zinc-400">
                   {vehicle.trim && <span>{vehicle.trim} · </span>}
@@ -185,10 +201,10 @@ export function VinDecoder() {
               <SaveAsDtuButton
                 apiSource="nhtsa-vpic"
                 apiUrl={`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${vehicle.vin}?format=json`}
-                title={`${vehicle.year} ${vehicle.make} ${vehicle.model} — VIN ${vehicle.vin}`}
+                title={`${nameOf(vehicle)} — VIN ${vehicle.vin}`}
                 content={[
                   `VIN: ${vehicle.vin}`,
-                  `Year/Make/Model: ${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+                  `Year/Make/Model: ${nameOf(vehicle)}`,
                   vehicle.trim ? `Trim: ${vehicle.trim}` : '',
                   vehicle.bodyClass ? `Body: ${vehicle.bodyClass}` : '',
                   vehicle.engineCylinders ? `Engine: ${vehicle.engineCylinders}-cyl ${vehicle.engineDisplacementL || ''}L ${vehicle.fuelType || ''}` : '',
@@ -196,7 +212,7 @@ export function VinDecoder() {
                   vehicle.driveType ? `Drive: ${vehicle.driveType}` : '',
                   vehicle.manufacturer ? `Manufacturer: ${vehicle.manufacturer}` : '',
                   vehicle.plantCity ? `Built in: ${vehicle.plantCity}, ${vehicle.plantCountry}` : '',
-                  `Recalls: ${recalls.length}`,
+                  recallGap ? `Recalls: not checked — ${recallGap}` : `Recalls: ${recalls.length}`,
                 ].filter(Boolean).join('\n')}
                 extraTags={['automotive', 'vin', vehicle.make?.toLowerCase() || 'auto', vehicle.model?.toLowerCase() || '']}
                 rawData={{ vehicle, recalls }}
@@ -237,21 +253,31 @@ export function VinDecoder() {
           </div>
 
           {/* Recall banner */}
-          <RecallList recalls={recalls} vehicle={vehicle} loading={vinMutation.isPending} />
+          <RecallList recalls={recalls} vehicle={vehicle} loading={vinMutation.isPending} gap={recallGap} />
         </motion.div>
       )}
     </div>
   );
 }
 
-function RecallList({ recalls, vehicle, loading }: { recalls: Recall[]; vehicle: VinData; loading: boolean }) {
+function RecallList({ recalls, vehicle, loading, gap }: { recalls: Recall[]; vehicle: VinData; loading: boolean; gap?: string | null }) {
   if (loading) return null;
+  if (gap) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-amber-500/25 bg-amber-500/5 px-3 py-2.5">
+        <AlertTriangle className="h-4 w-4 text-amber-400" />
+        <span className="text-xs text-amber-200">
+          Recalls not checked: {gap}
+        </span>
+      </div>
+    );
+  }
   if (recalls.length === 0) {
     return (
       <div className="flex items-center gap-2 rounded-md border border-emerald-500/25 bg-emerald-500/5 px-3 py-2.5">
         <CheckCircle2 className="h-4 w-4 text-emerald-400" />
         <span className="text-xs text-emerald-200">
-          No open recalls indexed by NHTSA for this {vehicle.year} {vehicle.make} {vehicle.model}.
+          No open recalls indexed by NHTSA for this {nameOf(vehicle)}.
         </span>
       </div>
     );
@@ -288,14 +314,14 @@ function RecallList({ recalls, vehicle, loading }: { recalls: Recall[]; vehicle:
               <SaveAsDtuButton
                 compact
                 apiSource="nhtsa-recalls"
-                apiUrl={`https://api.nhtsa.gov/recalls/recallsByVehicle?make=${vehicle.make}&model=${vehicle.model}&modelYear=${vehicle.year}`}
+                apiUrl={`https://api.nhtsa.gov/recalls/recallsByVehicle?make=${vehicle.make ?? ''}&model=${vehicle.model ?? ''}&modelYear=${vehicle.year ?? ''}`}
                 title={`NHTSA ${r.nhtsaId} — ${r.component}`}
                 content={[
                   `Campaign: ${r.nhtsaId}`,
                   `Component: ${r.component}`,
                   `Manufacturer: ${r.manufacturer}`,
                   `Report received: ${r.reportReceivedDate}`,
-                  `Vehicle: ${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+                  `Vehicle: ${nameOf(vehicle)}`,
                   '',
                   `Summary: ${r.summary}`,
                   `Consequence: ${r.consequence}`,

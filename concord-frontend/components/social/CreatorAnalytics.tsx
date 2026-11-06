@@ -56,6 +56,7 @@ interface ContentBreakdown {
 interface CreatorAnalyticsData {
   overview: {
     engagementRate: number;
+    engagementBasis?: { totalEngagement: number; totalReach: number } | null;
     totalReach: number;
     followerCount: number;
     followerTrend: 'up' | 'down' | 'stable';
@@ -245,6 +246,17 @@ function CreatorAnalytics({ userId, className, hideFollowersCard }: CreatorAnaly
           />
         )}
       </div>
+
+      {/* The rate's basis, printed: engagement over total views across
+          your posts. At zero views there is no rate to report — the
+          figure reads 0 rather than a manufactured percentage. */}
+      <p className="text-[11px] text-zinc-500">
+        {data.overview.engagementBasis
+          ? data.overview.totalReach > 0
+            ? `Engagement rate = engagement (${data.overview.engagementBasis.totalEngagement}) ÷ views (${formatNumber(data.overview.totalReach)}) across your posts.`
+            : 'Engagement rate needs views: your posts have engagement but no views yet, so no rate is reported.'
+          : 'Engagement rate is computed from your posts’ engagement over their total views.'}
+      </p>
 
       {showDays && <Section title="Engagement (Last 7 Days)" icon={BarChart3}>
         <div className="flex items-end gap-2 h-40">

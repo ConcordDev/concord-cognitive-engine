@@ -55,10 +55,14 @@ const _rejectionDTUs = new LruMap(); // id → rejection DTU
  * Recalculate confidence for a hypothesis based on evidence, tests, and
  * predictions.
  *
- * Formula:
+ * Formula (S5 calibration — published in-product as CONFIDENCE_MODEL):
  *   forWeight = sum of evidence_for weights
  *   againstWeight = sum of evidence_against weights
- *   base = forWeight / (forWeight + againstWeight)
+ *   base = (forWeight + PRIOR_WEIGHT / 2) / (forWeight + againstWeight + PRIOR_WEIGHT)
+ *     — a shrinkage estimate toward the 0.5 prior. The retired ratio
+ *     (forWeight / totalWeight) saturated at 1.0 for ANY one-sided
+ *     evidence: a single 0.5-weight pilot note read "100% confident".
+ *     With PRIOR_WEIGHT = 2 that same item yields base 0.60.
  *   testBonus = (passed_tests / total_tests) * 0.2
  *   predictionBonus = verified_predictions * 0.05
  *   predictionPenalty = falsified_predictions * 0.1
@@ -67,6 +71,13 @@ const _rejectionDTUs = new LruMap(); // id → rejection DTU
  * @param {string} id - Hypothesis ID
  * @returns {{ ok: boolean, confidence?: number }}
  */
+export const CONFIDENCE_PRIOR_WEIGHT = 2;
+export const CONFIDENCE_MODEL = Object.freeze({
+  priorWeight: CONFIDENCE_PRIOR_WEIGHT,
+  formula: "confidence = clamp((forWeight + 1) / (forWeight + againstWeight + 2) + (passedTests / totalTests) * 0.2 + verifiedPredictions * 0.05 - falsifiedPredictions * 0.1, 0, 1)",
+  note: "The evidence term is a shrinkage estimate toward 0.5: one 0.5-weight item on one side yields 0.60, not 1.00. Confidence approaches the extremes only as evidence accumulates on both sides of the ledger.",
+});
+
 export function recalculateConfidence(id) {
   try {
     const hyp = _hypotheses.get(id);
@@ -78,7 +89,7 @@ export function recalculateConfidence(id) {
     const againstWeight = (h.evidence_against || []).reduce((s, e) => s + (Number(e.weight) || 0), 0);
 
     const totalWeight = forWeight + againstWeight;
-    const base = totalWeight > 0 ? forWeight / totalWeight : 0.5;
+    const base = (forWeight + CONFIDENCE_PRIOR_WEIGHT / 2) / (totalWeight + CONFIDENCE_PRIOR_WEIGHT);
 
     const totalTests = (h.tests || []).length;
     const passedTests = (h.tests || []).filter(t => t.status === "passed").length;
@@ -159,6 +170,7 @@ function _promoteToFact(hyp) {
   try {
     const h = hyp.machine.hypothesis;
     const factId = uid("fact");
+    hyp._factDtuId = factId;
     const factDTU = {
       id: factId,
       title: `Fact: ${h.statement}`,
@@ -174,8 +186,45 @@ function _promoteToFact(hyp) {
       promotedAt: nowISO(),
     };
     _factDTUs.set(factId, factDTU);
-    h.lifecycle.push({ event: "promoted_to_fact", by: "system", at: nowISO(), note: `Fact DTU created: ${factId}` });
+    // S2 (F2): the Fact also lands in the CANONICAL DTU store — the
+    // engine's private map was retrievable from no surface and died
+    // with the process, so the confirmation receipt named an object
+    // the platform could not produce. The canonical shape follows the
+    // platform's own DTU records (cf. document.js export DTUs).
+    try {
+      const STATE = globalThis._concordSTATE;
+      if (STATE && STATE.dtus instanceof Map) {
+        STATE.dtus.set(factId, {
+          id: factId,
+          title: `Fact: ${h.statement}`,
+          ownerId: "hypothesis-engine",
+          visibility: "public",
+          human: { summary: h.statement, bullets: [] },
+          core: { definitions: [], invariants: [], examples: [], claims: [h.statement], nextActions: [] },
+          machine: {
+            kind: "fact",
+            sourceHypothesisId: hyp.id,
+            confidence: h.confidence,
+            domain: h.domain,
+            evidenceFor: [...h.evidence_for],
+            evidenceAgainst: [...h.evidence_against],
+            tests: [...h.tests],
+            predictions: [...h.predictions],
+            promotedAt: factDTU.promotedAt,
+          },
+          createdAt: factDTU.promotedAt,
+          updatedAt: factDTU.promotedAt,
+          domain: "hypothesis",
+        });
+        if (typeof globalThis._concordSaveStateDebounced === "function") {
+          try { globalThis._concordSaveStateDebounced(); } catch { /* best effort */ }
+        }
+      }
+    } catch { /* the engine-local record above still stands */ }
+    h.lifecycle.push({ event: "promoted_to_fact", by: "system", at: nowISO(), note: `Fact DTU created: ${factId} — retrievable in the Global Library` });
+    return factId;
   } catch (_e) { logger.debug('emergent:hypothesis-engine', 'silent', { error: _e?.message }); }
+  return null;
 }
 
 /**
@@ -213,10 +262,25 @@ function _createRejectionDTU(hyp, reason) {
  * @param {string} [priority="normal"] - Priority level
  * @returns {{ ok: boolean, hypothesis?: object }}
  */
-export function proposeHypothesis(statement, domain, priority) {
+export function proposeHypothesis(statement, domain, priority, opts = {}) {
   try {
     if (!statement || typeof statement !== "string") {
       return { ok: false, error: "statement_required" };
+    }
+
+    // S4 (F5): duplicate statements were silently accepted. An exact
+    // (normalized) match against a live hypothesis refuses with the
+    // match named; the caller may re-propose with { force: true } —
+    // replication is legitimate, silence was the defect.
+    if (!opts.force) {
+      const norm = (x) => String(x || "").trim().replace(/\s+/g, " ").toLowerCase();
+      const wanted = norm(statement);
+      for (const other of _hypotheses.values()) {
+        const o = other.machine.hypothesis;
+        if (["proposed", "testing", "confirmed"].includes(o.status) && norm(o.statement) === wanted) {
+          return { ok: false, error: "duplicate_statement", duplicateOf: { id: other.id, statement: o.statement, status: o.status } };
+        }
+      }
     }
 
     const id = uid("hyp");
@@ -402,7 +466,7 @@ export function updateTestResult(hypothesisId, testId, result) {
       event: "test_updated",
       by: "user",
       at: nowISO(),
-      note: `Test ${testId} result: ${result}`,
+      note: `Test "${String(test.description || "").slice(0, 60)}" result: ${result}`,
     });
 
     hyp.updatedAt = nowISO();
@@ -506,9 +570,9 @@ export function confirmHypothesis(id) {
     h.lifecycle.push({ event: "confirmed", by: "user", at: nowISO(), note: "Manually confirmed" });
     hyp.updatedAt = nowISO();
 
-    _promoteToFact(hyp);
+    const factDtuId = _promoteToFact(hyp);
 
-    return { ok: true };
+    return { ok: true, factDtuId };
   } catch {
     return { ok: false, error: "confirm_failed" };
   }
@@ -588,6 +652,27 @@ export function refineHypothesis(id, newStatement) {
  * @param {string} id
  * @returns {{ ok: boolean }}
  */
+/**
+ * Delete a hypothesis outright (S4/F3 — no delete existed; archive was
+ * the only removal path). A CONFIRMED hypothesis is the source of a
+ * promoted Fact DTU and refuses: archive it instead, so the Fact's
+ * provenance never dangles.
+ */
+export function deleteHypothesis(id) {
+  try {
+    const hyp = _hypotheses.get(id);
+    if (!hyp) return { ok: false, error: "not_found" };
+    const h = hyp.machine.hypothesis;
+    if (h.status === "confirmed") {
+      return { ok: false, error: "confirmed_hypothesis_is_fact_source", message: "A confirmed hypothesis is the source of a Fact — archive it instead of deleting it." };
+    }
+    _hypotheses.delete(id);
+    return { ok: true, deleted: { id, statement: h.statement, status: h.status } };
+  } catch {
+    return { ok: false, error: "delete_failed" };
+  }
+}
+
 export function archiveHypothesis(id) {
   try {
     const hyp = _hypotheses.get(id);
@@ -631,6 +716,7 @@ export function getHypothesisMetrics() {
       byStatus,
       avgConfidence: count > 0 ? Math.round((totalConfidence / count) * 1000) / 1000 : 0,
       factDTUsCreated: _factDTUs.size,
+      confidenceModel: CONFIDENCE_MODEL,
       rejectionDTUsCreated: _rejectionDTUs.size,
     };
   } catch {

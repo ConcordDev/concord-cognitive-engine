@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { useBenchStore } from './bench-store';
 
 async function callCon<T>(action: string, data: Record<string, unknown>): Promise<T | null> {
   try {
@@ -38,17 +39,24 @@ async function callCon<T>(action: string, data: Record<string, unknown>): Promis
 }
 
 interface LineItem { description: string; quantity: string; unit: string; unitCost: string; wastePercent: string }
-interface TakeoffResult { lineItems?: Array<{ description: string; quantity: number; unit: string; unitCost: number; wastePercent: number; adjustedQuantity: number; lineCost: number }>; subtotalMaterials?: number; tax?: number; total?: number; itemCount?: number }
+interface TakeoffResult { lineItems?: Array<{ description: string; quantity: number; unit: string; unitCost: number; wastePercent: number; wasteQuantity: number; adjustedQuantity: number; lineCost: number }>; subtotalMaterials?: number; laborCost?: number; overhead?: number; profit?: number; grandTotal?: number; costPerSqFt?: number | null }
 interface CpmTask { name: string; duration: string; deps: string }
 interface CpmResult { tasks?: Record<string, { name: string; duration: number; earlyStart: number; earlyFinish: number; lateStart: number; lateFinish: number; slack: number; deps: string[] }>; criticalPath?: string[]; projectDuration?: number; criticalTaskCount?: number }
 interface SafetyItem { name: string; passed: boolean; critical: boolean }
 interface SafetyResult { complianceRate?: number; checklistResults?: { passed: number; failed: number; total: number }; incidentRate?: number; incidentRateLabel?: string; incidents?: number; workers?: number; hoursWorked?: number; rating?: string; criticalFailures?: string[] }
 interface Phase { name: string; plannedPercent: string; actualPercent: string }
-interface ProgressResult { phases?: Array<{ phase: string; plannedPercent: number; actualPercent: number; variance: number; status: string }>; overallPlanned?: number; overallActual?: number; overallVariance?: number; verdict?: string }
+// The server's progressReport contract (F3): the percent-suffixed overall
+// fields and projectStatus — this panel previously read overallPlanned /
+// verdict, which the server never sends, so its summary printed blank.
+interface ProgressResult { phases?: Array<{ phase: string; plannedPercent: number; actualPercent: number; variance: number; status: string }>; overallPlannedPercent?: number; overallActualPercent?: number; overallVariance?: number; projectStatus?: string }
+const VERDICT: Record<string, string> = { 'on-schedule': 'On schedule', 'minor-delay': 'Minor delay', 'significant-delay': 'Significant delay' };
 
 function TakeoffEstimate() {
-  const [items, setItems] = useState<LineItem[]>([{ description: '', quantity: '', unit: 'each', unitCost: '', wastePercent: '10' }]);
-  const [result, setResult] = useState<TakeoffResult | null>(null);
+  const bench = useBenchStore();
+  const [items, setItems] = useState<LineItem[]>(() => bench.takeoff
+    ? bench.takeoff.payload.lineItems.map((i) => ({ description: i.description, quantity: String(i.quantity), unit: i.unit, unitCost: String(i.unitCost), wastePercent: String(i.wastePercent) }))
+    : [{ description: '', quantity: '', unit: 'each', unitCost: '', wastePercent: '10' }]);
+  const [result, setResult] = useState<TakeoffResult | null>(() => (bench.takeoff?.result as TakeoffResult) ?? null);
 
   const compute = useMutation({
     mutationFn: async () => {
@@ -58,6 +66,7 @@ function TakeoffEstimate() {
       }));
       const r = await callCon<TakeoffResult>('takeoffEstimate', { lineItems });
       setResult(r);
+      if (r) bench.setTool('takeoff', { payload: { ...(bench.takeoff?.payload ?? {}), lineItems }, result: r });
       return r;
     },
   });
@@ -72,8 +81,8 @@ function TakeoffEstimate() {
         </div>
         {result && (
           <SaveAsDtuButton compact apiSource="concord-construction-takeoff"
-            title={`Takeoff — ${result.itemCount} items, $${result.total} total`}
-            content={`Items: ${result.itemCount}\nMaterials subtotal: $${result.subtotalMaterials}\nTax: $${result.tax}\nTotal: $${result.total}\n\n${(result.lineItems || []).map((l) => `  ${l.description}: ${l.quantity} ${l.unit} +${l.wastePercent}% waste → ${l.adjustedQuantity} × $${l.unitCost} = $${l.lineCost}`).join('\n')}`}
+            title={`Takeoff — ${result.lineItems?.length ?? 0} items, $${result.grandTotal} total`}
+            content={`Items: ${result.lineItems?.length ?? 0}\nMaterials subtotal: $${result.subtotalMaterials}\nLabor: $${result.laborCost}\nOverhead: $${result.overhead}\nProfit: $${result.profit}\nTotal: $${result.grandTotal}\n\n${(result.lineItems || []).map((l) => `  ${l.description}: ${l.quantity} ${l.unit} +${l.wasteQuantity} waste (${l.wastePercent}%) → order ${l.adjustedQuantity} × $${l.unitCost} = $${l.lineCost}`).join('\n')}`}
             extraTags={['construction', 'takeoff', 'estimate']} rawData={{ items, result }} />
         )}
       </header>
@@ -104,16 +113,16 @@ function TakeoffEstimate() {
         {result?.lineItems && (
           <div className="space-y-1 pt-2">
             {result.lineItems.map((l, i) => (
-              <div key={i} className="grid grid-cols-[1fr_120px_90px] gap-2 rounded border border-orange-500/15 bg-zinc-950/40 px-2 py-1 text-[11px]">
+              <div key={i} className="grid grid-cols-[1fr_170px_90px] gap-2 rounded border border-orange-500/15 bg-zinc-950/40 px-2 py-1 text-[11px]">
                 <span className="text-zinc-100 truncate">{l.description}</span>
-                <span className="font-mono text-zinc-400">{l.adjustedQuantity} {l.unit} × ${l.unitCost}</span>
+                <span className="font-mono text-zinc-400">{l.quantity} {l.unit} +{l.wasteQuantity} waste ({l.wastePercent}%) → {l.adjustedQuantity} × ${l.unitCost}</span>
                 <span className="text-right font-mono text-orange-200">${l.lineCost}</span>
               </div>
             ))}
             <div className="grid grid-cols-3 gap-2 pt-1">
               <div className="rounded border border-orange-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Materials</div><div className="font-mono text-orange-200">${result.subtotalMaterials}</div></div>
-              <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Tax</div><div className="font-mono text-zinc-300">${result.tax}</div></div>
-              <div className="rounded border-2 border-orange-500/40 bg-orange-500/10 px-2 py-1.5"><div className="text-[9px] text-orange-300">Total</div><div className="font-mono text-orange-100">${result.total}</div></div>
+              <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Labor · Overhead · Profit</div><div className="font-mono text-zinc-300">${result.laborCost} · ${result.overhead} · ${result.profit}</div></div>
+              <div className="rounded border-2 border-orange-500/40 bg-orange-500/10 px-2 py-1.5"><div className="text-[9px] text-orange-300">Total</div><div className="font-mono text-orange-100">${result.grandTotal}</div></div>
             </div>
           </div>
         )}
@@ -123,8 +132,11 @@ function TakeoffEstimate() {
 }
 
 function CriticalPathView() {
-  const [tasks, setTasks] = useState<CpmTask[]>([{ name: '', duration: '', deps: '' }]);
-  const [result, setResult] = useState<CpmResult | null>(null);
+  const bench = useBenchStore();
+  const [tasks, setTasks] = useState<CpmTask[]>(() => bench.cpm
+    ? bench.cpm.payload.tasks.map((t) => ({ name: t.name, duration: String(t.duration), deps: t.dependencies.join(', ') }))
+    : [{ name: '', duration: '', deps: '' }]);
+  const [result, setResult] = useState<CpmResult | null>(() => (bench.cpm?.result as CpmResult) ?? null);
 
   const compute = useMutation({
     mutationFn: async () => {
@@ -134,6 +146,7 @@ function CriticalPathView() {
       }));
       const r = await callCon<CpmResult>('criticalPath', { tasks: cleanTasks });
       setResult(r);
+      if (r) bench.setTool('cpm', { payload: { tasks: cleanTasks }, result: r });
       return r;
     },
   });
@@ -207,17 +220,21 @@ function CriticalPathView() {
 }
 
 function SafetyCompliance() {
-  const [items, setItems] = useState<SafetyItem[]>([{ name: '', passed: true, critical: false }]);
-  const [incidents, setIncidents] = useState(0);
-  const [workers, setWorkers] = useState(0);
-  const [hours, setHours] = useState(0);
-  const [result, setResult] = useState<SafetyResult | null>(null);
+  const bench = useBenchStore();
+  const [items, setItems] = useState<SafetyItem[]>(() => bench.safety
+    ? bench.safety.payload.safetyChecklist.map((i) => ({ name: i.item, passed: i.passed, critical: i.critical }))
+    : [{ name: '', passed: true, critical: false }]);
+  const [incidents, setIncidents] = useState(() => bench.safety?.payload.incidents ?? 0);
+  const [workers, setWorkers] = useState(() => bench.safety?.payload.workerCount ?? 0);
+  const [hours, setHours] = useState(() => bench.safety?.payload.totalHoursWorked ?? 0);
+  const [result, setResult] = useState<SafetyResult | null>(() => (bench.safety?.result as SafetyResult) ?? null);
 
   const compute = useMutation({
     mutationFn: async () => {
       const checklist = items.filter((i) => i.name.trim()).map((i) => ({ name: i.name, passed: i.passed, critical: i.critical }));
       const r = await callCon<SafetyResult>('safetyCompliance', { safetyChecklist: checklist, incidents: Array.from({ length: incidents }, (_, n) => ({ id: n + 1 })), workerCount: workers, totalHoursWorked: hours });
       setResult(r);
+      if (r) bench.setTool('safety', { payload: { safetyChecklist: checklist.map((c) => ({ item: c.name, passed: c.passed, critical: c.critical })), incidents, workerCount: workers, totalHoursWorked: hours }, result: r });
       return r;
     },
   });
@@ -301,8 +318,12 @@ function SafetyCompliance() {
 }
 
 function ProgressReport() {
-  const [phases, setPhases] = useState<Phase[]>([{ name: '', plannedPercent: '', actualPercent: '' }]);
-  const [result, setResult] = useState<ProgressResult | null>(null);
+  const bench = useBenchStore();
+  const [phases, setPhases] = useState<Phase[]>(() => bench.progress
+    ? bench.progress.payload.phases.map((p) => ({ name: p.name, plannedPercent: String(p.plannedPercent), actualPercent: String(p.actualPercent) }))
+    : [{ name: '', plannedPercent: '', actualPercent: '' }]);
+  const [result, setResult] = useState<ProgressResult | null>(() => (bench.progress?.result as ProgressResult) ?? null);
+  const verdict = result?.projectStatus ? (VERDICT[result.projectStatus] ?? result.projectStatus) : undefined;
 
   const compute = useMutation({
     mutationFn: async () => {
@@ -311,6 +332,7 @@ function ProgressReport() {
       }));
       const r = await callCon<ProgressResult>('progressReport', { phases: phaseList });
       setResult(r);
+      if (r) bench.setTool('progress', { payload: { phases: phaseList }, result: r });
       return r;
     },
   });
@@ -325,8 +347,8 @@ function ProgressReport() {
         </div>
         {result && (
           <SaveAsDtuButton compact apiSource="concord-construction-progress"
-            title={`Progress ${result.overallActual?.toFixed(0)}% / planned ${result.overallPlanned?.toFixed(0)}% (${result.verdict})`}
-            content={`Overall planned: ${result.overallPlanned?.toFixed(1)}%\nOverall actual: ${result.overallActual?.toFixed(1)}%\nOverall variance: ${result.overallVariance?.toFixed(1)}%\nVerdict: ${result.verdict}\n\nPhases:\n${(result.phases || []).map((p) => `  ${p.phase}: planned ${p.plannedPercent}% / actual ${p.actualPercent}% (${p.variance > 0 ? '+' : ''}${p.variance}, ${p.status})`).join('\n')}`}
+            title={`Progress ${result.overallActualPercent?.toFixed(0)}% / planned ${result.overallPlannedPercent?.toFixed(0)}% (${verdict})`}
+            content={`Overall planned: ${result.overallPlannedPercent?.toFixed(1)}%\nOverall actual: ${result.overallActualPercent?.toFixed(1)}%\nOverall variance: ${result.overallVariance?.toFixed(1)}%\nVerdict: ${verdict}\n\nPhases:\n${(result.phases || []).map((p) => `  ${p.phase}: planned ${p.plannedPercent}% / actual ${p.actualPercent}% (${p.variance > 0 ? '+' : ''}${p.variance}, ${p.status})`).join('\n')}`}
             extraTags={['construction', 'progress', 'schedule']} rawData={{ phases, result }} />
         )}
       </header>
@@ -369,10 +391,10 @@ function ProgressReport() {
                 </div>
               </div>
             ))}
-            <div className={`rounded-lg border-2 p-3 text-center ${result.verdict?.includes('ahead') ? 'border-emerald-500/40 bg-emerald-500/10' : result.verdict?.includes('behind') ? 'border-rose-500/40 bg-rose-500/10' : 'border-amber-500/40 bg-amber-500/10'}`}>
+            <div className={`rounded-lg border-2 p-3 text-center ${result.projectStatus === 'on-schedule' ? 'border-emerald-500/40 bg-emerald-500/10' : result.projectStatus === 'significant-delay' ? 'border-rose-500/40 bg-rose-500/10' : 'border-amber-500/40 bg-amber-500/10'}`}>
               {(result.overallVariance || 0) >= 0 ? <TrendingUp className="mx-auto h-5 w-5 text-emerald-300" /> : <TrendingDown className="mx-auto h-5 w-5 text-rose-300" />}
-              <div className="mt-1 font-mono text-xl font-bold text-white">{result.verdict}</div>
-              <div className="text-[11px] text-zinc-300">Overall: {result.overallActual?.toFixed(0)}% actual / {result.overallPlanned?.toFixed(0)}% planned ({(result.overallVariance || 0) > 0 ? '+' : ''}{result.overallVariance?.toFixed(1)})</div>
+              <div className="mt-1 font-mono text-xl font-bold text-white">{verdict}</div>
+              <div className="text-[11px] text-zinc-300">Overall: {result.overallActualPercent?.toFixed(0)}% actual / {result.overallPlannedPercent?.toFixed(0)}% planned ({(result.overallVariance || 0) > 0 ? '+' : ''}{result.overallVariance?.toFixed(1)})</div>
             </div>
           </div>
         )}

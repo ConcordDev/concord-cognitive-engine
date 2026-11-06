@@ -35,20 +35,25 @@ describe("meditation.library", () => {
   });
 });
 
-describe("meditation.play + history + streak", () => {
-  it("plays a library session and records it per user", () => {
+describe("meditation.play (intent) + sessionLog (performed) + history + streak", () => {
+  // build(meditation) S-MED-1: play no longer credits the ledger —
+  // it saves an intent. Performed sessionLog writes are the record.
+  it("play saves an intent per user and records NO practice", () => {
     const r = call("play", ctxA, { sessionId: "g-focus-10", mood: 4 });
     assert.equal(r.ok, true);
-    assert.equal(r.result.session.durationMin, 10);
-    assert.equal(call("history", ctxA, {}).result.count, 1);
+    assert.equal(r.result.credited, false);
+    assert.equal(r.result.intent.durationMin, 10);
+    assert.equal(call("history", ctxA, {}).result.count, 0);
     assert.equal(call("history", ctxB, {}).result.count, 0);
+    assert.equal(call("intents", ctxA, {}).result.count, 1);
+    assert.equal(call("intents", ctxB, {}).result.count, 0);
   });
   it("rejects an unknown session id", () => {
     assert.equal(call("play", ctxA, { sessionId: "nope" }).ok, false);
   });
-  it("streak counts today's practice + total minutes", () => {
-    call("play", ctxA, { sessionId: "g-focus-10" });
-    call("play", ctxA, { sessionId: "b-box-5" });
+  it("streak counts today's PERFORMED practice + total minutes", () => {
+    call("sessionLog", ctxA, { trackId: "g-focus-10", minutes: 10 });
+    call("sessionLog", ctxA, { trackId: "b-box-5", performedSeconds: 300 });
     const st = call("streak", ctxA, {});
     assert.equal(st.result.practicedToday, true);
     assert.equal(st.result.currentStreak, 1);
@@ -80,8 +85,10 @@ describe("meditation.mood", () => {
 
 describe("meditation.dashboard", () => {
   it("aggregates sessions, minutes, streak and categories", () => {
-    call("play", ctxA, { sessionId: "s-rain-30" });
-    call("play", ctxA, { sessionId: "sos-panic-3" });
+    // build(meditation): seeded with performed sessionLog writes —
+    // play saves intent only and credits nothing.
+    call("sessionLog", ctxA, { trackId: "s-rain-30", category: "sleep_story", minutes: 30 });
+    call("sessionLog", ctxA, { trackId: "sos-panic-3", category: "sos", minutes: 3 });
     const d = call("meditation-dashboard", ctxA, {});
     assert.equal(d.result.totalSessions, 2);
     assert.equal(d.result.totalMinutes, 33);
@@ -132,13 +139,16 @@ describe("meditation.courses", () => {
     assert.equal(prog.ok, true);
     assert.equal(prog.result.enrolled, true);
     assert.equal(prog.result.nextDay, 1);
-    const done = call("completeCourseDay", ctxA, { courseId: "course-basics-7", day: 1 });
+    // build(meditation) S-MED-1: completion requires the day's
+    // session to have been practised — the performed entry completes
+    // the day and is the only ledger row (no cascade write).
+    const sat = call("sessionLog", ctxA, { trackId: "g-morn-7", category: "guided", minutes: 7 });
+    const done = call("completeCourseDay", ctxA, { courseId: "course-basics-7", day: 1, sessionEntryId: sat.result.entry.id });
     assert.equal(done.ok, true);
     assert.equal(done.result.completedCount, 1);
     const prog2 = call("courseProgress", ctxA, { courseId: "course-basics-7" });
     assert.equal(prog2.result.completedCount, 1);
     assert.equal(prog2.result.nextDay, 2);
-    // completing a day also logs a practice session
     assert.equal(call("history", ctxA, {}).result.count, 1);
   });
   it("rejects an unknown course / day", () => {
@@ -192,7 +202,7 @@ describe("meditation.recommendations", () => {
 
 describe("meditation.milestones", () => {
   it("reports the first-sit badge once a session is logged", () => {
-    call("play", ctxA, { sessionId: "g-focus-10" });
+    call("sessionLog", ctxA, { trackId: "g-focus-10", category: "guided", minutes: 10 });
     const r = call("milestones", ctxA, {});
     assert.equal(r.ok, true);
     const first = r.result.badges.find((b) => b.id === "first-sit");

@@ -47,6 +47,7 @@ export interface SocialPost {
   repostCount: number;
   viewerReaction: string | null;
   viewerReposted: boolean;
+  isPinned?: boolean;
   editedAt?: string | null;
 }
 
