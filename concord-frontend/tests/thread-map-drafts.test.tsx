@@ -140,6 +140,9 @@ describe('Thread Map drafts', () => {
 
     fireEvent.click(screen.getAllByText('Root hello')[0]);
     fireEvent.click(screen.getByRole('button', { name: /Delete message/ }));
+    // Two-step node delete (thread full build): the first click arms the
+    // control, the second click fires the delete.
+    fireEvent.click(screen.getByRole('button', { name: /Confirm delete/ }));
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ action: 'delete_node' })));
 
     fireEvent.change(screen.getByPlaceholderText('Search threads…'), { target: { value: 'nope' } });
