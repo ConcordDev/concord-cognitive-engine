@@ -122,7 +122,7 @@ import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit }
 import { handleArchaeology, handleSubstrateDiff, handleTimeCrystalDetect } from "./lib/knowledge-archaeology.js";
 import { artifactDtuForViewer, publicArtifactRef } from "./lib/artifact-access.js";
 import { publishableDtuForCaller } from "./lib/public-lattice-access.js";
-import { lookupUserIdentity } from "./lib/user-identity.js";
+import { lookupUserIdentity, enrichActorIdentity } from "./lib/user-identity.js";
 import {
   addSpoFact as _inferenceAddSpoFact,
   querySpoFacts as _inferenceQuerySpoFacts,
@@ -40180,6 +40180,11 @@ app.use((req, res, next) => {
       if (!a.ok) return res.status(401).json({ ok:false, error: a.error });
       req.actor = a.actor;
     }
+    // Close-out A12 — the bridge-actor guarantee: an actor constructed for a
+    // real account carries that account's resolved identity (displayName +
+    // username, from the users table), so domain stamps never trust a
+    // client-passed name or fall back to the raw user id (Message F1).
+    try { req.actor = enrichActorIdentity(STATE?.db || globalThis._concordDB, req.actor); } catch { /* identity stays as constructed */ }
   } catch (e) {
     return res.status(500).json({ ok:false, error: String(e?.message || e) });
   }
@@ -51207,6 +51212,11 @@ try {
           const row = _mcpDb.prepare("SELECT role FROM users WHERE id = ?").get(actor.userId);
           if (row?.role) actor = { ...actor, role: String(row.role) };
         } catch { /* role stays unset → treated as non-operator */ }
+      }
+      // A12: the same bridge-actor guarantee on the MCP path — the token's
+      // actor gains the account's resolved identity beside its role.
+      if (actor?.userId && _mcpDb) {
+        try { actor = enrichActorIdentity(_mcpDb, actor); } catch { /* identity stays as constructed */ }
       }
       return { db: _mcpDb, actor, state: STATE };
     },
