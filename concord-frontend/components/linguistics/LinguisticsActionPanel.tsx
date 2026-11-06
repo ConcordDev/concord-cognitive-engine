@@ -52,6 +52,10 @@ export function LinguisticsActionPanel() {
   const [sentimentResult, setSentimentResult] = useState<SentimentResult | null>(null);
   const [frequencyResult, setFrequencyResult] = useState<FrequencyResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
+  // Output panels must not outlive their input (F7f): results computed for
+  // a previous word or corpus text are cleared the moment that input
+  // changes, so a stale panel never sits beside a fresh one. (Panels for
+  // the SAME input still compose — Mint/Publish read them together.)
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
 
@@ -115,7 +119,7 @@ export function LinguisticsActionPanel() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
     setBusy('dm'); setFeedback(null);
     const firstDef = dictResult?.entries?.[0]?.meanings?.[0]?.definitions?.[0]?.definition;
-    const body = [`📖 ${word}`, dictResult?.entries?.[0]?.phonetic ? `/${dictResult.entries[0].phonetic}/` : '', firstDef ? `\n${firstDef}` : '', datamuseWords.length ? `\n${datamuseMode}: ${datamuseWords.slice(0, 8).map(w => w.word).join(', ')}` : '', mintedDtuId ? `\n\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
+    const body = [`📖 ${word}`, dictResult?.entries?.[0]?.phonetic ? `/${dictResult.entries[0].phonetic.replace(/^\/+|\/+$/g, '')}/` : '', firstDef ? `\n${firstDef}` : '', datamuseWords.length ? `\n${datamuseMode}: ${datamuseWords.slice(0, 8).map(w => w.word).join(', ')}` : '', mintedDtuId ? `\n\n[DTU ${mintedDtuId}]` : ''].filter(Boolean).join('\n');
     try {
       const messageId = await dmRecall.run(async () => {
         const r = await api.post('/api/social/dm', { toUserId: recipient.trim(), content: body });
@@ -146,7 +150,7 @@ export function LinguisticsActionPanel() {
       const task = `Linguistics review of "${word}". ${dictResult?.entries?.[0]?.meanings?.[0]?.partOfSpeech ? `Part of speech: ${dictResult.entries[0].meanings[0].partOfSpeech}.` : ''} ${textResult ? `Text grade ${textResult.readabilityGrade} (${textResult.readingLevel}).` : ''} ${sentimentResult ? `Sentiment ${sentimentResult.sentiment}.` : ''} Compose one tight etymology-aware mnemonic + one usage example. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Mnemonic ready.'); } else err('Agent returned empty.');
+      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Mnemonic ready.'); } else err('The mnemonic agent returned nothing this time. Run Define first so it has the entry to work from, then try Mnemonic again.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -174,7 +178,7 @@ export function LinguisticsActionPanel() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="md:col-span-1 space-y-2">
-          <input type="text" value={word} onChange={(e) => setWord(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Word" />
+          <input type="text" value={word} onChange={(e) => { setWord(e.target.value); setDictResult(null); setDatamuseWords([]); setAgentReply(null); setMintedDtuId(null); setPublishedDtuId(null); }} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Word" />
           <select value={datamuseMode} onChange={(e) => setDatamuseMode(e.target.value as typeof datamuseMode)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
             <option value="ml">means-like</option>
             <option value="rel_rhy">rhymes</option>
@@ -190,7 +194,7 @@ export function LinguisticsActionPanel() {
         </div>
         <div className="md:col-span-2">
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Text corpus (for stats + sentiment)</label>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white mt-1" />
+          <textarea value={text} onChange={(e) => { setText(e.target.value); setTextResult(null); setSentimentResult(null); setFrequencyResult(null); }} rows={4} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white mt-1" />
         </div>
       </div>
 
@@ -215,7 +219,7 @@ export function LinguisticsActionPanel() {
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 max-h-72 overflow-y-auto">
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Definition
               {firstAudio && <button aria-label="Volume" type="button" onClick={() => { const a = new Audio(firstAudio); a.play().catch(() => {}); }} className="text-cyan-300 hover:text-cyan-100"><Volume2 className="h-3 w-3" /></button>}
-              {dictResult.entries[0].phonetic && <span className="font-mono text-zinc-400 normal-case">/{dictResult.entries[0].phonetic}/</span>}
+              {dictResult.entries[0].phonetic && <span className="font-mono text-zinc-400 normal-case">/{dictResult.entries[0].phonetic.replace(/^\/+|\/+$/g, '')}/</span>}
             </div>
             {dictResult.entries[0].meanings.slice(0, 3).map((m, mi) => (
               <div key={mi} className="mt-1.5">
@@ -256,6 +260,9 @@ export function LinguisticsActionPanel() {
             <div className="text-2xl font-bold capitalize" style={{ color: sentimentResult.sentiment === 'positive' ? '#34d399' : sentimentResult.sentiment === 'negative' ? '#f87171' : '#a1a1aa' }}>{sentimentResult.sentiment} <span className="text-sm text-zinc-400">{sentimentResult.score}</span></div>
             <div className="text-[10px] text-zinc-400">+{sentimentResult.positiveWords} · -{sentimentResult.negativeWords} · {sentimentResult.confidence} confidence</div>
           </div>
+        )}
+        {frequencyResult && (
+          <p className="text-[10px] text-zinc-500 italic">Content words only — stopwords (the, a, of, and…) are excluded from this list.</p>
         )}
         {frequencyResult && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 max-h-72 overflow-y-auto">

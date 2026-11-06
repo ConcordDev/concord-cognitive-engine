@@ -14,6 +14,8 @@ import { useCallback, useRef, useState } from 'react';
 import { Volume2, Quote, ScrollText, Loader2, Search, Puzzle } from 'lucide-react';
 
 import { lensRun } from '@/lib/api/client';
+import { useLensData } from '@/lib/hooks/use-lens-data';
+import type { LinguisticsArtifact } from '@/components/linguistics/linguistics-shared';
 
 interface Phonetic { ipa: string | null; audio: string | null }
 interface PronounceResult { word: string; ipa: string | null; audio: string | null; phonetics: Phonetic[] }
@@ -31,6 +33,10 @@ export function WordTools() {
   const [etym, setEtym] = useState<EtymologyResult | null>(null);
   const [morph, setMorph] = useState<MorphologyResult | null>(null);
   const [queried, setQueried] = useState(false);
+  // The user's own Lexicon is a first-class source (F7d): if they saved an
+  // IPA for this word, Word Tools says so instead of "no IPA available".
+  const { items: lexiconEntries } = useLensData<LinguisticsArtifact>('linguistics', 'LexiconEntry', { seed: [] });
+  const [lexiconIpa, setLexiconIpa] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const lookup = useCallback(async () => {
@@ -43,6 +49,8 @@ export function WordTools() {
     setEtym(null);
     setMorph(null);
     setQueried(true);
+    const own = lexiconEntries.find(i => i.title.trim().toLowerCase() === w.toLowerCase() && i.data.ipa);
+    setLexiconIpa(own?.data.ipa ?? null);
     const [p, c, e, m] = await Promise.all([
       lensRun<PronounceResult>('linguistics', 'pronounce', { word: w }),
       lensRun<ContextResult>('linguistics', 'word-context', { word: w }),
@@ -113,7 +121,9 @@ export function WordTools() {
           <div className="flex items-center gap-2 flex-wrap">
             {pron.ipa
               ? <span className="text-sm font-mono text-cyan-300">{pron.ipa}</span>
-              : <span className="text-xs text-zinc-400 italic">no IPA available</span>}
+              : lexiconIpa
+                ? <span className="text-sm font-mono text-cyan-300">{lexiconIpa} <span className="text-[10px] text-zinc-500 not-italic">(from your Lexicon)</span></span>
+                : <span className="text-xs text-zinc-400 italic">no IPA available</span>}
             {pron.audio ? (
               <button
                 onClick={() => playAudio(pron.audio!)}
