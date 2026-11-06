@@ -74,6 +74,14 @@ interface DensityResult {
 
 interface TrafficResult {
   newDailyTrips: number;
+  // The housing/commercial split and the rate basis the server now
+  // prints with every projection (Review 5 F3: trips were understated
+  // with no rates or split shown for a user to audit against).
+  housingTrips?: number;
+  commercialTrips?: number;
+  tripsPerHousingUnit?: number;
+  tripsPerCommercialSqFt?: number;
+  rateBasis?: string;
   peakHourTrips: number;
   currentADT: number;
   percentIncrease: number;
@@ -369,6 +377,14 @@ function TrafficImpactTool() {
               </div>
             ))}
           </div>
+          {(result.housingTrips != null || result.commercialTrips != null) && (
+            <div className="text-[11px] text-zinc-400">
+              Housing {result.housingTrips?.toLocaleString()} trips · Commercial {result.commercialTrips?.toLocaleString()} trips
+            </div>
+          )}
+          {result.rateBasis && (
+            <p className="text-[10px] leading-relaxed text-zinc-500">Basis: {result.rateBasis}</p>
+          )}
           <div className="flex items-center gap-2 text-xs">
             <span className="text-zinc-400">Impact level:</span>
             <span className={cn(
