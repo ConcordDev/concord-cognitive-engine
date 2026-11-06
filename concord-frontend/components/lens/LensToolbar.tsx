@@ -51,6 +51,9 @@ export function LensToolbar({ domain, domainLabel }: { domain: string; domainLab
     retry: 0,
     enabled: open,
   });
+  // The lens's DTU total (lens.list's `total`). Rendered WITH its noun in
+  // the menu — a bare number beside "Ask about …" counted nothing named
+  // (Commonsense F9's badge "2"; the Badge Settlement, register A2).
   const dtuCount = data?.total || data?.items?.length || 0;
 
   useEffect(() => {
@@ -87,7 +90,7 @@ export function LensToolbar({ domain, domainLabel }: { domain: string; domainLab
             <a role="menuitem" href={`/lenses/chat?context=${encodeURIComponent(domain)}`} className={itemCls}>
               <MessageCircle className="h-4 w-4 text-zinc-500" />
               <span className="flex-1">Ask about {domainLabel}</span>
-              {dtuCount > 0 && <span className="font-mono text-[11px] text-zinc-500">{dtuCount.toLocaleString()}</span>}
+              {dtuCount > 0 && <span className="font-mono text-[11px] text-zinc-500">{dtuCount.toLocaleString()} DTUs</span>}
             </a>
             {domain !== 'chat' && (
               <button role="menuitem" type="button" className={itemCls} onClick={run(() => window.dispatchEvent(new Event('conkay:summon')))} data-testid="lens-tool-kay">
