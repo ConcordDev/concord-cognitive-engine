@@ -3,16 +3,20 @@
 /**
  * Meditation — one Calm/Headspace practice app.
  * Thin shell + single `active` union. Session player + studio screens are panels.
+ *
+ * All seven views stay MOUNTED (inactive ones hidden): a running
+ * session or breathwork pacer must survive a view switch — the old
+ * keyed remount discarded an in-progress session outright (F3). A
+ * page reload still restarts a session; the player says so.
  */
 
 import { useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { SessionPlayerPanel } from '@/components/meditation/SessionPlayerPanel';
+import { SessionPlayerPanel, type PractisePreset } from '@/components/meditation/SessionPlayerPanel';
 import { MeditationStudio } from '@/components/meditation/MeditationStudio';
 import { BreathingVisual } from '@/components/meditation/BreathingVisual';
 import { SoundscapePlayer } from '@/components/meditation/SoundscapePlayer';
@@ -37,10 +41,14 @@ const VIEWS: { id: MedView; label: string; keys: string; icon: LucideIcon }[] = 
 
 export default function MeditationLensPage() {
   useLensNav('meditation');
-  const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<MedView>('session');
   const [practiceTick, setPracticeTick] = useState(0);
   const notifyPractice = () => setPracticeTick((t) => t + 1);
+  // A course day's Practise action routes here: the day's own session
+  // is loaded into the Session player, and the page holds the pending
+  // course day until the performed log completes it server-side.
+  const [preset, setPreset] = useState<PractisePreset | null>(null);
+  const beginPractise = (p0: PractisePreset) => { setPreset(p0); setActive('session'); };
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -67,24 +75,17 @@ export default function MeditationLensPage() {
         tabsLabel="Meditation views"
         cta={{ label: 'Begin a session', icon: Wind, onClick: () => setActive('session'), title: 'Open the session player (1)' }}
       >
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active}
-            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
-            transition={{ duration: reduceMotion ? 0 : 0.16 }}
-            className="pt-4"
-          >
-            {active === 'session' && <SessionPlayerPanel practiceTick={practiceTick} />}
-            {active === 'studio' && <MeditationStudio onPractice={notifyPractice} />}
-            {active === 'breathe' && <BreathingVisual onPractice={notifyPractice} />}
-            {active === 'sounds' && <SoundscapePlayer />}
-            {active === 'courses' && <CoursesPanel onPractice={notifyPractice} />}
-            {active === 'reminders' && <RemindersPanel />}
-            {active === 'insights' && <InsightsPanel onPlayed={notifyPractice} />}
-          </motion.div>
-        </AnimatePresence>
+        <div className="pt-4">
+          <div hidden={active !== 'session'}>
+            <SessionPlayerPanel practiceTick={practiceTick} preset={preset} onPresetExit={() => { setPreset(null); setActive('courses'); }} />
+          </div>
+          <div hidden={active !== 'studio'}><MeditationStudio onPractice={notifyPractice} /></div>
+          <div hidden={active !== 'breathe'}><BreathingVisual onPractice={notifyPractice} /></div>
+          <div hidden={active !== 'sounds'}><SoundscapePlayer /></div>
+          <div hidden={active !== 'courses'}><CoursesPanel onPractice={notifyPractice} onPractise={beginPractise} /></div>
+          <div hidden={active !== 'reminders'}><RemindersPanel /></div>
+          <div hidden={active !== 'insights'}><InsightsPanel onPlayed={notifyPractice} /></div>
+        </div>
       </NorthStarFrame>
     </LensShell>
   );
