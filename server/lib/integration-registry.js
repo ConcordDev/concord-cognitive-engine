@@ -68,6 +68,8 @@ export const REGISTRY = Object.freeze({
   // REAL_LIVE — user's own substrate or live external feed (already wired).
   // ───────────────────────────────────────────────────────────────────────────
   chat:          { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real conversations + real 4-brain LLM" },
+  move_builder:  { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "minted moves are move_recipe DTUs in the canonical dtus store" },
+  "move-builder": { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "minted moves are move_recipe DTUs in the canonical dtus store" },
   message:       { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real inbox / Concord-Link messages" },
   wallet:        { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real Concord Coin balance + ledger" },
   marketplace:   { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real DTU listings + royalty cascade" },

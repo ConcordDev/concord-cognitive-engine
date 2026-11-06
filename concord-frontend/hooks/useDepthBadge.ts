@@ -94,6 +94,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Your own live shop records: technicians, jobs, invoices, parts and inspections are your account\'s real data, saved as you work.',
   },
+  /**
+   * A minted move is a real DTU in the canonical store (a move_recipe
+   * DTU) — not demo data and not a lens-local fixture — so the generic
+   * REAL_LIVE caption ("polled live from an external source") would
+   * misdescribe both the store and the act (Review 4's gate record:
+   * the undeclared act here is a mint).
+   */
+  'move-builder': {
+    label: 'Live',
+    caption: 'Live: a minted move is a real DTU (a move_recipe DTU in the canonical store) in your library. Compose and preview derive from the same deterministic resolver the server stamps at mint time.',
+  },
   game: {
     label: 'Lab & arcade sim',
     caption: 'Simulated: Design Lab forecasts and mini-game practice XP. Profile XP, quests, and achievements are your real activity.',
