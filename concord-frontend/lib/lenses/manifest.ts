@@ -5456,7 +5456,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // registerExpeditionJournalActions), so the generic CRUD verbs map onto REAL
   // macros: list → entry-list, get → progress, create → entry-add, run → mark-stage,
   // export → summary. `actions` enumerates the full real macro surface.
-  { domain: 'expedition-journal', label: 'Expedition Journal', artifacts: ['expedition_stage', 'journal_entry', 'expedition_photo', 'badge'], macros: { list: 'expedition-journal.entry-list', get: 'expedition-journal.progress', create: 'expedition-journal.entry-add', run: 'expedition-journal.mark-stage', export: 'expedition-journal.summary' }, exports: ['json'], actions: ['worlds', 'progress', 'mark-stage', 'entry-add', 'entry-list', 'entry-delete', 'photo-add', 'photo-list', 'photo-delete', 'rewards', 'summary'], category: 'knowledge' },
+  { domain: 'expedition-journal', label: 'Expedition Journal', dataTier: 'SIM_GRADE_A', artifacts: ['expedition_stage', 'journal_entry', 'expedition_photo', 'badge'], macros: { list: 'expedition-journal.entry-list', get: 'expedition-journal.progress', create: 'expedition-journal.entry-add', run: 'expedition-journal.mark-stage', export: 'expedition-journal.summary' }, exports: ['json'], actions: ['worlds', 'progress', 'mark-stage', 'entry-add', 'entry-list', 'entry-delete', 'photo-add', 'photo-list', 'photo-delete', 'rewards', 'summary'], category: 'knowledge' },
   // The Ghost Tracker lens (lensId 'ghost-tracker') is a READER/HUNTER over the
   // real `ghost-hunt` domain (server/domains/ghost-hunt.js — register("ghost-hunt",
   // "residues"|"detail"|"progress"|"advance"|"confront"|"history"|"leaderboard"|

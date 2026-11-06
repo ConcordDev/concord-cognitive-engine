@@ -59,6 +59,16 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
   /**
+   * Expedition-Journal (S-EJ-1): the canon-world expeditions are simulated,
+   * but SIM_GRADE_A's generic "Not real data" caption would misdescribe the
+   * other two things on the page — the traveller's own server-kept progress
+   * and journal, and the base-camp almanac's real sunrise-sunset data.
+   */
+  'expedition-journal': {
+    label: 'Simulated',
+    caption: 'Simulated canon-world expeditions. Your stage progress and journal entries are your own records, kept on the server; the base-camp almanac is real sunrise-sunset data.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic
