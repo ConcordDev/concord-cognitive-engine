@@ -140,12 +140,12 @@ describe('courtship lens — UX states', () => {
       '/api/courtship/mine': () => ({
         ok: true,
         courtships: [
-          { partner_kind: 'npc', partner_id: 'npc_alice_0001', affinity: 0.72, status: 'courting' },
+          { partner_kind: 'npc', partner_id: 'npc_alice_0001', partnerName: 'Alice', affinity: 0.72, status: 'courting' },
         ],
       }),
       '/api/courtship/marriages/mine': () => ({
         ok: true,
-        marriages: [{ id: 'm1', partner_kind: 'npc', partner_id: 'npc_bob_0002', married_at: 1700000000 }],
+        marriages: [{ id: 'm1', partner_kind: 'npc', partner_id: 'npc_bob_0002', partnerName: 'Bob', married_at: 1700000000 }],
         children: [{ id: 'k1', parent_user_id: 'u1', name: 'Iris', maturity: 'infant', born_at: 1700000500 }],
       }),
     }) as typeof fetch;
@@ -156,12 +156,12 @@ describe('courtship lens — UX states', () => {
 
     // affinity readout + the propose gate (0.72 >= 0.7 engage threshold)
     expect(view!.getByLabelText('affinity 72 percent')).toBeInTheDocument();
-    expect(view!.getByLabelText('Interact positively with npc_alice_0001')).toBeInTheDocument();
-    expect(view!.getByLabelText('Propose to npc_alice_0001')).toBeInTheDocument();
+    expect(view!.getByLabelText('Interact positively with Alice')).toBeInTheDocument();
+    expect(view!.getByLabelText('Propose to Alice')).toBeInTheDocument();
 
     // marriage row renders real data — separate "Marriages" tab.
     await act(async () => { fireEvent.click(view!.getByText('Marriages')); });
-    await waitFor(() => expect(view!.getByText(/npc:npc_bob_0002/)).toBeInTheDocument());
+    await waitFor(() => expect(view!.getByText('Bob')).toBeInTheDocument());
     // child row renders real data — separate "Family" tab.
     await act(async () => { fireEvent.click(view!.getByText('Family')); });
     await waitFor(() => expect(view!.getByText('Iris')).toBeInTheDocument());
@@ -174,7 +174,7 @@ describe('courtship lens — UX states', () => {
       '/api/courtship/mine': () => ({
         ok: true,
         courtships: [
-          { partner_kind: 'npc', partner_id: 'npc_alice_0001', affinity: 0.5, status: 'courting' },
+          { partner_kind: 'npc', partner_id: 'npc_alice_0001', partnerName: 'Alice', affinity: 0.5, status: 'courting' },
         ],
       }),
       '/api/courtship/marriages/mine': () => ({ ok: true, marriages: [], children: [] }),
@@ -186,7 +186,7 @@ describe('courtship lens — UX states', () => {
     await waitFor(() => expect(view!.getByTestId('courtship-list')).toBeInTheDocument());
 
     await act(async () => {
-      fireEvent.click(view!.getByLabelText('Interact positively with npc_alice_0001'));
+      fireEvent.click(view!.getByLabelText('Interact positively with Alice'));
     });
 
     await waitFor(() =>
@@ -206,7 +206,7 @@ describe('courtship lens — UX states', () => {
       '/api/courtship/mine': () => ({
         ok: true,
         courtships: [
-          { partner_kind: 'npc', partner_id: 'npc_eng_0003', affinity: 0.9, status: 'engaged' },
+          { partner_kind: 'npc', partner_id: 'npc_eng_0003', partnerName: 'Eng', affinity: 0.9, status: 'engaged' },
         ],
       }),
       '/api/courtship/marriages/mine': () => ({ ok: true, marriages: [], children: [] }),
@@ -218,7 +218,7 @@ describe('courtship lens — UX states', () => {
     await waitFor(() => expect(view!.getByTestId('courtship-list')).toBeInTheDocument());
 
     // Engaged + affinity 0.9 >= marry threshold 0.85 → Wed button shows.
-    const wedBtn = view!.getByLabelText('Wed npc_eng_0003');
+    const wedBtn = view!.getByLabelText('Wed Eng');
     expect(wedBtn).toBeInTheDocument();
     await act(async () => { fireEvent.click(wedBtn); });
     await waitFor(() =>
@@ -233,7 +233,7 @@ describe('courtship lens — UX states', () => {
       '/api/courtship/mine': () => ({
         ok: true,
         courtships: [
-          { partner_kind: 'npc', partner_id: 'npc_pro_0004', affinity: 0.75, status: 'courting' },
+          { partner_kind: 'npc', partner_id: 'npc_pro_0004', partnerName: 'Pro', affinity: 0.75, status: 'courting' },
         ],
       }),
       '/api/courtship/marriages/mine': () => ({ ok: true, marriages: [], children: [] }),
@@ -244,7 +244,7 @@ describe('courtship lens — UX states', () => {
     await act(async () => { view = render(<CourtshipLensPage />); });
     await waitFor(() => expect(view!.getByTestId('courtship-list')).toBeInTheDocument());
 
-    await act(async () => { fireEvent.click(view!.getByLabelText('Propose to npc_pro_0004')); });
+    await act(async () => { fireEvent.click(view!.getByLabelText('Propose to Pro')); });
     await waitFor(() =>
       expect(fetchImpl.mock.calls.some((c) => String(c[0]).includes('/api/courtship/propose'))).toBe(true),
     );
@@ -257,7 +257,7 @@ describe('courtship lens — UX states', () => {
       '/api/courtship/mine': () => ({
         ok: true,
         courtships: [
-          { partner_kind: 'npc', partner_id: 'npc_alice_0001', affinity: 0.5, status: 'courting' },
+          { partner_kind: 'npc', partner_id: 'npc_alice_0001', partnerName: 'Alice', affinity: 0.5, status: 'courting' },
         ],
       }),
       '/api/courtship/marriages/mine': () => ({ ok: true, marriages: [], children: [] }),
@@ -269,7 +269,7 @@ describe('courtship lens — UX states', () => {
     await waitFor(() => expect(view!.getByTestId('courtship-list')).toBeInTheDocument());
 
     await act(async () => {
-      fireEvent.click(view!.getByLabelText('Interact positively with npc_alice_0001'));
+      fireEvent.click(view!.getByLabelText('Interact positively with Alice'));
     });
 
     await waitFor(() =>
