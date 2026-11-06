@@ -7,6 +7,7 @@ import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { publicLookup, carryLookupMeta, lookupMeta } from '@/lib/public-lookup';
 
 interface OnionooSummary { relays_published?: string; relays?: { n: string; f: string }[]; bridges_published?: string; bridges?: { n: string; h: string }[] }
+interface OnionooDetails { relays_published?: string; relays?: { nickname?: string; fingerprint?: string; flags?: string[] }[] }
 
 export function TorNetworkStatus() {
   const [tick, setTick] = useState(0);
@@ -20,19 +21,28 @@ export function TorNetworkStatus() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Relay FLAGS come from the details document. The summary payload's
+  // per-relay "f" is the relay's fingerprint — it carries no flag data,
+  // and counting its characters as flags produced shares above 100%
+  // (build(anon) S2/F1). Details flags are full names, counted once per
+  // relay, so every share is of the same stated sample by construction.
+  const details = useQuery({
+    queryKey: ['onionoo-details'],
+    queryFn: async () => publicLookup<OnionooDetails>('onionoo-details', {}),
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const data = summary.data || {};
   const meta = lookupMeta(summary.data);
   const relayCount = data.relays?.length ?? 0;
   const bridgeCount = data.bridges?.length ?? 0;
+  const detailRelays = details.data?.relays || [];
+  const flagSample = detailRelays.length;
   const flagCounts: Record<string, number> = {};
-  (data.relays || []).forEach((r) => {
-    (r.f || '').split('').forEach((f) => { flagCounts[f] = (flagCounts[f] || 0) + 1; });
+  detailRelays.forEach((r) => {
+    (r.flags || []).forEach((f) => { flagCounts[f] = (flagCounts[f] || 0) + 1; });
   });
-  const FLAG_MAP: Record<string, string> = {
-    'A': 'Authority', 'B': 'BadExit', 'E': 'Exit', 'F': 'Fast', 'G': 'Guard',
-    'H': 'HSDir', 'N': 'Named', 'R': 'Running', 'S': 'Stable', 'U': 'Unnamed',
-    'V': 'Valid', 'D': 'V2Dir', 'O': 'NoEdConsensus', 'P': 'StaleDesc',
-  };
 
   return (
     <div className="space-y-4">
@@ -48,7 +58,7 @@ export function TorNetworkStatus() {
             apiSource="tor-onionoo"
             apiUrl="https://onionoo.torproject.org/"
             title={`Tor network — ${relayCount} relays, ${bridgeCount} bridges`}
-            content={`Relays: ${relayCount} (sampled to 2000)\nBridges: ${bridgeCount}\nPublished: ${data.relays_published || '—'}\n\nFlag distribution:\n${Object.entries(flagCounts).sort((a, b) => b[1] - a[1]).map(([f, n]) => `  ${FLAG_MAP[f] || f}: ${n}`).join('\n')}`}
+            content={`Relays: ${relayCount} (sampled to 2000)\nBridges: ${bridgeCount}\nPublished: ${data.relays_published || '—'}\n\nFlag distribution (details sample of ${flagSample} relays):\n${Object.entries(flagCounts).sort((a, b) => b[1] - a[1]).map(([f, n]) => `  ${f}: ${n}`).join('\n')}`}
             extraTags={['anon', 'tor', 'network-health']}
             rawData={{ relayCount, bridgeCount, flagCounts }}
           />
@@ -62,19 +72,22 @@ export function TorNetworkStatus() {
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Cell label="Relays" value={relayCount.toLocaleString()} icon={Server} />
         <Cell label="Bridges" value={bridgeCount.toLocaleString()} icon={Shield} />
-        <Cell label="Exit nodes" value={(flagCounts.E ?? 0).toLocaleString()} icon={Globe} />
-        <Cell label="Guard nodes" value={(flagCounts.G ?? 0).toLocaleString()} icon={Shield} />
+        <Cell label="Exit nodes" value={details.data ? (flagCounts.Exit ?? 0).toLocaleString() : '—'} icon={Globe} />
+        <Cell label="Guard nodes" value={details.data ? (flagCounts.Guard ?? 0).toLocaleString() : '—'} icon={Shield} />
       </div>
 
-      {Object.keys(flagCounts).length > 0 && (
+      {details.isError && (
+        <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Relay flag data (Onionoo details) is unavailable right now — flag shares are not shown rather than estimated.</div>
+      )}
+      {Object.keys(flagCounts).length > 0 && flagSample > 0 && (
         <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
-          <div className="mb-2 text-xs font-semibold text-zinc-200">Flag distribution (sampled relays)</div>
+          <div className="mb-2 text-xs font-semibold text-zinc-200">Flag distribution (details sample of {flagSample.toLocaleString()} relays)</div>
           <div className="space-y-1">
             {Object.entries(flagCounts).sort((a, b) => b[1] - a[1]).map(([f, n]) => {
-              const pct = (n / relayCount) * 100;
+              const pct = (n / flagSample) * 100;
               return (
                 <div key={f} className="flex items-center gap-2 text-[11px]">
-                  <span className="w-24 font-mono text-zinc-400">{FLAG_MAP[f] || f}</span>
+                  <span className="w-24 font-mono text-zinc-400">{f}</span>
                   <div className="flex-1 rounded-full bg-zinc-800">
                     <div className="h-2 rounded-full bg-cyan-500/60" style={{ width: `${Math.max(2, pct)}%` }} />
                   </div>
