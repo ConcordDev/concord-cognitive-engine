@@ -99,7 +99,7 @@ export function CreativeActionPanel() {
       // DTUs competing for the same top-N slots.
       const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Production pkg`, domain: 'creative', lens: 'creative', tags: ['creative', 'production'], source: 'creative:pkg:mint', meta: { lens: 'creative', visibility: 'private', consent: { allowCitations: false }, prod: { shots: shotsResult, assets: assetsResult, budget: budgetResult, dist: distResult } } }, 'media', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('creative.mintedDtuId', id, { label: `Pkg DTU ${id.slice(0, 8)}…` }); ok(`Pkg DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('creative.mintedDtuId', id, { label: `Pkg DTU ${id}` }); ok(`Pkg DTU ${id}`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
@@ -133,7 +133,7 @@ export function CreativeActionPanel() {
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
         return newId as string;
       });
-      if (id) { setPublishedDtuId(id); pipe.publish('creative.publishedDtuId', id, { label: `Public handoff ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
+      if (id) { setPublishedDtuId(id); pipe.publish('creative.publishedDtuId', id, { label: `Public handoff ${id}` }); ok(`Published ${id} · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -151,9 +151,9 @@ export function CreativeActionPanel() {
     { id: 'assets' as ActionId, label: 'Assets', desc: 'assetOrganize', icon: FolderOpen, accent: '#f59e0b', handler: actAssets },
     { id: 'budget' as ActionId, label: 'Budget', desc: 'budgetTrack', icon: DollarSign, accent: '#22c55e', handler: actBudget },
     { id: 'dist' as ActionId, label: 'Delivery', desc: 'distributionChecklist', icon: ListChecks, accent: '#3b82f6', handler: actDist },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private pkg DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private pkg DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send status', icon: Send, accent: '#ec4899', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public handoff', icon: Globe, accent: '#15803d', handler: actPublish },
+    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : 'Public handoff', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Risk', desc: 'Agent: risk + fix', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
