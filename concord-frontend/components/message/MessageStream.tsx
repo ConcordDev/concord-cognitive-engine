@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Send, Loader2, MessageSquare, Sparkles, Calendar, Smile, Edit3, Trash2, Pin, ListChecks, Mic, Square, Clock } from 'lucide-react';
+import { Send, Loader2, MessageSquare, Sparkles, Calendar, Smile, SmilePlus, Edit3, Trash2, Pin, ListChecks, Mic, Square, Clock, Bot } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { cn } from '@/lib/utils';
 import { ChannelIcon } from './SlackShell';
@@ -25,6 +26,10 @@ export interface Message {
 
 interface Channel { id: string; name: string; kind: 'channel' | 'dm' | 'group_dm'; topic?: string; isPrivate?: boolean }
 
+interface AppMessage { id: string; appName: string; body: string; ephemeral?: boolean; ts: string; command?: string }
+
+const REACTION_SET = ['👍', '❤️', '😂', '🎉', '😮', '🔥'];
+
 export function MessageStream({
   channel,
   onOpenThread,
@@ -34,7 +39,20 @@ export function MessageStream({
   onOpenThread: (rootId: string) => void;
   onMessageActivity?: () => void;
 }) {
+  const { user } = useAuth();
   const [msgs, setMsgs] = useState<Message[]>([]);
+  // Command results (message.command-run) live in their own store; the
+  // stream merges them at refresh so a /shrug or /poll lands in its channel.
+  const [appMsgs, setAppMsgs] = useState<AppMessage[]>([]);
+  const [cmdError, setCmdError] = useState<string | null>(null);
+  const [dismissedApp, setDismissedApp] = useState<string[]>([]);
+  // Two-step delete (fleet standard, no native dialogs) + refusals in words.
+  const [deleteArmId, setDeleteArmId] = useState<string | null>(null);
+  const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
+  // Reactions ON the message: counts from message.reactions-for, toggled
+  // via react/unreact. The server model tallies the caller's own reactions.
+  const [reactions, setReactions] = useState<Record<string, Record<string, number>>>({});
+  const [reactOpenId, setReactOpenId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
@@ -77,7 +95,7 @@ export function MessageStream({
   const recordStartRef = useRef<number>(0);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setActionItems(null); if (channel) { refresh(); markRead(); void loadVoiceDurations(); } else { setMsgs([]); setSummary(null); setSmartReplies([]); setTypers([]); } }, [channel?.id]);
+  useEffect(() => { setActionItems(null); setDeleteArmId(null); setReactOpenId(null); setCmdError(null); if (channel) { refresh(); markRead(); void loadVoiceDurations(); } else { setMsgs([]); setSummary(null); setSmartReplies([]); setTypers([]); } }, [channel?.id]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs.length]);
 
   // Live-delivery poll — every 4s ask the server for typing handles +
@@ -128,8 +146,45 @@ export function MessageStream({
       const last = list[list.length - 1];
       lastTsRef.current = last?.ts ?? null;
       if (last) loadSmartReplies(last.body);
+      void loadAppMessages();
+      void loadReactions(list.slice(-20));
     } catch (e) { console.error('[Stream] failed', e); }
     finally { setLoading(false); }
+  }
+
+  async function loadAppMessages() {
+    if (!channel) return;
+    try {
+      const r = await lensRun({ domain: 'message', action: 'app-messages-list', input: { channelId: channel.id } });
+      setAppMsgs((r.data?.result?.appMessages || []) as AppMessage[]);
+    } catch { /* best-effort */ }
+  }
+
+  async function loadReactions(list: Message[]) {
+    if (list.length === 0) return;
+    try {
+      const entries = await Promise.all(list.map(async (m) => {
+        const r = await lensRun({ domain: 'message', action: 'reactions-for', input: { messageId: m.id } });
+        return [m.id, (r.data?.result?.reactions || {}) as Record<string, number>] as const;
+      }));
+      setReactions((prev) => {
+        const next = { ...prev };
+        for (const [id, map] of entries) next[id] = map;
+        return next;
+      });
+    } catch { /* best-effort */ }
+  }
+
+  async function toggleReact(m: Message, emoji: string) {
+    const current = reactions[m.id]?.[emoji] || 0;
+    try {
+      const r = await lensRun({
+        domain: 'message', action: current > 0 ? 'unreact' : 'react', input: { messageId: m.id, emoji },
+      });
+      if (r.data?.ok === false) return;
+      const rr = await lensRun({ domain: 'message', action: 'reactions-for', input: { messageId: m.id } });
+      setReactions((prev) => ({ ...prev, [m.id]: (rr.data?.result?.reactions || {}) as Record<string, number> }));
+    } catch { /* best-effort */ }
   }
 
   async function markRead() {
@@ -150,10 +205,36 @@ export function MessageStream({
 
   async function send() {
     if (!channel || !body.trim() || sending) return;
+    const text = body.trim();
+    // Slash commands execute — the composer is the canonical slash surface.
+    // A leading /word routes to message.command-run; an unknown command is
+    // refused in words and never posts as literal text.
+    if (text.startsWith('/')) {
+      setSending(true);
+      try {
+        const r = await lensRun({ domain: 'message', action: 'command-run', input: { channelId: channel.id, text } });
+        if (r.data?.ok === false) {
+          setCmdError(r.data?.error || 'That command could not run.');
+          return;
+        }
+        setCmdError(null);
+        setBody('');
+        await refresh();
+        onMessageActivity?.();
+      } catch (e) { setCmdError(e instanceof Error ? e.message : String(e)); }
+      finally { setSending(false); }
+      return;
+    }
     setSending(true);
     try {
-      await lensRun({ domain: 'message', action: 'messages-send', input: { channelId: channel.id, body: body.trim() } });
+      await lensRun({
+        domain: 'message', action: 'messages-send',
+        // Stamp the account's own name so the author line is the account,
+        // never its raw id (the domain falls back to the actor, then the id).
+        input: { channelId: channel.id, body: text, ...(user?.username ? { senderName: user.username } : {}) },
+      });
       setBody('');
+      setCmdError(null);
       await refresh();
       onMessageActivity?.();
     } catch (e) { console.error('[Stream] send', e); }
@@ -213,7 +294,7 @@ export function MessageStream({
       }
       const sendResult = await lensRun({
         domain: 'message', action: 'messages-send',
-        input: { channelId: channel.id, body: transcript || '🎤 Voice message (transcription unavailable)' },
+        input: { channelId: channel.id, body: transcript || '🎤 Voice message (transcription unavailable)', ...(user?.username ? { senderName: user.username } : {}) },
       });
       const messageId = sendResult.data?.result?.message?.id;
       if (messageId) {
@@ -275,11 +356,24 @@ export function MessageStream({
 
   async function deleteMsg(m: Message) {
     if (!channel) return;
-    if (!confirm('Delete this message?')) return;
+    // Two-step in-page confirm (the fleet standard): the first click arms,
+    // the second deletes. A refusal surfaces in words under the message —
+    // a silent no-op is the defect this replaces.
+    if (deleteArmId !== m.id) { setDeleteArmId(m.id); return; }
     try {
-      await lensRun({ domain: 'message', action: 'messages-delete', input: { channelId: channel.id, id: m.id } });
+      const r = await lensRun({ domain: 'message', action: 'messages-delete', input: { channelId: channel.id, id: m.id } });
+      if (r.data?.ok === false) {
+        setDeleteErrors((prev) => ({ ...prev, [m.id]: r.data?.error || 'That message could not be deleted.' }));
+        setDeleteArmId(null);
+        return;
+      }
+      setDeleteErrors((prev) => { const next = { ...prev }; delete next[m.id]; return next; });
+      setDeleteArmId(null);
       await refresh();
-    } catch (e) { console.error('[Stream] delete', e); }
+    } catch (e) {
+      setDeleteErrors((prev) => ({ ...prev, [m.id]: e instanceof Error ? e.message : String(e) }));
+      setDeleteArmId(null);
+    }
   }
 
   async function saveMessage(m: Message) {
@@ -406,7 +500,25 @@ export function MessageStream({
                     title="Snooze"
                   ><Clock className="w-3 h-3" /></button>
                   <button onClick={() => { setEditingId(m.id); setEditBody(m.body); }} className="p-1 text-gray-400 hover:text-white" title="Edit"><Edit3 className="w-3 h-3" /></button>
-                  <button onClick={() => deleteMsg(m)} className="p-1 text-gray-400 hover:text-rose-300" title="Delete"><Trash2 className="w-3 h-3" /></button>
+                  <button
+                    onClick={() => setReactOpenId(reactOpenId === m.id ? null : m.id)}
+                    className={cn('p-1', reactOpenId === m.id ? 'text-amber-300' : 'text-gray-400 hover:text-amber-300')}
+                    title="React"
+                  ><SmilePlus className="w-3 h-3" /></button>
+                  <button
+                    onClick={() => deleteMsg(m)}
+                    className={cn('p-1 inline-flex items-center gap-1', deleteArmId === m.id ? 'text-rose-300 font-semibold' : 'text-gray-400 hover:text-rose-300')}
+                    title={deleteArmId === m.id ? 'Click again to delete' : 'Delete'}
+                  ><Trash2 className="w-3 h-3" />{deleteArmId === m.id && <span className="text-[10px]">Confirm?</span>}</button>
+
+                  {reactOpenId === m.id && (
+                    <div className="absolute right-0 top-6 z-20 rounded-md border border-white/15 bg-zinc-900 shadow-xl p-1.5 flex items-center gap-1" role="menu" aria-label="React">
+                      {REACTION_SET.map((emoji) => (
+                        <button key={emoji} role="menuitem" onClick={() => { void toggleReact(m, emoji); setReactOpenId(null); }}
+                          className="px-1.5 py-1 text-sm rounded hover:bg-white/10" title={`React ${emoji}`}>{emoji}</button>
+                      ))}
+                    </div>
+                  )}
 
                   {snoozeTargetId === m.id && (
                     <div className="absolute right-0 top-6 z-20 w-56 rounded-md border border-amber-500/30 bg-zinc-900 shadow-xl p-2 space-y-1.5" role="menu" aria-label="Snooze options">
@@ -441,11 +553,40 @@ export function MessageStream({
               ) : (
                 <div className="text-sm text-white whitespace-pre-wrap">{renderMentions(m.body)}</div>
               )}
+              {reactions[m.id] && Object.keys(reactions[m.id]).length > 0 && (
+                <div className="mt-1 flex flex-wrap items-center gap-1">
+                  {Object.entries(reactions[m.id]).map(([emoji, count]) => (
+                    <button key={emoji} onClick={() => void toggleReact(m, emoji)}
+                      className="px-1.5 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-[11px] text-amber-100 inline-flex items-center gap-1"
+                      title={`${emoji} — click to remove your reaction`}>
+                      <span>{emoji}</span><span className="text-amber-300">{count}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {deleteErrors[m.id] && (
+                <p className="mt-1 text-[11px] text-rose-300">{deleteErrors[m.id]}</p>
+              )}
               {m.threadCount > 0 && (
                 <button onClick={() => onOpenThread(m.id)} className="mt-1 text-[10px] text-violet-300 hover:text-violet-200 inline-flex items-center gap-1">
                   <MessageSquare className="w-3 h-3" />{m.threadCount} {m.threadCount === 1 ? 'reply' : 'replies'}
                 </button>
               )}
+            </div>
+          </div>
+        ))}
+        {appMsgs.filter(a => !a.ephemeral).map(a => (
+          <div key={a.id} className="flex items-start gap-2 -mx-2 px-2 py-1 rounded">
+            <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 bg-cyan-500/15 text-cyan-300">
+              <Bot className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="font-semibold text-cyan-200">{a.appName}</span>
+                {a.command && <span className="text-gray-500 font-mono">{a.command}</span>}
+                <span className="text-gray-400 font-mono">{new Date(a.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <div className="text-sm text-white whitespace-pre-wrap">{renderMentions(a.body)}</div>
             </div>
           </div>
         ))}
@@ -477,6 +618,19 @@ export function MessageStream({
 
       {/* Composer */}
       <div className="border-t border-white/10 p-2">
+        {appMsgs.filter(a => a.ephemeral && !dismissedApp.includes(a.id)).slice(-1).map(a => (
+          <div key={a.id} className="mb-2 flex items-start gap-2 bg-cyan-500/[0.06] border border-cyan-500/25 rounded px-2 py-1.5 text-xs text-cyan-100">
+            <Bot className="w-3 h-3 text-cyan-300 mt-0.5 flex-shrink-0" />
+            <span className="flex-1">{a.body} <span className="text-cyan-400/70">(only you can see this)</span></span>
+            <button onClick={() => setDismissedApp(prev => [...prev, a.id])} className="text-cyan-300 text-sm leading-none" aria-label="Dismiss">×</button>
+          </div>
+        ))}
+        {cmdError && (
+          <div className="mb-2 flex items-start gap-2 bg-rose-500/[0.06] border border-rose-500/30 rounded px-2 py-1.5 text-xs text-rose-200">
+            <span className="flex-1">{cmdError}</span>
+            <button onClick={() => setCmdError(null)} className="text-rose-300 text-sm leading-none" aria-label="Dismiss">×</button>
+          </div>
+        )}
         {showSchedule && (
           <div className="mb-2 flex items-center gap-2 bg-amber-500/[0.06] border border-amber-500/30 rounded px-2 py-1.5">
             <Calendar className="w-3 h-3 text-amber-400" />
