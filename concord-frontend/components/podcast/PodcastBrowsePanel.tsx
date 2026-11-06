@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { notifyPodcastChanged } from './podcast-events';
 
 interface Show {
   id: string; title: string; author: string | null; category: string;
@@ -93,12 +94,14 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
     setForm({ title: '', author: '', category: 'general', description: '' });
     setShowAdd(false); setError(null);
     await refresh();
+    notifyPodcastChanged();
   };
   const subscribe = async (sh: Show) => {
     await lensRun('podcast', 'show-subscribe', { id: sh.id });
     await refresh();
     if (selected?.id === sh.id) await openShow(sh);
     onChange();
+    notifyPodcastChanged();
   };
   const addEpisode = async () => {
     if (!selected || !epForm.title.trim()) { setError('Episode title is required.'); return; }
@@ -128,6 +131,7 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
     setSelected(null);
     await refresh();
     onChange();
+    notifyPodcastChanged();
   };
 
   if (loading) {
@@ -286,7 +290,7 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
               <button type="button" onClick={() => openShow(sh)} className="text-left min-w-0">
                 <p className="text-sm font-semibold text-zinc-100 truncate">{sh.title}</p>
                 <p className="text-[11px] text-zinc-400 truncate">
-                  {sh.author} · {sh.category} · {sh.episodeCount} episodes
+                  {sh.author} · {sh.category} · {sh.episodeCount} episode{sh.episodeCount === 1 ? '' : 's'}
                 </p>
               </button>
               <button type="button" onClick={() => subscribe(sh)}
