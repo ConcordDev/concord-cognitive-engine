@@ -12,15 +12,25 @@
 // Dream-record mechanic macros (the /lenses/dreams backlog):
 //
 //   dreams.detail        { dreamId }      → full composed prose + fragments + summary
-//   dreams.publish       { dreamId, priceCc } → list a dream on the marketplace
+//   dreams.publish       { dreamId, priceCc } → REFUSED (marketplace-for-dreams
+//                                           ruled out on provenance grounds —
+//                                           Lead disposition, 2026-11-01: a
+//                                           member cannot list engine-authored
+//                                           content they did not write)
 //   dreams.unpublish     { dreamId }      → flip a dream back to personal scope
-//   dreams.reprice       { dreamId, priceCc } → change a published dream's price
+//                                           (withdrawal stays live: the only
+//                                           direction the ruling leaves open)
+//   dreams.reprice       { dreamId, priceCc } → REFUSED (same ruling as publish)
 //   dreams.tag           { dreamId, tags[] } → set tags on a dream
 //   dreams.search        { query?, tag?, scope?, limit? } → tag/full-text search
 //   dreams.tags          { }              → distinct tag cloud across your dreams
 //   dreams.timeline      { }              → dreams grouped by calendar day
-//   dreams.interpret     { dreamId }      → deterministic reflection linking
-//                                           dream fragments to recent activity
+//   dreams.interpret     { dreamId }      → deterministic substrate summary:
+//                                           event-kind counts + totals from the
+//                                           night's recorded substrate. It does
+//                                           NOT read the dream's prose (the old
+//                                           "reflection" claim was withdrawn by
+//                                           the same 2026-11-01 disposition)
 //   dreams.busiest-night { limit? }       → nights ranked by real recorded
 //                                           activity intensity (WAVE4 — see
 //                                           the "busiest night" note below)
@@ -238,7 +248,12 @@ export default function registerDreamsMacros(register) {
           const r = db.prepare(`SELECT id, title, data FROM dtus WHERE id = ?`).get(d.dream_dtu_id);
           if (r) dtu = { id: r.id, title: r.title, data: parseJson(r.data, r.data) };
         } catch { /* dtu absent */ }
-        return { ...d, dtu, tags: tagMap.get(String(d.id)) || [] };
+        const tags = tagMap.get(String(d.id)) || [];
+        // S-DRM-5 (Lead disposition, 2026-11-01): tags are the member's own
+        // annotation on the engine's dream — the payload names their author
+        // (on this caller-scoped read, the tagger is the caller) instead of
+        // presenting them as the dream's own metadata.
+        return { ...d, dtu, tags, tagsAuthor: tags.length ? userId : null };
       });
       return { ok: true, count: dreams.length, dreams };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
@@ -289,6 +304,8 @@ export default function registerDreamsMacros(register) {
           scope: dtu?.scope || "personal",
           priceCc: dtu?.meta?.priceCc ?? null,
           tags: tagMap.get(String(row.id)) || [],
+          // S-DRM-5: the tags' author (the caller, on this scoped read).
+          tagsAuthor: (tagMap.get(String(row.id)) || []).length ? userId : null,
         },
       };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
@@ -302,28 +319,19 @@ export default function registerDreamsMacros(register) {
     if (!userId) return { ok: false, reason: "no_actor" };
     const dreamId = input?.dreamId;
     if (!dreamId) return { ok: false, reason: "missing_dreamId" };
-    const priceCc = Math.max(1, Math.min(10000, Math.round(Number(input?.priceCc) || 5)));
-    try {
-      const loaded = loadDream(db, userId, dreamId);
-      if (!loaded) return { ok: false, reason: "dream_not_found" };
-      const { row, dtu } = loaded;
-      if (!row.dream_dtu_id) return { ok: false, reason: "no_dtu" };
-      const patched = patchDtuMeta(db, row.dream_dtu_id, {
-        scope: "public",
-        priceCc,
-        publishedAt: Math.floor(Date.now() / 1000),
-      });
-      if (!patched) return { ok: false, reason: "publish_failed" };
-      return {
-        ok: true,
-        dreamId: row.id,
-        dtuId: row.dream_dtu_id,
-        scope: "public",
-        priceCc,
-        currency: "CC",
-      };
-    } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-  }, { note: "Publish a dream to the marketplace at a custom CC price. Royalty cascade pays the dreamer." });
+    // S-DRM-4 (Lead disposition, 2026-11-01): MARKETPLACE-FOR-DREAMS IS OUT
+    // on provenance grounds — a dream is engine-authored content, and a
+    // member cannot list what they did not author; routing it into the
+    // marketplace under the royalty cascade would mint a false provenance
+    // at the cascade's head. The verb refuses rather than lists.
+    // dreams.unpublish stays live: withdrawal is the one direction the
+    // ruling leaves open for any dream already listed.
+    return {
+      ok: false,
+      reason: "marketplace_for_dreams_ruled_out",
+      error: "Dreams cannot be listed on the marketplace: they are composed by the dream engine, not authored by you, and only the author can list a work.",
+    };
+  }, { note: "REFUSED — marketplace listing for dreams ruled out on provenance grounds (Lead disposition, 2026-11-01). See dreams.unpublish for withdrawing an already-listed dream." });
 
   // ── dreams.unpublish — flip back to personal scope ───────────────────────
   register("dreams", "unpublish", async (ctx, input = {}) => {
@@ -356,23 +364,14 @@ export default function registerDreamsMacros(register) {
     if (!userId) return { ok: false, reason: "no_actor" };
     const dreamId = input?.dreamId;
     if (!dreamId) return { ok: false, reason: "missing_dreamId" };
-    const priceCc = Math.max(1, Math.min(10000, Math.round(Number(input?.priceCc) || 0)));
-    if (!priceCc) return { ok: false, reason: "invalid_price" };
-    try {
-      const loaded = loadDream(db, userId, dreamId);
-      if (!loaded) return { ok: false, reason: "dream_not_found" };
-      const { row, dtu } = loaded;
-      if (!row.dream_dtu_id) return { ok: false, reason: "no_dtu" };
-      if ((dtu?.scope || "personal") !== "public") return { ok: false, reason: "not_published" };
-      const patched = patchDtuMeta(db, row.dream_dtu_id, {
-        scope: "public",
-        priceCc,
-        repricedAt: Math.floor(Date.now() / 1000),
-      });
-      if (!patched) return { ok: false, reason: "reprice_failed" };
-      return { ok: true, dreamId: row.id, dtuId: row.dream_dtu_id, priceCc, currency: "CC" };
-    } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-  }, { note: "Change the CC price of an already-published dream." });
+    // S-DRM-4: repricing maintains a marketplace listing, so it falls under
+    // the same provenance ruling as publish (Lead disposition, 2026-11-01).
+    return {
+      ok: false,
+      reason: "marketplace_for_dreams_ruled_out",
+      error: "Dreams cannot be listed on the marketplace: they are composed by the dream engine, not authored by you, and only the author can list a work.",
+    };
+  }, { note: "REFUSED — marketplace listing for dreams ruled out on provenance grounds (Lead disposition, 2026-11-01)." });
 
   // ── dreams.tag — set tags on a dream ─────────────────────────────────────
   register("dreams", "tag", async (ctx, input = {}) => {
@@ -464,6 +463,8 @@ export default function registerDreamsMacros(register) {
           scope,
           priceCc: dtu?.meta?.priceCc ?? null,
           tags,
+          // S-DRM-5: the tags' author (the caller, on this scoped read).
+          tagsAuthor: tags.length ? userId : null,
         });
         if (matches.length >= limit) break;
       }
@@ -508,6 +509,8 @@ export default function registerDreamsMacros(register) {
           composedAt: row.composed_at,
           worldId: row.world_id,
           tags: tagMap.get(String(row.id)) || [],
+          // S-DRM-5: the tags' author (the caller, on this scoped read).
+          tagsAuthor: (tagMap.get(String(row.id)) || []).length ? userId : null,
         });
       }
       const days = [...byDay.entries()]
@@ -613,5 +616,5 @@ export default function registerDreamsMacros(register) {
       cache.set(String(dreamId), interpretation);
       return { ok: true, dreamId: String(dreamId), cached: false, interpretation };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
-  }, { note: "Deterministic reflection linking a dream's fragments to recent activity. Cached per dream; pass refresh:true to recompute." });
+  }, { note: "Deterministic substrate summary: event-kind counts and totals from the dream's recorded substrate. It does not read the dream's prose (the 'reflection' claim was withdrawn — Lead disposition, 2026-11-01). Cached per dream; pass refresh:true to recompute." });
 }
