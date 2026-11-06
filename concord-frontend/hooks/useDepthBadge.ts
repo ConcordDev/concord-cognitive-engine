@@ -178,6 +178,19 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Your own live shop records: schedule, crew, time, invoices and photo logs are your account\'s real data, saved as you work. Species lookups pull live reference data from Wikipedia.',
   },
+  /**
+   * Genesis observes the platform's own emergent substrate — identities,
+   * observations, communications and activity recorded by the live
+   * emergent system in its own tables. The Simulated declaration was
+   * false for this lens (the serving reads the real tables; R3's gate
+   * determination 2026-10-30, B2's premise 2026-11-05), and REAL_LIVE's
+   * generic "polled from an external source" caption would be its own
+   * falsehood: nothing here is external.
+   */
+  genesis: {
+    label: 'Live',
+    caption: 'Live: the emergent identities, their observations, communications and activity are the platform’s own recorded substrate, served from its live tables — not a simulation and not an external feed.',
+  },
   game: {
     label: 'Lab & arcade sim',
     caption: 'Simulated: Design Lab forecasts and mini-game practice XP. Profile XP, quests, and achievements are your real activity.',

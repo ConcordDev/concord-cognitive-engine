@@ -4593,7 +4593,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['list_emergents', 'recent_feed', 'legendary_skills', 'subscribe_activity', 'name_emergent'],
     category: 'social',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Watch identities emerge.",
       caption: "Emergent identities, birth events, lineages, legendary skills \u2014 the substrate's social formation layer.",
