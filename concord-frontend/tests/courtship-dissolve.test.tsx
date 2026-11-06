@@ -129,7 +129,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
     await act(async () => { goToMarriages(view!); });
     await waitFor(() => expect(view!.getByTestId('marriage-list')).toBeInTheDocument());
 
-    expect(view!.getByLabelText('End marriage to npc_kel_999')).toBeInTheDocument();
+    expect(view!.getByLabelText('End marriage to An NPC of Concordia')).toBeInTheDocument();
   });
 
   it('clicking "End Marriage" opens a real confirm modal without calling dissolve yet', async () => {
@@ -143,7 +143,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
     await waitFor(() => expect(view!.getByTestId('marriage-list')).toBeInTheDocument());
 
     await act(async () => {
-      fireEvent.click(view!.getByLabelText('End marriage to npc_kel_999'));
+      fireEvent.click(view!.getByLabelText('End marriage to An NPC of Concordia'));
     });
 
     expect(view!.getByTestId('dissolve-confirm-modal')).toBeInTheDocument();
@@ -163,7 +163,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
     await waitFor(() => expect(view!.getByTestId('marriage-list')).toBeInTheDocument());
 
     await act(async () => {
-      fireEvent.click(view!.getByLabelText('End marriage to npc_kel_999'));
+      fireEvent.click(view!.getByLabelText('End marriage to An NPC of Concordia'));
     });
     expect(view!.getByTestId('dissolve-confirm-modal')).toBeInTheDocument();
 
@@ -174,7 +174,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
     expect(view!.queryByTestId('dissolve-confirm-modal')).not.toBeInTheDocument();
     expect(calls.some((c) => c.body?.name === 'dissolve')).toBe(false);
     // The marriage is untouched.
-    expect(view!.getByLabelText('End marriage to npc_kel_999')).toBeInTheDocument();
+    expect(view!.getByLabelText('End marriage to An NPC of Concordia')).toBeInTheDocument();
   });
 
   it('confirming calls courtship.dissolve and removes the marriage from the active list', async () => {
@@ -188,10 +188,10 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
     await waitFor(() => expect(view!.getByTestId('marriage-list')).toBeInTheDocument());
 
     await act(async () => {
-      fireEvent.click(view!.getByLabelText('End marriage to npc_kel_999'));
+      fireEvent.click(view!.getByLabelText('End marriage to An NPC of Concordia'));
     });
     await act(async () => {
-      fireEvent.click(view!.getByLabelText('Confirm end marriage to npc:npc_kel_999'));
+      fireEvent.click(view!.getByLabelText('Confirm end marriage to An NPC of Concordia'));
     });
 
     await waitFor(() => {
@@ -210,7 +210,7 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
     // fabricated).
     await act(async () => { goToPast(view!); });
     await waitFor(() => expect(view!.getByTestId('past-marriage-list')).toBeInTheDocument());
-    expect(view!.getByText(/npc:npc_kel_999/)).toBeInTheDocument();
+    expect(view!.getByText('An NPC of Concordia')).toBeInTheDocument();
   });
 
   it('a rejected dissolve (not a party) surfaces an error and keeps the marriage active', async () => {
@@ -252,13 +252,13 @@ describe('courtship lens — End Marriage (courtship.dissolve)', () => {
     await act(async () => { goToMarriages(view!); });
     await waitFor(() => expect(view!.getByTestId('marriage-list')).toBeInTheDocument());
 
-    await act(async () => { fireEvent.click(view!.getByLabelText('End marriage to npc_kel_999')); });
-    await act(async () => { fireEvent.click(view!.getByLabelText('Confirm end marriage to npc:npc_kel_999')); });
+    await act(async () => { fireEvent.click(view!.getByLabelText('End marriage to An NPC of Concordia')); });
+    await act(async () => { fireEvent.click(view!.getByLabelText('Confirm end marriage to An NPC of Concordia')); });
 
     await waitFor(() =>
       expect(addToastMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })),
     );
     // Still shown as active — the rejection didn't fabricate a success.
-    expect(view!.getByLabelText('End marriage to npc_kel_999')).toBeInTheDocument();
+    expect(view!.getByLabelText('End marriage to An NPC of Concordia')).toBeInTheDocument();
   });
 });

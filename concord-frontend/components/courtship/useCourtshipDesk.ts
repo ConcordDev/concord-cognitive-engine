@@ -3,28 +3,30 @@
 /**
  * useCourtshipDesk — all courtship REST + macro wiring extracted from page.tsx.
  * Preserves: courtship.constants, marriages, conceive, birth, dissolve,
- * /api/courtship/mine, marriages/mine, interact, propose, wed, pregnancy-cache.
+ * /api/courtship/mine, marriages/mine, interact, propose, wed.
+ * Full build adds: courtship.pregnancies (the server read that retires the
+ * old per-browser pregnancy cache), courtship.notices + accept/decline (the
+ * consent inbox), courtship.spouses (the named spouse read), and
+ * courtshipErrorText over every refusal (S2/S3/S5).
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useUIStore } from '@/store/ui';
 import { api } from '@/lib/api/client';
-import { useAuth } from '@/hooks/useAuth';
 import type { HeartEventScene } from '@/components/courtship/HeartEventModal';
-import {
-  loadCachedPregnancies,
-  addCachedPregnancy,
-  removeCachedPregnancy,
-  type CachedPregnancy,
-} from '@/components/courtship/pregnancy-cache';
 import {
   type Courtship,
   type Marriage,
   type Child,
+  type Pregnancy,
+  type CourtshipNotice,
+  type Spouse,
   type LoadState,
+  partnerLabel,
   DEFAULT_ENGAGE_THRESHOLD,
   DEFAULT_MARRY_THRESHOLD,
 } from '@/components/courtship/courtship-types';
+import { courtshipErrorText } from '@/components/courtship/courtship-errors';
 
 export function useCourtshipDesk() {
   const [courtships, setCourtships] = useState<Courtship[]>([]);
@@ -36,17 +38,12 @@ export function useCourtshipDesk() {
   const [engageThreshold, setEngageThreshold] = useState(DEFAULT_ENGAGE_THRESHOLD);
   const [marryThreshold, setMarryThreshold] = useState(DEFAULT_MARRY_THRESHOLD);
   const [heartEvent, setHeartEvent] = useState<{ scene: HeartEventScene; partnerLabel: string } | null>(null);
-  const [pregnancies, setPregnancies] = useState<CachedPregnancy[]>([]);
+  const [pregnancies, setPregnancies] = useState<Pregnancy[]>([]);
+  const [notices, setNotices] = useState<CourtshipNotice[]>([]);
+  const [spouses, setSpouses] = useState<Spouse[]>([]);
   const [pastMarriages, setPastMarriages] = useState<Marriage[]>([]);
   const [dissolveTarget, setDissolveTarget] = useState<Marriage | null>(null);
   const addToast = useUIStore((s) => s.addToast);
-  const { user } = useAuth();
-
-  // Locally-cached pregnancies are per-user (see pregnancy-cache.ts honesty
-  // note) — load once we know who's signed in, and whenever that changes.
-  useEffect(() => {
-    setPregnancies(loadCachedPregnancies(user?.id));
-  }, [user?.id]);
 
   // Pull the canonical propose/marry floors from the engine once.
   useEffect(() => {
@@ -99,6 +96,66 @@ export function useCourtshipDesk() {
     }
   }, []);
 
+  // In-flight pregnancies come from the SERVER now (courtship.pregnancies,
+  // S2) — the read whose absence the old localStorage cache existed to
+  // paper over. Best-effort like the past-marriages read: a failure leaves
+  // the section as it was and never blocks the core ready state.
+  const loadPregnancies = useCallback(async () => {
+    try {
+      const r = await fetch('/api/lens/run', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ domain: 'courtship', name: 'pregnancies', input: {} }),
+      });
+      const j = await r.json().catch(() => ({ ok: false }));
+      const result = j?.result ?? j;
+      if (result?.ok) setPregnancies(result.pregnancies || []);
+    } catch {
+      /* best-effort supplementary view */
+    }
+  }, []);
+
+  // The consent inbox (courtship.notices, S5): proposals pending on the
+  // caller. Registered and shipped-suite-pinned since the consent build,
+  // but never wired to a surface until now — a pending proposal was
+  // invisible in the lens. Best-effort, like the other supplementary reads.
+  const loadNotices = useCallback(async () => {
+    try {
+      const r = await fetch('/api/lens/run', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ domain: 'courtship', name: 'notices', input: {} }),
+      });
+      const j = await r.json().catch(() => ({ ok: false }));
+      const result = j?.result ?? j;
+      if (result?.ok) {
+        setNotices((result.notices || []).filter((n: CourtshipNotice) => n.kind === 'proposal' && !!n.proposalId));
+      }
+    } catch {
+      /* best-effort supplementary view */
+    }
+  }, []);
+
+  // The NPC spouses wed to the caller (courtship.spouses, S5), named
+  // server-side. Best-effort supplementary read.
+  const loadSpouses = useCallback(async () => {
+    try {
+      const r = await fetch('/api/lens/run', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ domain: 'courtship', name: 'spouses', input: {} }),
+      });
+      const j = await r.json().catch(() => ({ ok: false }));
+      const result = j?.result ?? j;
+      if (result?.ok) setSpouses(result.spouses || []);
+    } catch {
+      /* best-effort supplementary view */
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     setLoadState((s) => (s === 'ready' ? 'ready' : 'loading'));
     setErrorMsg(null);
@@ -118,12 +175,15 @@ export function useCourtshipDesk() {
       }
       setLoadState('ready');
       loadPastMarriages();
+      loadPregnancies();
+      loadNotices();
+      loadSpouses();
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : 'Could not load your courtships.');
       setLoadState('error');
       addToast({ type: 'error', message: 'Could not load your courtships' });
     }
-  }, [addToast, loadPastMarriages]);
+  }, [addToast, loadPastMarriages, loadPregnancies, loadNotices, loadSpouses]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -132,10 +192,12 @@ export function useCourtshipDesk() {
     try {
       const j = await api.post(path, body).then(r => r.data).catch((e) => {
         const data = e?.response?.data;
+        // The REST routes answer refusals as { ok:false, error } where the
+        // macros answer { ok:false, reason } — both feed the same map (S3).
         return data ?? { ok: false, reason: e instanceof Error ? e.message : 'request_failed' };
       });
       if (j?.ok === false) {
-        setErrorMsg(j?.reason ? `Action failed: ${j.reason}` : 'Action failed.');
+        setErrorMsg(courtshipErrorText({ reason: j?.reason ?? j?.error, required: j?.required, got: j?.got }));
         addToast({ type: 'error', message: 'Action failed' });
       }
       await refresh();
@@ -155,12 +217,12 @@ export function useCourtshipDesk() {
       const r = await api.post('/api/courtship/interact', { partnerKind: c.partner_kind, partnerId: c.partner_id, sentiment });
       const j = r.data;
       if (j?.ok === false) {
-        setErrorMsg(j?.reason ? `Action failed: ${j.reason}` : 'Action failed.');
+        setErrorMsg(courtshipErrorText({ reason: j?.reason ?? j?.error, required: j?.required, got: j?.got }));
         addToast({ type: 'error', message: 'Action failed' });
       } else if (j?.heartEvent) {
         setHeartEvent({
           scene: j.heartEvent as HeartEventScene,
-          partnerLabel: `${c.partner_kind}:${String(c.partner_id ?? "").slice(0, 14)}`,
+          partnerLabel: partnerLabel(c.partner_kind, c.partnerName),
         });
       }
       await refresh();
@@ -196,18 +258,12 @@ export function useCourtshipDesk() {
       const j = await r.json().catch(() => ({ ok: false }));
       const result = j?.result ?? j;
       if (result?.ok && result?.pregnancyId) {
-        const cached: CachedPregnancy = {
-          pregnancyId: result.pregnancyId,
-          partnerKind: m.partner_kind,
-          partnerId: m.partner_id,
-          dueAt: result.dueAt,
-          conceivedAt: Math.floor(Date.now() / 1000),
-        };
-        addCachedPregnancy(user?.id, cached);
-        setPregnancies(loadCachedPregnancies(user?.id));
+        // The server's pregnancies read carries the new row now (S2) —
+        // no client-side cache to keep in step.
+        await loadPregnancies();
         addToast({ type: 'success', message: 'A pregnancy has begun.' });
       } else {
-        setErrorMsg(result?.reason ? `Could not conceive: ${result.reason}` : 'Could not conceive.');
+        setErrorMsg(courtshipErrorText(result));
         addToast({ type: 'error', message: 'Action failed' });
       }
     } catch (e) {
@@ -216,9 +272,9 @@ export function useCourtshipDesk() {
     } finally {
       setPending(false);
     }
-  }, [user?.id, addToast]);
+  }, [loadPregnancies, addToast]);
 
-  const birth = useCallback(async (p: CachedPregnancy) => {
+  const birth = useCallback(async (p: Pregnancy) => {
     setPending(true);
     try {
       const r = await fetch('/api/lens/run', {
@@ -234,19 +290,13 @@ export function useCourtshipDesk() {
       const j = await r.json().catch(() => ({ ok: false }));
       const result = j?.result ?? j;
       if (result?.ok) {
-        removeCachedPregnancy(user?.id, p.pregnancyId);
-        setPregnancies(loadCachedPregnancies(user?.id));
         addToast({ type: 'success', message: `${result.name || 'A child'} was born.` });
         await refresh();
       } else {
-        // Honest self-repair: if the server says the cached id is stale
-        // (already birthed, or the row is gone), drop it from the local
-        // cache rather than keep offering a dead action forever.
-        if (result?.reason === 'already_born' || result?.reason === 'pregnancy_not_found') {
-          removeCachedPregnancy(user?.id, p.pregnancyId);
-          setPregnancies(loadCachedPregnancies(user?.id));
-        }
-        setErrorMsg(result?.reason ? `Could not complete birth: ${result.reason}` : 'Could not complete birth.');
+        // A stale row (already birthed elsewhere) leaves the list on the
+        // refresh inside refresh() — the server read is the source now.
+        if (result?.reason === 'already_born') await loadPregnancies();
+        setErrorMsg(courtshipErrorText(result));
         addToast({ type: 'error', message: 'Action failed' });
       }
     } catch (e) {
@@ -255,7 +305,7 @@ export function useCourtshipDesk() {
     } finally {
       setPending(false);
     }
-  }, [user?.id, addToast, refresh]);
+  }, [addToast, refresh, loadPregnancies]);
 
   // dissolve goes through the macro dispatcher (courtship.dissolve) — same
   // reasoning as conceive/birth above. Confirmed via ConfirmDissolveModal
@@ -282,7 +332,7 @@ export function useCourtshipDesk() {
         setDissolveTarget(null);
         await refresh();
       } else {
-        setErrorMsg(result?.reason ? `Could not end marriage: ${result.reason}` : 'Could not end marriage.');
+        setErrorMsg(courtshipErrorText(result));
         addToast({ type: 'error', message: 'Action failed' });
       }
     } catch (e) {
@@ -292,6 +342,42 @@ export function useCourtshipDesk() {
       setPending(false);
     }
   }, [dissolveTarget, refresh, addToast]);
+
+  // Accept / decline a pending proposal (S5) — the shipped consent verbs,
+  // wired to the notices the inbox read surfaces.
+  const answerProposal = useCallback(async (notice: CourtshipNotice, accept: boolean) => {
+    if (!notice.proposalId) return;
+    setPending(true);
+    try {
+      const r = await fetch('/api/lens/run', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'courtship',
+          name: accept ? 'accept' : 'decline',
+          input: { proposalId: notice.proposalId },
+        }),
+      });
+      const j = await r.json().catch(() => ({ ok: false }));
+      const result = j?.result ?? j;
+      if (result?.ok) {
+        addToast({
+          type: 'success',
+          message: accept ? 'You are engaged.' : 'Proposal declined.',
+        });
+        await refresh();
+      } else {
+        setErrorMsg(courtshipErrorText(result));
+        addToast({ type: 'error', message: 'Action failed' });
+      }
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : 'Action failed.');
+      addToast({ type: 'error', message: 'Action failed' });
+    } finally {
+      setPending(false);
+    }
+  }, [addToast, refresh]);
 
   const engagePct = Math.round(engageThreshold * 100);
 
@@ -308,6 +394,9 @@ export function useCourtshipDesk() {
     heartEvent,
     setHeartEvent,
     pregnancies,
+    notices,
+    answerProposal,
+    spouses,
     pastMarriages,
     dissolveTarget,
     setDissolveTarget,

@@ -199,6 +199,18 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace data: campaigns, donors, volunteers and pages are your live records; 990 research data is ProPublica’s open-access IRS dataset.',
   },
+  /**
+   * Courtship's records (courtships, marriages, pregnancies, children) are
+   * the caller's real persistent state in Concord's romance engine — no
+   * external feed is polled, and proposals between players are consent-gated.
+   * The generic REAL_LIVE caption ("polled live from an external source")
+   * would misstate the substrate, so the caption names it (F1, courtship
+   * full build).
+   */
+  courtship: {
+    label: 'Live',
+    caption: 'Your courtships, marriages and children are real records on this instance, kept by Concord’s romance engine. Courtships begin with an NPC in the world, or with an interaction here; proposals between players stay pending until the other player accepts.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {

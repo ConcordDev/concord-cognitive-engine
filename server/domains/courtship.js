@@ -25,10 +25,71 @@ import {
   conceive,
   birthChild,
   listChildren,
+  listPregnancies,
   presentCourtship,
+  resolvePartnerName,
   ROMANCE_CONSTANTS,
 } from "../lib/romance-engine.js";
 import { reactToPlayerEvent, getSpouses } from "../lib/spouse-reactivity.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+// S4 (courtship full build) — register the lens export provider at module
+// scope so collectLensExport carries the caller's OWN romance records
+// (courtships, marriages, children), not only generic artifacts. The other
+// party is carried as kind + resolved NPC name — never a raw account id.
+registerLensExportProvider("courtship", (ctx) => {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.userId;
+  if (!db || !userId) return [];
+  const rows = [];
+  for (const c of listMyCourtships(db, userId)) {
+    const p = presentCourtship(c, userId, db);
+    rows.push({
+      id: `courtship:${p.partner_kind}:${p.partner_id}`,
+      type: "courtship",
+      title: `Courtship — ${p.partnerName || (p.partner_kind === "npc" ? "An NPC of Concordia" : "Another player")}`,
+      createdAt: p.started_at ?? null,
+      updatedAt: p.last_interaction ?? p.started_at ?? null,
+      data: {
+        partnerKind: p.partner_kind,
+        partnerName: p.partnerName ?? null,
+        affinity: p.affinity,
+        status: p.status,
+      },
+    });
+  }
+  for (const m of listMyMarriages(db, userId, false, db)) {
+    rows.push({
+      id: `marriage:${m.id}`,
+      type: "marriage",
+      title: `Marriage — ${m.partnerName || (m.partner_kind === "npc" ? "An NPC of Concordia" : "Another player")}`,
+      createdAt: m.married_at ?? null,
+      updatedAt: m.dissolved_at ?? m.married_at ?? null,
+      data: {
+        partnerKind: m.partner_kind,
+        partnerName: m.partnerName ?? null,
+        marriedAt: m.married_at,
+        dissolvedAt: m.dissolved_at ?? null,
+        dissolvedReason: m.dissolved_reason ?? null,
+      },
+    });
+  }
+  for (const ch of listChildren(db, userId)) {
+    rows.push({
+      id: `child:${ch.id}`,
+      type: "child",
+      title: `Child — ${ch.name}`,
+      createdAt: ch.born_at ?? null,
+      data: {
+        name: ch.name,
+        maturity: ch.maturity,
+        otherParentKind: ch.other_parent_kind,
+        otherParentName: resolvePartnerName(db, ch.other_parent_kind, ch.other_parent_id),
+      },
+    });
+  }
+  return rows;
+});
 
 const PARTNER_KINDS = new Set(["player", "npc"]);
 
@@ -61,7 +122,7 @@ export default function registerCourtshipMacros(register) {
     const status = input?.status ? String(input.status) : null;
     return {
       ok: true,
-      courtships: listMyCourtships(db, userId, status).map((row) => presentCourtship(row, userId)),
+      courtships: listMyCourtships(db, userId, status).map((row) => presentCourtship(row, userId, db)),
     };
   }, { note: "list the player's courtships (acquainted → married)" });
 
@@ -77,7 +138,7 @@ export default function registerCourtshipMacros(register) {
     if (!input?.partnerId) return { ok: false, reason: "missing_inputs" };
     const c = getCourtship(db, userId, partnerKindOf(input), String(input.partnerId));
     if (!c) return { ok: false, reason: "no_courtship" };
-    return { ok: true, courtship: presentCourtship(c, userId) };
+    return { ok: true, courtship: presentCourtship(c, userId, db) };
   }, { note: "fetch one courtship by partner" });
 
   /**
@@ -174,7 +235,7 @@ export default function registerCourtshipMacros(register) {
     if (!userId) return { ok: false, reason: "no_user" };
     return {
       ok: true,
-      marriages: listMyMarriages(db, userId, input?.activeOnly !== false),
+      marriages: listMyMarriages(db, userId, input?.activeOnly !== false, db),
       children: listChildren(db, userId),
     };
   }, { note: "list the player's marriages + children" });
@@ -226,6 +287,20 @@ export default function registerCourtshipMacros(register) {
   }, { note: "birth a due pregnancy carried by the caller; skills are server-side" });
 
   /**
+   * courtship.pregnancies — the caller's in-flight pregnancies (read).
+   * The read the engine never surfaced: conceive() returned an id + due
+   * date and nothing could list them back, so the lens kept them in a
+   * per-browser cache. This macro is that read (S2, courtship full build).
+   */
+  register("courtship", "pregnancies", async (ctx) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    return { ok: true, pregnancies: listPregnancies(db, userId) };
+  }, { note: "list the caller's in-flight pregnancies" });
+
+  /**
    * courtship.children — the player's children (read).
    */
   register("courtship", "children", async (ctx) => {
@@ -244,7 +319,15 @@ export default function registerCourtshipMacros(register) {
     const userId = ctx?.actor?.userId;
     if (!db) return { ok: false, reason: "no_db" };
     if (!userId) return { ok: false, reason: "no_user" };
-    return { ok: true, spouses: getSpouses(db, userId) };
+    // Named for the surface (S5): the spouse read carried bare npcIds; the
+    // lens renders the resolved name beside the id's owner, never the id.
+    return {
+      ok: true,
+      spouses: getSpouses(db, userId).map((s) => ({
+        ...s,
+        partnerName: resolvePartnerName(db, "npc", s.npcId),
+      })),
+    };
   }, { note: "list the player's NPC spouses" });
 
   /**
