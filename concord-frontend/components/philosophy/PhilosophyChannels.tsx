@@ -23,6 +23,9 @@ export function PhilosophyChannels() {
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState('');
   const [draft, setDraft] = useState({ kind: 'text', content: '', source: '' });
+  const [notice, setNotice] = useState<string | null>(null);
+  const [confirmChannelId, setConfirmChannelId] = useState<string | null>(null);
+  const [confirmBlockId, setConfirmBlockId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun('philosophy', 'channel-list', {});
@@ -40,14 +43,26 @@ export function PhilosophyChannels() {
   async function createChannel() {
     if (!newTitle.trim()) return;
     const r = await lensRun('philosophy', 'channel-create', { title: newTitle.trim() });
+    if (!r.data?.ok) {
+      // A refusal (e.g. a duplicate title) speaks — it used to vanish.
+      setNotice(r.data?.error || 'Channel could not be created.');
+      return;
+    }
+    setNotice(null);
     setNewTitle('');
     await refresh();
-    if (r.data?.ok) await open(r.data.result?.channel.id);
+    await open(r.data.result?.channel.id);
   }
   async function deleteChannel(id: string) {
-    if (!confirm('Delete this channel?')) return;
-    await lensRun('philosophy', 'channel-delete', { id });
+    // In-page two-step (the fleet standard): the native confirm() this
+    // used to gate on is a dead control in the platform's dialog
+    // handling — suppressed, the delete verb never fired (F3).
+    const title = channels.find(c => c.id === id)?.title || 'channel';
+    const r = await lensRun('philosophy', 'channel-delete', { id });
+    setConfirmChannelId(null);
+    if (!r.data?.ok) { setNotice(r.data?.error || 'Channel could not be deleted.'); return; }
     if (active?.channel.id === id) setActive(null);
+    setNotice(`Channel "${title}" deleted.`);
     await refresh();
   }
   async function addBlock() {
@@ -59,7 +74,10 @@ export function PhilosophyChannels() {
     await reload(); await refresh();
   }
   async function deleteBlock(id: string) {
-    await lensRun('philosophy', 'block-delete', { id });
+    const r = await lensRun('philosophy', 'block-delete', { id });
+    setConfirmBlockId(null);
+    if (!r.data?.ok) { setNotice(r.data?.error || 'Block could not be deleted.'); return; }
+    setNotice('Block deleted.');
     await reload(); await refresh();
   }
 
@@ -80,6 +98,8 @@ export function PhilosophyChannels() {
           className="px-3 py-1.5 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-40">New channel</button>
       </div>
 
+      {notice && <p className="text-[11px] text-amber-300 mb-3" role="status">{notice}</p>}
+
       <div className="grid sm:grid-cols-[200px_1fr] gap-3">
         <ul className="space-y-1">
           {channels.length === 0 && <li className="text-[11px] text-zinc-400 italic">No channels yet.</li>}
@@ -90,9 +110,14 @@ export function PhilosophyChannels() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">{c.title}</p>
                 <p className="text-[10px] text-zinc-400">{c.blockCount} blocks</p>
               </button>
-              {c.role !== 'collaborator' && (
-                <button aria-label="Delete" onClick={() => deleteChannel(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
-              )}
+              {c.role !== 'collaborator' && (confirmChannelId === c.id ? (
+                <span className="flex items-center gap-1 shrink-0">
+                  <button aria-label="Confirm delete" onClick={() => deleteChannel(c.id)} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-600 text-white font-semibold">Delete?</button>
+                  <button aria-label="Cancel delete" onClick={() => setConfirmChannelId(null)} className="px-1.5 py-0.5 text-[10px] rounded bg-zinc-800 text-zinc-300">Keep</button>
+                </span>
+              ) : (
+                <button aria-label="Delete" onClick={() => setConfirmChannelId(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              ))}
             </li>
           ))}
         </ul>
@@ -136,11 +161,20 @@ export function PhilosophyChannels() {
                         <Icon className="w-3 h-3 text-indigo-400" />
                         <span className="text-[9px] uppercase text-zinc-400">{b.kind}</span>
                         {b.channelIds.length > 1 && <span className="text-[9px] text-indigo-400">· in {b.channelIds.length} channels</span>}
-                        {b.canDelete !== false && (
-                          <button aria-label="Delete" onClick={() => deleteBlock(b.id)} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
-                        )}
+                        {b.canDelete !== false && (confirmBlockId === b.id ? (
+                          <span className="ml-auto flex items-center gap-1 shrink-0">
+                            <button aria-label="Confirm delete" onClick={() => deleteBlock(b.id)} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-600 text-white font-semibold">Delete?</button>
+                            <button aria-label="Cancel delete" onClick={() => setConfirmBlockId(null)} className="px-1.5 py-0.5 text-[10px] rounded bg-zinc-800 text-zinc-300">Keep</button>
+                          </span>
+                        ) : (
+                          <button aria-label="Delete" onClick={() => setConfirmBlockId(b.id)} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                        ))}
                       </div>
-                      <p className={cn('text-xs text-zinc-200', b.kind === 'quote' && 'italic')}>{b.content}</p>
+                      {b.kind === 'link' && /^https?:\/\//i.test(b.content.trim()) ? (
+                        <a href={b.content.trim()} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-300 underline break-all">{b.content}</a>
+                      ) : (
+                        <p className={cn('text-xs text-zinc-200', b.kind === 'quote' && 'italic')}>{b.content}</p>
+                      )}
                       {b.source && <p className="text-[10px] text-zinc-400 mt-1">— {b.source}</p>}
                     </div>
                   );
