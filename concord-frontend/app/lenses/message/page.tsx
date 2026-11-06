@@ -21,7 +21,6 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { cn } from '@/lib/utils';
-import { lensRun } from '@/lib/api/client';
 import { InboxPanel } from '@/components/message/InboxPanel';
 import { WorkbenchPanel } from '@/components/message/WorkbenchPanel';
 import { LabelManagerPanel } from '@/components/message/LabelManagerPanel';
@@ -67,35 +66,6 @@ export default function MessageLensPage() {
   );
 
 
-  // The .dtu export carries the caller's own messaging records (F10): the
-  // generic fallback reads artifact rows this lens does not keep, so the
-  // button is handed the real payload through its prepare() seam — channels,
-  // recent messages per channel, saved messages and scheduled sends. An
-  // account with no channels returns {} and the honest refusal still governs.
-  const prepareExport = async (): Promise<Record<string, unknown>> => {
-    try {
-      const ch = await lensRun({ domain: 'message', action: 'channels-list', input: {} });
-      const channels = (ch.data?.result?.channels || []) as Array<{ id: string; name: string; kind: string }>;
-      if (channels.length === 0) return {};
-      const messages: Record<string, unknown> = {};
-      for (const c of channels.slice(0, 10)) {
-        const r = await lensRun({ domain: 'message', action: 'messages-list', input: { channelId: c.id, limit: 50 } });
-        messages[c.name || c.id] = r.data?.result?.messages || [];
-      }
-      const saved = await lensRun({ domain: 'message', action: 'saved-list', input: {} });
-      const scheduled = await lensRun({ domain: 'message', action: 'schedule-list', input: {} });
-      return {
-        channels,
-        messages,
-        saved: saved.data?.result?.saved || [],
-        scheduled: scheduled.data?.result?.scheduled || [],
-        exportedAt: new Date().toISOString(),
-      };
-    } catch {
-      return {};
-    }
-  };
-
   const Panel = PANELS[active];
   const motionProps = useMemo(
     () => (reduceMotion
@@ -120,7 +90,7 @@ export default function MessageLensPage() {
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="message" data={{}} prepare={prepareExport} compact />
+            <DTUExportButton domain="message" data={{}} compact />
           </div>
         </div>
 

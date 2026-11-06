@@ -277,10 +277,6 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Your own pseudonymous workspace: identities, conversations and privacy-lab datasets are your real records in the platform store. Only the Tor network panel polls an external source, and it labels its numbers at the panel.',
   },
-  message: {
-    label: 'Live',
-    caption: 'Your own messaging workspace: channels, direct messages, saves and scheduled sends are your real records in the platform store. Nothing here is polled from an external source.',
-  },
   game: {
     label: 'Lab & arcade sim',
     caption: 'Simulated: Design Lab forecasts and mini-game practice XP. Profile XP, quests, and achievements are your real activity.',

@@ -475,12 +475,7 @@ export default function registerMessageActions(registerLensAction) {
     const userId = msgActor(ctx);
     const channelId = String(params.channelId || "");
     const id = String(params.id || "");
-    // Route through the same store messages-send/messages-list use: DM and
-    // group-DM messages live in the shared bucket, channel messages in the
-    // per-user bucket. Searching only the per-user bucket made a DM delete
-    // report "message not found" for a message the sender can see.
-    const channel = s.channelIndex.get(channelId) || listB(s.channels, userId).find(c => c.id === channelId);
-    const msgs = channel ? channelMessages(s, userId, channel) : listB(mapB(s.messages, userId), channelId);
+    const msgs = listB(mapB(s.messages, userId), channelId);
     const i = msgs.findIndex(x => x.id === id);
     if (i < 0) return { ok: false, error: "message not found" };
     if (msgs[i].senderId !== userId) return { ok: false, error: "only sender can delete" };
