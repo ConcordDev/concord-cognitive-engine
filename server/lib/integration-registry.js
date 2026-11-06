@@ -141,6 +141,8 @@ export const REGISTRY = Object.freeze({
   cognition:     { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real cognition trace" },
   cognitive_replay: { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real cognitive replay" },
   "cognitive-replay": { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real cognitive replay" },
+  concord_link_frontier: { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "the member's own link records — links opened by name with their bearings and marks, persisted per account" },
+  "concord-link-frontier": { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "the member's own link records — links opened by name with their bearings and marks, persisted per account" },
   cri:           { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real cri (concord regional intelligence)" },
   brain:         { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real brain status" },
   byo_keys:      { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real per-user BYO API keys" },
