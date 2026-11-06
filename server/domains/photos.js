@@ -21,6 +21,7 @@ import {
   listMyPhotos,
   listPublicPhotosInWorld,
   sharePhoto,
+  fillPhotoMetaFromBlob,
   updatePhoto,
   listAlbums,
   createAlbum,
@@ -83,7 +84,10 @@ export default function registerPhotosMacros(register) {
     if (row.user_id !== userId && row.visibility !== "public") {
       return { ok: false, reason: "not_found" }; // don't disclose existence
     }
-    return { ok: true, photo: row };
+    // F4: a row whose dimension/size columns were never populated
+    // fills them from its blob (and backfills) — the detail view
+    // states the file's true dimensions/size instead of "unknown".
+    return { ok: true, photo: fillPhotoMetaFromBlob(db, row) };
   }, { note: "a single photo row — owner sees any of theirs, others only public" });
 
   // The public world feed (anyone can browse public photos in a world).
@@ -101,7 +105,7 @@ export default function registerPhotosMacros(register) {
 
   // Share = mint a kind='photo' DTU + flip visibility to public, so the
   // royalty cascade fires when the photo is later cited. Owner-only.
-  register("photos", "share", (ctx, input = {}) => {
+  register("photos", "share", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     const userId = actorUserId(ctx);
@@ -117,7 +121,7 @@ export default function registerPhotosMacros(register) {
     }
     if (!owner) return { ok: false, reason: "no_photo" };
     if (owner.user_id !== userId) return { ok: false, reason: "not_owner" };
-    return sharePhoto(db, photoId, { STATE: ctx?.STATE || globalThis.STATE || null });
+    return await sharePhoto(db, photoId, { STATE: ctx?.STATE || globalThis.STATE || null });
   }, { note: "share a photo — mints a kind='photo' DTU + flips visibility public (owner-only)" });
 
   // Organize: caption / favorite edits and albums. All owner-scoped in the lib.
