@@ -25,7 +25,6 @@ import {
   Heart, LayoutDashboard, Users, Megaphone, Sparkles, HeartHandshake,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 
@@ -76,7 +75,12 @@ export default function NonprofitLensPage() {
         subtitle="Donors, gifts, grants, campaigns, volunteers and 990 research"
         actions={
           <>
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            {/* The per-view LIVE pill is removed (Badge Settlement,
+                register A2 — the Marketing S1 / Services S8 standard):
+                the DepthBadge above is this page's one tier statement;
+                a second live-claim in the header duplicated it and
+                painted the load flicker. isLive still feeds the
+                RealtimeDataPanel below, which is a data panel. */}
             <DTUExportButton domain="nonprofit" data={realtimeData || {}} compact />
           </>
         }
