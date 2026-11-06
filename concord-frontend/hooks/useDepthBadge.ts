@@ -58,6 +58,16 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  * chip names the two surfaces that actually are simulations.
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
+  'event-timeline': {
+    label: 'Live',
+    // Event-Timeline reads the platform's OWN substrate event log
+    // (server/domains/event-timeline.js over event_timeline_log) — real
+    // events streamed as they occur, not an external feed, so REAL_LIVE's
+    // generic "polled live from an external source" caption would
+    // misdescribe the source. Declared REAL_LIVE in the registry under
+    // both spellings; the manifest entry now carries the tier.
+    caption: 'Live — the platform’s own substrate event log, streamed as events occur.',
+  },
   /**
    * Expedition-Journal (S-EJ-1): the canon-world expeditions are simulated,
    * but SIM_GRADE_A's generic "Not real data" caption would misdescribe the
