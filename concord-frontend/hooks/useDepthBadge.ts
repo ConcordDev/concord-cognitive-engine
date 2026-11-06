@@ -159,6 +159,16 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
       'The component catalogue and your saved prop overrides live here, in the platform store. Nothing is polled from an external source; the GitHub browser inside the lens reads live from GitHub, labelled there.',
   },
   /**
+   * Codex's canon is first-party authored lore — hand-written files
+   * served exactly as recorded. REAL_FREE's generic "open-access
+   * dataset" caption would misdescribe it in both directions (it is
+   * neither external nor open-access), so the caption names the truth.
+   */
+  codex: {
+    label: 'Real',
+    caption: 'The authored Concordia canon: hand-written lore, served exactly as recorded — nothing here is generated or polled.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic

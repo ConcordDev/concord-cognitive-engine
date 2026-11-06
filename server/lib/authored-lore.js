@@ -45,7 +45,11 @@ function publicEvent(ev, worldId) {
   return {
     id: ev.id,
     title: ev.title,
-    type: ev.type,
+    // An entry with no authored kind is a FRAGMENT — a title recorded
+    // before its account was written. It is labelled as one here, at the
+    // projection, so every surface (facets, filters, detail) tells the
+    // same truth and the fragment set is exactly the kind-less set.
+    type: ev.type ?? "fragment",
     era: ev.era,
     description: ev.description,
     significance: ev.significance,

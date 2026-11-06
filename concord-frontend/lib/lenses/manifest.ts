@@ -165,7 +165,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // that resolved to nothing. Actions are read-only verbs that map onto real
   // lore.* reads (list/facets/spine); the lens persists per-user bookmarks of the
   // canon through the generic /api/lens/codex artifact store (see page.tsx).
-  { domain: 'codex', label: 'Codex', artifacts: ['entry', 'lore', 'bookmark'], macros: { list: 'lore.list', get: 'lore.get' }, exports: ['json'], actions: ['list', 'facets', 'spine'], category: 'knowledge' },
+  { domain: 'codex', label: 'Codex', artifacts: ['entry', 'lore', 'bookmark'], macros: { list: 'lore.list', get: 'lore.get' }, exports: ['json'], actions: ['list', 'facets', 'spine'], category: 'knowledge', dataTier: 'REAL_FREE' },
   // Real translation.* macros (registered via registerTranslationMacros in server.js).
   // Action lens: `list`/`get` map to the languages catalog read and `run` to
   // translate, so the ManifestActionBar verbs resolve to LIVE macros instead of
