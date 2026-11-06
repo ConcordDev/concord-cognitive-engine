@@ -128,6 +128,16 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Live: your moment journal — the moments you add are your own records, kept with their dates and saved server-side. Nothing here is recorded from your sessions or replayed.',
   },
   /**
+   * Invariant: monitors and violations are the member's own records in
+   * the platform store, evaluated in-process. REAL_LIVE's generic
+   * "polled from an external source" caption would be false here.
+   */
+  invariant: {
+    label: 'Live',
+    caption:
+      'Monitors, violations and checks here are your own records in the platform store, evaluated by engines that run in-process. Nothing is polled from an external source.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic
