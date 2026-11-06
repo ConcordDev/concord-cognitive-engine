@@ -59,6 +59,34 @@ export interface Outgoing {
 
 export const NOT_CONNECTED = new Set(['no_token', 'connector_not_configured', 'gmail_disabled', 'no_user']);
 
+/**
+ * Every gmail failure renders in product words (F2). The NOT_CONNECTED
+ * codes never reach the surface at all — the client consumes them into
+ * the connect wall. Anything else the server or the transport can
+ * return maps here; an unmapped code falls back to a plain sentence,
+ * so a raw reason code never renders on any mail surface.
+ */
+const GMAIL_ERROR_WORDS: Record<string, string> = {
+  no_token: 'Gmail isn’t connected yet.',
+  connector_not_configured: 'Gmail isn’t connected yet.',
+  gmail_disabled: 'Gmail is turned off on this Concord right now.',
+  no_user: 'Sign in to Concord to use Gmail here.',
+  auth_expired: 'Your Gmail sign-in has expired. Reconnect Gmail to keep reading.',
+  reauth_required: 'Gmail needs you to sign in again. Reconnect Gmail to continue.',
+  handler_error: 'Gmail could not complete that just now. Try again in a moment.',
+  network_error: 'Gmail could not be reached. Check your connection and try again.',
+  db_unavailable: 'Mail is unavailable on this Concord right now. Try again in a moment.',
+};
+
+export function gmailErrorText(error: string | undefined): string {
+  if (!error) return 'Something went wrong with Gmail. Try again in a moment.';
+  if (error === 'db unavailable') return GMAIL_ERROR_WORDS.db_unavailable;
+  const known = GMAIL_ERROR_WORDS[error];
+  if (known) return known;
+  if (/^[a-z0-9_]+(_failed)?$/.test(error)) return 'Gmail could not complete that just now. Try again in a moment.';
+  return error;
+}
+
 type Res<T> = { ok: true; data: T } | { ok: false; error: string };
 
 async function call<T>(action: string, input: Record<string, unknown> = {}): Promise<Res<T>> {

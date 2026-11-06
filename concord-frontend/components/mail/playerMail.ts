@@ -40,6 +40,27 @@ export function sendFailureText(error: string | undefined): string {
   return error ? `Not sent. ${error.replace(/_/g, ' ')}.` : 'Not sent.';
 }
 
+/**
+ * Display label for a mail party (F3). The server resolves a display
+ * name for every party; when it cannot, the label is a neutral word —
+ * never the raw account id.
+ */
+export function mailPartyLabel(name: string | null | undefined, handle: string | null | undefined): string {
+  if (name && name.trim()) return name;
+  if (handle && handle.trim()) return `@${handle}`;
+  return 'A Concord member';
+}
+
+export function deleteResultText(j: PlayerMailResult): { kind: 'ok' | 'err'; msg: string } {
+  if (!j.ok) {
+    if (j.error === 'already_claimed') return { kind: 'err', msg: 'Not removed. This mail was claimed, so it stays as the claim record.' };
+    if (j.error === 'not_authorized') return { kind: 'err', msg: 'Not removed. You can only remove mail you sent.' };
+    if (j.error === 'not_found') return { kind: 'err', msg: 'Not removed. That mail is already gone.' };
+    return { kind: 'err', msg: 'Not removed. Mail could not be reached just now.' };
+  }
+  return { kind: 'ok', msg: 'Removed from your Sent list. The recipient keeps their copy.' };
+}
+
 export function claimResultText(j: PlayerMailResult): { kind: 'ok' | 'err'; msg: string } {
   if (!j.ok) return { kind: 'err', msg: j.error ? `Not claimed. ${j.error.replace(/_/g, ' ')}.` : 'Not claimed.' };
   if (j.alreadyClaimed) return { kind: 'ok', msg: 'Already claimed. Nothing new moved.' };

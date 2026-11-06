@@ -17,7 +17,9 @@ import {
   getMail,
   readMail,
   claimAttachments,
+  deleteSentMail,
 } from "../lib/player-mail.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 function actorId(ctx, input) {
   return input?.userId || ctx?.actor?.userId || ctx?.actor?.id || null;
@@ -35,6 +37,30 @@ function badNumericField(input, keys) {
   }
   return null;
 }
+
+// S6/F6 — the caller's player-mail records join the shared lens export:
+// the ↓.dtu / JSON bundle carries the caller's own sent + received mail
+// (export-shaped rows), or the machinery explains. Caller-scoped from
+// the export ctx's actor; a caller with no mail exports nothing.
+registerLensExportProvider("mail", (ctx) => {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.userId || null;
+  if (!db || !userId) return [];
+  const rows = [];
+  for (const m of listSent(db, userId, { limit: 200 })) {
+    rows.push({
+      id: m.id, type: "player-mail-sent", title: m.subject || "Sent mail",
+      createdAt: m.sentAt, updatedAt: m.sentAt, data: { ...m, direction: "sent" },
+    });
+  }
+  for (const m of listInbox(db, userId, { limit: 200 })) {
+    rows.push({
+      id: m.id, type: "player-mail-received", title: m.subject || "Received mail",
+      createdAt: m.sentAt, updatedAt: m.readAt ?? m.sentAt, data: { ...m, direction: "received" },
+    });
+  }
+  return rows;
+});
 
 export default function registerMailMacros(register) {
   /**
@@ -120,4 +146,19 @@ export default function registerMailMacros(register) {
     if (!input.id) return { ok: false, error: "missing_id" };
     return claimAttachments(db, String(input.id), userId);
   }, { note: "claim mail attachments (single-tx CC/COD/DTU transfer)" });
+
+  /**
+   * mail.delete — remove the caller's own SENT copy from their outbox.
+   * Sender-only; the recipient's copy is untouched. A claimed copy is
+   * refused (it carries the claim record).
+   * input: { id, userId? }
+   */
+  register("mail", "delete", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "no_db" };
+    const userId = actorId(ctx, input);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!input.id) return { ok: false, error: "missing_id" };
+    return deleteSentMail(db, String(input.id), userId);
+  }, { note: "remove the caller's own sent copy (recipient's copy untouched)" });
 }
