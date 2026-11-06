@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { FileText, Loader2, ExternalLink, Search } from 'lucide-react';
-import { apiHelpers } from '@/lib/api/client';
+import { FileText, Loader2, ExternalLink, Search, BookmarkPlus, Check } from 'lucide-react';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface Paper { id: string; title: string; abstract?: string; authors?: string[]; published?: string; updated?: string; url?: string; pdfUrl?: string | null; primaryCategory?: string | null }
@@ -22,6 +22,20 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 }
 
 export function ArxivSearch() {
+  // S1 (F1): Discover's arXiv save landed as a DTU, never a Library
+  // paper. Both paths now stand: Save as DTU (as before) and Save to
+  // Library through paper-add, duplicate refusal intact.
+  const [libSaved, setLibSaved] = useState<Set<string>>(new Set());
+  const [libDup, setLibDup] = useState<Set<string>>(new Set());
+  async function saveToLibrary(p: Paper) {
+    const r = await lensRun('paper', 'paper-add', {
+      title: p.title, authors: p.authors || [], year: p.published ? Number(p.published.slice(0, 4)) : undefined,
+      abstract: p.abstract || '', url: p.url || undefined, refId: `arxiv:${p.id}`,
+    });
+    if (r.data?.ok) setLibSaved((prev) => new Set(prev).add(p.id));
+    else if ((r.data?.error || '').includes('already in your library')) setLibDup((prev) => new Set(prev).add(p.id));
+  }
+
   const [query, setQuery] = useState('');
   const [papers, setPapers] = useState<Paper[]>([]);
 
@@ -64,6 +78,13 @@ export function ArxivSearch() {
                 {p.abstract && <p className="mt-1 line-clamp-3 text-[11px] text-zinc-400">{p.abstract}</p>}
               </div>
               <div className="flex shrink-0 items-center gap-1">
+                <button
+                  onClick={() => void saveToLibrary(p)}
+                  disabled={libSaved.has(p.id) || libDup.has(p.id)}
+                  className="inline-flex items-center gap-1 rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 disabled:opacity-60"
+                >
+                  {libSaved.has(p.id) ? <><Check className="h-3 w-3" /> In library</> : libDup.has(p.id) ? 'Already in library' : <><BookmarkPlus className="h-3 w-3" /> Save to Library</>}
+                </button>
                 <SaveAsDtuButton
                   defaultContentClass="knowledge"
                   compact
