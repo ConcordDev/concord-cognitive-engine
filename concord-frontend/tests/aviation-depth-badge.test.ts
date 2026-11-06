@@ -4,6 +4,11 @@
 // only advertise macros the server really registers; and the filing panel must
 // say plainly that sending to ATC is not supported yet (no "simulated" filing,
 // no "File with ATC" button).
+// Tier pin updated 2026-11-04 (GB-1088 wave 1, AV-S2): the declaration moved
+// REAL_FREE → REAL_LIVE with an aviation depth-badge override, once the feed
+// (OpenSky), weather (NOAA METAR/TAF) and NOTAM handlers were verified live
+// at the handler level — the "static / open-access dataset" line the gate
+// record stopped at misdescribed a live per-user workspace.
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,10 +19,10 @@ import { useDepthBadge } from '@/hooks/useDepthBadge';
 const m = getLensManifest('aviation');
 
 describe('Aviation manifest honesty', () => {
-  it('is on the real-data tier with a "Real" chip, not DEMO', () => {
-    expect(m?.dataTier).toBe('REAL_FREE');
+  it('is on the live tier with a "Live" chip, not DEMO', () => {
+    expect(m?.dataTier).toBe('REAL_LIVE');
     const badge = renderHook(() => useDepthBadge('aviation')).result.current;
-    expect(badge?.label).toBe('Real');
+    expect(badge?.label).toBe('Live');
   });
 
   it('does not claim maritime or ATC filing; says they are not supported yet', () => {
