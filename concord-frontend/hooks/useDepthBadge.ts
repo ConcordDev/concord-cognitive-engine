@@ -190,6 +190,15 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your world records: land claims and houses are your real persistent state in Concord’s worlds, and the tools work on your own plots and buildings. No external feed is polled.',
   },
   /**
+   * LFG rows are the players' own live requests in the platform's
+   * lfg_requests store — the board itself is the source, not an external
+   * poll. The caption names that and reads an empty board truthfully.
+   */
+  lfg: {
+    label: 'Live',
+    caption: 'Live group requests posted by players across Concord’s worlds, read from the board itself — an empty board means nobody is looking right now.',
+  },
+  /**
    * Nonprofit's own records (campaigns, donors, volunteers, pages, events)
    * are live per-user workspace data; the 990 research data is ProPublica's
    * open-access IRS dataset — real, but static reference data. The generic
