@@ -167,7 +167,7 @@ export function StudyCanvas({ onSaved, onClose }: { onSaved: (ref: string, fileN
   }, [layers, onSaved]);
 
   return (
-    {/* No backdrop dismissal (F5 fix return): this dialog's entire
+    /* No backdrop dismissal (F5 fix return): this dialog's entire
         content is unsaved work — the drawing lives in this component's
         canvases and dies on unmount — and its colour well is a native
         <input type="color"> whose picker is browser chrome rendered
@@ -176,7 +176,7 @@ export function StudyCanvas({ onSaved, onClose }: { onSaved: (ref: string, fileN
         were delivered to this full-viewport backdrop and closed the
         dialog, discarding the drawing, deterministically. The dim
         area is inert; the explicit closers remain (X · Cancel ·
-        Escape). */}
+        Escape). */
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" role="presentation">
       <div
         data-testid="study-canvas"
