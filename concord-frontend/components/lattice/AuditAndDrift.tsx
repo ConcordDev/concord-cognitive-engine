@@ -207,7 +207,13 @@ export function AuditAndDrift() {
                     </td>
                     <td className="px-3 py-2">
                       <span className="text-fuchsia-700">
-                        {r.old_value == null ? '?' : r.old_value ? 'consented' : 'revoked'}
+                        {r.old_value == null
+                          ? '?'
+                          : r.action === 'bulk'
+                            ? `${r.old_value} consented`
+                            : r.old_value
+                              ? 'consented'
+                              : 'revoked'}
                       </span>
                       <span className="px-1 text-fuchsia-600">→</span>
                       <span
