@@ -58,6 +58,7 @@ import {
   REFLECTED_TOOLS,
   MACRO_REGISTRY,
 } from "./macro-reflection.js";
+import { WALK_OVERLAY_ENABLED, walkGuideLookup } from "./walk-registry.js";
 
 // Run the reflection pass on module load. reflectMacros is async (walks
 // server/domains + server/lib + server/routes via fs.promises, not sync fs
@@ -353,6 +354,25 @@ export const MCP_TOOLS = [
     description: "Trigger a fresh reflection pass over the repo. Use this after adding new domain files or macro registrations. Slower (~200ms) but reflects the current state of the code.",
     inputSchema: SCHEMA_DESCRIPTION_BASE
   },
+  // ── WALK → REGISTRY MERGE PILOT (2026-11-06) ──────────────────────────
+  // Tier 1, anonymous read-class: serves documentation-grade verified
+  // knowledge from the lens-walk corpus and executes nothing, so it is
+  // deliberately absent from MCP_TOOLS_REQUIRE_REAL_AUTH and from the
+  // local-or-real set. Registered only when the pilot overlay is enabled
+  // (CONCORD_WALK_OVERLAY=off removes it, so the measurement arms differ
+  // only in enrichment).
+  ...(WALK_OVERLAY_ENABLED ? [{
+    name: "walk_guide",
+    description: "Verified walk knowledge for Concord's pilot lenses, distilled from the Product lens walks (verified-working behaviour only; findings are never served as spec). Pass `lens` (e.g. 'neuro') for the lens's verified core plus its walk-verified macro entries, or `macro` (a full reflected name, e.g. 'macro.neuro.statisticalTest') for that macro's verified behaviour and argument shape. Every answer carries its provenance (source walk, walk date and verdict, currency grade). Read-only; executes nothing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        lens: textProp("Pilot lens/domain name (e.g. neuro, bridge, answers)"),
+        macro: textProp("Full reflected macro name (e.g. macro.neuro.statisticalTest)")
+      },
+      "x-anyOfRequired": [["lens", "macro"]]
+    }
+  }] : []),
 
   // ── PERSONAL DTU VAULT (Sprint 58) ──────────────────────────────────────
   // Every participant (33 workers + Dila + operator) gets a personal
@@ -1987,6 +2007,12 @@ export async function reflectRescan(db, args) {
   };
 }
 
+// Walk → Registry Merge Pilot: Tier-1 read-only guide over the distilled
+// walk corpus (data + lookup live in lib/walk-registry.js).
+export async function walkGuide(db, args) {
+  return walkGuideLookup(args || {});
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // DISPATCHER
 // ═══════════════════════════════════════════════════════════════════════
@@ -2783,6 +2809,7 @@ export async function callMCPTool(db, toolName, args, STATE, callCtx = null) {
     case "schema_status":      return schemaStatus(db, args);
     case "pod_status":         return podStatus(db, args);
     case "pod_schema_list":    return podSchemaList(db, args);
+    case "walk_guide":         return walkGuide(db, args);
     case "reflect_search":     return reflectSearch(db, args);
     case "reflect_invoke":     return reflectInvoke(db, args);
     case "reflect_stats":      return reflectStats(db, args);
