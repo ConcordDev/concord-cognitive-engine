@@ -16,9 +16,17 @@ const lensRunMock = vi.fn(async (a: any, b?: any, c?: any) => {
   return { data: baseHandler(req) };
 });
 
+const MINTED_DTU = {
+  id: 'dtu_9a5e0001', title: 'Recipe — Pancakes (minted)',
+  meta: { recipe: { name: 'Pancakes (minted)', servings: 2, ingredients: [{ name: 'flour', quantity: '200', unit: 'g', grams: '' }] } },
+};
+
 vi.mock('@/lib/api/client', () => ({
   lensRun: (a: any, b?: any, c?: any) => lensRunMock(a, b, c),
-  api: { post: async () => ({}), get: async () => ({}) },
+  api: {
+    post: async () => ({}),
+    get: async (url: string) => (url === '/api/dtus' ? { data: { dtus: [MINTED_DTU] } } : {}),
+  },
   apiHelpers: { lensRun: (a: any, b?: any, c?: any) => lensRunMock(a, b, c) },
 }));
 
@@ -135,15 +143,32 @@ describe('RecipeBoxSection — delete, pantry form, AI review step', () => {
   });
 });
 
-describe('CookingActionPanel — bench reads the recipe box (S-CK2-6)', () => {
-  it('loading a box recipe fills the bench name + ingredients', async () => {
+describe('CookingActionPanel — bench loader: the selected record is the loaded record (S-CK2-6 + F7 remainder)', () => {
+  it('one source-labelled control: the box option loads the BOX record, not the same-named DTU', async () => {
     render(<CookingActionPanel />);
-    const select = await screen.findByLabelText('Recipe from your recipe box');
-    await waitFor(() => expect(within(select as HTMLElement).getByRole('option', { name: 'Pancakes' })).toBeTruthy());
-    fireEvent.change(select, { target: { value: 'rec_pan' } });
+    const select = await screen.findByLabelText('Load a recipe into the bench') as HTMLSelectElement;
+    await waitFor(() => expect(within(select).getByRole('option', { name: 'Pancakes' })).toBeTruthy());
+    // Both stores are offered, each under its own source label.
+    const groups = Array.from(select.querySelectorAll('optgroup')).map((g) => g.label);
+    expect(groups).toEqual(expect.arrayContaining(['Recipe box', 'Recipe DTUs']));
+    expect(within(select).getByRole('option', { name: 'Recipe — Pancakes (minted)' })).toBeTruthy();
+    // R3's leg: select the account's box recipe → the bench holds THAT
+    // record (4 servings box recipe), never the minted DTU (2 servings).
+    fireEvent.change(select, { target: { value: 'box:rec_pan' } });
     fireEvent.click(screen.getByRole('button', { name: 'Load' }));
     const nameInput = document.querySelector('input[type="text"]') as HTMLInputElement;
     expect(nameInput.value).toBe('Pancakes');
     expect(await screen.findByText(/Loaded "Pancakes" from your recipe box/)).toBeTruthy();
+  });
+
+  it('the DTU option loads the DTU record, receipt naming its store', async () => {
+    render(<CookingActionPanel />);
+    const select = await screen.findByLabelText('Load a recipe into the bench') as HTMLSelectElement;
+    await waitFor(() => expect(within(select).getByRole('option', { name: 'Recipe — Pancakes (minted)' })).toBeTruthy());
+    fireEvent.change(select, { target: { value: 'dtu:dtu_9a5e0001' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Load' }));
+    const nameInput = document.querySelector('input[type="text"]') as HTMLInputElement;
+    expect(nameInput.value).toBe('Pancakes (minted)');
+    expect(await screen.findByText(/from your recipe DTUs/)).toBeTruthy();
   });
 });
