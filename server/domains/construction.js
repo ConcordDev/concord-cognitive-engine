@@ -29,6 +29,50 @@ export default function registerConstructionActions(registerLensAction) {
     return Number.isFinite(n) && Math.abs(n) < 1e15 ? n : fallback;
   };
 
+  // One schedule computation for criticalPath and ganttSchedule (F2):
+  // both passes run in TOPOLOGICAL order, so a task entered before its
+  // dependency computes against its dependency's real finish — the old
+  // insertion-order passes read earlyFinish/lateStart before they existed
+  // and silently produced wrong durations and critical paths whenever the
+  // entry order differed from the dependency order. Dependencies naming no
+  // entered task are ignored; a dependency cycle returns null and the
+  // callers refuse honestly instead of printing a wrong schedule.
+  const computeSchedule = (rawTasks) => {
+    const tasks = Array.isArray(rawTasks) ? rawTasks : [];
+    const taskMap = {};
+    for (const t of tasks) {
+      const name = t.name || t.id;
+      if (!name) continue;
+      taskMap[name] = { name, duration: parseInt(t.duration) || 1, deps: Array.isArray(t.dependencies || t.deps) ? (t.dependencies || t.deps) : [], earlyStart: 0, earlyFinish: 0, lateStart: 0, lateFinish: 0, slack: 0 };
+    }
+    const names = Object.keys(taskMap);
+    for (const t of Object.values(taskMap)) t.deps = t.deps.filter(d => d !== t.name && taskMap[d]);
+    // Kahn topological order (entry order preserved among ready tasks).
+    const indegree = {}; const dependents = {};
+    for (const n of names) { indegree[n] = 0; dependents[n] = []; }
+    for (const t of Object.values(taskMap)) for (const d of t.deps) { indegree[t.name] += 1; dependents[d].push(t.name); }
+    const queue = names.filter(n => indegree[n] === 0);
+    const order = [];
+    while (queue.length > 0) {
+      const n = queue.shift();
+      order.push(taskMap[n]);
+      for (const dep of dependents[n]) { indegree[dep] -= 1; if (indegree[dep] === 0) queue.push(dep); }
+    }
+    if (order.length !== names.length) return null; // dependency cycle
+    for (const t of order) {
+      t.earlyStart = t.deps.reduce((m, d) => Math.max(m, taskMap[d].earlyFinish), 0);
+      t.earlyFinish = t.earlyStart + t.duration;
+    }
+    const projectDuration = order.length > 0 ? Math.max(...order.map(t => t.earlyFinish)) : 0;
+    for (const t of [...order].reverse()) {
+      const successors = order.filter(s => s.deps.includes(t.name));
+      t.lateFinish = successors.length > 0 ? Math.min(...successors.map(s => s.lateStart)) : projectDuration;
+      t.lateStart = t.lateFinish - t.duration;
+      t.slack = t.lateStart - t.earlyStart;
+    }
+    return { order, projectDuration };
+  };
+
   registerLensAction("construction", "takeoffEstimate", (ctx, artifact, _params) => {
     const cdata = calcData(artifact);
     const items = Array.isArray(cdata.lineItems) ? cdata.lineItems : [];
@@ -38,7 +82,11 @@ export default function registerConstructionActions(registerLensAction) {
       const unitCost = finNum(item.unitCost, 0);
       const wastePercent = Number.isFinite(finNum(item.wastePercent, NaN)) ? finNum(item.wastePercent, 10) : 10;
       const adjustedQty = qty * (1 + wastePercent / 100);
-      return { description: item.description || item.name, quantity: qty, unit: item.unit || "each", unitCost, wastePercent, adjustedQuantity: Math.ceil(adjustedQty), lineCost: Math.round(adjustedQty * unitCost * 100) / 100 };
+      // wasteQuantity is the waste as a FIGURE (F5: the pre-filed term was
+      // waste shown, not folded silently). adjustedQuantity stays the
+      // pinned whole-unit order quantity; lineCost costs the exact
+      // adjusted quantity, so a line equals quantity-with-waste × rate.
+      return { description: item.description || item.name, quantity: qty, unit: item.unit || "each", unitCost, wastePercent, wasteQuantity: Math.round((adjustedQty - qty) * 100) / 100, adjustedQuantity: Math.ceil(adjustedQty), lineCost: Math.round(adjustedQty * unitCost * 100) / 100 };
     });
     const subtotalMaterials = estimated.reduce((s, e) => s + e.lineCost, 0);
     const laborPercent = Number.isFinite(finNum(cdata.laborPercent, NaN)) ? finNum(cdata.laborPercent, 40) : 40;
@@ -54,25 +102,11 @@ export default function registerConstructionActions(registerLensAction) {
     const rawTasks = calcData(artifact).tasks;
     const tasks = Array.isArray(rawTasks) ? rawTasks : [];
     if (tasks.length === 0) return { ok: true, result: { message: "Add tasks with duration and dependencies." } };
-    const taskMap = {};
-    tasks.forEach(t => { taskMap[t.name || t.id] = { name: t.name || t.id, duration: parseInt(t.duration) || 1, deps: t.dependencies || [], earlyStart: 0, earlyFinish: 0, lateStart: 0, lateFinish: 0, slack: 0 }; });
-    // Forward pass
-    const order = Object.values(taskMap);
-    for (const t of order) {
-      const maxPredFinish = t.deps.reduce((m, d) => Math.max(m, taskMap[d]?.earlyFinish || 0), 0);
-      t.earlyStart = maxPredFinish;
-      t.earlyFinish = t.earlyStart + t.duration;
-    }
-    const projectDuration = Math.max(...order.map(t => t.earlyFinish));
-    // Backward pass
-    for (const t of [...order].reverse()) {
-      const successors = order.filter(s => s.deps.includes(t.name));
-      t.lateFinish = successors.length > 0 ? Math.min(...successors.map(s => s.lateStart)) : projectDuration;
-      t.lateStart = t.lateFinish - t.duration;
-      t.slack = t.lateStart - t.earlyStart;
-    }
+    const sched = computeSchedule(tasks);
+    if (!sched) return { ok: false, error: "dependency cycle: the task dependencies form a loop, so no schedule exists" };
+    const { order, projectDuration } = sched;
     const criticalPath = order.filter(t => t.slack === 0).map(t => t.name);
-    return { ok: true, result: { projectDuration, criticalPath, tasks: order.map(t => ({ name: t.name, duration: t.duration, earlyStart: t.earlyStart, earlyFinish: t.earlyFinish, slack: t.slack, onCriticalPath: t.slack === 0 })), totalTasks: tasks.length } };
+    return { ok: true, result: { projectDuration, criticalPath, criticalTaskCount: criticalPath.length, tasks: order.map(t => ({ name: t.name, duration: t.duration, earlyStart: t.earlyStart, earlyFinish: t.earlyFinish, slack: t.slack, onCriticalPath: t.slack === 0 })), totalTasks: tasks.length } };
   });
 
   registerLensAction("construction", "safetyCompliance", (ctx, artifact, _params) => {
@@ -260,7 +294,10 @@ export default function registerConstructionActions(registerLensAction) {
         sub.status = "revise";
         sub.revision += 1;
       } else {
-        sub.status = "closed";
+        // F9: the status carries the review's verdict — an approval landed
+        // as the generic "closed" and the verdict survived only inside the
+        // cycle record.
+        sub.status = action;
       }
       saveConState();
       return { ok: true, result: { submittal: sub } };
@@ -338,11 +375,14 @@ export default function registerConstructionActions(registerLensAction) {
       const state = getConState(); if (!state) return { ok: false, error: "STATE unavailable" };
       let rows = list(state, "punchItems", actorId(ctx));
       if (params.jobId) rows = rows.filter(r => r.jobId === params.jobId);
-      const open = rows.filter(r => r.status === "open").length;
+      // F9: "Open" counts the work still outstanding — an in-progress item
+      // was counted in NO bucket (open counted only the literal status).
+      const inProgress = rows.filter(r => r.status === "in_progress").length;
+      const open = rows.filter(r => r.status === "open").length + inProgress;
       const ready = rows.filter(r => r.status === "ready_to_verify").length;
       const closed = rows.filter(r => r.status === "closed").length;
       const completionPct = rows.length ? Math.round((closed / rows.length) * 100) : 0;
-      return { ok: true, result: { items: rows, open, ready, closed, total: rows.length, completionPct } };
+      return { ok: true, result: { items: rows, open, inProgress, ready, closed, total: rows.length, completionPct } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
   registerLensAction("construction", "punch-add", (ctx, _artifact, params = {}) => {
@@ -634,21 +674,9 @@ export default function registerConstructionActions(registerLensAction) {
     try {
       const tasks = calcData(artifact).tasks || params.tasks || [];
       if (tasks.length === 0) return { ok: true, result: { message: "Add tasks with duration and dependencies.", bars: [] } };
-      const taskMap = {};
-      tasks.forEach(t => { taskMap[t.name || t.id] = { name: t.name || t.id, duration: parseInt(t.duration) || 1, deps: t.dependencies || [], earlyStart: 0, earlyFinish: 0, lateStart: 0, lateFinish: 0, slack: 0 }; });
-      const order = Object.values(taskMap);
-      for (const t of order) {
-        const maxPredFinish = t.deps.reduce((m, d) => Math.max(m, taskMap[d]?.earlyFinish || 0), 0);
-        t.earlyStart = maxPredFinish;
-        t.earlyFinish = t.earlyStart + t.duration;
-      }
-      const projectDuration = Math.max(...order.map(t => t.earlyFinish));
-      for (const t of [...order].reverse()) {
-        const successors = order.filter(s => s.deps.includes(t.name));
-        t.lateFinish = successors.length > 0 ? Math.min(...successors.map(s => s.lateStart)) : projectDuration;
-        t.lateStart = t.lateFinish - t.duration;
-        t.slack = t.lateStart - t.earlyStart;
-      }
+      const sched = computeSchedule(tasks);
+      if (!sched) return { ok: false, error: "dependency cycle: the task dependencies form a loop, so no schedule exists" };
+      const { order, projectDuration } = sched;
       // Guard against a malformed startDate (Invalid Date would throw on
       // .toISOString()); fall back to now so the schedule still renders.
       let start = params.startDate ? new Date(params.startDate) : new Date();
