@@ -61,17 +61,24 @@ export function SearchPanel() {
     setSearched(true);
     setSearchError(null);
     try {
-      const [s, g] = await Promise.all([
-        lensRun<SearchPayload>('literary', 'search', { query: q, limit: 12 }),
-        lensRun<GraphPayload>('literary', 'semantic_graph', { query: q, limit: 24 }),
-      ]);
+      // Sequenced, not parallel: one submission must produce ONE error
+      // surface. Fired together, a validation failure rejected BOTH calls
+      // and the client's error toast fired per rejection (the double toast).
+      const s = await lensRun<SearchPayload>('literary', 'search', { query: q, limit: 12 });
       if (s.data?.ok === false) throw new Error(s.data?.error || 'search_failed');
       const payload = s.data?.result;
       setHits(payload?.results || []);
       setSemantic(!!payload?.semantic);
-      const gp = g.data?.result;
-      setGraph({ nodes: gp?.nodes || [], edges: gp?.edges || [] });
       setSelected(null);
+      // The graph is an adjunct to the results — its failure degrades to an
+      // empty graph, never to a second error for the same submission.
+      try {
+        const g = await lensRun<GraphPayload>('literary', 'semantic_graph', { query: q, limit: 24 });
+        const gp = g.data?.result;
+        setGraph({ nodes: gp?.nodes || [], edges: gp?.edges || [] });
+      } catch {
+        setGraph({ nodes: [], edges: [] });
+      }
     } catch (e) {
       setSearchError(e instanceof Error ? e.message : 'Search failed');
       setHits([]);
@@ -242,7 +249,7 @@ export function SearchPanel() {
           </div>
         )}
 
-        {searched && !corpusEmpty && !searchError && (
+        {searched && !searchError && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <section className="lg:col-span-2 space-y-3" aria-label="Search results">
               <div className="flex items-center justify-between">
@@ -262,7 +269,14 @@ export function SearchPanel() {
                   {semantic ? 'Grounded (hybrid)' : 'Keyword only'}
                 </span>
               </div>
-              {hits.length === 0 && !loading && (
+              {hits.length === 0 && !loading && corpusEmpty && (
+                <p className="text-sm text-amber-200/80" role="status">
+                  No passages can match yet — the corpus isn&apos;t ingested on this deployment, so there is
+                  nothing to search. Once the ingest named in the banner above runs, this search returns
+                  grounded passages with provenance.
+                </p>
+              )}
+              {hits.length === 0 && !loading && !corpusEmpty && (
                 <p className="text-sm text-zinc-500">No passages matched. Try broader terms.</p>
               )}
               {hits.map((h) => (
