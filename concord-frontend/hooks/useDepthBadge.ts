@@ -59,6 +59,16 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
   /**
+   * Understanding's substrate is the account's own notes plus an
+   * in-process engine over its own tables — REAL_LIVE's generic
+   * "polled live from an external source" caption would be false.
+   */
+  understanding: {
+    label: 'Live',
+    caption:
+      'Your notes, outline, review queue and graph live here, in the platform store, and the compose / evolve pipeline runs in-process over them. Nothing is polled from an external source.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic

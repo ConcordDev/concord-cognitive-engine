@@ -71,7 +71,21 @@ export async function understandingMacro<T = unknown>(
   input: Record<string, unknown> = {},
 ): Promise<T> {
   const r = await api.post('/api/lens/run', { domain: 'understanding', name, input });
-  return r.data as T;
+  const data = r.data as { ok?: boolean; result?: unknown } | unknown;
+  // The route shapes every success as { ok:true, result:<payload> }.
+  // The panels read the payload's fields (understanding / rows / stats)
+  // at top level beside ok — before this unwrap they read undefined
+  // and reported 'parse failed' / 'compose failed' against a pipeline
+  // that had in fact answered. Failures arrive unpeeled ({ ok:false,
+  // error }) and pass through untouched.
+  if (
+    data && typeof data === 'object' && 'result' in data &&
+    (data as { ok?: boolean }).ok !== false &&
+    (data as { result?: unknown }).result && typeof (data as { result?: unknown }).result === 'object'
+  ) {
+    return { ...(data as { result: object }).result, ok: true } as T;
+  }
+  return data as T;
 }
 
 export function Field({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
