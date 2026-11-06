@@ -11,6 +11,7 @@ import { canEmergentCiteUser } from "../lib/consent.js";
 import { batchLookup } from "./_batch-lookup.js";
 import { peakEnd, feltPeakBonus } from "../lib/felt-per.js";
 
+import { dtuMatchesDomain } from "../lib/art-dtu-filter.js";
 // Wave 7 / A6 — roll the strongest felt-peak of the children up into the consolidated
 // parent's metadata, so CHARACTER compresses around what was felt strongly (a MEGA of
 // a hard week still carries the ache). Best-effort + total: children without a felt
@@ -794,6 +795,7 @@ export function getDTUPreview(db, dtuId) {
 export function searchDTUs(db, {
   query, lensId, tier, minCreti = 0, maxPrice,
   sortBy = "creti_score", limit = 50, offset = 0,
+  callerId = null,
 } = {}) {
   if (!query && !lensId) return { ok: false, error: "query_or_lens_required" };
 
@@ -822,8 +824,68 @@ export function searchDTUs(db, {
     tags: safeJsonParse(row.tags_json),
   }));
 
-  return { ok: true, results, total, limit, offset, query, lensId };
+  // ── A4 Leg B: the caller's own canonical DTUs ─────────────────────
+  // Canonical DTUs persist in `dtu_store` (lib/dtu-store.js), not in
+  // this table, and a user's saved work is private — so the published-
+  // only query above can never return it, and the lens's own search
+  // denied the owner their own saved DTU (Transfer F9; Metalearning
+  // F14; Reflection F17). When the route supplies an authenticated
+  // caller, union THEIR canonical DTUs in: owner match only (nothing
+  // private becomes visible to anyone else), the canonical domain rule
+  // (dtuMatchesDomain), the query matched over title/tags/summary/
+  // content. Own rows lead page one and are marked `own: true`.
+  let own = [];
+  let ownError = null;
+  if (callerId) {
+    try {
+      const q = query ? String(query).toLowerCase() : "";
+      const seenIds = new Set(results.map((r) => r.id));
+      for (const row of db.prepare("SELECT data FROM dtu_store").all()) {
+        let d = null;
+        try { d = JSON.parse(row.data); } catch { d = null; }
+        if (!d || !d.id || seenIds.has(d.id)) continue;
+        const owner = d.ownerId || d.creatorId || d.createdBy || d.userId || null;
+        if (owner !== callerId) continue;
+        if (lensId && !dtuMatchesDomain(d, lensId)) continue;
+        if (q) {
+          const hay = [d.title || "", (d.tags || []).join(" "), d.human?.summary || "", d.cretiHuman || "", typeof d.content === "string" ? d.content : ""]
+            .join(" ").toLowerCase();
+          if (!hay.includes(q)) continue;
+        }
+        own.push({
+          id: d.id,
+          creator_id: owner,
+          title: d.title || "",
+          content_type: d.machine?.kind || d.kind || d.type || "dtu",
+          lens_id: lensId || d.domain || d.meta?.lens || null,
+          tier: d.tier || null,
+          price: null,
+          creti_score: null,
+          tags: Array.isArray(d.tags) ? d.tags : [],
+          created_at: d.createdAt || null,
+          own: true,
+        });
+      }
+    } catch (err) {
+      // No dtu_store in this DB (a bare pipeline store) — the union is
+      // empty and the miss is reported, not hidden.
+      ownError = err?.message || "dtu_store_unavailable";
+      own = [];
+    }
+  }
+
+  const merged = offset === 0 && own.length
+    ? [...own, ...results].slice(0, limit)
+    : results;
+  return {
+    ok: true,
+    results: merged,
+    total: total + own.length,
+    limit, offset, query, lensId,
+    ...(ownError ? { ownError } : {}),
+  };
 }
+
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
