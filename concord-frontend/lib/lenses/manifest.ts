@@ -801,6 +801,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'collab',
     label: 'Collab',
+    dataTier: 'REAL_LIVE',
     artifacts: ['session', 'participant', 'change', 'decision', 'conflict_resolution'],
     macros: { list: 'lens.collab.list', get: 'lens.collab.get', create: 'lens.collab.create', update: 'lens.collab.update', delete: 'lens.collab.delete', run: 'lens.collab.run', export: 'lens.collab.export' },
     exports: ['json', 'csv', 'md'],
