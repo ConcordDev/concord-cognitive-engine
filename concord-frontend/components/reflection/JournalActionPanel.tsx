@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
-type Feedback = { kind: 'ok' | 'err'; text: string } | null;
+type Feedback = { kind: 'okay' | 'err'; text: string } | null;
 type ActionId = 'save' | 'dm' | 'publish' | 'agent';
 
 function pickMessage(e: unknown): string {
@@ -49,7 +49,7 @@ function pickMessage(e: unknown): string {
 export function JournalActionPanel() {
   const [entryTitle, setEntryTitle] = useState('');
   const [entryBody, setEntryBody] = useState('');
-  const [mood, setMood] = useState<'great' | 'good' | 'ok' | 'low' | 'rough'>('good');
+  const [mood, setMood] = useState<'great' | 'good' | 'okay' | 'low' | 'rough'>('good');
   const [dmRecipient, setDmRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
@@ -59,7 +59,7 @@ export function JournalActionPanel() {
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentPrompt, setAgentPrompt] = useState<string | null>(null);
 
-  const ok  = (text: string) => setFeedback({ kind: 'ok',  text });
+  const ok  = (text: string) => setFeedback({ kind: 'okay',  text });
   const err = (text: string) => setFeedback({ kind: 'err', text });
   const ready = entryBody.trim().length > 0;
 
@@ -189,7 +189,7 @@ export function JournalActionPanel() {
   }
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
-    { id: 'save',     label: savedDtuId      ? 'Saved'     : 'Save entry',       desc: savedDtuId      ? `DTU ${savedDtuId.slice(0, 8)}…`      : 'Private journal DTU',           icon: Sparkles, accent: '#3b82f6', handler: actSave,    disabled: !ready || !!savedDtuId },
+    { id: 'save',     label: savedDtuId      ? 'Saved'     : 'Save as DTU',      desc: savedDtuId      ? `DTU ${savedDtuId.slice(0, 8)}…`      : 'Mints a private DTU of this text — it does not create a journal entry',           icon: Sparkles, accent: '#3b82f6', handler: actSave,    disabled: !ready || !!savedDtuId },
     { id: 'dm',       label: 'DM friend', desc: 'Share entry with a trusted user',                  icon: Send,     accent: '#ec4899', handler: actDm, disabled: !ready },
     { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish gratitude', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Sanitized public gratitude DTU',     icon: Globe,    accent: '#22c55e', handler: actPublish, disabled: !ready || !!publishedDtuId },
     { id: 'agent',    label: 'Prompt me', desc: 'Agent surfaces a specific journaling prompt',      icon: Wand2,    accent: '#f97316', handler: actAgent },
@@ -276,12 +276,12 @@ export function JournalActionPanel() {
             initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }}
             className={cn(
               'px-3 py-2 rounded text-[11px] flex items-start gap-2 border',
-              feedback.kind === 'ok'
+              feedback.kind === 'okay'
                 ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
                 : 'bg-red-500/10 text-red-300 border-red-500/30',
             )}
           >
-            {feedback.kind === 'ok' ? <Check className="h-3 w-3 mt-0.5" /> : <AlertTriangle className="h-3 w-3 mt-0.5" />}
+            {feedback.kind === 'okay' ? <Check className="h-3 w-3 mt-0.5" /> : <AlertTriangle className="h-3 w-3 mt-0.5" />}
             <span>{feedback.text}</span>
           </motion.div>
         )}
