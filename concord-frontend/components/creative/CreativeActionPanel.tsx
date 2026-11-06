@@ -92,6 +92,18 @@ export function CreativeActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
+      // F5 (re-pass form): the mint's fixed title + non-user source make
+      // a repeat create a guaranteed duplicate_blocked refusal (the
+      // dedup gate matches the title platform-wide). Ask for the
+      // caller's standing package first and resolve to it honestly.
+      const st = await callMacro<{ minted: boolean; dtuId?: string }>('packageStatus', {});
+      if (st.ok && st.result?.minted && st.result.dtuId) {
+        const existingId = st.result.dtuId;
+        setMintedDtuId(existingId);
+        pipe.publish('creative.mintedDtuId', existingId, { label: `Pkg DTU ${existingId.slice(0, 8)}…` });
+        ok(`Already minted · DTU ${existingId.slice(0, 8)}…`);
+        return;
+      }
       // domain/lens stamped so the minted DTU scores the `primaryDomain`
       // boost in context.query and actually surfaces in this lens's own
       // Library panel (useLensDTUs({ lens: 'creative' })) — omitting it
@@ -99,7 +111,8 @@ export function CreativeActionPanel() {
       // DTUs competing for the same top-N slots.
       const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Production pkg`, domain: 'creative', lens: 'creative', tags: ['creative', 'production'], source: 'creative:pkg:mint', meta: { lens: 'creative', visibility: 'private', consent: { allowCitations: false }, prod: { shots: shotsResult, assets: assetsResult, budget: budgetResult, dist: distResult } } }, 'media', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('creative.mintedDtuId', id, { label: `Pkg DTU ${id.slice(0, 8)}…` }); ok(`Pkg DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('creative.mintedDtuId', id, { label: `Pkg DTU ${id.slice(0, 8)}…` }); ok(`Pkg DTU ${id.slice(0, 8)}…`); }
+      else err((r.data as { error?: string } | undefined)?.error === 'duplicate_blocked' ? 'A package titled "Production pkg" already exists.' : 'No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
