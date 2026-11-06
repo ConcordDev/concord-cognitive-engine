@@ -15,7 +15,7 @@ import { CalcPanel } from '@/components/lens-primitives/CalcPanel';
 interface HistEvent { name: string; date: string; era: string; category: string; significance: 'low' | 'medium' | 'high' | 'critical' }
 interface Source { title: string; type: 'primary' | 'secondary' | 'tertiary'; author: string; date: string; bias: 'none' | 'low' | 'moderate' | 'high' }
 interface TimelineResult { timeline?: Array<{ event: string; date: string; era?: string; significance?: string; category?: string }>; totalEvents?: number; timeSpan?: string; categories?: string[]; eras?: string[]; pivotalEvents?: Array<{ event: string; date: string }> }
-interface SourceResult { title?: string; type?: string; reliabilityScore?: number; classification?: string; corroborationNeeded?: boolean; evaluation?: { sourceType: number; biasAssessment: number; authorAttribution: string; dateProvenance: string } }
+interface SourceResult { title?: string; type?: string; formula?: string; reliabilityScore?: number; classification?: string; corroborationNeeded?: boolean; evaluation?: { sourceType: number; biasAssessment: number; authorAttribution: string; dateProvenance: string } }
 
 const CATEGORIES = ['political', 'military', 'cultural', 'economic', 'scientific', 'religious', 'social'] as const;
 const SIGNIFICANCES = ['low', 'medium', 'high', 'critical'] as const;
@@ -128,6 +128,9 @@ export function TimelineSourceTools() {
                   <span className="text-zinc-400">/100</span>
                 </div>
                 <div className={`inline-block rounded px-2 py-0.5 text-[10px] ${sourceResult.reliabilityScore && sourceResult.reliabilityScore >= 70 ? 'bg-emerald-500/20 text-emerald-200' : sourceResult.reliabilityScore && sourceResult.reliabilityScore >= 40 ? 'bg-amber-500/20 text-amber-200' : 'bg-rose-500/20 text-rose-200'}`}>{sourceResult.classification}</div>
+                {sourceResult.formula && (
+                  <p className="mt-1 text-[10px] text-zinc-500">{sourceResult.formula}</p>
+                )}
                 {sourceResult.corroborationNeeded && <div className="text-amber-300">⚠ Corroboration recommended</div>}
                 {sourceResult.evaluation && (
                   <div className="grid grid-cols-2 gap-1 pt-1">

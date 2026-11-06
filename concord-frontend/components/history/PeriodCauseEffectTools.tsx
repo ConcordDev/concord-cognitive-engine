@@ -20,7 +20,7 @@ interface PeriodRow { name: string; startYear: string; endYear: string; features
 interface ChainRow { cause: string; effect: string; type: 'direct' | 'indirect'; strength: 'weak' | 'moderate' | 'strong'; timelag: string }
 
 interface ComparePeriodsResult {
-  periods?: Array<{ name: string; startYear: string; endYear: string; duration: number; keyFeatures: string[]; population: string; technology: string; governance: string }>;
+  periods?: Array<{ name: string; startYear: string; endYear: string; duration: number; keyFeatures: string[]; population?: string; technology?: string; governance?: string }>;
   longestPeriod?: string;
   shortestPeriod?: string;
   sharedFeatures?: string[];
@@ -124,7 +124,7 @@ export function PeriodCauseEffectTools() {
                 {cmp.periods.map((p, i) => (
                   <div key={i} className="rounded border border-indigo-500/15 bg-zinc-950/40 px-2 py-1">
                     <div className="flex items-center justify-between"><span className="text-zinc-100 font-medium">{p.name}</span><span className="font-mono text-[10px] text-indigo-300">{p.duration} yrs</span></div>
-                    <div className="text-[9px] text-zinc-400">{p.startYear}–{p.endYear} · pop {p.population} · tech {p.technology} · gov {p.governance}</div>
+                    <div className="text-[9px] text-zinc-400">{p.startYear}–{p.endYear}{[p.population ? `pop ${p.population}` : null, p.technology ? `tech ${p.technology}` : null, p.governance ? `gov ${p.governance}` : null].filter(Boolean).map((d) => ` · ${d}`).join('')}</div>
                     {p.keyFeatures.length > 0 && <div className="mt-0.5 flex flex-wrap gap-1">{p.keyFeatures.map((f, fi) => <span key={fi} className="rounded bg-zinc-800 px-1 text-[9px] text-zinc-300">{f}</span>)}</div>}
                   </div>
                 ))}
