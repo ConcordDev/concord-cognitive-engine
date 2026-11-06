@@ -59,6 +59,18 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
   /**
+   * Paper: the library, manuscripts and bibliography are the member's
+   * own records in the platform store. REAL_LIVE's generic "polled
+   * from an external source" caption would be false as a blanket line
+   * — discovery reads (arXiv / CrossRef / Open Library) are labelled
+   * at their own surfaces.
+   */
+  paper: {
+    label: 'Live',
+    caption:
+      'Your library, manuscripts and bibliography live here — your own records in the platform store, not polled from an external source. Discovery searches read live from arXiv, CrossRef and Open Library, labelled at their panels.',
+  },
+  /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
    * terms (Review 4's determination: real execution). REAL_LIVE's generic

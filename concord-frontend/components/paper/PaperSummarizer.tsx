@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FileText, Loader2, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api/client';
 
@@ -13,11 +13,34 @@ export interface PaperSummary {
   keyTerms: string[];
 }
 
+interface SavedSummary { id: string; savedAt: string; sourceTitle: string; sourceExcerpt: string; summary: PaperSummary }
+
 export function PaperSummarizer() {
   const [text, setText] = useState('');
   const [summary, setSummary] = useState<PaperSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // S6 (F10): summaries persist — saved to the member's list, restored
+  // on return, deletable. The output no longer evaporates on a switch.
+  const [saved, setSaved] = useState<SavedSummary[]>([]);
+  const [justSaved, setJustSaved] = useState(false);
+  async function loadSaved() {
+    try {
+      const res = await api.post('/api/lens/run', { domain: 'paper', action: 'summary-list', input: {} });
+      const result = res.data?.result as { summaries?: SavedSummary[] } | undefined;
+      setSaved(result?.summaries || []);
+    } catch { /* list is best-effort */ }
+  }
+  useEffect(() => { void loadSaved(); }, []);
+  async function saveSummary() {
+    if (!summary) return;
+    const res = await api.post('/api/lens/run', { domain: 'paper', action: 'summary-save', input: { summary, sourceText: text, sourceTitle: text.trim().split('\n')[0]?.slice(0, 80) } });
+    if ((res.data?.result as { ok?: boolean } | undefined)?.ok) { setJustSaved(true); void loadSaved(); }
+  }
+  async function deleteSaved(id: string) {
+    await api.post('/api/lens/run', { domain: 'paper', action: 'summary-delete', input: { id } });
+    void loadSaved();
+  }
 
   async function summarize() {
     if (!text.trim() || text.length < 300) return;
@@ -36,6 +59,7 @@ export function PaperSummarizer() {
         setSummary(null);
       } else {
         setSummary(result);
+        setJustSaved(false);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Summarization failed.');
@@ -75,10 +99,28 @@ export function PaperSummarizer() {
                   {summary.keyTerms.map((t, i) => <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300">{t}</span>)}
                 </div>
               )}
+              <button onClick={() => void saveSummary()} disabled={justSaved} className="px-3 py-1.5 rounded border border-cyan-500/40 bg-cyan-500/10 text-cyan-200 text-[11px] disabled:opacity-60">
+                {justSaved ? 'Saved ✓ — it stays in your list below' : 'Save summary'}
+              </button>
             </div>
           )}
         </div>
       </div>
+      {saved.length > 0 && (
+        <div className="border-t border-white/10 px-4 py-3">
+          <h3 className="text-[10px] uppercase tracking-wider text-cyan-300 mb-2">Your saved summaries ({saved.length})</h3>
+          <ul className="space-y-1.5">
+            {saved.map(entry => (
+              <li key={entry.id} className="flex items-center gap-2 text-[11px]">
+                <button onClick={() => { setSummary(entry.summary); setJustSaved(true); }} className="flex-1 text-left text-zinc-300 hover:text-white truncate">
+                  {entry.sourceTitle} <span className="text-zinc-500">· {new Date(entry.savedAt).toLocaleString()}</span>
+                </button>
+                <button onClick={() => void deleteSaved(entry.id)} className="text-rose-300 underline shrink-0">Delete</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
