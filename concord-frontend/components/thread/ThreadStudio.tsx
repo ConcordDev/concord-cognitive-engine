@@ -411,6 +411,7 @@ function AiTab() {
   const [hooks, setHooks] = useState<Hook[]>([]);
   const [opener, setOpener] = useState('');
   const [rewritten, setRewritten] = useState('');
+  const [rewriteNote, setRewriteNote] = useState('');
   const [deltaPct, setDeltaPct] = useState(0);
   const [mode, setMode] = useState<'tighten' | 'punchier' | 'expand'>('tighten');
   const [busy, setBusy] = useState(false);
@@ -424,10 +425,21 @@ function AiTab() {
     else setErr(r.data?.error || 'need more content');
   }
   async function rewrite() {
-    setErr(''); setBusy(true);
+    setErr(''); setBusy(true); setRewriteNote('');
     const r = await lensRun('thread', 'ai-rewrite', { content, mode });
     setBusy(false);
-    if (r.data?.ok) { setRewritten(String(r.data.result?.rewritten || '')); setDeltaPct(Number(r.data.result?.deltaPct || 0)); }
+    if (r.data?.ok) {
+      // A pass that changed nothing is a decline, not a rewrite: the
+      // server says so (changed:false + note) and the panel renders
+      // that, never a REWRITTEN frame over the unchanged text.
+      if (r.data.result?.changed === false) {
+        setRewritten('');
+        setRewriteNote(String(r.data.result?.note || 'No change — this pass left the text as it stands.'));
+      } else {
+        setRewritten(String(r.data.result?.rewritten || ''));
+        setDeltaPct(Number(r.data.result?.deltaPct || 0));
+      }
+    }
     else setErr(r.data?.error || 'rewrite failed');
   }
 
@@ -469,6 +481,12 @@ function AiTab() {
             </button>
           ))}
           <p className="text-[10px] text-zinc-400">Click a hook to copy it.</p>
+        </div>
+      )}
+      {rewriteNote && (
+        <div className="rounded-lg border border-zinc-700 bg-zinc-900/40 p-2">
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400">No change</p>
+          <p className="text-xs text-zinc-300 mt-0.5">{rewriteNote}</p>
         </div>
       )}
       {rewritten && (

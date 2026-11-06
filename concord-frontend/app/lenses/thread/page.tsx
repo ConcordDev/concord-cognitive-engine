@@ -20,6 +20,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { lensRun } from '@/lib/api/client';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { cn } from '@/lib/utils';
 import { ThreadMapPanel } from '@/components/thread/ThreadMapPanel';
@@ -93,7 +94,34 @@ export default function ThreadLensPage() {
               </span>
             )}
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="thread" data={realtimeData || {}} compact />
+            <DTUExportButton
+              domain="thread"
+              data={realtimeData || {}}
+              compact
+              prepare={async () => {
+                // The export carries the lens's own records: the caller's
+                // composer drafts (full detail), their queue, and the
+                // dashboard counts. Drafts live in the composer's store,
+                // which the generic artifact export cannot see.
+                const [dl, q, dash] = await Promise.all([
+                  lensRun('thread', 'draft-list', {}),
+                  lensRun('thread', 'queue-list', {}),
+                  lensRun('thread', 'thread-dashboard', {}),
+                ]);
+                const metas = (dl.data?.result?.drafts as Array<{ id: string }> | undefined) || [];
+                const drafts = await Promise.all(metas.map(async (m) => {
+                  const detail = await lensRun('thread', 'draft-detail', { id: m.id });
+                  return detail.data?.result?.draft ?? m;
+                }));
+                if (drafts.length === 0) return {};
+                return {
+                  source: 'thread-lens',
+                  drafts,
+                  queue: q.data?.result?.queue ?? [],
+                  dashboard: dash.data?.result ?? null,
+                };
+              }}
+            />
           </div>
         </div>
 
