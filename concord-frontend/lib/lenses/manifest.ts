@@ -4637,7 +4637,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['scaffold_world', 'seed_lore', 'spawn_faction', 'register_anomaly', 'preview'],
     category: 'creative',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Create a world.",
       caption: "World seeds, lore templates, faction templates, NPC archetypes, anomalies.",
