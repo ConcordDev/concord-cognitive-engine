@@ -7,8 +7,7 @@
  * real panels. The CTA jumps to the corpus search and focuses its input.
  */
 
-import { useCallback, useMemo, useState, type ComponentType } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { useCallback, useState, type ComponentType } from 'react';
 import { Gem, Library, Network, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -48,7 +47,6 @@ function focusCorpusSearch(tries = 6) {
 export default function LiteraryLensPage() {
   useLensNav('literary');
   useLensIdentity('literary');
-  const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<LiteraryView>('search');
 
   const openText = useCallback(() => {
@@ -68,19 +66,6 @@ export default function LiteraryLensPage() {
       { id: 'literary-open', keys: '/', description: 'Search the corpus', category: 'actions' as const, action: openText },
     ],
     { lensId: 'literary' },
-  );
-
-  const Panel = PANELS[active];
-  const motionProps = useMemo(
-    () => (reduceMotion
-      ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
-      : {
-          initial: { opacity: 0, y: 8 },
-          animate: { opacity: 1, y: 0 },
-          exit: { opacity: 0, y: -6 },
-          transition: { duration: 0.16 },
-        }),
-    [reduceMotion],
   );
 
   return (
@@ -121,11 +106,18 @@ export default function LiteraryLensPage() {
           })}
         </nav>
 
-        <AnimatePresence mode="wait">
-          <motion.div key={active} {...motionProps}>
-            <Panel />
-          </motion.div>
-        </AnimatePresence>
+        {/* All four views stay MOUNTED (inactive hidden): a search in
+            progress — query, results, selection — survives a tab switch
+            instead of dying on a keyed remount. */}
+        {VIEWS.map((v) => {
+          const P = PANELS[v.id];
+          const on = active === v.id;
+          return (
+            <div key={v.id} hidden={!on} aria-hidden={!on}>
+              <P />
+            </div>
+          );
+        })}
 
         <CrossLensRecentsPanel lensId="literary" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
 
