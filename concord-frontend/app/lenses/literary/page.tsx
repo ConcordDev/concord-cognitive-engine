@@ -136,7 +136,7 @@ export default function LiteraryLensPage() {
           className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
         >
           <Search className="h-4 w-4" />
-          Open a text
+          Search the corpus
         </button>
       </div>
     </LensShell>
