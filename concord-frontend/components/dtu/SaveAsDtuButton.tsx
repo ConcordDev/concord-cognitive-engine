@@ -172,6 +172,27 @@ export function SaveAsDtuButton({
   useEffect(() => { setEditTitle(clampDtuTitle(title)); }, [title]);
   useEffect(() => { setEditTags([apiSource, ...extraTags].join(', ')); }, [apiSource, extraTags]);
 
+  // Saved state reflects the store, not the mount (Transfer F11, the
+  // family's recurring instance): on mount — and whenever the item this
+  // button would save changes — ask for the caller's own DTUs and mark
+  // saved when an exact title + source match is already there. Any read
+  // failure leaves the button exactly as it behaved before: unsaved.
+  useEffect(() => {
+    setSavedId(null);
+    let live = true;
+    const wanted = clampDtuTitle(title);
+    apiHelpers.dtus.list({ mine: 'true', q: wanted, limit: 50 })
+      .then((resp) => {
+        if (!live) return;
+        const data = (resp as { data?: { dtus?: Array<{ id?: string; title?: string; tags?: string[] }> } })?.data;
+        const rows = data?.dtus || [];
+        const hit = rows.find((d) => d.title === wanted && Array.isArray(d.tags) && d.tags.includes(apiSource));
+        if (hit?.id) setSavedId(hit.id);
+      })
+      .catch(() => { /* the store check is best-effort; unsaved is the fallback */ });
+    return () => { live = false; };
+  }, [title, apiSource]);
+
   const createMutation = useMutation({
     mutationFn: async (opts: {
       title: string;

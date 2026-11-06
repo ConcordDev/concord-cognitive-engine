@@ -106,6 +106,25 @@ function formatScore(score: number): string {
 // Component
 // ---------------------------------------------------------------------------
 
+/**
+ * Connection text renders as plain text in this panel (Transfer F13):
+ * strip markdown syntax from source summaries so a DTU whose summary is
+ * authored in markdown does not leak its markers (`**`, `#`, link syntax)
+ * into every lens's connections view.
+ */
+function plainText(md: string): string {
+  return md
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')
+    .replace(/(\*|_)(.*?)\1/g, '$2')
+    .replace(/`{1,3}([^`]*)`{1,3}/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^>\s+/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .trim();
+}
+
 function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -151,7 +170,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                 title: r.title || 'Untitled',
                 sourceDomain: r.tags?.[0] || 'unknown',
                 similarity: r.score ?? 0,
-                excerpt: r.summary,
+                excerpt: r.summary ? plainText(r.summary) : r.summary,
               })
             );
           return { items, source: 'semantic' as const };
