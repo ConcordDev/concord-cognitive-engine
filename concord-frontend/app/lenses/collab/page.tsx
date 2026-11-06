@@ -168,6 +168,10 @@ export default function CollabLensPage() {
       <div data-lens-theme="collab" className="relative min-h-full bg-black px-8 pb-28 pt-6">
         <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Collab</h1>
 
+        <p data-testid="cb-room-about" className="mb-5 max-w-xl text-[14px] text-zinc-400">
+          A room is a title and a note, saved to your account and listed here when you return.
+        </p>
+
         <section
           aria-label="Room"
           className="grid min-h-[22rem] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 md:grid-cols-[16rem_1fr]"
