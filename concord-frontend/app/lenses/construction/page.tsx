@@ -23,6 +23,7 @@ import { ProcorePanel } from '@/components/construction/ProcorePanel';
 import { ConstructionActionPanel } from '@/components/construction/ConstructionActionPanel';
 import { FieldManagementPanel } from '@/components/construction/FieldManagementPanel';
 import { ProjectRegistryPanel } from '@/components/construction/ProjectRegistryPanel';
+import { BenchStoreProvider } from '@/components/construction/bench-store';
 import {
   SHELL_VIEWS,
   type ConstrView,
@@ -90,6 +91,7 @@ export default function ConstructionLensPage() {
         cta={{ label: 'Open job board', icon: HardHat, onClick: () => setActive('jobs'), title: 'Open the job board (J)' }}
       >
         <main id="construction-main" className="pt-4 min-w-0">
+          <BenchStoreProvider>
           <AnimatePresence mode="wait">
             <motion.div key={active} {...motionProps}>
               {isRegistry(active) && <ProjectRegistryPanel mode={active} />}
@@ -103,6 +105,7 @@ export default function ConstructionLensPage() {
               )}
             </motion.div>
           </AnimatePresence>
+          </BenchStoreProvider>
         </main>
       </NorthStarFrame>
     </LensShell>

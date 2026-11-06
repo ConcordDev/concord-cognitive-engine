@@ -2801,7 +2801,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Construction projects.",
       caption: "Projects, permits, schedules, materials, inspections \u2014 analyze, generate, export.",

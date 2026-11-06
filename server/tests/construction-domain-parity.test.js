@@ -80,7 +80,10 @@ describe("construction — submittals log", () => {
     assert.equal(rev.result.submittal.reviewCycles.length, 1);
 
     const ok = call("submittal-review", ctxA, { id: c.result.submittal.id, action: "approved" });
-    assert.equal(ok.result.submittal.status, "closed");
+    // F9 (construction full build): the status carries the review's
+    // verdict — this pin previously enshrined the generic "closed" the
+    // finding faults.
+    assert.equal(ok.result.submittal.status, "approved");
   });
 
   it("rejects missing spec section and invalid review action", () => {
