@@ -73,6 +73,22 @@ async function readThread(): Promise<CheckRow[]> {
   return checks;
 }
 
+// F8's selection leg (Badge Settlement, register A2): the thread's
+// content persists server-side, but the selection lived only in state
+// and reset to the first entry on every reload. The selection now
+// persists like the content does — in localStorage, restored on load
+// when the stored id still names a loaded check (applyThread already
+// falls back to the first entry when its preferId names nothing).
+const SELECTION_KEY = 'concord:commonsense:selected';
+
+function storedSelection(): string | undefined {
+  try {
+    return localStorage.getItem(SELECTION_KEY) || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export default function CommonsenseLensPage() {
   useLensNav('commonsense');
   const [phase, setPhase] = useState<Phase>('loading');
@@ -95,6 +111,16 @@ export default function CommonsenseLensPage() {
     });
   }, []);
 
+  useEffect(() => {
+    if (!selectedId) return;
+    try {
+      localStorage.setItem(SELECTION_KEY, selectedId);
+    } catch {
+      // Storage unavailable (private mode etc.) — the selection simply
+      // behaves as it did before this leg: state-only.
+    }
+  }, [selectedId]);
+
   const pull = useCallback(async (preferId?: string) => {
     const rows = await readThread();
     applyThread(rows, preferId);
@@ -106,7 +132,7 @@ export default function CommonsenseLensPage() {
     let cancelled = false;
     readThread().then((rows) => {
       if (cancelled) return;
-      applyThread(rows);
+      applyThread(rows, storedSelection());
       setPhase('ready');
     }).catch((err) => {
       if (cancelled) return;
