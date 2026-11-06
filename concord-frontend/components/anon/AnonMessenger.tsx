@@ -239,7 +239,12 @@ export function AnonMessenger() {
   }, [activeId, on, off, loadConversations, openConversation]);
 
   // ── Actions ──
+  const [rotateArmed, setRotateArmed] = useState(false);
   const rotateIdentity = async () => {
+    // Two-step (build(anon) S4/F3): rotation is destructive to linkage —
+    // the first click states the consequence, the second performs it.
+    if (!rotateArmed) { setRotateArmed(true); return; }
+    setRotateArmed(false);
     setRotating(true);
     setErr(null);
     // Server-held identities keep the historical server rotation so an
@@ -441,11 +446,15 @@ export function AnonMessenger() {
           <button
             onClick={rotateIdentity}
             disabled={rotating}
-            className="flex items-center gap-1 rounded-lg border border-lattice-border bg-lattice-deep px-3 py-1.5 text-xs text-gray-200 hover:border-neon-purple/50 disabled:opacity-50"
+            title={rotateArmed ? 'Click again to rotate: prior traffic becomes unlinkable; your conversations stay, under the new pseudonym' : 'Rotate pseudonym'}
+            className={`flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs disabled:opacity-50 ${rotateArmed ? 'border-red-400/60 bg-red-500/10 text-red-200' : 'border-lattice-border bg-lattice-deep text-gray-200 hover:border-neon-purple/50'}`}
           >
             <RefreshCw className={`h-3.5 w-3.5 ${rotating ? 'animate-spin' : ''}`} />
-            Rotate
+            {rotateArmed ? 'Rotate? Prior traffic unlinks — click again' : 'Rotate'}
           </button>
+          {rotateArmed && (
+            <button onClick={() => setRotateArmed(false)} className="rounded px-2 py-1 text-[10px] text-gray-400 hover:text-white">Keep</button>
+          )}
         </div>
       </div>
 
