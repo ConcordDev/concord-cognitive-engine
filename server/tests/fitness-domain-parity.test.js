@@ -819,3 +819,69 @@ describe("fitness.feed / feed-library — the stored listing (F14 completion)", 
     } finally { globalThis.fetch = realFetch; }
   });
 });
+
+describe("fitness.feed seen-set ids — corpus-scan recovery (re-check #2 remainder)", () => {
+  // Re-check #2 (2026-11-05): names healed live, but the 10 legacy
+  // rows carried no DTU id — the search-based recovery adopted
+  // nothing on prod (search is ranking/scale-bound, 25-result cap,
+  // and degrades with the embedding service). The deterministic
+  // channel is the corpus itself: STATE.dtus indexed by the
+  // meta.exerciseId the ingest stamped. These pins run with search
+  // returning NOTHING — the prod shape.
+  const LIST1 = { results: [{ id: 184, uuid: "uuid-184", name: null, description: null }] };
+  let realFetch;
+  function stubFetch1() {
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes("/exerciseinfo/")) return { ok: true, json: async () => ({ translations: [{ language: 2, name: "Deadlifts", description: "<p>d</p>" }] }) };
+      if (u.includes("/exercise/")) return { ok: true, json: async () => LIST1 };
+      throw new Error("unexpected fetch " + u);
+    };
+  }
+  function deadSearchCtx() {
+    return {
+      actor: { userId: "user_a" }, userId: "user_a",
+      macro: { run: async (domain, action) => {
+        if (domain === "dtu" && action === "search") return { ok: true, dtus: [] }; // prod shape
+        if (domain === "dtu" && action === "create") throw new Error("must not re-ingest a legacy row");
+        throw new Error(`unexpected macro ${domain}.${action}`);
+      } },
+    };
+  }
+  function seedLegacyCorpus() {
+    globalThis._concordSTATE.dtus.set("dtu_legacy_184", {
+      id: "dtu_legacy_184", title: "Exercise: Exercise 184",
+      meta: { exerciseId: 184, uuid: "uuid-184", name: "Exercise 184" },
+      tags: ["fitness", "feed", "exercise", "wger"], source: "wger-feed",
+    });
+  }
+
+  it("a legacy row adopts its corpus DTU id on pull even when search returns nothing", async () => {
+    realFetch = globalThis.fetch; stubFetch1();
+    try {
+      const ctx = deadSearchCtx();
+      seedLegacyCorpus();
+      await call("feed-library", ctx, {}); // materialise the state bucket
+      const s = globalThis._concordSTATE.fitnessLens;
+      s.feedSeen = new Set(["wger_uuid-184"]);
+      const r = await call("feed", ctx, {});
+      assert.equal(r.result.ingested, 0);
+      assert.deepEqual(r.result.exercises, [{ name: "Deadlifts", dtuId: "dtu_legacy_184", fresh: false }]);
+    } finally { globalThis.fetch = realFetch; }
+  });
+
+  it("feed-library reconciles a null-id entry from the corpus on read (no pull needed)", async () => {
+    realFetch = globalThis.fetch; stubFetch1();
+    try {
+      const ctx = deadSearchCtx();
+      seedLegacyCorpus();
+      await call("feed-library", ctx, {});
+      const s = globalThis._concordSTATE.fitnessLens;
+      s.feedLibrary.set("wger_uuid-184", { exerciseId: 184, uuid: "uuid-184", name: "Deadlifts", dtuId: null });
+      const lib = await call("feed-library", ctx, {});
+      assert.deepEqual(lib.result.items, [{ name: "Deadlifts", dtuId: "dtu_legacy_184", exerciseId: 184 }]);
+      // Adopted into the stored entry, not just the response.
+      assert.equal(s.feedLibrary.get("wger_uuid-184").dtuId, "dtu_legacy_184");
+    } finally { globalThis.fetch = realFetch; }
+  });
+});

@@ -72,6 +72,16 @@
 // tables, in either direction) contributes zero edges, period.
 
 import { listWorlds } from "../lib/world-loader.js";
+
+// S2 (F2): a world whose NAME carries a harness/test marker is test
+// data, wherever the observatory shows it. The stamp is computed from
+// the name alone — the surface badged it; nothing is ever excluded on
+// a name guess (an observatory that hides state on a heuristic has
+// the same disease in a worse form).
+const TEST_WORLD_NAME = /\b(harness|test)\b/i;
+export function isTestWorldName(name) {
+  return TEST_WORLD_NAME.test(String(name || ""));
+}
 import { listKingdomsForWorld, kingdomLoyaltySummary } from "../lib/kingdoms.js";
 import { listDistricts } from "../lib/districts.js";
 import { exportScene } from "../lib/scene-export.js";
@@ -327,7 +337,8 @@ export default function registerWorldOverviewMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const worldId = String(input?.worldId || "").trim();
     if (!worldId) return { ok: false, reason: "missing_world_id" };
-    return { ok: true, ...computeWorldAggregate(db, worldId) };
+    const worldName = safe(() => (listWorlds(db).find((w) => w.id === worldId)?.name ?? null), null);
+    return { ok: true, worldName, isTestWorld: isTestWorldName(worldName), ...computeWorldAggregate(db, worldId) };
   });
 
   // overview — lightweight per-world summary across every active world (or
@@ -367,6 +378,7 @@ export default function registerWorldOverviewMacros(register) {
       return {
         worldId: w.id,
         name: w.name,
+        isTestWorld: isTestWorldName(w.name),
         activeUsers: agg.population.activeUsers,
         factionCount: agg.factions.count,
         realmCount: agg.realms.length,

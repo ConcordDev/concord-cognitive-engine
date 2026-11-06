@@ -228,9 +228,18 @@ export default function createBrainsRouter({ db, requireAuth, requireRole }) {
 
   // ── Feature: Refresh scheduling UI ──────────────────────────────────
   // GET /api/brains/schedule — per-brain cadence config.
-  router.get("/schedule", (_req, res) => {
+  router.get("/schedule", (req, res) => {
     try {
-      if (!db) return res.json({ ok: true, schedule: [] });
+      // S1 (F1): the POST below is admin-gated. The read carries the
+      // caller's edit right so the surface can SAY the gate instead of
+      // letting a non-admin's change silently snap back — the Refresh
+      // section's honest-gate standard, applied to its sibling.
+      const canEdit = typeof requireRole !== "function"
+        ? !!req.user
+        : !!req.user && (req.user.role === "sovereign"
+          || ["owner", "admin", "sovereign"].includes(req.user.role)
+          || (Array.isArray(req.user.scopes) && req.user.scopes.includes("*")));
+      if (!db) return res.json({ ok: true, canEdit, schedule: [] });
       const rows = db.prepare(
         `SELECT brain_id, enabled, cadence, interval_hours, next_run_at, last_run_at, updated_at
            FROM brain_refresh_schedule ORDER BY brain_id`,
@@ -242,7 +251,7 @@ export default function createBrainsRouter({ db, requireAuth, requireRole }) {
         return row || { brain_id: b, enabled: 0, cadence: "manual", interval_hours: 0, next_run_at: null, last_run_at: null, updated_at: null };
       });
       void have;
-      res.json({ ok: true, schedule });
+      res.json({ ok: true, canEdit, schedule });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

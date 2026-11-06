@@ -12,6 +12,7 @@ import fs from "node:fs";
 import * as fsp from "node:fs/promises";
 import path from "node:path";
 import logger from "../logger.js";
+import { storeArtifact } from "./artifact-store.js";
 
 const PHOTO_DIR = process.env.CONCORD_PHOTO_DIR ||
   path.resolve(process.cwd(), "data", "photos");
@@ -49,6 +50,39 @@ function pngDimensions(buf) {
   if (!Buffer.isBuffer(buf) || buf.length < 24 || !buf.subarray(0, 8).equals(PNG_SIGNATURE)) return {};
   if (buf.toString("ascii", 12, 16) !== "IHDR") return {};
   return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
+
+/**
+ * F4 fix return — derive-on-read for a photo's dimensions/size. The
+ * detail view (PhotoLightboxModal via photos.get) renders exactly the
+ * row's width/height/size_bytes, so a row whose columns were never
+ * populated (created before savePhoto captured them, or by a path
+ * that did not) reads "unknown" forever — while its blob on disk
+ * carries the truth: dimensions in its IHDR, size in its byte length.
+ * When any of the three is null, fill from the blob and backfill the
+ * row, so every standing row heals on its first detail read. A
+ * missing/unreadable blob leaves the fields null: "unknown" stays
+ * honest for a photo with no readable file.
+ */
+export function fillPhotoMetaFromBlob(db, row) {
+  if (!db || !row) return row;
+  if (row.width != null && row.height != null && row.size_bytes != null) return row;
+  if (!row.blob_path) return row;
+  let buf;
+  try { buf = fs.readFileSync(row.blob_path); } catch { return row; }
+  const dims = pngDimensions(buf);
+  const filled = {
+    width: row.width ?? dims.width ?? null,
+    height: row.height ?? dims.height ?? null,
+    size_bytes: row.size_bytes ?? buf.byteLength,
+  };
+  if (filled.width !== row.width || filled.height !== row.height || filled.size_bytes !== row.size_bytes) {
+    try {
+      db.prepare(`UPDATE user_photos SET width = ?, height = ?, size_bytes = ? WHERE id = ?`)
+        .run(filled.width, filled.height, filled.size_bytes, row.id);
+    } catch { /* the backfill is best-effort; the read still returns the truth */ }
+  }
+  return { ...row, ...filled };
 }
 
 export async function savePhoto(db, userId, opts = {}) {
@@ -98,7 +132,7 @@ export async function savePhoto(db, userId, opts = {}) {
  * (lib/artifact-upload-routes.js), so `ownerId`/`domain`/`visibility` match
  * what `dtu.list`'s "mine" and scope filters actually check.
  */
-export function sharePhoto(db, photoId, opts = {}) {
+export async function sharePhoto(db, photoId, opts = {}) {
   if (!db || !photoId) return { ok: false, error: "missing_inputs" };
   const STATE = opts.STATE || globalThis.STATE || null;
   if (!STATE?.dtus) return { ok: false, error: "dtu_store_unavailable" };
@@ -110,6 +144,25 @@ export function sharePhoto(db, photoId, opts = {}) {
     const dtuId = `dtu_photo_${crypto.randomBytes(6).toString("hex")}`;
     const nowIso = new Date().toISOString();
     const title = p.caption || `Photo ${photoId}`;
+    // F6 fix return — the DTU must CARRY the photo, in the platform's
+    // own media shape. The old mint attached a bespoke artifact
+    // object ({ type:"image", url:"/api/photos/<id>/image",
+    // sourcePhotoId }) that no consumer resolves: the artifact store
+    // is the media contract (storeArtifact registers the bytes under
+    // the DTU's id, streamed via /api/artifact/<id>/stream — the
+    // shape lib/artifact-upload-routes.js mints for every upload
+    // DTU), and the DTU detail view's preview is gated on
+    // meta.primaryType. Register the blob FIRST: if the photo's
+    // bytes cannot be read or stored, the share fails honestly
+    // rather than minting a DTU whose content is only its caption.
+    let artifactRef;
+    try {
+      const buf = fs.readFileSync(p.blob_path);
+      artifactRef = await storeArtifact(dtuId, buf, "image/png", p.original_filename || `${photoId}.png`);
+    } catch (err) {
+      logger.debug?.("photo-gallery", "share_artifact_failed", { error: err?.message });
+      return { ok: false, error: "photo_blob_unreadable" };
+    }
     const dtu = {
       id: dtuId,
       tier: "regular",
@@ -122,8 +175,8 @@ export function sharePhoto(db, photoId, opts = {}) {
       authorId: p.user_id,
       human: { summary: title, bullets: [] },
       core: { definitions: [], claims: [], examples: [] },
-      machine: { kind: "photo", verifier: { format: "image/png" } },
-      artifact: { type: "image", url: `/api/photos/${photoId}/image`, sourcePhotoId: photoId },
+      machine: { kind: "photo", verifier: { format: "image/png", sizeBytes: artifactRef.sizeBytes, hash: artifactRef.hash } },
+      artifact: artifactRef,
       lineage: { parents: [], children: [] },
       authority: { score: 0.5 },
       meta: {
@@ -134,6 +187,8 @@ export function sharePhoto(db, photoId, opts = {}) {
         tags: ["photos"],
         createdAt: nowIso,
         sourcePhotoId: photoId,
+        primaryType: "display_image",
+        artifactSize: artifactRef.sizeBytes,
       },
       createdAt: nowIso,
     };

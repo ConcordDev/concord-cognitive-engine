@@ -30,6 +30,15 @@ export function DetectiveBoardPanel({
 }) {
   const [worldId, setWorldId] = useState('concordia-hub');
 
+  // F2 (determination record, 2026-11-01): the field validates against the
+  // worlds on record. An unknown string never reaches the server (the board
+  // used to render an empty state for any string typed), and a cleared field
+  // never sends worldId "" — the macro's missing_world reason used to
+  // surface as the pane's raw-code error, debug chrome and all.
+  const worldEmpty = worldId.trim() === '';
+  const worldKnown = KNOWN_WORLD_IDS.includes(worldId);
+  const worldInvalid = !worldEmpty && !worldKnown;
+
   const [crimes, setCrimes] = useState<Crime[]>([]);
   const [crimesState, setCrimesState] = useState<LoadState>('loading');
   const [crimesError, setCrimesError] = useState<string | null>(null);
@@ -47,6 +56,14 @@ export function DetectiveBoardPanel({
   const [form, setForm] = useState<DeductionForm>({ suspectId: '', weapon: '', motive: '' });
 
   const refreshCrimes = useCallback(async () => {
+    if (!worldKnown) {
+      // No server call for a world that isn't on record (or no world at
+      // all): the pane answers with the prompt/notice states below instead.
+      setCrimes([]);
+      setCrimesError(null);
+      setCrimesState('ready');
+      return;
+    }
     setCrimesState('loading');
     setCrimesError(null);
     const r = await lensRun<{ crimes: Crime[] }>('detective', 'list', { worldId, limit: 50 });
@@ -58,7 +75,7 @@ export function DetectiveBoardPanel({
       setCrimesError(r.data.error || 'Could not load open cases.');
       setCrimesState('error');
     }
-  }, [worldId]);
+  }, [worldId, worldKnown]);
 
   const refreshMine = useCallback(async () => {
     setDeductionsState('loading');
@@ -153,12 +170,18 @@ export function DetectiveBoardPanel({
           {active === 'open' ? (
             <>
               <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-[11px] uppercase tracking-wider text-amber-300/60">Open cases · {worldId}</h2>
+                <h2 className="text-[11px] uppercase tracking-wider text-amber-300/60">Open cases{worldKnown ? ` · ${worldId}` : ''}</h2>
                 <button onClick={refreshCrimes} aria-label="Refresh open cases" className="rounded p-1 text-slate-400 hover:bg-slate-800/60 hover:text-amber-200">
                   <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
               </div>
-              {crimesState === 'loading' ? (
+              {worldEmpty ? (
+                <EmptyState icon={<Search className="h-8 w-8" />} title="Choose a world."
+                  description="Pick one of the worlds on record to see its open cases — the board reads that world's live state." compact />
+              ) : worldInvalid ? (
+                <EmptyState icon={<Search className="h-8 w-8" />} title="Not a world on record."
+                  description={`"${worldId}" isn't one of the worlds on record. Choose one of the suggested worlds to see its open cases.`} compact />
+              ) : crimesState === 'loading' ? (
                 <div data-testid="cases-loading" aria-busy="true" role="status" className="space-y-1.5">
                   <span className="sr-only">Loading open cases…</span>
                   {[0, 1, 2].map((i) => <Skeleton key={i} variant="block" height={36} className="rounded" />)}

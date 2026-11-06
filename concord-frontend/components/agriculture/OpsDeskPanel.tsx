@@ -146,11 +146,48 @@ export function OpsDeskPanel({ onOpenRecords }: OpsDeskPanelProps) {
       ? (e.status as AgEquipment['status'])
       : 'idle',
   }));
+  // The fleet panel joins BOTH equipment stores (F5): the shell store
+  // above (equipment-list, EquipmentPanel's plane) and the artifact plane
+  // (FarmEquipment artifacts, RecordsPanel's plane). Before the join the
+  // panel listed the shell store only while the header count fell back
+  // to the artifact count — a record created in Records read "0/1
+  // working" over a panel saying "No equipment." Artifact rows project
+  // into the fleet shape; a row present in both stores lists once
+  // (shell wins, matched on name+make+model).
+  const equipKey = (e: { name?: string; make?: string; model?: string }) =>
+    `${e.name || ''}|${e.make || ''}|${e.model || ''}`.toLowerCase();
+  const shellKeys = new Set(
+    shellEquip.map((e) => equipKey(e as { name?: string; make?: string; model?: string })),
+  );
+  const artifactEquip: AgEquipment[] = equipArts
+    .map((a) => {
+      const d = a.data as AgricultureArtifact;
+      const statusText = `${d.status || ''} ${d.condition || ''} ${d.notes || ''}`;
+      const status: AgEquipment['status'] = (
+        ['idle', 'working', 'transporting', 'maintenance', 'offline'] as const
+      ).includes(d.status as AgEquipment['status'])
+        ? (d.status as AgEquipment['status'])
+        : /maintenance|service|due|overdue/i.test(statusText)
+          ? 'maintenance'
+          : 'idle';
+      return {
+        projected: {
+          id: a.id,
+          name: d.name || a.title || 'Equipment',
+          kind: d.equipmentType || 'equipment',
+          status,
+        } as AgEquipment,
+        key: equipKey({ name: d.name || a.title, make: d.make, model: d.model }),
+      };
+    })
+    .filter((e) => !shellKeys.has(e.key))
+    .map((e) => e.projected);
+  const fleetEquip: AgEquipment[] = [...shellEquip, ...artifactEquip];
   const shellOrders = opsQuery.data?.workOrders ?? [];
   const bins = opsQuery.data?.bins ?? [];
   const grainStored = bins.reduce((s, b) => s + (b.currentBushels || 0), 0);
   const grainCapacity = bins.reduce((s, b) => s + (b.capacityBushels || 0), 0);
-  const equipmentWorking = shellEquip.filter((e) => e.status === 'working').length;
+  const equipmentWorking = fleetEquip.filter((e) => e.status === 'working').length;
   const shellAcres = shellFields.reduce((s, f) => s + (f.acreage || 0), 0);
   const avgYield =
     shellAcres > 0 ? Math.round((metrics.seasonYield / shellAcres) * 10) / 10 : 0;
@@ -162,7 +199,7 @@ export function OpsDeskPanel({ onOpenRecords }: OpsDeskPanelProps) {
       <AgFarmShell
         totalFields={shellFields.length || fieldArts.length}
         totalAcres={shellAcres || metrics.totalAcres}
-        equipmentCount={shellEquip.length || equipArts.length}
+        equipmentCount={fleetEquip.length}
         equipmentWorking={equipmentWorking}
         seasonYieldBushels={metrics.seasonYield}
         avgYieldPerAcre={avgYield}
@@ -170,7 +207,7 @@ export function OpsDeskPanel({ onOpenRecords }: OpsDeskPanelProps) {
         grainCapacity={grainCapacity}
         grainUtilizationPct={grainCapacity > 0 ? Math.round((grainStored / grainCapacity) * 100) : 0}
         fields={shellFields}
-        equipment={shellEquip}
+        equipment={fleetEquip}
         workOrders={shellOrders}
       />
 

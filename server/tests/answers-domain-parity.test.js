@@ -82,21 +82,48 @@ describe("answers.answer + accept reputation", () => {
 });
 
 describe("answers.vote reputation", () => {
-  it("upvoting an answer grants +10 and is idempotent (toggle)", () => {
-    const q = ask();
-    const a = call("answer-post", ctxA, { questionId: q.id, body: "Flexbox with justify+align center works." }).result.answer;
-    const up = call("vote", ctxA, { targetType: "answer", targetId: a.id, questionId: q.id, direction: "up" });
-    assert.equal(up.result.votes, 1);
-    assert.equal(up.result.reputation, 10);
-    const undo = call("vote", ctxA, { targetType: "answer", targetId: a.id, questionId: q.id, direction: "up" });
-    assert.equal(undo.result.votes, 0);
-    assert.equal(undo.result.reputation, 0);
-  });
-  it("upvoting a question grants +5", () => {
+  // DECLARED CHANGE (build(answers) S1): the pre-build pins exercised
+  // votes cast below the advertised thresholds on the caster's own
+  // posts — the F1 behaviour the build retires. The pins below hold
+  // the enforced ladder instead.
+  function seedRep(userId, n) {
+    call("dashboard", { actor: { userId }, userId }, {});
+    globalThis._concordSTATE.answersLens.reputation.set(userId, n);
+  }
+  it("refuses an upvote below the advertised 50 threshold", () => {
     const q = ask();
     const up = call("vote", ctxA, { targetType: "question", targetId: q.id, direction: "up" });
-    assert.equal(up.result.votes, 1);
-    assert.equal(up.result.reputation, 5);
+    assert.equal(up.ok, false);
+    assert.match(up.error, /need 50 reputation to vote up/);
+    assert.equal(call("question-detail", ctxA, { id: q.id }).result.question.votes, 0);
+  });
+  it("refuses a downvote below the advertised 125 threshold", () => {
+    const q = ask();
+    seedRep("user_a", 60);
+    const down = call("vote", ctxA, { targetType: "question", targetId: q.id, direction: "down" });
+    assert.equal(down.ok, false);
+    assert.match(down.error, /need 125 reputation to vote down/);
+  });
+  it("bars self-votes outright even at full privilege", () => {
+    const q = ask();
+    const a = call("answer-post", ctxA, { questionId: q.id, body: "Flexbox with justify+align center works." }).result.answer;
+    seedRep("user_a", 1500);
+    const up = call("vote", ctxA, { targetType: "answer", targetId: a.id, questionId: q.id, direction: "up" });
+    assert.equal(up.ok, false);
+    assert.match(up.error, /your own posts/);
+    assert.equal(call("question-detail", ctxA, { id: q.id }).result.question.answers[0].votes, 0);
+  });
+  it("undoing an existing vote stays allowed", () => {
+    const q = ask();
+    const a = call("answer-post", ctxA, { questionId: q.id, body: "Flexbox with justify+align center works." }).result.answer;
+    // a legacy vote, cast before enforcement: seeded directly
+    seedRep("user_a", 10);
+    a.votes = 1;
+    globalThis._concordSTATE.answersLens.voteLog.set("user_a", new Set([`answer:${a.id}:1`]));
+    const undo = call("vote", ctxA, { targetType: "answer", targetId: a.id, questionId: q.id, direction: "up" });
+    assert.equal(undo.ok, true);
+    assert.equal(undo.result.votes, 0);
+    assert.equal(undo.result.reputation, 0);
   });
 });
 

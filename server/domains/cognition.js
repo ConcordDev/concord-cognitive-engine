@@ -171,6 +171,7 @@ export default function registerCognitionMacros(_register) {
         mode: trace.input?.mode || trace.mode || null,
         traceId: trace.traceId || trace.id || null,
         note: typeof row.note === "string" ? row.note : "",
+        answered: (trace && typeof trace === "object" ? trace.answered : null) || null,
         trace,
         createdAt: row.created_at || "",
       });
@@ -372,6 +373,13 @@ export default function registerCognitionMacros(_register) {
         createdAt: new Date().toISOString(),
       };
       const list = cogList(s.exports, cogActor(ctx));
+      // S-COG-2 (F2): an identical re-create (same title + same question)
+      // offers the standing record instead of silently duplicating it.
+      const dupe = list.find((e) => e.title === entry.title
+        && (e.trace?.input?.question || "") === (entry.trace?.input?.question || ""));
+      if (dupe) {
+        return { ok: true, result: { duplicate: true, export: { ...dupe, trace: undefined }, exportId: dupe.id, total: list.length } };
+      }
       list.unshift(entry);
       if (list.length > 200) list.length = 200;
       try {
@@ -405,6 +413,7 @@ export default function registerCognitionMacros(_register) {
         mode: e.mode,
         traceId: e.traceId,
         note: e.note,
+        answered: e.answered || e.trace?.answered || null,
         createdAt: e.createdAt,
       }));
       return { ok: true, result: { exports, count: exports.length } };
@@ -443,6 +452,84 @@ export default function registerCognitionMacros(_register) {
       return { ok: true, result: { deleted: params.exportId, count: list.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   }, { note: "remove one of the caller's saved exports by id" });
+
+  // ── updateExport (S-COG-2: edit in place) ──────────────────────────
+  register("cognition", "updateExport", (ctx, input = {}) => {
+    try {
+      const params = input || {};
+      const s = getCogState();
+      const list = cogList(s.exports, cogActor(ctx));
+      const entry = list.find((e) => e.id === params.exportId)
+        || readTraceRows(ctx).find((e) => e.id === params.exportId);
+      if (!entry) return { ok: false, error: "export_not_found" };
+      if (typeof params.title === "string" && params.title.trim()) {
+        entry.title = params.title.trim().slice(0, 120);
+      }
+      if (typeof params.question === "string" && params.question.trim()) {
+        if (!entry.trace || typeof entry.trace !== "object") entry.trace = { input: {} };
+        if (!entry.trace.input || typeof entry.trace.input !== "object") entry.trace.input = {};
+        entry.trace.input.question = params.question.trim().slice(0, 2000);
+      }
+      if (typeof params.note === "string") entry.note = params.note.trim().slice(0, 500);
+      // Keep the caller's ledger and the durable row in step.
+      const idx = list.findIndex((e) => e.id === entry.id);
+      if (idx >= 0) list[idx] = entry; else list.unshift(entry);
+      try { writeTraceRow(ctx, entry); } catch (err) {
+        return { ok: false, error: "trace_not_saved", detail: String(err?.message || err) };
+      }
+      saveCog();
+      return { ok: true, result: { export: { ...entry, trace: undefined }, exportId: entry.id } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  }, { note: "edit one of the caller's saved traces (title / question / note) in place" });
+
+  // ── answerExport (S-COG-1/D2: the log's answered state) ────────────
+  register("cognition", "answerExport", (ctx, input = {}) => {
+    try {
+      const params = input || {};
+      const s = getCogState();
+      const list = cogList(s.exports, cogActor(ctx));
+      const entry = list.find((e) => e.id === params.exportId)
+        || readTraceRows(ctx).find((e) => e.id === params.exportId);
+      if (!entry) return { ok: false, error: "export_not_found" };
+      if (!entry.trace || typeof entry.trace !== "object") entry.trace = { input: {} };
+      if (params.clear === true) {
+        entry.trace.answered = null;
+        entry.answered = null;
+      } else {
+        const note = String(params.answer || "").trim().slice(0, 2000);
+        if (!note) return { ok: false, error: "answer_required" };
+        entry.trace.answered = { note, at: new Date().toISOString() };
+        entry.answered = entry.trace.answered;
+      }
+      const idx = list.findIndex((e) => e.id === entry.id);
+      if (idx >= 0) list[idx] = entry; else list.unshift(entry);
+      try { writeTraceRow(ctx, entry); } catch (err) {
+        return { ok: false, error: "trace_not_saved", detail: String(err?.message || err) };
+      }
+      saveCog();
+      return { ok: true, result: { export: { ...entry, trace: undefined }, exportId: entry.id, answered: entry.answered || null } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  }, { note: "mark one of the caller's logged questions answered (with the answer they settled on), or clear the mark" });
+
+  // ── entityStoreSummary (S-COG-3/D3: the store this lens is named for) ──
+  register("cognition", "entityStoreSummary", (_ctx, _input = {}) => {
+    try {
+      const STATE = globalThis._concordSTATE;
+      const store = STATE?.emergents || STATE?.emergentAgents || null;
+      let registered = 0;
+      if (store instanceof Map) registered = store.size;
+      else if (Array.isArray(store)) registered = store.length;
+      else if (store && typeof store === "object") registered = Object.keys(store).length;
+      return {
+        ok: true,
+        result: {
+          registered,
+          origin: "system",
+          label: "Emergent entities — the platform's own registered population, spawned and run by the platform's emergent layer. System content, not user content; this count is registrations, not activity.",
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  }, { note: "the emergent entity store's registered count + origin label, for the cognition lens's window onto it" });
 
   // ── driftAlerts ───────────────────────────────────────────────────────
   // Surfaces the lattice drift-monitor's alert stream as a chronological,

@@ -66,6 +66,7 @@ export default function ReflectionLensPage() {
   const reflections: Reflection[] = useMemo(() => recent?.reflections || [], [recent]);
   const model = selfModel?.selfModel || status?.selfModel || {};
   const stats = status?.stats || {};
+  const everyNth = status?.config?.reflectOnEveryNth ?? 5;
 
   // Quality-band filter for the recent reflections list — a 50-deep
   // log is unreadable.  Letting the user narrow to the failing-quality
@@ -185,9 +186,11 @@ export default function ReflectionLensPage() {
               <Shield className="w-3.5 h-3.5 text-neon-blue mt-0.5 shrink-0" />
               <p>
                 This is the cognitive engine&apos;s own self-critique loop — not your personal journal. Every
-                {' '}{stats.reflectOnEveryNth ?? 5}th AI response is automatically evaluated for fact consistency,
-                relevance, grounding, completeness, and self-consistency, and the results below feed the engine&apos;s
-                self-model. It is a separate, real backend system from the Journal above; they only share the
+                {' '}{everyNth}th full-length AI response is evaluated for fact consistency,
+                relevance, grounding, completeness, and self-consistency, and each evaluation is logged below
+                as an inspectable record; the records feed the engine&apos;s self-model. The counter counts every
+                full-length response the loop sees, so the log gains one record per {everyNth} counted
+                responses. It is a separate, real backend system from the Journal above; they only share the
                 &quot;reflection&quot; name.
               </p>
             </div>
@@ -208,17 +211,17 @@ export default function ReflectionLensPage() {
               <div className="lens-card">
                 <TrendingUp className="w-5 h-5 text-orange-400 mb-2" />
                 <p className="text-2xl font-bold">{stats.reflectionsRun || 0}</p>
-                <p className="text-sm text-gray-400">Responses Evaluated</p>
+                <p className="text-sm text-gray-400">Responses counted by the loop</p>
               </div>
               <div className="lens-card">
                 <CheckCircle2 className="w-5 h-5 text-neon-green mb-2" />
-                <p className="text-2xl font-bold">{(avgQuality * 100).toFixed(0)}%</p>
-                <p className="text-sm text-gray-400">Avg Quality</p>
+                <p className="text-2xl font-bold">{reflections.length > 0 ? `${(avgQuality * 100).toFixed(0)}%` : '—'}</p>
+                <p className="text-sm text-gray-400">Avg Quality{reflections.length === 0 ? ' — no evaluations logged yet' : ' — from the logged evaluations'}</p>
               </div>
               <div className="lens-card">
                 <Shield className="w-5 h-5 text-neon-yellow mb-2" />
-                <p className="text-2xl font-bold">{((model.confidenceCalibration || 0) * 100).toFixed(0)}%</p>
-                <p className="text-sm text-gray-400">Confidence Calibration</p>
+                <p className="text-2xl font-bold">{(status?.reflections ?? reflections.length) > 10 ? `${((model.confidenceCalibration || 0) * 100).toFixed(0)}%` : '—'}</p>
+                <p className="text-sm text-gray-400">Confidence Calibration{(status?.reflections ?? reflections.length) > 10 ? ' — derived from recent evaluations' : ' — derives once 10+ evaluations are logged'}</p>
               </div>
             </div>
 
@@ -313,7 +316,7 @@ export default function ReflectionLensPage() {
                     })}
                   </div>
                 ) : (
-                  <p className="text-center py-8 text-gray-400 text-sm">No reflections yet — interact with the system to generate data</p>
+                  <p className="text-center py-8 text-gray-400 text-sm">No evaluations logged yet — a record lands at every {everyNth}th counted full-length response ({stats.reflectionsRun || 0} counted so far). Shorter responses are not counted.</p>
                 )}
               </div>
 

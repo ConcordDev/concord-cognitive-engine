@@ -18,6 +18,12 @@ interface Massing {
   zoneType: string;
   lotSizeSqFt: number;
   floorAreaRatio: number;
+  // The massing's DERIVED ratio (GFA / lot), computed server-side — the
+  // figure the scenario card prints (Review 5 F7: the card printed the
+  // zone's nominal floorAreaRatio while the GFA beside it implied a
+  // different, true ratio). Optional so an older server response still
+  // renders — the card falls back to computing it from GFA and lot.
+  derivedFar?: number | null;
   lotCoveragePct: number;
   footprintSqFt: number;
   floors: number;
@@ -96,13 +102,13 @@ function MassingBox({ m }: { m: Massing }) {
         <div className="text-emerald-300 font-semibold">{m.floors} floors · {m.buildingHeightFt} ft</div>
         <div>Envelope {m.envelope.widthFt}×{m.envelope.depthFt}×{m.envelope.heightFt} ft</div>
         <div>Footprint {m.footprintSqFt.toLocaleString()} sqft ({m.lotCoveragePct}% cov)</div>
-        <div>GFA {m.grossFloorAreaSqFt.toLocaleString()} · FAR {m.floorAreaRatio}</div>
+        <div>GFA {m.grossFloorAreaSqFt.toLocaleString()} · FAR {m.derivedFar ?? (m.lotSizeSqFt > 0 ? Math.round((m.grossFloorAreaSqFt / m.lotSizeSqFt) * 100) / 100 : '—')}</div>
       </div>
     </div>
   );
 }
 
-export function ScenarioStudio() {
+export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void } = {}) {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -164,10 +170,11 @@ export function ScenarioStudio() {
       setName('');
       setDescription('');
       await refresh();
+      onDataChanged?.();
     } else {
       setError(r.data.error || 'create failed');
     }
-  }, [name, description, zoneType, useMix, lotSizeSqFt, efficiency, refresh]);
+  }, [name, description, zoneType, useMix, lotSizeSqFt, efficiency, refresh, onDataChanged]);
 
   const remove = useCallback(
     async (id: string) => {
@@ -176,8 +183,9 @@ export function ScenarioStudio() {
       setBusy(false);
       setCompare(null);
       await refresh();
+      onDataChanged?.();
     },
-    [refresh],
+    [refresh, onDataChanged],
   );
 
   const runCompare = useCallback(async () => {

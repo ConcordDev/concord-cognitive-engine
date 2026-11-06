@@ -86,6 +86,7 @@ export default function GalleryPage() {
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [confirmTakeDownId, setConfirmTakeDownId] = useState<string | null>(null);
 
   const pull = useCallback(async () => {
     const list = await lensRun<{ collections?: CollectionMeta[] }>('gallery', 'collection-list', {});
@@ -167,6 +168,7 @@ export default function GalleryPage() {
 
   const startEdit = useCallback((work: Work) => {
     setActionError('');
+    setConfirmTakeDownId(null);
     setEditingId(work.id);
     setEditTitle(work.title);
   }, []);
@@ -214,6 +216,7 @@ export default function GalleryPage() {
       }
       const rows = await readCollection(collectionId);
       setWorks(rows);
+      setConfirmTakeDownId(null);
       if (editingId === workId) { setEditingId(null); setEditTitle(''); }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not take that work down.');
@@ -310,9 +313,20 @@ export default function GalleryPage() {
                         <button type="button" onClick={() => startEdit(work)} className="text-[12px] text-zinc-400 underline">
                           Rename
                         </button>
-                        <button type="button" onClick={() => { void takeDown(work.id); }} disabled={busy} className="text-[12px] text-zinc-500 underline disabled:opacity-50">
-                          Take down
-                        </button>
+                        {confirmTakeDownId === work.id ? (
+                          <>
+                            <button type="button" onClick={() => { void takeDown(work.id); }} disabled={busy} className="text-[12px] font-medium text-rose-400 underline disabled:opacity-50">
+                              Confirm take down
+                            </button>
+                            <button type="button" onClick={() => setConfirmTakeDownId(null)} className="text-[12px] text-zinc-500 underline">
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button type="button" onClick={() => setConfirmTakeDownId(work.id)} disabled={busy} className="text-[12px] text-zinc-500 underline disabled:opacity-50">
+                            Take down
+                          </button>
+                        )}
                       </div>
                     </>
                   )}

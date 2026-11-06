@@ -7,7 +7,9 @@
 
 import { useMemo, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Lock, Eye, Check, X, AlertTriangle, Loader2 } from 'lucide-react';
+import { Shield, Lock, Eye, Check, X, AlertTriangle, Loader2, Gauge, Trash2 } from 'lucide-react';
+import { useEffect } from 'react';
+import { lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -18,9 +20,22 @@ export function RulesPanel() {
   const [search, setSearch] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const { items: invariantItems, isLoading, isError, error, refetch } = useLensData<Invariant>('invariant', 'invariant', {
+  const { items: invariantItems, isLoading, isError, error, refetch, remove } = useLensData<Invariant>('invariant', 'invariant', {
     seed: [],
   });
+
+  // S-INV-1 (F3): the monitors — this lens's working objects — appear in
+  // Rules BY NAME, read from the monitor store. They were invisible here
+  // before; only authored sets showed.
+  const [monitors, setMonitors] = useState<{ id: string; name: string; expression: string; severity: string; active: boolean; lastResult: string | null }[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    lensRun<{ monitors?: typeof monitors }>('invariant', 'listMonitors', {})
+      .then((r) => { if (!cancelled) setMonitors(r.data?.result?.monitors ?? []); })
+      .catch(() => { /* the section simply does not render */ });
+    return () => { cancelled = true; };
+  }, []);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const invariants: Invariant[] = invariantItems.map((item) => {
     const d = item.data as unknown as Invariant;
@@ -76,6 +91,27 @@ export function RulesPanel() {
 
   return (
     <div className="space-y-4">
+      {monitors.length > 0 && (
+        <div className="panel p-4">
+          <h2 className="font-semibold mb-3 flex items-center gap-2">
+            <Gauge className="w-4 h-4 text-neon-cyan" />
+            Monitors
+            <span className="text-xs text-gray-400 font-normal">({monitors.length}) — registered in the Workbench, evaluated on every check</span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {monitors.map((m) => (
+              <div key={m.id} className="lens-card">
+                <p className="font-mono text-sm font-bold">{m.name}</p>
+                <p className="text-xs text-gray-400 mt-1 font-mono">{m.expression}</p>
+                <p className="text-[11px] mt-2 text-gray-500">
+                  {m.active ? 'active' : 'paused'} · severity {m.severity}
+                  {m.lastResult ? ` · last check: ${m.lastResult}` : ' · not checked yet'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="panel p-3 flex items-center gap-2 flex-wrap">
         <input
           ref={searchInputRef}
@@ -156,6 +192,20 @@ export function RulesPanel() {
                       {inv.frozen && <Lock className="w-3 h-3 text-gray-400" />}
                     </div>
                     <p className="text-sm text-gray-400 mt-1">{inv.description}</p>
+                    {/* S-INV-2 (F3): every authored set — including any an
+                        earlier Analysis visit auto-created — is deletable. */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirmDeleteId !== inv.id) { setConfirmDeleteId(inv.id); return; }
+                        setConfirmDeleteId(null);
+                        void remove(inv.id).then(() => refetch());
+                      }}
+                      className={`mt-2 inline-flex items-center gap-1 text-[11px] underline ${confirmDeleteId === inv.id ? 'text-rose-300' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      {confirmDeleteId === inv.id ? `Delete \u201c${inv.name}\u201d? Click again` : 'Delete'}
+                    </button>
                   </div>
                 </motion.div>
               ))}

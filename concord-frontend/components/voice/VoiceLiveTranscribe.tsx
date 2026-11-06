@@ -5,7 +5,7 @@
  * Uses the browser SpeechRecognition API to stream interim + final words,
  * pushes each chunk to voice.live-append, and finalizes into a recording.
  * Wires voice.live-start, voice.live-append, voice.live-detail,
- * voice.live-list, voice.live-finalize.
+ * voice.live-list, voice.live-finalize, voice.live-end.
  *
  * Alongside SpeechRecognition (which manages its own internal audio path
  * with no raw-signal access), this opens a SEPARATE, parallel mic tap via
@@ -26,7 +26,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Radio, Square, Loader2, FileCheck2, Languages } from 'lucide-react';
+import { Radio, Square, Loader2, FileCheck2, Flag, Languages } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { accumulateFrame, emptyAccumulator, finalizeVector, type FrameAccumulator } from '@/lib/voice/audio-features';
@@ -226,6 +226,26 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
     }
   }, [stop, refreshSessions, onFinalized]);
 
+  // F6/D5: End is distinct from Save — it closes the session in place
+  // (words preserved, no recording minted), including sessions Save
+  // refuses (no final words), so a session can always stop being "live".
+  const endSession = useCallback(async () => {
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    stop();
+    setBusy(true);
+    const r = await lensRun('voice', 'live-end', { sessionId: sid });
+    setBusy(false);
+    if (r.data?.ok) {
+      setSession(null);
+      sessionIdRef.current = null;
+      setTitle('');
+      await refreshSessions();
+    } else {
+      setError(r.data?.error || 'End failed');
+    }
+  }, [stop, refreshSessions]);
+
   if (!supported) {
     return (
       <div className="bg-zinc-900/40 border border-dashed border-zinc-800 rounded-lg p-4 text-xs text-zinc-400">
@@ -270,6 +290,12 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
             <FileCheck2 className="w-3 h-3" />Save recording
           </button>
         )}
+        {session && (
+          <button onClick={endSession} disabled={busy}
+            className="px-3 py-1.5 text-xs font-semibold rounded bg-zinc-700 hover:bg-zinc-600 text-white inline-flex items-center gap-1 disabled:opacity-40">
+            <Flag className="w-3 h-3" />End session
+          </button>
+        )}
       </div>
 
       {error && <p className="text-xs text-rose-400">{error}</p>}
@@ -306,8 +332,8 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
               <li key={s.id} className="flex items-center gap-2 bg-zinc-900/40 rounded px-2 py-1 text-xs">
                 <span className="flex-1 truncate text-zinc-300">{s.title}</span>
                 <span className="text-zinc-400">{s.wordCount} words</span>
-                <span className={cn('px-1.5 rounded text-[10px]', s.status === 'finalized' ? 'bg-emerald-900/40 text-emerald-300' : 'bg-rose-900/40 text-rose-300')}>
-                  {s.status}
+                <span className={cn('px-1.5 rounded text-[10px]', s.status === 'finalized' ? 'bg-emerald-900/40 text-emerald-300' : s.status === 'ended' ? 'bg-zinc-800 text-zinc-400' : 'bg-rose-900/40 text-rose-300')}>
+                  {s.status === 'finalized' ? 'saved' : s.status}
                 </span>
               </li>
             ))}

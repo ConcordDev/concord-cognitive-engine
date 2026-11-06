@@ -3,7 +3,6 @@
 import { useState, type ComponentProps, type ReactNode } from 'react';
 import { Wheat } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -11,7 +10,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import LiveFeed from '@/components/lens/LiveFeed';
 import WeatherHero, { type WeatherPayload } from '@/components/lens/WeatherHero';
-import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
+import { AgricultureFeedPanel } from '@/components/agriculture/AgricultureFeedPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -151,8 +150,7 @@ function AgricultureFarmDesk() {
 
           <ActionResultPanel />
 
-          <LensFeedPanel lensId="agriculture" />
-          <LensFeedButton domain="agriculture" label="Crop-yield feed — World Bank data" />
+          <AgricultureFeedPanel />
         </div>
       </NorthStarFrame>
 

@@ -47,6 +47,7 @@ export function OfflineAreas() {
   const [minZoom, setMinZoom] = useState('10');
   const [maxZoom, setMaxZoom] = useState('15');
   const [loading, setLoading] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -131,7 +132,10 @@ export function OfflineAreas() {
     setBusyId(null);
   }
 
+  // S2 (F2): two-step delete — first click arms, second click fires.
   async function remove(id: string) {
+    if (confirmId !== id) { setConfirmId(id); return; }
+    setConfirmId(null);
     setBusyId(id);
     try {
       await lensRun('atlas', 'offline-areas-delete', { id });
@@ -230,14 +234,35 @@ export function OfflineAreas() {
                     Download tiles
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => remove(area.id)}
-                  disabled={busy}
-                  className="inline-flex items-center gap-1.5 rounded bg-rose-500/15 px-2.5 py-1 text-[10px] text-rose-300 hover:bg-rose-500/25 disabled:opacity-50"
-                >
-                  <Trash2 className="h-3 w-3" /> Delete
-                </button>
+                {confirmId === area.id ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="text-[10px] text-rose-300">Delete?</span>
+                    <button
+                      type="button"
+                      data-testid="offline-delete-confirm"
+                      onClick={() => remove(area.id)}
+                      className="inline-flex items-center gap-1.5 rounded bg-rose-500/25 px-2.5 py-1 text-[10px] text-rose-200 hover:bg-rose-500/35"
+                    >
+                      <Trash2 className="h-3 w-3" /> Delete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmId(null)}
+                      className="rounded border border-white/10 px-2.5 py-1 text-[10px] text-gray-300"
+                    >
+                      Keep
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => remove(area.id)}
+                    disabled={busy}
+                    className="inline-flex items-center gap-1.5 rounded bg-rose-500/15 px-2.5 py-1 text-[10px] text-rose-300 hover:bg-rose-500/25 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3 w-3" /> Delete
+                  </button>
+                )}
               </div>
             </div>
           );

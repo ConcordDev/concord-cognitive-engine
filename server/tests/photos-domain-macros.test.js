@@ -115,7 +115,7 @@ describe("photos — get (single photo, privacy-gated)", () => {
     // u2 can't see u1's private photo
     assert.equal(call("get", ctxFor("u2"), { id: saved.id }).reason, "not_found");
     // u1 shares it → public
-    assert.equal(call("share", ctxFor("u1"), { photoId: saved.id }).ok, true);
+    assert.equal((await call("share", ctxFor("u1"), { photoId: saved.id })).ok, true);
     const seen = call("get", ctxFor("u2"), { id: saved.id });
     assert.equal(seen.ok, true);
     assert.equal(seen.photo.visibility, "public");
@@ -128,7 +128,7 @@ describe("photos — share (mints a public photo DTU)", () => {
     // before: not in the public world feed
     assert.equal(call("world", ctxFor("u1"), { worldId: "tunya" }).count, 0);
 
-    const s = call("share", ctxFor("u1"), { photoId: saved.id });
+    const s = await call("share", ctxFor("u1"), { photoId: saved.id });
     assert.equal(s.ok, true);
     assert.ok(s.dtuId.startsWith("dtu_photo_"), "share returns a minted dtuId");
 
@@ -151,9 +151,9 @@ describe("photos — share (mints a public photo DTU)", () => {
 
   it("share is owner-only + rejects missing/unknown photo", async () => {
     const saved = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
-    assert.equal(call("share", ctxFor("u1"), {}).reason, "missing_photoId");
-    assert.equal(call("share", ctxFor("u1"), { photoId: "nope" }).reason, "no_photo");
-    assert.equal(call("share", ctxFor("u2"), { photoId: saved.id }).reason, "not_owner");
+    assert.equal((await call("share", ctxFor("u1"), {})).reason, "missing_photoId");
+    assert.equal((await call("share", ctxFor("u1"), { photoId: "nope" })).reason, "no_photo");
+    assert.equal((await call("share", ctxFor("u2"), { photoId: saved.id })).reason, "not_owner");
     // still private after a rejected share
     assert.equal(call("world", ctxFor("u1"), { worldId: "tunya" }).count, 0);
   });
@@ -161,7 +161,7 @@ describe("photos — share (mints a public photo DTU)", () => {
   it("fails honestly (dtu_store_unavailable) rather than silently no-op when no DTU substrate reaches the macro", async () => {
     const saved = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
     assert.equal(globalThis.STATE, undefined, "precondition: no global STATE leaked in from another suite");
-    const r = call("share", { db, actor: { userId: "u1" } }, { photoId: saved.id });
+    const r = await call("share", { db, actor: { userId: "u1" } }, { photoId: saved.id });
     assert.equal(r.ok, false);
     assert.equal(r.error, "dtu_store_unavailable");
     assert.equal(call("world", ctxFor("u1"), { worldId: "tunya" }).count, 0);
@@ -171,9 +171,9 @@ describe("photos — share (mints a public photo DTU)", () => {
 describe("photos — world feed", () => {
   it("scopes the public feed to the named world; rejects missing worldId", async () => {
     const a = await savePhoto(db, "u1", { worldId: "tunya", dataUrl: TINY_PNG });
-    call("share", ctxFor("u1"), { photoId: a.id });
+    await call("share", ctxFor("u1"), { photoId: a.id });
     const b = await savePhoto(db, "u1", { worldId: "cyber", dataUrl: TINY_PNG });
-    call("share", ctxFor("u1"), { photoId: b.id });
+    await call("share", ctxFor("u1"), { photoId: b.id });
 
     assert.equal(call("world", ctxFor("u1"), { worldId: "tunya" }).count, 1);
     assert.equal(call("world", ctxFor("u1"), { worldId: "cyber" }).count, 1);

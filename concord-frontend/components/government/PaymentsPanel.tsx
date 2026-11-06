@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { CreditCard, Loader2, Receipt, RotateCcw, Gavel, FileText, Plus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
+import { LocalRecordNotice } from './LocalRecordNotice';
 
 interface Permit { id: string; recordNumber: string; feeUsd: number; paid: boolean; kind: string }
 interface Fine { id: string; payerName: string; reason: string; amountUsd: number; paid: boolean; caseNumber: string; issuedAt: string }
@@ -149,6 +150,11 @@ export function PaymentsPanel() {
       {/* Issue a fine */}
       <div className="p-3 border-b border-white/10">
         <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><Gavel className="w-3 h-3" />Issue a fine / citation</div>
+        <div className="mb-2">
+          <LocalRecordNotice>
+            Local record only — a fine recorded here is a workspace record, not a citation issued by any court or agency, and it is not sent to the named payer or any authority.
+          </LocalRecordNotice>
+        </div>
         <div className="grid grid-cols-6 gap-2">
           <input value={fineForm.payerName} onChange={e => setFineForm({ ...fineForm, payerName: e.target.value })} placeholder="Payer name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={fineForm.reason} onChange={e => setFineForm({ ...fineForm, reason: e.target.value })} placeholder="Reason" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />

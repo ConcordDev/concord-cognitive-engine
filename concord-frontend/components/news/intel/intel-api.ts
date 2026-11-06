@@ -105,15 +105,30 @@ export function fetchHeadlines(category: NewsCategory, limit = 30, cursor?: numb
   );
 }
 
+export interface BriefingSectionData {
+  heading: string;
+  bullets: string[];
+  status?: string;
+  stale?: boolean;
+  unavailableReason?: string;
+  degradedReason?: string;
+}
+
 export interface DailyBriefing {
   greeting: string;
   date: string;
-  topStories: { heading: string; bullets: string[] };
-  business: { heading: string; bullets: string[] };
-  tech: { heading: string; bullets: string[] };
-  science: { heading: string; bullets: string[] };
+  topStories: BriefingSectionData;
+  business: BriefingSectionData;
+  tech: BriefingSectionData;
+  science: BriefingSectionData;
   closing: string;
   source: string;
+  /** Freshness state the server computes (older responses lack these). */
+  status?: 'fresh' | 'stale' | 'unavailable';
+  stale?: boolean;
+  degraded?: boolean;
+  degradedReason?: string;
+  fetchedAt?: string | null;
 }
 
 export function fetchDailyBriefing() {
@@ -188,4 +203,32 @@ export function runNarrativeTracking(articles: AnalysisArticle[]) {
 /** Map a live headline into the analysis-article shape the engines read. */
 export function headlineToAnalysisArticle(h: Headline): AnalysisArticle {
   return { title: h.title, body: h.title, source: h.source, date: h.publishedAt ?? undefined };
+}
+
+// ── Analysis set persistence (F6/D6) ───────────────────────────────────
+// The set holds the headline OBJECTS the user picked, not just ids: the
+// GDELT pool rotates, and a stored id may no longer be in the current
+// feed window after a reload. The workbench analyzes what the user
+// actually selected.
+const ANALYSIS_SET_KEY = 'concord:news:analysis-set:v1';
+
+export function loadAnalysisSet(): Headline[] {
+  try {
+    const raw = localStorage.getItem(ANALYSIS_SET_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (h): h is Headline =>
+        !!h && typeof h === 'object'
+        && typeof (h as Headline).id === 'string'
+        && typeof (h as Headline).title === 'string',
+    );
+  } catch { return []; }
+}
+
+export function saveAnalysisSet(items: Headline[]): void {
+  try {
+    localStorage.setItem(ANALYSIS_SET_KEY, JSON.stringify(items.slice(0, 60)));
+  } catch { /* storage blocked/full — the set still works in-session */ }
 }

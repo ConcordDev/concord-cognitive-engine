@@ -13,6 +13,7 @@ import {
   ChevronUp, ChevronDown,
 } from 'lucide-react';
 import { api, apiHelpers } from '@/lib/api/client';
+import { useAmbientAudio } from './useAmbientAudio';
 import { cn } from '@/lib/utils';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -28,12 +29,24 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
   return data as MacroEnvelope<T>;
 }
 
-interface Track { trackId: string; title: string; narrator: string; durationMinutes: number; goal: string; vibe: string }
+interface Track { trackId: string; title: string; narrator?: string; durationMinutes: number; goal: string; vibe: string }
+
+/** A course day routed into the player by the page (CoursesPanel's
+ *  Practise action): the day's own library session, run for real. */
+export interface PractisePreset {
+  sessionId: string;
+  title: string;
+  category: string;
+  minutes: number;
+  courseId: string;
+  day: number;
+}
 interface StreakResult { currentStreak: number; longestStreak: number; totalSessions: number; totalMinutes: number; lastSessionAt?: string | null }
 interface PromptResult { date: string; prompt: string }
 interface HistoryEntry {
   id: string; sessionId: string; title: string; category: string;
-  durationMin: number; moodAfter: number | null; completedAt: string;
+  durationMin: number; durationSec?: number | null; moodAfter: number | null; completedAt: string;
+  journal?: string; dtuId?: string | null;
 }
 
 type Goal = 'focus' | 'sleep' | 'anxiety' | 'gratitude' | 'breath';
@@ -55,7 +68,11 @@ function pickMessage(e: unknown): string {
 }
 
 
-export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number }) {
+export function SessionPlayerPanel({ practiceTick = 0, preset = null, onPresetExit }: {
+  practiceTick?: number;
+  preset?: PractisePreset | null;
+  onPresetExit?: () => void;
+}) {
   const [goal, setGoal] = useState<Goal>('focus');
   const [minutes, setMinutes] = useState(10);
   const [track, setTrack] = useState<Track | null>(null);
@@ -83,6 +100,15 @@ export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [openEntryId, setOpenEntryId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // Log idempotence (F11): one performed session logs once — the
+  // button disables after logging, and the logKey makes a retried
+  // call return the standing entry server-side instead of a copy.
+  const [logged, setLogged] = useState(false);
+  const [loggedEntryId, setLoggedEntryId] = useState<string | null>(null);
+  const [logKey, setLogKey] = useState<string | null>(null);
+  const [audioOff, setAudioOff] = useState(false);
 
   const tickRef = useRef<number | null>(null);
 
@@ -98,6 +124,33 @@ export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number
   }, []);
 
   useEffect(() => { pickTrack(goal, minutes); }, [goal, minutes, pickTrack]);
+
+  // The tone bed under the sit (S-MED-2): sound follows play/pause;
+  // the label on the player says what it is — synthesized locally.
+  const ambient = useAmbientAudio(goal === 'breath' ? 'breathwork' : 'guided');
+  const ambientStart = ambient.start;
+  const ambientStop = ambient.stop;
+  useEffect(() => {
+    if (playing && !audioOff) ambientStart();
+    else ambientStop();
+  }, [playing, audioOff, ambientStart, ambientStop]);
+  useEffect(() => { if (completed) ambientStop(); }, [completed, ambientStop]);
+
+  // A course day routed here: load the day's own session as the track.
+  useEffect(() => {
+    if (!preset) return;
+    setTrack({
+      trackId: preset.sessionId,
+      title: preset.title,
+      durationMinutes: preset.minutes,
+      goal,
+      vibe: 'course session',
+    });
+    setMinutes(preset.minutes);
+    setPlaying(false); setElapsedSec(0); setCompleted(false);
+    setLogged(false); setLoggedEntryId(null); setLogKey(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset]);
 
   // Load daily prompt + streak on mount
   useEffect(() => {
@@ -183,6 +236,7 @@ export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number
   function resetTimer() {
     setPlaying(false); setElapsedSec(0); setCompleted(false); setRating(0); setJournalEntry('');
     setMintedDtuId(null); setPublishedDtuId(null); setAgentReply(null);
+    setLogged(false); setLoggedEntryId(null); setLogKey(null);
   }
 
   const goalCfg = GOALS.find(g => g.id === goal)!;
@@ -192,23 +246,46 @@ export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number
   async function actLog() {
     if (!completed) { err('Finish a session first.'); return; }
     if (!track) { err('No track loaded.'); return; }
+    if (logged) { err('This session is already logged.'); return; }
     setBusy('log'); setFeedback(null);
     try {
-      const r = await callMacro<{ entry: unknown; total: number }>('sessionLog', {
+      const key = logKey ?? `sit-${Date.now()}`;
+      if (!logKey) setLogKey(key);
+      const r = await callMacro<{ entry: { id: string }; total: number }>('sessionLog', {
         trackId: track.trackId,
         title: track.title,
-        category: goal === 'breath' ? 'breathwork' : 'guided',
+        category: preset ? preset.category : (goal === 'breath' ? 'breathwork' : 'guided'),
         // The session's goal rides the log call so the practice
         // ledger — and the Activity feed's row for this log — can
         // name the session by its goal and length, not its track.
         goal,
         minutes,
+        // The timer ran the full length: performed, measured here.
+        performedSeconds: minutes * 60,
         completedAt: new Date().toISOString(),
         rating: rating || undefined,
+        // The journal rides the log into the ledger (S-MED-4) — it
+        // used to reach only the Mint DTU's meta and vanish from the
+        // record the history reads.
+        journal: journalEntry.trim() || undefined,
+        dtuId: mintedDtuId || undefined,
+        logKey: key,
       });
       if (r.ok && r.result) {
+        setLogged(true);
+        setLoggedEntryId(r.result.entry.id);
         ok(`Logged session ${r.result.total}.`);
         notifyPractice();
+        if (historyOpen) loadHistory();
+        // A course day completes only now — against this performed
+        // entry (the server refuses a completion with no sit behind it).
+        if (preset) {
+          const c = await callMacro<{ completedCount: number }>('completeCourseDay', {
+            courseId: preset.courseId, day: preset.day, sessionEntryId: r.result.entry.id,
+          });
+          if (c.ok) { ok(`Course day ${preset.day} complete — the session you just sat.`); onPresetExit?.(); }
+          else err(c.error ?? 'course completion failed');
+        }
       } else err(r.error ?? 'log failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -242,10 +319,30 @@ export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Session DTU ${id.slice(0, 8)}…`); }
+      if (id) {
+        setMintedDtuId(id);
+        ok(`Session DTU ${id.slice(0, 8)}…`);
+        // Keep the link on the ledger entry so the history row still
+        // shows it after a reload (S-MED-4).
+        if (loggedEntryId) {
+          await callMacro('sessionSetDtu', { entryId: loggedEntryId, dtuId: id });
+          if (historyOpen) loadHistory();
+        }
+      }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
+  }
+
+  async function deleteEntry(entryId: string) {
+    const r = await callMacro<{ total: number }>('sessionDelete', { entryId });
+    if (r.ok) {
+      setConfirmDeleteId(null);
+      setOpenEntryId(null);
+      loadHistory();
+      notifyPractice();
+      ok('Session removed from your practice record.');
+    } else err(r.error ?? 'delete failed');
   }
 
   async function actDm() {
@@ -353,6 +450,19 @@ export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number
             </div>
           )}
 
+          {preset && (
+            <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex items-center gap-3">
+              <BookOpen className="w-4 h-4 text-amber-300 flex-shrink-0" />
+              <p className="text-xs text-amber-100 flex-1">
+                Course day {preset.day}: <strong>{preset.title}</strong> ({preset.minutes}m). Sit it through, then Log — the day completes from the session you actually sat.
+              </p>
+              <button type="button" onClick={() => onPresetExit?.()}
+                className="text-[11px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex-shrink-0">
+                Back to course
+              </button>
+            </div>
+          )}
+
           {/* Goal picker */}
           <div className="mb-4 grid grid-cols-5 gap-2">
             {GOALS.map(g => (
@@ -392,7 +502,16 @@ export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number
               <div className="text-center mb-4">
                 <div className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">{goalCfg.label} · {goalCfg.vibe}</div>
                 <h2 className="text-xl font-semibold text-zinc-100">{track.title}</h2>
-                <div className="text-xs text-zinc-400">narrated by {track.narrator}</div>
+                {/* No narration exists in this lens, so no credit is
+                    claimed (S-MED-2). What plays is the tone bed,
+                    labelled as what it is. */}
+                <div className="text-xs text-zinc-400">
+                  {track.narrator ? `narrated by ${track.narrator}` : 'A timed silent sit · ambient tone bed, synthesized locally'}
+                </div>
+                <button type="button" onClick={() => setAudioOff((o) => !o)}
+                  className="mt-1.5 text-[11px] px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">
+                  {audioOff ? 'Tone bed: off' : 'Tone bed: on'}
+                </button>
               </div>
 
               <div className="relative w-48 h-48 mx-auto mb-4">
@@ -411,7 +530,7 @@ export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number
                   <div className="text-3xl font-light text-zinc-100">
                     {Math.floor(elapsedSec / 60).toString().padStart(2, '0')}:{(elapsedSec % 60).toString().padStart(2, '0')}
                   </div>
-                  <div className="text-xs text-zinc-400">{completed ? '✓ complete' : playing ? `${remainingMin}m left` : 'ready'}</div>
+                  <div className="text-xs text-zinc-400">{completed ? '✓ complete' : playing ? `${remainingMin}m left` : elapsedSec > 0 ? 'paused' : 'ready'}</div>
                 </div>
               </div>
 
@@ -438,6 +557,9 @@ export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number
                   <RotateCcw className="w-4 h-4" />
                 </button>
               </div>
+              <p className="text-center text-[11px] text-zinc-500 mt-3">
+                A running session survives switching views. A page reload restarts it.
+              </p>
             </div>
           )}
 
@@ -485,7 +607,7 @@ export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number
 
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                 {[
-                  { id: 'log' as ActionId,     label: 'Log',       icon: Clock,    accent: '#06b6d4', desc: 'Append to your sessions',           handler: actLog,     disabled: false },
+                  { id: 'log' as ActionId,     label: logged ? 'Logged' : 'Log',       icon: Clock,    accent: '#06b6d4', desc: logged ? 'This session is in your record' : 'Append to your sessions',           handler: actLog,     disabled: logged },
                   { id: 'mint' as ActionId,    label: mintedDtuId ? 'Saved' : 'Mint',     icon: Sparkles, accent: '#8b5cf6', desc: mintedDtuId ? `DTU ${mintedDtuId.slice(0, 8)}…` : 'Private session DTU + journal', handler: actMint, disabled: !!mintedDtuId },
                   { id: 'dm' as ActionId,      label: 'Share streak', icon: Send,    accent: '#ec4899', desc: 'DM streak to a buddy',              handler: actDm,      disabled: !streak },
                   { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish milestone', icon: Globe, accent: '#22c55e', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public milestone DTU', handler: actPublish, disabled: !!publishedDtuId },
@@ -601,17 +723,50 @@ export function SessionPlayerPanel({ practiceTick = 0 }: { practiceTick?: number
                       <p className="text-xs text-zinc-500 text-center py-3">No sessions logged yet.</p>
                     ) : (
                       history.map((h) => (
-                        <div key={h.id} className="flex items-center gap-2.5 rounded bg-zinc-950/50 px-2.5 py-1.5">
-                          <Clock className="w-3 h-3 text-zinc-500 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[12px] text-zinc-200 truncate">{h.title}</p>
-                            <p className="text-[10px] text-zinc-500">
-                              {new Date(h.completedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                              {' · '}{h.category}
-                            </p>
+                        <div key={h.id} className="rounded bg-zinc-950/50 px-2.5 py-1.5">
+                          <div className="flex items-center gap-2.5">
+                            <Clock className="w-3 h-3 text-zinc-500 flex-shrink-0" />
+                            <button type="button" onClick={() => setOpenEntryId(openEntryId === h.id ? null : h.id)}
+                              className="flex-1 min-w-0 text-left">
+                              <p className="text-[12px] text-zinc-200 truncate">{h.title}</p>
+                              <p className="text-[10px] text-zinc-500">
+                                {new Date(h.completedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                {' · '}{h.category}
+                              </p>
+                            </button>
+                            <span className="text-[11px] text-zinc-400 flex-shrink-0">
+                              {h.durationSec != null && h.durationSec < 60 ? `${h.durationSec}s` : `${h.durationMin}m`}
+                            </span>
+                            {confirmDeleteId === h.id ? (
+                              <>
+                                <button type="button" onClick={() => deleteEntry(h.id)}
+                                  className="text-[10px] px-1.5 py-0.5 rounded bg-rose-600 text-white flex-shrink-0">Remove?</button>
+                                <button type="button" onClick={() => setConfirmDeleteId(null)}
+                                  className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 flex-shrink-0">Keep</button>
+                              </>
+                            ) : (
+                              <button type="button" onClick={() => setConfirmDeleteId(h.id)} aria-label="Remove session"
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/60 text-zinc-400 hover:text-rose-300 flex-shrink-0">✕</button>
+                            )}
                           </div>
-                          <span className="text-[11px] text-zinc-400 flex-shrink-0">{h.durationMin}m</span>
-                          {h.moodAfter != null && <span className="text-[11px] flex-shrink-0">{['😣','😕','😐','🙂','😌'][h.moodAfter - 1]}</span>}
+                          {openEntryId === h.id && (
+                            <div className="mt-1.5 pl-5 space-y-1">
+                              {/* moodAfter is the post-session RATING the
+                                  completion flow collects — rendered as
+                                  a rating, not as a mood face (S-MED-4). */}
+                              {h.moodAfter != null && (
+                                <p className="text-[11px] text-zinc-400">
+                                  Your rating: <span className="text-amber-300">{'★'.repeat(h.moodAfter)}{'☆'.repeat(5 - h.moodAfter)}</span>
+                                </p>
+                              )}
+                              {h.journal ? (
+                                <p className="text-[11px] text-zinc-300 italic leading-relaxed">“{h.journal}”</p>
+                              ) : (
+                                <p className="text-[11px] text-zinc-500">No journal note on this one.</p>
+                              )}
+                              {h.dtuId && <p className="text-[10px] text-zinc-500">Session DTU {h.dtuId.slice(0, 8)}…</p>}
+                            </div>
+                          )}
                         </div>
                       ))
                     )}

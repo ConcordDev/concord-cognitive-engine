@@ -1,112 +1,93 @@
 'use client';
 
 /**
- * OverviewPanel — enforcement meters + live verification activity
- * (listMonitors / violationHistory). Extracted from invariant/page.tsx.
+ * OverviewPanel — S-INV-1: every figure on this panel derives from the
+ * MONITOR store (listMonitors + violationHistory) at read time. The
+ * previous version computed its headlines over the authored ethos sets,
+ * so deleting a monitor left the dashboard reporting it as enforced and
+ * passing — figures describing a system that no longer exists.
  */
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, CheckCircle2, AlertTriangle, BarChart3, Gauge, Layers, Lock, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import type { Invariant } from './invariant-types';
+
+interface MonitorSummary { total: number; active: number; violating: number }
+interface ViolationSummary { total: number; open: number; resolved: number; critical: number; high: number; medium: number; low: number }
 
 export function OverviewPanel() {
-  const { items: invariantItems } = useLensData<Invariant>('invariant', 'invariant', { seed: [] });
-  const invariants: Invariant[] = invariantItems.map((item) => {
-    const d = item.data as unknown as Invariant;
-    return {
-      id: item.id,
-      name: d.name ?? item.title,
-      description: d.description ?? '',
-      status: d.status ?? 'enforced',
-      category: d.category ?? 'ethos',
-      frozen: d.frozen ?? true,
-    };
-  });
-  const enforcedCount = invariants.filter((i) => i.status === 'enforced').length;
+  const [mon, setMon] = useState<MonitorSummary | null>(null);
+  const [vio, setVio] = useState<ViolationSummary | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const [wbSummary, setWbSummary] = useState<{ monitorsActive: number; monitorsTotal: number; violationsOpen: number; violationsCritHigh: number } | null>(null);
-  const [wbSummaryLoading, setWbSummaryLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const [monRes, vioRes] = await Promise.all([
-          lensRun<{ summary?: { total: number; active: number; violating: number } }>('invariant', 'listMonitors', {}),
-          lensRun<{ summary?: { open: number; critical: number; high: number } }>('invariant', 'violationHistory', { resolved: false }),
+          lensRun<{ summary?: MonitorSummary }>('invariant', 'listMonitors', {}),
+          lensRun<{ summary?: ViolationSummary }>('invariant', 'violationHistory', {}),
         ]);
         if (cancelled) return;
-        const mon = monRes.data?.result?.summary;
-        const vio = vioRes.data?.result?.summary;
-        if (mon || vio) {
-          setWbSummary({
-            monitorsActive: mon?.active ?? 0,
-            monitorsTotal: mon?.total ?? 0,
-            violationsOpen: vio?.open ?? 0,
-            violationsCritHigh: (vio?.critical ?? 0) + (vio?.high ?? 0),
-          });
-        }
+        setMon(monRes.data?.result?.summary ?? null);
+        setVio(vioRes.data?.result?.summary ?? null);
       } catch (e) {
-        console.error('[Invariant] Failed to load verification activity summary:', e);
+        console.error('[Invariant] Failed to load overview:', e);
       } finally {
-        if (!cancelled) setWbSummaryLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
   }, []);
+
+  const total = mon?.total ?? 0;
+  const active = mon?.active ?? 0;
+  const violating = mon?.violating ?? 0;
+  const open = vio?.open ?? 0;
+  const activePct = total > 0 ? Math.round((active / total) * 100) : 0;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end">
         <div className="sovereignty-lock lock-70 px-4 py-2 rounded-lg">
           <span className="text-lg font-bold text-sovereignty-locked">
-            {enforcedCount}/{invariants.length}
+            {active}/{total}
           </span>
-          <span className="text-sm ml-2 text-gray-400">Enforced</span>
+          <span className="text-sm ml-2 text-gray-400">Monitors active</span>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 * 0.05 }} className="panel p-3 flex items-center gap-3">
-          <Shield className="w-5 h-5 text-neon-green" />
-          <div>
-            <p className="text-lg font-bold">{invariants.length}</p>
-            <p className="text-xs text-gray-400">Rules Total</p>
-          </div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
-          <CheckCircle2 className="w-5 h-5 text-neon-cyan" />
-          <div>
-            <p className="text-lg font-bold">{enforcedCount}</p>
-            <p className="text-xs text-gray-400">Passing</p>
-          </div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 text-yellow-500" />
-          <div>
-            <p className="text-lg font-bold">{invariants.filter(i => i.status === 'violated').length}</p>
-            <p className="text-xs text-gray-400">Violations</p>
-          </div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
-          <BarChart3 className="w-5 h-5 text-neon-purple" />
-          <div>
-            <p className="text-lg font-bold">{invariants.length > 0 ? `${((invariants.filter(i => i.status === 'violated').length / invariants.length) * 100).toFixed(1)}%` : '0%'}</p>
-            <p className="text-xs text-gray-400">Violation Rate</p>
-          </div>
-        </motion.div>
+        {[
+          { icon: Shield, cls: 'text-neon-green', value: total, label: 'Monitors' },
+          { icon: CheckCircle2, cls: 'text-neon-cyan', value: active, label: 'Active' },
+          { icon: AlertTriangle, cls: 'text-yellow-500', value: violating, label: 'Violating at last check' },
+          { icon: BarChart3, cls: 'text-neon-purple', value: open, label: 'Open violations' },
+        ].map((tile, i) => (
+          <motion.div key={tile.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="panel p-3 flex items-center gap-3">
+            <tile.icon className={`w-5 h-5 ${tile.cls}`} />
+            <div>
+              <p className="text-lg font-bold">{loading ? '—' : tile.value}</p>
+              <p className="text-xs text-gray-400">{tile.label}</p>
+            </div>
+          </motion.div>
+        ))}
       </div>
 
-      <div className="panel p-4 border-l-4 border-sovereignty-locked">
-        <h3 className="font-semibold text-sovereignty-locked mb-2 flex items-center gap-2">
+      {/* S-INV-3 interim honesty: the lock the banner used to claim does
+          not exist. Until an approval mechanism actually guards monitor
+          changes, the banner states the actual behaviour. */}
+      <div className="panel p-4 border-l-4 border-yellow-500/60">
+        <h3 className="font-semibold text-yellow-200/90 mb-2 flex items-center gap-2">
           <Lock className="w-4 h-4" />
-          Sovereignty Lock Active
+          Sovereignty Lock — not in force
         </h3>
         <p className="text-sm text-gray-400">
-          All invariants are frozen at 70% sovereignty lock. They cannot be disabled
-          or modified without full council approval and structural verification.
+          This panel previously claimed invariants cannot be disabled or modified without full council
+          approval and structural verification. No such gate exists: your monitors are yours to pause,
+          edit, and remove (removal asks first, and says what happens to their violations). When an
+          approval mechanism actually guards them, this banner will say so — and not before.
         </p>
       </div>
 
@@ -119,7 +100,7 @@ export function OverviewPanel() {
           <div className="bg-lattice-deep rounded-lg p-4 border border-white/5">
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-4 h-4 text-neon-green" />
-              <h3 className="text-sm font-semibold">Enforcement Rate</h3>
+              <h3 className="text-sm font-semibold">Monitors Active</h3>
             </div>
             <div className="flex items-center justify-center my-4">
               <div className="relative w-28 h-28">
@@ -129,30 +110,30 @@ export function OverviewPanel() {
                     cx="50" cy="50" r="42" fill="none" strokeWidth="6"
                     className="text-neon-green"
                     stroke="currentColor"
-                    strokeDasharray={`${(enforcedCount / Math.max(invariants.length, 1)) * 264} 264`}
+                    strokeDasharray={`${(activePct / 100) * 264} 264`}
                     strokeLinecap="round"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-2xl font-bold text-neon-green">
-                    {invariants.length > 0 ? `${Math.round((enforcedCount / invariants.length) * 100)}%` : '—'}
+                    {total > 0 ? `${activePct}%` : '—'}
                   </span>
-                  <span className="text-[10px] text-gray-400">{invariants.length > 0 ? 'enforced' : 'no invariants yet'}</span>
+                  <span className="text-[10px] text-gray-400">{total > 0 ? 'of monitors active' : 'no monitors yet'}</span>
                 </div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center text-xs">
               <div>
-                <p className="text-neon-green font-bold">{enforcedCount}</p>
+                <p className="text-neon-green font-bold">{active}</p>
                 <p className="text-gray-400">Active</p>
               </div>
               <div>
-                <p className="text-yellow-500 font-bold">{invariants.filter(i => i.status === 'warning').length}</p>
-                <p className="text-gray-400">Warning</p>
+                <p className="text-yellow-500 font-bold">{total - active}</p>
+                <p className="text-gray-400">Paused</p>
               </div>
               <div>
-                <p className="text-neon-pink font-bold">{invariants.filter(i => i.status === 'violated').length}</p>
-                <p className="text-gray-400">Violated</p>
+                <p className="text-neon-pink font-bold">{violating}</p>
+                <p className="text-gray-400">Violating</p>
               </div>
             </div>
           </div>
@@ -160,20 +141,24 @@ export function OverviewPanel() {
           <div className="bg-lattice-deep rounded-lg p-4 border border-white/5">
             <div className="flex items-center gap-2 mb-3">
               <Layers className="w-4 h-4 text-neon-purple" />
-              <h3 className="text-sm font-semibold">By Category</h3>
+              <h3 className="text-sm font-semibold">Open Violations by Severity</h3>
             </div>
-            {invariants.length === 0 ? (
-              <p className="text-xs text-gray-400">No invariants authored yet — categories populate once one exists.</p>
+            {open === 0 ? (
+              <p className="text-xs text-gray-400">No open violations — severity counts populate when a check fails.</p>
             ) : (
               <div className="space-y-3">
-                {(['ethos', 'structural', 'capability'] as const).map((cat) => {
-                  const total = invariants.filter((i) => i.category === cat).length;
-                  const pct = Math.round((total / invariants.length) * 100);
+                {([
+                  ['critical', vio?.critical ?? 0],
+                  ['high', vio?.high ?? 0],
+                  ['medium', vio?.medium ?? 0],
+                  ['low', vio?.low ?? 0],
+                ] as const).map(([sev, count]) => {
+                  const pct = open > 0 ? Math.round((count / open) * 100) : 0;
                   return (
-                    <div key={cat}>
+                    <div key={sev}>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-400 capitalize">{cat}</span>
-                        <span className="text-xs font-mono text-gray-300">{total} ({pct}%)</span>
+                        <span className="text-xs text-gray-400 capitalize">{sev}</span>
+                        <span className="text-xs font-mono text-gray-300">{count} ({pct}%)</span>
                       </div>
                       <div className="h-1 bg-lattice-void rounded-full overflow-hidden">
                         <div className="h-full rounded-full bg-neon-purple" style={{ width: `${pct}%` }} />
@@ -182,8 +167,8 @@ export function OverviewPanel() {
                   );
                 })}
                 <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
-                  <span className="text-gray-400">Frozen (locked)</span>
-                  <span className="font-mono text-gray-300">{invariants.filter((i) => i.frozen).length} / {invariants.length}</span>
+                  <span className="text-gray-400">Resolved violations</span>
+                  <span className="font-mono text-gray-300">{vio?.resolved ?? 0} / {vio?.total ?? 0}</span>
                 </div>
               </div>
             )}
@@ -194,21 +179,21 @@ export function OverviewPanel() {
               <Gauge className="w-4 h-4 text-neon-cyan" />
               <h3 className="text-sm font-semibold">Live Verification Activity</h3>
             </div>
-            {wbSummaryLoading ? (
+            {loading ? (
               <p className="text-xs text-gray-400 flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
-            ) : wbSummary ? (
+            ) : mon ? (
               <div className="space-y-2 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">Continuous monitors</span>
-                  <span className="font-mono text-gray-200">{wbSummary.monitorsActive} active / {wbSummary.monitorsTotal} total</span>
+                  <span className="font-mono text-gray-200">{active} active / {total} total</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">Open violations</span>
-                  <span className={`font-mono ${wbSummary.violationsOpen > 0 ? 'text-neon-pink' : 'text-neon-green'}`}>{wbSummary.violationsOpen}</span>
+                  <span className={`font-mono ${open > 0 ? 'text-neon-pink' : 'text-neon-green'}`}>{open}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">Critical / high</span>
-                  <span className={`font-mono ${wbSummary.violationsCritHigh > 0 ? 'text-red-400' : 'text-neon-green'}`}>{wbSummary.violationsCritHigh}</span>
+                  <span className={`font-mono ${((vio?.critical ?? 0) + (vio?.high ?? 0)) > 0 ? 'text-red-400' : 'text-neon-green'}`}>{(vio?.critical ?? 0) + (vio?.high ?? 0)}</span>
                 </div>
                 <p className="pt-2 border-t border-white/5 text-[10px] text-gray-500">
                   Register monitors + inspect history in the Formal Verification Workbench.

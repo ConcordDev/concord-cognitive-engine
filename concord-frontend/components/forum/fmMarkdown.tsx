@@ -42,9 +42,12 @@ function renderInline(text: string, keyBase: string): ReactNode[] {
 
 export function FmMarkdown({ text, format }: { text: string; format?: string }) {
   if (!text) return null;
-  if (format !== 'markdown') {
-    return <p className="text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed">{text}</p>;
-  }
+  // D7/F7: the reading view renders markdown regardless of the stored
+  // format flag — hand-typed markup in a draft saved as "plain" used to
+  // render literally, which is the mismatch the first pass caught. The
+  // renderer passes text without markup through untouched, so plain
+  // posts render exactly as before.
+  void format;
   const lines = text.split('\n');
   const blocks: ReactNode[] = [];
   let listBuf: string[] = [];

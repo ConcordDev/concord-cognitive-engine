@@ -12,7 +12,7 @@
 /*  rendered here comes from a real macro call — no seed/mock data.    */
 /* ------------------------------------------------------------------ */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -51,15 +51,17 @@ export default function TelecommunicationsLensPage() {
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [rfTab, setRfTab] = useState<(typeof RF_PLANNER_TABS)[number]['key']>('sites');
 
-  useEffect(() => {
-    let cancelled = false;
+  // F7: the header counters previously loaded once on mount and lagged every
+  // in-session mutation until reload. The fetch is now a callback the planner
+  // invokes after each successful mutation (onDataChanged), so the strip
+  // reflects sites/spectrum/outages as they change.
+  const loadOverview = useCallback(() => {
     Promise.all([
       lensRun<{ towers: Array<{ status: string }> }>('telecommunications', 'towerList', {}),
       lensRun<{ allocations: Array<{ widthMhz: number }> }>('telecommunications', 'spectrumList', {}),
       lensRun<{ outages: Array<{ status: string }> }>('telecommunications', 'outageList', {}),
     ])
       .then(([towerRes, spectrumRes, outageRes]) => {
-        if (cancelled) return;
         const towers = towerRes.data.ok ? towerRes.data.result?.towers || [] : [];
         const allocations = spectrumRes.data.ok ? spectrumRes.data.result?.allocations || [] : [];
         const outages = outageRes.data.ok ? outageRes.data.result?.outages || [] : [];
@@ -71,12 +73,13 @@ export default function TelecommunicationsLensPage() {
         });
       })
       .catch((e) => {
-        if (!cancelled) setOverviewError(e instanceof Error ? e.message : String(e));
+        setOverviewError(e instanceof Error ? e.message : String(e));
       });
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    loadOverview();
+  }, [loadOverview]);
 
   // Discoverable keyboard shortcuts to jump between RF Planner sub-tabs —
   // matches the fluidity invariant (every scoped command must be surfaced,
@@ -151,7 +154,7 @@ export default function TelecommunicationsLensPage() {
         )}
 
         <section id="telecom-planner" className="scroll-mt-6">
-          <RFPlanner tab={rfTab} onTabChange={setRfTab} />
+          <RFPlanner tab={rfTab} onTabChange={setRfTab} onDataChanged={loadOverview} />
         </section>
 
         <PipingProvider>

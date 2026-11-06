@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Brain } from 'lucide-react';
 import {
@@ -8,6 +9,21 @@ import {
 } from '@/components/lattice/latticeShared';
 
 export function BrainsPanel() {
+  // S2 (F2): the page's "Open a brain" picker names a brain through
+  // sessionStorage (survives the panel switch) + a live event (when
+  // this panel is already mounted). The named card scrolls into view
+  // and rings — the CTA's promise, kept observably.
+  const [highlight, setHighlight] = useState<string | null>(null);
+  useEffect(() => {
+    const stored = sessionStorage.getItem('lattice.openBrain');
+    if (stored) { setHighlight(stored); sessionStorage.removeItem('lattice.openBrain'); }
+    const onOpen = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      if (id) setHighlight(id);
+    };
+    window.addEventListener('lattice:open-brain', onOpen);
+    return () => window.removeEventListener('lattice:open-brain', onOpen);
+  }, []);
   const brainStats = useQuery({
     queryKey: ['lattice-brains-stats'],
     queryFn: () => fetchJSON<BrainStats>('/api/brains/stats'),
@@ -17,6 +33,14 @@ export function BrainsPanel() {
     queryKey: ['lattice-brains-active'],
     queryFn: () => fetchJSON<ActiveModels>('/api/brains/active'),
   });
+
+  useEffect(() => {
+    if (!highlight || !brainStats.data) return;
+    const el = document.getElementById(`lattice-brain-${highlight}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const t = setTimeout(() => setHighlight(null), 4000);
+    return () => clearTimeout(t);
+  }, [highlight, brainStats.data]);
 
   return (
     <section>
@@ -34,7 +58,7 @@ export function BrainsPanel() {
       ) : (
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           {brainStats.data!.brains.map((b) => (
-            <div key={b.brainId} className="rounded-lg border border-fuchsia-900/40 bg-fuchsia-950/10 p-3">
+            <div key={b.brainId} id={`lattice-brain-${b.brainId}`} className={`rounded-lg border bg-fuchsia-950/10 p-3 ${highlight === b.brainId ? 'border-teal-300 ring-2 ring-teal-300/60' : 'border-fuchsia-900/40'}`}>
               <div className="mb-2 flex items-center justify-between">
                 <span className="font-mono text-sm font-semibold text-fuchsia-200">{b.brainId}</span>
                 <span className="rounded bg-fuchsia-800/30 px-1.5 py-0.5 text-[10px] text-fuchsia-300">{b.total} interactions</span>
@@ -42,7 +66,7 @@ export function BrainsPanel() {
               <div className="grid grid-cols-3 gap-2 text-xs text-fuchsia-500">
                 <div>Positive: <span className="text-emerald-400">{b.positive}</span></div>
                 <div>Pending: <span className="text-amber-400">{b.pending}</span></div>
-                <div>Consented: <span className="text-fuchsia-200">{b.consented}</span></div>
+                <div>Consented interactions: <span className="text-fuchsia-200">{b.consented}</span></div>
               </div>
             </div>
           ))}

@@ -1006,9 +1006,18 @@ export function registerReasoningTraceMacros(register) {
    * Returns the engine result (includes traceId so a caller can immediately
    * open it via reasoning.trace). Writes a real trace into the engine store.
    */
-  register("reasoning", "run", async (_ctx, input = {}) => {
+  register("reasoning", "run", async (ctx, input = {}) => {
     const { runHLR, REASONING_MODES } = await import("../emergent/hlr-engine.js");
-    const result = runHLR(input || {});
+    // RT-S1: stamp the recorded trace with the ACTUAL caller (the same
+    // actorId expression the map substrate uses). The ctx identity is
+    // authoritative — a client-supplied input.userId is never trusted —
+    // because the log-access read policy shows a member only traces
+    // stamped with their own id: an unstamped run is invisible to the
+    // person who ran it. Internal callers (no ctx user) leave the input
+    // untouched, so system traces stay unstamped and operator-only.
+    const caller = ctx?.actor?.userId || ctx?.userId || null;
+    const stamped = caller && caller !== "anon" ? { ...(input || {}), userId: caller } : (input || {});
+    const result = runHLR(stamped);
     return { ...result, modes: Object.values(REASONING_MODES) };
   }, { note: "run one HLR reasoning pass and record a trace" });
 }

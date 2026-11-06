@@ -23,7 +23,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Send, Hash, Sparkles, Loader2, AlertTriangle, Check,
 } from 'lucide-react';
@@ -204,10 +204,49 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
     try {
       const res = await api.post('/api/social/drafts', { content: text });
       setDraftNote(res.data?.ok === false ? (res.data.error || 'Draft was not saved.') : 'Draft saved.');
+      if (res.data?.ok !== false) {
+        void queryClient.invalidateQueries({ queryKey: ['social-drafts'] });
+      }
     } catch {
       setDraftNote('Draft was not saved.');
     }
-  }, [content]);
+  }, [content, queryClient]);
+
+  // Drafts read-back (F4): drafts persist server-side (GET /api/social/
+  // drafts) — this list is the way back to them. Reopen loads the text
+  // into the composer; delete is two-step and hits the standing route.
+  const [draftsOpen, setDraftsOpen] = useState(false);
+  const [confirmDraftDelete, setConfirmDraftDelete] = useState<string | null>(null);
+  const draftsQuery = useQuery({
+    queryKey: ['social-drafts'],
+    queryFn: async () => {
+      const res = await api.get<{ ok?: boolean; drafts?: Array<{ id: string; content: string; updatedAt: string }> }>('/api/social/drafts');
+      return res.data?.drafts || [];
+    },
+    enabled: draftsOpen,
+  });
+  const drafts = draftsQuery.data || [];
+
+  const reopenDraft = useCallback((draft: { content: string }) => {
+    setContent(draft.content);
+    setDraftsOpen(false);
+    setDraftNote('Draft reopened — edit and post, or save it again.');
+  }, []);
+
+  const deleteDraft = useCallback(async (draftId: string) => {
+    try {
+      const res = await api.delete(`/api/social/drafts/${encodeURIComponent(draftId)}`);
+      if (res.data?.ok === false) {
+        setDraftNote(res.data.error || 'Draft was not deleted.');
+        return;
+      }
+      setConfirmDraftDelete(null);
+      setDraftNote('Draft deleted.');
+      void queryClient.invalidateQueries({ queryKey: ['social-drafts'] });
+    } catch {
+      setDraftNote('Draft was not deleted.');
+    }
+  }, [queryClient]);
 
   const remaining = MAX_LEN - content.length;
   const overLimit = remaining < 0;
@@ -329,6 +368,14 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
         >
           Save draft
         </button>
+        <button
+          type="button"
+          onClick={() => setDraftsOpen((v) => !v)}
+          aria-expanded={draftsOpen}
+          className="text-[10px] rounded border border-zinc-700 px-2 py-0.5 text-zinc-300"
+        >
+          Drafts{drafts.length > 0 ? ` (${drafts.length})` : ''}
+        </button>
         <select
           aria-label="Federation visibility"
           value={federationVisibility}
@@ -370,6 +417,42 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
           )}
         </button>
       </div>
+
+      {draftsOpen && (
+        <div className="border-t border-zinc-800/40 px-3 py-2">
+          {draftsQuery.isLoading ? (
+            <p className="text-[11px] text-zinc-500">Loading drafts…</p>
+          ) : drafts.length === 0 ? (
+            <p className="text-[11px] text-zinc-500">No drafts yet — Save draft keeps the text here.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {drafts.map((draft) => (
+                <li key={draft.id} className="flex items-center gap-2 rounded border border-zinc-800/60 px-2 py-1.5">
+                  <span className="min-w-0 flex-1 truncate text-[11px] text-zinc-300">{draft.content}</span>
+                  <span className="shrink-0 text-[10px] text-zinc-500">{new Date(draft.updatedAt).toLocaleDateString()}</span>
+                  <button
+                    type="button"
+                    onClick={() => reopenDraft(draft)}
+                    className="shrink-0 text-[10px] rounded border border-zinc-700 px-2 py-0.5 text-zinc-200"
+                  >
+                    Reopen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirmDraftDelete === draft.id) { void deleteDraft(draft.id); return; }
+                      setConfirmDraftDelete(draft.id);
+                    }}
+                    className="shrink-0 text-[10px] rounded border border-rose-900/60 px-2 py-0.5 text-rose-300"
+                  >
+                    {confirmDraftDelete === draft.id ? 'Confirm delete' : 'Delete'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {draftNote && <p className="px-3 pb-2 text-[11px] text-zinc-400">{draftNote}</p>}
       {errorMsg && (
