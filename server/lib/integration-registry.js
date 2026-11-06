@@ -127,6 +127,7 @@ export const REGISTRY = Object.freeze({
   goals:         { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real goals" },
   atlas:         { tier: TIER.REAL_LIVE, liveFromSubstrate: true, sources: ["openstreetmap.nominatim"], note: "real atlas signals + OSM lookups" },
   lattice:       { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real lattice substrate" },
+  "world-observatory": { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "live simulation state in the platform world stores (worldstate macros)" },
   resonance:     { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real resonance signal" },
   emergent:      { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real emergent simulation" },
   personas:      { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real persona substrate" },
