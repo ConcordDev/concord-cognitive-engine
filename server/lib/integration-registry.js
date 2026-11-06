@@ -256,6 +256,7 @@ export const REGISTRY = Object.freeze({
   philosophy:    { tier: TIER.SIM_GRADE_A, groundedSchema: "philosophy/argument" },
   creative:      { tier: TIER.SIM_GRADE_A, groundedSchema: "creative/recipe" },
   "creative-writing": { tier: TIER.SIM_GRADE_A, groundedSchema: "creative/text" },
+  "narrative-walk": { tier: TIER.SIM_GRADE_A, groundedSchema: "narrative/cinematic", note: "Authored Concordia cinematic beats, bundled client-side" },
   creative_writing: { tier: TIER.SIM_GRADE_A, groundedSchema: "creative/text" },
   poetry:        { tier: TIER.REAL_FREE, sources: ["poetrydb", "datamuse"], note: "PoetryDB public-domain poems + Datamuse word relationships" },
   creator:       { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real creator-economy substrate: DTU/citation/royalty computations over STATE + ledger; studio/audience/revenue surfaces serve user-logged records" },
