@@ -27,7 +27,7 @@ const asMod = (ctx) => ({ ...ctx, actor: { ...ctx.actor, role: "moderator" } });
 describe("forum.category-*", () => {
   it("creates, lists with topic counts and deletes", () => {
     const cat = call("category-create", ctxA, { name: "General" }).result.category;
-    call("topic-create", ctxA, { categoryId: cat.id, title: "Hello" });
+    call("topic-create", ctxA, { categoryId: cat.id, title: "Hello" , body: "seed body"});
     const list = call("category-list", ctxA, {});
     assert.equal(list.result.categories[0].topicCount, 1);
     call("category-delete", ctxA, { id: cat.id });
@@ -59,15 +59,15 @@ describe("forum topics & replies", () => {
   });
 
   it("locks a topic and blocks replies", () => {
-    const t = call("topic-create", ctxA, { title: "Closed" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Closed" , body: "seed body"}).result.topic;
     assert.equal(call("topic-lock", ctxA, { id: t.id, locked: true }).error, "moderator role required");
     call("topic-lock", asMod(ctxA), { id: t.id, locked: true });
     assert.equal(call("post-reply", ctxA, { topicId: t.id, body: "late" }).ok, false);
   });
 
   it("pins topics to the top of the list", () => {
-    const t1 = call("topic-create", ctxA, { title: "Normal" }).result.topic;
-    const t2 = call("topic-create", ctxA, { title: "Important" }).result.topic;
+    const t1 = call("topic-create", ctxA, { title: "Normal" , body: "seed body"}).result.topic;
+    const t2 = call("topic-create", ctxA, { title: "Important" , body: "seed body"}).result.topic;
     call("topic-pin", asMod(ctxA), { id: t2.id, pinned: true });
     const list = call("topic-list", ctxA, {});
     assert.equal(list.result.topics[0].id, t2.id);
@@ -75,7 +75,7 @@ describe("forum topics & replies", () => {
   });
 
   it("deletes a topic and its replies", () => {
-    const t = call("topic-create", ctxA, { title: "Temp" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Temp" , body: "seed body"}).result.topic;
     call("post-reply", ctxA, { topicId: t.id, body: "x" });
     call("topic-delete", ctxA, { id: t.id });
     assert.equal(call("topic-list", ctxA, {}).result.count, 0);
@@ -84,17 +84,17 @@ describe("forum topics & replies", () => {
 
 describe("forum voting", () => {
   it("votes on a topic and updates the score", () => {
-    const t = call("topic-create", ctxA, { title: "Voted" }).result.topic;
-    const up = call("vote", ctxA, { targetType: "topic", targetId: t.id, direction: 1 });
+    const t = call("topic-create", ctxA, { title: "Voted" , body: "seed body"}).result.topic;
+    const up = call("vote", ctxB, { targetType: "topic", targetId: t.id, direction: 1 });
     assert.equal(up.result.score, 1);
-    const clear = call("vote", ctxA, { targetType: "topic", targetId: t.id, direction: 0 });
+    const clear = call("vote", ctxB, { targetType: "topic", targetId: t.id, direction: 0 });
     assert.equal(clear.result.score, 0);
   });
 
   it("sorts topics by top score", () => {
-    const t1 = call("topic-create", ctxA, { title: "Low" }).result.topic;
-    const t2 = call("topic-create", ctxA, { title: "High" }).result.topic;
-    call("vote", ctxA, { targetType: "topic", targetId: t2.id, direction: 1 });
+    const t1 = call("topic-create", ctxA, { title: "Low" , body: "seed body"}).result.topic;
+    const t2 = call("topic-create", ctxA, { title: "High" , body: "seed body"}).result.topic;
+    call("vote", ctxB, { targetType: "topic", targetId: t2.id, direction: 1 });
     const list = call("topic-list", ctxA, { sort: "top" });
     assert.equal(list.result.topics[0].id, t2.id);
     assert.ok(t1);
@@ -103,7 +103,7 @@ describe("forum voting", () => {
 
 describe("forum moderation", () => {
   it("creates flags, queues them and resolves", () => {
-    const t = call("topic-create", ctxA, { title: "Reported" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Reported" , body: "seed body"}).result.topic;
     const flag = call("flag-create", ctxA, { targetType: "topic", targetId: t.id, reason: "spam" }).result.flag;
     assert.equal(call("flag-queue", ctxA, {}).error, "moderator role required");
     assert.equal(call("forum-dashboard", ctxA, {}).result.pendingFlags, 0);
@@ -117,7 +117,7 @@ describe("forum moderation", () => {
 
 describe("forum reputation & search", () => {
   it("computes a trust tier from contributions", () => {
-    for (let i = 0; i < 6; i++) call("topic-create", ctxA, { title: `T${i}` });
+    for (let i = 0; i < 6; i++) call("topic-create", ctxA, { title: `T${i}`, body: "seed body" });
     const rep = call("user-reputation", ctxA, {});
     assert.equal(rep.result.tier, "basic");
     assert.equal(rep.result.contributions, 6);
@@ -132,7 +132,7 @@ describe("forum reputation & search", () => {
 
   it("dashboard rolls up the community", () => {
     call("category-create", ctxA, { name: "C" });
-    const t = call("topic-create", ctxA, { title: "T" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "T" , body: "seed body"}).result.topic;
     call("post-reply", ctxA, { topicId: t.id, body: "r" });
     const d = call("forum-dashboard", ctxA, {});
     assert.equal(d.result.categories, 1);
@@ -143,7 +143,7 @@ describe("forum reputation & search", () => {
 
 describe("forum nested comment trees", () => {
   it("builds a nested reply tree from parentId links", () => {
-    const t = call("topic-create", ctxA, { title: "Tree" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Tree" , body: "seed body"}).result.topic;
     const top = call("post-reply", ctxA, { topicId: t.id, body: "level 1" }).result.post;
     const child = call("post-reply", ctxA, { topicId: t.id, body: "level 2", parentId: top.id }).result.post;
     call("post-reply", ctxA, { topicId: t.id, body: "level 3", parentId: child.id });
@@ -156,8 +156,8 @@ describe("forum nested comment trees", () => {
   });
 
   it("ignores a parentId from a different topic", () => {
-    const t1 = call("topic-create", ctxA, { title: "T1" }).result.topic;
-    const t2 = call("topic-create", ctxA, { title: "T2" }).result.topic;
+    const t1 = call("topic-create", ctxA, { title: "T1" , body: "seed body"}).result.topic;
+    const t2 = call("topic-create", ctxA, { title: "T2" , body: "seed body"}).result.topic;
     const foreign = call("post-reply", ctxA, { topicId: t1.id, body: "x" }).result.post;
     const reply = call("post-reply", ctxA, { topicId: t2.id, body: "y", parentId: foreign.id }).result.post;
     assert.equal(reply.parentId, null);
@@ -209,7 +209,7 @@ describe("forum subforums", () => {
 
   it("links topics to a subforum and counts them", () => {
     const sf = call("subforum-create", ctxA, { name: "Linked" }).result.subforum;
-    call("topic-create", ctxA, { title: "In subforum", subforumId: sf.id });
+    call("topic-create", ctxA, { title: "In subforum", subforumId: sf.id , body: "seed body"});
     const list = call("subforum-list", ctxA, {});
     assert.equal(list.result.subforums[0].topicCount, 1);
     const filtered = call("topic-list", ctxA, { subforumId: sf.id });
@@ -226,7 +226,7 @@ describe("forum subforums", () => {
 
 describe("forum subscriptions & notifications", () => {
   it("subscribes to a thread and notifies on new replies", () => {
-    const t = call("topic-create", ctxA, { title: "Watched" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Watched" , body: "seed body"}).result.topic;
     const sub = call("thread-subscribe", ctxA, { topicId: t.id });
     assert.equal(sub.result.subscribed, true);
     call("post-reply", ctxA, { topicId: t.id, body: "ping" });
@@ -236,7 +236,7 @@ describe("forum subscriptions & notifications", () => {
   });
 
   it("lists subscriptions and toggles them off", () => {
-    const t = call("topic-create", ctxA, { title: "Toggle" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Toggle" , body: "seed body"}).result.topic;
     call("thread-subscribe", ctxA, { topicId: t.id });
     assert.equal(call("subscription-list", ctxA, {}).result.count, 1);
     const off = call("thread-subscribe", ctxA, { topicId: t.id });
@@ -245,7 +245,7 @@ describe("forum subscriptions & notifications", () => {
   });
 
   it("marks notifications as read", () => {
-    const t = call("topic-create", ctxA, { title: "Read" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Read" , body: "seed body"}).result.topic;
     call("thread-subscribe", ctxA, { topicId: t.id });
     call("post-reply", ctxA, { topicId: t.id, body: "r" });
     const r = call("notification-read", ctxA, {});
@@ -261,7 +261,7 @@ describe("forum awards", () => {
   });
 
   it("gives an award to a topic and rejects unknown kinds", () => {
-    const t = call("topic-create", ctxA, { title: "Awardable" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Awardable" , body: "seed body"}).result.topic;
     const ok = call("award-give", ctxA, { targetType: "topic", targetId: t.id, kind: "gold" });
     assert.equal(ok.result.awards.length, 1);
     assert.equal(ok.result.awards[0].kind, "gold");
@@ -270,7 +270,7 @@ describe("forum awards", () => {
   });
 
   it("gives an award to a post", () => {
-    const t = call("topic-create", ctxA, { title: "T" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "T" , body: "seed body"}).result.topic;
     const p = call("post-reply", ctxA, { topicId: t.id, body: "great answer" }).result.post;
     const r = call("award-give", ctxA, { targetType: "post", targetId: p.id, kind: "helpful" });
     assert.equal(r.result.awards.length, 1);
@@ -279,7 +279,7 @@ describe("forum awards", () => {
 
 describe("forum saved posts, history & profile", () => {
   it("toggles saved posts and lists them", () => {
-    const t = call("topic-create", ctxA, { title: "Saveable" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Saveable" , body: "seed body"}).result.topic;
     const on = call("save-toggle", ctxA, { targetType: "topic", targetId: t.id });
     assert.equal(on.result.saved, true);
     assert.equal(call("saved-list", ctxA, {}).result.count, 1);
@@ -289,7 +289,7 @@ describe("forum saved posts, history & profile", () => {
   });
 
   it("returns post history in reverse chronological order", () => {
-    const t = call("topic-create", ctxA, { title: "Hist" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Hist" , body: "seed body"}).result.topic;
     call("post-reply", ctxA, { topicId: t.id, body: "reply" });
     const h = call("post-history", ctxA, {});
     assert.equal(h.result.count, 2);
@@ -298,8 +298,8 @@ describe("forum saved posts, history & profile", () => {
   });
 
   it("builds a user profile with karma and award breakdown", () => {
-    const t = call("topic-create", ctxA, { title: "Profiled" }).result.topic;
-    call("vote", ctxA, { targetType: "topic", targetId: t.id, direction: 1 });
+    const t = call("topic-create", ctxA, { title: "Profiled" , body: "seed body"}).result.topic;
+    call("vote", ctxB, { targetType: "topic", targetId: t.id, direction: 1 });
     call("award-give", ctxA, { targetType: "topic", targetId: t.id, kind: "gold" });
     const p = call("user-profile", ctxA, {});
     assert.equal(p.result.topics, 1);
@@ -311,9 +311,9 @@ describe("forum saved posts, history & profile", () => {
 
 describe("forum trending", () => {
   it("ranks topics by a hot score blending votes, replies and age", () => {
-    const cold = call("topic-create", ctxA, { title: "Cold" }).result.topic;
-    const hot = call("topic-create", ctxA, { title: "Hot" }).result.topic;
-    call("vote", ctxA, { targetType: "topic", targetId: hot.id, direction: 1 });
+    const cold = call("topic-create", ctxA, { title: "Cold" , body: "seed body"}).result.topic;
+    const hot = call("topic-create", ctxA, { title: "Hot" , body: "seed body"}).result.topic;
+    call("vote", ctxB, { targetType: "topic", targetId: hot.id, direction: 1 });
     call("post-reply", ctxA, { topicId: hot.id, body: "engaged" });
     const r = call("trending", ctxA, { limit: 10 });
     assert.equal(r.result.trending[0].id, hot.id);
@@ -322,9 +322,9 @@ describe("forum trending", () => {
   });
 
   it("applies a personalization boost from tag affinity", () => {
-    const t = call("topic-create", ctxA, { title: "Tagged", tags: ["jazz"] }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Tagged", tags: ["jazz"] , body: "seed body"}).result.topic;
     call("post-reply", ctxA, { topicId: t.id, body: "I love jazz" });
-    const other = call("topic-create", ctxA, { title: "Jazz again", tags: ["jazz"] }).result.topic;
+    const other = call("topic-create", ctxA, { title: "Jazz again", tags: ["jazz"] , body: "seed body"}).result.topic;
     const r = call("trending", ctxA, { personalize: true });
     const ranked = r.result.trending.find((x) => x.id === other.id);
     assert.ok(ranked.personalBoost > 0);
@@ -339,11 +339,11 @@ describe("forum trending", () => {
 
   it("keeps a member's private topic on a crowded board and off a non-member's", () => {
     for (let i = 0; i < 25; i++) {
-      const pub = call("topic-create", ctxA, { title: `Public ${i}` }).result.topic;
+      const pub = call("topic-create", ctxB, { title: `Public ${i}`, body: "seed body" }).result.topic;
       call("vote", ctxA, { targetType: "topic", targetId: pub.id, direction: 1 });
     }
     const sealed = call("category-create", ctxA, { name: "Sealed", visibility: "private" }).result.category;
-    const hidden = call("topic-create", ctxA, { title: "Members only", categoryId: sealed.id }).result.topic;
+    const hidden = call("topic-create", ctxA, { title: "Members only", categoryId: sealed.id , body: "seed body"}).result.topic;
     const own = call("trending", ctxA, {});
     assert.equal(own.result.count, 26);
     assert.ok(own.result.trending.length > 20);
@@ -362,7 +362,7 @@ describe("forum trending", () => {
     const club = call("category-create", ctxA, {
       name: "Club", visibility: "private", members: ["user_b"],
     }).result.category;
-    const shared = call("topic-create", ctxA, { title: "For members", categoryId: club.id }).result.topic;
+    const shared = call("topic-create", ctxA, { title: "For members", categoryId: club.id , body: "seed body"}).result.topic;
     assert.equal(call("trending", ctxB, {}).result.trending.some((x) => x.id === shared.id), true);
     assert.equal(call("trending", ctxA, {}).result.trending.some((x) => x.id === hidden.id), true);
     assert.equal(call("trending", platformOwner, {}).result.trending.some((x) => x.id === shared.id), true);
@@ -374,7 +374,7 @@ describe("forum trending", () => {
 // (nested-tree panel, rich editor, communities, inbox, profile page).
 describe("forum UI macro coverage", () => {
   it("carries markdown format, images and awards through the comment tree", () => {
-    const t = call("topic-create", ctxA, { title: "Tree rich" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Tree rich" , body: "seed body"}).result.topic;
     const root = call("post-reply", ctxA, {
       topicId: t.id, body: "**root**", format: "markdown",
       images: ["https://example.com/x.png"],
@@ -391,7 +391,7 @@ describe("forum UI macro coverage", () => {
   });
 
   it("topic-get reports subscription state for the watched-thread UI", () => {
-    const t = call("topic-create", ctxA, { title: "Watch me" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Watch me" , body: "seed body"}).result.topic;
     assert.equal(call("topic-get", ctxA, { id: t.id }).result.subscribed, false);
     call("thread-subscribe", ctxA, { topicId: t.id });
     assert.equal(call("topic-get", ctxA, { id: t.id }).result.subscribed, true);
@@ -399,15 +399,15 @@ describe("forum UI macro coverage", () => {
 
   it("filters topics by subforum for the communities picker", () => {
     const sf = call("subforum-create", ctxA, { name: "Picker" }).result.subforum;
-    call("topic-create", ctxA, { title: "In", subforumId: sf.id });
-    call("topic-create", ctxA, { title: "Out" });
+    call("topic-create", ctxA, { title: "In", subforumId: sf.id , body: "seed body"});
+    call("topic-create", ctxA, { title: "Out" , body: "seed body"});
     const inSub = call("topic-list", ctxA, { subforumId: sf.id });
     assert.equal(inSub.result.count, 1);
     assert.equal(inSub.result.topics[0].title, "In");
   });
 
   it("dashboard surfaces inbox and saved counts for the section header", () => {
-    const t = call("topic-create", ctxA, { title: "Dash" }).result.topic;
+    const t = call("topic-create", ctxA, { title: "Dash" , body: "seed body"}).result.topic;
     call("thread-subscribe", ctxA, { topicId: t.id });
     call("post-reply", ctxA, { topicId: t.id, body: "ping" });
     call("save-toggle", ctxA, { targetType: "topic", targetId: t.id });
@@ -441,7 +441,7 @@ describe("forum shared board", () => {
 
     assert.equal(call("vote", ctxB, { targetType: "topic", targetId: t.id, direction: 1 }).result.score, 1);
     assert.equal(call("vote", ctxB, { targetType: "topic", targetId: t.id, direction: 1 }).result.score, 1);
-    assert.equal(call("vote", ctxA, { targetType: "topic", targetId: t.id, direction: 1 }).result.score, 2);
+    assert.equal(call("vote", ctxA, { targetType: "topic", targetId: t.id, direction: 1 }).ok, false);
 
     const locked = call("topic-lock", ctxB, { id: t.id });
     assert.equal(locked.ok, false);
@@ -458,13 +458,13 @@ describe("forum shared board", () => {
 
   it("hides a topic filed in a private category from non-members", () => {
     const cat = call("category-create", ctxA, { name: "Inner", visibility: "private" }).result.category;
-    const hidden = call("topic-create", ctxA, { title: "Quiet", categoryId: cat.id }).result.topic;
+    const hidden = call("topic-create", ctxA, { title: "Quiet", categoryId: cat.id , body: "seed body"}).result.topic;
     assert.equal(call("topic-list", ctxB, {}).result.count, 0);
     assert.equal(call("topic-get", ctxB, { id: hidden.id }).error, "topic not found");
     const invited = call("category-create", ctxA, {
       name: "Invited", visibility: "private", members: ["user_b"],
     }).result.category;
-    const visible = call("topic-create", ctxA, { title: "Welcome in", categoryId: invited.id }).result.topic;
+    const visible = call("topic-create", ctxA, { title: "Welcome in", categoryId: invited.id , body: "seed body"}).result.topic;
     const titles = call("topic-list", ctxB, {}).result.topics.map((x) => x.id);
     assert.deepEqual(titles, [visible.id]);
   });

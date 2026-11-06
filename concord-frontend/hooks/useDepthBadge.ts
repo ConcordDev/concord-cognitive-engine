@@ -190,6 +190,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your world records: land claims and houses are your real persistent state in Concord’s worlds, and the tools work on your own plots and buildings. No external feed is polled.',
   },
   /**
+   * Forum is one shared board held in the platform store — topics,
+   * replies, categories and communities are every member's records on
+   * the same board; subscriptions, saves and notifications are per-user;
+   * flags land in a moderator-gated queue. The generic REAL_LIVE line
+   * ("polled live from an external source") is false for this lens.
+   */
+  forum: {
+    label: 'Live',
+    caption: 'One shared board: topics, replies, categories and communities are live records in the platform store, and flags go to a moderator-gated queue. Nothing is polled from an external source.',
+  },
+  /**
    * Nonprofit's own records (campaigns, donors, volunteers, pages, events)
    * are live per-user workspace data; the 990 research data is ProPublica's
    * open-access IRS dataset — real, but static reference data. The generic
