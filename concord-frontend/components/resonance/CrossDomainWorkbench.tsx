@@ -159,13 +159,37 @@ function emptySide() {
   return { domain: '', title: '', description: '', invariants: '' };
 }
 
-function ProposePairForm({ onCreated }: { onCreated: () => void }) {
+function ProposePairForm({
+  onCreated,
+  editing,
+  onDoneEditing,
+}: {
+  onCreated: () => void;
+  editing?: Pair | null;
+  onDoneEditing?: () => void;
+}) {
   const [a, setA] = useState(emptySide());
   const [b, setB] = useState(emptySide());
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+
+  // Edit mode: prefill from the pair being edited whenever it changes.
+  useEffect(() => {
+    if (!editing) return;
+    const fromSide = (sd: PairSide) => ({
+      domain: sd.domain,
+      title: sd.title,
+      description: sd.description || '',
+      invariants: (sd.invariants || []).join('\n'),
+    });
+    setA(fromSide(editing.a));
+    setB(fromSide(editing.b));
+    setNote(editing.note || '');
+    setError(null);
+    setOpen(true);
+  }, [editing]);
 
   const submit = useCallback(async () => {
     setError(null);
@@ -183,22 +207,30 @@ function ProposePairForm({ onCreated }: { onCreated: () => void }) {
         .map((x) => x.trim())
         .filter(Boolean),
     });
-    const res = await lensRun('resonance', 'proposePair', {
-      a: toSide(a),
-      b: toSide(b),
-      note: note.trim(),
-    });
+    const res = editing
+      ? await lensRun('resonance', 'updatePair', {
+          pairId: editing.id,
+          a: toSide(a),
+          b: toSide(b),
+          note: note.trim(),
+        })
+      : await lensRun('resonance', 'proposePair', {
+          a: toSide(a),
+          b: toSide(b),
+          note: note.trim(),
+        });
     setBusy(false);
     if (!res.data.ok) {
-      setError(res.data.error || 'Failed to propose pair.');
+      setError(res.data.error || (editing ? 'Failed to save pair.' : 'Failed to propose pair.'));
       return;
     }
     setA(emptySide());
     setB(emptySide());
     setNote('');
     setOpen(false);
-    onCreated();
-  }, [a, b, note, onCreated]);
+    if (editing && onDoneEditing) onDoneEditing();
+    else onCreated();
+  }, [a, b, note, onCreated, editing, onDoneEditing]);
 
   const sideEditor = (
     label: string,
@@ -236,7 +268,7 @@ function ProposePairForm({ onCreated }: { onCreated: () => void }) {
     </div>
   );
 
-  if (!open) {
+  if (!open && !editing) {
     return (
       <button
         onClick={() => setOpen(true)}
@@ -252,9 +284,16 @@ function ProposePairForm({ onCreated }: { onCreated: () => void }) {
     <div className="rounded-lg border border-purple-500/20 bg-black/40 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-bold text-purple-300">
-          <GitBranch className="h-4 w-4" /> Propose a Cross-Domain Pair
+          <GitBranch className="h-4 w-4" /> {editing ? 'Edit Cross-Domain Pair' : 'Propose a Cross-Domain Pair'}
         </h3>
-        <button onClick={() => setOpen(false)} aria-label="Close pair proposer" className="text-gray-600 hover:text-gray-400">
+        <button
+          onClick={() => {
+            setOpen(false);
+            if (editing && onDoneEditing) onDoneEditing();
+          }}
+          aria-label="Close pair proposer"
+          className="text-gray-600 hover:text-gray-400"
+        >
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -285,7 +324,7 @@ function ProposePairForm({ onCreated }: { onCreated: () => void }) {
         className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/15 px-4 py-2 text-xs font-medium text-purple-200 transition-colors hover:bg-purple-500/25 disabled:opacity-50"
       >
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Microscope className="h-3.5 w-3.5" />}
-        Analyze Resonance
+        {editing ? 'Save Changes' : 'Analyze Resonance'}
       </button>
     </div>
   );
@@ -521,6 +560,7 @@ function DrilldownModal({
 // ── Resonance Graph (lightweight SVG network) ────────────────────────────
 
 function GraphView({ graph }: { graph: ResonanceGraph }) {
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const layout = useMemo(() => {
     const n = graph.nodes.length;
     const cx = 50;
@@ -607,14 +647,18 @@ function GraphView({ graph }: { graph: ResonanceGraph }) {
             if (!pos) return null;
             const r = 3 + Math.min(6, node.pairCount * 1.2);
             return (
-              <g key={node.id}>
+              <g
+                key={node.id}
+                onClick={() => setSelectedNode(node.id === selectedNode ? null : node.id)}
+                style={{ cursor: 'pointer' }}
+              >
                 <circle
                   cx={pos.x}
                   cy={pos.y}
                   r={r}
-                  fill="#0a0a14"
-                  stroke="#a855f7"
-                  strokeWidth={0.6}
+                  fill={node.id === selectedNode ? '#2a1650' : '#0a0a14'}
+                  stroke={node.id === selectedNode ? '#e9d5ff' : '#a855f7'}
+                  strokeWidth={node.id === selectedNode ? 1.1 : 0.6}
                 />
                 <text
                   x={pos.x}
@@ -631,6 +675,38 @@ function GraphView({ graph }: { graph: ResonanceGraph }) {
           })}
         </svg>
       </div>
+
+      {selectedNode &&
+        (() => {
+          const node = graph.nodes.find((n) => n.id === selectedNode);
+          if (!node) return null;
+          const touching = graph.edges.filter(
+            (e) => e.source === node.id || e.target === node.id,
+          );
+          return (
+            <div className="rounded-lg border border-purple-400/20 bg-purple-500/[0.04] p-3">
+              <div className="flex items-baseline justify-between">
+                <p className="font-mono text-xs font-bold text-purple-200">{node.label}</p>
+                <button
+                  onClick={() => setSelectedNode(null)}
+                  className="text-[10px] text-gray-500 hover:text-gray-300"
+                >
+                  close
+                </button>
+              </div>
+              <p className="mt-1 text-[11px] text-gray-400">
+                {node.pairCount} pair{node.pairCount === 1 ? '' : 's'} · mean resonance{' '}
+                {(node.avgResonance * 100).toFixed(1)} · {touching.length} connection
+                {touching.length === 1 ? '' : 's'}
+              </p>
+              {touching.map((e, i) => (
+                <p key={i} className="mt-0.5 font-mono text-[11px] text-gray-500">
+                  {e.source} → {e.target} · {e.pairCount}p · {(e.strength * 100).toFixed(1)}
+                </p>
+              ))}
+            </div>
+          );
+        })()}
 
       <div className="space-y-1">
         <p className="text-[11px] font-mono uppercase tracking-wider text-gray-400">Edges</p>
@@ -665,6 +741,12 @@ export function CrossDomainWorkbench() {
   const [byClass, setByClass] = useState<Record<string, number>>({});
   const [avgResonance, setAvgResonance] = useState(0);
   const [drillId, setDrillId] = useState<string | null>(null);
+  const [editingPair, setEditingPair] = useState<Pair | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [pairNotice, setPairNotice] = useState<string | null>(null);
+  const [clearArmed, setClearArmed] = useState(false);
+  const [clearNotice, setClearNotice] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -697,6 +779,21 @@ export function CrossDomainWorkbench() {
     setLoading(false);
   }, []);
 
+  const deletePair = useCallback(
+    async (pair: Pair) => {
+      const res = await lensRun('resonance', 'deletePair', { pairId: pair.id });
+      setConfirmDeleteId(null);
+      if (res.data.ok) {
+        setPairNotice(`Pair deleted — "${pair.a.title}" ⇔ "${pair.b.title}" removed.`);
+        if (editingPair?.id === pair.id) setEditingPair(null);
+        refresh();
+      } else {
+        setPairNotice(res.data.error || 'Delete failed.');
+      }
+    },
+    [editingPair, refresh],
+  );
+
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -718,16 +815,23 @@ export function CrossDomainWorkbench() {
   );
 
   const clearAcked = useCallback(async () => {
+    const cleared = alerts.filter((x) => x.acknowledged).length;
     const res = await lensRun<{ alerts: ResAlert[]; unacknowledgedCount: number }>(
       'resonance',
       'resonanceAlerts',
       { clearAcknowledged: true },
     );
+    setClearArmed(false);
     if (res.data.ok && res.data.result) {
       setAlerts(res.data.result.alerts);
       setUnackCount(res.data.result.unacknowledgedCount);
+      setClearNotice(
+        cleared > 0
+          ? `Cleared ${cleared} acknowledged alert${cleared === 1 ? '' : 's'}.`
+          : 'No acknowledged alerts to clear.',
+      );
     }
-  }, []);
+  }, [alerts]);
 
   const exportFindings = useCallback(() => {
     const payload = {
@@ -778,7 +882,14 @@ export function CrossDomainWorkbench() {
         </div>
       </div>
 
-      <ProposePairForm onCreated={refresh} />
+      <ProposePairForm
+        onCreated={refresh}
+        editing={editingPair}
+        onDoneEditing={() => {
+          setEditingPair(null);
+          refresh();
+        }}
+      />
 
       {pairs.length > 0 && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -826,6 +937,7 @@ export function CrossDomainWorkbench() {
         <>
           {tab === 'pairs' && (
             <div className="space-y-2">
+              {pairNotice && <p className="text-[11px] text-emerald-300/90">{pairNotice}</p>}
               {pairs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-lg border border-white/5 py-16 text-gray-600">
                   <GitBranch className="mb-3 h-8 w-8 opacity-30" />
@@ -834,48 +946,94 @@ export function CrossDomainWorkbench() {
                 </div>
               ) : (
                 pairs.map((p) => (
-                  <button
+                  <div
                     key={p.id}
-                    onClick={() => setDrillId(p.id)}
-                    className="w-full rounded-lg border border-white/5 bg-black/30 p-3 text-left transition-colors hover:border-white/15"
+                    className="w-full rounded-lg border border-white/5 bg-black/30 transition-colors hover:border-white/15"
                   >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="rounded px-1.5 py-0.5 font-mono text-[10px]"
-                        style={{
-                          background: cmeta(p.classification).color + '22',
-                          color: cmeta(p.classification).color,
+                    <button
+                      onClick={() => setDrillId(p.id)}
+                      className="w-full p-3 pb-2 text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="rounded px-1.5 py-0.5 font-mono text-[10px]"
+                          style={{
+                            background: cmeta(p.classification).color + '22',
+                            color: cmeta(p.classification).color,
+                          }}
+                        >
+                          {p.a.domain}
+                        </span>
+                        <ArrowRight className="h-3 w-3 text-gray-600" />
+                        <span
+                          className="rounded px-1.5 py-0.5 font-mono text-[10px]"
+                          style={{
+                            background: cmeta(p.classification).color + '22',
+                            color: cmeta(p.classification).color,
+                          }}
+                        >
+                          {p.b.domain}
+                        </span>
+                        <span
+                          className="ml-auto font-mono text-base font-bold"
+                          style={{ color: cmeta(p.classification).color }}
+                        >
+                          {(p.resonance * 100).toFixed(1)}
+                        </span>
+                      </div>
+                      <p className="mt-1 truncate text-xs text-gray-400">{p.a.title}</p>
+                      {p.a.description && (
+                        <p className="truncate text-[11px] text-gray-600">{p.a.description}</p>
+                      )}
+                      <p className="truncate text-xs text-gray-400">{p.b.title}</p>
+                      {p.b.description && (
+                        <p className="truncate text-[11px] text-gray-600">{p.b.description}</p>
+                      )}
+                      {p.note && <p className="mt-0.5 truncate text-[11px] italic text-gray-500">{p.note}</p>}
+                      <div className="mt-1.5 flex items-center gap-3 text-[10px] text-gray-400">
+                        <span>{cmeta(p.classification).label}</span>
+                        <span>inv {(p.invOverlap * 100).toFixed(0)}%</span>
+                        <span>sem-dist {((1 - p.tokOverlap) * 100).toFixed(0)}%</span>
+                        <span>{p.sharedInvariants.length} shared</span>
+                        <span className="ml-auto text-purple-400">drill down →</span>
+                      </div>
+                    </button>
+                    <div className="flex items-center gap-2 border-t border-white/5 px-3 py-1.5">
+                      <button
+                        onClick={() => {
+                          setEditingPair(p);
+                          setPairNotice(null);
                         }}
+                        className="rounded border border-white/10 px-2 py-0.5 text-[10px] text-gray-400 hover:text-white"
                       >
-                        {p.a.domain}
-                      </span>
-                      <ArrowRight className="h-3 w-3 text-gray-600" />
-                      <span
-                        className="rounded px-1.5 py-0.5 font-mono text-[10px]"
-                        style={{
-                          background: cmeta(p.classification).color + '22',
-                          color: cmeta(p.classification).color,
-                        }}
-                      >
-                        {p.b.domain}
-                      </span>
-                      <span
-                        className="ml-auto font-mono text-base font-bold"
-                        style={{ color: cmeta(p.classification).color }}
-                      >
-                        {(p.resonance * 100).toFixed(1)}
-                      </span>
+                        Edit
+                      </button>
+                      {confirmDeleteId === p.id ? (
+                        <>
+                          <span className="text-[10px] text-amber-300">Delete this pair?</span>
+                          <button
+                            onClick={() => deletePair(p)}
+                            className="rounded border border-red-400/30 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-300 hover:text-red-200"
+                          >
+                            Delete
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="rounded border border-white/10 px-2 py-0.5 text-[10px] text-gray-400 hover:text-white"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(p.id)}
+                          className="rounded border border-white/10 px-2 py-0.5 text-[10px] text-gray-400 hover:text-red-300"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
-                    <p className="mt-1 truncate text-xs text-gray-400">{p.a.title}</p>
-                    <p className="truncate text-xs text-gray-400">{p.b.title}</p>
-                    <div className="mt-1.5 flex items-center gap-3 text-[10px] text-gray-400">
-                      <span>{cmeta(p.classification).label}</span>
-                      <span>inv {(p.invOverlap * 100).toFixed(0)}%</span>
-                      <span>sem-dist {((1 - p.tokOverlap) * 100).toFixed(0)}%</span>
-                      <span>{p.sharedInvariants.length} shared</span>
-                      <span className="ml-auto text-purple-400">drill down →</span>
-                    </div>
-                  </button>
+                  </div>
                 ))
               )}
             </div>
@@ -890,14 +1048,36 @@ export function CrossDomainWorkbench() {
                   <p className="text-[11px] text-gray-400">
                     {unackCount} unacknowledged of {alerts.length}
                   </p>
-                  <button
-                    onClick={clearAcked}
-                    className="flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-[10px] text-gray-400 hover:text-white"
-                  >
-                    <Trash2 className="h-3 w-3" /> Clear acknowledged
-                  </button>
+                  {clearArmed ? (
+                    <span className="flex items-center gap-2">
+                      <span className="text-[10px] text-amber-300">Clear acknowledged alerts?</span>
+                      <button
+                        onClick={clearAcked}
+                        className="flex items-center gap-1 rounded border border-red-400/30 bg-red-500/10 px-2 py-1 text-[10px] text-red-300 hover:text-red-200"
+                      >
+                        <Trash2 className="h-3 w-3" /> Clear
+                      </button>
+                      <button
+                        onClick={() => setClearArmed(false)}
+                        className="rounded border border-white/10 px-2 py-1 text-[10px] text-gray-400 hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setClearArmed(true);
+                        setClearNotice(null);
+                      }}
+                      className="flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-[10px] text-gray-400 hover:text-white"
+                    >
+                      <Trash2 className="h-3 w-3" /> Clear acknowledged
+                    </button>
+                  )}
                 </div>
               )}
+              {clearNotice && <p className="text-[11px] text-emerald-300/90">{clearNotice}</p>}
               {alerts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-lg border border-white/5 py-16 text-gray-600">
                   <Bell className="mb-3 h-8 w-8 opacity-30" />
