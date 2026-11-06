@@ -138,6 +138,19 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Real account + world state: vehicles you spawn are persisted and shared with the 3D world, not demo data.',
   },
   /**
+   * Sub-Worlds mixes three content kinds on one surface (the compilation's
+   * census flag for this lens): spawned worlds are users' own records in
+   * the platform store — not demo data, and not polled from anywhere —
+   * while the Repos view is a live GitHub search, labelled in that view.
+   * The generic REAL_LIVE caption ("polled live from an external source")
+   * is true of the Repos view only, so the declaration carries the
+   * distinction in its own text: ONE lens declaration, kinds named.
+   */
+  'sub-worlds': {
+    label: 'Live',
+    caption: 'Worlds here are real records in the platform store — yours and other creators’ public worlds, spawned, hosted and visited in Concord. The Repos view is a live GitHub search, labelled there; the worlds themselves are not polled from an external source.',
+  },
+  /**
    * Retail's store is the account's own live store — products, orders and
    * stock are the merchant's real records. The generic REAL_FREE line
    * ("static / open-access dataset") was false about the machinery in both
