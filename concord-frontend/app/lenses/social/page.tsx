@@ -133,6 +133,28 @@ export default function SocialHubPage() {
   const [homeFeed, setHomeFeed] = useState<HomeFeed>('following');
   const [inboxTab, setInboxTab] = useState<InboxTab>('notifications');
   const [youTab, setYouTab] = useState<YouTab>('posts');
+  const [exportNote, setExportNote] = useState<string | null>(null);
+  const exportMyRecords = useCallback(async () => {
+    setExportNote('Preparing…');
+    try {
+      const res = await api.get('/api/social/export');
+      if (res.data?.ok === false) {
+        setExportNote(res.data.error || 'Export failed — try again.');
+        return;
+      }
+      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'social-my-records.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      const counts = (res.data?.counts || {}) as { posts?: number; bookmarks?: number; drafts?: number };
+      setExportNote(`Exported ${counts.posts ?? 0} posts · ${counts.bookmarks ?? 0} bookmarks · ${counts.drafts ?? 0} drafts`);
+    } catch {
+      setExportNote('Export failed — try again.');
+    }
+  }, []);
   // Live audio Room stage. RoomList sets this when the user clicks Join.
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [storyRequest, setStoryRequest] = useState(0);
@@ -476,15 +498,29 @@ export default function SocialHubPage() {
 
                 {view === 'you' && (
                   <>
-                    <div className="inline-flex flex-wrap rounded-full border border-white/10 bg-white/[0.03] p-1" role="tablist" aria-label="You">
-                      {([
-                        ['posts', 'Posts'],
-                        ['saved', 'Saved'],
-                        ['analytics', 'Analytics'],
-                        ['muted', 'Muted & blocked'],
-                      ] as const).map(([id, label]) => (
-                        <button key={id} type="button" role="tab" aria-selected={youTab === id} className={subTabClass(youTab === id)} onClick={() => setYouTab(id)}>{label}</button>
-                      ))}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="inline-flex flex-wrap rounded-full border border-white/10 bg-white/[0.03] p-1" role="tablist" aria-label="You">
+                        {([
+                          ['posts', 'Posts'],
+                          ['saved', 'Saved'],
+                          ['analytics', 'Analytics'],
+                          ['muted', 'Muted & blocked'],
+                        ] as const).map(([id, label]) => (
+                          <button key={id} type="button" role="tab" aria-selected={youTab === id} className={subTabClass(youTab === id)} onClick={() => setYouTab(id)}>{label}</button>
+                        ))}
+                      </div>
+                      {/* Own-records export (F10): the caller's profile,
+                          posts, bookmarks and drafts as one JSON file —
+                          GET /api/social/export, downloaded in place. */}
+                      {currentUserId ? (
+                        <button
+                          type="button"
+                          onClick={() => { void exportMyRecords(); }}
+                          className="ml-auto rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/[0.06]"
+                        >
+                          {exportNote || 'Export my records'}
+                        </button>
+                      ) : null}
                     </div>
                     {youTab === 'posts' && railUserId ? (
                       <>

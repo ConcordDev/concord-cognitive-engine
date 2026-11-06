@@ -190,6 +190,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your world records: land claims and houses are your real persistent state in Concord’s worlds, and the tools work on your own plots and buildings. No external feed is polled.',
   },
   /**
+   * Social's records are the platform's own social graph — posts,
+   * follows, reactions and drafts live in Concord's store, written and
+   * read by the people here. The generic REAL_LIVE line ("polled live
+   * from an external source") is false for this lens; nothing external
+   * is polled.
+   */
+  social: {
+    label: 'Live',
+    caption: 'The social graph lives here: posts, follows, reactions and drafts are real records in the platform store, written by the people on this instance. Nothing is polled from an external source.',
+  },
+  /**
    * Nonprofit's own records (campaigns, donors, volunteers, pages, events)
    * are live per-user workspace data; the 990 research data is ProPublica's
    * open-access IRS dataset — real, but static reference data. The generic
