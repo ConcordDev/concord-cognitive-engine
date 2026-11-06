@@ -215,11 +215,25 @@ export function DocsWorkspace() {
     await reloadActive();
   }
 
-  async function runSearch() {
-    if (!search.trim()) { setResults(null); return; }
-    const r = await lensRun('docs', 'docs-search', { query: search.trim() });
+  const searchRunRef = useRef(0);
+  const runSearch = useCallback(async (raw: string) => {
+    const q = raw.trim();
+    if (!q) { setResults(null); return; }
+    const run = ++searchRunRef.current;
+    const r = await lensRun('docs', 'docs-search', { query: q });
+    if (run !== searchRunRef.current) return; // a newer keystroke superseded this run
     setResults((r.data?.result?.results as { id: string; title: string; icon: string; snippet?: string }[]) || []);
-  }
+  }, []);
+
+  // Search runs as the user types (S3 / F2). The control previously
+  // searched only on Enter, so typing accepted input and changed
+  // nothing — the tree below kept listing every page. Debounced;
+  // Enter still runs the search immediately.
+  useEffect(() => {
+    if (!search.trim()) { setResults(null); return; }
+    const t = setTimeout(() => { void runSearch(search); }, 250);
+    return () => clearTimeout(t);
+  }, [search, runSearch]);
 
   async function snapshotNow() {
     if (!active) return;
@@ -279,7 +293,7 @@ export function DocsWorkspace() {
               <div className="relative flex-1">
                 <Search className="w-3 h-3 text-zinc-400 absolute left-2 top-1/2 -translate-y-1/2" />
                 <input value={search} onChange={e => setSearch(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') void runSearch(); }}
+                  onKeyDown={e => { if (e.key === 'Enter') void runSearch(search); }}
                   placeholder="Search" className="w-full bg-zinc-950 border border-zinc-800 rounded pl-6 pr-2 py-1 text-xs text-zinc-200" />
               </div>
               <button onClick={() => createPage(null)} title="New page"
@@ -293,6 +307,11 @@ export function DocsWorkspace() {
                   {results.length} results{' '}
                   <button onClick={() => { setResults(null); setSearch(''); }} className="text-zinc-400 underline">clear</button>
                 </p>
+                {results.length === 0 && (
+                  <p className="text-[11px] text-zinc-400 italic px-2">
+                    No pages match &ldquo;{search.trim()}&rdquo;.
+                  </p>
+                )}
                 {results.map(r => (
                   <button key={r.id} onClick={() => { void openPage(r.id); setResults(null); }}
                     className="block w-full text-left px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 rounded">
