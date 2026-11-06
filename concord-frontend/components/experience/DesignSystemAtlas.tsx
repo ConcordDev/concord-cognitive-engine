@@ -29,6 +29,7 @@ const TOPICS = [
 
 export function DesignSystemAtlas() {
   const [topic, setTopic] = useState(TOPICS[0].id);
+  const [savedDtuId, setSavedDtuId] = useState<string | null>(null);
 
   const repos = useQuery({
     queryKey: ['gh-experience', topic],
@@ -66,10 +67,14 @@ export function DesignSystemAtlas() {
               content={list.slice(0, 20).map((r, i) => `${i + 1}. ★${(r.stargazers_count ?? 0).toLocaleString()} · ${r.full_name}${r.language ? ` · ${r.language}` : ''}\n   ${r.description || ''}\n   ${r.html_url}`).join('\n\n')}
               extraTags={['experience', 'github', 'design-system', topic]}
               rawData={{ topic, repos: list }}
+              onSaved={(id) => setSavedDtuId(id)}
             />
           )}
         </div>
       </header>
+      {savedDtuId && (
+        <p className="text-[11px] text-cyan-300">Saved as DTU <code className="font-mono">{savedDtuId}</code> — find it by this exact ID in the Global Library.</p>
+      )}
       {repos.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub results unavailable right now — nothing is being shown in their place.</div>}
       {repos.data?.stale && !repos.isError && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached GitHub results{repos.data.fetchedAt ? ` from ${new Date(repos.data.fetchedAt).toLocaleString()}` : ''} — live refresh is rate-limited.</div>}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">

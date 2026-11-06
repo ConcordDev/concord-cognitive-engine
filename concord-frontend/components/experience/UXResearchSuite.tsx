@@ -36,6 +36,35 @@ async function run(action: string, params: Record<string, unknown> = {}): Promis
   return null;
 }
 
+async function runDelete(action: string, params: Record<string, unknown>): Promise<boolean> {
+  const r = await lensRun('experience', action, params);
+  return !!r.data?.ok;
+}
+
+// Two-step delete control (S3): the first click arms with the scope
+// named, the second click deletes; "Keep" disarms. No native dialogs.
+function DeleteButton({ label, scope, onDelete }: { label: string; scope: string; onDelete: () => void | Promise<void> }) {
+  const [armed, setArmed] = useState(false);
+  if (!armed) {
+    return (
+      <button onClick={() => setArmed(true)} className="text-gray-500 hover:text-red-400 shrink-0" aria-label={label} title={label}>
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1.5 shrink-0">
+      <button
+        onClick={async () => { await onDelete(); setArmed(false); }}
+        className="text-[10px] px-2 py-1 rounded bg-red-500/20 text-red-200"
+      >
+        Delete {scope}? Click again to confirm
+      </button>
+      <button onClick={() => setArmed(false)} className="text-[10px] px-2 py-1 rounded bg-zinc-800 text-gray-300">Keep</button>
+    </span>
+  );
+}
+
 // ── Shared bits ────────────────────────────────────────────────────────────
 
 function SectionHeader({ icon: Icon, title, hint }: { icon: typeof Play; title: string; hint?: string }) {
@@ -178,6 +207,7 @@ function TestsPanel() {
                 <p className="text-sm font-medium text-white">{t.name}</p>
                 <p className="text-[11px] text-gray-400">{t.tasks.length} tasks · {t.runCount} runs · {t.successRate}% task success</p>
               </button>
+              <DeleteButton label={`Delete test ${t.name}`} scope="this test, its runs and their clips" onDelete={async () => { if (await runDelete('deleteTest', { testId: t.id })) { if (selected === t.id) setSelected(null); await load(); } }} />
               <span className={`text-sm font-bold ${t.successRate >= 70 ? 'text-neon-green' : t.successRate >= 40 ? 'text-yellow-400' : 'text-red-400'}`}>{t.successRate}%</span>
             </div>
             {selected === t.id && (
@@ -217,7 +247,10 @@ function TestsPanel() {
               <div key={r.id} className="bg-zinc-900 border border-zinc-800 rounded p-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-white">{r.participant} · {r.testName}</span>
-                  <span className="text-[11px] text-gray-400">{(r.totalDurationMs / 1000).toFixed(1)}s · {r.successCount}/{r.tasks.length}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-[11px] text-gray-400">{(r.totalDurationMs / 1000).toFixed(1)}s · {r.successCount}/{r.tasks.length}</span>
+                    <DeleteButton label={`Delete run by ${r.participant}`} scope="this run and its clips" onDelete={async () => { if (await runDelete('deleteRun', { runId: r.id })) await load(); }} />
+                  </span>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   {r.tasks.map(tr => (
@@ -250,7 +283,6 @@ function HeatmapPanel() {
   const [name, setName] = useState('');
   const [question, setQuestion] = useState('');
   const startRef = useRef({ t: Date.now() });
-
   const create = async () => {
     if (!name.trim()) return;
     setBusy(true);
@@ -291,7 +323,10 @@ function HeatmapPanel() {
 
       {study && (
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-3">
-          <p className="text-xs text-gray-300">{study.question}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-gray-300">{study.question}</p>
+            <DeleteButton label={`Delete study ${study.name}`} scope="this study and its clicks" onDelete={async () => { if (await runDelete('deleteHeatmapStudy', { studyId: study.id })) { setStudy(null); setResults(null); } }} />
+          </div>
           <div
             onClick={onCanvasClick}
             className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair select-none flex items-center justify-center" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
@@ -405,7 +440,10 @@ function CardSortPanel() {
 
       {studyId && (
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-3">
-          <SectionHeader icon={Users} title="Submit a sort" hint="Add categories, then click an unassigned card and pick a category." />
+          <div className="flex items-center justify-between gap-2">
+            <SectionHeader icon={Users} title="Submit a sort" hint="Add categories, then click an unassigned card and pick a category." />
+            <DeleteButton label="Delete this card sort study" scope="this study and its submissions" onDelete={async () => { if (await runDelete('deleteCardSort', { studyId })) { setStudyId(null); setCardsForStudy([]); setGroups([]); setResults(null); } }} />
+          </div>
           <div className="flex items-center gap-2">
             <input className={`${inputCls} max-w-[160px]`} value={participant} onChange={e => setParticipant(e.target.value)} placeholder="Participant" />
             <input className={`${inputCls} max-w-[160px]`} value={catName} onChange={e => setCatName(e.target.value)} placeholder="New category" />
@@ -699,10 +737,13 @@ function SurveyPanel() {
 
       <div className="space-y-2">
         {surveys.map(s => (
-          <button key={s.id} onClick={() => openSurvey(s)} className={`w-full text-left bg-zinc-900 border rounded-lg p-2.5 flex items-center justify-between ${active?.id === s.id ? 'border-neon-cyan/50' : 'border-zinc-800'}`}>
-            <span className="text-sm text-white">{s.name} <span className="text-[11px] text-gray-400">· {s.template?.toUpperCase() || 'custom'}</span></span>
-            <span className="text-[11px] text-gray-400 flex items-center gap-1">{s.responseCount} responses <ChevronRight className="w-3 h-3" /></span>
-          </button>
+          <div key={s.id} className={`w-full bg-zinc-900 border rounded-lg p-2.5 flex items-center gap-2 ${active?.id === s.id ? 'border-neon-cyan/50' : 'border-zinc-800'}`}>
+            <button onClick={() => openSurvey(s)} className="flex-1 text-left flex items-center justify-between">
+              <span className="text-sm text-white">{s.name} <span className="text-[11px] text-gray-400">· {s.template?.toUpperCase() || 'custom'}</span></span>
+              <span className="text-[11px] text-gray-400 flex items-center gap-1">{s.responseCount} responses <ChevronRight className="w-3 h-3" /></span>
+            </button>
+            <DeleteButton label={`Delete survey ${s.name}`} scope="this survey and its responses" onDelete={async () => { if (await runDelete('deleteSurvey', { surveyId: s.id })) { if (active?.id === s.id) { setActive(null); setCurrent(null); setResults(null); } await load(); } }} />
+          </div>
         ))}
         {surveys.length === 0 && <p className="text-xs text-gray-400">No surveys yet.</p>}
       </div>
@@ -951,8 +992,11 @@ function PanelTab() {
               <p className="text-xs text-white">{p.name} {p.email && <span className="text-gray-600">· {p.email}</span>}</p>
               <p className="text-[10px] text-gray-400">{Object.entries(p.attributes).map(([k, v]) => `${k}: ${v}`).join(' · ') || 'no attributes'}</p>
             </div>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded ${p.status === 'invited' ? 'bg-neon-cyan/15 text-neon-cyan' : p.status === 'invite_not_sent' ? 'bg-amber-500/15 text-amber-300' : 'bg-zinc-800 text-gray-400'}`}>
-              {p.status === 'invite_not_sent' ? 'invite not sent' : p.status}{p.invitedCount > 0 ? ` ×${p.invitedCount}` : ''}
+            <span className="flex items-center gap-2">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded ${p.status === 'invited' ? 'bg-neon-cyan/15 text-neon-cyan' : p.status === 'invite_not_sent' ? 'bg-amber-500/15 text-amber-300' : 'bg-zinc-800 text-gray-400'}`}>
+                {p.status === 'invite_not_sent' ? 'invite not sent' : p.status}{p.invitedCount > 0 ? ` ×${p.invitedCount}` : ''}
+              </span>
+              <DeleteButton label={`Remove participant ${p.name}`} scope="this participant" onDelete={async () => { if (await runDelete('deleteParticipant', { participantId: p.id })) await load(); }} />
             </span>
           </div>
         ))}
@@ -980,19 +1024,28 @@ function ClipsPanel() {
   const [sentiment, setSentiment] = useState('neutral');
   const [selected, setSelected] = useState<string[]>([]);
   const [reelShare, setReelShare] = useState<string | null>(null);
+  const [reels, setReels] = useState<{ id: string; name: string }[]>([]);
+  const [clipError, setClipError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const r = await run('listClips');
     if (r) { setClips(r.clips || []); setBySentiment(r.bySentiment || {}); }
+    const rl = await run('listReels');
+    if (rl) setReels(rl.reels || []);
   }, []);
   useEffect(() => { load(); }, [load]);
 
   const create = async () => {
     if (!runId.trim() || !label.trim()) return;
     setBusy(true);
-    await run('createClip', { runId, label, note, startMs: Number(startMs), endMs: Number(endMs), sentiment });
-    setLabel(''); setNote('');
-    await load();
+    setClipError(null);
+    const res = await lensRun('experience', 'createClip', { runId, label, note, startMs: Number(startMs), endMs: Number(endMs), sentiment });
+    if (res.data?.ok) {
+      setLabel(''); setNote('');
+      await load();
+    } else {
+      setClipError(res.data?.error || 'The clip was not created.');
+    }
     setBusy(false);
   };
 
@@ -1001,6 +1054,7 @@ function ClipsPanel() {
     setBusy(true);
     const r = await run('buildReel', { name: 'Highlight reel', clipIds: selected });
     if (r) setReelShare(r.shareUrl);
+    await load();
     setBusy(false);
   };
 
@@ -1025,6 +1079,7 @@ function ClipsPanel() {
         <button onClick={create} disabled={busy || !runId.trim() || !label.trim()} className="btn-neon cyan text-xs mt-2 flex items-center gap-1 disabled:opacity-40">
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Create clip
         </button>
+        {clipError && <p role="alert" className="text-[11px] text-red-400 mt-2 flex items-center gap-1"><XCircle className="w-3 h-3" /> {clipError}</p>}
       </div>
 
       {clips.length > 0 && (
@@ -1037,17 +1092,30 @@ function ClipsPanel() {
 
       <div className="space-y-1">
         {clips.map(c => (
-          <label key={c.id} className="bg-zinc-900 border border-zinc-800 rounded p-2 flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={selected.includes(c.id)} onChange={e => setSelected(e.target.checked ? [...selected, c.id] : selected.filter(id => id !== c.id))} />
+          <div key={c.id} className="bg-zinc-900 border border-zinc-800 rounded p-2 flex items-center gap-2">
+            <input type="checkbox" checked={selected.includes(c.id)} onChange={e => setSelected(e.target.checked ? [...selected, c.id] : selected.filter(id => id !== c.id))} aria-label={`Select clip ${c.label}`} />
             <div className="flex-1">
               <p className="text-xs text-white">{c.label} <span className={`text-[10px] ${sentimentColor(c.sentiment)}`}>· {c.sentiment}</span></p>
               <p className="text-[10px] text-gray-400">{c.runId} · {(c.durationMs / 1000).toFixed(1)}s clip</p>
             </div>
             <a href={`/share/clip/${c.shareToken}`} className="text-[10px] text-neon-cyan flex items-center gap-0.5"><Share2 className="w-2.5 h-2.5" /> share</a>
-          </label>
+            <DeleteButton label={`Delete clip ${c.label}`} scope="this clip" onDelete={async () => { if (await runDelete('deleteClip', { clipId: c.id })) { setSelected(sel => sel.filter(id => id !== c.id)); await load(); } }} />
+          </div>
         ))}
         {clips.length === 0 && <p className="text-xs text-gray-400">No clips yet.</p>}
       </div>
+
+      {reels.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[11px] text-gray-400">Built reels</p>
+          {reels.map(r => (
+            <div key={r.id} className="bg-zinc-900 border border-zinc-800 rounded p-2 flex items-center justify-between gap-2">
+              <span className="text-xs text-white">{r.name}</span>
+              <DeleteButton label={`Delete reel ${r.name}`} scope="this reel (its clips stay)" onDelete={async () => { if (await runDelete('deleteReel', { reelId: r.id })) await load(); }} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {clips.length > 0 && (
         <div>
@@ -1142,10 +1210,13 @@ function PrototypePanel() {
 
       <div className="space-y-1">
         {protos.map(p => (
-          <button key={p.id} onClick={() => openProto(p)} className={`w-full text-left bg-zinc-900 border rounded-lg p-2.5 flex items-center justify-between ${active?.id === p.id ? 'border-neon-cyan/50' : 'border-zinc-800'}`}>
-            <span className="text-sm text-white">{p.name} <span className="text-[11px] text-gray-400">· {p.frames.length} frames</span></span>
-            <span className="text-[11px] text-gray-400">{p.interactionCount} interactions</span>
-          </button>
+          <div key={p.id} className={`w-full bg-zinc-900 border rounded-lg p-2.5 flex items-center gap-2 ${active?.id === p.id ? 'border-neon-cyan/50' : 'border-zinc-800'}`}>
+            <button onClick={() => openProto(p)} className="flex-1 text-left flex items-center justify-between">
+              <span className="text-sm text-white">{p.name} <span className="text-[11px] text-gray-400">· {p.frames.length} frames</span></span>
+              <span className="text-[11px] text-gray-400">{p.interactionCount} interactions</span>
+            </button>
+            <DeleteButton label={`Delete prototype ${p.name}`} scope="this prototype and its interactions" onDelete={async () => { if (await runDelete('deletePrototype', { prototypeId: p.id })) { if (active?.id === p.id) { setActive(null); setAnalytics(null); } await load(); } }} />
+          </div>
         ))}
         {protos.length === 0 && <p className="text-xs text-gray-400">No prototypes registered yet.</p>}
       </div>
