@@ -106,6 +106,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Live: your aircraft, logbook and plans are saved in your own workspace, with live METAR/TAF, NOTAMs and OpenSky traffic.',
   },
   /**
+   * Telecommunications records (sites, spectrum, outages, drive tests) are
+   * the user's own live workspace data, and the planning figures are
+   * computed over them — but nothing here is carrier telemetry, so the
+   * generic REAL_LIVE line ("polled live from an external source") would
+   * overclaim in the other direction (G1/F1).
+   */
+  telecommunications: {
+    label: 'Workspace',
+    caption: 'Your workspace planning data: sites, spectrum, outages and drive tests are your live records; coverage, capacity and SLA figures are computed over them — not live carrier-network data.',
+  },
+  /**
    * The world vehicle fleet (spawn/mine/inspector) is a real persistent DB
    * store, not a feed polled from an external source (F1) — so the generic
    * REAL_LIVE caption is false here.
