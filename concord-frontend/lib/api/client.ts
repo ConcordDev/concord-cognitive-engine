@@ -945,7 +945,7 @@ export const apiHelpers = {
 
   // DTU operations (note: endpoint is /api/dtus - plural)
   dtus: {
-    list: (params?: { scope?: string; limit?: number; offset?: number }) => api.get('/api/dtus', { params }),
+    list: (params?: { scope?: string; limit?: number; offset?: number; mine?: string | boolean; q?: string; tags?: string }) => api.get('/api/dtus', { params }),
     paginated: (params: {
       limit?: number;
       offset?: number;
