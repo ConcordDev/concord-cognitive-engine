@@ -1848,6 +1848,8 @@ export const apiHelpers = {
       api.post('/api/attention/thread', data),
     completeThread: (data: { threadId: string; output?: unknown }) =>
       api.post('/api/attention/thread/complete', data),
+    deleteThread: (data: { threadId: string }) =>
+      api.post('/api/attention/thread/delete', data),
     threads: () => api.get('/api/attention/threads'),
     queue: () => api.get('/api/attention/queue'),
     addBackground: (data: { type?: string; handler?: string; priority?: number }) =>
