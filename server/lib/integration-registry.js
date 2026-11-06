@@ -258,6 +258,7 @@ export const REGISTRY = Object.freeze({
   philosophy:    { tier: TIER.SIM_GRADE_A, groundedSchema: "philosophy/argument" },
   creative:      { tier: TIER.SIM_GRADE_A, groundedSchema: "creative/recipe" },
   "creative-writing": { tier: TIER.SIM_GRADE_A, groundedSchema: "creative/text" },
+  "narrative-walk": { tier: TIER.SIM_GRADE_A, groundedSchema: "narrative/cinematic", note: "Authored Concordia cinematic beats, bundled client-side" },
   creative_writing: { tier: TIER.SIM_GRADE_A, groundedSchema: "creative/text" },
   poetry:        { tier: TIER.REAL_FREE, sources: ["poetrydb", "datamuse"], note: "PoetryDB public-domain poems + Datamuse word relationships" },
   codex:         { tier: TIER.REAL_FREE, note: "Authored Concordia canon — hand-written lore files (content/world), served as recorded" },
