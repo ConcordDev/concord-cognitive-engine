@@ -18310,6 +18310,7 @@ async function _hypothesisEngineCall(method, args) {
 }
 register("hypothesis", "metrics", () => _hypothesisEngineCall("getHypothesisMetrics", []), { public: true });
 register("hypothesis", "add_test", (_ctx, input = {}) => _hypothesisEngineCall("addTest", [input.hypothesisId, input.description]), { public: false });
+register("hypothesis", "delete", (_ctx, input = {}) => _hypothesisEngineCall("deleteHypothesis", [input.id]), { public: false });
 register("hypothesis", "add_evidence", (_ctx, input = {}) => _hypothesisEngineCall("addEvidence", [
   input.hypothesisId, input.side, input.dtuId, input.weight, input.summary,
 ]), { public: false });
@@ -22054,7 +22055,7 @@ async function initGhostFleet() {
     // registrations at ~9709/9735/9745 with the full implementation
     // from ./emergent/hypothesis-engine.js. Marked with note so the
     // duplicate-registration warning in register() stays quiet.
-    register("hypothesis", "propose", (_ctx, input = {}) => hypo.proposeHypothesis(input.statement, input.domain, input.priority), { note: "ghost_fleet_shadow_ok" });
+    register("hypothesis", "propose", (_ctx, input = {}) => hypo.proposeHypothesis(input.statement, input.domain, input.priority, { force: input.force === true }), { note: "ghost_fleet_shadow_ok" });
     register("hypothesis", "get", (_ctx, input = {}) => {
       // Always return an envelope, never raw null — getHypothesis(undefined) and
       // unknown ids return null, which violates the macro contract (a macro must
@@ -22072,6 +22073,7 @@ async function initGhostFleet() {
     register("hypothesis", "reject", (_ctx, input = {}) => hypo.rejectHypothesis(input.id, input.reason));
     register("hypothesis", "refine", (_ctx, input = {}) => hypo.refineHypothesis(input.id, input.newStatement));
     register("hypothesis", "archive", (_ctx, input = {}) => hypo.archiveHypothesis(input.id));
+    register("hypothesis", "delete", (_ctx, input = {}) => hypo.deleteHypothesis(input.id));
     register("hypothesis", "metrics", () => hypo.getHypothesisMetrics(), { note: "intentional_shadow_ok" });
 
     structuredLog("info", "ghost_fleet_module_loaded", { name: "hypothesis-engine", macros: 13 });
