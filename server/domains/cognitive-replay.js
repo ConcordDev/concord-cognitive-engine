@@ -507,6 +507,29 @@ export default function registerCognitiveReplayActions(registerLensAction) {
       "SELECT id, title, line, created_at FROM cognitive_replay_moments WHERE user_id = ? ORDER BY created_at DESC",
     ).all(momentActor(ctx));
   }
+  function deleteMomentRow(ctx, id) {
+    const db = replayDb(ctx);
+    if (!momentsReady(db)) return;
+    db.prepare(
+      "DELETE FROM cognitive_replay_moments WHERE id = ? AND user_id = ?",
+    ).run(id, momentActor(ctx));
+  }
+  // The full record for one of the caller's moments, from whichever
+  // store holds it (the live map first, the restart rows second).
+  function findMoment(ctx, userId, id) {
+    const live = momentList(userId).find((item) => item.id === id);
+    if (live) return live;
+    const row = readMomentRows(ctx).find((item) => item.id === id);
+    if (!row || typeof row.title !== "string" || !row.title.trim()) return null;
+    const moment = {
+      id: row.id,
+      title: row.title.trim(),
+      line: typeof row.line === "string" ? row.line : "",
+      createdAt: row.created_at || "",
+    };
+    momentList(userId).push(moment);
+    return moment;
+  }
   function lineFromEvent(userId, eventId) {
     const event = collectEvents(userId).find((item) => item.eventId === eventId);
     if (!event) return { error: "event_not_found" };
@@ -570,7 +593,7 @@ export default function registerCognitiveReplayActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          moments: moments.map((item) => ({ id: item.id, title: item.title })),
+          moments: moments.map((item) => ({ id: item.id, title: item.title, createdAt: item.createdAt || "" })),
           count: moments.length,
         },
       };
@@ -585,21 +608,16 @@ export default function registerCognitiveReplayActions(registerLensAction) {
       if (!uid(ctx)) return { ok: false, error: "no_actor" };
       const id = param(artifact, params, "id") || param(artifact, params, "momentId");
       if (!id) return { ok: false, error: "missing_moment_id" };
-      const live = momentList(userId).find((item) => item.id === id);
-      if (live) {
-        return { ok: true, result: { moment: { id: live.id, title: live.title, line: live.line } } };
-      }
-      const row = readMomentRows(ctx).find((item) => item.id === id);
-      if (!row || typeof row.title !== "string" || !row.title.trim()) {
-        return { ok: false, error: "moment_not_found" };
-      }
+      const found = findMoment(ctx, userId, id);
+      if (!found) return { ok: false, error: "moment_not_found" };
       return {
         ok: true,
         result: {
           moment: {
-            id: row.id,
-            title: row.title.trim(),
-            line: typeof row.line === "string" ? row.line : "",
+            id: found.id,
+            title: found.title,
+            line: found.line,
+            createdAt: found.createdAt || "",
           },
         },
       };
@@ -607,4 +625,53 @@ export default function registerCognitiveReplayActions(registerLensAction) {
       return { ok: false, error: String(err?.message || err) };
     }
   }, { note: "Read one chosen moment, including the line." });
+
+  registerLensAction("cognitive-replay", "moment-update", (ctx, artifact, params) => {
+    try {
+      const userId = momentActor(ctx);
+      if (!uid(ctx)) return { ok: false, error: "no_actor" };
+      const id = param(artifact, params, "id") || param(artifact, params, "momentId");
+      if (!id) return { ok: false, error: "missing_moment_id" };
+      const title = String(param(artifact, params, "title") || "").trim().slice(0, 160);
+      if (!title) return { ok: false, error: "moment title required" };
+      const line = String(param(artifact, params, "line") || "").trim().slice(0, 4000);
+      if (!line) return { ok: false, error: "moment line required" };
+      const moment = findMoment(ctx, userId, String(id));
+      if (!moment) return { ok: false, error: "moment_not_found" };
+      moment.title = title;
+      moment.line = line;
+      try {
+        writeMomentRow(ctx, moment);
+      } catch (err) {
+        return { ok: false, error: "moment_not_saved", detail: String(err?.message || err) };
+      }
+      saveReplayState();
+      return { ok: true, result: { momentId: moment.id, moment: { id: moment.id, title: moment.title, createdAt: moment.createdAt || "" } } };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  }, { note: "Edit one of the caller's own moments. The date it was added is kept." });
+
+  registerLensAction("cognitive-replay", "moment-delete", (ctx, artifact, params) => {
+    try {
+      const userId = momentActor(ctx);
+      if (!uid(ctx)) return { ok: false, error: "no_actor" };
+      const id = param(artifact, params, "id") || param(artifact, params, "momentId");
+      if (!id) return { ok: false, error: "missing_moment_id" };
+      const list = momentList(userId);
+      const idx = list.findIndex((item) => item.id === id);
+      const inRows = readMomentRows(ctx).some((row) => row.id === id);
+      if (idx < 0 && !inRows) return { ok: false, error: "moment_not_found" };
+      if (idx >= 0) list.splice(idx, 1);
+      try {
+        deleteMomentRow(ctx, String(id));
+      } catch (err) {
+        return { ok: false, error: "moment_not_deleted", detail: String(err?.message || err) };
+      }
+      saveReplayState();
+      return { ok: true, result: { deleted: String(id), remaining: momentList(userId).length } };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  }, { note: "Delete one of the caller's own moments." });
 }
