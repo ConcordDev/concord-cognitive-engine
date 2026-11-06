@@ -111,10 +111,24 @@ export default function registerVoiceActions(registerLensAction) {
     const transcript = artifact.data?.transcript || artifact.data?.text || "";
     if (typeof transcript !== "string") return { ok: false, error: "invalid_input", message: "transcript must be a string" };
     if (segments.length === 0 && !transcript.trim()) return { ok: true, result: { message: "Provide a transcript or segments to score sentiment." } };
-    const positiveWords = new Set(["good", "great", "excellent", "amazing", "wonderful", "fantastic", "love", "happy", "glad", "pleased", "awesome", "perfect", "beautiful", "brilliant", "enjoy", "success", "best", "better", "exciting", "positive", "agree", "right", "thank", "thanks", "helpful", "kind", "nice", "impressive", "outstanding", "remarkable", "superb", "terrific", "delighted", "satisfied", "thrilled", "confident", "optimistic", "fortunate", "grateful"]);
+    const positiveWords = new Set(["good", "great", "excellent", "amazing", "wonderful", "fantastic", "love", "happy", "glad", "pleased", "awesome", "perfect", "beautiful", "brilliant", "enjoy", "success", "best", "better", "exciting", "positive", "agree", "right", "thank", "thanks", "helpful", "kind", "nice", "impressive", "outstanding", "remarkable", "superb", "terrific", "delighted", "satisfied", "thrilled", "confident", "optimistic", "fortunate", "grateful", "proud", "win", "won"]);
     const negativeWords = new Set(["bad", "terrible", "awful", "horrible", "hate", "angry", "sad", "upset", "disappointed", "worst", "worse", "poor", "fail", "failure", "wrong", "problem", "issue", "difficult", "hard", "never", "unfortunately", "disagree", "concern", "worried", "annoyed", "frustrated", "confused", "ugly", "boring", "painful", "miserable", "dreadful", "unhappy", "regret", "sorry", "fear", "anxious", "stress", "doubt"]);
     const intensifiers = new Set(["very", "really", "extremely", "incredibly", "absolutely", "totally", "completely", "so", "quite"]);
     const negators = new Set(["not", "no", "never", "neither", "nobody", "nothing", "nowhere", "nor", "cannot", "can't", "don't", "doesn't", "didn't", "won't", "wouldn't", "shouldn't", "isn't", "aren't", "wasn't", "weren't"]);
+    // F1/D1: the matcher reads the words as written — a token matches a
+    // lexicon entry exactly OR through its common morphological variants
+    // (brilliantly→brilliant, loved/hated→love/hate, running→run), so
+    // inflected sentiment words are no longer invisible to the lexicon.
+    const lexHas = (set, w) => {
+      if (set.has(w)) return true;
+      const cands = [];
+      if (w.endsWith("ly")) cands.push(w.slice(0, -2));
+      if (w.endsWith("ing")) { cands.push(w.slice(0, -3)); cands.push(w.slice(0, -3) + "e"); }
+      if (w.endsWith("ed")) { cands.push(w.slice(0, -2)); cands.push(w.slice(0, -1)); cands.push(w.slice(0, -3)); }
+      else if (w.endsWith("d")) cands.push(w.slice(0, -1));
+      if (w.endsWith("s") && !w.endsWith("ss")) cands.push(w.slice(0, -1));
+      return cands.some((c) => c.length > 2 && set.has(c));
+    };
     const analyzeText = (text) => {
       const words = text.toLowerCase().replace(/[^a-z'\s]/g, " ").split(/\s+/).filter(w => w.length > 0);
       let posCount = 0, negCount = 0;
@@ -124,10 +138,10 @@ export default function registerVoiceActions(registerLensAction) {
         const isNegated = negators.has(prevWord);
         const hasIntensifier = i > 0 && intensifiers.has(prevWord);
         const boost = hasIntensifier ? 1.5 : 1;
-        if (positiveWords.has(w)) {
+        if (lexHas(positiveWords, w)) {
           if (isNegated) negCount += boost;
           else posCount += boost;
-        } else if (negativeWords.has(w)) {
+        } else if (lexHas(negativeWords, w)) {
           if (isNegated) posCount += boost;
           else negCount += boost;
         }
@@ -437,6 +451,7 @@ export default function registerVoiceActions(registerLensAction) {
       words: [],
       startedAt: vcNow(),
       finalizedAt: null,
+      endedAt: null,
       recordingId: null,
     };
     liveList(s, vcActor(ctx)).unshift(session);
@@ -449,7 +464,7 @@ export default function registerVoiceActions(registerLensAction) {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const session = liveList(s, vcActor(ctx)).find((g) => g.id === params.sessionId);
     if (!session) return { ok: false, error: "live session not found" };
-    if (session.status !== "live") return { ok: false, error: "session already finalized" };
+    if (session.status !== "live") return { ok: false, error: `session is ${session.status} — not live` };
     const text = vcClean(params.text, 8000);
     if (!text) return { ok: false, error: "text required" };
     const vRes = parseOptionalVector(params.vector);
@@ -483,7 +498,7 @@ export default function registerVoiceActions(registerLensAction) {
     const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const sessions = liveList(s, vcActor(ctx)).map((g) => ({
       id: g.id, title: g.title, language: g.language, status: g.status,
-      wordCount: g.words.length, startedAt: g.startedAt, finalizedAt: g.finalizedAt, recordingId: g.recordingId,
+      wordCount: g.words.length, startedAt: g.startedAt, finalizedAt: g.finalizedAt, endedAt: g.endedAt || null, recordingId: g.recordingId,
     }));
     return { ok: true, result: { sessions, count: sessions.length } };
   });
@@ -545,6 +560,22 @@ export default function registerVoiceActions(registerLensAction) {
     return { ok: true, result: { recording, sessionId: session.id } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // F6/D5: End is distinct from Save. live-finalize mints a recording and
+  // refuses a session with no final words — so without an end path, an
+  // empty or mic-less session could never leave status "live". live-end
+  // closes the session in place: words preserved, no recording minted.
+  registerLensAction("voice", "live-end", (ctx, _a, params = {}) => {
+    const s = getVoiceState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const session = liveList(s, vcActor(ctx)).find((g) => g.id === params.sessionId);
+    if (!session) return { ok: false, error: "live session not found" };
+    if (session.status === "finalized") return { ok: false, error: "session already saved as a recording" };
+    if (session.status === "ended") return { ok: false, error: "session already ended" };
+    session.status = "ended";
+    session.endedAt = vcNow();
+    saveVoice();
+    return { ok: true, result: { sessionId: session.id, status: session.status, wordCount: session.words.length } };
+  });
 
   // ─── LLM-written meeting summary (opt-in) ────────────────────────────
   registerLensAction("voice", "recording-summary-llm", async (ctx, _a, params = {}) => {
