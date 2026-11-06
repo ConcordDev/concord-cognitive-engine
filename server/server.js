@@ -18085,6 +18085,13 @@ register("reasoning", "validate_step", (ctx, input = {}) => {
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
+register("reasoning", "delete_chain", (ctx, input = {}) => {
+  enforceEthosInvariant("reasoning_delete");
+  const chainId = String(input.chainId || "");
+  if (!chainId) return { ok: false, error: "chainId required" };
+  return deleteReasoningChain(chainId);
+}, { public: false });
+
 register("reasoning", "list_chains", (ctx, _input = {}) => {
   try {
   enforceEthosInvariant("reasoning_list");
@@ -83274,6 +83281,24 @@ function concludeChain(chainId, conclusion) {
 }
 
 // Get full reasoning trace
+// Delete a reasoning chain and its steps (Review 3, S-RS-7 / F10:
+// chains had no lifecycle — no delete existed at any layer, so a test
+// chain stood in the account forever).
+function deleteReasoningChain(chainId) {
+  ensureReasoningEngine();
+
+  const chain = STATE.reasoning.chains.get(chainId);
+  if (!chain) return { ok: false, error: "Chain not found" };
+
+  for (const stepId of chain.steps) {
+    STATE.reasoning.steps.delete(stepId);
+  }
+  STATE.reasoning.chains.delete(chainId);
+
+  saveStateDebounced();
+  return { ok: true, deleted: chainId, stepsRemoved: chain.steps.length };
+}
+
 function getReasoningTrace(chainId) {
   ensureReasoningEngine();
 

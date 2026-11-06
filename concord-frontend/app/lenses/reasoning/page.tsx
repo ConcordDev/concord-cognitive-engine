@@ -60,7 +60,6 @@ export default function ReasoningLensPage() {
   useLensIdentity('reasoning');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('reasoning');
   const [active, setActive] = useState<View>('traces');
-  const Panel = PANELS[active];
 
   useLensCommand(
     [
@@ -119,9 +118,19 @@ export default function ReasoningLensPage() {
           })}
         </nav>
 
-        <section key={active} className="min-h-[28rem]">
-          <Panel />
-        </section>
+        {/* Keep-alive views (Review 3, S-RS-9 / F17): every panel stays
+            mounted and inactive ones are hidden, so per-view draft state
+            (topics, premises, arguments) survives a view switch instead
+            of dying on unmount. The cost is mount-time fetches for all
+            views; the benefit is the standing probe's standard. */}
+        {TABS.map((tab) => {
+          const P = PANELS[tab.id];
+          return (
+            <section key={tab.id} className={cn('min-h-[28rem]', active !== tab.id && 'hidden')}>
+              <P />
+            </section>
+          );
+        })}
 
         {realtimeData && (
           <RealtimeDataPanel

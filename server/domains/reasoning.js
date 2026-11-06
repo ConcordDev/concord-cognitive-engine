@@ -22,6 +22,10 @@ function logicValidateCore(premises, conclusion) {
   premises = Array.isArray(premises) ? premises : [];
   conclusion = conclusion || "";
   if (premises.length === 0) return { message: "Provide premises and a conclusion to validate." };
+  // An empty conclusion is a validation ask, not a verdict: scoring it
+  // returned "weak-support / termSupport 0" — a judgement on nothing
+  // (Review 3, S-RS-2: empty conclusion validates).
+  if (!String(conclusion).trim()) return { message: "Provide a conclusion to validate against the premises." };
   const contradictions = [];
   const normalized = premises.map(p => p.toLowerCase().trim());
   for (let i = 0; i < normalized.length; i++) {
@@ -93,15 +97,33 @@ function premiseExtractCore(text) {
   text = text || "";
   if (!text) return { message: "Provide argument text to extract premises." };
   const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 5);
+  // Structural classification (Review 3, S-RS-4 / F6): premise/conclusion
+  // roles are grammatical, not keyword-only. The prior rule marked a
+  // sentence a premise ONLY when it carried a premise indicator, so the
+  // textbook syllogism ("All mammals are warm-blooded. Whales are
+  // mammals. Therefore whales are warm-blooded.") extracted 0 premises —
+  // both premises stood unmarked. Rule now: a conclusion indicator marks
+  // the conclusion; a premise indicator marks a premise; and when the
+  // text contains a conclusion at all, every remaining declarative
+  // sentence is functioning as a premise (it is what the conclusion is
+  // drawn from). With no conclusion present there is no argument
+  // structure to assign, and unmarked sentences stay statements.
+  // Indicators match as whole words/phrases, not raw substrings: the
+  // substring rule marked "Socrates is a man" a conclusion (the "so" in
+  // Socrates) and would mark any sentence containing "reason" the same
+  // way — indicator-shaped letters inside a word are not the indicator.
+  const hasIndicator = (lower, indicators) => indicators.some(p =>
+    new RegExp(`\\b${p.replace(/[.*+?^${'{}'}()|[\]\\]/g, "\\$&")}\\b`).test(lower));
+  const hasConclusion = sentences.some(s => hasIndicator(s.toLowerCase(), CONCLUSION_INDICATORS));
   const classified = sentences.map(s => {
     const lower = s.toLowerCase();
-    const isPremise = PREMISE_INDICATORS.some(p => lower.includes(p));
-    const isConclusion = CONCLUSION_INDICATORS.some(p => lower.includes(p));
+    const isPremise = hasIndicator(lower, PREMISE_INDICATORS);
+    const isConclusion = hasIndicator(lower, CONCLUSION_INDICATORS);
     const isNormative = NORMATIVE_INDICATORS.some(p => lower.includes(p));
     const isFactual = FACTUAL_INDICATORS.some(p => lower.includes(p));
     return {
       text: s,
-      role: isConclusion ? "conclusion" : isPremise ? "premise" : "statement",
+      role: isConclusion ? "conclusion" : isPremise || hasConclusion ? "premise" : "statement",
       type: isNormative ? "normative" : isFactual ? "factual" : "definitional",
     };
   });
@@ -810,6 +832,30 @@ export default function registerReasoningActions(registerLensAction) {
       if (!map.nodes.length) return { ok: true, result: { message: "empty map" } };
       const root = map.nodes[0];
       const breakdown = scoreNode(root);
+      // Receipts standard (Review 3, S-RS-5 / D2): the figure ships with
+      // its formula, and a content-free root — no evidence, no branches —
+      // reads "no evidence yet", never a support verdict. The prior math
+      // scored that root 60% "leaning-supported" from the bare default
+      // strength (3/5) alone: a verdict of support for an argument with
+      // no supporting content.
+      const FORMULA = "confidence = root strength (strength/5) blended 60/40 with evidence backing (mean credibility×relevance×weight) when evidence exists, lifted by pro branches and pulled down by con branches with diminishing returns";
+      const rootEvidence = Array.isArray(root.evidence) ? root.evidence.length : 0;
+      const rootChildren = Array.isArray(root.children) ? root.children.length : 0;
+      if (rootEvidence === 0 && rootChildren === 0) {
+        return {
+          ok: true,
+          result: {
+            mapId: map.id,
+            rootClaim: map.rootClaim,
+            confidence: null,
+            verdict: "no-evidence",
+            message: "No evidence yet — the root claim has no evidence and no supporting or opposing branches, so there is nothing to score.",
+            formula: FORMULA,
+            breakdown,
+            stats: { proCount: 0, conCount: 0, evidenceTotal: 0, nodeCount: countNodes(map.nodes) },
+          },
+        };
+      }
       const confidence = Math.round(breakdown.score * 100);
       let verdict;
       if (confidence >= 75) verdict = "well-supported";
@@ -838,6 +884,7 @@ export default function registerReasoningActions(registerLensAction) {
           rootClaim: map.rootClaim,
           confidence,
           verdict,
+          formula: FORMULA,
           breakdown,
           perNode,
           stats: { proCount, conCount, evidenceTotal, nodeCount: countNodes(map.nodes) },
