@@ -11,6 +11,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -89,9 +90,11 @@ export default function ConcordLinkFrontierPage() {
   const [name, setName] = useState('');
   const [bearing, setBearing] = useState('');
   const [mark, setMark] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const applyBoard = useCallback((rows: LinkRow[], preferId?: string) => {
+    setConfirmDelete(false);
     setLinks(rows);
     setSelectedId((current) => {
       const want = preferId || current;
@@ -134,6 +137,15 @@ export default function ConcordLinkFrontierPage() {
       setLoadError(err instanceof Error ? err.message : 'Could not load the link.');
     });
   }, [busy, pull]);
+
+  const cancelForm = useCallback(() => {
+    if (busy) return;
+    setMode('view');
+    setActionError('');
+    setName('');
+    setBearing('');
+    setMark('');
+  }, [busy]);
 
   const openLink = useCallback(async () => {
     if (busy || phase !== 'ready') return;
@@ -231,6 +243,25 @@ export default function ConcordLinkFrontierPage() {
     }
   }, [applyBoard, busy, links, mark, mode, phase, selectedId]);
 
+  const deleteLink = useCallback(async () => {
+    if (busy || phase !== 'ready' || !selectedId) return;
+    setBusy(true);
+    setActionError('');
+    try {
+      await runLink('link-delete', { id: selectedId }, 'Could not delete that link.');
+      const rows = await readBoard();
+      if (rows.some((item) => item.id === selectedId)) {
+        throw new Error('Deleted, but the board still reads it back.');
+      }
+      applyBoard(rows);
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not delete that link.');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyBoard, busy, phase, selectedId]);
+
   const openRow = useCallback(async (id: string) => {
     if (busy || phase !== 'ready') return;
     setBusy(true);
@@ -270,7 +301,10 @@ export default function ConcordLinkFrontierPage() {
   return (
     <LensShell lensId="concord-link-frontier" asMain={false}>
       <div data-lens-theme="concord-link-frontier" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Concord Link Frontier</h1>
+        <div className="mb-5 mt-1 flex flex-wrap items-center gap-3">
+          <h1 className="font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Concord Link Frontier</h1>
+          <DepthBadge lensId="concord-link-frontier" size="sm" />
+        </div>
 
         <section aria-label="Link" className="min-h-[22rem] rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5" style={GRID}>
           {phase === 'loading' && (
@@ -320,6 +354,7 @@ export default function ConcordLinkFrontierPage() {
                 data-testid="clf-name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
+                onKeyDown={(event) => { if (event.key === 'Escape') cancelForm(); }}
                 className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
                 autoFocus
               />
@@ -332,6 +367,7 @@ export default function ConcordLinkFrontierPage() {
                 data-testid="clf-bearing-input"
                 value={bearing}
                 onChange={(event) => setBearing(event.target.value)}
+                onKeyDown={(event) => { if (event.key === 'Escape') cancelForm(); }}
                 className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
                 autoFocus
               />
@@ -344,6 +380,7 @@ export default function ConcordLinkFrontierPage() {
                 data-testid="clf-mark-input"
                 value={mark}
                 onChange={(event) => setMark(event.target.value)}
+                onKeyDown={(event) => { if (event.key === 'Escape') cancelForm(); }}
                 className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
                 autoFocus
               />
@@ -359,17 +396,47 @@ export default function ConcordLinkFrontierPage() {
                   {selected.mark ? 'Edit the mark' : 'Mark the link'}
                 </button>
               ) : null}
+              {confirmDelete ? (
+                <>
+                  <span className="text-[14px] text-zinc-300">Delete "{selected.name}"?</span>
+                  <button type="button" data-testid="clf-delete-confirm-btn" onClick={() => { void deleteLink(); }} disabled={busy} className="text-[14px] text-zinc-100 underline disabled:opacity-60">
+                    Delete
+                  </button>
+                  <button type="button" onClick={() => setConfirmDelete(false)} className="text-[14px] text-zinc-100 underline">
+                    Keep
+                  </button>
+                </>
+              ) : (
+                <button type="button" data-testid="clf-delete" onClick={() => setConfirmDelete(true)} className="text-[14px] text-zinc-100 underline">
+                  Delete this link
+                </button>
+              )}
             </div>
           )}
-          {phase === 'ready' && mode === 'bearing' && (
-            <button type="button" onClick={() => { void saveBearing(); }} disabled={busy} className="mt-6 text-[14px] text-zinc-100 underline disabled:opacity-60">
-              Save the bearing
+          {phase === 'ready' && mode === 'open' && (
+            <button type="button" onClick={cancelForm} className="mt-6 text-[14px] text-zinc-100 underline">
+              Cancel
             </button>
           )}
+          {phase === 'ready' && mode === 'bearing' && (
+            <div className="mt-6 flex flex-wrap gap-4">
+              <button type="button" onClick={() => { void saveBearing(); }} disabled={busy} className="text-[14px] text-zinc-100 underline disabled:opacity-60">
+                Save the bearing
+              </button>
+              <button type="button" onClick={cancelForm} className="text-[14px] text-zinc-100 underline">
+                Cancel
+              </button>
+            </div>
+          )}
           {phase === 'ready' && mode === 'mark' && (
-            <button type="button" onClick={() => { void saveMark(); }} disabled={busy} className="mt-6 text-[14px] text-zinc-100 underline disabled:opacity-60">
-              Save the mark
-            </button>
+            <div className="mt-6 flex flex-wrap gap-4">
+              <button type="button" onClick={() => { void saveMark(); }} disabled={busy} className="text-[14px] text-zinc-100 underline disabled:opacity-60">
+                Save the mark
+              </button>
+              <button type="button" onClick={cancelForm} className="text-[14px] text-zinc-100 underline">
+                Cancel
+              </button>
+            </div>
           )}
         </section>
 
