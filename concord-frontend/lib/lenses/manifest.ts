@@ -4334,7 +4334,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Telecom workspace.",
       caption: "Networks, devices, signals, plans, coverage \u2014 simulated over your own records; no carrier is connected.",

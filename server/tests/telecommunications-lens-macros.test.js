@@ -75,7 +75,7 @@ describe("telecommunications — registration", () => {
       // RFPlanner — spectrum
       "spectrumList", "spectrumAllocate", "spectrumDelete", "spectrumPlan",
       // RFPlanner — outages / SLA
-      "outageList", "outageReport", "outageResolve", "slaReport",
+      "outageList", "outageReport", "outageResolve", "outageDelete", "slaReport",
       // RFPlanner — drive test
       "driveTestImport", "driveTestList", "driveTestValidate",
     ]) {
@@ -148,6 +148,19 @@ describe("telecommunications — networkCapacity", () => {
     assert.equal(r.result.totalBandwidth, null);
     assert.equal(r.result.availablePerUser, null);
     assert.equal(r.result.reason, "not_recorded");
+  });
+
+  it("prints the USED per-user figure beside the available one (F3 walked case)", () => {
+    // Review 5 F3: 10 Gbps at 60% util over 4,000 users is 1.5 Mbps/user USED;
+    // the surface printed only the 1 Mbps available (headroom) figure.
+    const r = call("networkCapacity", ctxA, { artifact: { data: { bandwidthGbps: 10, utilizationPercent: 60, activeUsers: 4000 } } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.usedThroughput, "6 Gbps");
+    assert.equal(r.result.usedPerUser, "1.5 Mbps");
+    assert.equal(r.result.availablePerUser, "1 Mbps");
+    const miss = call("networkCapacity", ctxA, { artifact: { data: {} } });
+    assert.equal(miss.result.usedPerUser, null);
+    assert.equal(miss.result.usedThroughput, null);
   });
 });
 
@@ -312,6 +325,29 @@ describe("telecommunications — costPerLine", () => {
     assert.equal(r.result.margin, null);
     assert.equal(r.result.reason, "not_recorded");
   });
+
+  it("breakeven follows from the tool's own margin (F8 walked case)", () => {
+    // Review 5 F8: infra 120000, ops 6000/mo, 5000 subs, ARPU 25 → cost/sub
+    // 1.6, margin 23.4; the old formula printed "421 months" (per-sub margin
+    // mislabelled, then /12). Monthly net = 23.8 × 5000 = 119000 → 1.01 mo.
+    const r = call("costPerLine", ctxA, { artifact: { data: { infrastructureCost: 120000, monthlyOpsCost: 6000, subscribers: 5000, arpu: 25 } } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.costPerSubscriber, 1.6);
+    assert.equal(r.result.margin, 23.4);
+    assert.equal(r.result.breakevenMonths, 1.01);
+    assert.equal(r.result.breakeven, "2 months");
+    assert.equal(r.result.monthlyRevenue, 125000);
+    assert.equal(r.result.infrastructurePerSubscriber, 24);
+    assert.match(r.result.costBasis, /60 months/);
+  });
+
+  it("no positive monthly net → breakeven is null, never a month count", () => {
+    const r = call("costPerLine", ctxA, { artifact: { data: { infrastructureCost: 6000000, monthlyOpsCost: 100000, subscribers: 1000, arpu: 50 } } });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.profitable, false);
+    assert.equal(r.result.breakeven, null);
+    assert.equal(r.result.breakevenMonths, null);
+  });
 });
 
 // ── Tower CRUD (RFPlanner persistent inventory, params shape) ────
@@ -371,7 +407,19 @@ describe("telecommunications — propagationModel", () => {
     assert.equal(c.effectiveRangeKm > 0, true);
     assert.equal(Number.isFinite(c.coverageKm2), true);
     assert.equal(["good", "fair", "weak"].includes(c.edgeQuality), true);
-    assert.equal(r.result.model, "COST-231 Hata + terrain attenuation");
+    // Pin corrected in the F4 build (PR build(telecommunications)): the model
+    // string previously advertised a "+ terrain attenuation" stage — a
+    // post-solve multiplier (suburban ×0.82) that sat unstated in the chain
+    // and printed a radius ~18% below the stated model's own derivation
+    // (2.629 km against the budget-derived 3.206 km; Review 5 F4). Terrain
+    // enters through the COST-231 environment correction inside the model;
+    // the range is now the budget-derived range of the stated model itself.
+    assert.equal(r.result.model, "COST-231 Hata");
+    // The walked tower (40 W · 16 dBi · 1800 MHz · 30 m · suburban): the
+    // budget-derived range and the edge RSRP it implies (sens + fade = −92).
+    assert.ok(Math.abs(c.effectiveRangeKm - 3.206) < 0.01, `range ${c.effectiveRangeKm}`);
+    assert.ok(Math.abs(c.edgeRsrpDbm + 92) <= 0.2, `edge RSRP ${c.edgeRsrpDbm}`);
+    assert.ok(Math.abs(c.coverageKm2 - 32.29) < 0.05, `area ${c.coverageKm2}`);
   });
 
   it("rejects when no towers are present (validation-rejection)", () => {
@@ -578,6 +626,39 @@ describe("telecommunications — outages + SLA", () => {
     assert.equal(sla.result.slaMet, true);
     assert.equal(sla.result.mttrHours, null);
   });
+
+  it("an open major outage accrues downtime and can fail the SLA (F2)", () => {
+    // Review 5 F2: an open outage must cost availability NOW, and the breach
+    // banner must name a real overage (breachBudgetHours previously read 0
+    // on every input).
+    const now = Date.now();
+    call("outageReport", ctxA, {
+      site: "Site-9", cause: "power loss", severity: "major",
+      affectedSubscribers: 100, startedAt: now - 5 * 3600 * 1000,
+    });
+    const sla = call("slaReport", ctxA, { windowDays: 30, slaTargetPercent: 99.9 });
+    assert.equal(sla.ok, true);
+    assert.equal(sla.result.downtimeHours, 5);
+    assert.equal(sla.result.openDowntimeHours, 5);
+    assert.equal(sla.result.availabilityPercent, 99.306);
+    assert.equal(sla.result.slaMet, false);
+    // budget at 99.9% of 30 d = 0.72 h → overage 5 − 0.72 = 4.28 h.
+    assert.equal(sla.result.breachBudgetHours, 4.28);
+  });
+
+  it("outageDelete removes a record and refuses unknown ids (F9)", () => {
+    const now = Date.now();
+    const rep = call("outageReport", ctxA, {
+      site: "Site-10", cause: "storm", severity: "minor",
+      startedAt: now - 3600 * 1000, resolvedAt: now,
+    });
+    const id = rep.result.outage.id;
+    const del = call("outageDelete", ctxA, { id });
+    assert.equal(del.ok, true);
+    assert.equal(del.result.removed, 1);
+    assert.equal(call("outageList", ctxA, {}).result.outages.length, 0);
+    assert.equal(call("outageDelete", ctxA, { id }).ok, false);
+  });
 });
 
 // ── drive test (import + validate vs predicted) ─────────────────
@@ -592,6 +673,8 @@ describe("telecommunications — drive test", () => {
     ] });
     assert.equal(imp.ok, true);
     assert.equal(imp.result.imported, 2);
+    // F6: the dropped row is counted as skipped, not silently swallowed.
+    assert.equal(imp.result.skipped, 1);
     const val = call("driveTestValidate", ctxA, {});
     assert.equal(val.ok, true);
     assert.equal(val.result.sampleCount, 2);
