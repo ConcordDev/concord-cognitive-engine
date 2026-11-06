@@ -5592,6 +5592,17 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // this surfaces the same real data to logged-in players. No authoring
   // action exists on this surface (pure observation), so `actions` is empty.
   { domain: 'concord-link-frontier', label: 'Concord Link Frontier', artifacts: ['world_event', 'royalty_flow'], macros: {}, exports: ['json'], actions: [], category: 'operations' },
+  { domain: 'world-observatory', label: 'World Observatory', artifacts: ['world_state'], macros: { list: 'worldstate.overview', get: 'worldstate.world_detail' }, exports: ['json'], actions: [], category: 'operations' },
+  // Concord Link Frontier is the member's link annotator — open a link by
+  // name, set a bearing and a mark on it; the records persist per account
+  // (server/domains/concord-link-frontier.js; migration 466's table is the
+  // restart record). The page calls its macros directly via lensRun, so
+  // `macros` is intentionally `{}` (the ops-telemetry posture). The
+  // cross-world feed + royalty-flow routes (server/lib/cross-world-feed.js)
+  // are real, but their consumer is the pre-login `/explore` page — they
+  // are NOT this lens's surface, and this entry no longer claims their
+  // artifacts (the card-correction floor, Review 2's F2 disposition).
+  { domain: 'concord-link-frontier', label: 'Concord Link Frontier', artifacts: ['link'], macros: {}, exports: ['json'], actions: [], category: 'operations', dataTier: 'REAL_LIVE' },
   // Plugin Gallery is the real frontend surface for /api/plugins/gallery/*
   // (server/lib/plugin-gallery.js) — REST-backed by design (no macro domain),
   // same posture as concord-link-frontier. This is NOT the older /api/plugins

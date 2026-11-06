@@ -234,6 +234,16 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Live: translation runs on this server\'s local model — your text never leaves your server. Saved translations and glossaries are your own records.',
   },
+  /**
+   * Concord Link Frontier's links are the member's own records — opened
+   * by name, annotated with a bearing and a mark, persisted per account
+   * server-side — so the generic REAL_LIVE line ("polled live from an
+   * external source") is false here: nothing is polled.
+   */
+  'concord-link-frontier': {
+    label: 'Live',
+    caption: 'Live: your own link records — the links you open, with the bearings and marks you set on them, kept server-side on your account.',
+  },
   game: {
     label: 'Lab & arcade sim',
     caption: 'Simulated: Design Lab forecasts and mini-game practice XP. Profile XP, quests, and achievements are your real activity.',

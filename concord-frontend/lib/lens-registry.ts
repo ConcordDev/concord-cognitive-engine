@@ -2813,16 +2813,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     id: 'concord-link-frontier',
     name: 'Concord Link Frontier',
     icon: Globe,
-    description: 'The news layer of the federation — notable cross-world events and cross-world citation royalty flow, live, for logged-in players (was pre-login-only via /explore).',
+    description: 'Your link annotator — open a link by name and set a bearing and a mark on it. Your links and their notes are kept on your account.',
     category: 'system',
     showInSidebar: false,
     showInCommandPalette: true,
     path: '/lenses/concord-link-frontier',
     order: 93,
-    keywords: ['concord link', 'frontier', 'cross-world', 'federation', 'royalty', 'feed', 'news'],
-    // REST-backed by design (no macro domain — /api/cross-world/feed and
-    // /api/cross-world/royalty-flow are direct HTTP routes), same posture as
-    // ops-telemetry: macroDomain intentionally omitted.
+    keywords: ['concord link', 'frontier', 'link', 'bearing', 'mark', 'annotation'],
+    // Macro-backed annotator (server/domains/concord-link-frontier.js —
+    // link-open/list/detail/bearing/mark/delete over the member's own
+    // persisted records): macroDomain intentionally omitted, same posture
+    // as ops-telemetry. The cross-world feed/royalty routes are real but
+    // belong to the pre-login /explore surface, not this lens.
   },
   {
     id: 'plugins',
