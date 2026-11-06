@@ -199,6 +199,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace data: campaigns, donors, volunteers and pages are your live records; 990 research data is ProPublica’s open-access IRS dataset.',
   },
+  /**
+   * Announcements are Concord's OWN operator record — published by admins
+   * into the platform's announcements table and read live from it. The
+   * generic REAL_LIVE line ('polled live from an external source') is
+   * false here; the caption names the source and reads an empty feed
+   * truthfully (nothing published yet, not a broken surface).
+   */
+  announcements: {
+    label: 'Live',
+    caption: 'Concord’s own operator announcements, read live from the platform’s record — an empty feed means nothing has been published yet.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
