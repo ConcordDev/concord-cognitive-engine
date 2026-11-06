@@ -204,6 +204,19 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your world records: land claims and houses are your real persistent state in Concord’s worlds, and the tools work on your own plots and buildings. No external feed is polled.',
   },
   /**
+   * Daily's journal lives in two of the platform's own stores (the
+   * Today panel's artifacts and the Studio's domain store) and the
+   * lens's read-back — timeline, dashboard, streaks, the Daily Actions
+   * and the journal export — computes over the union of both. The
+   * generic REAL_LIVE line ("polled live from an external source") is
+   * false for the journal; only the Inspiration/feed quotes are
+   * external, and they are labelled at their panels.
+   */
+  daily: {
+    label: 'Live',
+    caption: 'Your journal lives here, in the platform store — Today and Studio read the same days from both of its stores, and the summaries, streaks and exports are computed from those records. Inspiration quotes and the quote feed are read live from ZenQuotes, labelled at their panels.',
+  },
+  /**
    * Nonprofit's own records (campaigns, donors, volunteers, pages, events)
    * are live per-user workspace data; the 990 research data is ProPublica's
    * open-access IRS dataset — real, but static reference data. The generic
