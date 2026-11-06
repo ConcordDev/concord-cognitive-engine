@@ -472,6 +472,19 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Live: your caseload, permits, records and FOIA drafts are your own workspace records on this server, and bills, members, spending, datasets and alerts are read live from Congress.gov, USAspending, data.gov and NWS. Nothing here is an official government service, and nothing you enter is filed with any authority.',
   },
+  /**
+   * Dreams' records are real and persisted, but they are composed by the
+   * dream engine from the member's substrate activity — not written by the
+   * member, and not a live feed (determination PROBE-STATIC, 2026-11-01;
+   * the Lead's disposition rules the lens an engine-corpus surface,
+   * S-DRM-1). The generic REAL_FREE line ("static / open-access dataset")
+   * would misdescribe whose records these are in both directions, so the
+   * caption states the engine character the census carries.
+   */
+  dreams: {
+    label: 'Engine corpus',
+    caption: 'Real records composed by Concord’s dream engine from your substrate activity while you were away — written by the engine, not by you. You can read them and add your own tags.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
