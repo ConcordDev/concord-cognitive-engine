@@ -3,7 +3,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * PersonaChat — interactive in-lens chat preview, Character.AI's core loop.
- * Wires personas.chat_open + personas.chat_send. Replies are an exact authored
+ * Wires personas.chat_open + personas.chat_send + personas.chat_history.
+ * The chat id is kept per persona (sessionStorage) and the conversation is
+ * resumed from the server's record on mount — the server keeps every chat;
+ * only "New chat" starts a fresh one. Replies are an exact authored
  * example when one matches, otherwise model-generated in character; if no model
  * is reachable the send fails visibly.
  */
@@ -28,22 +31,50 @@ export function PersonaChat({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const storageKey = `concord:personas:chat:${personaId}`;
+
+  const openFresh = async () => {
+    const r = await runPersona('chat_open', { personaId });
+    if (r.ok) {
+      const res = r.data as any;
+      setChatId(res.chatId);
+      setTurns(res.turns || []);
+      try { sessionStorage.setItem(storageKey, res.chatId); } catch { /* storage unavailable */ }
+      setErr(null);
+    } else {
+      setErr(r.error || 'chat_open_failed');
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const r = await runPersona('chat_open', { personaId });
-      if (cancelled) return;
-      if (r.ok) {
-        const res = r.data as any;
-        setChatId(res.chatId);
-        setTurns(res.turns || []);
-      } else {
-        setErr(r.error || 'chat_open_failed');
+      // Resume the conversation this surface already hosted, if the
+      // server still holds it; a stale id falls through to a fresh open.
+      let stored: string | null = null;
+      try { stored = sessionStorage.getItem(storageKey); } catch { stored = null; }
+      if (stored) {
+        const h = await runPersona('chat_history', { chatId: stored });
+        if (cancelled) return;
+        if (h.ok) {
+          const res = h.data as any;
+          setChatId(res.chatId);
+          setTurns(res.turns || []);
+          return;
+        }
       }
+      if (!cancelled) await openFresh();
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [personaId]);
+
+  const newChat = async () => {
+    try { sessionStorage.removeItem(storageKey); } catch { /* storage unavailable */ }
+    setChatId(null);
+    setTurns([]);
+    await openFresh();
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -79,10 +110,14 @@ export function PersonaChat({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={portrait} alt={personaName} className="h-8 w-8 rounded-lg" />
         )}
-        <div>
+        <div className="flex-1">
           <div className="text-sm font-semibold text-zinc-100">{personaName}</div>
           <div className="text-[10px] text-zinc-400">Chat preview</div>
         </div>
+        <button
+          type="button" onClick={() => void newChat()}
+          className="text-[11px] px-2 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+        >New chat</button>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2">

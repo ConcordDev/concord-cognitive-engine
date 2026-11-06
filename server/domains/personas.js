@@ -94,6 +94,7 @@ function publicView(p) {
     tags: p.tags,
     portrait: p.portrait,
     greeting: p.greeting,
+    voice: p.voice,
     authorUserId: p.authorUserId,
     version: p.version,
     published: p.published,
@@ -244,6 +245,21 @@ export default function registerPersonasActions(registerLensAction) {
       const p = store().personas.get(String(params.personaId || ""));
       if (!p) return { ok: false, error: "persona_not_found" };
       if (p.authorUserId !== userId) return { ok: false, error: "not_author" };
+      // Every edit mints a version: snapshot the current state first, in
+      // the same shape revise keeps, so the ordinary save path holds a
+      // history too — not only published edits with a changelog.
+      p.history.push({
+        version: p.version,
+        contentHash: p.contentHash,
+        snapshot: {
+          name: p.name, tagline: p.tagline, personality: p.personality,
+          voice: p.voice, greeting: p.greeting, exampleDialogue: p.exampleDialogue,
+        },
+        changelog: String(params.changelog || "").trim().slice(0, 400) || "edit",
+        at: now(),
+      });
+      if (p.history.length > 30) p.history = p.history.slice(-30);
+      p.version += 1;
       const fields = ["name", "tagline", "personality", "voice", "greeting", "category"];
       for (const f of fields) {
         if (params[f] !== undefined) p[f] = String(params[f]).trim();
@@ -400,7 +416,9 @@ export default function registerPersonasActions(registerLensAction) {
       store().chats.set(chatId, {
         id: chatId, personaId: p.id, userId, turns: [greetTurn], createdAt: now(),
       });
-      p.chatCount += 1;
+      // Opening a chat does NOT move the counter — the "chats" figure
+      // counts conversations that actually happened, counted once at a
+      // chat's first sent message (see chat_send).
       return { ok: true, result: { chatId, personaId: p.id, turns: [greetTurn] } };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   });
@@ -423,6 +441,12 @@ export default function registerPersonasActions(registerLensAction) {
       chat.turns.push(userTurn);
       const personaTurn = { role: "persona", text: reply.text, at: now(), basis: reply.basis };
       chat.turns.push(personaTurn);
+      // Count the act the name claims: a chat counts when its first
+      // message is sent — once per chat, never per open or per message.
+      if (!chat.counted) {
+        chat.counted = true;
+        persona.chatCount += 1;
+      }
       if (chat.turns.length > 200) chat.turns = chat.turns.slice(-200);
       return { ok: true, result: { reply: personaTurn, turnCount: chat.turns.length } };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }

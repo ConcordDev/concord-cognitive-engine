@@ -39,6 +39,7 @@ export function PersonaDetailPanel({
   const [versions, setVersions] = useState<VersionRow[]>([]);
   const [tab, setTab] = useState<'chat' | 'stats' | 'versions' | 'reviews'>('chat');
   const [stars, setStars] = useState(5);
+  const [publishArm, setPublishArm] = useState(false);
   const [review, setReview] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,12 +70,41 @@ export function PersonaDetailPanel({
 
   const togglePublish = async () => {
     if (!persona) return;
+    // Publishing states its visibility BEFORE the act: the first click
+    // arms with the terms in words; the second confirms. Unpublishing
+    // (a withdrawal) stays one click.
+    if (!persona.published && !publishArm) {
+      setPublishArm(true);
+      return;
+    }
     const r = await runPersona('publish', {
       personaId, published: !persona.published,
     });
+    setPublishArm(false);
     if (r.ok) {
       flash((r.data as any)?.published ? 'Published to marketplace' : 'Unpublished');
       await load();
+      onChanged();
+    } else flash(`Failed: ${r.error}`);
+  };
+
+  const doRemix = async () => {
+    if (!persona) return;
+    // A remix is a fork under the remixing author: the source's authored
+    // fields seed a NEW persona they own (v1, its own history), named as
+    // a remix of the source. The source is untouched.
+    const r = await runPersona('create', {
+      name: `${persona.name} (remix)`,
+      tagline: persona.tagline,
+      personality: persona.personality || '',
+      voice: persona.voice || 'warm',
+      greeting: persona.greeting,
+      category: persona.category,
+      tags: persona.tags,
+      exampleDialogue: persona.exampleDialogue || [],
+    });
+    if (r.ok) {
+      flash(`Remix created — "${persona.name} (remix)" is in your My Personas, yours to edit.`);
       onChanged();
     } else flash(`Failed: ${r.error}`);
   };
@@ -170,7 +200,18 @@ export function PersonaDetailPanel({
             <button
               type="button" onClick={togglePublish}
               className="text-xs px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-emerald-100"
-            >{persona.published ? 'Unpublish' : 'Publish'}</button>
+            >{persona.published ? 'Unpublish' : publishArm ? 'Confirm publish' : 'Publish'}</button>
+            {publishArm && !persona.published && (
+              <>
+                <span className="text-[11px] text-zinc-300 self-center">
+                  Publishing lists this persona in the marketplace, where anyone can find, install, rate, and remix it.
+                </span>
+                <button
+                  type="button" onClick={() => setPublishArm(false)}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                >Keep private</button>
+              </>
+            )}
             <button
               type="button" onClick={regenPortrait}
               className="text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
@@ -185,10 +226,16 @@ export function PersonaDetailPanel({
           </>
         )}
         {!persona.isAuthor && persona.published && (
-          <button
-            type="button" onClick={doInstall}
-            className="text-xs px-3 py-1.5 rounded-lg bg-cyan-800 hover:bg-cyan-700 text-cyan-100"
-          >Install persona</button>
+          <>
+            <button
+              type="button" onClick={doInstall}
+              className="text-xs px-3 py-1.5 rounded-lg bg-cyan-800 hover:bg-cyan-700 text-cyan-100"
+            >Install persona</button>
+            <button
+              type="button" onClick={doRemix}
+              className="text-xs px-3 py-1.5 rounded-lg bg-purple-800 hover:bg-purple-700 text-purple-100"
+            >Remix</button>
+          </>
         )}
       </div>
 
