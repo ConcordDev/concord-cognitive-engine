@@ -58,6 +58,35 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  * chip names the two surfaces that actually are simulations.
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
+  'event-timeline': {
+    label: 'Live',
+    // Event-Timeline reads the platform's OWN substrate event log
+    // (server/domains/event-timeline.js over event_timeline_log) — real
+    // events streamed as they occur, not an external feed, so REAL_LIVE's
+    // generic "polled live from an external source" caption would
+    // misdescribe the source. Declared REAL_LIVE in the registry under
+    // both spellings; the manifest entry now carries the tier.
+    caption: 'Live — the platform’s own substrate event log, streamed as events occur.',
+  },
+  /**
+   * Expedition-Journal (S-EJ-1): the canon-world expeditions are simulated,
+   * but SIM_GRADE_A's generic "Not real data" caption would misdescribe the
+   * other two things on the page — the traveller's own server-kept progress
+   * and journal, and the base-camp almanac's real sunrise-sunset data.
+   */
+  'expedition-journal': {
+    label: 'Simulated',
+    caption: 'Simulated canon-world expeditions. Your stage progress and journal entries are your own records, kept on the server; the base-camp almanac is real sunrise-sunset data.',
+  },
+  'collab': {
+    label: 'Live',
+    // Collab's rooms are the caller's OWN records (title + note kept on
+    // the account, dual-stored server-side) and its sessions are live
+    // when collaborators join — not an external feed, so REAL_LIVE's
+    // generic "polled live from an external source" caption would
+    // misdescribe the source. Declared REAL_LIVE in the registry.
+    caption: 'Live — your rooms and sessions, kept on your account.',
+  },
   /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
@@ -67,6 +96,10 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
   plumbing: {
     label: 'Live',
     caption: 'Your own live shop records: technicians, jobs, invoices, parts and inspections are your account\'s real data, saved as you work.',
+  },
+  message: {
+    label: 'Live',
+    caption: 'Your own messaging workspace: channels, direct messages, saves and scheduled sends are your real records in the platform store. Nothing here is polled from an external source.',
   },
   game: {
     label: 'Lab & arcade sim',
@@ -190,6 +223,37 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your world records: land claims and houses are your real persistent state in Concord’s worlds, and the tools work on your own plots and buildings. No external feed is polled.',
   },
   /**
+   * Daily's journal lives in two of the platform's own stores (the
+   * Today panel's artifacts and the Studio's domain store) and the
+   * lens's read-back — timeline, dashboard, streaks, the Daily Actions
+   * and the journal export — computes over the union of both. The
+   * generic REAL_LIVE line ("polled live from an external source") is
+   * false for the journal; only the Inspiration/feed quotes are
+   * external, and they are labelled at their panels.
+   */
+  daily: {
+    label: 'Live',
+    caption: 'Your journal lives here, in the platform store — Today and Studio read the same days from both of its stores, and the summaries, streaks and exports are computed from those records. Inspiration quotes and the quote feed are read live from ZenQuotes, labelled at their panels.',
+  },
+  /**
+   * LFG rows are the players' own live requests in the platform's
+   * lfg_requests store — the board itself is the source, not an external
+   * poll. The caption names that and reads an empty board truthfully.
+   */
+  lfg: {
+    label: 'Live',
+    caption: 'Live group requests posted by players across Concord’s worlds, read from the board itself — an empty board means nobody is looking right now.',
+  },
+  /**
+   * Personas are authored by users on the platform and traded in its own
+   * marketplace — the store is the source, not an external poll. Chat
+   * replies carry their own basis labels in the chat itself.
+   */
+  personas: {
+    label: 'Live',
+    caption: 'Personas authored by you and other authors, read live from the platform’s own store — an empty marketplace means nobody has published one yet.',
+  },
+  /**
    * Nonprofit's own records (campaigns, donors, volunteers, pages, events)
    * are live per-user workspace data; the 990 research data is ProPublica's
    * open-access IRS dataset — real, but static reference data. The generic
@@ -198,6 +262,29 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
   nonprofit: {
     label: 'Workspace',
     caption: 'Your workspace data: campaigns, donors, volunteers and pages are your live records; 990 research data is ProPublica’s open-access IRS dataset.',
+  },
+  /**
+   * Announcements are Concord's OWN operator record — published by admins
+   * into the platform's announcements table and read live from it. The
+   * generic REAL_LIVE line ('polled live from an external source') is
+   * false here; the caption names the source and reads an empty feed
+   * truthfully (nothing published yet, not a broken surface).
+   */
+  announcements: {
+    label: 'Live',
+    caption: 'Concord’s own operator announcements, read live from the platform’s record — an empty feed means nothing has been published yet.',
+  },
+  /**
+   * Feed's timeline is the platform's own social store — posts by the
+   * people on this instance — and its tools state (lists, polls, folders,
+   * saved searches, threads, controls) persists per account on Concord's
+   * backend. The generic REAL_LIVE line ("polled live from an external
+   * source") is false for this lens; the one external surface is the HN
+   * view, labelled there.
+   */
+  feed: {
+    label: 'Live',
+    caption: 'The timeline is this instance’s own social store: posts by the people here, and your lists, polls, folders and saved searches persist on Concord’s backend. Nothing here is polled from an external source; the HN view is the one external feed and says so.',
   },
 };
 

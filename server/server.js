@@ -51560,7 +51560,11 @@ app.get("/api/lens/:domain/:id", async (req, res) => {
 app.post("/api/lens/:domain", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    _respondMacroResult(res, await runMacro("lens", "create", { domain: req.params.domain, ...req.body }, ctx));
+    const _createResult = await runMacro("lens", "create", { domain: req.params.domain, ...req.body }, ctx);
+    // Close-out A1: artifact-layer writes record Activity like lens/run
+    // dispatches do — this route family was the recorder's blind spot.
+    if (_createResult?.ok !== false) _recordLensActivity(req.params.domain, "create", ctx, { ...(req.body || {}) }, _createResult);
+    _respondMacroResult(res, _createResult);
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -51570,7 +51574,12 @@ app.post("/api/lens/:domain", async (req, res) => {
 app.put("/api/lens/:domain/:id", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    _respondMacroResult(res, await runMacro("lens", "update", { id: req.params.id, ...req.body }, ctx));
+    const _updateResult = await runMacro("lens", "update", { id: req.params.id, ...req.body }, ctx);
+    if (_updateResult?.ok !== false) {
+      const _art = STATE.lensArtifacts.get(req.params.id);
+      _recordLensActivity(req.params.domain, "update", ctx, { ...(req.body || {}), title: (req.body && req.body.title) || _art?.title || "" }, _updateResult);
+    }
+    _respondMacroResult(res, _updateResult);
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -51580,7 +51589,10 @@ app.put("/api/lens/:domain/:id", async (req, res) => {
 app.delete("/api/lens/:domain/:id", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    _respondMacroResult(res, await runMacro("lens", "delete", { id: req.params.id }, ctx));
+    const _artBefore = STATE.lensArtifacts.get(req.params.id);
+    const _deleteResult = await runMacro("lens", "delete", { id: req.params.id }, ctx);
+    if (_deleteResult?.ok !== false) _recordLensActivity(req.params.domain, "delete", ctx, { title: _artBefore?.title || "" }, _deleteResult);
+    _respondMacroResult(res, _deleteResult);
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -51618,6 +51630,8 @@ app.post("/api/lens/:domain/:id/publish", async (req, res) => {
     artifact.meta.publishedAt = new Date().toISOString();
     artifact.updatedAt = new Date().toISOString();
     saveStateDebounced();
+    // Close-out A1: the publish mutation records like any other write.
+    _recordLensActivity(req.params.domain, "publish", ctx, { title: artifact.title || "" }, { artifact });
     res.json({ ok: true, artifact: _presentLensArtifact(artifact, ctx) });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -51631,6 +51645,12 @@ app.post("/api/lens/:domain/:id/run", async (req, res) => {
     // nested handler refusal is not HTTP 200 { ok:true, result:{ ok:false } }.
     const raw = await runMacro("lens", "run", { id: req.params.id, ...req.body }, ctx);
     const shaped = _shapeLensRunHttp(raw);
+    // Close-out A1: an artifact-scoped run is a lens dispatch — record it
+    // under the action it ran, exactly as /api/lens/run does.
+    if (shaped.body.ok !== false) {
+      const _runAction = typeof req.body?.action === "string" && req.body.action ? req.body.action : "run";
+      _recordLensActivity(req.params.domain, _runAction, ctx, { ...(req.body || {}) }, shaped.body.ok ? shaped.body.result : shaped.body);
+    }
     return res.status(shaped.status).json(shaped.body);
   } catch (e) {
     const msg = String(e?.message || e);
@@ -51660,7 +51680,11 @@ app.get("/api/lens/:domain/schema", (req, res) => {
 app.post("/api/lens/:domain/bulk", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "bulkCreate", { domain: req.params.domain, ...req.body }, ctx));
+    const _bulkResult = await runMacro("lens", "bulkCreate", { domain: req.params.domain, ...req.body }, ctx);
+    // Close-out A1: one row for the bulk act itself — never one per item,
+    // so a large import cannot flood the capped activity log.
+    if (_bulkResult?.ok !== false) _recordLensActivity(req.params.domain, "bulk-create", ctx, {}, _bulkResult);
+    res.json(_bulkResult);
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;

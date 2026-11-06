@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { Mountain, Loader2, Sunrise, Sunset, Moon, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
@@ -14,6 +15,7 @@ interface AlmanacResponse {
     day_length: string;
     civil_twilight_begin: string;
     civil_twilight_end: string;
+    sun_status?: string;
     nautical_twilight_begin?: string;
     nautical_twilight_end?: string;
   };
@@ -30,7 +32,27 @@ const CAMPS = [
   { id: 'eldorado', label: 'Mt. Elbrus North (RU)', lat: 43.35, lon: 42.45 },
 ];
 
+/**
+ * F7 — the polar rows. For a camp in polar day or polar night the upstream
+ * returns its sentinel (sunrise and sunset the same 00:00 instant), which the
+ * row used to render as real times: 00:00 / 00:00 / 0 — a displayed 0 that
+ * matches NEITHER polar state. A polar row renders dashes for the times and
+ * the status word instead: the upstream's own sun_status when it carries one,
+ * never guessed from the day-length figure.
+ */
+export function polarStatus(r: { sunrise?: string; sunset?: string; sun_status?: string }): string | null {
+  if (!r.sunrise || !r.sunset || r.sunrise !== r.sunset) return null;
+  try {
+    const t = new Date(r.sunrise).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
+    if (t !== '00:00') return null;
+  } catch { return null; }
+  if (r.sun_status === 'midnight_sun') return 'Midnight sun';
+  if (r.sun_status === 'polar_night') return 'Polar night';
+  return 'Polar — no sunrise or sunset today';
+}
+
 export function BaseCampAlmanac() {
+  const [savedDtuId, setSavedDtuId] = useState<string | null>(null);
   const results = useQueries({
     queries: CAMPS.map((c) => ({
       queryKey: ['sunrise-sunset', c.id],
@@ -63,13 +85,18 @@ export function BaseCampAlmanac() {
             title={`Base camp almanac — ${loaded.length} sites (${new Date().toISOString().slice(0, 10)})`}
             content={loaded.map(({ c, q }) => {
               const r = q.data!.results;
-              return `${c.label} (${c.lat}, ${c.lon}): sunrise ${fmt(r.sunrise)} UTC · sunset ${fmt(r.sunset)} UTC · day ${r.day_length}`;
+              const polar = polarStatus(r);
+              return polar
+                ? `${c.label} (${c.lat}, ${c.lon}): ${polar} — no sunrise or sunset today`
+                : `${c.label} (${c.lat}, ${c.lon}): sunrise ${fmt(r.sunrise)} UTC · sunset ${fmt(r.sunset)} UTC · day ${r.day_length}`;
             }).join('\n')}
-            extraTags={['expedition-journal', 'almanac', 'sunrise-sunset']}
+            extraTags={['expedition-journal', 'almanac']}
             rawData={{ camps: loaded.map(({ c, q }) => ({ ...c, almanac: q.data?.results })) }}
+            onSaved={setSavedDtuId}
           />
         )}
       </header>
+      {savedDtuId && <p className="text-[11px] text-emerald-300">Saved as DTU {savedDtuId} — find it in your DTUs.</p>}
       {camps.some(({ q }) => lookupMeta(q.data)?.stale) && <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">Showing cached sunrise/sunset times for one or more camps — live source unavailable.</div>}
       <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {camps.map(({ c, q }) => {
@@ -82,13 +109,19 @@ export function BaseCampAlmanac() {
               </div>
               {q.isPending && <div className="mt-2 flex items-center gap-1 text-[10px] text-zinc-400"><Loader2 className="h-3 w-3 animate-spin" /> almanac…</div>}
               {q.isError && <div className="mt-2 text-[10px] text-rose-400">unavailable</div>}
-              {r && (
+              {r && (polarStatus(r) ? (
+                <div className="mt-2 flex items-center gap-1 text-[11px]">
+                  <Moon className="h-3 w-3 text-cyan-400" />
+                  <span className="font-mono text-zinc-100">{polarStatus(r)}</span>
+                  <span className="text-zinc-500">· sunrise — · sunset —</span>
+                </div>
+              ) : (
                 <div className="mt-2 grid grid-cols-3 gap-1.5 text-[11px]">
                   <div className="flex items-center gap-1"><Sunrise className="h-3 w-3 text-amber-400" /><span className="font-mono text-zinc-100">{fmt(r.sunrise)}</span></div>
                   <div className="flex items-center gap-1"><Sunset className="h-3 w-3 text-orange-400" /><span className="font-mono text-zinc-100">{fmt(r.sunset)}</span></div>
                   <div className="flex items-center gap-1"><Moon className="h-3 w-3 text-cyan-400" /><span className="font-mono text-zinc-100">{r.day_length}</span></div>
                 </div>
-              )}
+              ))}
             </div>
           );
         })}

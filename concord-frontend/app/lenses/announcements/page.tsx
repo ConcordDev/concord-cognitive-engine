@@ -174,6 +174,7 @@ export default function AnnouncementsLensPage() {
         subtitle="What's shipped, what's coming: feature drops, balance changes, events, news and the roadmap."
         actions={(
           <>
+            <span className="text-[12px] text-zinc-500">Publishing is admin-only</span>
             {state !== 'loading' && <StatusDot state={LOAD_STATE_TO_DOT[state]} size="sm" />}
             <button onClick={refresh} aria-label="Refresh announcements"
               className="rounded-full border border-white/10 bg-white/[0.03] p-2 text-zinc-300 hover:bg-white/10">
