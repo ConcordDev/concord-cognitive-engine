@@ -1,6 +1,7 @@
 // server/domains/filmstudios.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 export default function registerFilmStudiosActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -1929,5 +1930,74 @@ export default function registerFilmStudiosActions(registerLensAction) {
     arr.splice(i, 1);
     saveFmState();
     return { ok: true, result: { deleted: params.id } };
+  });
+
+  // D4 (F6): the shared JSON/CSV export read (lib/lens-export.js)
+  // returns canonical artifacts + REGISTERED provider rows; a
+  // production is neither, and this lens registered no provider, so
+  // both Export items produced nothing over standing productions —
+  // the Poetry D5 / Gallery F7 shape. Register the lens's provider:
+  // the caller's productions on the project-list read (memory +
+  // restart rows merged), each with its scenes and their derived
+  // sluglines, so the export describes the production. Read-only:
+  // direct list reads, never the ensure* helpers — an export creates
+  // no state.
+  registerLensExportProvider("film-studios", (ctx) => {
+    const s = getFmState();
+    if (!s) return [];
+    const userId = fmAid(ctx);
+    if (!userId || userId === "anon") return [];
+    const projects = [...(s.projects.get(userId) || [])];
+    const seenProjects = new Set(projects.map((p) => p.id));
+    for (const row of readProductionRows(ctx)) {
+      if (!row?.id || seenProjects.has(row.id)) continue;
+      if (typeof row.title !== "string" || !row.title.trim()) continue;
+      projects.push({
+        id: row.id,
+        title: row.title,
+        format: row.format || null,
+        logline: null,
+        createdAt: row.created_at || "",
+      });
+    }
+    const memScenes = s.scenes.get(userId) || [];
+    return projects.map((p) => {
+      const scenes = memScenes
+        .filter((x) => x.projectId === p.id)
+        .sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")))
+        .map((sc) => ({
+          id: sc.id,
+          number: sc.number || "",
+          slugline: fmSlugline(sc),
+          intExt: sc.intExt || null,
+          location: sc.location || "",
+          timeOfDay: sc.timeOfDay || null,
+        }));
+      const seenScenes = new Set(scenes.map((sc) => sc.id));
+      for (const row of readSceneRows(ctx, p.id)) {
+        if (!row?.id || seenScenes.has(row.id)) continue;
+        if (typeof row.location !== "string" || !row.location.trim()) continue;
+        const sc = {
+          id: row.id,
+          number: row.number || "",
+          intExt: row.int_ext || null,
+          location: row.location,
+          timeOfDay: row.time_of_day || null,
+        };
+        scenes.push({ ...sc, slugline: fmSlugline(sc) });
+      }
+      return {
+        id: p.id,
+        title: p.title,
+        type: "production",
+        createdAt: p.createdAt || null,
+        data: {
+          format: p.format || null,
+          logline: p.logline || null,
+          sceneCount: scenes.length,
+          scenes,
+        },
+      };
+    });
   });
 }
