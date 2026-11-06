@@ -8,6 +8,7 @@ import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { cn } from '@/lib/utils';
 import { ChannelIcon } from './SlackShell';
 import { ChannelExtrasBar } from './ChannelExtrasBar';
+import { FmMarkdown } from '@/components/shared/fmMarkdown';
 import { RichComposer } from './RichComposer';
 import { mediaRecorderSupported } from '@/lib/voice/mediarecorder-stt';
 
@@ -551,7 +552,7 @@ export function MessageStream({
                   <button onClick={() => setEditingId(null)} className="text-gray-400 text-[10px]">esc</button>
                 </div>
               ) : (
-                <div className="text-sm text-white whitespace-pre-wrap">{renderMentions(m.body)}</div>
+                <FmMarkdown text={m.body} format="markdown" mentions textClassName="text-sm text-white" />
               )}
               {reactions[m.id] && Object.keys(reactions[m.id]).length > 0 && (
                 <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -586,7 +587,7 @@ export function MessageStream({
                 {a.command && <span className="text-gray-500 font-mono">{a.command}</span>}
                 <span className="text-gray-400 font-mono">{new Date(a.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
-              <div className="text-sm text-white whitespace-pre-wrap">{renderMentions(a.body)}</div>
+              <FmMarkdown text={a.body} format="markdown" mentions textClassName="text-sm text-white" />
             </div>
           </div>
         ))}
@@ -676,15 +677,6 @@ function hashColour(name: string) {
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
   const palette = ['bg-rose-500/20 text-rose-300', 'bg-amber-500/20 text-amber-300', 'bg-emerald-500/20 text-emerald-300', 'bg-cyan-500/20 text-cyan-300', 'bg-violet-500/20 text-violet-300', 'bg-pink-500/20 text-pink-300'];
   return palette[Math.abs(h) % palette.length];
-}
-
-function renderMentions(text: string) {
-  const parts = text.split(/(@[\w-]+)/g);
-  return parts.map((p, i) =>
-    p.startsWith('@')
-      ? <span key={i} className="bg-violet-500/15 text-violet-200 px-1 rounded font-semibold">{p}</span>
-      : <span key={i}>{p}</span>
-  );
 }
 
 export default MessageStream;

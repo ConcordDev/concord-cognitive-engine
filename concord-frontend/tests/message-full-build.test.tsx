@@ -23,10 +23,17 @@ const reactCalls: Array<{ messageId: string; emoji: string }> = [];
 let deleteResult: { ok: boolean; error?: string } = { ok: true };
 let deleted = false;
 let reacted = false;
+let withBold = false;
 
 const MSG = {
   id: 'msg-1', number: 'M-000001', channelId: 'ch-1', senderId: 'u1',
   senderName: 'Tester', body: 'hello channel', ts: '2026-10-31T10:00:00.000Z',
+  edited: false, threadCount: 0,
+};
+
+const MSG_BOLD = {
+  id: 'msg-bold', number: 'M-000002', channelId: 'ch-1', senderId: 'u1',
+  senderName: 'Tester', body: '**PR4 bold check** and hi @Mira', ts: '2026-10-31T10:02:00.000Z',
   edited: false, threadCount: 0,
 };
 
@@ -48,7 +55,7 @@ vi.mock('@/lib/api/client', () => ({
     const input = spec.input || {};
     switch (spec.action) {
       case 'messages-list':
-        return { data: { ok: true, result: { messages: deleted ? [] : [MSG] } } };
+        return { data: { ok: true, result: { messages: deleted ? [] : withBold ? [MSG, MSG_BOLD] : [MSG] } } };
       case 'app-messages-list':
         return { data: { ok: true, result: { appMessages: commandTexts.length > 0
           ? [{ id: 'app-1', appName: 'Concord Bot', body: 'whatever ¯\\_(ツ)_/¯', ephemeral: false, ts: '2026-10-31T10:01:00.000Z', command: '/shrug' }]
@@ -93,7 +100,7 @@ const channel = { id: 'ch-1', name: 'general', kind: 'channel' as const };
 
 beforeEach(() => {
   sendInputs.length = 0; deleteInputs.length = 0; commandTexts.length = 0; reactCalls.length = 0;
-  deleteResult = { ok: true }; deleted = false; reacted = false;
+  deleteResult = { ok: true }; deleted = false; reacted = false; withBold = false;
 });
 
 async function renderStream() {
@@ -117,7 +124,9 @@ describe('build(message) — stream', () => {
     fireEvent.click(screen.getByText('Send'));
     await waitFor(() => expect(commandTexts).toEqual(['/shrug whatever']));
     expect(sendInputs.length).toBe(0);
-    await waitFor(() => expect(screen.getByText(/¯\\_\(ツ\)_\/¯/)).toBeTruthy());
+    // The shrug renders through the shared markdown renderer: its \_ escape
+    // resolves to a literal underscore, so the visible text is ¯_(ツ)_/¯.
+    await waitFor(() => expect(screen.getByText(/¯_\(ツ\)_\/¯/)).toBeTruthy());
   });
 
   it('S4: an unknown command is refused in words and never posts', async () => {
@@ -153,6 +162,18 @@ describe('build(message) — stream', () => {
     fireEvent.click(screen.getByTitle('React 👍'));
     await waitFor(() => expect(reactCalls).toEqual([{ messageId: 'msg-1', emoji: '👍' }]));
     await waitFor(() => expect(screen.getByTitle(/click to remove your reaction/)).toBeTruthy());
+  });
+});
+
+describe('build(message) — markdown bodies (S6, shared renderer)', () => {
+  it('**bold** renders as <strong> through the shared renderer, and @mentions still chip', async () => {
+    withBold = true;
+    await renderStream();
+    await waitFor(() => expect(screen.getByText('PR4 bold check')).toBeTruthy());
+    const strong = screen.getByText('PR4 bold check');
+    expect(strong.tagName).toBe('STRONG');
+    expect(screen.queryByText(/\*\*PR4 bold check\*\*/)).toBeNull();
+    expect(screen.getByText('@Mira')).toBeTruthy();
   });
 });
 
