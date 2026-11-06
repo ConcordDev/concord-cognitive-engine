@@ -166,7 +166,11 @@ export function BrowsePanel({
                         <button aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : e.id)}
                           style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', color: COLORS.fg, cursor: 'pointer', padding: 0, font: 'inherit' }}>
                           <strong>{e.title}</strong>
-                          <span style={{ opacity: 0.5, fontSize: 13, whiteSpace: 'nowrap', marginLeft: 8 }}>{e.type} · {e.era}</span>
+                          {e.type === 'fragment' ? (
+                            <span style={{ fontSize: 11, marginLeft: 8, padding: '1px 7px', borderRadius: 999, border: `1px solid ${COLORS.accentBorder}`, color: COLORS.fg, opacity: 0.85, whiteSpace: 'nowrap' }}>Fragment</span>
+                          ) : (
+                            <span style={{ opacity: 0.5, fontSize: 13, whiteSpace: 'nowrap', marginLeft: 8 }}>{[e.type, e.era].filter(Boolean).join(' · ')}</span>
+                          )}
                         </button>
                         <button aria-label={`Copy permalink for ${e.title}`} onClick={() => copyPermalink(e.id)} title="Copy permalink" className="transition-colors"
                           style={{ background: 'none', border: 'none', color: copiedId === e.id ? '#8fe0a8' : COLORS.fg, opacity: copiedId === e.id ? 1 : 0.45, cursor: 'pointer', fontSize: 15, lineHeight: 1 }}>
@@ -185,7 +189,11 @@ export function BrowsePanel({
                       </div>
                       {isOpen && (
                         <div style={{ marginTop: 8 }}>
-                          <p style={{ opacity: 0.85, margin: 0, lineHeight: 1.55 }}>{e.description}</p>
+                          {e.description ? (
+                            <p style={{ opacity: 0.85, margin: 0, lineHeight: 1.55 }}>{e.description}</p>
+                          ) : (
+                            <p style={{ opacity: 0.7, margin: 0, lineHeight: 1.55, fontStyle: 'italic' }}>A fragment — this entry is a title recorded before its account was written. It is counted in the canon as a fragment, not as a finished truth.</p>
+                          )}
                           {e.significance && (
                             <p style={{ opacity: 0.75, margin: '8px 0 0', lineHeight: 1.5, fontStyle: 'italic', borderLeft: `2px solid ${COLORS.accentBorder}`, paddingLeft: 10 }}>{e.significance}</p>
                           )}
