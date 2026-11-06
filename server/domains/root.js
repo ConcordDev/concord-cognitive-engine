@@ -11,8 +11,9 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { GLYPHS, GLYPH_TO_DIGIT, GLYPH_NAMES, RADIX_SEPARATOR, NEG_MARKER }
   from "../lib/refusal-algebra/glyphs.js";
-import { decimalToRefusalGlyphs, refusalGlyphsToDecimal }
+import { decimalToRefusalGlyphs, refusalGlyphsToDecimal, glyphStringReadings }
   from "../lib/refusal-algebra/conversion.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import { add, subtract, multiply, divide } from "../lib/refusal-algebra/operations.js";
 
 export default function registerRootActions(registerLensAction) {
@@ -74,6 +75,7 @@ export default function registerRootActions(registerLensAction) {
   // to RPN, evaluates, and reports each step with its glyph reading.
   function tokenizeExpression(raw) {
     const tokens = [];
+    const warnings = [];
     const s = String(raw || "").trim();
     let i = 0;
     const OPS = { "+": 1, "-": 1, "−": 1, "*": 1, "×": 1, "/": 1, "÷": 1, "%": 1 };
@@ -101,11 +103,22 @@ export default function registerRootActions(registerLensAction) {
         }
         if (!run) throw new Error(`Unrecognised glyph "${ch}"`);
         tokens.push({ kind: "num", value: refusalGlyphsToDecimal(run) });
+        // S-ROOT-1: compounds tokenize greedily (the stated rule), but a
+        // run with another valid tokenization names the other reading
+        // instead of choosing silently.
+        const readings = glyphStringReadings(run);
+        if (readings.length > 1) {
+          const [canon, ...alts] = readings;
+          warnings.push(
+            `Glyph string "${run}" read as ${canon.decimal} by compounds (${canon.label}); ` +
+            alts.map((r) => `digit by digit it is ${r.decimal} (${r.label})`).join("; ")
+          );
+        }
         continue;
       }
       throw new Error(`Unexpected character "${ch}" at position ${i}`);
     }
-    return tokens;
+    return { tokens, warnings };
   }
 
   function toRPN(tokens) {
@@ -179,7 +192,7 @@ export default function registerRootActions(registerLensAction) {
     const expression = String(params.expression || "").trim();
     if (!expression) return { ok: false, error: "expression is required" };
     try {
-      const tokens = tokenizeExpression(expression);
+      const { tokens, warnings } = tokenizeExpression(expression);
       if (tokens.length === 0) return { ok: false, error: "expression is empty" };
       const rpn = toRPN(tokens);
       const { value, steps } = evalRPN(rpn);
@@ -196,6 +209,7 @@ export default function registerRootActions(registerLensAction) {
           semantic,
           steps,
           tokenCount: tokens.length,
+          warnings,
         },
       };
     } catch (e) {
@@ -305,8 +319,10 @@ export default function registerRootActions(registerLensAction) {
       });
     }
     const glyphString = tokens.map((t) => t.glyph).join("");
-    let decimal = null;
-    try { decimal = refusalGlyphsToDecimal(glyphString); } catch { decimal = null; }
+    // S-ROOT-1: the value folds the tokens the user actually picked, digit
+    // by digit — re-parsing the joined string greedily made the keyboard
+    // contradict its own chips (Pivot Refusal Bridge showed 1·0·2 beside 11).
+    const decimal = tokens.reduce((acc, t) => acc * 6 + t.digit, 0);
     return {
       ok: true,
       result: {
@@ -344,11 +360,25 @@ export default function registerRootActions(registerLensAction) {
         id: "conversion",
         title: "Reading a number",
         body: "A decimal number is rewritten as a string of glyphs, most-significant first. "
-          + "Each position is a power of 6, exactly like base-10 uses powers of 10.",
-        examples: [27, 100, 215].map((n) => ({
-          input: String(n), glyph: decimalToRefusalGlyphs(n), decimal: n,
-          reading: `${n} = ${decimalToRefusalGlyphs(n)}`,
-        })),
+          + "Each position is a power of 6, exactly like base-10 uses powers of 10. "
+          + "One honesty note: the compounds are single digits, so a string written digit by digit "
+          + "can sometimes also be read as compounds. Where that happens Root shows every reading — "
+          + "it never picks one in secret.",
+        examples: [
+          ...[27, 100, 215].map((n) => ({
+            input: String(n), glyph: decimalToRefusalGlyphs(n), decimal: n,
+            reading: `${n} = ${decimalToRefusalGlyphs(n)}`,
+          })),
+          (() => {
+            const glyph = decimalToRefusalGlyphs(38);
+            const alt = glyphStringReadings(glyph).find((r) => r.decimal !== 38);
+            return {
+              input: "38", glyph, decimal: 38,
+              reading: `38 = ${glyph} written digit by digit (Pivot · Refusal · Bridge). ` +
+                (alt ? `Read as compounds the same string is ${alt.decimal} — the converter shows both readings.` : ""),
+            };
+          })(),
+        ],
       },
       {
         id: "fractions",
@@ -488,6 +518,24 @@ export default function registerRootActions(registerLensAction) {
     return { ok: true, result: { deleted: params.id, computation: removed, total: list.length } };
   });
 
+  /**
+   * renameComputation — set the label on a saved computation (S-ROOT-5:
+   * entries carry user labels, and a label the user cannot change is only
+   * half a label). Scoped to the caller's own notebook.
+   *   params.id: string (required) · params.label: string (required)
+   */
+  registerLensAction("root", "renameComputation", (ctx, _artifact, params = {}) => {
+    const s = getRootState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const label = String(params.label || "").trim().slice(0, 120);
+    if (!label) return { ok: false, error: "label is required" };
+    const entry = rootList(s.computations, rootActor(ctx)).find((c) => c.id === String(params.id || ""));
+    if (!entry) return { ok: false, error: "computation not found" };
+    entry.label = label;
+    saveRoot();
+    return { ok: true, result: { computation: entry } };
+  });
+
   // ─── 4. Shareable computation link ────────────────────────────────────
   /**
    * share — publish a computation to a public, read-only share registry and
@@ -543,5 +591,27 @@ export default function registerRootActions(registerLensAction) {
     const snapshot = s.shares.get(String(params.shareId || ""));
     if (!snapshot) return { ok: false, error: "share not found" };
     return { ok: true, result: { snapshot } };
+  });
+
+  // ─── 7. Lens export (S-ROOT-3) ──────────────────────────────────────
+  // The caller's saved computations as exportable records, so the
+  // platform's ↓.dtu path (and the Marketplace gate that reads it) can
+  // see the work this lens holds. Read-only; shares are public links,
+  // not saved work, and stay out.
+  registerLensExportProvider("root", (ctx) => {
+    const s = getRootState();
+    if (!s) return [];
+    return rootList(s.computations, rootActor(ctx)).map((c) => ({
+      type: "computation",
+      title: c.label || "Computation",
+      kind: c.kind,
+      expression: c.expression || null,
+      a: c.a ?? null,
+      b: c.b ?? null,
+      op: c.op || null,
+      resultGlyph: c.resultGlyph ?? null,
+      resultDecimal: c.resultDecimal ?? null,
+      createdAt: c.createdAt,
+    }));
   });
 }

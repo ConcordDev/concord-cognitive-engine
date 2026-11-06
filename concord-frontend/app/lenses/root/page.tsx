@@ -8,6 +8,8 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { RootMetrics } from '@/components/root/RootMetrics';
 import { ExpressionEvaluator } from '@/components/root/ExpressionEvaluator';
 import { BitwisePanel } from '@/components/root/BitwisePanel';
+import type { BitwiseHandle } from '@/components/root/BitwisePanel';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { GlyphKeyboard } from '@/components/root/GlyphKeyboard';
 import { AlgebraTutorial } from '@/components/root/AlgebraTutorial';
 import { ComputationNotebook } from '@/components/root/ComputationNotebook';
@@ -73,6 +75,69 @@ function decimalToGlyphs(n: number): string {
   return s;
 }
 
+/* Every valid tokenization of a glyph-only string, greedy first. The
+   compounds make some strings genuinely ambiguous (⟲⟐⊚ = [1,0,2] and
+   [1,5]); the converter shows every reading instead of choosing silently
+   (S-ROOT-1, D1). Mirrors server/lib/refusal-algebra/conversion.js. */
+function parseGlyphsAll(s: string, cap = 16): number[][] {
+  const out: number[][] = [];
+  const walk = (i: number, acc: number[]) => {
+    if (out.length >= cap) return;
+    if (i === s.length) { out.push([...acc]); return; }
+    if (i + 1 < s.length) {
+      const two = s.slice(i, i + 2);
+      if (two in GLYPH_TO_DIGIT) { acc.push(GLYPH_TO_DIGIT[two]); walk(i + 2, acc); acc.pop(); }
+    }
+    const one = s[i];
+    if (one in GLYPH_TO_DIGIT) { acc.push(GLYPH_TO_DIGIT[one]); walk(i + 1, acc); acc.pop(); }
+  };
+  walk(0, []);
+  return out;
+}
+
+interface GlyphReading { digits: number[]; fracDigits: number[]; decimal: number; label: string; }
+function glyphReadings(input: string): GlyphReading[] {
+  let str = input.trim();
+  if (!str) return [];
+  let sign = 1;
+  if (str.startsWith(NEG_MARKER)) { sign = -1; str = str.slice(NEG_MARKER.length); }
+  const [intP, fracP] = str.split(RADIX);
+  const intSets = parseGlyphsAll(intP || GLYPHS[0]);
+  const fracSets = fracP ? parseGlyphsAll(fracP) : [[]];
+  const byValue = new Map<string, GlyphReading>();
+  for (const intDigits of intSets) {
+    for (const fracDigits of fracSets) {
+      let value = intDigits.reduce((a, d) => a * 6 + d, 0);
+      let div = 6;
+      for (const d of fracDigits) { value += d / div; div *= 6; }
+      const decimal = sign * value;
+      const key = String(Math.round(decimal * 1e10) / 1e10);
+      if (!byValue.has(key)) {
+        const label = [...intDigits, ...fracDigits].map((d) => GLYPH_NAMES[GLYPHS[d]] ?? String(d)).join(' · ');
+        byValue.set(key, { digits: intDigits, fracDigits, decimal, label });
+      }
+    }
+  }
+  const readings = [...byValue.values()];
+  let canonical: number | null = null;
+  try { canonical = glyphsToDecimal(input.trim()); } catch { canonical = null; }
+  readings.sort((a, b) => {
+    if (canonical !== null) {
+      const ah = Math.abs(a.decimal - canonical) < 1e-9 ? 0 : 1;
+      const bh = Math.abs(b.decimal - canonical) < 1e-9 ? 0 : 1;
+      if (ah !== bh) return ah - bh;
+    }
+    return Math.abs(a.decimal) - Math.abs(b.decimal);
+  });
+  return readings;
+}
+
+function digitNames(glyphString: string): string {
+  try {
+    return parseGlyphs(glyphString).map((d) => GLYPH_NAMES[GLYPHS[d]] ?? String(d)).join(' · ');
+  } catch { return 'compound'; }
+}
+
 function glyphsToDecimal(s: string): number {
   if (s.startsWith(NEG_MARKER)) return -glyphsToDecimal(s.slice(NEG_MARKER.length));
   const [intP, fracP] = s.split(RADIX);
@@ -95,11 +160,20 @@ function operate(a: number, b: number, op: string): AlgebraResult {
     case '÷': dec = b === 0 ? Infinity : a / b; break;
     default: dec = 0;
   }
-  const num = isFinite(dec) ? decimalToGlyphs(dec) : '∞';
   const ag = decimalToGlyphs(a); const bg = decimalToGlyphs(b);
-  let sem = `${GLYPH_NAMES[ag] ?? 'compound'} ${op} ${GLYPH_NAMES[bg] ?? 'compound'} produces structural transformation`;
-  if (op === '×' && (a === 0 || b === 0)) sem = 'Refusal absorbs the operation; result returns to Refusal';
-  if (op === '÷' && b === 0) sem = 'Division by Refusal is undefined; the structure cannot resolve';
+  // S-ROOT-4 (D2): the note cites THIS computation — the operands' and the
+  // result's own digit readings — not a type template.
+  if (op === '÷' && b === 0) {
+    return {
+      numerical: 'undefined',
+      decimal: dec,
+      semantic: `Division by Refusal is undefined; the structure cannot resolve. ${ag} (${digitNames(ag)}) divided by Refusal has no result — nothing is written.`,
+    };
+  }
+  const num = decimalToGlyphs(dec);
+  let sem = `${ag} (${digitNames(ag)}) ${op} ${bg} (${digitNames(bg)}) = ${num} (${digitNames(num)})`;
+  if (op === '×' && (a === 0 || b === 0)) sem += ' — Refusal absorbs the operation; the result returns to Refusal';
+  if (op === '−' && dec === 0) sem += ' — the states cancel into Refusal; subtraction returns to origin';
   return { numerical: num, decimal: dec, semantic: sem };
 }
 
@@ -147,12 +221,24 @@ export default function RootLens() {
     try { return decimalToGlyphs(n); } catch { return null; }
   }, [decInput]);
 
-  /* Glyph → decimal */
-  const glyph2dec = useMemo(() => {
-    if (!glyphInput.trim()) return null;
-    try { return glyphsToDecimal(glyphInput.trim()); }
-    catch { return null; }
+  /* Glyph → decimal: EVERY reading of the string, canonical first (D1) */
+  const glyphReadingsList = useMemo(() => {
+    if (!glyphInput.trim()) return [];
+    try { return glyphReadings(glyphInput); }
+    catch { return []; }
   }, [glyphInput]);
+  const glyph2dec = glyphReadingsList.length > 0 ? glyphReadingsList[0].decimal : null;
+
+  /* Decimal field validation (F4): the evaluator's explicit pattern */
+  const decError = decInput !== '' && isNaN(parseFloat(decInput))
+    ? 'Not a number — enter a decimal like 47 or 1.5'
+    : '';
+
+  /* Readings of the string the decimal conversion just wrote (D1 flag) */
+  const writtenReadings = useMemo(() => {
+    if (!dec2glyph) return [];
+    try { return glyphReadings(dec2glyph); } catch { return []; }
+  }, [dec2glyph]);
 
   const glyphError = useMemo(() => {
     if (!glyphInput.trim()) return '';
@@ -174,6 +260,7 @@ export default function RootLens() {
 
   // Notebook handle — lets a save / reload refresh the persisted list.
   const notebookRef = useRef<NotebookHandle>(null);
+  const bitwiseRef = useRef<BitwiseHandle>(null);
   const [opNotice, setOpNotice] = useState('');
 
   // Persist the current playground operation via the root.save macro so the
@@ -212,6 +299,13 @@ export default function RootLens() {
   const applyReload = useCallback((payload: ReloadPayload) => {
     if (payload.kind === 'expression') {
       setGlyphInput(payload.expression || '');
+      return;
+    }
+    if (payload.kind === 'bitwise') {
+      bitwiseRef.current?.load({
+        a: payload.a || '', b: payload.b || '', op: payload.op || 'and',
+      });
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     if (payload.a != null) setOpA(payload.a);
@@ -265,7 +359,7 @@ export default function RootLens() {
         <div className="space-y-5">
           <SharedComputationBanner onOpen={applyReload} />
 
-          {view === 'convert' && (
+          <div className={view === 'convert' ? '' : 'hidden'}>
             <>
               <div className="grid gap-5 xl:grid-cols-[3fr_2fr]">
                 <section className={CARD}>
@@ -279,7 +373,13 @@ export default function RootLens() {
                         value={decInput}
                         onChange={e => setDecInput(e.target.value)}
                       />
+                      {decError && <div className="flex items-center gap-1 text-xs text-red-400"><AlertCircle className="h-3 w-3" />{decError}</div>}
                       {dec2glyph && <div className="mt-1 text-xl text-teal-300">{dec2glyph}</div>}
+                      {dec2glyph && writtenReadings.length > 1 && (
+                        <div className="mt-1 text-[11px] leading-snug text-amber-300/90">
+                          Written digit by digit for {decInput}. Read as compounds, the same string is {writtenReadings[0].decimal} ({writtenReadings[0].label}) — both readings stand; Root does not choose silently.
+                        </div>
+                      )}
                     </div>
                     <button onClick={swap}
                       className="mt-7 rounded-lg border border-white/10 bg-white/[0.04] p-2 text-zinc-400 transition-colors hover:text-teal-300" aria-label="Arrow right left">
@@ -294,7 +394,17 @@ export default function RootLens() {
                         onChange={e => setGlyphInput(e.target.value)}
                       />
                       {glyphError && <div className="flex items-center gap-1 text-xs text-red-400"><AlertCircle className="h-3 w-3" />{glyphError}</div>}
-                      {glyph2dec !== null && !glyphError && <div className="mt-1 text-xl text-emerald-300">{glyph2dec}</div>}
+                      {!glyphError && glyphReadingsList.length === 1 && <div className="mt-1 text-xl text-emerald-300">{glyph2dec}</div>}
+                      {!glyphError && glyphReadingsList.length > 1 && (
+                        <div className="mt-1 space-y-0.5">
+                          {glyphReadingsList.map((r) => (
+                            <div key={r.label} className="text-sm text-emerald-300">
+                              {r.decimal} <span className="text-[11px] text-zinc-400">— read as {r.label}</span>
+                            </div>
+                          ))}
+                          <div className="text-[11px] text-zinc-500">This string reads more than one way; every reading is shown.</div>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="mt-5 border-t border-white/10 pt-4">
@@ -324,7 +434,7 @@ export default function RootLens() {
               </div>
               <GlyphKeyboard onInsert={setGlyphInput} />
             </>
-          )}
+          </div>
 
           {view === 'compute' && (
             <>
@@ -338,21 +448,24 @@ export default function RootLens() {
                 </div>
                 <div className="mb-4 grid grid-cols-[1fr_auto_1fr_auto_auto] items-center gap-3">
                   <input className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:border-teal-400/60 focus:outline-none"
-                    placeholder="a (decimal)" value={opA} onChange={e => setOpA(e.target.value)} />
+                    placeholder="a (decimal)" value={opA} onChange={e => { setOpA(e.target.value); setOpNotice(''); }} />
                   <select className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:outline-none"
-                    value={op} onChange={e => setOp(e.target.value)}>
+                    value={op} onChange={e => { setOp(e.target.value); setOpNotice(''); }}>
                     {['+', '−', '×', '÷'].map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
                   <input className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 focus:border-teal-400/60 focus:outline-none"
-                    placeholder="b (decimal)" value={opB} onChange={e => setOpB(e.target.value)} />
+                    placeholder="b (decimal)" value={opB} onChange={e => { setOpB(e.target.value); setOpNotice(''); }} />
                   <span className="text-sm text-zinc-400">=</span>
                   <div className="min-w-[4rem] text-xl text-teal-300">{opResult?.numerical ?? '–'}</div>
                 </div>
+                {!opResult && (opA !== '' || opB !== '') && (
+                  <div className="mb-3 flex items-center gap-1 text-xs text-red-400"><AlertCircle className="h-3 w-3" />Enter a number for both a and b</div>
+                )}
                 {opResult && (
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="text-sm text-zinc-400">
-                        <span className="text-zinc-600">decimal: </span>{isFinite(opResult.decimal) ? opResult.decimal : '∞'}
+                        <span className="text-zinc-600">decimal: </span>{isFinite(opResult.decimal) ? opResult.decimal : 'undefined'}
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => void saveResult()}
@@ -373,11 +486,14 @@ export default function RootLens() {
                 )}
               </section>
               <ExpressionEvaluator onSaved={() => notebookRef.current?.refresh()} />
-              <BitwisePanel />
+              <BitwisePanel ref={bitwiseRef} onSaved={() => notebookRef.current?.refresh()} />
             </>
           )}
 
           <div className={view === 'notebook' ? '' : 'hidden'}>
+            <div className="mb-3 flex justify-end">
+              <DTUExportButton domain="root" data={{}} compact />
+            </div>
             <ComputationNotebook ref={notebookRef} onReload={(p) => { applyReload(p); setView(p.kind === 'expression' ? 'convert' : 'compute'); }} />
           </div>
 
