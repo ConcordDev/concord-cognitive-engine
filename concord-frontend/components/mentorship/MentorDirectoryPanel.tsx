@@ -71,6 +71,8 @@ export function MentorDirectoryPanel() {
   });
   const [busy, setBusy] = useState(false);
   const [editingExisting, setEditingExisting] = useState(false);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const [selected, setSelected] = useState<Mentor | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -183,6 +185,19 @@ export function MentorDirectoryPanel() {
     setShowRegister(false);
     setEditingExisting(false);
     setRegForm({ name: '', headline: '', bio: '', skills: '', experienceYears: '3', availability: 'weekly', capacity: '3', hourlyFocus: 'career' });
+    notifyMentorshipProgramChanged();
+    void refresh();
+  };
+
+  const withdrawProfile = async () => {
+    setBusy(true);
+    const r = await lensRun('mentorship', 'mentor-withdraw', {});
+    setBusy(false);
+    setConfirmWithdraw(false);
+    if (r.data?.ok === false) { setError(r.data.error || 'Withdrawal failed.'); return; }
+    setShowRegister(false);
+    setEditingExisting(false);
+    setNotice('Mentor profile withdrawn — you no longer appear in the directory. Reviews and session history remain as records.');
     notifyMentorshipProgramChanged();
     void refresh();
   };
@@ -333,6 +348,7 @@ export function MentorDirectoryPanel() {
       </div>
 
       {error && <p className="text-xs text-red-400">{error}</p>}
+      {notice && <p className="text-xs text-emerald-400">{notice}</p>}
 
       {showRegister && (
         <div className="panel p-4 space-y-2">
@@ -354,6 +370,30 @@ export function MentorDirectoryPanel() {
           <button onClick={register} disabled={busy} className="btn-neon green w-full">
             {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : 'Publish profile'}
           </button>
+          {editingExisting && !confirmWithdraw && (
+            <div className="border-t border-zinc-800 pt-2">
+              <button onClick={() => setConfirmWithdraw(true)} disabled={busy}
+                className="text-xs text-zinc-400 hover:text-red-300">
+                Withdraw mentor profile
+              </button>
+            </div>
+          )}
+          {editingExisting && confirmWithdraw && (
+            <div className="border-t border-zinc-800 pt-2 space-y-2">
+              <p className="text-xs text-zinc-400">
+                Withdraw your mentor profile? You leave the directory and your profile page closes.
+                Reviews and session history stay as records. You can list again any time.
+              </p>
+              <div className="flex gap-2">
+                <button onClick={withdrawProfile} disabled={busy} className="btn-neon text-xs flex-1">
+                  {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : 'Confirm withdraw'}
+                </button>
+                <button onClick={() => setConfirmWithdraw(false)} disabled={busy} className="btn-neon text-xs flex-1">
+                  Keep profile
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
