@@ -47,6 +47,16 @@ export function useMyPodcastShow() {
     return r.data.result.episode;
   }, [myShowId, refreshEpisodes]);
 
+  const updateEpisode = useCallback(async (episodeId: string, fields: Partial<PodcastEpisode>) => {
+    if (!myShowId) throw new Error('Your show is not ready yet');
+    const r = await lensRun<{ episode: PodcastEpisode }>('podcast', 'episode-update', { episodeId, ...fields });
+    if (!r.data?.ok || !r.data.result?.episode) {
+      throw new Error(r.data?.error || 'Could not save episode');
+    }
+    await refreshEpisodes(myShowId);
+    return r.data.result.episode;
+  }, [myShowId, refreshEpisodes]);
+
   const setEpisodeStatus = useCallback(async (episodeId: string, status: PodcastEpisode['status']) => {
     if (!myShowId) return;
     await lensRun('podcast', 'episode-set-status', { episodeId, status });
@@ -70,6 +80,7 @@ export function useMyPodcastShow() {
     episodes,
     isLoading,
     createEpisode,
+    updateEpisode,
     setEpisodeStatus,
     removeEpisode,
     refreshEpisodes,

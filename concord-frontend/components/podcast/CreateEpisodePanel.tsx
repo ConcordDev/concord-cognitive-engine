@@ -17,6 +17,7 @@ import { MediaUpload } from '@/components/media/MediaUpload';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { probeAudioFileDuration } from '@/lib/podcast/probe-audio-duration';
 import { useMyPodcastShow } from './useMyPodcastShow';
+import { notifyPodcastChanged } from './podcast-events';
 import { formatDuration } from './types';
 
 const UPLOAD_AUDIO_FIRST = 'Upload the audio first';
@@ -287,6 +288,8 @@ export function CreateEpisodePanel({ onCreated }: { onCreated?: () => void }) {
       setRecordedBlob(null);
       setRecordedUrl(null);
       setRecordingTime(0);
+      showToast('success', 'Episode created');
+      notifyPodcastChanged();
       onCreated?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not create episode';
