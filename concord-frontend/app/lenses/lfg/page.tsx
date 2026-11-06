@@ -24,6 +24,7 @@ type LoadState = 'loading' | 'error' | 'ready';
 interface LfgRow {
   id: string;
   userId: string;
+  posterName?: string | null;
   worldId: string;
   role: Role;
   partyType: 'normal' | 'raid';
@@ -223,7 +224,7 @@ export default function LfgLensPage() {
                           <span className="rounded bg-slate-700/50 px-1 text-slate-300">{r.currentSize}/{r.partyMaxSize}</span>
                           {mine && <span className="rounded bg-fuchsia-500/20 px-1 text-fuchsia-200">you</span>}
                         </div>
-                        <div className="mt-0.5 truncate font-mono text-[11px] text-cyan-100">{r.userId.slice(0, 14)}</div>
+                        <div className="mt-0.5 truncate text-[11px] text-cyan-100">{r.posterName || 'Member'}</div>
                         {r.note && <p className="mt-0.5 text-[11px] text-cyan-200/80">{r.note}</p>}
                       </div>
                       {mine ? (
