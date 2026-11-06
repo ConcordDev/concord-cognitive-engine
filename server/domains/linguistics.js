@@ -8,6 +8,20 @@ const FREE_DICTIONARY = "https://api.dictionaryapi.dev/api/v2/entries";
 const DATAMUSE = "https://api.datamuse.com/words";
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+// Syllable estimate: count VOWEL GROUPS (consecutive vowels form one
+// syllable nucleus), minimum 1 — the same heuristic server/domains/
+// poetry.js uses. The previous counter counted vowel LETTERS, so
+// "unbelievable" scored 6 syllables against 5 true and the probe
+// sentence "Unhappiness is unbelievable." totalled 11 against 10
+// hand-counted (Product Review 2, F7a).
+function countSyllables(word) {
+  const w = String(word || "").toLowerCase();
+  const groups = (w.match(/[aeiouy]+/g) || []).length;
+  return Math.max(1, groups);
+}
+
 export default function registerLinguisticsActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("linguistics", "textAnalysis", (ctx, artifact, _params) => {
@@ -18,7 +32,7 @@ export default function registerLinguisticsActions(registerLensAction) {
     const words = text.split(/\s+/).filter(Boolean);
     const sentences = text.split(/[.!?]+/).filter(Boolean);
     const chars = text.replace(/\s/g, "").length;
-    const syllableCount = words.reduce((s, w) => s + Math.max(1, w.replace(/[^aeiouy]/gi, "").length), 0);
+    const syllableCount = words.reduce((s, w) => s + countSyllables(w), 0);
     const fleschKincaid = 0.39 * (words.length / Math.max(sentences.length, 1)) + 11.8 * (syllableCount / Math.max(words.length, 1)) - 15.59;
     const uniqueWords = new Set(words.map(w => w.toLowerCase().replace(/[^a-z]/g, "")));
     return { ok: true, result: { wordCount: words.length, sentenceCount: sentences.length, charCount: chars, avgWordLength: Math.round(chars / words.length * 10) / 10, avgSentenceLength: Math.round(words.length / sentences.length * 10) / 10, vocabularySize: uniqueWords.size, lexicalDiversity: Math.round((uniqueWords.size / words.length) * 100), readabilityGrade: Math.round(Math.max(0, fleschKincaid) * 10) / 10, readingLevel: fleschKincaid < 6 ? "elementary" : fleschKincaid < 10 ? "middle-school" : fleschKincaid < 14 ? "high-school" : "college" } };
@@ -34,7 +48,7 @@ export default function registerLinguisticsActions(registerLensAction) {
     const words = text.split(/\s+/).filter(Boolean);
     const sentences = text.split(/[.!?]+/).filter(Boolean);
     const chars = text.replace(/\s/g, "").length;
-    const syllables = words.reduce((s, w) => s + Math.max(1, w.replace(/[^aeiouy]/gi, "").length), 0);
+    const syllables = words.reduce((s, w) => s + countSyllables(w), 0);
     const fk = 0.39 * (words.length / Math.max(sentences.length, 1)) + 11.8 * (syllables / Math.max(words.length, 1)) - 15.59;
     const grade = Math.round(Math.max(0, fk) * 10) / 10;
     const level = fk < 6 ? "elementary" : fk < 10 ? "middle-school" : fk < 14 ? "high-school" : "college";
@@ -42,7 +56,7 @@ export default function registerLinguisticsActions(registerLensAction) {
     const ttr = words.length ? Math.round((unique.size / words.length) * 100) : 0;
     // Morphological sketch: tally inferable word-classes from common suffixes.
     const suffixClass = (w) => /ly$/.test(w) ? "adverb" : /(ness|tion|ment|ity)$/.test(w) ? "noun"
-      : /(ful|ous|ive|al)$/.test(w) ? "adjective" : /(ing|ed|ise|ize)$/.test(w) ? "verb-form" : null;
+      : /(ful|ous|ive|al|able|ible)$/.test(w) ? "adjective" : /(ing|ed|ise|ize)$/.test(w) ? "verb-form" : null;
     const classes = {};
     // Strip punctuation before suffix classification so "happily." still reads as -ly.
     for (const w of words) { const c = suffixClass(w.toLowerCase().replace(/[^a-z]/g, "")); if (c) classes[c] = (classes[c] || 0) + 1; }
@@ -690,5 +704,34 @@ export default function registerLinguisticsActions(registerLensAction) {
     }
     saveLing();
     return { ok: true, result: { deckId, added, addedCount: added.length, skipped, skippedCount: skipped.length } };
+  });
+
+  // Lens export (S-LIN-5): the generic export's artifact half covers the
+  // five Notebook collections, but vocabulary words + decks live in this
+  // domain's STATE Maps, invisible to lens.list — this provider surfaces
+  // the actor's own words and decks so the export menu's answer is true.
+  registerLensExportProvider("linguistics", (ctx) => {
+    const s = getLingState();
+    if (!s) return [];
+    const userId = lgActor(ctx);
+    const rows = [];
+    for (const w of lgWords(s, userId)) {
+      rows.push({
+        type: "vocab_word",
+        title: w.word,
+        content: [w.partOfSpeech, w.definition, w.example ? `Example: ${w.example}` : null].filter(Boolean).join(" — "),
+        createdAt: w.createdAt || null,
+      });
+    }
+    for (const d of lgDecks(s, userId)) {
+      const members = lgWords(s, userId).filter((w) => w.deckId === d.id);
+      rows.push({
+        type: "vocab_deck",
+        title: d.name,
+        content: [d.description || "", `${members.length} word${members.length === 1 ? "" : "s"}: ${members.map((w) => w.word).join(", ")}`].filter(Boolean).join(" — "),
+        createdAt: d.createdAt || null,
+      });
+    }
+    return rows;
   });
 }
