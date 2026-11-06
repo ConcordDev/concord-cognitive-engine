@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { MessagesSquare, Send, Loader2, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { MessagesSquare, Send, Loader2, RefreshCw, CheckCircle2, Trash2 } from 'lucide-react';
 
 interface Scenario {
   id: string;
@@ -40,12 +40,13 @@ const STATUS_COLOR: Record<string, string> = {
   addressed: 'text-emerald-400 bg-emerald-400/10',
 };
 
-export function PublicCommentPanel() {
+export function PublicCommentPanel({ onDataChanged }: { onDataChanged?: () => void } = {}) {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [subjectId, setSubjectId] = useState('');
   const [list, setList] = useState<CommentList | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
   const [author, setAuthor] = useState('');
   const [stance, setStance] = useState('support');
@@ -100,10 +101,11 @@ export function PublicCommentPanel() {
       setBody('');
       setAuthor('');
       await refresh();
+      onDataChanged?.();
     } else {
       setError(r.data.error || 'submit failed');
     }
-  }, [subjectId, author, stance, body, refresh]);
+  }, [subjectId, author, stance, body, refresh, onDataChanged]);
 
   const resolve = useCallback(
     async (id: string, status: string) => {
@@ -111,8 +113,29 @@ export function PublicCommentPanel() {
       await lensRun('urban-planning', 'comment-resolve', { id, status });
       setBusy(false);
       await refresh();
+      onDataChanged?.();
     },
-    [refresh],
+    [refresh, onDataChanged],
+  );
+
+  // Two-step delete (Review 5 F7): comments previously had no removal
+  // path at any layer — an orphaned comment outlived its scenario and
+  // kept counting on the dashboard. First click arms, second confirms.
+  const remove = useCallback(
+    async (id: string) => {
+      setBusy(true);
+      setError(null);
+      const r = await lensRun('urban-planning', 'comment-remove', { id });
+      setBusy(false);
+      setConfirmRemoveId(null);
+      if (!r.data.ok) {
+        setError(r.data.error || 'remove failed');
+        return;
+      }
+      await refresh();
+      onDataChanged?.();
+    },
+    [refresh, onDataChanged],
   );
 
   return (
@@ -228,6 +251,31 @@ export function PublicCommentPanel() {
                           <CheckCircle2 className="h-3 w-3" /> {st}
                         </button>
                       ))}
+                      {confirmRemoveId === c.id ? (
+                        <>
+                          <button
+                            onClick={() => remove(c.id)}
+                            disabled={busy}
+                            className="inline-flex items-center gap-1 rounded border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                          >
+                            Confirm delete
+                          </button>
+                          <button
+                            onClick={() => setConfirmRemoveId(null)}
+                            className="inline-flex items-center gap-1 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmRemoveId(c.id)}
+                          className="inline-flex items-center gap-1 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-800 hover:text-red-300"
+                          aria-label="Delete comment"
+                        >
+                          <Trash2 className="h-3 w-3" /> Delete
+                        </button>
+                      )}
                     </div>
                   </div>
                   <p className="mt-1.5 text-xs text-zinc-400">{c.body}</p>

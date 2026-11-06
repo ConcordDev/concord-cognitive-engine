@@ -100,8 +100,16 @@ describe("urban-planning.census-acs-county", () => {
       return {
         ok: true,
         json: async () => ([
-          ["B01003_001E", "B19013_001E", "B01002_001E", "B15003_022E", "B15003_001E", "B25003_002E", "B25003_003E", "B08303_001E", "B08303_013E", "NAME", "state", "county"],
-          ["873965", "126187", "40.4", "120000", "600000", "150000", "200000", "400000", "60000", "San Francisco County, California", "06", "075"],
+          // UPDATED (urban-planning full build, Review 5 F2): the mock now
+          // carries the corrected variable set. Bachelor's-or-higher is
+          // 022+023+024+025 (60000+30000+20000+10000 = 120000 → the 20%
+          // pin below now proves the SUM, where the old mock's single
+          // _022 column priced the bachelor's-only misread). 60+ commute
+          // is _014+_015 (40000+20000 = 60000 → the 15% pin); _013 (the
+          // 45–59 bucket) carries a decoy 250000 — if the code read the
+          // wrong bucket again the pin would read 62.5%, not 15%.
+          ["B01003_001E", "B19013_001E", "B01002_001E", "B15003_022E", "B15003_023E", "B15003_024E", "B15003_025E", "B15003_001E", "B25003_002E", "B25003_003E", "B08303_001E", "B08303_013E", "B08303_014E", "B08303_015E", "NAME", "state", "county"],
+          ["873965", "126187", "40.4", "60000", "30000", "20000", "10000", "600000", "150000", "200000", "400000", "250000", "40000", "20000", "San Francisco County, California", "06", "075"],
         ]),
       };
     };
@@ -113,11 +121,11 @@ describe("urban-planning.census-acs-county", () => {
     assert.equal(r.result.countyName, "San Francisco County, California");
     assert.equal(r.result.totalPopulation, 873965);
     assert.equal(r.result.medianHouseholdIncome, 126187);
-    // bachelors: 120000 / 600000 = 20%
+    // bachelors+: (60k + 30k + 20k + 10k) / 600000 = 20%
     assert.equal(r.result.bachelorsPlusPct, 20);
     // owners 150k / (150k + 200k) = 42.857... → 42.9
     assert.ok(Math.abs(r.result.ownerOccupiedPct - 42.9) < 0.2);
-    // long commute: 60k / 400k = 15%
+    // long commute (60+): (40k + 20k) / 400k = 15%
     assert.equal(r.result.longCommutePct, 15);
     assert.equal(r.result.source, "census-acs-5year");
   });
