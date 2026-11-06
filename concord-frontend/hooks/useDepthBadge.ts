@@ -68,6 +68,10 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Your own live shop records: technicians, jobs, invoices, parts and inspections are your account\'s real data, saved as you work.',
   },
+  message: {
+    label: 'Live',
+    caption: 'Your own messaging workspace: channels, direct messages, saves and scheduled sends are your real records in the platform store. Nothing here is polled from an external source.',
+  },
   game: {
     label: 'Lab & arcade sim',
     caption: 'Simulated: Design Lab forecasts and mini-game practice XP. Profile XP, quests, and achievements are your real activity.',
