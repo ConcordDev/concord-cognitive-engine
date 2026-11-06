@@ -17,6 +17,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { BookmarksList } from '@/components/social/BookmarksList';
 import { cn } from '@/lib/utils';
 import {
   Sparkles,
@@ -51,12 +52,26 @@ type ToolTab =
 
 interface AffinityAuthor {
   authorId: string;
+  /** Resolved by the feed domain from the author's profile/users record;
+   *  null when nothing resolves. The raw authorId is the join key only —
+   *  it is never rendered as the author's name (R4 Feed F3). */
+  authorName?: string | null;
+  authorHandle?: string | null;
   affinity: number;
   likes: number;
   replies: number;
   reposts: number;
   views: number;
   bookmarks: number;
+}
+
+/** The name a feed surface prints for an author: the resolved display
+ *  name when the server sent one, else an honest member label — never
+ *  the raw account UUID (R4 Feed F3). */
+export function feedAuthorLabel(name?: string | null, handle?: string | null): string {
+  if (name) return name;
+  if (handle) return `@${handle}`;
+  return 'A member';
 }
 
 interface ThreadNode {
@@ -68,6 +83,10 @@ interface ThreadNode {
   quotedAuthor: string | null;
   quotedBody: string | null;
   author: string;
+  /** Resolved display identity for `author` (the raw id stays the join
+   *  key; these are what renders — R4 Feed F3). */
+  authorName?: string | null;
+  authorHandle?: string | null;
   collapsed: boolean;
   createdAt: string;
   replyCount: number;
@@ -161,12 +180,23 @@ export interface CandidatePost {
 interface RankedPost {
   id: string;
   authorId: string;
+  /** The post's own first line + the author's resolved identity, sent by
+   *  the feed domain so a ranked row is inspectable (R4 Feed F3 / D3). */
+  title?: string | null;
+  authorName?: string | null;
+  authorHandle?: string | null;
   score: number;
   affinity: number;
   recency: number;
   engagement: number;
   reasons: string[];
 }
+
+/** The ranking score's basis, stated in words beside the ranked list
+ *  (D3: the full loaded set rendered inspectably with the scores' basis
+ *  stated). Mirrors rank-for-you in server/domains/feed.js. */
+export const RANK_SCORE_BASIS =
+  'Score = affinity ×2 (your learned engagement with the author) + recency ×3 (12-hour half-life) + engagement ×1.5 (log-scaled: likes + 2×comments + 3×reposts).';
 
 // ── Small UI atoms ─────────────────────────────────────────────────────────
 
@@ -232,7 +262,7 @@ function ForYouTool({ candidates }: { candidates: CandidatePost[] }) {
           {authors.map((a) => (
             <li key={a.authorId} className="rounded-lg bg-lattice-deep border border-lattice-border p-2.5">
               <div className="flex items-center justify-between text-sm">
-                <span className="font-semibold text-white">@{a.authorId}</span>
+                <span className="font-semibold text-white">{feedAuthorLabel(a.authorName, a.authorHandle)}</span>
                 <span className="font-mono text-xs text-neon-cyan">affinity {a.affinity}</span>
               </div>
               <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
@@ -262,17 +292,21 @@ function ForYouTool({ candidates }: { candidates: CandidatePost[] }) {
           <p className="mt-1.5 text-[11px] text-gray-400">Scroll the main feed to load posts, then rank them here.</p>
         )}
         {ranked && (
-          <ul className="mt-2 space-y-1.5">
-            {ranked.length === 0 && <EmptyHint text="Nothing ranked — the loaded posts were all muted or blocked." />}
-            {ranked.slice(0, 10).map((r, i) => (
-              <li key={r.id} className="rounded-lg bg-lattice-deep border border-lattice-border p-2 text-[11px]">
-                <span className="text-gray-400 font-mono mr-1.5">#{i + 1}</span>
-                <span className="text-white font-medium">@{r.authorId}</span>
-                <span className="ml-2 font-mono text-neon-cyan">score {r.score}</span>
-                {r.reasons.length > 0 && <span className="ml-2 text-gray-400">{r.reasons.join(' · ')}</span>}
-              </li>
-            ))}
-          </ul>
+          <>
+            <p className="mt-2 text-[11px] text-gray-400">{RANK_SCORE_BASIS}</p>
+            <ul className="mt-2 space-y-1.5">
+              {ranked.length === 0 && <EmptyHint text="Nothing ranked — the loaded posts were all muted or blocked." />}
+              {ranked.map((r, i) => (
+                <li key={r.id} className="rounded-lg bg-lattice-deep border border-lattice-border p-2 text-[11px]">
+                  <span className="text-gray-400 font-mono mr-1.5">#{i + 1}</span>
+                  <span className="text-white font-medium">{r.title || 'Untitled post'}</span>
+                  <span className="ml-2 text-gray-300">by {feedAuthorLabel(r.authorName, r.authorHandle)}</span>
+                  <span className="ml-2 font-mono text-neon-cyan">score {r.score}</span>
+                  {r.reasons.length > 0 && <span className="ml-2 text-gray-400">{r.reasons.join(' · ')}</span>}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </div>
     </div>
@@ -310,7 +344,7 @@ function ThreadNodeView({
           >
             {node.kind}
           </span>
-          <span>@{node.author}</span>
+          <span>{feedAuthorLabel(node.authorName, node.authorHandle)}</span>
           {node.replyCount > 0 && <span>· {node.replyCount} in thread</span>}
         </div>
         {node.quotedBody && (
@@ -873,6 +907,13 @@ function SavedTool({ candidates }: { candidates: CandidatePost[] }) {
         title="Saved — folders & search alerts"
         hint="Organise bookmarks into folders and save searches that alert you when new matching posts appear."
       />
+      {/* The caller's own bookmarked posts — the shelf a plain bookmark
+          lands on (R4 Feed F4). Until this mounted here, the Saved view
+          read folders + saved searches only, so a bookmarked post was
+          counted by the affinity model yet invisible in Saved. */}
+      <div className="mb-4">
+        <BookmarksList showHeader={true} />
+      </div>
       <div className="mb-3 flex gap-1.5">
         <input
           value={folderName}

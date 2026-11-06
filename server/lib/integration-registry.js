@@ -71,6 +71,7 @@ export const REGISTRY = Object.freeze({
   move_builder:  { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "minted moves are move_recipe DTUs in the canonical dtus store" },
   "move-builder": { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "minted moves are move_recipe DTUs in the canonical dtus store" },
   message:       { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real inbox / Concord-Link messages" },
+  lfg:           { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real group requests across Concord's worlds (lfg_requests)" },
   wallet:        { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real Concord Coin balance + ledger" },
   marketplace:   { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real DTU listings + royalty cascade" },
   feed:          { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real timeline aggregator" },
