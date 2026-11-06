@@ -48,6 +48,7 @@ interface SyncRun {
   startedAt: number; finishedAt: number; recordsScanned: number;
   recordsExtracted: number; recordsLoaded: number; duplicatesRemoved: number;
   byteVolume: number; failures: number; status: string; replayOf?: string;
+  source?: string; error?: string;
   newCursor: unknown; cursorField: string;
 }
 interface MappingRule {
@@ -263,10 +264,13 @@ function ConnectorsTab({
     }
   };
 
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+
   const remove = async (id: string) => {
     setBusy(true);
     const r = await lensRun('ingest', 'deleteConnection', { connectionId: id });
     setBusy(false);
+    setConfirmRemoveId(null);
     if (r.data.ok) {
       flash('ok', 'Connection removed');
       await reloadConnections();
@@ -388,14 +392,33 @@ function ConnectorsTab({
                   </a>
                 )}
               </div>
-              <button
-                onClick={() => remove(c.id)}
-                disabled={busy}
-                className="p-1.5 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400 disabled:opacity-40"
-                aria-label="Delete connection"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {confirmRemoveId === c.id ? (
+                <span className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={() => remove(c.id)}
+                    disabled={busy}
+                    className="text-[11px] px-2 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 disabled:opacity-40"
+                  >
+                    Confirm remove
+                  </button>
+                  <button
+                    onClick={() => setConfirmRemoveId(null)}
+                    disabled={busy}
+                    className="text-[11px] px-2 py-1 rounded bg-white/5 text-gray-300 hover:bg-white/10 disabled:opacity-40"
+                  >
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <button
+                  onClick={() => setConfirmRemoveId(c.id)}
+                  disabled={busy}
+                  className="p-1.5 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400 disabled:opacity-40"
+                  aria-label="Delete connection"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           ))}
           {connections.length === 0 && (
@@ -447,10 +470,13 @@ function SchedulesTab({
     else flash('err', r.data.error || 'Toggle failed');
   };
 
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+
   const remove = async (id: string) => {
     setBusy(true);
     const r = await lensRun('ingest', 'deleteSchedule', { scheduleId: id });
     setBusy(false);
+    setConfirmRemoveId(null);
     if (r.data.ok) {
       flash('ok', 'Schedule removed');
       await reload();
@@ -544,14 +570,33 @@ function SchedulesTab({
                 </p>
               )}
             </div>
-            <button
-              onClick={() => remove(s.id)}
-              disabled={busy}
-              className="p-1.5 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400 disabled:opacity-40"
-              aria-label="Delete schedule"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {confirmRemoveId === s.id ? (
+              <span className="flex items-center gap-1.5 flex-shrink-0">
+                <button
+                  onClick={() => remove(s.id)}
+                  disabled={busy}
+                  className="text-[11px] px-2 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 disabled:opacity-40"
+                >
+                  Confirm remove
+                </button>
+                <button
+                  onClick={() => setConfirmRemoveId(null)}
+                  disabled={busy}
+                  className="text-[11px] px-2 py-1 rounded bg-white/5 text-gray-300 hover:bg-white/10 disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <button
+                onClick={() => setConfirmRemoveId(s.id)}
+                disabled={busy}
+                className="p-1.5 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400 disabled:opacity-40"
+                aria-label="Delete schedule"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         ))}
         {schedules.length === 0 && (
@@ -578,12 +623,37 @@ function TransformsTab({
   const [rules, setRules] = useState<MappingRule[]>([]);
   const [preview, setPreview] = useState<{ before: any; after: any }[] | null>(null);
   const [meta, setMeta] = useState<{ input: string[]; output: string[]; dropped: string[]; derived: string[] } | null>(null);
+  // Unsaved-work guard: switching the connection loads that connection's
+  // saved mapping OVER the rules being edited — that used to happen
+  // silently and eat the work. The snapshot tracks the last loaded/saved
+  // rules; any divergence is unsaved, and a switch asks first.
+  const [savedSnapshot, setSavedSnapshot] = useState('[]');
+  const [pendingConnId, setPendingConnId] = useState<string | null>(null);
+  const dirty = JSON.stringify(rules) !== savedSnapshot;
 
   const loadMapping = useCallback(async (id: string) => {
     if (!id) return;
     const r = await lensRun('ingest', 'getMapping', { connectionId: id });
-    if (r.data.ok && r.data.result) setRules(r.data.result.mapping || []);
+    if (r.data.ok && r.data.result) {
+      const mapping = r.data.result.mapping || [];
+      setRules(mapping);
+      setSavedSnapshot(JSON.stringify(mapping));
+    }
   }, []);
+
+  const onSelectConnection = (id: string) => {
+    if (id === connId) return;
+    if (dirty) { setPendingConnId(id); return; }
+    setConnId(id);
+    void loadMapping(id);
+  };
+
+  const confirmSwitch = () => {
+    if (pendingConnId == null) return;
+    setConnId(pendingConnId);
+    void loadMapping(pendingConnId);
+    setPendingConnId(null);
+  };
 
   const addRule = () => setRules((r) => [...r, { action: 'rename', from: '', to: '' }]);
   const updateRule = (i: number, patch: Partial<MappingRule>) =>
@@ -619,7 +689,10 @@ function TransformsTab({
     setBusy(true);
     const r = await lensRun('ingest', 'saveMapping', { connectionId: connId, mapping: rules });
     setBusy(false);
-    if (r.data.ok) flash('ok', `Mapping saved (${rules.length} rule${rules.length !== 1 ? 's' : ''})`);
+    if (r.data.ok) {
+      setSavedSnapshot(JSON.stringify(rules));
+      flash('ok', `Mapping saved (${rules.length} rule${rules.length !== 1 ? 's' : ''})`);
+    }
     else flash('err', r.data.error || 'Save failed');
   };
 
@@ -628,10 +701,7 @@ function TransformsTab({
       <div className="flex items-center gap-3 flex-wrap">
         <select
           value={connId}
-          onChange={(e) => {
-            setConnId(e.target.value);
-            loadMapping(e.target.value);
-          }}
+          onChange={(e) => onSelectConnection(e.target.value)}
           className="px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs text-white"
         >
           <option value="">Connection (for save)…</option>
@@ -639,8 +709,31 @@ function TransformsTab({
             <option key={c.id} value={c.id}>{c.connectorName} ({c.id.slice(0, 10)})</option>
           ))}
         </select>
-        <span className="text-xs text-gray-400">{rules.length} rule{rules.length !== 1 ? 's' : ''}</span>
+        <span className="text-xs text-gray-400">
+          {rules.length} rule{rules.length !== 1 ? 's' : ''}
+          {dirty && <span className="text-yellow-400"> · unsaved changes</span>}
+        </span>
       </div>
+
+      {pendingConnId != null && (
+        <div className="flex items-center gap-2 p-2.5 rounded-lg text-xs bg-yellow-500/10 border border-yellow-500/20 text-yellow-200 flex-wrap">
+          <span className="flex-1">
+            Loading {connections.find((c) => c.id === pendingConnId)?.connectorName || 'that connection'}&rsquo;s saved mapping will discard your unsaved rules.
+          </span>
+          <button
+            onClick={confirmSwitch}
+            className="px-2 py-1 rounded bg-yellow-500/20 text-yellow-100 hover:bg-yellow-500/30"
+          >
+            Load anyway
+          </button>
+          <button
+            onClick={() => setPendingConnId(null)}
+            className="px-2 py-1 rounded bg-white/5 text-gray-200 hover:bg-white/10"
+          >
+            Keep editing
+          </button>
+        </div>
+      )}
 
       <div className="space-y-2">
         {rules.map((rule, i) => (
@@ -789,18 +882,26 @@ function RunsTab({
   const [recordsJson, setRecordsJson] = useState(
     '[\n  {"id": 1, "updated_at": "2026-01-01"},\n  {"id": 2, "updated_at": "2026-01-02"}\n]',
   );
+  const [sourceMode, setSourceMode] = useState<'endpoint' | 'payload'>('endpoint');
+  const selectedConn = connections.find((c) => c.id === connId);
+  const canFetch = selectedConn?.connectorId === 'rest-api';
+  const effectiveMode = canFetch ? sourceMode : 'payload';
 
   const runSync = async () => {
     if (!connId) return flash('err', 'Pick a connection');
-    let records: any[];
-    try {
-      records = JSON.parse(recordsJson);
-      if (!Array.isArray(records)) throw new Error('not array');
-    } catch {
-      return flash('err', 'Records must be a JSON array');
+    let payload: Record<string, unknown> = { connectionId: connId };
+    if (effectiveMode === 'payload') {
+      let records: any[];
+      try {
+        records = JSON.parse(recordsJson);
+        if (!Array.isArray(records)) throw new Error('not array');
+      } catch {
+        return flash('err', 'Records must be a JSON array');
+      }
+      payload = { ...payload, records };
     }
     setBusy(true);
-    const r = await lensRun('ingest', 'runSync', { connectionId: connId, records });
+    const r = await lensRun('ingest', 'runSync', payload);
     setBusy(false);
     if (r.data.ok && r.data.result) {
       flash(
@@ -810,6 +911,7 @@ function RunsTab({
       await reload();
     } else {
       flash('err', r.data.error || 'Sync failed');
+      await reload();
     }
   };
 
@@ -852,12 +954,35 @@ function RunsTab({
             <option key={c.id} value={c.id}>{c.connectorName} ({c.id.slice(0, 10)})</option>
           ))}
         </select>
-        <textarea
-          value={recordsJson}
-          onChange={(e) => setRecordsJson(e.target.value)}
-          rows={5}
-          className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded text-xs text-white font-mono focus:outline-none focus:border-neon-cyan resize-y"
-        />
+        {canFetch && (
+          <select
+            value={sourceMode}
+            onChange={(e) => setSourceMode(e.target.value as 'endpoint' | 'payload')}
+            className="px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs text-white"
+            aria-label="Sync source"
+          >
+            <option value="endpoint">Fetch from the configured endpoint</option>
+            <option value="payload">Paste records (payload run)</option>
+          </select>
+        )}
+        {effectiveMode === 'endpoint' && selectedConn ? (
+          <p className="text-[11px] text-gray-400">
+            Will fetch <span className="text-gray-200 font-mono">{String(selectedConn.config?.baseUrl || '')}{String(selectedConn.config?.path || '')}</span> — the
+            endpoint this connection is configured with.
+          </p>
+        ) : (
+          <>
+            <p className="text-[11px] text-gray-400">
+              Payload run — this syncs the records below, <span className="text-gray-200">not</span> the connection&rsquo;s endpoint, and the run log labels it that way.
+            </p>
+            <textarea
+              value={recordsJson}
+              onChange={(e) => setRecordsJson(e.target.value)}
+              rows={5}
+              className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded text-xs text-white font-mono focus:outline-none focus:border-neon-cyan resize-y"
+            />
+          </>
+        )}
         <div className="flex items-center gap-2">
           <button
             onClick={runSync}
@@ -916,12 +1041,17 @@ function RunsTab({
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-white">{r.connectorName}</span>
                 <span className="text-[10px] text-gray-400">{r.mode}</span>
+                {r.source && <span className="text-[10px] text-neon-cyan">{r.source}</span>}
                 {r.replayOf && <span className="text-[10px] text-neon-purple">replay</span>}
               </div>
-              <p className="text-[11px] text-gray-400">
-                {r.recordsScanned} scanned → {r.recordsExtracted} extracted → {r.recordsLoaded} loaded
-                {r.duplicatesRemoved > 0 && ` · ${r.duplicatesRemoved} dedup`} · {fmtBytes(r.byteVolume)} · {fmtTime(r.finishedAt)}
-              </p>
+              {r.status === 'failed' ? (
+                <p className="text-[11px] text-red-400">Failed{r.error ? `: ${r.error}` : ''} · {fmtTime(r.finishedAt)}</p>
+              ) : (
+                <p className="text-[11px] text-gray-400">
+                  {r.recordsScanned} scanned → {r.recordsExtracted} extracted → {r.recordsLoaded} loaded
+                  {r.duplicatesRemoved > 0 && ` · ${r.duplicatesRemoved} dedup`} · {fmtBytes(r.byteVolume)} · {fmtTime(r.finishedAt)}
+                </p>
+              )}
             </div>
             <button
               onClick={() => replay(r.id)}
@@ -1196,10 +1326,13 @@ function WebhookTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [confirmRotate, setConfirmRotate] = useState(false);
+
   const rotate = async () => {
     setBusy(true);
     await loadEndpoint(true);
     setBusy(false);
+    setConfirmRotate(false);
     flash('ok', 'Webhook token rotated');
   };
 
@@ -1248,13 +1381,33 @@ function WebhookTab({
               Received: <span className="text-neon-green">{endpoint.recordsReceived}</span>
             </span>
             <span className="text-gray-400">Last: {fmtTime(endpoint.lastReceivedAt)}</span>
-            <button
-              onClick={rotate}
-              disabled={busy}
-              className="text-neon-purple hover:underline disabled:opacity-40"
-            >
-              Rotate token
-            </button>
+            {confirmRotate ? (
+              <span className="flex items-center gap-1.5">
+                <span className="text-yellow-300">Rotating invalidates the current URL.</span>
+                <button
+                  onClick={rotate}
+                  disabled={busy}
+                  className="px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40"
+                >
+                  Confirm rotate
+                </button>
+                <button
+                  onClick={() => setConfirmRotate(false)}
+                  disabled={busy}
+                  className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <button
+                onClick={() => setConfirmRotate(true)}
+                disabled={busy}
+                className="text-neon-purple hover:underline disabled:opacity-40"
+              >
+                Rotate token
+              </button>
+            )}
           </div>
         </div>
       )}
