@@ -35,6 +35,24 @@
 // knowledge tool, without leaving to build a separate deck.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import {
+  parseUnderstanding,
+  composeAndSave,
+  listUnderstandings,
+  recomposeUnderstanding,
+  sweepExpiredUnderstandings,
+  SUBJECT_KINDS,
+} from "../lib/understanding-engine.js";
+import {
+  recordEvidence,
+  evaluatePromotion,
+  applyPromotion,
+  consolidateUnderstandings,
+  findConsolidationCandidates,
+  getUnderstandingLineage,
+  runUnderstandingEvolutionTick,
+  getEvolutionStats,
+} from "../lib/understanding-evolve.js";
 export default function registerUnderstandingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── State plumbing ────────────────────────────────────────────────
@@ -896,4 +914,127 @@ export default function registerUnderstandingActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ── Engine vocabulary (S1) ──────────────────────────────────────
+  // The Compose / Browse / Evolution / Lineage panels call these
+  // names; until this build NONE was registered on the lens path —
+  // seven lived only in server.js's ghost-fleet block and the
+  // evolution eight were registered nowhere, though both libs export
+  // every function (the Codex shape: lib-resident, macro-invisible).
+  // They are registered here, in the domain, over the same libs and
+  // the same tables, returning the panel-shaped payloads inside the
+  // lens-action result envelope. The ghost registrations stand for
+  // their platform consumers; nothing here shadows the notes verbs
+  // (list/get keep their notes meanings — the engine list is
+  // engine_list, as Browse already calls it).
+  const engineDb = (ctx) => ctx?.db || null;
+  const resolveDtu = (params) => {
+    if (params.dtu) return params.dtu;
+    const STATE = globalThis._concordSTATE;
+    if (params.subjectId && STATE?.dtus?.get) {
+      try { return STATE.dtus.get(params.subjectId); } catch { return undefined; }
+    }
+    return undefined;
+  };
+  const llmRefusal = (params) =>
+    params.composer === "llm"
+      ? { ok: false, error: "the llm composer is not wired — the rules composer is the working path; nothing was composed" }
+      : null;
+
+  registerLensAction("understanding", "parse", (ctx, _a, params = {}) => {
+    const refusal = llmRefusal(params); if (refusal) return refusal;
+    try {
+      const u = parseUnderstanding({ ...params, dtu: resolveDtu(params) });
+      return { ok: true, result: { understanding: u } };
+    } catch (e) { return { ok: false, error: e?.message || "understanding_parse_failed" }; }
+  });
+
+  registerLensAction("understanding", "compose", (ctx, _a, params = {}) => {
+    const refusal = llmRefusal(params); if (refusal) return refusal;
+    const db = engineDb(ctx); if (!db) return { ok: false, error: "no_db" };
+    try {
+      const r = composeAndSave(db, { ...params, dtu: resolveDtu(params) });
+      return r.ok
+        ? { ok: true, result: { id: r.understanding.id, understanding: r.understanding } }
+        : { ok: false, error: r.error || "compose_failed" };
+    } catch (e) { return { ok: false, error: e?.message || "understanding_compose_failed" }; }
+  });
+
+  registerLensAction("understanding", "engine_list", (ctx, _a, params = {}) => {
+    const db = engineDb(ctx); if (!db) return { ok: false, error: "no_db" };
+    return { ok: true, result: { rows: listUnderstandings(db, params) } };
+  });
+
+  registerLensAction("understanding", "recompose", (ctx, _a, params = {}) => {
+    const db = engineDb(ctx); if (!db) return { ok: false, error: "no_db" };
+    try {
+      return recomposeUnderstanding(db, params.id, { ...params, dtu: resolveDtu(params) });
+    } catch (e) { return { ok: false, error: e?.message || "understanding_recompose_failed" }; }
+  });
+
+  registerLensAction("understanding", "sweep", (ctx) => {
+    const db = engineDb(ctx); if (!db) return { ok: false, error: "no_db" };
+    return sweepExpiredUnderstandings(db);
+  });
+
+  registerLensAction("understanding", "subject_kinds", () => ({ ok: true, result: { kinds: SUBJECT_KINDS } }));
+
+  registerLensAction("understanding", "record_evidence", (ctx, _a, params = {}) => {
+    const db = engineDb(ctx); if (!db) return { ok: false, error: "no_db" };
+    const kind = ["confirm", "contradict"].includes(params.kind) ? params.kind : "confirm";
+    return recordEvidence(db, {
+      understandingId: params.id || params.understandingId,
+      kind,
+      evidenceRefId: params.evidenceRefId || null,
+      payload: { text: params.evidence ?? params.text ?? null, at: params.at || null },
+    });
+  });
+
+  registerLensAction("understanding", "evaluate_promotion", (ctx, _a, params = {}) => {
+    const db = engineDb(ctx); if (!db) return { ok: false, error: "no_db" };
+    const r = evaluatePromotion(db, params.id || params.understandingId);
+    return r.ok ? { ok: true, result: r } : { ok: false, error: r.error || "evaluate_failed" };
+  });
+
+  registerLensAction("understanding", "apply_promotion", (ctx, _a, params = {}) => {
+    const db = engineDb(ctx); if (!db) return { ok: false, error: "no_db" };
+    const r = applyPromotion(db, params.id || params.understandingId, params.decision);
+    return r.ok ? { ok: true, result: r } : { ok: false, error: r.error || "apply_failed" };
+  });
+
+  registerLensAction("understanding", "evolution_stats", (ctx) => {
+    const db = engineDb(ctx); if (!db) return { ok: false, error: "no_db" };
+    const raw = getEvolutionStats(db);
+    let total = 0;
+    try { total = db.prepare(`SELECT COUNT(*) AS n FROM understandings`).get()?.n ?? 0; } catch { /* table may predate migration in odd states */ }
+    const stats = {
+      totalUnderstandings: total,
+      promotedCount: raw?.promoted ?? 0,
+      consolidatedCount: raw?.consolidated_children ?? 0,
+      pendingPromotion: raw?.candidates ?? 0,
+      averageConfidence: raw?.avg_confidence ?? undefined,
+    };
+    return { ok: true, result: { stats } };
+  });
+
+  registerLensAction("understanding", "evolution_tick", (ctx, _a, params = {}) => {
+    const db = engineDb(ctx); if (!db) return { ok: false, error: "no_db" };
+    return runUnderstandingEvolutionTick(db, params);
+  });
+
+  registerLensAction("understanding", "lineage", (ctx, _a, params = {}) => {
+    const db = engineDb(ctx); if (!db) return { ok: false, error: "no_db" };
+    return { ok: true, result: { lineage: getUnderstandingLineage(db, params.id, params.maxDepth || 50) } };
+  });
+
+  registerLensAction("understanding", "consolidate", (ctx, _a, params = {}) => {
+    const db = engineDb(ctx); if (!db) return { ok: false, error: "no_db" };
+    const r = consolidateUnderstandings(db, params.childIds, params);
+    return r.ok ? { ok: true, result: r } : { ok: false, error: r.error || "consolidate_failed" };
+  });
+
+  registerLensAction("understanding", "consolidation_candidates", (ctx, _a, params = {}) => {
+    const db = engineDb(ctx); if (!db) return { ok: false, error: "no_db" };
+    return { ok: true, result: { candidates: findConsolidationCandidates(db, params) } };
+  });
 }
