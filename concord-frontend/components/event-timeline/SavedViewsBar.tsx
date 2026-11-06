@@ -42,6 +42,9 @@ export function SavedViewsBar({
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [receipt, setReceipt] = useState<string | null>(null);
+  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun<ListViewsResult>('event_timeline', 'listViews', {});
@@ -58,6 +61,15 @@ export function SavedViewsBar({
   const save = async () => {
     const trimmed = name.trim();
     if (!trimmed) return;
+    // The server's saveView replaces a same-named view silently
+    // (list.filter(name) + unshift in server/domains/event-timeline.js).
+    // That semantic stays — but it is never taken silently from here:
+    // a duplicate name arms an explicit overwrite confirmation first.
+    const overwriting = views.some((v) => v.name === trimmed);
+    if (overwriting && !confirmOverwrite) {
+      setConfirmOverwrite(true);
+      return;
+    }
     setBusy(true);
     const r = await lensRun('event_timeline', 'saveView', {
       name: trimmed,
@@ -67,16 +79,36 @@ export function SavedViewsBar({
     });
     setBusy(false);
     if (r.data?.result?.ok) {
+      setReceipt(
+        overwriting
+          ? `Saved over “${trimmed}” — the older view’s filter was replaced.`
+          : `Saved view “${trimmed}”.`,
+      );
       setName('');
       setNaming(false);
+      setConfirmOverwrite(false);
       await refresh();
+    } else {
+      setReceipt(`Could not save “${trimmed}” — the save did not complete.`);
+      setConfirmOverwrite(false);
     }
   };
 
-  const remove = async (id: string) => {
+  const remove = async (v: SavedView) => {
+    // Two-step, fleet form: first click arms, only the armed click deletes.
+    if (confirmDeleteId !== v.id) {
+      setConfirmDeleteId(v.id);
+      return;
+    }
     setBusy(true);
-    await lensRun('event_timeline', 'deleteView', { id });
+    const r = await lensRun('event_timeline', 'deleteView', { id: v.id });
     setBusy(false);
+    setConfirmDeleteId(null);
+    if ((r.data?.result as { ok?: boolean } | undefined)?.ok) {
+      setReceipt(`Deleted view “${v.name}”.`);
+    } else {
+      setReceipt(`Could not delete “${v.name}” — the delete did not complete.`);
+    }
     await refresh();
   };
 
@@ -104,17 +136,44 @@ export function SavedViewsBar({
           >
             {v.name}
           </button>
-          <button
-            onClick={() => remove(v.id)}
-            className="text-zinc-600 hover:text-red-400"
-            aria-label={`Delete view ${v.name}`}
-          >
-            <X className="h-3 w-3" />
-          </button>
+          {confirmDeleteId === v.id ? (
+            <button
+              onClick={() => remove(v)}
+              className="text-[11px] font-medium text-red-400 hover:text-red-300"
+              aria-label={`Confirm delete view ${v.name}`}
+            >
+              Delete?
+            </button>
+          ) : (
+            <button
+              onClick={() => remove(v)}
+              className="text-zinc-600 hover:text-red-400"
+              aria-label={`Delete view ${v.name}`}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
         </span>
       ))}
 
-      {naming ? (
+      {naming && confirmOverwrite ? (
+        <span className="flex items-center gap-2 text-xs text-amber-300">
+          A view named “{name.trim()}” already exists — saving replaces its filter.
+          <button
+            onClick={save}
+            disabled={busy}
+            className="rounded bg-amber-600 px-2 py-1 text-xs text-white disabled:opacity-40"
+          >
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Overwrite'}
+          </button>
+          <button
+            onClick={() => setConfirmOverwrite(false)}
+            className="rounded px-2 py-1 text-xs text-zinc-400 ring-1 ring-zinc-700 hover:text-zinc-200"
+          >
+            Cancel
+          </button>
+        </span>
+      ) : naming ? (
         <span className="flex items-center gap-1">
           <input
             autoFocus
@@ -123,7 +182,7 @@ export function SavedViewsBar({
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') save();
-              if (e.key === 'Escape') { setNaming(false); setName(''); }
+              if (e.key === 'Escape') { setNaming(false); setName(''); setConfirmOverwrite(false); }
             }}
             placeholder="view name…"
             maxLength={60}
@@ -145,6 +204,12 @@ export function SavedViewsBar({
         >
           <Plus className="h-3 w-3" /> Save view
         </button>
+      )}
+
+      {receipt && (
+        <span className="text-[11px] text-zinc-400" role="status">
+          {receipt}
+        </span>
       )}
     </div>
   );

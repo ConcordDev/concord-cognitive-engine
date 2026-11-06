@@ -133,6 +133,7 @@ function dtuPreview(row) {
 }
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 export default function registerEventTimelineMacros(register, deps) {
   register = guardAnonWrites(register); // anonymous callers can read, not write (lib/lens-authz.js)
   const { listRecent, stats } = deps;
@@ -599,4 +600,25 @@ export default function registerEventTimelineMacros(register, deps) {
       return { ok: false, reason: "delete_view_failed", error: String(err?.message || err) };
     }
   }, { note: "Delete one of the caller's saved filter presets." });
+
+  // ── lens export provider ────────────────────────────────────────────
+  // The generic header export reads lens providers (lib/lens-export.js);
+  // with none registered it reports this lens holds nothing exportable —
+  // while the caller's saved views, the lens's only user-owned objects,
+  // sit in the STATE map above. Register them so the export story the
+  // lens tells is one story (the pass's S5 clause).
+  registerLensExportProvider("event-timeline", (ctx) => {
+    const uid = userIdOf(ctx);
+    const views = savedViewsMap().get(uid) || [];
+    return views.map((v) => ({
+      type: "saved_view",
+      title: v.name,
+      content: [
+        `channels: ${(v.channels || []).join(", ") || "all"}`,
+        `world: ${v.worldId || "any"}`,
+        v.query ? `search: ${v.query}` : null,
+      ].filter(Boolean).join("\n"),
+      createdAt: v.createdAt ? new Date(v.createdAt * 1000).toISOString() : undefined,
+    }));
+  });
 }

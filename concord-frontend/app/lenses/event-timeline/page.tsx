@@ -7,7 +7,6 @@
  */
 
 import { useState, type ComponentType } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Activity, CalendarDays, BookOpen } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
@@ -34,7 +33,6 @@ const PANELS: Record<TimelineView, ComponentType> = {
 
 export default function EventTimelineLens() {
   useLensNav('event-timeline');
-  const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<TimelineView>('firehose');
 
   useLensCommand(
@@ -47,8 +45,6 @@ export default function EventTimelineLens() {
     })),
     { lensId: 'event-timeline' },
   );
-
-  const Panel = PANELS[active];
 
   return (
     <LensShell lensId="event-timeline" asMain={false}>
@@ -65,23 +61,25 @@ export default function EventTimelineLens() {
         cta={{ label: 'Open firehose', icon: Activity, onClick: () => setActive('firehose'), title: 'Open the live firehose (1)' }}
       >
         <div className="max-w-6xl">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={active}
-              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
-              transition={{ duration: reduceMotion ? 0 : 0.16 }}
-            >
-              {active === 'my-day' || active === 'on-this-day' ? (
-                <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                  <Panel />
-                </section>
-              ) : (
-                <Panel />
-              )}
-            </motion.div>
-          </AnimatePresence>
+          {/* Panels stay MOUNTED across view switches (inactive hidden):
+              the pass found the OTD view's date/category state reset on
+              re-entry because the switch unmounted the panel. The
+              crossfade went with the unmount. */}
+          {(Object.keys(PANELS) as TimelineView[]).map((id) => {
+            const PanelForView = PANELS[id];
+            const wrapped = id === 'my-day' || id === 'on-this-day';
+            return (
+              <div key={id} hidden={active !== id}>
+                {wrapped ? (
+                  <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                    <PanelForView />
+                  </section>
+                ) : (
+                  <PanelForView />
+                )}
+              </div>
+            );
+          })}
         </div>
       </NorthStarFrame>
     </LensShell>
