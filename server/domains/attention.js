@@ -555,6 +555,12 @@ export default function registerAttentionActions(registerLensAction) {
       const endedAt = Date.now();
       const actualMinutes = Math.round(((endedAt - timer.startedAt) / 60000) * 100) / 100;
       const abandoned = params?.abandoned === true;
+      // Deep-work rule (stated at the surface): a session counts as deep
+      // work when it completes (not abandoned) with zero interruptions
+      // AND either runs at least 20 minutes or runs under Do-Not-Disturb.
+      // Before this, the rule never read the focus-mode state, so a
+      // session run in the DND "Deep Work" state never counted (F5).
+      const dndActive = (s.focusMode.get(userId) || {}).enabled === true;
       let session = null;
       if (timer.mode === "focus" && actualMinutes > 0) {
         session = {
@@ -566,8 +572,9 @@ export default function registerAttentionActions(registerLensAction) {
           plannedMinutes: timer.durationMinutes,
           actualMinutes,
           interruptions: timer.interruptions,
+          dndActive,
           completed: !abandoned && actualMinutes >= timer.durationMinutes * 0.9,
-          deepWork: !abandoned && timer.interruptions === 0 && actualMinutes >= 20,
+          deepWork: !abandoned && timer.interruptions === 0 && (actualMinutes >= 20 || dndActive),
           energy: ["low", "medium", "high"].includes(params?.energy) ? params.energy : null,
           mood: params?.mood ? fClean(params.mood, 40) : null,
           notes: params?.notes ? fClean(params.notes, 400) : null,
@@ -785,6 +792,25 @@ export default function registerAttentionActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  /**
+   * distractionRemove — delete one distraction entry (F9: entries had
+   * no lifecycle at all, so a mislogged distraction permanently
+   * distorted "time lost" and Top Sources).
+   * params: { entryId }
+   */
+  registerLensAction("attention", "distractionRemove", (ctx, _artifact, params) => {
+    try {
+      const s = getFocusState();
+      const userId = fActor(ctx);
+      const all = s.distractions.get(userId) || [];
+      const next = all.filter((d) => d.id !== params?.entryId);
+      if (next.length === all.length) return { ok: false, error: "entry_not_found" };
+      s.distractions.set(userId, next);
+      persistFocusState();
+      return { ok: true, result: { removed: true, remaining: next.length } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   // ── Feature: Focus analytics — deep-work hours per day/week trends ──
 
   /**
@@ -852,7 +878,10 @@ export default function registerAttentionActions(registerLensAction) {
             avgFocusHoursPerActiveDay: activeDays ? Math.round((totalFocus / activeDays) * 100) / 100 : 0,
             activeDays,
           },
-          deepWorkTrend: slope > 0.02 ? "improving" : slope < -0.02 ? "declining" : "steady",
+          // A window with no sessions has no trend: labelling it
+          // "steady" is a label without data (F6). "no-data" lets the
+          // surface say so instead.
+          deepWorkTrend: activeDays === 0 ? "no-data" : slope > 0.02 ? "improving" : slope < -0.02 ? "declining" : "steady",
           trendSlope: Math.round(slope * 1000) / 1000,
         },
       };

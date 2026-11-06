@@ -7,8 +7,8 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
-import { useState, useMemo } from 'react';
+import { apiHelpers, lensRun } from '@/lib/api/client';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Plus, Play, CheckCircle2, Layers, Clock, BarChart3,
   Sliders, Focus, Pause, AlertTriangle, ArrowUpDown,
@@ -26,10 +26,21 @@ interface Thread {
   status: string;
   description: string;
   createdAt: string;
-  domain?: string;
+  domain?: string | null;
   startedAt?: string;
-  completedAt?: string;
+  completedAt?: string | null;
   output?: unknown;
+  /** Engine-created (no owner) — labelled System, excluded from personal stats. */
+  system?: boolean;
+  /** Created by the signed-in user. */
+  mine?: boolean;
+}
+
+interface FocusLedger {
+  totalSessions: number;
+  totalFocusHours: number;
+  deepWorkSessions: number;
+  distractions: number;
 }
 
 const THREAD_TYPES = [
@@ -50,6 +61,50 @@ export function ThreadsDeskPanel() {
   const [threadFilter, setThreadFilter] = useState<'all' | 'active' | 'pending' | 'completed'>('all');
   const [sortBy, setSortBy] = useState<'priority' | 'created' | 'status'>('priority');
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // The Focus ledger, read through the SAME macros the Focus view
+  // reads (pomodoroStats / distractionSummary) — one ledger per lens,
+  // so identically-named stats in the two views are the same number
+  // because they are the same query (S-ATT-1; these cards previously
+  // published thread-manager figures under Focus names).
+  const [focusLedger, setFocusLedger] = useState<FocusLedger | null>(null);
+  const loadFocusLedger = async () => {
+    const [stats, dx] = await Promise.all([
+      lensRun('attention', 'pomodoroStats', {}),
+      lensRun('attention', 'distractionSummary', {}),
+    ]);
+    const s = stats.data?.result as { totalSessions?: number; totalFocusHours?: number; deepWorkSessions?: number } | null;
+    const d = dx.data?.result as { total?: number } | null;
+    if (s) {
+      setFocusLedger({
+        totalSessions: s.totalSessions || 0,
+        totalFocusHours: s.totalFocusHours || 0,
+        deepWorkSessions: s.deepWorkSessions || 0,
+        distractions: d?.total || 0,
+      });
+    }
+  };
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [stats, dx] = await Promise.all([
+        lensRun('attention', 'pomodoroStats', {}),
+        lensRun('attention', 'distractionSummary', {}),
+      ]);
+      if (cancelled) return;
+      const s = stats.data?.result as { totalSessions?: number; totalFocusHours?: number; deepWorkSessions?: number } | null;
+      const d = dx.data?.result as { total?: number } | null;
+      if (s) {
+        setFocusLedger({
+          totalSessions: s.totalSessions || 0,
+          totalFocusHours: s.totalFocusHours || 0,
+          deepWorkSessions: s.deepWorkSessions || 0,
+          distractions: d?.total || 0,
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const { data: status, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['attention-status'],
@@ -86,6 +141,20 @@ export function ThreadsDeskPanel() {
     },
   });
 
+  const deleteThread = useMutation({
+    mutationFn: (threadId: string) => apiHelpers.attention.deleteThread({ threadId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attention-threads'] });
+      queryClient.invalidateQueries({ queryKey: ['attention-status'] });
+      queryClient.invalidateQueries({ queryKey: ['attention-queue'] });
+      setSelectedThread(null);
+      setConfirmDeleteId(null);
+    },
+    onError: (err) => {
+      console.error('Failed to delete thread:', err instanceof Error ? err.message : err);
+    },
+  });
+
   const completeThread = useMutation({
     mutationFn: (threadId: string) => apiHelpers.attention.completeThread({ threadId }),
     onSuccess: () => {
@@ -114,6 +183,9 @@ export function ThreadsDeskPanel() {
   const stats = status?.stats || {};
   const queueData = queue?.queue || [];
   const completedData = queue?.completed || [];
+  const backgroundData: Array<{ id: string; type: string; status: string; createdAt: string; completedAt?: string | null }> = queue?.background || [];
+  const ownThreads = useMemo(() => threadList.filter(x => x.mine), [threadList]);
+  const ownCompleted = useMemo(() => ownThreads.filter(x => x.status === 'completed').length, [ownThreads]);
 
   const filteredThreads = useMemo(() => {
     let filtered = [...threadList];
@@ -138,12 +210,12 @@ export function ThreadsDeskPanel() {
     }));
   }, [threadList]);
 
-  const focusScore = useMemo(() => {
-    const active = threadList.filter(t => t.status === 'active').length;
-    const total = threadList.length;
-    if (total === 0) return 0;
-    return Math.min(1, active > 0 ? 1 / active : 0);
-  }, [threadList]);
+  // Your thread completion: your completed threads over your threads —
+  // a ratio of your own records, replacing the old "focus score" that
+  // was 1 / active-threads wearing a Focus name.
+  const ownCompletionPct = ownThreads.length > 0
+    ? Math.round((ownCompleted / ownThreads.length) * 100)
+    : null;
 
   if (isLoading) {
     return (
@@ -171,7 +243,7 @@ export function ThreadsDeskPanel() {
     <div className="space-y-6">
       <div className="flex justify-end">
         <button
-          onClick={() => { refetch(); refetch2(); refetch3(); }}
+          onClick={() => { refetch(); refetch2(); refetch3(); loadFocusLedger(); }}
           className="p-2 rounded-lg bg-lattice-surface hover:bg-lattice-border transition-colors text-gray-400 hover:text-white"
           title="Refresh all"
         >
@@ -183,29 +255,29 @@ export function ThreadsDeskPanel() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Brain className="w-5 h-5 text-neon-cyan" />
           <div>
-            <p className="text-lg font-bold">{threadList.filter(t => t.status === 'active' || t.status === 'pending').length}</p>
+            <p className="text-lg font-bold">{focusLedger ? focusLedger.totalSessions : '—'}</p>
             <p className="text-xs text-gray-400">Focus Sessions</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Clock className="w-5 h-5 text-neon-green" />
           <div>
-            <p className="text-lg font-bold">{stats.avgFocusDurationMs ? ((stats.avgFocusDurationMs / 3600000) * (stats.threadsCompleted || 1)).toFixed(1) : '0.0'}h</p>
+            <p className="text-lg font-bold">{focusLedger ? `${focusLedger.totalFocusHours}h` : '—'}</p>
             <p className="text-xs text-gray-400">Total Focus Hours</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-neon-yellow" />
           <div>
-            <p className="text-lg font-bold">{stats.interruptions || 0}</p>
+            <p className="text-lg font-bold">{focusLedger ? focusLedger.distractions : '—'}</p>
             <p className="text-xs text-gray-400">Distractions</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Gauge className="w-5 h-5 text-neon-purple" />
           <div>
-            <p className="text-lg font-bold">{(focusScore * 100).toFixed(0)}%</p>
-            <p className="text-xs text-gray-400">Daily Score</p>
+            <p className="text-lg font-bold">{focusLedger ? focusLedger.deepWorkSessions : '—'}</p>
+            <p className="text-xs text-gray-400">Deep Work Sessions</p>
           </div>
         </motion.div>
       </div>
@@ -233,8 +305,8 @@ export function ThreadsDeskPanel() {
         </div>
         <div className="lens-card">
           <Target className="w-5 h-5 text-neon-blue mb-2" />
-          <p className="text-2xl font-bold">{(focusScore * 100).toFixed(0)}%</p>
-          <p className="text-sm text-gray-400">Focus Score</p>
+          <p className="text-2xl font-bold">{ownCompletionPct !== null ? `${ownCompletionPct}%` : '—'}</p>
+          <p className="text-sm text-gray-400">Your Thread Completion</p>
         </div>
       </div>
 
@@ -284,8 +356,13 @@ export function ThreadsDeskPanel() {
 
       <div className="panel p-4">
         <h2 className="font-semibold mb-3 flex items-center gap-2">
-          <Activity className="w-4 h-4 text-neon-green" /> Focus Metrics
+          <Activity className="w-4 h-4 text-neon-green" /> Thread Engine Metrics
         </h2>
+        <p className="mb-3 text-[11px] leading-relaxed text-gray-500">
+          Engine-wide thread counts — they include the system&rsquo;s own threads (labelled
+          System in the list below) and are not your personal statistics. Your Focus figures
+          are the cards at the top of this view, read from the same ledger as the Focus view.
+        </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center">
             <p className="text-xs text-gray-400 uppercase">Total Created</p>
@@ -437,8 +514,15 @@ export function ThreadsDeskPanel() {
                       {THREAD_TYPES.find(tt => tt.value === t.type)?.label || t.type}
                     </span>
                   </div>
-                  <span className="text-xs px-2 py-0.5 rounded bg-lattice-surface text-gray-400">
-                    P:{(t.priority ?? 0).toFixed(1)}
+                  <span className="flex items-center gap-1.5">
+                    {t.system ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700/40 text-zinc-400">System</span>
+                    ) : t.mine ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-cyan/10 text-neon-cyan">Yours</span>
+                    ) : null}
+                    <span className="text-xs px-2 py-0.5 rounded bg-lattice-surface text-gray-400">
+                      P:{(t.priority ?? 0).toFixed(1)}
+                    </span>
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1 truncate">{t.description}</p>
@@ -469,6 +553,32 @@ export function ThreadsDeskPanel() {
                         <CheckCircle2 className="w-3 h-3" />
                         {completeThread.isPending ? 'Completing...' : 'Complete Thread'}
                       </button>
+                    )}
+                    {t.mine && (
+                      confirmDeleteId === t.id ? (
+                        <div className="flex gap-2 mt-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteThread.mutate(t.id); }}
+                            disabled={deleteThread.isPending}
+                            className="flex-1 text-xs py-1.5 rounded bg-red-500/10 text-red-300 border border-red-500/30 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                          >
+                            {deleteThread.isPending ? 'Deleting...' : 'Confirm delete this thread?'}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                            className="text-xs px-2 py-1.5 rounded border border-lattice-border text-gray-400 hover:text-gray-200"
+                          >
+                            Keep it
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(t.id); }}
+                          className="w-full mt-1 text-xs py-1.5 rounded bg-lattice-surface text-gray-400 border border-lattice-border hover:border-red-500/30 hover:text-red-300 transition-colors"
+                        >
+                          Delete Thread
+                        </button>
+                      )
                     )}
                   </div>
                 )}
@@ -507,15 +617,43 @@ export function ThreadsDeskPanel() {
 
           <div className="border-t border-lattice-border pt-3">
             <h2 className="font-semibold mb-3 flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-neon-purple" /> Background Tasks
+            </h2>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {backgroundData.length > 0 ? backgroundData.map((b) => (
+                <div key={b.id} className="flex justify-between items-center text-xs text-gray-400 p-2 rounded bg-lattice-surface/50">
+                  <span className="truncate max-w-[130px] capitalize">{b.type.replace(/-/g, ' ')}</span>
+                  <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${
+                    b.status === 'completed' ? 'bg-neon-green/10 text-neon-green' :
+                    b.status === 'failed' ? 'bg-red-500/10 text-red-300' :
+                    b.status === 'running' ? 'bg-neon-yellow/10 text-neon-yellow' :
+                    'bg-zinc-700/40 text-zinc-300'
+                  }`}>
+                    {b.status}
+                  </span>
+                </div>
+              )) : (
+                <p className="text-sm text-gray-400 text-center py-2">
+                  None started — the Memory, Patterns and Cleanup buttons start real engine work and it lands here with its outcome.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-lattice-border pt-3">
+            <h2 className="font-semibold mb-3 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-neon-green" /> Recently Completed
             </h2>
             <div className="space-y-1 max-h-48 overflow-y-auto">
               {completedData.length > 0 ? completedData.map((c: Record<string, unknown>, i: number) => (
                 <div key={i} className="lens-card text-xs">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <CheckCircle2 className="w-3 h-3 text-neon-green flex-shrink-0" />
                       <span className="text-gray-300 capitalize">{String(c.type || 'unknown')}</span>
+                      {!!c.description && (
+                        <span className="truncate text-gray-500 normal-case">{String(c.description)}</span>
+                      )}
                     </div>
                     {!!c.completedAt && (
                       <span className="text-gray-600 text-[10px]">

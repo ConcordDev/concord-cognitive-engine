@@ -723,6 +723,10 @@ export default function registerDomainRoutes(app, {
     const out = await runMacro("attention", "complete_thread", req.body, makeCtx(req));
     return res.json(out);
   }));
+  app.post("/api/attention/thread/delete", asyncHandler(async (req, res) => {
+    const out = await runMacro("attention", "delete_thread", req.body, makeCtx(req));
+    return res.json(out);
+  }));
   app.get("/api/attention/threads", asyncHandler(async (req, res) => {
     const out = await runMacro("attention", "list_threads", {}, makeCtx(req));
     return res.json(out);

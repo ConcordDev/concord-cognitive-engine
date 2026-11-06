@@ -25,9 +25,14 @@ export function FocusDeskPanel() {
   const [hasSessions, setHasSessions] = useState(false);
   const [hasPlannerTasks, setHasPlannerTasks] = useState(false);
 
+  // Gating must recompute when its inputs change, not on the next
+  // mount (F15): re-check after an action result, when the window
+  // regains focus, and on a slow interval while the desk is open —
+  // completing a session in the Toolkit above unlocks Focus Score
+  // without a remount.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const check = async () => {
       const [stats, plan] = await Promise.all([
         lensRun('attention', 'pomodoroStats', {}),
         lensRun('attention', 'plannerGet', {}),
@@ -35,8 +40,12 @@ export function FocusDeskPanel() {
       if (cancelled) return;
       setHasSessions(((stats.data?.result as { recentSessions?: unknown[] } | null)?.recentSessions?.length || 0) > 0);
       setHasPlannerTasks((((plan.data?.result as { day?: { tasks?: unknown[] } } | null)?.day?.tasks?.length) || 0) > 0);
-    })();
-    return () => { cancelled = true; };
+    };
+    void check();
+    const onFocus = () => { void check(); };
+    window.addEventListener('focus', onFocus);
+    const id = setInterval(() => { void check(); }, 15000);
+    return () => { cancelled = true; window.removeEventListener('focus', onFocus); clearInterval(id); };
   }, [actionResult]);
 
   const handleAttentionAction = async (action: string) => {
@@ -53,7 +62,8 @@ export function FocusDeskPanel() {
         setActionResult((r.data?.result as Record<string, unknown>) || { message: r.data?.error || 'Action failed' });
       } else {
         const plan = await lensRun('attention', 'plannerGet', {});
-        const day = (plan.data?.result as { day?: { tasks?: Array<Record<string, unknown>> } } | null)?.day;
+        const planResult = plan.data?.result as { day?: { tasks?: Array<Record<string, unknown>> }; capacityMinutes?: number } | null;
+        const day = planResult?.day;
         const nowMinute = new Date().getHours() * 60 + new Date().getMinutes();
         const tasks = (day?.tasks || []).map((t) => {
           const priority = Number(t.priority ?? 0.5);
@@ -71,7 +81,13 @@ export function FocusDeskPanel() {
             priority: Math.max(1, Math.min(10, Math.round(1 + priority * 9))),
           };
         });
-        const r = await lensRun('attention', action, { tasks });
+        // The Budget runs against the PLANNER's day (its capacity),
+        // not the macro's own 480-minute default, so its arithmetic
+        // reconciles with the day above it (F6).
+        const extra = action === 'attentionBudget' && planResult?.capacityMinutes
+          ? { totalAvailableMinutes: planResult.capacityMinutes }
+          : {};
+        const r = await lensRun('attention', action, { tasks, ...extra });
         setActionResult((r.data?.result as Record<string, unknown>) || { message: r.data?.error || 'Action failed' });
       }
     } catch (e) {
@@ -187,7 +203,7 @@ export function FocusDeskPanel() {
                 actionResult.componentScores !== null &&
                 !Array.isArray(actionResult.componentScores) && (
                 <div className="pt-2 border-t border-lattice-border">
-                  <p className="text-xs text-gray-400 mb-2">Component Scores</p>
+                  <p className="text-xs text-gray-400 mb-2">Component Scores (each 0–100)</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {Object.entries(actionResult.componentScores as Record<string, number>).map(([key, val]) => (
                       <div key={key} className="text-center">
@@ -196,6 +212,12 @@ export function FocusDeskPanel() {
                       </div>
                     ))}
                   </div>
+                  <p className="mt-2 text-[11px] leading-relaxed text-gray-500">
+                    How this figure is derived: Focus Score = Deep Work × 0.40 + Interruption × 0.25 +
+                    Switch × 0.20 + Session Length × 0.15. Session Length scores your average session
+                    against a 60-minute hour — it is a score, not minutes. Interruption falls as your
+                    interruptions per hour rise; Switch falls as you change tasks more often.
+                  </p>
                 </div>
               )}
             </div>
@@ -237,24 +259,42 @@ export function FocusDeskPanel() {
                 })}
               </div>
               {(() => {
-                const optimalOrder = toArr<{ name: string; priorityScore: number }>(actionResult.optimalOrder);
+                const optimalOrder = toArr<{ id: string; name: string; priorityScore: number }>(actionResult.optimalOrder);
+                const inputs = new Map(
+                  toArr<{ id: string; rawUrgency: number; rawImportance: number; effort: number }>(actionResult.allTasks)
+                    .map((x) => [x.id, x]),
+                );
                 return optimalOrder.length > 0 ? (
                   <div className="pt-2 border-t border-lattice-border">
                     <p className="text-xs text-gray-400 mb-2">Optimal Order (top 5)</p>
                     <div className="space-y-1">
-                      {optimalOrder.slice(0, 5).map((t, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-600 w-4">{i + 1}.</span>
-                          <span className="text-gray-300">{t.name}</span>
-                        </div>
-                        <span className="text-neon-purple font-mono">{t.priorityScore}</span>
-                      </div>
-                    ))}
+                      {optimalOrder.slice(0, 5).map((t, i) => {
+                        const inp = inputs.get(t.id);
+                        return (
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-gray-600 w-4">{i + 1}.</span>
+                              <span className="text-gray-300 truncate">{t.name}</span>
+                              {inp && (
+                                <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                                  urgency {inp.rawUrgency} · importance {inp.rawImportance} · effort {inp.effort}h
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-neon-purple font-mono">{t.priorityScore}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-2 text-[11px] leading-relaxed text-gray-500">
+                      How this figure is derived: each task scores (urgency × 0.45 + importance × 0.55),
+                      both with diminishing returns, reduced by an effort penalty — on a 0–100 scale.
+                      Urgency comes from how soon the task starts; importance from the priority you set
+                      in the planner. The ranking is a suggestion from those inputs, nothing else.
+                    </p>
                   </div>
-                </div>
-              ) : null;
-            })()}
+                ) : null;
+              })()}
             </div>
           )}
 
@@ -271,6 +311,10 @@ export function FocusDeskPanel() {
                 <div className="p-2 bg-lattice-bg rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan">{actionResult.totalAllocatedMinutes as number}m</p>
                   <p className="text-[10px] text-gray-400">Allocated</p>
+                </div>
+                <div className="p-2 bg-lattice-bg rounded text-center">
+                  <p className="text-sm font-bold text-gray-300">{actionResult.totalAvailableMinutes as number}m</p>
+                  <p className="text-[10px] text-gray-400">Budget (planner day)</p>
                 </div>
                 <div className="p-2 bg-lattice-bg rounded text-center">
                   <p className="text-sm font-bold text-neon-yellow">{actionResult.remainingMinutes as number}m</p>
@@ -304,6 +348,11 @@ export function FocusDeskPanel() {
                   </div>
                 ) : null;
               })()}
+              <p className="text-[11px] leading-relaxed text-gray-500">
+                The budget is your planner day&rsquo;s capacity, stated above — remaining is the
+                budget minus allocated time and the 10-minute breaks between tasks. Task lengths
+                grow as fatigue builds ({(actionResult.fatigueModel as { formula?: string } | undefined)?.formula || 'capacity = 1 / (1 + ln(1 + elapsed / half-life))'}).
+              </p>
               {(actionResult.unscheduledTasks as unknown[])?.length > 0 && (
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-400/5 border border-yellow-400/20">
                   <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
