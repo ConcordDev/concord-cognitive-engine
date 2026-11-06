@@ -127,6 +127,16 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Live: a minted move is a real DTU (a move_recipe DTU in the canonical store) in your library. Compose and preview derive from the same deterministic resolver the server stamps at mint time.',
   },
+  /**
+   * Carpentry's trade records are the account's own shop data, persisted
+   * server-side (Review 5's determination: PROBE-LIVE — a fixture job
+   * survived reloads), and its species lookups read live from Wikipedia —
+   * the Simulated declaration was false on its own terms.
+   */
+  carpentry: {
+    label: 'Live',
+    caption: 'Your own live shop records: schedule, crew, time, invoices and photo logs are your account\'s real data, saved as you work. Species lookups pull live reference data from Wikipedia.',
+  },
   game: {
     label: 'Lab & arcade sim',
     caption: 'Simulated: Design Lab forecasts and mini-game practice XP. Profile XP, quests, and achievements are your real activity.',

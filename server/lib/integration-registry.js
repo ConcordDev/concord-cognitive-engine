@@ -301,7 +301,7 @@ export const REGISTRY = Object.freeze({
   diy:           { tier: TIER.SIM_GRADE_A, groundedSchema: "diy/project" },
   home_improvement: { tier: TIER.SIM_GRADE_A, groundedSchema: "diy/project" },
   "home-improvement": { tier: TIER.SIM_GRADE_A, groundedSchema: "diy/project" },
-  carpentry:     { tier: TIER.SIM_GRADE_A, groundedSchema: "trade/carpentry" },
+  carpentry:     { tier: TIER.REAL_LIVE, liveFromSubstrate: true, note: "real per-user trade records" },
   electrical:    { tier: TIER.SIM_GRADE_A, groundedSchema: "trade/electrical" },
   plumbing:      { tier: TIER.SIM_GRADE_A, groundedSchema: "trade/plumbing" },
   masonry:       { tier: TIER.SIM_GRADE_A, groundedSchema: "trade/masonry" },
