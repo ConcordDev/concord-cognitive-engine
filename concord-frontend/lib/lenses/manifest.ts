@@ -5540,7 +5540,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // macros were phantoms (no server registration); a reader manifest legitimately
   // declares an empty `{}` (the ops-telemetry precedent). verify-lens-backends
   // reports NO-BACKEND-CALL for this lens by design.
-  { domain: 'narrative-walk',label: 'Narrative Walk',     artifacts: ['cinematic'],   macros: {},                                                                    exports: [],       actions: [], category: 'creative' },
+  { domain: 'narrative-walk',label: 'Narrative Walk',     artifacts: ['cinematic'],   macros: {},                                                                    exports: [],       actions: [], category: 'creative', dataTier: 'SIM_GRADE_A' },
   // Ops Telemetry is a read-only operator DASHBOARD, REST-backed by design (a
   // Datadog/Grafana analog). The page (app/lenses/ops-telemetry/page.tsx) does
   // NOT call the macro system — it fetches six REAL admin-gated HTTP routes,
