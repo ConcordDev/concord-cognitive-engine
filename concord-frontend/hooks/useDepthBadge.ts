@@ -117,6 +117,18 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your workspace planning data: sites, spectrum, outages and drive tests are your live records; coverage, capacity and SLA figures are computed over them — not live carrier-network data.',
   },
   /**
+   * Electrical's substrate is the user's own trade record — panels,
+   * estimates, invoices, checklists and diagrams persist server-side
+   * per account (PROBE-LIVE in Review 5's full first pass) and the NEC
+   * bench computes over the user's own inputs. The generic REAL_LIVE
+   * line ("polled live from an external source") is false for this
+   * lens; no external source is polled (F1).
+   */
+  electrical: {
+    label: 'Live',
+    caption: 'Your trade records: panels, estimates, invoices, checklists and diagrams are your real workspace data, and the NEC bench tools compute over your inputs. No external feed is polled.',
+  },
+  /**
    * The world vehicle fleet (spawn/mine/inspector) is a real persistent DB
    * store, not a feed polled from an external source (F1) — so the generic
    * REAL_LIVE caption is false here.
