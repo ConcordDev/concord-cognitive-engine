@@ -232,6 +232,31 @@ export default function registerCreativeActions(registerLensAction) {
     };
   });
 
+  // F5 (re-pass form, 2026-11-05): the package mint is one-shot by
+  // construction. The bench panel mints a FIXED title ("Production pkg")
+  // under a non-user source (creative:pkg:mint), and pipelineCommitDTU's
+  // dedup gate refuses any exact-title repeat across the whole store —
+  // so a second mint always fails duplicate_blocked and the panel could
+  // only report "No DTU id.". packageStatus gives the panel the CALLER's
+  // own standing package so a repeat mint resolves to it honestly
+  // instead of re-firing a create the gate must refuse. The gate itself
+  // is platform machinery and is not loosened; another creator's
+  // package never resolves here (creator-scoped match).
+  registerLensAction("creative", "packageStatus", (ctx) => {
+    const STATE = globalThis._concordSTATE;
+    const userId = ctx?.actor?.userId;
+    if (!STATE?.dtus || !userId) return { ok: true, result: { minted: false } };
+    for (const d of STATE.dtus.values()) {
+      if (
+        d && d.source === "creative:pkg:mint" &&
+        (d.creatorId === userId || d.createdBy === userId || d.ownerId === userId)
+      ) {
+        return { ok: true, result: { minted: true, dtuId: d.id, title: d.title || "Production pkg" } };
+      }
+    }
+    return { ok: true, result: { minted: false } };
+  });
+
   // ─── Milanote 2026 parity — visual boards for creative work ─────────
   // Freeform boards of positioned cards (notes, tasks, links, images,
   // headers), connections between cards, and starter templates.
