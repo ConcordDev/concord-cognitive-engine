@@ -97,7 +97,10 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
     // DOI-shaped query (research lens only — the resolver macro lives in
     // the research domain): resolve the exact work instead of keyword
     // search. Preview mode — nothing is filed until the user imports.
-    const doi = domain === 'research' ? doiFromQuery(q) : null;
+    // S2 (paper F2): the DOI-resolve and ranked-search paths serve the
+    // Paper lens too — they were gated to research, so Paper's branch
+    // keyword-searched an exact DOI and returned the unranked pool.
+    const doi = (domain === 'research' || domain === 'paper') ? doiFromQuery(q) : null;
     if (doi) {
       setLoading(true);
       setError(null);
@@ -129,7 +132,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
     // records ranked first, quality signals on each record. The shared
     // live_crossref handler also serves the Paper lens and is
     // untouched; the Paper path below runs exactly as before.
-    if (domain === 'research') {
+    if (domain === 'research' || domain === 'paper') {
       try {
         const r = await lensRun('research', 'crossref-search', { query: q, limit: 15 });
         const res = r.data?.result as { works?: CrossRefWork[]; total?: number; collapsedCount?: number } | undefined;
@@ -187,8 +190,46 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
     } catch { /* button stays enabled on failure */ }
   }, []);
 
+  // S1 (paper F1): Discover saves land in the PAPER Library — through
+  // paper-add, with its duplicate refusal intact — not as DTUs.
+  const importWorkPaper = useCallback(async (w: CrossRefWork) => {
+    const key = w.doi || w.title;
+    try {
+      const r = await lensRun('paper', 'paper-add', {
+        title: w.title,
+        authors: (w.authors || []).map((a) => a.name),
+        year: w.publishedYear,
+        venue: w.containerTitle,
+        doi: w.doi,
+        url: w.url,
+        refId: w.doi || undefined,
+      });
+      if (r.data?.ok) {
+        setImported((prev) => new Set(prev).add(key));
+      } else if ((r.data?.error || '').includes('already in your library')) {
+        setDuplicates((prev) => new Set(prev).add(key));
+      }
+    } catch { /* button stays enabled on failure */ }
+  }, []);
+
   const importResolved = useCallback(async () => {
     if (!resolvedWork) return;
+    if (domain === 'paper') {
+      try {
+        const r = await lensRun('paper', 'paper-add', {
+          title: resolvedWork.title,
+          authors: resolvedWork.authors,
+          year: resolvedWork.year,
+          venue: resolvedWork.venue,
+          doi: resolvedWork.doi,
+          url: resolvedWork.url,
+          refId: resolvedWork.doi || undefined,
+        });
+        if (r.data?.ok) setResolvedImported(true);
+        else if ((r.data?.error || '').includes('already in your library')) setResolvedDuplicate(true);
+      } catch { /* button stays enabled on failure */ }
+      return;
+    }
     try {
       const r = await lensRun('research', 'academic-import', { work: resolvedWork });
       if (r.data?.ok) {
@@ -199,7 +240,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
         }
       }
     } catch { /* button stays enabled on failure */ }
-  }, [resolvedWork]);
+  }, [resolvedWork, domain]);
 
   const onQueryChange = (next: string) => {
     setQuery(next);
@@ -353,6 +394,17 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
                     >
                       <BookmarkPlus className="w-2.5 h-2.5" />
                       {imported.has(w.doi) ? 'Imported' : duplicates.has(w.doi) ? 'Already in library' : 'Add to library'}
+                    </button>
+                  )}
+                  {domain === 'paper' && (
+                    <button
+                      type="button"
+                      onClick={() => void importWorkPaper(w)}
+                      disabled={imported.has(w.doi || w.title) || duplicates.has(w.doi || w.title)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-violet-500/30 bg-violet-500/10 text-[10px] text-violet-200 disabled:opacity-50"
+                    >
+                      <BookmarkPlus className="w-2.5 h-2.5" />
+                      {imported.has(w.doi || w.title) ? 'In library' : duplicates.has(w.doi || w.title) ? 'Already in library' : 'Save to Library'}
                     </button>
                   )}
                 </div>
