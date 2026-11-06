@@ -212,6 +212,19 @@ function DbCell({ col, value, onChange }: {
   value: string | number | boolean | undefined;
   onChange: (v: string | number | boolean) => void;
 }) {
+  // Text/number/date cells edit a local draft and commit on blur/Enter
+  // (S-DOCS-4 / F12): the write-through form committed per keystroke
+  // over a server round-trip, and a lagging refresh could overwrite an
+  // in-flight keystroke — the character loss the pass convicted.
+  // Discrete controls (checkbox, select) keep immediate commit: they
+  // cannot lose characters.
+  const [draft, setDraft] = useState(String(value ?? ''));
+  const [editing, setEditing] = useState(false);
+  useEffect(() => { if (!editing) setDraft(String(value ?? '')); }, [value, editing]);
+  const commitDraft = () => {
+    setEditing(false);
+    if (draft !== String(value ?? '')) onChange(col.type === 'number' ? Number(draft) : draft);
+  };
   if (col.type === 'checkbox') {
     return <input type="checkbox" checked={value === true} onChange={e => onChange(e.target.checked)} className="accent-emerald-500" />;
   }
@@ -227,8 +240,11 @@ function DbCell({ col, value, onChange }: {
   return (
     <input
       type={col.type === 'number' ? 'number' : col.type === 'date' ? 'date' : 'text'}
-      value={String(value ?? '')}
-      onChange={e => onChange(col.type === 'number' ? Number(e.target.value) : e.target.value)}
+      value={draft}
+      onFocus={() => setEditing(true)}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={commitDraft}
+      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
       className="w-full bg-transparent text-xs text-zinc-200 focus:outline-none focus:bg-zinc-800/50 rounded px-1" />
   );
 }

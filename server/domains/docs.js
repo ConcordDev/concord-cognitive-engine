@@ -14,7 +14,7 @@ export default function registerDocsActions(registerLensAction) {
    * SMOG, plus a custom technical readability index.
    * artifact.data.text = string (the document text)
    */
-  registerLensAction("docs", "readabilityScore", (ctx, artifact, _params) => {
+  const readabilityScoreHandler = (ctx, artifact, _params) => {
   try {
     const text = artifact.data?.text || "";
     if (text.length === 0) {
@@ -162,7 +162,8 @@ export default function registerDocsActions(registerLensAction) {
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+};
+  registerLensAction("docs", "readabilityScore", readabilityScoreHandler);
 
   /**
    * crossReference
@@ -170,7 +171,7 @@ export default function registerDocsActions(registerLensAction) {
    * detect broken links, circular references, and orphan pages.
    * artifact.data.pages = [{ id, title, content?, links: [targetId], backlinks?: [sourceId] }]
    */
-  registerLensAction("docs", "crossReference", (ctx, artifact, _params) => {
+  const crossReferenceHandler = (ctx, artifact, _params) => {
   try {
     const pages = artifact.data?.pages || [];
     if (pages.length === 0) {
@@ -308,7 +309,8 @@ export default function registerDocsActions(registerLensAction) {
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+};
+  registerLensAction("docs", "crossReference", crossReferenceHandler);
 
   /**
    * versionDiff
@@ -317,7 +319,7 @@ export default function registerDocsActions(registerLensAction) {
    * artifact.data.oldVersion = { text, title?, version? }
    * artifact.data.newVersion = { text, title?, version? }
    */
-  registerLensAction("docs", "versionDiff", (ctx, artifact, _params) => {
+  const versionDiffHandler = (ctx, artifact, _params) => {
   try {
     const oldDoc = artifact.data?.oldVersion || {};
     const newDoc = artifact.data?.newVersion || {};
@@ -502,7 +504,56 @@ export default function registerDocsActions(registerLensAction) {
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+};
+  registerLensAction("docs", "versionDiff", versionDiffHandler);
+
+  /**
+   * docs-analyze — the Analysis tools bound to the workspace's real
+   * documents (S-DOCS-1 / F3). The artifact-form handlers above compute
+   * over artifact.data, but the workspace's documents are domain-state
+   * pages (page-* macros) and nothing mints a 'document' artifact from
+   * a page, so the panel's tools stayed dead over real documents. This
+   * action synthesizes each handler's input from the page store and
+   * delegates to the SAME handlers — one computation, two bindings.
+   */
+  registerLensAction("docs", "docs-analyze", (ctx, _a, params = {}) => {
+    try {
+      const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const pages = dcPages(s, dcActor(ctx));
+      const page = pages.find((p) => p.id === params.pageId);
+      if (!page) return { ok: false, error: "page not found" };
+      const pageText = (pg) => (pg.blocks || []).map((b) => b.text || "").filter(Boolean).join("\n\n");
+      const tool = params.tool;
+      if (tool === "readabilityScore") {
+        const r = readabilityScoreHandler(ctx, { data: { text: pageText(page) } }, {});
+        if (r.ok) r.result = { ...r.result, page: { id: page.id, title: page.title } };
+        return r;
+      }
+      if (tool === "crossReference") {
+        const input = pages.map((p) => ({
+          id: p.id, title: p.title,
+          links: [...new Set((p.blocks || []).flatMap((b) => dcMentionTargets(b.text || "", pages)))].filter((id) => id !== p.id),
+        }));
+        const r = crossReferenceHandler(ctx, { data: { pages: input } }, {});
+        if (r.ok) r.result = { ...r.result, page: { id: page.id, title: page.title } };
+        return r;
+      }
+      if (tool === "versionDiff") {
+        const snaps = dcSnapshotList(s, page.id);
+        const fromSnap = params.fromSnapshotId ? snaps.find((x) => x.id === params.fromSnapshotId) : snaps[0];
+        if (!fromSnap) {
+          return { ok: true, result: { message: "No snapshots yet \u2014 save a version of this page first, then diff it against the current page.", page: { id: page.id, title: page.title } } };
+        }
+        const toSnap = params.toSnapshotId ? snaps.find((x) => x.id === params.toSnapshotId) : null;
+        const oldVersion = { text: pageText(fromSnap), title: fromSnap.title, version: fromSnap.label };
+        const newVersion = toSnap ? { text: pageText(toSnap), title: toSnap.title, version: toSnap.label } : { text: pageText(page), title: page.title, version: "current" };
+        const r = versionDiffHandler(ctx, { data: { oldVersion, newVersion } }, {});
+        if (r.ok) r.result = { ...r.result, page: { id: page.id, title: page.title }, from: oldVersion.version, to: newVersion.version };
+        return r;
+      }
+      return { ok: false, error: "unknown tool" };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
 
   // ─── Notion-shape page/block document substrate (per-user, STATE) ────
 
@@ -565,9 +616,18 @@ export default function registerDocsActions(registerLensAction) {
     const userId = dcActor(ctx);
     const pages = dcPages(s, userId);
     const parentId = params.parentId && pages.some((p) => p.id === params.parentId) ? params.parentId : null;
+    // Title integrity (F13): an explicit title must not collide with
+    // another of the actor's pages \u2014 [[title]] links resolve by title,
+    // so duplicates make the lens's own linking ambiguous. The
+    // "Untitled" placeholder default stays exempt (the create flow
+    // depends on it).
+    const wantedTitle = dcClean(params.title, 200);
+    if (wantedTitle && pages.some((p) => p.title.toLowerCase() === wantedTitle.toLowerCase())) {
+      return { ok: false, error: `A page titled \u201c${wantedTitle}\u201d already exists.` };
+    }
     const page = {
       id: dcId("pg"),
-      title: dcClean(params.title, 200) || "Untitled",
+      title: wantedTitle || "Untitled",
       icon: dcClean(params.icon, 8) || "📄",
       parentId,
       blocks: [],
@@ -599,7 +659,14 @@ export default function registerDocsActions(registerLensAction) {
     const s = getDocsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const page = dcPages(s, dcActor(ctx)).find((p) => p.id === params.id);
     if (!page) return { ok: false, error: "page not found" };
-    if (params.title != null) page.title = dcClean(params.title, 200) || page.title;
+    if (params.title != null) {
+      const wanted = dcClean(params.title, 200);
+      if (wanted && wanted.toLowerCase() !== page.title.toLowerCase()
+          && dcPages(s, dcActor(ctx)).some((p) => p.id !== page.id && p.title.toLowerCase() === wanted.toLowerCase())) {
+        return { ok: false, error: `A page titled \u201c${wanted}\u201d already exists.` };
+      }
+      page.title = wanted || page.title;
+    }
     if (params.icon != null) page.icon = dcClean(params.icon, 8) || page.icon;
     page.updatedAt = dcNow();
     saveDocs();
