@@ -97,6 +97,9 @@ export function FocusToolkit() {
   const [calError, setCalError] = useState<string | null>(null);
 
   const [busy, setBusy] = useState<string | null>(null);
+  const [confirmRemoveTask, setConfirmRemoveTask] = useState<string | null>(null);
+  const [confirmReleaseBlock, setConfirmReleaseBlock] = useState<string | null>(null);
+  const [confirmRemoveDx, setConfirmRemoveDx] = useState<string | null>(null);
 
   const run = useCallback(async <T,>(action: string, input: Record<string, unknown> = {}): Promise<T | null> => {
     const r = await lensRun<T>('attention', action, input);
@@ -203,13 +206,25 @@ export function FocusToolkit() {
     await run('plannerMoveTask', { date: todayKey(), taskId: t.id, done: !t.done });
     await refreshPlanner();
   };
-  const shiftTask = async (t: PlannerTask, deltaMin: number) => {
-    await run('plannerMoveTask', { date: todayKey(), taskId: t.id, startMinute: Math.max(0, Math.min(1439, t.startMinute + deltaMin)) });
+  // The +/− steppers neighbour the DURATION, so they adjust the
+  // duration (F11: they used to shift the start time while labelled by
+  // position as duration controls).
+  const stepDuration = async (t: PlannerTask, deltaMin: number) => {
+    const durationMinutes = Math.max(5, Math.min(720, t.durationMinutes + deltaMin));
+    if (durationMinutes === t.durationMinutes) return;
+    await run('plannerMoveTask', { date: todayKey(), taskId: t.id, durationMinutes });
     await refreshPlanner();
   };
   const removePlannerTask = async (id: string) => {
     await run('plannerRemoveTask', { date: todayKey(), taskId: id });
+    setConfirmRemoveTask(null);
     await refreshPlanner();
+  };
+  const removeDistraction = async (id: string) => {
+    await run('distractionRemove', { entryId: id });
+    setConfirmRemoveDx(null);
+    await refreshDistractions();
+    await refreshAnalytics();
   };
 
   // ── distraction actions ──
@@ -233,6 +248,12 @@ export function FocusToolkit() {
 
   // ── calendar ──
   const reserveBlock = async () => {
+    // An empty title used to be silently replaced with the default
+    // "Focus Block" (F11) — refuse it with a message instead.
+    if (!calTitle.trim()) {
+      setCalError('Give the block a title first — an untitled block cannot be told apart later.');
+      return;
+    }
     setBusy('cal-add');
     setCalError(null);
     const r = await lensRun('attention', 'calendarReserve', {
@@ -245,6 +266,7 @@ export function FocusToolkit() {
   };
   const releaseBlock = async (id: string) => {
     await run('calendarRelease', { blockId: id });
+    setConfirmReleaseBlock(null);
     await refreshCalendar();
   };
 
@@ -330,8 +352,16 @@ export function FocusToolkit() {
             <Stat label="Today focus" value={`${Math.round(pomStats.today.minutes)}m`} />
             <Stat label="Deep work" value={`${pomStats.deepWorkSessions}`} />
             <Stat label="Total hours" value={`${pomStats.totalFocusHours}h`} />
-            <Stat label="Completion" value={`${pomStats.completionRate}%`} />
+            <Stat label="Session completion" value={`${pomStats.completionRate}%`} />
           </div>
+        )}
+        {pomStats && (
+          <p className="mt-2 text-[11px] leading-relaxed text-gray-500">
+            Deep work counts a completed session with no interruptions that ran at least 20 minutes,
+            or that ran under Do-Not-Disturb. Session completion is the share of started focus
+            sessions finished (a session counts as finished at 90% of its planned length);
+            abandoned break timers never create a session.
+          </p>
         )}
         {/* energy tagging of recent untagged sessions */}
         {pomStats && Array.isArray(pomStats.recentSessions) && pomStats.recentSessions.filter((s) => !s.energy).length > 0 && (
@@ -365,6 +395,9 @@ export function FocusToolkit() {
             <span className={`text-xs ${plannerStats.overbooked ? 'text-red-400' : 'text-gray-400'}`}>
               {Math.round(plannerStats.plannedMinutes / 60 * 10) / 10}h / {Math.round(plannerStats.capacityMinutes / 60)}h planned
               {plannerStats.overbooked && ' · overbooked'}
+              {day && day.tasks.length > 0 && (
+                <> · Completion: {day.tasks.filter((x) => x.done).length}/{day.tasks.length} done ({Math.round((day.tasks.filter((x) => x.done).length / day.tasks.length) * 100)}%)</>
+              )}
             </span>
           )}
         </div>
@@ -391,11 +424,18 @@ export function FocusToolkit() {
               <span className="w-12 flex-shrink-0 font-mono text-xs text-gray-400">{minToHHMM(t.startMinute)}</span>
               <span className={`flex-1 truncate text-sm ${t.done ? 'text-gray-400 line-through' : 'text-gray-200'}`}>{t.name}</span>
               <span className="flex-shrink-0 text-xs text-gray-400">{t.durationMinutes}m</span>
-              <button onClick={() => shiftTask(t, -30)} className="rounded px-1 text-xs text-gray-400 hover:text-neon-cyan" title="-30m">&minus;</button>
-              <button onClick={() => shiftTask(t, 30)} className="rounded px-1 text-xs text-gray-400 hover:text-neon-cyan" title="+30m">+</button>
-              <button onClick={() => removePlannerTask(t.id)} className="flex-shrink-0 text-gray-600 hover:text-red-400" aria-label="Remove task">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              <button onClick={() => stepDuration(t, -15)} className="rounded px-1 text-xs text-gray-400 hover:text-neon-cyan" title="15 minutes shorter" aria-label={`Shorten ${t.name} by 15 minutes`}>&minus;</button>
+              <button onClick={() => stepDuration(t, 15)} className="rounded px-1 text-xs text-gray-400 hover:text-neon-cyan" title="15 minutes longer" aria-label={`Lengthen ${t.name} by 15 minutes`}>+</button>
+              {confirmRemoveTask === t.id ? (
+                <span className="flex flex-shrink-0 items-center gap-1">
+                  <button onClick={() => removePlannerTask(t.id)} className="rounded bg-red-500/15 px-1.5 py-0.5 text-[11px] text-red-300 ring-1 ring-red-500/30">Remove “{t.name}”?</button>
+                  <button onClick={() => setConfirmRemoveTask(null)} className="rounded px-1.5 py-0.5 text-[11px] text-gray-400 hover:text-gray-200">Keep</button>
+                </span>
+              ) : (
+                <button onClick={() => setConfirmRemoveTask(t.id)} className="flex-shrink-0 text-gray-600 hover:text-red-400" aria-label={`Remove ${t.name}`}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           ))}
           {(!day || day.tasks.length === 0) && (
@@ -457,9 +497,16 @@ export function FocusToolkit() {
                 <span className="text-gray-300">
                   <span className="font-mono text-neon-blue">{minToHHMM(b.startMinute)}–{minToHHMM(b.endMinute)}</span> · {b.title}
                 </span>
-                <button onClick={() => releaseBlock(b.id)} className="text-gray-600 hover:text-red-400" aria-label="Release block">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {confirmReleaseBlock === b.id ? (
+                  <span className="flex items-center gap-1">
+                    <button onClick={() => releaseBlock(b.id)} className="rounded bg-red-500/15 px-1.5 py-0.5 text-[11px] text-red-300 ring-1 ring-red-500/30">Release “{b.title}”?</button>
+                    <button onClick={() => setConfirmReleaseBlock(null)} className="rounded px-1.5 py-0.5 text-[11px] text-gray-400 hover:text-gray-200">Keep</button>
+                  </span>
+                ) : (
+                  <button onClick={() => setConfirmReleaseBlock(b.id)} className="text-gray-600 hover:text-red-400" aria-label={`Release ${b.title}`}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             ))}
             {calBlocks.length === 0 && <p className="rounded border border-dashed border-zinc-800 py-3 text-center text-xs text-gray-400">No focus blocks reserved today.</p>}
@@ -518,6 +565,30 @@ export function FocusToolkit() {
             </div>
           </div>
         )}
+        {distractions && distractions.recent.length > 0 && (
+          <div className="mt-3 border-t border-zinc-800 pt-3">
+            <p className="mb-1.5 text-xs text-gray-400">Recent entries</p>
+            <div className="space-y-1">
+              {distractions.recent.slice(0, 8).map((d) => (
+                <div key={d.id} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs">
+                  <span className="truncate text-gray-300">
+                    {d.source} <span className="text-gray-500">· {d.kind} · {d.durationMinutes}m lost</span>
+                  </span>
+                  {confirmRemoveDx === d.id ? (
+                    <span className="flex flex-shrink-0 items-center gap-1">
+                      <button onClick={() => removeDistraction(d.id)} className="rounded bg-red-500/15 px-1.5 py-0.5 text-[11px] text-red-300 ring-1 ring-red-500/30">Delete?</button>
+                      <button onClick={() => setConfirmRemoveDx(null)} className="rounded px-1.5 py-0.5 text-[11px] text-gray-400 hover:text-gray-200">Keep</button>
+                    </span>
+                  ) : (
+                    <button onClick={() => setConfirmRemoveDx(d.id)} className="flex-shrink-0 text-gray-600 hover:text-red-400" aria-label={`Delete distraction ${d.source}`}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ── Focus Analytics ── */}
@@ -527,15 +598,19 @@ export function FocusToolkit() {
             <Activity className="h-4 w-4 text-neon-green" /> Focus Analytics — Deep Work Trends
           </h3>
           {analytics && (
-            <span className={`flex items-center gap-1 text-xs ${
-              analytics.deepWorkTrend === 'improving' ? 'text-neon-green' :
-              analytics.deepWorkTrend === 'declining' ? 'text-red-400' : 'text-gray-400'
-            }`}>
-              {analytics.deepWorkTrend === 'improving' ? <TrendingUp className="h-3.5 w-3.5" /> :
-               analytics.deepWorkTrend === 'declining' ? <TrendingDown className="h-3.5 w-3.5" /> :
-               <Minus className="h-3.5 w-3.5" />}
-              {analytics.deepWorkTrend}
-            </span>
+            analytics.deepWorkTrend === 'no-data' ? (
+              <span className="text-xs text-gray-400">No sessions in this window yet — no trend to report.</span>
+            ) : (
+              <span className={`flex items-center gap-1 text-xs ${
+                analytics.deepWorkTrend === 'improving' ? 'text-neon-green' :
+                analytics.deepWorkTrend === 'declining' ? 'text-red-400' : 'text-gray-400'
+              }`}>
+                {analytics.deepWorkTrend === 'improving' ? <TrendingUp className="h-3.5 w-3.5" /> :
+                 analytics.deepWorkTrend === 'declining' ? <TrendingDown className="h-3.5 w-3.5" /> :
+                 <Minus className="h-3.5 w-3.5" />}
+                {analytics.deepWorkTrend}
+              </span>
+            )
           )}
         </div>
         {analytics && (
@@ -571,10 +646,14 @@ export function FocusToolkit() {
             <div className="mb-3 flex flex-wrap gap-2">
               {peak.peakHours.map((h) => (
                 <span key={h.hour} className="flex items-center gap-1 rounded bg-neon-yellow/10 px-2 py-1 text-xs text-neon-yellow ring-1 ring-neon-yellow/30">
-                  <Gauge className="h-3 w-3" /> {h.label} · idx {Math.round(h.performanceIndex * 100)}
+                  <Gauge className="h-3 w-3" /> {h.label} · performance index {Math.round(h.performanceIndex * 100)} of 100
                 </span>
               ))}
             </div>
+            <p className="mb-3 text-[11px] leading-relaxed text-gray-500">
+              The performance index (0–100) combines your tagged energy at that hour (50%), its
+              deep-work share (35%), and its session volume (15%).
+            </p>
             <ChartKit
               kind="area"
               data={peakChart}

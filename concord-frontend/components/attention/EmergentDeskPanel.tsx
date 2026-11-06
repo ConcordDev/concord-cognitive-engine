@@ -53,6 +53,11 @@ export function EmergentDeskPanel() {
           <h2 className="font-semibold mb-3 flex items-center gap-2">
             <Brain className="w-4 h-4 text-neon-purple" /> Emergent Entities
           </h2>
+          <p className="mb-3 text-[11px] leading-relaxed text-gray-500">
+            These entities are the engine&rsquo;s own emergent population — system content,
+            shown for inspection. They are not your records, and they do not count toward
+            your Focus or Threads statistics.
+          </p>
           <EmergentPanel />
           {activeThreads.length > 0 && (
             <div className="mt-3 space-y-2">
