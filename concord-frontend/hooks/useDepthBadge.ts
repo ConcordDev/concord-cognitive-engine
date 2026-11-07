@@ -279,9 +279,6 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Live: translation runs on this server\'s local model — your text never leaves your server. Saved translations and glossaries are your own records.',
   },
-||||||| 04706cc47
-  },
-  /**
   /**
    * Close-out A5 — the declaration flip's scoped captions. These lenses
    * flipped to REAL_WORKSPACE (their write layers persist per-account);
@@ -315,16 +312,6 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption:
       'Your library, manuscripts and bibliography live here — your own records in the platform store, not polled from an external source. Discovery searches read live from arXiv, CrossRef and Open Library, labelled at their panels.',
-  },
-  /**
-   * Plumbing's field-service records are the account's own shop data,
-   * persisted server-side — the Simulated declaration was false on its own
-   * terms (Review 4's determination: real execution). REAL_LIVE's generic
-   * "polled from an external source" caption would be its own falsehood.
-   */
-  plumbing: {
-    label: 'Live',
-    caption: 'Your own live shop records: technicians, jobs, invoices, parts and inspections are your account\'s real data, saved as you work.',
   },
   game: {
     label: 'Lab & arcade sim',
