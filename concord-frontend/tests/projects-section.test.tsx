@@ -1,4 +1,6 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const lensRunMock = vi.fn();
@@ -30,9 +32,14 @@ beforeEach(() => {
   });
 });
 
+// ProjectsKeepMenu reads the QueryClient, so every mount needs a provider.
+function renderWithQuery(ui: React.ReactElement) {
+  return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
+}
+
 describe('ProjectsSection create path', () => {
   it('opens from the primary New project event, creates, and the project is still there after a reload', async () => {
-    const { unmount } = render(<ProjectsSection />);
+    const { unmount } = renderWithQuery(<ProjectsSection />);
     // The empty state teaches the product: what a project is, plus New project / Open the sample project.
     await waitFor(() => expect(screen.getByText(/A project is one piece of work, tracked as issues\./)).toBeTruthy());
     expect(screen.getByRole('button', { name: /Open the sample project/ })).toBeTruthy();
@@ -59,7 +66,7 @@ describe('ProjectsSection create path', () => {
 
     unmount();
     listed = true;
-    render(<ProjectsSection />);
+    renderWithQuery(<ProjectsSection />);
     await waitFor(() => expect(screen.getByRole('button', { name: /BR Bridge/ })).toBeTruthy());
   });
 });

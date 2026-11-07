@@ -64,7 +64,9 @@ describe('creative producer bench — wiring', () => {
   it('drives runDomain on the creative domain with a single-wrap payload', async () => {
     runDomain.mockResolvedValue({ data: { ok: true, result: { shots: [], totalShots: 0, estimatedRuntime: 0, equipmentList: [] } } });
     const { container, getByText } = render(<CreativeActionPanel />);
-    typeScenes(container, JSON.stringify({ type: 'video', scenes: [] }));
+    // The bench binds pasted scenes to the macro's shape (#2239) and refuses an EMPTY list,
+    // so the wiring test pastes one real scene.
+    typeScenes(container, JSON.stringify({ type: 'video', scenes: [{ name: 'Opening', shots: [{ name: 'Wide' }] }] }));
     await act(async () => { fireEvent.click(getByText('Shots')); });
     await waitFor(() => expect(runDomain).toHaveBeenCalled());
     const [domain, action, payload] = runDomain.mock.calls[0];
@@ -80,6 +82,8 @@ describe('creative producer bench — wiring', () => {
     const lensRunMock = lensRunMod.lensRun as unknown as ReturnType<typeof vi.fn>;
     lensRunMock.mockReset();
     lensRunMock.mockResolvedValue({ data: { result: { id: 'dtu-abc123' } } });
+    // Mint first asks for the caller's standing package (packageStatus) and only creates when none exists.
+    runDomain.mockResolvedValue({ data: { ok: true, result: { minted: false } } });
     const { getByText } = render(<CreativeActionPanel />);
     await act(async () => { fireEvent.click(getByText('Mint')); });
     await waitFor(() => expect(lensRunMock).toHaveBeenCalled());
