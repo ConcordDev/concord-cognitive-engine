@@ -390,6 +390,14 @@ describe("education.lessons-* (within course)", () => {
     const comp = call("lessons-complete", ctxA, { courseId: cid, lessonId: l.result.lesson.id });
     assert.equal(comp.ok, true);
     assert.equal(comp.result.pointsAwarded, 50);
+    assert.equal(comp.result.alreadyCompleted, false);
+    const listed = call("lessons-list", ctxA, { courseId: cid });
+    assert.deepEqual(listed.result.completedLessonIds, [l.result.lesson.id]);
+    const again = call("lessons-complete", ctxA, { courseId: cid, lessonId: l.result.lesson.id });
+    assert.equal(again.result.pointsAwarded, 0);
+    assert.equal(again.result.alreadyCompleted, true);
+    const status = call("gamification-status", ctxA, {});
+    assert.equal(status.result.totalPoints, 50);
   });
   it("rejects bad input", () => {
     assert.equal(call("lessons-create", ctxA, { courseId: "", title: "X" }).ok, false);
