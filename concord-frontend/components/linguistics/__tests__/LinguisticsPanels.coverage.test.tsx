@@ -158,7 +158,6 @@ describe('linguistics flows', () => {
   });
 
   it('the notebook creates, edits, filters, analyses and removes entries on each tab', async () => {
-    const SKIP = /delete|remove|trash|discard|cancel|close|dismiss|reset|clear|^back|^×$|^Create$|Save changes|^New /i;
     for (const mode of ['Analyses', 'Lexicon', 'Grammars', 'Corpora', 'Translations'] as const) {
       const view = render(<NotebookPanel mode={mode as never} />);
       await settle();
