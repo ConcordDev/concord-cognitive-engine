@@ -9,7 +9,9 @@ import { cn } from '@/lib/utils';
 
 export function SportsLeaguesPanel() {
   const [active, setActive] = useState<ActiveLeague | null>(null);
+  const [tableRev, setTableRev] = useState(0);
   const { leagues, remember } = useRecentLeagues();
+  const bumpTable = useCallback(() => setTableRev((n) => n + 1), []);
 
   const onLeagueChange = useCallback(
     (league: ActiveLeague) => {
@@ -53,9 +55,14 @@ export function SportsLeaguesPanel() {
       )}
 
       <div className="grid gap-3 md:grid-cols-2">
-        <LeagueStandings leagueId={active?.id} onLeagueChange={onLeagueChange} />
+        <LeagueStandings
+          leagueId={active?.id}
+          onLeagueChange={onLeagueChange}
+          onRosterChange={bumpTable}
+          reloadToken={tableRev}
+        />
         {active ? (
-          <MatchSimulator leagueId={active.id} />
+          <MatchSimulator leagueId={active.id} reloadToken={tableRev} onPlayed={bumpTable} />
         ) : (
           <div className={cn(ds.panel, 'text-center text-xs text-zinc-500')}>
             Create a league on the left to unlock match scheduling.
