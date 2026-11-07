@@ -199,7 +199,7 @@ export default function CommonsenseLensPage() {
         if (found.answered && Array.isArray(found.answers) && found.answers.length) {
           setAnswer({ question: trimmed, answers: found.answers });
         } else {
-          setAnswerMiss('You have not stated the obvious on this yet — state it below and the thread will answer with it next time.');
+          setAnswerMiss('You have not stated the obvious on this yet — state it and the thread will answer with it next time.');
         }
       } catch (_answerErr) { /* the ask below owns the real error path */ }
       const created = await runCs<{ checkId?: string; duplicate?: boolean }>('check-ask', { question: trimmed }, 'Could not ask that.');
