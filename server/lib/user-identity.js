@@ -98,3 +98,26 @@ export function resolveUserByHandle(db, handle) {
     return { error: "user lookup unavailable" };
   }
 }
+
+/**
+ * The bridge-actor guarantee (close-out A12, Message F1): an actor the
+ * bridge constructs for a real account carries that account's resolved
+ * identity, so a domain stamp never has to trust a client-passed name or
+ * fall back to the raw user id for want of the actor's own. Resolution is
+ * lookupUserIdentity's — nulls when the account does not resolve, never
+ * invented from the id. Anonymous, internal/system, and already-identified
+ * actors pass through untouched (the same object back).
+ */
+export function enrichActorIdentity(db, actor) {
+  if (!actor || typeof actor !== "object") return actor;
+  const userId = actor.userId;
+  if (!userId || userId === "anon" || actor.internal) return actor;
+  if (actor.displayName) return actor;
+  const { username, displayName } = lookupUserIdentity(db, userId);
+  if (!username && !displayName) return actor;
+  return {
+    ...actor,
+    username: actor.username || username || null,
+    displayName: displayName || username || null,
+  };
+}
