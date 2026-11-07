@@ -1,4 +1,4 @@
-// server/migrations/498_player_mail_sender_deleted.js
+// server/migrations/499_player_mail_sender_deleted.js
 //
 // Mail full build (F-B row 10), S4/F5 — a sent copy can be removed from
 // the sender's Sent list. Player mail is ONE row read from both sides,
