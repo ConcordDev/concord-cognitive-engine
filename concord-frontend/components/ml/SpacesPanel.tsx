@@ -32,7 +32,11 @@ export function SpacesPanel({ defaultModelId = '' }: { defaultModelId?: string }
 
   useEffect(() => { load(); }, [load]);
 
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const remove = async (id: string) => {
+    // F8: deletes confirm first (two-step, no native dialogs).
+    if (confirmRemoveId !== id) { setConfirmRemoveId(id); return; }
+    setConfirmRemoveId(null);
     setBusy(id);
     await lensRun('ml', 'space-delete', { spaceId: id });
     await load();
@@ -81,7 +85,7 @@ export function SpacesPanel({ defaultModelId = '' }: { defaultModelId?: string }
                 <a href={sp.url} className="btn-neon small flex-1 text-center">Open</a>
                 <button onClick={() => remove(sp.id)} disabled={busy === sp.id}
                   className="btn-neon small pink" aria-label="Delete">
-                  {busy === sp.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                  {busy === sp.id ? <Loader2 className="w-3 h-3 animate-spin" /> : confirmRemoveId === sp.id ? 'Confirm?' : <Trash2 className="w-3 h-3" />}
                 </button>
               </div>
             </div>

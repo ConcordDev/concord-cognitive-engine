@@ -5,10 +5,11 @@
  * downloads, and a per-model detail card. Wires ml.model-hub + ml.model-card.
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import {
-  Brain, Search, Download, Heart, Loader2, ExternalLink, X, RefreshCw, FileText,
+  Brain, Search, Download, Heart, Loader2, ExternalLink, X, RefreshCw, FileText, History,
 } from 'lucide-react';
 
 interface HubModel {
@@ -63,6 +64,10 @@ export function ModelHubPanel({ onUseInPlayground }: { onUseInPlayground?: (mode
   const [error, setError] = useState<string | null>(null);
   const [card, setCard] = useState<ModelCardDetail | null>(null);
   const [cardLoading, setCardLoading] = useState(false);
+  // D3/M2: the detail has two faces — front = the model card; flip =
+  // provenance (where this model came from, under what licence, and
+  // the keep-as-DTU act that closes the creation→lens loop).
+  const [cardFace, setCardFace] = useState<'card' | 'provenance'>('card');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,12 +82,21 @@ export function ModelHubPanel({ onUseInPlayground }: { onUseInPlayground?: (mode
     setLoading(false);
   }, [query, task, sort]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- run-once initial load
-  useEffect(() => { load(); }, []); // initial load
+  // F10: the Task/Sort comboboxes must apply ON CHANGE — previously
+  // load ran once at mount and filter changes sat inert until the
+  // manual refresh button. Query text reloads debounced (600ms), the
+  // same discipline as the arXiv filter.
+  const firstLoad = useRef(true);
+  useEffect(() => {
+    if (firstLoad.current) { firstLoad.current = false; void load(); return; }
+    const t = setTimeout(() => { void load(); }, 600);
+    return () => clearTimeout(t);
+  }, [load]);
 
   const openCard = async (modelId: string) => {
     setCardLoading(true);
     setCard(null);
+    setCardFace('card');
     const r = await lensRun('ml', 'model-card', { modelId });
     if (r.data?.ok && r.data.result) {
       setCard((r.data.result as { card: ModelCardDetail }).card);
@@ -172,10 +186,45 @@ export function ModelHubPanel({ onUseInPlayground }: { onUseInPlayground?: (mode
                     <h3 className="text-lg font-bold">{card.name}</h3>
                     <p className="text-sm text-gray-400">{card.author} · {card.task} · {card.library}</p>
                   </div>
-                  <button onClick={() => setCard(null)} className="p-1 hover:bg-white/10 rounded" aria-label="Close">
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setCardFace(cardFace === 'card' ? 'provenance' : 'card')}
+                      className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-lattice-surface hover:bg-white/10"
+                      aria-label={cardFace === 'card' ? 'Show provenance' : 'Show model card'}
+                    >
+                      <History className="w-3.5 h-3.5" /> {cardFace === 'card' ? 'Provenance' : 'Card'}
+                    </button>
+                    <button onClick={() => setCard(null)} className="p-1 hover:bg-white/10 rounded" aria-label="Close">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
+                {cardFace === 'provenance' ? (
+                  <div className="p-5 space-y-3 overflow-y-auto max-h-[60vh]">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider">Provenance</p>
+                    <dl className="space-y-2 text-sm">
+                      <div className="flex justify-between gap-4"><dt className="text-gray-400">Source</dt><dd>Hugging Face Hub (live read)</dd></div>
+                      <div className="flex justify-between gap-4"><dt className="text-gray-400">Model id</dt><dd className="font-mono text-xs">{card.id}</dd></div>
+                      <div className="flex justify-between gap-4"><dt className="text-gray-400">Author</dt><dd>{card.author}</dd></div>
+                      <div className="flex justify-between gap-4"><dt className="text-gray-400">Licence</dt><dd>{card.license}</dd></div>
+                      <div className="flex justify-between gap-4"><dt className="text-gray-400">Access</dt><dd>{card.gated ? 'Gated on the Hub' : 'Open'}</dd></div>
+                      <div className="flex justify-between gap-4"><dt className="text-gray-400">Last updated</dt><dd>{card.updatedAt ? new Date(card.updatedAt).toLocaleDateString() : '—'}</dd></div>
+                      <div className="flex justify-between gap-4"><dt className="text-gray-400">Canonical page</dt><dd><a className="text-neon-cyan hover:underline" href={card.url} target="_blank" rel="noreferrer">huggingface.co/{card.id}</a></dd></div>
+                    </dl>
+                    <p className="text-xs text-gray-400">
+                      Counts and files on the card face are the Hub's own figures, read live — Concord keeps no copy.
+                      Keeping the model as a DTU pins this card, with its provenance, into your library.
+                    </p>
+                    <SaveAsDtuButton
+                      apiSource="huggingface-model"
+                      apiUrl={card.url}
+                      title={`HF model — ${card.id}`}
+                      content={`${card.id} · ${card.task} · ${card.library}\nLicence: ${card.license} · Downloads: ${card.downloads} · Likes: ${card.likes}\n${card.url}`}
+                      extraTags={['ml', 'modelcard']}
+                      rawData={{ ...card }}
+                    />
+                  </div>
+                ) : (
                 <div className="p-5 space-y-4 overflow-y-auto max-h-[60vh]">
                   <div className="grid grid-cols-4 gap-3 text-center">
                     <div className="bg-lattice-surface p-3 rounded-lg">
@@ -228,6 +277,7 @@ export function ModelHubPanel({ onUseInPlayground }: { onUseInPlayground?: (mode
                     </a>
                   </div>
                 </div>
+                )}
               </>
             )}
           </div>
