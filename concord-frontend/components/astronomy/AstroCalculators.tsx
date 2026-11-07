@@ -111,7 +111,7 @@ function PlanObservationTool() {
               </select>
             </Field>
             <Field label="Magnitude">
-              <input inputMode="decimal" value={t.magnitude} onChange={(e) => updateRow(i, { magnitude: e.target.value })} placeholder="e.g. 4.5" className={cn(inputCls, 'w-20')} />
+              <input inputMode="decimal" value={t.magnitude} onChange={(e) => updateRow(i, { magnitude: e.target.value })} placeholder="4.5" className={cn(inputCls, 'w-20')} />
             </Field>
             <button type="button" aria-label="Remove row" onClick={() => removeRow(i)} className="text-zinc-600 hover:text-rose-400 pb-2">
               <Trash2 className="w-3.5 h-3.5" />
@@ -202,7 +202,7 @@ function LightTravelTimeTool() {
           </select>
         </Field>
         <Field label="Distance">
-          <input inputMode="decimal" value={distance} onChange={(e) => setDistance(e.target.value)} placeholder="e.g. 2,500,000" className={inputCls} />
+          <input inputMode="decimal" value={distance} onChange={(e) => setDistance(e.target.value)} placeholder="2,500,000" className={inputCls} />
         </Field>
       </div>
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}

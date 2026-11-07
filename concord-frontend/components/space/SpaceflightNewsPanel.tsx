@@ -110,7 +110,7 @@ export function SpaceflightNewsPanel({ domain, className }: SpaceflightNewsPanel
       )}
 
       {!error && !loading && articles.length === 0 && (
-        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">{query.trim() ? "No articles match your search." : "No articles right now."}</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No articles match.</div>
       )}
 
       {articles.length > 0 && (

@@ -22,8 +22,8 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { useMutation } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft, ChevronRight, Loader2, AlertTriangle, ExternalLink,
   Satellite, Image as ImageIcon, Globe2, Sparkles,
@@ -137,14 +137,21 @@ function DateScrubber({ date, setDate }: { date: string; setDate: (d: string) =>
 // ── APOD ────────────────────────────────────────────────────────────────
 
 function ApodPanel({ date }: { date: string }) {
-  const apodQuery = useQuery({
-    queryKey: ['astronomy-apod', date],
-    queryFn: async () => callMacro<ApodData>('apod', { date }),
+  const [apod, setApod] = useState<ApodData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const apodQuery = useMutation({
+    mutationFn: async (d: string) => callMacro<ApodData>('apod', { date: d }),
+    onSuccess: (env) => {
+      if (env.ok && env.result) { setApod(env.result); setError(null); }
+      else { setApod(null); setError(env.error || 'No APOD'); }
+    },
   });
-  const apod = apodQuery.data?.ok ? (apodQuery.data.result ?? null) : null;
-  const error = apodQuery.data && !apodQuery.data.ok
-    ? (apodQuery.data.error || 'No APOD')
-    : apodQuery.isError ? 'No APOD' : null;
+
+  useEffect(() => {
+    apodQuery.mutate(date);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date]);
 
   return (
     <section className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3">
@@ -374,7 +381,9 @@ function NeoTable({ startDate }: { startDate: string }) {
       )}
       {neos.length > 0 && (
         <div className="space-y-1">
-          {neos.slice(0, 25).map((n) => <NeoRow key={`${n.id}-${n.approach?.date ?? ''}`} n={n} />)}
+          <AnimatePresence initial={false}>
+            {neos.slice(0, 25).map((n) => <NeoRow key={n.id} n={n} />)}
+          </AnimatePresence>
         </div>
       )}
     </section>
@@ -388,7 +397,12 @@ function NeoRow({ n }: { n: NeoObject }) {
   const border = isClose ? 'border-l-red-500 bg-red-500/5' : isAmber ? 'border-l-amber-500 bg-amber-500/5' : 'border-l-zinc-700';
 
   return (
-    <div
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -4 }}
+      transition={{ duration: 0.15 }}
       className={`flex items-center gap-3 rounded border border-zinc-800 border-l-4 ${border} px-2.5 py-1.5`}
     >
       <div className="min-w-0 flex-1">
@@ -439,7 +453,7 @@ function NeoRow({ n }: { n: NeoObject }) {
           <a href={n.nasaJplUrl} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200" aria-label="Open JPL page"><ExternalLink className="h-2.5 w-2.5" /></a>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 

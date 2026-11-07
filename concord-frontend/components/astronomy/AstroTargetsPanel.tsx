@@ -33,9 +33,6 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
   const [observations, setObservations] = useState<Observation[]>([]);
   const [obsForm, setObsForm] = useState({ conditions: '', notes: '', rating: 4 });
   const [lastObs, setLastObs] = useState<AstroObservation | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [editingTarget, setEditingTarget] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', constellation: '', magnitude: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -75,28 +72,12 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
       magnitude: form.magnitude ? Number(form.magnitude) : undefined,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setNotice(`Target added — ${form.name.trim()}`);
     setForm({ name: '', type: 'nebula', constellation: '', magnitude: '' });
     setShowAdd(false); setError(null);
     await refresh(); onChange();
   };
   const importCatalog = async (catalogId: string) => {
     await lensRun('astronomy', 'catalog-import', { catalogId });
-    setNotice(`Imported ${catalogId} to your targets.`);
-    await refresh(); onChange();
-  };
-  // target-update has been registered server-side since the substrate was
-  // built; this Edit control is its first surface (S5's surfacing half).
-  const saveTargetEdit = async () => {
-    if (!selected) return;
-    const r = await lensRun('astronomy', 'target-update', {
-      id: selected.id, name: editForm.name.trim(), constellation: editForm.constellation.trim(),
-      magnitude: editForm.magnitude ? Number(editForm.magnitude) : undefined,
-    });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    const updated = (r.data as { result?: { target?: Target } })?.result?.target;
-    if (updated) setSelected(updated);
-    setEditingTarget(false); setError(null); setNotice('Target updated.');
     await refresh(); onChange();
   };
   const del = async (id: string) => { await lensRun('astronomy', 'target-delete', { id }); await refresh(); onChange(); };
@@ -126,42 +107,13 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
           <ChevronLeft className="w-3.5 h-3.5" /> All targets
         </button>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h3 className="text-base font-bold text-zinc-100">{selected.name}</h3>
-              <p className="text-xs text-zinc-400 capitalize">
-                {selected.type.replace(/_/g, ' ')}
-                {selected.constellation ? ` · ${selected.constellation}` : ''}
-                {selected.magnitude != null ? ` · mag ${selected.magnitude}` : ''}
-              </p>
-            </div>
-            {!editingTarget && (
-              <button type="button" onClick={() => {
-                setEditForm({ name: selected.name, constellation: selected.constellation || '', magnitude: selected.magnitude != null ? String(selected.magnitude) : '' });
-                setEditingTarget(true);
-              }} className="shrink-0 rounded-lg bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1.5 text-[11px] font-medium text-zinc-200">
-                Edit target
-              </button>
-            )}
-          </div>
-          {editingTarget && (
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <input placeholder="Object name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="Constellation" value={editForm.constellation} onChange={(e) => setEditForm({ ...editForm, constellation: e.target.value })}
-                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <input placeholder="Magnitude" inputMode="decimal" value={editForm.magnitude} onChange={(e) => setEditForm({ ...editForm, magnitude: e.target.value })}
-                className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-              <div className="flex gap-2">
-                <button type="button" onClick={saveTargetEdit}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-medium rounded-lg px-2.5 py-1.5">Save</button>
-                <button type="button" onClick={() => setEditingTarget(false)}
-                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-medium rounded-lg px-2.5 py-1.5">Cancel</button>
-              </div>
-            </div>
-          )}
+          <h3 className="text-base font-bold text-zinc-100">{selected.name}</h3>
+          <p className="text-xs text-zinc-400 capitalize">
+            {selected.type.replace(/_/g, ' ')}
+            {selected.constellation ? ` · ${selected.constellation}` : ''}
+            {selected.magnitude != null ? ` · mag ${selected.magnitude}` : ''}
+          </p>
         </div>
-        {notice && <div className="text-xs text-emerald-300 bg-emerald-950/40 border border-emerald-900/50 rounded-lg px-3 py-2">{notice}</div>}
 
         {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
@@ -231,11 +183,6 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
       </div>
 
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
-      {notice && <div className="text-xs text-emerald-300 bg-emerald-950/40 border border-emerald-900/50 rounded-lg px-3 py-2">{notice}</div>}
-
-      {view === 'catalog' && (
-        <p className="text-[11px] text-zinc-400">Showing {catalog.length} of the 110 Messier objects — the bright subset this catalogue carries.</p>
-      )}
 
       {showAdd && view === 'mine' && (
         <div className="grid grid-cols-2 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">

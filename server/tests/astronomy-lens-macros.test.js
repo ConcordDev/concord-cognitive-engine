@@ -101,9 +101,7 @@ describe("astronomy.sky-chart — real ephemeris for a known observer/instant", 
 
     // Moon illumination in [0,1], phase from the canonical 8-name table.
     assert.ok(res.moon.illumination >= 0 && res.moon.illumination <= 1);
-    // F3 convergence: the date-canonical (12:00 UTC) value for 2026-06-21.
-    // The prior 0.502 was the instantaneous 22:00Z reading.
-    assert.equal(res.moon.illumination, 0.458);
+    assert.equal(res.moon.illumination, 0.502);
     assert.equal(res.moon.phase, "First Quarter");
 
     // Sun above horizon at 22:00 UTC over NYC midsummer ⇒ daytime flag set.

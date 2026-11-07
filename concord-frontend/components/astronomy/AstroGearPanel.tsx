@@ -19,7 +19,6 @@ export function AstroGearPanel() {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', kind: 'telescope', specs: '', aperture: '', focalLength: '' });
 
   const refresh = useCallback(async () => {
@@ -45,7 +44,6 @@ export function AstroGearPanel() {
       focalLength: form.focalLength ? Number(form.focalLength) : undefined,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
-    setNotice(`Gear added — ${form.name.trim()}`);
     setForm({ name: '', kind: 'telescope', specs: '', aperture: '', focalLength: '' });
     setError(null);
     await refresh();
@@ -59,7 +57,6 @@ export function AstroGearPanel() {
   return (
     <div className="space-y-3">
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
-      {notice && <div className="text-xs text-emerald-300 bg-emerald-950/40 border border-emerald-900/50 rounded-lg px-3 py-2">{notice}</div>}
 
       <div className="grid grid-cols-3 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
         <input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
