@@ -253,8 +253,8 @@ export function CreativeActionPanel() {
       if (st.ok && st.result?.minted && st.result.dtuId) {
         const existingId = st.result.dtuId;
         setMintedDtuId(existingId);
-        pipe.publish('creative.mintedDtuId', existingId, { label: `Pkg DTU ${existingId.slice(0, 8)}…` });
-        ok(`Already minted · DTU ${existingId.slice(0, 8)}…`);
+        pipe.publish('creative.mintedDtuId', existingId, { label: `Pkg DTU ${existingId}` });
+        ok(`Already minted · DTU ${existingId}`);
         return;
       }
       // domain/lens stamped so the minted DTU scores the `primaryDomain`
@@ -264,7 +264,7 @@ export function CreativeActionPanel() {
       // DTUs competing for the same top-N slots.
       const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Production pkg`, domain: 'creative', lens: 'creative', tags: ['creative', 'production'], source: 'creative:pkg:mint', meta: { lens: 'creative', visibility: 'private', consent: { allowCitations: false }, prod: { shots: shotsResult, assets: assetsResult, budget: budgetResult, dist: distResult } } }, 'media', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('creative.mintedDtuId', id, { label: `Pkg DTU ${id.slice(0, 8)}…` }); ok(`Pkg DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('creative.mintedDtuId', id, { label: `Pkg DTU ${id}` }); ok(`Pkg DTU ${id}`); }
       else err((r.data as { error?: string } | undefined)?.error === 'duplicate_blocked' ? 'A package titled "Production pkg" already exists.' : 'No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
