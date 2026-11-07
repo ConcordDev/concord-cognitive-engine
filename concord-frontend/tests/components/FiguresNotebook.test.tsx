@@ -132,7 +132,10 @@ describe('FiguresNotebook — real history.figure-* backend', () => {
 
     fireEvent.click(screen.getByText('Ada Lovelace'));
     const deleteBtn = await screen.findByLabelText('Delete Ada Lovelace');
+    // Delete is two-step: the first click arms it (nothing is sent), the second confirms.
     fireEvent.click(deleteBtn);
+    expect(lensRun).not.toHaveBeenCalledWith('history', 'figure-delete', { id: 'fig_ada' });
+    fireEvent.click(await screen.findByLabelText(/Delete Ada Lovelace|Confirm delete Ada Lovelace/));
 
     await waitFor(() => {
       expect(lensRun).toHaveBeenCalledWith('history', 'figure-delete', { id: 'fig_ada' });
