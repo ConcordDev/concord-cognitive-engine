@@ -199,6 +199,18 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Workspace',
     caption: 'Your workspace data: campaigns, donors, volunteers and pages are your live records; 990 research data is ProPublica’s open-access IRS dataset.',
   },
+  /**
+   * Mail is two mailboxes under one lens: player mail is this instance's
+   * own persistent store (messages, items and Concord Coin move between
+   * accounts here), while the Gmail side is the user's own Google
+   * account, connected by them and revocable. The generic REAL_LIVE
+   * line ("polled live from an external source") blurs that split, so
+   * the caption names both halves (F1).
+   */
+  mail: {
+    label: 'Live',
+    caption: 'Player mail is real: messages, items and Concord Coin move between accounts on this instance and persist on Concord’s backend. The Gmail side is your own Google account, connected by you and revocable; until you connect it, that side shows its connect wall and holds nothing.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
