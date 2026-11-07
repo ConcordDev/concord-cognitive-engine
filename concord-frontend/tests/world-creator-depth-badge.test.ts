@@ -34,10 +34,13 @@ describe('World Creator declaration (F1, following the determination)', () => {
     expect(badge?.caption).not.toBe('Real, polled live from an external source.');
   });
 
-  it('the caption states both halves: real authoring + playtest mint, and the unwired Sub-Worlds seam', () => {
+  it('the caption states both halves: real authoring + playtest mint, and the bridged Sub-Worlds seam (B15)', () => {
     const badge = renderHook(() => useDepthBadge('world-creator')).result.current;
     expect(badge?.caption).toContain('playtest mints a real world you enter in the World lens');
-    expect(badge?.caption).toContain('do not yet surface in Sub-Worlds’ discovery');
+    // B15 bridges the seam: Sub-Worlds' discovery unions this lens's published drafts, so the
+    // caption now says they ARE discoverable there (and no longer the old unwired wording).
+    expect(badge?.caption).toContain('discoverable in this lens and in Sub-Worlds’ discovery');
+    expect(badge?.caption).not.toContain('do not yet surface');
   });
 
   it('the integration registry agrees on both authoring keys (REAL_LIVE, liveFromSubstrate)', () => {
