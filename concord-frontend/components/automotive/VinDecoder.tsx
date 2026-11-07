@@ -29,6 +29,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
+import { joinParts } from '@/lib/utils';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface VinData {

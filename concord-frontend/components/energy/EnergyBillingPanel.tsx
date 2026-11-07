@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Receipt, Target, Trash2, TrendingUp } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
+import { cn, formatFigure } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 
 interface Bill {
@@ -102,7 +102,7 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">Utility rate</h3>
         <p className="text-[11px] text-zinc-400 mb-2">
-          Current: <span className="text-zinc-200">${rate?.ratePerKwh}/kWh</span>
+          Current: <span className="text-zinc-200">{formatFigure(rate?.ratePerKwh, { prefix: '$', suffix: '/kWh' })}</span>
           {rate?.utility ? ` · ${rate.utility}` : ''}{isDefaultRate ? ' (default — set yours below)' : ''}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -122,9 +122,9 @@ export function EnergyBillingPanel({ onChange }: { onChange: () => void }) {
             <Receipt className="w-3.5 h-3.5 text-lime-400" /> This month&apos;s estimate
           </h3>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-            <p className="text-2xl font-bold text-zinc-100">${bill.estimatedBill}</p>
+            <p className="text-2xl font-bold text-zinc-100">{formatFigure(bill.estimatedBill, { prefix: '$' })}</p>
             <p className="text-[11px] text-zinc-400">
-              {bill.netKwh} net kWh ({bill.consumedKwh} used − {bill.solarKwh} solar) at ${bill.ratePerKwh}/kWh
+              {formatFigure(bill.netKwh)} net kWh ({formatFigure(bill.consumedKwh)} used − {formatFigure(bill.solarKwh)} solar) at {formatFigure(bill.ratePerKwh, { prefix: '$', suffix: '/kWh' })}
             </p>
             {bill.solarSavings > 0 && (
               <p className="text-[11px] text-emerald-400 mt-0.5">Solar saved ${bill.solarSavings} this month.</p>
