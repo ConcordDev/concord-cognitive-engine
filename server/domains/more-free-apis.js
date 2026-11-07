@@ -63,14 +63,16 @@ export default function registerMoreFreeApiMacros(register) {
         return { ok: true, source: "PubChem", fetchedAt: Math.floor(Date.now() / 1000), query: name, total: 0, compounds: [] };
       }
       // Fetch property summary for each.
+      // PubChem renamed CanonicalSMILES → ConnectivitySMILES (the isomeric
+      // form is now plain SMILES); the dead name returns no field at all.
       const props = await fetchJsonWithTimeout(
-        `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cids.join(",")}/property/MolecularFormula,MolecularWeight,CanonicalSMILES,InChIKey,IUPACName/JSON`,
+        `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cids.join(",")}/property/MolecularFormula,MolecularWeight,ConnectivitySMILES,SMILES,InChIKey,IUPACName/JSON`,
       );
       const compounds = (props.PropertyTable?.Properties || []).map(p => ({
         cid: p.CID,
         molecularFormula: p.MolecularFormula,
         molecularWeight: p.MolecularWeight,
-        smiles: p.CanonicalSMILES,
+        smiles: p.SMILES || p.ConnectivitySMILES || p.CanonicalSMILES,
         inchiKey: p.InChIKey,
         iupacName: p.IUPACName,
         pubchemUrl: `https://pubchem.ncbi.nlm.nih.gov/compound/${p.CID}`,

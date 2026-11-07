@@ -223,7 +223,11 @@ export function SaveAsDtuButton({
       }
       const id = data?.id || data?.dtu?.id || 'saved';
       setSavedId(id);
-      addToast({ type: 'success', message: `Saved as DTU (source: ${apiSource})` });
+      // The receipt carries the FULL DTU id. It was already in hand here and
+      // simply not rendered — so no surface in any lens let the user copy
+      // the id their save had just minted, and library retrieval by id was
+      // impossible from the receipt (the F8 shape, filed per-lens).
+      addToast({ type: 'success', message: id !== 'saved' ? `Saved as DTU ${id} (source: ${apiSource})` : `Saved as DTU (source: ${apiSource})` });
       queryClient.invalidateQueries({ queryKey: ['dtus-recent'] });
       queryClient.invalidateQueries({ queryKey: ['dtus-mine'] });
       queryClient.invalidateQueries({ queryKey: ['lensDTUs'] });

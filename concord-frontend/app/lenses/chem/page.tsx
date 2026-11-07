@@ -20,7 +20,6 @@ import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { PubChemPanel } from '@/components/chem/PubChemPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
@@ -92,7 +91,12 @@ export default function ChemLensPage() {
         onTab={(id) => setActive(id as ChemView)}
         actions={
           <>
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            {/* No LIVE pill on this lens: chem's declared tier is "Real but
+                static / open-access dataset" (honest, and verified as such),
+                while the pill reports a realtime socket's state — beside
+                the heading it read as a data claim and contradicted the
+                tier line (F1). The pill comes off until the header drives
+                it from the tier, the Lead's fix-once item. */}
             <DTUExportButton domain="chem" data={{}} compact />
           </>
         }

@@ -692,6 +692,15 @@ function NotebookTab() {
   const [tags, setTags] = useState('');
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<NotebookEntry | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editEquation, setEditEquation] = useState('');
+  const [editProcedure, setEditProcedure] = useState('');
+  const [editObservations, setEditObservations] = useState('');
+  const [editYield, setEditYield] = useState('');
+  const [editTags, setEditTags] = useState('');
 
   const load = useCallback(async (q: string) => {
     const r = await lensRun<{ entries: NotebookEntry[] }>('chem', 'notebook-list', q ? { query: q } : {});
@@ -701,21 +710,57 @@ function NotebookTab() {
   useEffect(() => { load(''); }, [load]);
 
   const add = async () => {
-    setError(null);
+    setError(null); setNotice(null);
     if (!title.trim()) { setError('Title required'); return; }
     const input: Record<string, unknown> = { title, equation, procedure, observations };
     if (yieldPercent && Number.isFinite(Number(yieldPercent))) input.yieldPercent = Number(yieldPercent);
     if (tags.trim()) input.tags = tags.split(',').map((t) => t.trim()).filter(Boolean);
+    const savedTitle = title;
     const r = await lensRun('chem', 'notebook-add', input);
     if (r.data.ok) {
       setTitle(''); setEquation(''); setProcedure(''); setObservations(''); setYieldPercent(''); setTags('');
+      // The create used to be silent — the entry counter moving was the
+      // only signal. Receipt it by name.
+      setNotice(`Entry saved — "${savedTitle}".`);
       load(query);
     } else setError(r.data.error || 'Add failed');
   };
 
-  const del = async (id: string) => {
-    const r = await lensRun('chem', 'notebook-delete', { id });
-    if (r.data.ok) load(query);
+  const startEdit = (e: NotebookEntry) => {
+    setEditing(e); setConfirmId(null); setError(null);
+    setEditTitle(e.title); setEditEquation(e.equation || ''); setEditProcedure(e.procedure || '');
+    setEditObservations(e.observations || ''); setEditYield(e.yieldPercent != null ? String(e.yieldPercent) : '');
+    setEditTags(e.tags.join(', '));
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setError(null); setNotice(null);
+    if (!editTitle.trim()) { setError('Title required'); return; }
+    const input: Record<string, unknown> = {
+      id: editing.id, title: editTitle, equation: editEquation, procedure: editProcedure, observations: editObservations,
+      tags: editTags.split(',').map((t) => t.trim()).filter(Boolean),
+    };
+    input.yieldPercent = editYield && Number.isFinite(Number(editYield)) ? Number(editYield) : null;
+    const r = await lensRun('chem', 'notebook-update', input);
+    if (r.data.ok) {
+      setNotice(`Entry updated — "${editTitle}".`);
+      setEditing(null);
+      load(query);
+    } else setError(r.data.error || 'Update failed');
+  };
+
+  const del = async (entry: NotebookEntry) => {
+    // Two-step, naming the entry: one click used to vanish a record with
+    // no confirmation, no receipt, no undo (the fleet's unconfirmed-
+    // destructive shape, second notebook running).
+    if (confirmId !== entry.id) { setConfirmId(entry.id); return; }
+    const r = await lensRun('chem', 'notebook-delete', { id: entry.id });
+    if (r.data.ok) {
+      setConfirmId(null);
+      setNotice(`Entry deleted — "${entry.title}".`);
+      load(query);
+    } else setError(r.data.error || 'Delete failed');
   };
 
   return (
@@ -737,6 +782,7 @@ function NotebookTab() {
           <NotebookPen className="w-3 h-3" /> Add entry
         </button>
         {error && <p className="text-xs text-rose-300">{error}</p>}
+        {notice && <p className="text-xs text-emerald-300" role="status">{notice}</p>}
       </div>
 
       <div className="flex gap-2">
@@ -759,9 +805,23 @@ function NotebookTab() {
                 <span className="text-[10px] rounded bg-emerald-500/15 text-emerald-300 px-1.5 py-0.5">{e.yieldPercent}% yield</span>
               )}
               <span className="ml-auto text-[10px] text-gray-400">{new Date(e.createdAt).toLocaleDateString()}</span>
-              <button type="button" onClick={() => del(e.id)} className="text-rose-400 hover:text-rose-300" aria-label="Delete entry">
-                <Trash2 className="w-3 h-3" />
+              <button type="button" onClick={() => startEdit(e)} className="text-[10px] text-violet-300 hover:text-violet-200" aria-label={`Edit entry ${e.title}`}>
+                Edit
               </button>
+              {confirmId === e.id ? (
+                <>
+                  <button type="button" onClick={() => del(e)} className="text-[10px] font-semibold text-rose-300 hover:text-rose-200" aria-label={`Confirm delete entry ${e.title}`}>
+                    Delete “{e.title}”?
+                  </button>
+                  <button type="button" onClick={() => setConfirmId(null)} className="text-[10px] text-gray-400 hover:text-gray-300">
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button type="button" onClick={() => del(e)} className="text-rose-400 hover:text-rose-300" aria-label={`Delete entry ${e.title}`}>
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
             </div>
             {e.equation && <p className="text-[11px] font-mono text-violet-300 mt-1">{e.equation}</p>}
             {e.procedure && <p className="text-[11px] text-gray-400 mt-1">{e.procedure}</p>}
@@ -771,6 +831,22 @@ function NotebookTab() {
                 {e.tags.map((t) => (
                   <span key={t} className="text-[10px] rounded bg-violet-500/15 text-violet-300 px-1.5 py-0.5">#{t}</span>
                 ))}
+              </div>
+            )}
+            {editing?.id === e.id && (
+              <div className="mt-2 space-y-2 border-t border-white/10 pt-2">
+                <input value={editTitle} onChange={(ev) => setEditTitle(ev.target.value)} placeholder="Reaction title *" className={inputCls} />
+                <input value={editEquation} onChange={(ev) => setEditEquation(ev.target.value)} placeholder="Equation (optional)" className={inputCls} />
+                <textarea value={editProcedure} onChange={(ev) => setEditProcedure(ev.target.value)} placeholder="Procedure" rows={2} className={inputCls + ' resize-y'} />
+                <textarea value={editObservations} onChange={(ev) => setEditObservations(ev.target.value)} placeholder="Observations" rows={2} className={inputCls + ' resize-y'} />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="number" value={editYield} onChange={(ev) => setEditYield(ev.target.value)} placeholder="Yield %" className={inputCls} />
+                  <input value={editTags} onChange={(ev) => setEditTags(ev.target.value)} placeholder="tags, comma-sep" className={inputCls} />
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={saveEdit} className={btnCls}>Save changes</button>
+                  <button type="button" onClick={() => setEditing(null)} className={btnCls}>Cancel</button>
+                </div>
               </div>
             )}
           </div>

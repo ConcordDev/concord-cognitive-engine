@@ -273,6 +273,19 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Live: translation runs on this server\'s local model — your text never leaves your server. Saved translations and glossaries are your own records.',
   },
+||||||| 04706cc47
+  },
+  /**
+  /**
+   * Plumbing's field-service records are the account's own shop data,
+   * persisted server-side — the Simulated declaration was false on its own
+   * terms (Review 4's determination: real execution). REAL_LIVE's generic
+   * "polled from an external source" caption would be its own falsehood.
+   */
+  plumbing: {
+    label: 'Live',
+    caption: 'Your own live shop records: technicians, jobs, invoices, parts and inspections are your account\'s real data, saved as you work.',
+  },
   game: {
     label: 'Lab & arcade sim',
     caption: 'Simulated: Design Lab forecasts and mini-game practice XP. Profile XP, quests, and achievements are your real activity.',
