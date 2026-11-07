@@ -20,7 +20,7 @@ import { useUIStore } from '@/store/ui';
 import { MailFolderPanel } from '@/components/mail/MailFolderPanel';
 import { ComposeMailPanel } from '@/components/mail/ComposeMailPanel';
 import {
-  NOT_CONNECTED, SYSTEM_FOLDERS, fmtListDate, forwardDraft, gmail, replyDraft, senderName,
+  NOT_CONNECTED, SYSTEM_FOLDERS, fmtListDate, forwardDraft, gmail, gmailErrorText, replyDraft, senderName,
   type Draft, type FullMessage, type GmailLabel, type Outgoing, type ThreadSummary,
 } from './gmail';
 import { ComposeSheet, type ComposeInit } from './ComposeSheet';
@@ -94,13 +94,13 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
     if (isDrafts) {
       const r = await gmail.drafts();
       setLoading(false);
-      if (!r.ok) { if (!handleFail(r.error)) setListError(r.error); return; }
+      if (!r.ok) { if (!handleFail(r.error)) setListError(gmailErrorText(r.error)); return; }
       setConnected(true); setDrafts(r.data.drafts);
       return;
     }
     const r = await gmail.threads({ label: folder, q: query || undefined, pageToken: pages[pageIdx], maxResults: 25 });
     setLoading(false);
-    if (!r.ok) { if (!handleFail(r.error)) { setConnected(true); setListError(r.error); } return; }
+    if (!r.ok) { if (!handleFail(r.error)) { setConnected(true); setListError(gmailErrorText(r.error)); } return; }
     setConnected(true);
     setThreads(r.data.threads);
     setNextToken(r.data.nextPageToken);

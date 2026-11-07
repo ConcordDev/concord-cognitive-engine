@@ -11,6 +11,10 @@ export interface MailRow {
   id: string;
   fromUser?: string;
   toUser?: string;
+  fromName?: string | null;
+  fromHandle?: string | null;
+  toName?: string | null;
+  toHandle?: string | null;
   worldId?: string | null;
   subject: string;
   body: string;
