@@ -76,6 +76,40 @@ describe("travel.tripBudget (pure-compute)", () => {
   });
 });
 
+describe("travel.feed (REST Countries guides)", () => {
+  it("refuses the v3.1 deprecation envelope instead of ingesting zero", async () => {
+    let capturedUrl = "";
+    globalThis.fetch = async (url) => {
+      capturedUrl = String(url);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: false,
+          data: null,
+          errors: [{ message: "This API version has been deprecated. Please migrate to our new version (v5)." }],
+        }),
+      };
+    };
+    const r = await call("feed", ctxA, {});
+    assert.equal(r.ok, false);
+    assert.match(capturedUrl, /restcountries\.com\/v3\.1\/region\//);
+    assert.match(r.error, /deprecated/);
+    assert.equal(r.result, undefined);
+  });
+
+  it("refuses a 200 body that is not a country list", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ name: "not-a-list" }),
+    });
+    const r = await call("feed", ctxA, {});
+    assert.equal(r.ok, false);
+    assert.match(r.error, /no country list/);
+  });
+});
+
 describe("travel.country-info (REST Countries)", () => {
   it("rejects empty country", async () => {
     const r = await call("country-info", ctxA, {});
