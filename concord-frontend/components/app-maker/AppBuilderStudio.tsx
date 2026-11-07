@@ -25,7 +25,7 @@ import {
   Plus, Trash2, Copy, Layers, Database, Workflow, Eye, Rocket,
   Package, Plug, History, MousePointer2, Save, RefreshCw,
   CheckCircle, XCircle, Loader2, GripVertical, FileCode,
-  Link2, Unlink, Store, GitBranch, AlertTriangle, Info,
+  Link2, Unlink, Store, GitBranch, AlertTriangle, Info, Pencil,
 } from 'lucide-react';
 
 const DOMAIN = 'app-maker';
@@ -127,7 +127,25 @@ export function AppBuilderStudio() {
     if (d?.ok) await loadProjects();
   };
 
-  const deleteProject = async (id: string) => {
+  // F10: no rename control existed anywhere in Studio.
+  const renameProject = async (id: string, currentName: string) => {
+    const next = window.prompt('Rename project', currentName);
+    if (next == null) return; // cancelled
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === currentName) return;
+    setBusy('rename');
+    const d = await run('projectRename', { projectId: id, name: trimmed });
+    setBusy(null);
+    if (d?.ok) {
+      await loadProjects();
+      if (activeId === id) await loadProject(id);
+    }
+  };
+
+  const deleteProject = async (id: string, name: string) => {
+    // F6: this used to fire instantly with no confirmation — one click
+    // permanently destroyed a project.
+    if (!window.confirm(`Delete project "${name}"? This cannot be undone.`)) return;
     setBusy('del');
     await run('projectDelete', { projectId: id });
     setBusy(null);
@@ -172,10 +190,13 @@ export function AppBuilderStudio() {
                 {p.pageCount}p · {p.tableCount}t · {p.workflowCount}w
               </span>
               {p.deployment?.status === 'snapshotted' && <span className="text-green-400" title="A version snapshot has been published; not hosted at a live URL">snapshotted</span>}
+              <button onClick={() => renameProject(p.id, p.name)} title="Rename" className="text-gray-400 hover:text-neon-cyan">
+                <Pencil className="w-3 h-3" />
+              </button>
               <button onClick={() => duplicateProject(p.id)} title="Duplicate" className="text-gray-400 hover:text-neon-cyan">
                 <Copy className="w-3 h-3" />
               </button>
-              <button onClick={() => deleteProject(p.id)} title="Delete" className="text-gray-400 hover:text-red-400">
+              <button onClick={() => deleteProject(p.id, p.name)} title="Delete" className="text-gray-400 hover:text-red-400">
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>
