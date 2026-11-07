@@ -62,9 +62,9 @@ export default function TranslationLens() {
   const [languages, setLanguages] = useState<Language[]>([]);
   const [formalities, setFormalities] = useState<string[]>(['neutral', 'formal', 'informal']);
   const [catalogLoading, setCatalogLoading] = useState(true);
-  const [source, setSource] = useState(() => storedSetting('source', 'auto'));
-  const [target, setTarget] = useState(() => storedSetting('target', 'es'));
-  const [formality, setFormality] = useState(() => storedSetting('formality', 'neutral'));
+  const [source, setSource] = useState<string>(() => storedSetting('source', 'auto'));
+  const [target, setTarget] = useState<string>(() => storedSetting('target', 'es'));
+  const [formality, setFormality] = useState<string>(() => storedSetting('formality', 'neutral'));
   const [mode, setMode] = useState<'single' | 'batch' | 'document'>(() => storedSetting('mode', 'single'));
 
   useEffect(() => {
