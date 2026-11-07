@@ -18273,9 +18273,14 @@ register("metacognition", "status", (ctx, _input = {}) => {
 
 register("metacognition", "assess", (ctx, input = {}) => {
   enforceEthosInvariant("metacognition_assess");
-  const topic = String(input.topic || "");
+  const topic = String(input.topic || input.domain || "");
   if (!topic) return { ok: false, error: "topic required" };
-  return assessKnowledge(topic);
+  // S-MC-1: an assessment of the USER's competence in a domain is
+  // computed from the user's own prediction record in that domain
+  // (assessDomainFromRecord). It no longer returns assessKnowledge's
+  // DTU-coverage score, which measures the platform's corpus on a
+  // topic — identical for every user — and presented it as skill.
+  return assessDomainFromRecord(topic);
 }, { public: true });
 
 register("metacognition", "predict", (ctx, input = {}) => {
@@ -18289,6 +18294,13 @@ register("metacognition", "resolve_prediction", (ctx, input = {}) => {
   if (!predictionId) return { ok: false, error: "predictionId required" };
   const wasCorrect = input.correct === true || input.wasCorrect === true;
   return resolvePrediction(predictionId, wasCorrect);
+}, { public: false });
+
+register("metacognition", "prediction_delete", (ctx, input = {}) => {
+  enforceEthosInvariant("metacognition_prediction_delete");
+  const predictionId = String(input.predictionId || input.id || "");
+  if (!predictionId) return { ok: false, error: "predictionId required" };
+  return deletePrediction(predictionId);
 }, { public: false });
 
 register("metacognition", "calibration", (ctx, _input = {}) => {
@@ -18310,16 +18322,20 @@ register("metacognition", "select_strategy", (ctx, input = {}) => {
 register("metacognition", "blind_spots", (ctx, _input = {}) => {
   try {
   enforceEthosInvariant("metacognition_blindspots");
-  ensureMetacognitionSystem();
-  const spots = ctx.state.metacognition.blindSpots.slice(-20);
-  return { ok: true, blindSpots: spots };
+  // S-MC-1/F2: blind spots derive from the prediction record
+  // (computeRecordBlindSpots) — no longer the stored complements of
+  // the coverage score (1 - knowledgeScore over the platform corpus).
+  return { ok: true, blindSpots: computeRecordBlindSpots() };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // Introspection macros
-register("metacognition", "introspect", (ctx, _input = {}) => {
+register("metacognition", "introspect", (ctx, input = {}) => {
   enforceEthosInvariant("metacognition_introspect");
-  return introspectOnFailures();
+  // S-MC-3: the focus the panel collects actually scopes the run
+  // (this macro used to discard its input entirely).
+  const focus = String(input?.focus || "").trim();
+  return introspectOnFailures(focus);
 }, { public: true });
 
 register("metacognition", "analyze_failure", (ctx, input = {}) => {
@@ -18376,6 +18392,16 @@ register("metacognition", "assessments_list", (ctx, _input = {}) => {
   ensureMetacognitionSystem();
   const assessments = ctx.state.metacognition.assessments.slice(-100).slice().reverse();
   return { ok: true, assessments, total: assessments.length };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: true });
+
+// Per-domain competence from the record (S-MC-1): the Knowledge
+// Confidence Map and the Skill Timeline read THIS, never the
+// coverage assessments.
+register("metacognition", "domain_record", (ctx, _input = {}) => {
+  try {
+  enforceEthosInvariant("metacognition_domain_record");
+  return { ok: true, domains: computeDomainRecord() };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
@@ -84268,6 +84294,78 @@ function ensureMetacognitionSystem() {
 }
 
 // Assess current state of knowledge on a topic
+// ── Record-derived competence (S-MC-1) ─────────────────────────────
+// A domain figure in this lens is a statistic of the user's own
+// prediction record in that domain: resolved count, accuracy, Brier,
+// mean confidence. assessKnowledge (below) measures something else
+// entirely — the platform's DTU coverage on a topic — and its score
+// must never again be presented as the user's skill.
+function domainRecordStats(domain) {
+  ensureMetacognitionSystem();
+  const want = String(domain || "general").toLowerCase();
+  const all = Array.from(STATE.metacognition.predictions.values());
+  const inDomain = all.filter(p => String(p.domain || "general").toLowerCase() === want);
+  const resolved = inDomain.filter(p => p.outcome !== null);
+  const correct = resolved.filter(p => p.outcome === "correct").length;
+  const r4 = (v) => Math.round(v * 10000) / 10000;
+  return {
+    domain: String(domain || "general"),
+    predictions: inDomain.length,
+    resolved: resolved.length,
+    correct,
+    accuracy: resolved.length > 0 ? r4(correct / resolved.length) : null,
+    brierScore: resolved.length > 0
+      ? r4(resolved.reduce((sum, p) => sum + Math.pow(p.confidence - (p.outcome === "correct" ? 1 : 0), 2), 0) / resolved.length)
+      : null,
+    meanConfidence: resolved.length > 0
+      ? r4(resolved.reduce((sum, p) => sum + p.confidence, 0) / resolved.length)
+      : null,
+    lastResolvedAt: resolved.length > 0
+      ? resolved.map(p => p.resolvedAt || p.createdAt).sort().slice(-1)[0] : null,
+  };
+}
+
+function assessDomainFromRecord(topic) {
+  const stats = domainRecordStats(topic);
+  if (stats.resolved === 0) {
+    return { ok: true, assessment: { ...stats, skill: null,
+      note: `No resolved predictions in "${stats.domain}" yet \u2014 there is no record to assess competence from. Log and resolve predictions in this domain and the assessment will be computed from them.` } };
+  }
+  return { ok: true, assessment: { ...stats, skill: stats.accuracy,
+    note: `Computed from your record: ${stats.correct} of ${stats.resolved} resolved predictions correct in "${stats.domain}" (Brier ${stats.brierScore}).` } };
+}
+
+function computeDomainRecord() {
+  ensureMetacognitionSystem();
+  const domains = new Set(Array.from(STATE.metacognition.predictions.values()).map(p => String(p.domain || "general")));
+  return Array.from(domains)
+    .map(d => { const st = domainRecordStats(d); return { ...st, skill: st.accuracy }; })
+    .sort((a, b) => b.resolved - a.resolved || a.domain.localeCompare(b.domain));
+}
+
+// Blind spots from the record (S-MC-1/F2): a domain is a blind spot
+// when the user's own resolved predictions there fail at least half
+// the time on a real sample. Severity IS the observed failure rate
+// and the gaps name the counts — never a complement of a corpus
+// statistic.
+function computeRecordBlindSpots() {
+  const spots = [];
+  for (const st of computeDomainRecord()) {
+    if (st.resolved >= 2 && st.accuracy != null && st.accuracy <= 0.5) {
+      const failed = st.resolved - st.correct;
+      spots.push({
+        topic: st.domain,
+        severity: Math.round((1 - st.accuracy) * 10000) / 10000,
+        gaps: [`${failed} of ${st.resolved} resolved predictions in "${st.domain}" were incorrect`],
+        recommendation: `Your record in "${st.domain}" is ${st.correct}/${st.resolved} \u2014 consider lowering confidence there until it improves.`,
+        identifiedAt: st.lastResolvedAt,
+        resolvedCount: st.resolved,
+      });
+    }
+  }
+  return spots.sort((a, b) => b.severity - a.severity).slice(0, 20);
+}
+
 function assessKnowledge(topic) {
   ensureMetacognitionSystem();
   ensureSemanticEngine();
@@ -84397,6 +84495,33 @@ function resolvePrediction(predictionId, wasCorrect) {
   return { ok: true, prediction };
 }
 
+// Delete a prediction (F15). The calibration counters are decremented
+// in step, so the report stays a function of the surviving record —
+// the same recompute-on-delete the Decision Journal already proves.
+function deletePrediction(predictionId) {
+  ensureMetacognitionSystem();
+  const prediction = STATE.metacognition.predictions.get(predictionId);
+  if (!prediction) return { ok: false, error: "Prediction not found" };
+  STATE.metacognition.predictions.delete(predictionId);
+  const cal = STATE.metacognition.calibration;
+  cal.totalPredictions = Math.max(0, cal.totalPredictions - 1);
+  if (prediction.outcome !== null) {
+    const bucket = Math.ceil(prediction.confidence * 10) / 10;
+    if (cal.buckets[bucket]) {
+      cal.buckets[bucket].total = Math.max(0, cal.buckets[bucket].total - 1);
+      if (prediction.outcome === "correct") {
+        cal.buckets[bucket].correct = Math.max(0, cal.buckets[bucket].correct - 1);
+        cal.correctPredictions = Math.max(0, cal.correctPredictions - 1);
+      }
+      if (cal.buckets[bucket].total === 0) delete cal.buckets[bucket];
+    } else if (prediction.outcome === "correct") {
+      cal.correctPredictions = Math.max(0, cal.correctPredictions - 1);
+    }
+  }
+  saveStateDebounced();
+  return { ok: true, removed: predictionId };
+}
+
 // Get calibration report
 function getCalibrationReport() {
   ensureMetacognitionSystem();
@@ -84424,6 +84549,22 @@ function getCalibrationReport() {
     .reduce((sum, b) => sum + b.calibrationError, 0) /
     Math.max(Object.values(bucketStats).filter(b => b.calibrationError !== null).length, 1);
 
+  // One label scale for the whole lens (F12): ECE over the resolved
+  // record, labelled on the shared thresholds of lib/calibration-
+  // math.js's calibrationQualityLabel (<0.05 excellent \u00b7 <0.10 good \u00b7
+  // <0.20 moderate \u00b7 else poor) \u2014 the same scale the journal and
+  // predictions-analysis surfaces use. `interpretation` derives FROM
+  // that quality, so the two fields can never tell different stories.
+  const resolvedTotal = Object.values(bucketStats).reduce((sum, b) => sum + b.total, 0);
+  const ece = resolvedTotal > 0
+    ? Object.values(bucketStats).reduce((sum, b) => sum + (b.calibrationError != null ? b.calibrationError * b.total : 0), 0) / resolvedTotal
+    : null;
+  const quality = ece == null ? null
+    : ece < 0.05 ? "excellent" : ece < 0.1 ? "good" : ece < 0.2 ? "moderate" : "poor";
+  const interpretation = quality === "excellent" || quality === "good" ? "well-calibrated"
+    : quality === "moderate" ? "moderately calibrated"
+    : quality === "poor" ? "poorly calibrated" : null;
+
   return {
     ok: true,
     report: {
@@ -84432,8 +84573,9 @@ function getCalibrationReport() {
       overallAccuracy,
       buckets: bucketStats,
       avgCalibrationError,
-      interpretation: avgCalibrationError < 0.1 ? "well-calibrated" :
-                      avgCalibrationError < 0.2 ? "moderately calibrated" : "poorly calibrated"
+      ece: ece != null ? Math.round(ece * 10000) / 10000 : null,
+      quality,
+      interpretation
     }
   };
 }
@@ -84444,23 +84586,38 @@ function selectStrategy(problemDescription) {
 
   const lower = problemDescription.toLowerCase();
 
+  // S-MC-2: the advisor selects from the lens's own Thinking-Strategy
+  // Library \u2014 the same twelve strategies strategyLibrary serves
+  // (names and guidance mirror THINKING_STRATEGIES in
+  // server/domains/metacognition.js), each with the problem shapes it
+  // answers. Before this, the advisor matched a private seven-item
+  // list that shared no entries with the library, an estimation
+  // problem could never reach Fermi estimation, and two different
+  // problems whose text happened to share an early keyword received
+  // the identical answer.
   const strategies = [
-    { name: "deductive", trigger: /prove|must|necessarily|follows|therefore/i, description: "Apply logical rules to derive certain conclusions" },
-    { name: "inductive", trigger: /pattern|trend|usually|often|generally/i, description: "Generalize from specific observations" },
-    { name: "abductive", trigger: /explain|why|cause|reason|because/i, description: "Find the best explanation for observations" },
-    { name: "analogical", trigger: /similar|like|compare|analogy|same as/i, description: "Map from known to unknown via similarity" },
-    { name: "decomposition", trigger: /break down|parts|components|step by step/i, description: "Divide problem into smaller parts" },
-    { name: "simulation", trigger: /what if|scenario|imagine|suppose/i, description: "Run mental simulation of possibilities" },
-    { name: "empirical", trigger: /test|measure|observe|experiment|data/i, description: "Gather evidence through observation" }
+    { id: "fermi", name: "Fermi estimation", trigger: /how many|how much|estimate|roughly|order of magnitude|number of .{0,40} in |population of/i, description: "When you need a rough number fast. Decompose into factors you can estimate, multiply, sanity-check the order of magnitude." },
+    { id: "premortem", name: "Pre-mortem", trigger: /plan|launch|commit|rollout|release|project/i, description: "Before committing to a plan, imagine it has failed and explain why. Assume failure 6 months out; list every plausible cause; harden against the top ones." },
+    { id: "inversion", name: "Inversion", trigger: /stuck|unclear|how (can|do) (i|we) (achieve|succeed|get)/i, description: "When the path forward is unclear. Instead of asking how to succeed, ask what would guarantee failure \u2014 then avoid it." },
+    { id: "base_rates", name: "Base-rate reasoning", trigger: /odds|chance|likely|probability|forecast|predict|will it/i, description: "When estimating the odds of an outcome. Start from how often this class of event happens, then adjust for specifics." },
+    { id: "second_order", name: "Second-order thinking", trigger: /consequence|downstream|long[- ]term|side effect/i, description: "When a choice has downstream consequences. Ask 'and then what?' at least twice for each option." },
+    { id: "steelman", name: "Steelmanning", trigger: /opposing|disagree|counterargument|other side|critic/i, description: "When evaluating an opposing view. State the strongest version of the other side before critiquing it." },
+    { id: "occam", name: "Occam's razor", trigger: /explain|explanation|why did|cause of|reason for/i, description: "When choosing between explanations. Prefer the explanation requiring the fewest unsupported assumptions." },
+    { id: "red_team", name: "Red teaming", trigger: /risk|review (the|our|my) plan|high[- ]stakes|vulnerab/i, description: "Before a high-stakes commitment. Assign someone (or yourself) to actively attack the plan." },
+    { id: "five_whys", name: "Five whys", trigger: /root cause|keeps happening|recurring|why does/i, description: "When diagnosing a root cause. Ask 'why' repeatedly until you reach a cause you can act on." },
+    { id: "outside_view", name: "Outside view", trigger: /my (project|startup|plan|app)|timeline|how long will|similar (projects|efforts)/i, description: "When your plan feels uniquely promising. Compare against a reference class of similar past efforts." },
+    { id: "decision_tree", name: "Decision tree", trigger: /choose between|decide between|which (one|option)|uncertain outcome/i, description: "When outcomes branch on uncertain events. Map options, chance nodes and payoffs; compute expected value per branch." },
+    { id: "rubber_duck", name: "Rubber-duck explanation", trigger: /confused|don\u2019t understand|how does .{0,30} work/i, description: "When stuck on a problem. Explain the problem step-by-step out loud as if to a novice." },
   ];
 
-  const matches = strategies.filter(s => s.trigger.test(lower));
-  const selected = matches.length > 0 ? matches[0] : { name: "mixed", description: "Combine multiple reasoning approaches" };
+  const matches = strategies.filter(st => st.trigger.test(lower));
+  const selected = matches.length > 0 ? matches[0]
+    : { id: "base_rates", name: "Base-rate reasoning", description: "No library strategy matched this problem's shape directly \u2014 start from the base rate: how often does this class of thing happen? Then adjust for the specifics of your case." };
 
   STATE.metacognition.strategies.push({
     problem: problemDescription.slice(0, 200),
-    selected: selected.name,
-    alternatives: matches.slice(1).map(s => s.name),
+    selected: selected.id,
+    alternatives: matches.slice(1).map(st => st.id),
     selectedAt: nowISO()
   });
   STATE.metacognition.stats.strategiesUsed++;
@@ -84470,7 +84627,11 @@ function selectStrategy(problemDescription) {
     STATE.metacognition.strategies = STATE.metacognition.strategies.slice(-200);
   }
 
-  return { ok: true, strategy: selected, alternatives: matches.slice(1) };
+  return {
+    ok: true,
+    strategy: { id: selected.id, name: selected.name, description: selected.description },
+    alternatives: matches.slice(1).map(st => ({ id: st.id, name: st.name, description: st.description }))
+  };
 }
 
 // ===== METACOGNITION INTROSPECTION =====
@@ -84489,18 +84650,34 @@ function ensureIntrospectionState() {
   }
 }
 
-// Introspect on past predictions to understand failure patterns
-function introspectOnFailures() {
+// Introspect on past predictions to understand failure patterns.
+// `focus` (S-MC-3) scopes the run to predictions whose statement or
+// domain mentions a focus term, and the result names its scope \u2014 a
+// run that ignores its focus is a finding, not a feature.
+function introspectOnFailures(focus = "") {
   ensureMetacognitionSystem();
   ensureIntrospectionState();
 
-  const predictions = Array.from(STATE.metacognition.predictions.values())
+  const allResolved = Array.from(STATE.metacognition.predictions.values())
     .filter(p => p.outcome !== null);
+  const focusTerms = String(focus || "").toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 3);
+  let predictions = allResolved;
+  if (focusTerms.length > 0) {
+    predictions = allResolved.filter(p => {
+      const hay = `${p.statement || ""} ${p.domain || ""}`.toLowerCase();
+      return focusTerms.some(t => hay.includes(t));
+    });
+  }
 
   if (predictions.length < 3) {
     return {
       ok: true,
-      message: "Insufficient data for introspection (need at least 3 resolved predictions)",
+      message: focusTerms.length > 0
+        ? `Insufficient data for introspection on "${focus}" (need at least 3 resolved predictions in scope; ${predictions.length} found of ${allResolved.length} resolved)`
+        : "Insufficient data for introspection (need at least 3 resolved predictions)",
+      focus: focus || null,
+      scopedCount: predictions.length,
+      totalResolved: allResolved.length,
       failurePatterns: [],
       recommendations: []
     };
@@ -84567,7 +84744,11 @@ function introspectOnFailures() {
     });
   }
 
-  // Pattern 4: Consistent failure on certain question types
+  // Pattern 4: Consistent failure on certain question types.
+  // S-MC-3: a topic word is a PATTERN only if it discriminates \u2014
+  // over-represented in failures relative to successes. Words counted
+  // in failures alone (the old mechanism) surface whatever the user
+  // habitually types, successes included, and call it a weakness.
   const failureKeywords = {};
   for (const f of failures) {
     const words = String(f.statement || "").toLowerCase().split(/\s+/);
@@ -84577,9 +84758,19 @@ function introspectOnFailures() {
       }
     }
   }
+  const successKeywords = {};
+  for (const f of successes) {
+    const words = String(f.statement || "").toLowerCase().split(/\s+/);
+    for (const word of words) {
+      if (word.length > 4) {
+        successKeywords[word] = (successKeywords[word] || 0) + 1;
+      }
+    }
+  }
 
   const commonFailureWords = Object.entries(failureKeywords)
-    .filter(([_word, count]) => count >= 2)
+    .filter(([word, count]) => count >= 2
+      && (count / Math.max(failures.length, 1)) > ((successKeywords[word] || 0) / Math.max(successes.length, 1)))
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3);
 
@@ -84619,6 +84810,9 @@ function introspectOnFailures() {
   const introspectionResult = {
     id: uid("intro"),
     timestamp: nowISO(),
+    focus: focus || null,
+    scopedCount: predictions.length,
+    totalResolved: allResolved.length,
     totalPredictions: predictions.length,
     failures: failures.length,
     successes: successes.length,
@@ -84628,15 +84822,25 @@ function introspectOnFailures() {
     confidenceAdjustments: { ...STATE.metacognition.introspection.confidenceAdjustments }
   };
 
-  STATE.metacognition.introspection.failurePatterns.push({
+  // F14: re-running an unchanged analysis updates its record instead
+  // of appending a duplicate \u2014 the history versions by change, not
+  // by click.
+  const historyEntry = {
     ...introspectionResult,
     patterns: failurePatterns.map(p => p.type)
-  });
+  };
+  const history = STATE.metacognition.introspection.failurePatterns;
+  const lastEntry = history[history.length - 1];
+  const entrySignature = (e) => `${e.focus || ""}|${e.totalPredictions}|${e.failures}|${(e.patterns || []).join(",")}`;
+  if (lastEntry && entrySignature(lastEntry) === entrySignature(historyEntry)) {
+    history[history.length - 1] = historyEntry;
+  } else {
+    history.push(historyEntry);
+  }
 
   // Cap history
-  if (STATE.metacognition.introspection.failurePatterns.length > 50) {
-    STATE.metacognition.introspection.failurePatterns =
-      STATE.metacognition.introspection.failurePatterns.slice(-50);
+  if (history.length > 50) {
+    STATE.metacognition.introspection.failurePatterns = history.slice(-50);
   }
 
   STATE.metacognition.introspection.lastIntrospection = nowISO();
@@ -84874,6 +85078,11 @@ function getIntrospectionStatus() {
     ok: true,
     lastIntrospection: STATE.metacognition.introspection.lastIntrospection,
     failurePatternCount: STATE.metacognition.introspection.failurePatterns.length,
+    // F13: patterns FOUND (summed over runs) vs RUNS stored \u2014 the
+    // panel's "N failure pattern(s)" label reads patternsFound; the
+    // run count is reported separately under its own name.
+    runsCount: STATE.metacognition.introspection.failurePatterns.length,
+    patternsFound: STATE.metacognition.introspection.failurePatterns.reduce((sum, e) => sum + (Array.isArray(e.patterns) ? e.patterns.length : 0), 0),
     strategyModificationCount: STATE.metacognition.introspection.strategyModifications.length,
     learningEventCount: STATE.metacognition.introspection.learningEvents.length,
     confidenceAdjustments: STATE.metacognition.introspection.confidenceAdjustments,
@@ -84886,20 +85095,46 @@ function adjustConfidenceFromLearning(domain, baseConfidence) {
   ensureMetacognitionSystem();
   ensureIntrospectionState();
 
-  const adjustment = STATE.metacognition.introspection.confidenceAdjustments[domain] || 1.0;
-  const adjustedConfidence = clamp(baseConfidence * adjustment, 0.1, 0.95);
-
+  // S-MC-2: the adjustment derives from the recorded performance in
+  // the domain \u2014 the calibration gap between stated confidence and
+  // observed accuracy across resolved predictions \u2014 applied to the
+  // estimate. (Before this, the adjuster read only the adjustments
+  // map introspection writes, so on any record introspection had not
+  // mined it returned \u00d71.00 under a claim of "given historical
+  // performance in a domain".) Below the sample threshold it states
+  // the volume of history it needs instead of silently returning
+  // \u00d71.00.
+  const stats = domainRecordStats(domain);
+  const MIN_RESOLVED = 3;
+  if (stats.resolved < MIN_RESOLVED) {
+    return {
+      ok: true,
+      original: baseConfidence,
+      adjusted: baseConfidence,
+      factor: 1.0,
+      domain,
+      resolvedCount: stats.resolved,
+      requiredCount: MIN_RESOLVED,
+      explanation: `Only ${stats.resolved} resolved prediction${stats.resolved === 1 ? "" : "s"} in "${domain}" \u2014 the adjuster needs at least ${MIN_RESOLVED} to move an estimate. No adjustment applied.`
+    };
+  }
+  const gap = stats.meanConfidence - stats.accuracy;
+  const adjustedConfidence = clamp(baseConfidence - gap, 0.05, 0.95);
+  const r4 = (v) => Math.round(v * 10000) / 10000;
   return {
     ok: true,
     original: baseConfidence,
-    adjusted: adjustedConfidence,
-    factor: adjustment,
+    adjusted: r4(adjustedConfidence),
+    factor: baseConfidence > 0 ? r4(adjustedConfidence / baseConfidence) : 1.0,
     domain,
-    explanation: adjustment < 1.0
-      ? `Confidence reduced due to historical weakness in "${domain}"`
-      : adjustment > 1.0
-        ? `Confidence boosted due to historical strength in "${domain}"`
-        : "No adjustment applied"
+    resolvedCount: stats.resolved,
+    accuracy: stats.accuracy,
+    meanConfidence: stats.meanConfidence,
+    explanation: gap > 0.02
+      ? `In "${domain}": ${stats.resolved} resolved predictions, ${(stats.accuracy * 100).toFixed(0)}% accurate at ${(stats.meanConfidence * 100).toFixed(0)}% average confidence \u2014 an overconfidence gap of ${(gap * 100).toFixed(0)} points, applied to this estimate.`
+      : gap < -0.02
+        ? `In "${domain}": ${stats.resolved} resolved predictions, ${(stats.accuracy * 100).toFixed(0)}% accurate at ${(stats.meanConfidence * 100).toFixed(0)}% average confidence \u2014 an underconfidence gap of ${(-gap * 100).toFixed(0)} points, applied to this estimate.`
+        : `In "${domain}": ${stats.resolved} resolved predictions, ${(stats.accuracy * 100).toFixed(0)}% accurate at ${(stats.meanConfidence * 100).toFixed(0)}% average confidence \u2014 well calibrated, no adjustment needed.`
   };
 }
 

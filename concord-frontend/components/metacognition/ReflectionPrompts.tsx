@@ -83,6 +83,9 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
       if (r?.streak) setStreak(r.streak as Streak);
       setAnswers({}); setNote(''); setTitle('');
       load();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('metacognition:record-changed'));
+      }
     } else {
       setError(res.data.error || 'Failed to save reflection');
     }
