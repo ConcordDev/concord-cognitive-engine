@@ -447,6 +447,22 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Drafts here are your real records — sculpted scenes, props, spawn points, zones, NPCs and factions persist, and playtest mints a real world you enter in the World lens. Published drafts are discoverable in this lens; they do not yet surface in Sub-Worlds’ discovery.',
   },
   /**
+   * World Creator's declaration follows its DETERMINATION (the
+   * compilation's form — S1 priced on the determination's result):
+   * the authoring execution is real (drafts persist in the platform
+   * store with the full editor verb set; playtest mints a real world
+   * via /api/worlds and routes the creator into it), so the old
+   * Simulated banner was a taxonomy error. The cross-lens seam (A3)
+   * is bridged by register B15: Sub-Worlds' discovery unions this
+   * lens's published drafts and the playtest-minted worlds at the
+   * read, so a published draft surfaces there as the same object.
+   * The caption states both halves in the open.
+   */
+  'world-creator': {
+    label: 'Live',
+    caption: 'Drafts here are your real records — sculpted scenes, props, spawn points, zones, NPCs and factions persist, and playtest mints a real world you enter in the World lens. Published drafts are discoverable in this lens and in Sub-Worlds’ discovery.',
+  },
+  /**
    * Retail's store is the account's own live store — products, orders and
    * stock are the merchant's real records. The generic REAL_FREE line
    * ("static / open-access dataset") was false about the machinery in both
