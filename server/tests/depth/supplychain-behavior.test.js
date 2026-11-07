@@ -146,7 +146,7 @@ describe("supplychain — calc contracts (exact computed values)", () => {
     const r = await lensRun("supplychain", "scenarioSimulate", {
       params: {
         baseDailyDemand: 100, baseLeadTimeDays: 14, baseUnitCost: 10, disruption: "port_closure",
-        altLeadTimeDays: 5, altUnitCost: 12, currentStock: 5000,
+        altLeadTimeDays: 5, altUnitCost: 12, currentStock: 1500,   // primary demand-during-lead 3100 > 1500 stocks out; alt 1100 does not
       },
     });
     assert.equal(r.ok, true);
@@ -154,7 +154,7 @@ describe("supplychain — calc contracts (exact computed values)", () => {
     const alt = r.result.options.find((o) => o.source === "Alternate source");
     assert.equal(alt.effectiveLeadTimeDays, 11);  // ceil(5 * 2.2)
     assert.equal(alt.effectiveUnitCost, 13.8);    // 12 * 1.15
-    // alt: demandDuringLead = 100*11 = 1100 <= 5000 onHand → no stockout, lower than primary
+    // alt: demandDuringLead = 100*11 = 1100 <= 1500 onHand → no stockout; the primary (3100) stocks out
     assert.equal(alt.projectedStockoutUnits, 0);
     assert.equal(r.result.recommendation, "Alternate source");
     assert.equal(r.result.resilient, true);

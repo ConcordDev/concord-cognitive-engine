@@ -97,7 +97,8 @@ describe("feed — algorithmic ranking + affinity (shared ctx round-trips)", () 
     assert.equal(r.result.ranked[0].id, "p_alice");
     assert.ok(r.result.ranked[0].affinity > r.result.ranked[1].affinity);
     assert.ok(r.result.modelTrained);
-    assert.ok(r.result.ranked[0].reasons.includes("you engage with @alice"));
+    // the reason names the resolved identity; an unresolved author id reads as "this author" (never a raw handle)
+    assert.ok(r.result.ranked[0].reasons.some((x) => /^you engage with /.test(x)));
   });
 
   it("rank-for-you: muted-word and blocked-author candidates are filtered out", async () => {
