@@ -18,7 +18,7 @@ import {
 import {
   getNvdCves, getEonetEvents, getGutendexBooks, getSketchfabSearch, getUsgsQuakes,
   getFemaDisasters, getRestCountriesRegion, getSunriseSunset, getImgflipMemes,
-  getOnionooSummary, getNpmSearch, getOpenRouterModels,
+  getOnionooSummary, getOnionooDetails, getNpmSearch, getOpenRouterModels,
   nvdCvesKey, eonetEventsKey, gutendexBooksKey, sketchfabSearchKey, usgsQuakesKey,
   femaDisastersKey, restCountriesKey, sunriseSunsetKey, npmSearchKey,
 } from "../lib/public-data-sources.js";
@@ -61,6 +61,7 @@ export default function registerPublicLookupActions(registerLensAction) {
   def("sunrise-sunset", (p) => !!sunriseSunsetKey(p), (p) => getSunriseSunset(p), null);
   def("imgflip-memes", () => true, () => getImgflipMemes(), null);
   def("onionoo-summary", () => true, () => getOnionooSummary(), null);
+  def("onionoo-details", () => true, () => getOnionooDetails(), null);
   def("npm-search", (p) => !!npmSearchKey(p), (p) => getNpmSearch(p), null);
   def("openrouter-models", () => true, () => getOpenRouterModels(), null);
 }
