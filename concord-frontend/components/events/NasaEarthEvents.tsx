@@ -59,7 +59,7 @@ export function NasaEarthEvents() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2">
           <Globe2 className="h-5 w-5 text-emerald-400" />
-          <h2 className="text-sm font-semibold text-white">Live earth natural events</h2>
+          <h2 className="text-sm font-semibold text-white">Earth natural events</h2>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">NASA EONET · via Concord server</span>
         </div>
         <div className="flex items-center gap-2">
