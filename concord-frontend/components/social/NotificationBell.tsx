@@ -49,7 +49,25 @@ export function NotificationBell({ userId, className, placement = 'below', onVie
     enabled: !!userId,
   });
 
-  const unreadCount = countData?.count ?? 0;
+  // Platform Chrome II (F16): the badge counts BOTH stores the panel now
+  // lists — the social store above and the platform notification queue
+  // (/api/notifications/count's unread) — so a fired platform alert raises
+  // the same badge the panel reads.
+  const { data: platformUnread } = useQuery({
+    queryKey: ['notification-platform-count', userId],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/api/notifications/count');
+        return (res.data as { unread?: number }).unread ?? 0;
+      } catch {
+        return 0;
+      }
+    },
+    refetchInterval: 30000,
+    enabled: !!userId,
+  });
+
+  const unreadCount = (countData?.count ?? 0) + (platformUnread ?? 0);
 
   // Real-time updates via socket
   useEffect(() => {
@@ -60,6 +78,8 @@ export function NotificationBell({ userId, className, placement = 'below', onVie
       const unsub = subscribe('queue:notifications:new' as SocketEvent, () => {
         queryClient.invalidateQueries({ queryKey: ['notification-count', userId] });
         queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
+        queryClient.invalidateQueries({ queryKey: ['notification-platform-count', userId] });
+        queryClient.invalidateQueries({ queryKey: ['platform-notifications', userId] });
       });
 
       return unsub;

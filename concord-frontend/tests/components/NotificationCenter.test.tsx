@@ -133,7 +133,11 @@ describe('NotificationCenter', () => {
         queries: { retry: false, gcTime: 0, refetchInterval: false },
       },
     });
-    mockedApi.get.mockResolvedValue({ data: { notifications: mockNotifications } });
+    mockedApi.get.mockImplementation(async (url: string) =>
+      url === '/api/notifications'
+        ? { data: { ok: true, notifications: [] } }
+        : { data: { notifications: mockNotifications } }
+    );
     mockedApi.post.mockResolvedValue({ data: { ok: true } });
     mockedApi.put.mockResolvedValue({ data: { ok: true } });
     mockedApi.delete.mockResolvedValue({ data: { ok: true } });
@@ -237,9 +241,11 @@ describe('NotificationCenter', () => {
   });
 
   it('empty state when no notifications', async () => {
-    mockedApi.get.mockResolvedValue({
-      data: { notifications: [] },
-    });
+    mockedApi.get.mockImplementation(async (url: string) =>
+      url === '/api/notifications'
+        ? { data: { ok: true, notifications: [] } }
+        : { data: { notifications: [] } }
+    );
 
     renderNotificationCenter();
 
@@ -250,22 +256,26 @@ describe('NotificationCenter', () => {
   });
 
   it('unread count badge not shown when all read', async () => {
-    mockedApi.get.mockResolvedValue({
-      data: {
-        notifications: [
-          {
-            id: 'notif-1',
-            type: 'like',
-            title: 'Content Liked',
-            message: 'Test notification',
-            read: true,
-            createdAt: '2026-02-28T10:00:00Z',
-            actorName: 'Alice',
-            actorId: 'user-alice',
-          },
-        ],
-      },
-    });
+    mockedApi.get.mockImplementation(async (url: string) =>
+      url === '/api/notifications'
+        ? { data: { ok: true, notifications: [] } }
+        : {
+            data: {
+              notifications: [
+                {
+                  id: 'notif-1',
+                  type: 'like',
+                  title: 'Content Liked',
+                  message: 'Test notification',
+                  read: true,
+                  createdAt: '2026-02-28T10:00:00Z',
+                  actorName: 'Alice',
+                  actorId: 'user-alice',
+                },
+              ],
+            },
+          }
+    );
 
     renderNotificationCenter();
 

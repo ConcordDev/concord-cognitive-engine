@@ -43,7 +43,7 @@ export function RailAccount({ expanded }: { expanded: boolean }) {
     staleTime: 60000,
     retry: false,
   });
-  const userId = userData?.id || userData?._id;
+  const userId = userData?.user?.id || userData?.id || userData?._id;
 
   return (
     <div className={cn('flex items-center gap-1', expanded ? 'flex-row flex-wrap' : 'flex-col')}>
