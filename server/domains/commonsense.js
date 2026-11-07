@@ -6,6 +6,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+import { registerGraphNodeProvider } from "../lib/graph-nodes.js";
 
 const CONCEPTNET_BASE = "https://api.conceptnet.io";
 
@@ -1545,6 +1546,25 @@ export default function registerCommonsenseActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
+  });
+
+  // A4 Leg C (S-CS-4's connections leg): the thread's checks join the
+  // fabric as registered graph nodes — the registration surface priced
+  // at the platform layer when this lens was built. Caller-scoped by
+  // construction (orderedChecks reads the caller's own thread through
+  // the same path check-list serves); an anonymous ctx registers
+  // nothing. The checks stay in their own store; the graph gains them
+  // by registration, not by re-platforming the save path.
+  registerGraphNodeProvider("commonsense", (ctx) => {
+    const userId = checkActor(ctx);
+    if (!userId) return [];
+    return orderedChecks(ctx, userId).map((c) => ({
+      id: c.id,
+      title: c.question,
+      domain: "commonsense",
+      summary: c.finding || "",
+      tags: ["commonsense", "check"],
+    }));
   });
 
   registerLensAction("commonsense", "check-list", (ctx, _artifact, _params) => {
