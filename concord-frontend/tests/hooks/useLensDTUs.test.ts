@@ -186,7 +186,7 @@ describe('useLensDTUs', () => {
 
       await waitFor(() => {
         expect(mockedApi.get).toHaveBeenCalledWith('/api/dtus', {
-          params: { scope: 'science', limit: 100 },
+          params: { domain: 'science', limit: 100 },
         });
       });
     });
@@ -201,7 +201,7 @@ describe('useLensDTUs', () => {
 
       await waitFor(() => {
         expect(mockedApi.get).toHaveBeenCalledWith('/api/dtus', {
-          params: { scope: 'research', limit: 100 },
+          params: { domain: 'research', limit: 100 },
         });
       });
     });
