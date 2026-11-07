@@ -5,7 +5,9 @@
  *   - every DEMO lens declares paywallReason
  *   - no DEMO lens claims a real-API `sources` list
  *   - every REAL_FREE lens declares at least one source
- *   - tier values are confined to the 4-way enum
+ *   - every REAL_WORKSPACE lens declares liveFromSubstrate (close-out A5:
+ *     the value names the user's own per-account workspace records)
+ *   - tier values are confined to the 5-way enum
  *   - lookups are alias-tolerant (foo-bar ⇄ foo_bar)
  *
  * Run: node --test server/tests/integration-registry.test.js
@@ -19,8 +21,8 @@ import {
 } from "../lib/integration-registry.js";
 
 describe("IntegrationRegistry — shape", () => {
-  it("TIER is a 4-way enum", () => {
-    assert.deepEqual(Object.keys(TIER).sort(), ["DEMO", "REAL_FREE", "REAL_LIVE", "SIM_GRADE_A"]);
+  it("TIER is a 5-way enum", () => {
+    assert.deepEqual(Object.keys(TIER).sort(), ["DEMO", "REAL_FREE", "REAL_LIVE", "REAL_WORKSPACE", "SIM_GRADE_A"]);
   });
 
   it("every registry entry has a valid tier", () => {
@@ -56,6 +58,15 @@ describe("IntegrationRegistry — honesty contract", () => {
       if (entry.tier === TIER.REAL_FREE) {
         assert.ok(Array.isArray(entry.sources) && entry.sources.length > 0,
           `REAL_FREE lens '${key}' must declare at least one source`);
+      }
+    }
+  });
+
+  it("every REAL_WORKSPACE lens declares liveFromSubstrate=true", () => {
+    for (const [key, entry] of Object.entries(REGISTRY)) {
+      if (entry.tier === TIER.REAL_WORKSPACE) {
+        assert.equal(entry.liveFromSubstrate, true,
+          `REAL_WORKSPACE lens '${key}' must declare liveFromSubstrate=true — the value names the user's own workspace substrate`);
       }
     }
   });
@@ -101,7 +112,7 @@ describe("IntegrationRegistry — coverage", () => {
     assert.equal(typeof s.total, "number");
     assert.ok(s.total > 200, `expected >200 lens entries, got ${s.total}`);
     assert.equal(
-      (s.REAL_LIVE || 0) + (s.REAL_FREE || 0) + (s.SIM_GRADE_A || 0) + (s.DEMO || 0),
+      (s.REAL_LIVE || 0) + (s.REAL_FREE || 0) + (s.REAL_WORKSPACE || 0) + (s.SIM_GRADE_A || 0) + (s.DEMO || 0),
       s.total,
     );
   });

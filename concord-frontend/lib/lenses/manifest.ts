@@ -29,7 +29,7 @@ import { buildSubLensManifests } from './sub-lens-manifests';
  *   SIM_GRADE_A   — high-fidelity LLM-grounded against a domain schema, NOT pretending to be real data
  *   DEMO          — synthetic; the lens is a working surface but the domain requires paywalled data we haven't licensed
  */
-export type DataTier = 'REAL_LIVE' | 'REAL_FREE' | 'SIM_GRADE_A' | 'DEMO';
+export type DataTier = 'REAL_LIVE' | 'REAL_FREE' | 'REAL_WORKSPACE' | 'SIM_GRADE_A' | 'DEMO';
 
 /** Phase 1 — copy + handlers for an empty-state CTA the lens mounts via EmptyStateCTA. */
 export interface LensEmptyState {
@@ -1821,7 +1821,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'zip'],
     actions: ['shotListGenerate', 'assetOrganize', 'budgetTrack', 'distributionChecklist', 'proofGenerate', 'metadataEmbed', 'deliverablePackage', 'clientReviewFlow'],
     category: 'creative',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_WORKSPACE',
     emptyState: {
       headline: "Run a creative production.",
       caption: "Projects, shoots, assets, episodes, collections, deliverables.",
@@ -2309,7 +2309,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['matchMentor', 'progressReport', 'goalSetting', 'sessionPrep', 'feedbackSummary', 'skillGapAnalysis'],
     category: 'social',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_WORKSPACE',
     emptyState: {
       headline: "Find a mentor or mentee.",
       caption: "Relations, session notes, goals, feedback \u2014 match, prep, report.",
@@ -2823,7 +2823,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'services',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_WORKSPACE',
     emptyState: {
       headline: "Run a consulting practice.",
       caption: "Engagements, deliverables, proposals, clients, timesheets \u2014 generate, validate, export.",
@@ -2957,7 +2957,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_WORKSPACE',
     emptyState: {
       headline: "Defense workflow.",
       caption: "Threats, assets, strategies, operations, intel \u2014 federal spending from USAspending.",
@@ -3390,7 +3390,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     category: 'trades',
     // Jobs, estimates, CRM, field service and saved load estimates are the
     // user's own records, persisted server-side — not simulated data.
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_WORKSPACE',
     emptyState: {
       headline: "HVAC management.",
       caption: "Jobs, estimates, CRM, invoices, field service, duct sizing and load estimates, saved to your account. Load estimates are a square-foot rule of thumb, not an ACCA Manual J calculation. No live sensor or building data feeds yet.",
@@ -3997,7 +3997,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
         { caption: 'Citations chain through the lattice — see which experiments stand on which models.' },
       ],
     },
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_WORKSPACE',
   },
   {
     domain: 'platform',
