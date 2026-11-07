@@ -389,12 +389,22 @@ export default function registerScienceActions(registerLensAction) {
     const data = Array.isArray(params.data) ? params.data.map(Number).filter((x) => Number.isFinite(x)) : [];
     if (data.length === 0) return { ok: false, error: "data array required (numeric)" };
     if (data.length === 1) return { ok: false, error: "need >= 2 values for variance/sd" };
+    // Mode: the most frequent value(s), reported only when a value
+    // actually repeats — a dataset with no repeats has no mode, and the
+    // field is omitted rather than invented (F6).
+    const freq = new Map();
+    for (const v of data) freq.set(v, (freq.get(v) || 0) + 1);
+    const topFreq = Math.max(...freq.values());
+    const modes = topFreq > 1
+      ? [...freq.entries()].filter(([, c]) => c === topFreq).map(([v]) => v).sort((a, b) => a - b)
+      : [];
     return {
       ok: true,
       result: {
         n: data.length,
         mean: Math.round(mean(data) * 10000) / 10000,
         median: Math.round(median(data) * 10000) / 10000,
+        ...(modes.length ? { mode: modes.length === 1 ? modes[0] : modes } : {}),
         sd: Math.round(stddev(data) * 10000) / 10000,
         variance: Math.round(variance(data) * 10000) / 10000,
         min: Math.min(...data),

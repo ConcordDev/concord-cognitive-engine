@@ -23,7 +23,7 @@ export function SnapshotsPanel() {
   });
   const capture = useMutation({
     mutationFn: () => wmRun('capture_snapshot', { label: label || `snapshot-${new Date().toISOString()}` }),
-    onSuccess: () => { setLabel(''); qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.snapshots }); },
+    onSuccess: () => { setLabel(''); qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.snapshots }); qc.invalidateQueries({ queryKey: WM_QUERY_KEYS.status }); },
   });
   const doDiff = useMutation({
     mutationFn: () => wmRun<SnapshotDiff>('diff_snapshots', { fromId, toId }),

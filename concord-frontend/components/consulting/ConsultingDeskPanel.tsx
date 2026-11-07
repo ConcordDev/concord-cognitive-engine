@@ -6,10 +6,11 @@
  * Extracted from consulting/page.tsx consolidation.
  */
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import {
@@ -20,6 +21,25 @@ import {
   type ModeTab, type Status, type ConsultingArtifact,
   STATUS_CONFIG, ENGAGEMENT_TYPES, ARTIFACT_TABS,
 } from '@/components/consulting/consulting-shared';
+
+interface PracticeTimeEntry { id: string; hours: number; note?: string; date: string; invoiceId?: string }
+interface PracticeEngagement {
+  id: string; name: string; client?: string; rate: number; status: string;
+  timeEntries?: PracticeTimeEntry[]; loggedHours?: number;
+}
+interface PracticeProposal {
+  id: string; title: string; client: string; value: number; status: string;
+  completeness?: number; sectionCount?: number; filledCount?: number;
+  signature?: { signerName: string; signedAt: string } | null;
+}
+interface PracticeData {
+  engagements: PracticeEngagement[];
+  proposals: PracticeProposal[];
+  loggedHours: number;
+  active: number;
+  collected: number;
+  outstanding: number;
+}
 
 const MODE_TABS = ARTIFACT_TABS.map((t) => ({
   ...t,
@@ -58,6 +78,50 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   const { items, isLoading, isError, error, refetch, create, update, remove } =
     useLensData<ConsultingArtifact>('consulting', activeArtifactType, { seed: [] });
   const runAction = useRunArtifact('consulting');
+
+  // F3/F4: the header, pipeline, Time records and Proposal archive read the
+  // PRACTICE store (the same store the practice panels write to), not the
+  // freeform artifact store. One store, read everywhere.
+  const [practice, setPractice] = useState<PracticeData | null>(null);
+  const [practiceError, setPracticeError] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [dashR, invR, engR, propR] = await Promise.all([
+          lensRun('consulting', 'consulting-dashboard', {}),
+          lensRun('consulting', 'invoice-list', {}),
+          lensRun('consulting', 'engagement-list', {}),
+          lensRun('consulting', 'proposal-list', {}),
+        ]);
+        const dash = dashR.data?.result as { active?: number; loggedHours?: number } | null;
+        const inv = invR.data?.result as { collected?: number; outstanding?: number } | null;
+        const eng = engR.data?.result as { engagements?: PracticeEngagement[] } | null;
+        const prop = propR.data?.result as { proposals?: PracticeProposal[] } | null;
+        if (cancelled) return;
+        const engagements = eng?.engagements || [];
+        setPractice({
+          engagements,
+          proposals: prop?.proposals || [],
+          loggedHours: dash?.loggedHours ?? engagements.reduce((s, e) => s + (e.loggedHours || 0), 0),
+          active: dash?.active ?? engagements.filter((e) => e.status === 'active').length,
+          collected: inv?.collected || 0,
+          outstanding: inv?.outstanding || 0,
+        });
+      } catch {
+        if (!cancelled) setPracticeError('Practice records could not be loaded.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const practiceTimeEntries = useMemo(
+    () =>
+      (practice?.engagements || []).flatMap((e) =>
+        (e.timeEntries || []).map((t) => ({ ...t, engagementName: e.name, engagementId: e.id }))
+      ),
+    [practice]
+  );
 
   const filtered = useMemo(() => {
     let result = items;
@@ -153,32 +217,29 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   };
 
   const renderDashboard = () => {
-    const all = items.map((i) => i.data as unknown as ConsultingArtifact);
-    const totalRevenue = all.reduce((s, e) => s + (e.totalFee || 0), 0);
-    const totalHours = all.reduce((s, e) => s + (e.billedHours || 0), 0);
+    // Practice-store figures (F3): collected revenue, logged hours, active
+    // engagements, outstanding invoices — the same numbers the header shows.
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className={ds.panel}>
           <DollarSign className="w-5 h-5 text-green-400 mb-2" />
           <p className={ds.textMuted}>Total Revenue</p>
-          <p className="text-xl font-bold text-white">${totalRevenue.toLocaleString()}</p>
+          <p className="text-xl font-bold text-white">${(practice?.collected || 0).toLocaleString()}</p>
         </div>
         <div className={ds.panel}>
           <Clock className="w-5 h-5 text-blue-400 mb-2" />
           <p className={ds.textMuted}>Billed Hours</p>
-          <p className="text-xl font-bold text-white">{totalHours.toLocaleString()}</p>
+          <p className="text-xl font-bold text-white">{(practice?.loggedHours || 0).toLocaleString()}</p>
         </div>
         <div className={ds.panel}>
           <Briefcase className="w-5 h-5 text-purple-400 mb-2" />
           <p className={ds.textMuted}>Active Engagements</p>
-          <p className="text-xl font-bold text-white">
-            {all.filter((e) => e.status === 'active').length}
-          </p>
+          <p className="text-xl font-bold text-white">{practice?.active || 0}</p>
         </div>
         <div className={ds.panel}>
           <TrendingUp className="w-5 h-5 text-cyan-400 mb-2" />
-          <p className={ds.textMuted}>Pipeline Items</p>
-          <p className="text-xl font-bold text-white">{items.length}</p>
+          <p className={ds.textMuted}>Outstanding</p>
+          <p className="text-xl font-bold text-white">${(practice?.outstanding || 0).toLocaleString()}</p>
         </div>
       </div>
     );
@@ -189,10 +250,10 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
     return (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={() => setEditorOpen(false)} role="button" tabIndex={0}>
         <div
           className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
-          onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={(e) => e.stopPropagation()} role="button" tabIndex={0}>
           <div className="flex items-center justify-between mb-4">
             <h3 className={ds.heading3}>
               {editingItem ? 'Edit' : 'New'} {activeArtifactType}
@@ -329,11 +390,110 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
     );
   };
 
+  const renderPracticeRecords = () => {
+    if (practiceError) {
+      return (
+        <div className="flex items-center justify-center py-12" role="alert">
+          <p className="text-sm text-rose-300">{practiceError}</p>
+        </div>
+      );
+    }
+    if (!practice) {
+      return (
+        <div className="flex items-center justify-center py-12" role="status" aria-busy="true">
+          <p className="text-sm text-gray-400">Loading practice records…</p>
+        </div>
+      );
+    }
+    if (mode === 'timesheets') {
+      const total = practiceTimeEntries.reduce((s, t) => s + (t.hours || 0), 0);
+      return (
+        <div className="space-y-3">
+          <p className={cn(ds.textMuted, 'text-xs')}>
+            Time logged in the practice panels appears here — one store, read everywhere.
+            Log time from the Timer or Engagements. Total logged: {total.toLocaleString()}h.
+          </p>
+          {practiceTimeEntries.length === 0 ? (
+            <div className={cn(ds.panel, 'text-center py-12')}>
+              <Clock className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className={ds.textMuted}>No time logged yet</p>
+            </div>
+          ) : (
+            practiceTimeEntries.map((t) => (
+              <div key={t.id} className={ds.panel}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Clock className="w-5 h-5 text-neon-cyan shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-white font-medium truncate">{t.engagementName}</p>
+                      <p className={ds.textMuted}>
+                        {t.date}
+                        {t.note ? ` — ${t.note}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm font-bold text-white">{t.hours}h</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">
+                      {t.invoiceId ? 'Billed' : 'Unbilled'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        <p className={cn(ds.textMuted, 'text-xs')}>
+          Proposals built in the practice rail are archived here — one store, read everywhere.
+          Build and sign proposals from Proposals in the practice rail.
+        </p>
+        {practice.proposals.length === 0 ? (
+          <div className={cn(ds.panel, 'text-center py-12')}>
+            <FileText className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <p className={ds.textMuted}>No proposals yet</p>
+          </div>
+        ) : (
+          practice.proposals.map((p) => (
+            <div key={p.id} className={ds.panel}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileText className="w-5 h-5 text-neon-cyan shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-white font-medium truncate">{p.title}</p>
+                    <p className={ds.textMuted}>
+                      {p.client} · ${(p.value || 0).toLocaleString()} · {p.sectionCount ?? 0} sections ·{' '}
+                      {p.completeness ?? 0}% complete · {p.status}
+                    </p>
+                    {p.signature && (
+                      <p className="text-xs text-emerald-400">
+                        Signed by {p.signature.signerName} on{' '}
+                        {new Date(p.signature.signedAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {p.signature && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold shrink-0">
+                    SIGNED
+                  </span>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    );
+  };
+
   const renderLibrary = () => (
     <div className="space-y-3">
       {mode === 'engagements' && (
         <p className={cn(ds.textMuted, 'text-xs')}>
-          Freeform engagement briefs, scope notes, and fee terms — for live engagement status
+          Freeform engagement briefs, scope notes, and fee terms — for engagement status
           and time tracking, open Engagements in the practice rail.
         </p>
       )}
@@ -435,7 +595,9 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
     </div>
   );
 
-  if (isLoading) {
+  const isPracticeMode = mode === 'timesheets' || mode === 'proposals';
+
+  if (isLoading && !isPracticeMode) {
     return (
       <div className="flex items-center justify-center py-12" role="status" aria-busy="true">
         <div className="flex flex-col items-center gap-3">
@@ -446,7 +608,7 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
     );
   }
 
-  if (isError) {
+  if (isError && !isPracticeMode) {
     return (
       <div className="flex items-center justify-center py-12" role="alert">
         <div className="flex flex-col items-center gap-3 text-center">
@@ -458,15 +620,19 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
     );
   }
 
-  const all = items.map((i) => i.data as unknown as ConsultingArtifact);
-  const totalRevenue = all.reduce((s, e) => s + (e.totalFee || 0), 0);
-  const totalHours = all.reduce((s, e) => s + (e.billedHours || 0), 0);
-  const activeCount = all.filter((e) => e.status === 'active').length;
+  // Header figures come from the PRACTICE store (F3), never the artifact
+  // editor's own fee fields: collected revenue, logged hours, active
+  // engagements, average engagement rate, outstanding invoices.
+  const practiceEngagements = practice?.engagements || [];
+  const totalRevenue = practice?.collected || 0;
+  const totalHours = practice?.loggedHours || 0;
+  const activeCount = practice?.active || 0;
+  const ratedEngagements = practiceEngagements.filter((e) => e.rate > 0);
   const avgRate =
-    all.filter((e) => e.hourlyRate).length > 0
-      ? all.reduce((s, e) => s + (e.hourlyRate || 0), 0) / all.filter((e) => e.hourlyRate).length
+    ratedEngagements.length > 0
+      ? ratedEngagements.reduce((s, e) => s + e.rate, 0) / ratedEngagements.length
       : 0;
-  const utilRate = all.length > 0 ? (activeCount / all.length) * 100 : 0;
+  const outstanding = practice?.outstanding || 0;
 
   return (
     <div className="space-y-4">
@@ -478,7 +644,7 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
           { icon: DollarSign, label: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}`, color: 'text-green-400' },
           { icon: Clock, label: 'Billed Hours', value: totalHours.toLocaleString(), color: 'text-blue-400' },
           { icon: Briefcase, label: 'Active Engagements', value: activeCount, color: 'text-purple-400' },
-          { icon: Star, label: 'Utilization Rate', value: `${utilRate.toFixed(0)}%`, color: 'text-amber-400' },
+          { icon: Star, label: 'Outstanding', value: `$${outstanding.toLocaleString()}`, color: 'text-amber-400' },
           { icon: DollarSign, label: 'Avg Rate', value: `$${avgRate.toFixed(0)}/hr`, color: 'text-cyan-400' },
         ].map((stat, i) => (
           <motion.div
@@ -506,14 +672,12 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
         </h3>
         <div className="flex items-center gap-2">
           {[
-            { stage: 'Proposal', statuses: ['draft', 'pending'], color: 'bg-gray-500' },
-            { stage: 'Active', statuses: ['active'], color: 'bg-green-500' },
-            { stage: 'Review', statuses: ['on_hold'], color: 'bg-amber-500' },
-            { stage: 'Closed', statuses: ['completed', 'cancelled'], color: 'bg-blue-500' },
+            { stage: 'Proposal', count: (practice?.proposals || []).filter((p) => p.status === 'draft').length, color: 'bg-gray-500' },
+            { stage: 'Active', count: practiceEngagements.filter((e) => e.status === 'active').length, color: 'bg-green-500' },
+            { stage: 'Review', count: practiceEngagements.filter((e) => e.status === 'on_hold').length, color: 'bg-amber-500' },
+            { stage: 'Closed', count: practiceEngagements.filter((e) => e.status === 'complete').length, color: 'bg-blue-500' },
           ].map((step, i, arr) => {
-            const count = items.filter((it) =>
-              step.statuses.includes((it.data as unknown as ConsultingArtifact).status)
-            ).length;
+            const count = step.count;
             return (
               <div key={step.stage} className="flex items-center gap-2 flex-1">
                 <div className="flex-1 text-center">
@@ -529,7 +693,7 @@ export function ConsultingDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
         </div>
       </motion.div>
 
-      {mode === 'dashboard' ? renderDashboard() : renderLibrary()}
+      {mode === 'dashboard' ? renderDashboard() : isPracticeMode ? renderPracticeRecords() : renderLibrary()}
       {renderEditor()}
     </div>
   );

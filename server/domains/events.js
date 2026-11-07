@@ -241,6 +241,27 @@ export default function registerEventsActions(registerLensAction) {
     return { ok: true, result: { deleted: params.vendorId } };
   });
 
+  const STATED_BUDGET_FORMULA = "Budgeted − Actual = Net";
+
+  function statedBudgetRollup(events) {
+    let statedBudgeted = 0;
+    let statedActual = 0;
+    for (const event of events) {
+      const lines = Array.isArray(event.budgetLines) ? event.budgetLines : [];
+      for (const line of lines) {
+        if (line.kind === "revenue") continue;
+        statedBudgeted += Math.max(0, Number(line.budgeted) || 0);
+        statedActual += Math.max(0, Number(line.actual) || 0);
+      }
+    }
+    return {
+      statedBudgeted,
+      statedActual,
+      statedNet: statedBudgeted - statedActual,
+      formula: STATED_BUDGET_FORMULA,
+    };
+  }
+
   registerLensAction("events", "events-dashboard", (ctx, _a, _params = {}) => {
   try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -254,6 +275,7 @@ export default function registerEventsActions(registerLensAction) {
         planning: events.filter((e) => e.status === "planning").length,
         totalBudget: events.reduce((n, e) => n + e.budget, 0),
         openTasks: events.reduce((n, e) => n + e.tasks.filter((t) => !t.done).length, 0),
+        ...statedBudgetRollup(events),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -697,6 +719,8 @@ export default function registerEventsActions(registerLensAction) {
         actualRevenue,
         netProfit: actualRevenue - actualExpense,
         variance,
+        statedNet: variance,
+        formula: STATED_BUDGET_FORMULA,
         overBudget: actualExpense > budgetedExpense,
         byCategory,
         lineCount: event.budgetLines.length,

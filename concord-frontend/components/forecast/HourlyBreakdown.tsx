@@ -24,11 +24,13 @@ interface HourlyResult {
   breakdown: HourEntry[];
 }
 
-export function HourlyBreakdown({ worldId }: { worldId: string }) {
+export function HourlyBreakdown({ worldId, refreshKey = 0 }: { worldId: string; refreshKey?: number }) {
   const [hours, setHours] = useState(24);
   const [breakdown, setBreakdown] = useState<HourEntry[] | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // refreshKey: the page's compose version — a fresh compose re-runs this
+  // load in session (F2).
   const load = useCallback(async () => {
     setLoading(true);
     const r = await lensRun<HourlyResult>('forecast', 'hourly', { worldId, hours });
@@ -38,7 +40,7 @@ export function HourlyBreakdown({ worldId }: { worldId: string }) {
       setBreakdown([]);
     }
     setLoading(false);
-  }, [worldId, hours]);
+  }, [worldId, hours, refreshKey]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -62,6 +64,12 @@ export function HourlyBreakdown({ worldId }: { worldId: string }) {
           {[12, 24, 36, 48].map((n) => <option key={n} value={n}>{n} hours</option>)}
         </select>
       </div>
+
+      <p className="text-[10px] leading-relaxed text-zinc-500">
+        Diurnal model on the measured embodied baseline. Beyond the first day, each day
+        drifts deterministically off that baseline and confidence decays — simulated
+        values, not observations.
+      </p>
 
       {loading && <p className="text-xs text-zinc-400">Composing hourly curve…</p>}
 

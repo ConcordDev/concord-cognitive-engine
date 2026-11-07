@@ -104,7 +104,7 @@ export function AnimationStudioSection() {
             {/* New animation */}
             <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <input placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                <input id="anim-new-title" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
                   className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
                 <select value={form.preset} onChange={(e) => setForm({ ...form, preset: Number(e.target.value) })}
                   className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">

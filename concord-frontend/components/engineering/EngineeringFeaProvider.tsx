@@ -72,7 +72,14 @@ interface EngineeringFeaStore {
   addLoad: () => void;
   updateLoad: (idx: number, field: string, val: string) => void;
   removeLoad: (idx: number) => void;
-  toggleSupport: (nodeId: string) => void;
+  cycleSupport: (nodeId: string) => void;
+  /** Human list of what references a node ("member M1 (start)", …). */
+  referencesFor: (nodeId: string) => string[];
+  /** Set when a node delete was refused for reference integrity. */
+  modelNotice: string | null;
+  clearModelNotice: () => void;
+  /** Set when a saved FEA result exists but belongs to an earlier model state. */
+  staleRunNote: string | null;
   feaNodes: { id: string; x: number; y: number; z: number }[];
   feaMembers: { id: string; nodeI: string; nodeJ: string; utilization: number; stress: number }[];
   feaDisplacements: { nodeId: string; dx: number; dy: number; dz: number }[];
@@ -82,6 +89,20 @@ interface EngineeringFeaStore {
 }
 
 export type ModelSaveState = 'loading' | 'idle' | 'saving' | 'saved' | 'error';
+
+/** Stable signature of the model a result was computed from — a saved
+ * result restores only against the model that produced it, so a result
+ * can never silently describe a model that has since changed. */
+export function modelSignature(m: FEAModel): string {
+  return JSON.stringify({
+    nodes: m.nodes.map((n) => [n.id, n.x, n.y, n.z ?? 0]),
+    members: m.members.map((x) => [
+      x.id, x.nodeI, x.nodeJ, x.area, x.momentI, x.elasticModulus, x.allowableStress ?? null, x.material || '',
+    ]),
+    loads: m.loads.map((l) => [l.nodeId, l.Fx ?? null, l.Fy ?? null, l.Fz ?? null, l.Mx ?? null, l.My ?? null, l.Mz ?? null]),
+    supports: m.supports.map((s) => [s.nodeId, s.type, [...(s.fixedDOF || [])].sort().join(',')]),
+  });
+}
 
 const Ctx = createContext<EngineeringFeaStore | null>(null);
 
@@ -113,6 +134,24 @@ export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
     avgElementLength: number;
   } | null>(null);
   const [modelSaveState, setModelSaveState] = useState<ModelSaveState>('loading');
+  const [modelNotice, setModelNotice] = useState<string | null>(null);
+  const clearModelNotice = useCallback(() => setModelNotice(null), []);
+  const [staleRunNote, setStaleRunNote] = useState<string | null>(null);
+  const referencesFor = useCallback(
+    (nodeId: string): string[] => {
+      const refs: string[] = [];
+      for (const mb of model.members) {
+        if (mb.nodeI === nodeId) refs.push(`member ${mb.id} (start)`);
+        if (mb.nodeJ === nodeId) refs.push(`member ${mb.id} (end)`);
+      }
+      model.loads.forEach((l, i) => {
+        if (l.nodeId === nodeId) refs.push(`load ${i + 1}`);
+      });
+      if (model.supports.some((s) => s.nodeId === nodeId)) refs.push('a support');
+      return refs;
+    },
+    [model],
+  );
   // The working model lives on the server per user, so a reload or a server
   // restart doesn't lose it. `modelLoaded` gates saving until the stored model
   // has been read back, so the empty initial state never overwrites it.
@@ -132,13 +171,36 @@ export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
         const stored = r.data?.ok ? r.data.result?.model : null;
         if (stored && Array.isArray(stored.nodes)) {
           skipNextSave.current = true;
-          setModel({
+          const loadedModel: FEAModel = {
             nodes: stored.nodes || [],
             members: stored.members || [],
             loads: stored.loads || [],
             supports: stored.supports || [],
-          });
+          };
+          setModel(loadedModel);
           setModelSaveState('saved');
+          // Restore the latest FEA result — but only the one computed
+          // from THIS model. A result saved against an earlier model
+          // state is named as such, never silently re-attached.
+          try {
+            const ws = await lensRun<{ state: { result?: Record<string, unknown>; modelSignature?: string; savedAt?: string } | null }>(
+              'engineering',
+              'workspace-get',
+              { key: 'fea.latest' },
+            );
+            const saved = ws.data?.ok ? ws.data.result?.state : null;
+            if (!cancelled && saved?.result) {
+              if (saved.modelSignature === modelSignature(loadedModel)) {
+                setFeaResult(saved.result);
+              } else {
+                setStaleRunNote(
+                  `A previous FEA run (${saved.savedAt ? new Date(saved.savedAt).toLocaleString() : 'earlier'}) exists for an earlier state of this model. Run FEA again to solve the current model.`,
+                );
+              }
+            }
+          } catch {
+            /* the sim history still carries the run; restore is a courtesy */
+          }
         } else {
           setModelSaveState(r.data?.ok ? 'idle' : 'error');
         }
@@ -260,10 +322,21 @@ export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
     lensRun<Record<string, unknown>>('engineering', 'runFEA', { model, name: 'FEA run' })
       .then((r) => {
         if (r.data?.ok && r.data.result) {
-          setFeaResult(r.data.result as Record<string, unknown>);
+          const result = r.data.result as Record<string, unknown>;
+          setFeaResult(result);
+          setStaleRunNote(null);
           setStatus('Analysis complete');
           setHistoryKey((k) => k + 1);
           setActive('results');
+          // Persist the result WITH the signature of the model that
+          // produced it, so a reload restores it against its own model
+          // (Simulation History keeps the run either way).
+          void lensRun('engineering', 'workspace-save', {
+            key: 'fea.latest',
+            state: { result, modelSignature: modelSignature(model), savedAt: new Date().toISOString() },
+          }).catch(() => {
+            /* persistence is a courtesy; the in-session result stands */
+          });
         } else {
           setStatus(`Error: ${r.data?.error || 'the solver returned no result'}`);
         }
@@ -272,22 +345,60 @@ export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
       .finally(() => setRunning(false));
   }, [model]);
 
+  // IDs stay unique across deletions: the next id is one past the
+  // highest numeric suffix in use, never count + 1 (which re-minted a
+  // deleted node's id and collided with a standing one).
+  const nextId = (prefix: string, ids: string[]) => {
+    let max = 0;
+    for (const id of ids) {
+      const match = new RegExp(`^${prefix}(\\d+)$`).exec(id);
+      if (match) max = Math.max(max, parseInt(match[1], 10));
+    }
+    return `${prefix}${max + 1}`;
+  };
   const addNode = () => {
-    const id = `N${model.nodes.length + 1}`;
-    setModel((m) => ({ ...m, nodes: [...m.nodes, { id, x: 0, y: 0, z: 0 }] }));
+    setModel((m) => ({
+      ...m,
+      nodes: [...m.nodes, { id: nextId('N', m.nodes.map((n) => n.id)), x: 0, y: 0, z: 0 }],
+    }));
   };
   const updateNode = (idx: number, field: keyof Node3D, val: string) => {
     setModel((m) => {
       const nodes = [...m.nodes];
-      nodes[idx] = { ...nodes[idx], [field]: field === 'id' ? val : parseFloat(val) || 0 };
-      return { ...m, nodes };
+      const old = nodes[idx];
+      nodes[idx] = { ...old, [field]: field === 'id' ? val : parseFloat(val) || 0 };
+      if (field !== 'id' || !old || old.id === val) return { ...m, nodes };
+      // A rename is an explicit act on this node: carry it through every
+      // reference, so a rename can never strand a member/load/support on
+      // the old id (the silent-divergence shape F2 forbids).
+      const rename = (id: string) => (id === old.id ? val : id);
+      return {
+        ...m,
+        nodes,
+        members: m.members.map((mb) => ({ ...mb, nodeI: rename(mb.nodeI), nodeJ: rename(mb.nodeJ) })),
+        loads: m.loads.map((l) => ({ ...l, nodeId: rename(l.nodeId) })),
+        supports: m.supports.map((s) => ({ ...s, nodeId: rename(s.nodeId) })),
+      };
     });
   };
   const removeNode = (idx: number) => {
+    const node = model.nodes[idx];
+    if (!node) return;
+    const refs = referencesFor(node.id);
+    if (refs.length > 0) {
+      // Reference integrity: never silently re-target or cascade. The
+      // delete is refused in words; the member removes the references
+      // first if the node really has to go.
+      setModelNotice(
+        `Node ${node.id} is not deleted: it is referenced by ${refs.join(', ')}. Remove or re-point those first — references are never silently rewritten.`,
+      );
+      return;
+    }
+    setModelNotice(null);
     setModel((m) => ({ ...m, nodes: m.nodes.filter((_, i) => i !== idx) }));
   };
   const addMember = () => {
-    const id = `M${model.members.length + 1}`;
+    const id = nextId('M', model.members.map((x) => x.id));
     setModel((m) => ({
       ...m,
       members: [
@@ -336,14 +447,23 @@ export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
   const removeLoad = (idx: number) => {
     setModel((m) => ({ ...m, loads: m.loads.filter((_, i) => i !== idx) }));
   };
-  const toggleSupport = (nodeId: string) => {
+  // Support vocabulary: Free → Fixed → Pinned → Roller. The server
+  // model and the solver have always honoured pinned/roller through
+  // fixedDOF; only the surface hid them (a simply supported beam was
+  // unbuildable). Pinned restrains translation, roller the vertical.
+  const SUPPORT_CYCLE: { type: 'fixed' | 'pinned' | 'roller'; fixedDOF: string[] }[] = [
+    { type: 'fixed', fixedDOF: ['x', 'y', 'z', 'rx', 'ry', 'rz'] },
+    { type: 'pinned', fixedDOF: ['x', 'y', 'z'] },
+    { type: 'roller', fixedDOF: ['y'] },
+  ];
+  const cycleSupport = (nodeId: string) => {
     setModel((m) => {
       const existing = m.supports.find((s) => s.nodeId === nodeId);
-      if (existing) return { ...m, supports: m.supports.filter((s) => s.nodeId !== nodeId) };
-      return {
-        ...m,
-        supports: [...m.supports, { nodeId, type: 'fixed' as const, fixedDOF: ['x', 'y', 'z', 'rx', 'ry', 'rz'] }],
-      };
+      const others = m.supports.filter((s) => s.nodeId !== nodeId);
+      if (!existing) return { ...m, supports: [...others, { nodeId, ...SUPPORT_CYCLE[0] }] };
+      const idx = SUPPORT_CYCLE.findIndex((s) => s.type === existing.type);
+      if (idx < 0 || idx === SUPPORT_CYCLE.length - 1) return { ...m, supports: others };
+      return { ...m, supports: [...others, { nodeId, ...SUPPORT_CYCLE[idx + 1] }] };
     });
   };
 
@@ -420,7 +540,11 @@ export function EngineeringFeaProvider({ children }: { children: ReactNode }) {
     addLoad,
     updateLoad,
     removeLoad,
-    toggleSupport,
+    cycleSupport,
+    referencesFor,
+    modelNotice,
+    clearModelNotice,
+    staleRunNote,
     feaNodes,
     feaMembers,
     feaDisplacements,

@@ -99,6 +99,17 @@ export default function LensHubPage() {
     return map;
   }, [filteredLenses]);
 
+  // Sections render for every category actually present: the curated order
+  // first, then any category it does not name. A lens whose category is
+  // missing from CATEGORY_ORDER was previously COUNTED by the search
+  // ("1 of 268 lenses match") but its section never rendered, so its card
+  // could not appear in grid or compact view — the whole 'economy'
+  // category (Careers, Auction, Bounties, …) was cardless this way.
+  const sectionOrder = useMemo(() => {
+    const extra = [...grouped.keys()].filter((c) => !CATEGORY_ORDER.includes(c));
+    return [...CATEGORY_ORDER, ...extra];
+  }, [grouped]);
+
   // Stats
   const totalCount = allLenses.length;
   const filteredCount = filteredLenses.length;
@@ -202,7 +213,7 @@ export default function LensHubPage() {
         )}
 
         {/* Category Sections */}
-        {CATEGORY_ORDER.map(category => {
+        {sectionOrder.map(category => {
           const lenses = grouped.get(category);
           if (!lenses || lenses.length === 0) return null;
           // Skip core category items in non-search mode (shown in hero section)

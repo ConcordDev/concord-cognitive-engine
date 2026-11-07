@@ -419,8 +419,11 @@ export default function registerNonprofitActions(registerLensAction) {
     }
     if (kind === "receipt") {
       const amt = npNum(params.amount);
-      return { subject: `Your tax receipt`,
-        body: `Dear ${name},\n\nThis confirms your tax-deductible contribution of $${amt.toLocaleString()}. No goods or services were provided in exchange for this gift. Please retain this receipt for your tax records.\n\nThank you,\nThe Team` };
+      // F2: this template asserted the gift was "tax-deductible" — a status
+      // nothing in this lens records or establishes for the organisation.
+      // The receipt confirms the recorded contribution, nothing more.
+      return { subject: `Your contribution receipt`,
+        body: `Dear ${name},\n\nThis confirms your contribution of $${amt.toLocaleString()}, recorded in our donor records. Please retain this receipt for your records.\n\nThank you,\nThe Team` };
     }
     return { subject: npClean(params.subject, 160) || "A note from us",
       body: npClean(params.body, 4000) || `Dear ${name},\n\n` };
@@ -535,7 +538,10 @@ export default function registerNonprofitActions(registerLensAction) {
       return { ok: true, result: { receipt: {
         receiptNo, donorName: d.name, donorAddress: d.address,
         amount: gift.amount, giftDate: gift.at, fund: gift.fund, method: gift.method,
-        statement: "No goods or services were provided in exchange for this contribution. This gift is tax-deductible to the extent allowed by law.",
+        // F2: the statement previously asserted the gift was tax-deductible
+        // (with the quid-pro-quo sentence) for an organisation whose status
+        // this lens nowhere records. It records the contribution only.
+        statement: "This receipt records the contribution shown above. It makes no representation about the gift's tax treatment.",
         issuedAt: npIso(),
       } } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
@@ -553,8 +559,12 @@ export default function registerNonprofitActions(registerLensAction) {
       return { ok: true, result: { statement: {
         donorName: d.name, donorAddress: d.address, year,
         gifts: gifts.map((g) => ({ date: g.at, amount: g.amount, fund: g.fund })),
-        totalDeductible: total, giftCount: gifts.length,
-        statement: "This annual statement summarizes all tax-deductible contributions for the calendar year. No goods or services were provided in exchange.",
+        // F2: this field was named totalDeductible and the statement asserted
+        // the year's gifts were "all tax-deductible contributions" — for an
+        // organisation whose charitable status nothing in this lens records
+        // or establishes. The statement now totals contributions RECORDED.
+        totalRecorded: total, giftCount: gifts.length,
+        statement: "This annual statement summarizes all contributions recorded for the calendar year.",
       } } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
@@ -826,13 +836,19 @@ export default function registerNonprofitActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
+  // The volunteer-time value rate. It was applied invisibly (the walk read
+  // "$64 for 2h" and could only imply ~$32/hr); the results now RETURN it as
+  // hourlyRate so the surface states the basis beside the estimate.
+  const VOLUNTEER_HOURLY_RATE = 31.8;
+
   registerLensAction("nonprofit", "volunteer-list", (ctx, _a, _p = {}) => {
     try {
       const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const volunteers = npList(npMap(s, "volunteers"), npActor(ctx));
       const totalHours = volunteers.reduce((n, v) => n + v.totalHours, 0);
       return { ok: true, result: { volunteers, count: volunteers.length,
-        totalHours, estValue: Math.round(totalHours * 31.80) } };
+        totalHours, hourlyRate: VOLUNTEER_HOURLY_RATE,
+        estValue: Math.round(totalHours * VOLUNTEER_HOURLY_RATE) } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
@@ -890,7 +906,8 @@ export default function registerNonprofitActions(registerLensAction) {
       v.totalHours += hours;
       saveNonprofit();
       return { ok: true, result: { shift, totalHours: v.totalHours,
-        estValue: Math.round(v.totalHours * 31.80) } };
+        hourlyRate: VOLUNTEER_HOURLY_RATE,
+        estValue: Math.round(v.totalHours * VOLUNTEER_HOURLY_RATE) } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 

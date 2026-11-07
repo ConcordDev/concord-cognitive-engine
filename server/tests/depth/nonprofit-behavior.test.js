@@ -329,7 +329,11 @@ describe("nonprofit — donor CRM + segmentation + receipts (shared ctx)", () =>
     const ann = await lensRun("nonprofit", "receipt-annual", { params: { donorId, year: 2026 } }, ctx);
     assert.equal(ann.result.statement.year, 2026);
     assert.equal(ann.result.statement.giftCount, 2);
-    assert.equal(ann.result.statement.totalDeductible, 750); // 500 + 250
+    // Renamed by the F2 fix: the field was totalDeductible, asserting a tax
+    // status the lens nowhere records. It now totals contributions recorded.
+    assert.equal(ann.result.statement.totalRecorded, 750); // 500 + 250
+    assert.equal(ann.result.statement.totalDeductible, undefined);
+    assert.doesNotMatch(ann.result.statement.statement, /deductib/i);
   });
 
   it("validation: receipt-generate against a missing gift is rejected", async () => {

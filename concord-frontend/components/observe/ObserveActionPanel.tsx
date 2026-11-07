@@ -36,7 +36,7 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface ServiceLogResult { windowMinutes?: number; count?: number; byLevel?: Record<string, number>; errorRate?: number; topService?: string; message?: string }
+interface ServiceLogResult { windowMinutes?: number; count?: number; received?: number; outsideWindow?: number; byLevel?: Record<string, number>; errorRate?: number; topService?: string; message?: string; sourceNote?: string }
 interface AlertSummaryResult { total?: number; firingNow?: number; resolved?: number; meanResolveMin?: number | null; byService?: Record<string, { firing: number; resolved: number }> }
 interface SloResult { targetPct?: number; actualPct?: number; errorBudgetPct?: number; burnRate?: number; status?: string; remainingBudgetMinutes?: number }
 interface IncidentResult { incident?: { id: string; title: string; severity: string; affectedService: string; status: string; openedAt: string }; total?: number }
@@ -157,7 +157,7 @@ export function ObserveActionPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); pipe.publish('observe.mintedDtuId', id, { label: `snapshot ${id.slice(0, 8)}` }); ok(`Snapshot DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); pipe.publish('observe.mintedDtuId', id, { label: `snapshot ${id}` }); ok(`Snapshot DTU ${id}`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -169,7 +169,7 @@ export function ObserveActionPanel() {
     const body = [
       `📊 Observability snapshot — ${new Date().toLocaleString()}`,
       '',
-      logResult ? `Logs (last ${logResult.windowMinutes}m): ${logResult.count} lines · ${logResult.errorRate}% errors · top: ${logResult.topService}` : '',
+      logResult ? `Logs (the ${logResult.count} lines handed to the bench): ${logResult.errorRate}% errors · top: ${logResult.topService}` : '',
       alertResult ? `Alerts: ${alertResult.firingNow} firing, ${alertResult.resolved} resolved` + (alertResult.meanResolveMin != null ? ` (mean ${alertResult.meanResolveMin}m)` : '') : '',
       sloResult ? `SLO: ${sloResult.status} (target ${sloResult.targetPct}%, actual ${sloResult.actualPct}%, burn ${sloResult.burnRate}×)` : '',
       incidentResult?.incident ? `Open incident: ${incidentResult.incident.id} (${incidentResult.incident.severity})` : '',
@@ -206,7 +206,7 @@ export function ObserveActionPanel() {
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish flag failed');
         return newId as string;
       });
-      if (id) { setPublishedDtuId(id); pipe.publish('observe.publishedDtuId', id, { label: `SLO ${id.slice(0, 8)}` }); ok(`SLO report published ${id.slice(0, 8)}… · 30s to recall.`); }
+      if (id) { setPublishedDtuId(id); pipe.publish('observe.publishedDtuId', id, { label: `SLO ${id}` }); ok(`SLO report published ${id} · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -237,9 +237,9 @@ export function ObserveActionPanel() {
     { id: 'alert',    label: 'Alerts',       desc: 'alertSummary group by service',          icon: Bell,        accent: '#f97316', handler: actAlert },
     { id: 'incident', label: 'Open incident', desc: 'incidentTrack + open ticket',           icon: AlertOctagon, accent: '#ef4444', handler: actIncident },
     { id: 'slo',      label: 'SLO check',    desc: 'sloCheck target vs actual + burn rate', icon: Target,      accent: '#22c55e', handler: actSlo },
-    { id: 'mint',     label: mintedDtuId    ? 'Saved'     : 'Mint snapshot',  desc: mintedDtuId    ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private DTU of full state',     icon: Sparkles, accent: '#3b82f6', handler: actMint },
+    { id: 'mint',     label: mintedDtuId    ? 'Saved'     : 'Mint snapshot',  desc: mintedDtuId    ? `DTU ${mintedDtuId}`     : 'Private DTU of full state',     icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm',       label: 'DM on-call',   desc: 'Send snapshot to on-call user',          icon: Send,        accent: '#ec4899', handler: actDm },
-    { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish SLO',    desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public SLO report + federation', icon: Globe,    accent: '#15803d', handler: actPublish },
+    { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish SLO',    desc: publishedDtuId ? `DTU ${publishedDtuId}` : 'Public SLO report + federation', icon: Globe,    accent: '#15803d', handler: actPublish },
     { id: 'agent',    label: 'Triage agent',  desc: 'Top-3 actions for next 30 min',         icon: Wand2,        accent: '#eab308', handler: actAgent },
   ];
 
@@ -254,13 +254,15 @@ export function ObserveActionPanel() {
         <div className="space-y-2">
           <div>
             <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Log lines (LEVEL ts service message)</label>
-            <textarea value={serviceLogs} onChange={(e) => setServiceLogs(e.target.value)} rows={4} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-cyan-400/40 resize-none" placeholder="ERROR 2026-05-16T10:00:00Z api timeout connecting to db
+            <textarea value={serviceLogs} onChange={(e) => setServiceLogs(e.target.value)} rows={4} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono placeholder:text-zinc-600 placeholder:italic focus:outline-none focus:ring-2 focus:ring-cyan-400/40 resize-none" placeholder="ERROR 2026-05-16T10:00:00Z api timeout connecting to db
 INFO 2026-05-16T10:01:00Z api healthy" />
+            <div className="text-[10px] text-zinc-500 mt-0.5">The greyed italic text is a format sample — this box starts empty. Log summary reads the lines you type here, not the Telemetry log store.</div>
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Alerts (severity,service,fired_at[,resolved_at])</label>
-            <textarea value={alertList} onChange={(e) => setAlertList(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:ring-2 focus:ring-orange-400/40 resize-none" placeholder="critical,api,2026-05-16T10:00Z,2026-05-16T10:15Z
+            <textarea value={alertList} onChange={(e) => setAlertList(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono placeholder:text-zinc-600 placeholder:italic focus:outline-none focus:ring-2 focus:ring-orange-400/40 resize-none" placeholder="critical,api,2026-05-16T10:00Z,2026-05-16T10:15Z
 high,db,2026-05-16T10:05Z" />
+            <div className="text-[10px] text-zinc-500 mt-0.5">The greyed italic text is a format sample — this box starts empty.</div>
           </div>
         </div>
         <div className="space-y-2">
@@ -326,6 +328,12 @@ high,db,2026-05-16T10:05Z" />
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 space-y-0.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center gap-1.5"><Activity className="w-3 h-3" /> Log summary</div>
             <div className="text-[11px] text-zinc-300">{logResult.count ?? 0} lines · top: {logResult.topService} · error rate: <span className={cn('font-mono', (logResult.errorRate ?? 0) > 5 ? 'text-rose-300' : 'text-emerald-300')}>{logResult.errorRate}%</span></div>
+            {(logResult.sourceNote || (logResult.outsideWindow ?? 0) > 0) && (
+              <div className="text-[10px] text-zinc-500">
+                {logResult.sourceNote}
+                {(logResult.outsideWindow ?? 0) > 0 && ` ${logResult.outsideWindow} of ${logResult.received ?? logResult.count} handed lines fall outside the stated ${logResult.windowMinutes}m window — they are counted in this summary.`}
+              </div>
+            )}
             {logResult.byLevel && Object.keys(logResult.byLevel).length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {Object.entries(logResult.byLevel).map(([lvl, cnt]) => (

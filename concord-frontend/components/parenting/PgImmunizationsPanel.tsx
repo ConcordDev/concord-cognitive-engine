@@ -3,27 +3,24 @@
 /**
  * PgImmunizationsPanel — wires `parenting.immunizationTracker` (a real CDC
  * "Recommended Child and Adolescent Immunization Schedule" checker) which
- * had zero UI callers anywhere in the app before this rebuild. The macro is
- * stateless (artifact.data: { childAge, vaccinations }) rather than
- * persisted per-child like the other Huckleberry-parity tabs — this panel
- * derives `childAge` from the real selected child's birth date so the
- * caller never has to re-type it, and lets them check off which of the 10
- * CDC vaccine categories the child has already received.
+ * had zero UI callers anywhere in the app before this rebuild. Received
+ * vaccines are stored on the child, so a reload keeps the checks. The
+ * check reads that record and the child's birth date.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, Syringe, AlertTriangle, Check } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-interface Child { id: string; name: string; ageMonths: number }
+interface Child { id: string; name: string; ageMonths: number; vaccinesReceived?: string[] }
 
 const CDC_VACCINES = [
   'Hepatitis B', 'DTaP', 'IPV (Polio)', 'Hib', 'PCV13 (Pneumococcal)',
   'RV (Rotavirus)', 'MMR', 'Varicella', 'Hepatitis A', 'Influenza',
 ] as const;
 
-interface Immunization { vaccine: string; required: boolean; received: boolean; status: 'completed' | 'overdue' | 'upcoming'; note: string | null }
+interface Immunization { vaccine: string; required: boolean; received: boolean; status: 'completed' | 'overdue' | 'upcoming' | 'annual'; note: string | null }
 interface TrackerResult {
   childAge: string; ageMonths: number; immunizations: Immunization[];
   summary: { total: number; completed: number; overdue: number; complianceRate: number };
@@ -34,33 +31,48 @@ const STATUS_STYLE: Record<Immunization['status'], string> = {
   completed: 'border-emerald-900/50 bg-emerald-950/20 text-emerald-300',
   overdue: 'border-rose-900/50 bg-rose-950/20 text-rose-300',
   upcoming: 'border-zinc-800 bg-zinc-900/70 text-zinc-400',
+  annual: 'border-zinc-800 bg-zinc-900/70 text-zinc-300',
 };
 
 function ageMonthsToChildAgeStr(ageMonths: number) {
   const years = Math.floor(ageMonths / 12);
-  const months = Math.round(ageMonths % 12);
+  const months = Math.floor(ageMonths % 12);
   return months > 0 ? `${years}y ${months}m` : `${years}y`;
 }
 
-export function PgImmunizationsPanel({ child }: { child: Child }) {
-  const [received, setReceived] = useState<Set<string>>(new Set());
+export function PgImmunizationsPanel({ child, onRecorded }: { child: Child; onRecorded?: (names: string[]) => void }) {
+  const recordedKey = (child.vaccinesReceived || []).join('|');
+  const [received, setReceived] = useState<Set<string>>(() => new Set(child.vaccinesReceived || []));
   const [result, setResult] = useState<TrackerResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const toggle = (vaccine: string) => {
-    setReceived((prev) => {
-      const next = new Set(prev);
-      if (next.has(vaccine)) next.delete(vaccine); else next.add(vaccine);
-      return next;
-    });
+  useEffect(() => {
+    setReceived(new Set(child.vaccinesReceived || []));
+  }, [child.id, recordedKey]);
+
+  const toggle = async (vaccine: string) => {
+    const nextOn = !received.has(vaccine);
+    setError(null);
+    try {
+      const r = await apiHelpers.lens.runDomain('parenting', 'immunization-record', {
+        input: { childId: child.id, vaccine, received: nextOn },
+      });
+      const envelope = (r as { data?: { ok: boolean; result?: { vaccinesReceived?: string[] }; error?: string } }).data;
+      if (!envelope?.ok || !envelope.result) { setError(envelope?.error || 'Could not save that vaccine.'); return; }
+      const names = envelope.result.vaccinesReceived || [];
+      setReceived(new Set(names));
+      onRecorded?.(names);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save that vaccine.');
+    }
   };
 
   const check = async () => {
     setLoading(true); setError(null);
     try {
       const r = await apiHelpers.lens.runDomain('parenting', 'immunizationTracker', {
-        input: { childAge: ageMonthsToChildAgeStr(child.ageMonths), vaccinations: Array.from(received).join(', ') },
+        input: { childId: child.id },
       });
       const envelope = (r as { data?: { ok: boolean; result?: TrackerResult; error?: string } }).data;
       if (!envelope?.ok || !envelope.result) { setError(envelope?.error || 'Immunization check failed.'); setResult(null); return; }

@@ -357,7 +357,12 @@ export default function registerMentorshipActions(registerLensAction) {
       const skillFilter = mClean(params.skill, 40).toLowerCase();
       const minRating = mNum(params.minRating, 0);
       const sort = ["rating", "experience", "availability"].includes(params.sort) ? params.sort : "rating";
-      let mentors = [...s.mentors.values()].filter((m) => m.listed);
+      let mentors = [...s.mentors.values()].filter((m) => m.listed).map((m) => ({
+        ...m,
+        // A listed profile whose id is not a user row is a dataset row.
+        // A member who published a profile resolves here.
+        hasAccount: Boolean(lookupUserIdentity(mDb(ctx), m.id).username),
+      }));
       if (q) {mentors = mentors.filter((m) =>
         m.name.toLowerCase().includes(q) || m.headline.toLowerCase().includes(q) ||
         m.skills.some((sk) => sk.toLowerCase().includes(q)));}
@@ -384,7 +389,10 @@ export default function registerMentorshipActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          mentor,
+          mentor: {
+            ...mentor,
+            hasAccount: Boolean(lookupUserIdentity(mDb(ctx), mentor.id).username),
+          },
           reviews: reviews.slice(-20).reverse(),
           openSlots: Math.max(0, mentor.capacity - mentor.menteeCount),
         },
@@ -929,6 +937,7 @@ export default function registerMentorshipActions(registerLensAction) {
             ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10 : 0,
           avgMentorRating: ratedMentors.length
             ? Math.round((ratedMentors.reduce((a, m) => a + m.rating, 0) / ratedMentors.length) * 10) / 10 : 0,
+          ratedMentorCount: ratedMentors.length,
           cohort,
           scope: "caller",
         },

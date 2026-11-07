@@ -43,8 +43,9 @@ interface I9Record {
   rejectionReason: string | null; attachedDocumentIds: string[];
 }
 interface I9Summary {
-  activeEmployees: number; verified: number; missing: number; overdue: number; compliancePct: number;
+  activeEmployees: number; verified: number; pending?: number; missing: number; overdue: number; compliancePct: number | null;
 }
+interface OrgStatus { pct: number | null; acknowledged: number; required: number }
 
 const I9_DOCUMENT_TYPES: { value: I9DocumentType; label: string; alwaysExpires?: boolean }[] = [
   { value: 'us_passport', label: 'U.S. Passport' },
@@ -76,7 +77,7 @@ const I9_STATUS_ICON: Record<I9Status, typeof ShieldCheck> = {
 export function HrCompliancePanel() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [docs, setDocs] = useState<ComplianceDoc[]>([]);
-  const [orgPct, setOrgPct] = useState(100);
+  const [orgStatus, setOrgStatus] = useState<OrgStatus>({ pct: null, acknowledged: 0, required: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', category: '', version: '', body: '', dueDate: '' });
@@ -105,7 +106,13 @@ export function HrCompliancePanel() {
     ]);
     setEmployees((e.data?.result?.employees as Employee[]) || []);
     setDocs((d.data?.result?.documents as ComplianceDoc[]) || []);
-    setOrgPct((st.data?.result?.compliancePct as number) ?? 100);
+    // HR F4: the server returns compliancePct: null (with the counts) when
+    // there is nothing to measure — never substitute a default percentage.
+    setOrgStatus({
+      pct: (st.data?.result?.compliancePct as number | null) ?? null,
+      acknowledged: (st.data?.result?.totalAcknowledged as number) || 0,
+      required: (st.data?.result?.totalRequired as number) || 0,
+    });
     setI9Records((i9l.data?.result?.records as I9Record[]) || []);
     setI9Summary((i9s.data?.result as I9Summary) || null);
     setLoading(false);
@@ -195,8 +202,15 @@ export function HrCompliancePanel() {
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
-        <p className={cn('text-lg font-bold', orgPct >= 100 ? 'text-emerald-400' : orgPct >= 70 ? 'text-amber-400' : 'text-rose-400')}>{orgPct}%</p>
+        <p className={cn('text-lg font-bold', orgStatus.pct == null ? 'text-zinc-300' : orgStatus.pct >= 100 ? 'text-emerald-400' : orgStatus.pct >= 70 ? 'text-amber-400' : 'text-rose-400')}>
+          {orgStatus.pct == null ? '—' : `${orgStatus.pct}%`}
+        </p>
         <p className="text-[10px] text-zinc-400 uppercase tracking-wide">Org-wide acknowledgement</p>
+        <p className="text-[10px] text-zinc-500">
+          {orgStatus.required > 0
+            ? `${orgStatus.acknowledged} of ${orgStatus.required} acknowledgements`
+            : 'No documents or employees to measure yet'}
+        </p>
       </div>
 
       {/* Publish doc */}
@@ -298,14 +312,21 @@ export function HrCompliancePanel() {
         </div>
 
         {i9Summary && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3">
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
-              <p className={cn('text-base font-bold', i9Summary.compliancePct >= 100 ? 'text-emerald-400' : i9Summary.compliancePct >= 70 ? 'text-amber-400' : 'text-rose-400')}>{i9Summary.compliancePct}%</p>
+              <p className={cn('text-base font-bold', i9Summary.compliancePct == null ? 'text-zinc-200' : i9Summary.compliancePct >= 100 ? 'text-emerald-400' : i9Summary.compliancePct >= 70 ? 'text-amber-400' : 'text-rose-400')}>
+                {i9Summary.compliancePct == null ? '—' : `${i9Summary.compliancePct}%`}
+              </p>
               <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Verified</p>
+              <p className="text-[9px] text-zinc-500">{i9Summary.verified} of {i9Summary.activeEmployees}</p>
+            </div>
+            <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
+              <p className="text-base font-bold text-zinc-200">{i9Summary.pending ?? 0}</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Pending review</p>
             </div>
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
               <p className="text-base font-bold text-zinc-200">{i9Summary.missing}</p>
-              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Missing I-9</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">No I-9 on file</p>
             </div>
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
               <p className={cn('text-base font-bold', i9Summary.overdue > 0 ? 'text-rose-400' : 'text-zinc-200')}>{i9Summary.overdue}</p>
@@ -360,6 +381,7 @@ export function HrCompliancePanel() {
                         <p className="text-xs text-zinc-100">{r.employeeName}</p>
                         <p className="text-[10px] text-zinc-400">
                           {I9_DOC_LABEL.get(r.documentType) || r.documentType}
+                          {r.documentIdentifier ? <span> · # {r.documentIdentifier}</span> : null}
                           {r.expirationDate ? ` · expires ${r.expirationDate}${r.daysUntilExpiration != null ? ` (${r.daysUntilExpiration}d)` : ''}` : ''}
                         </p>
                       </div>

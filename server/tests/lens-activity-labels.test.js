@@ -166,6 +166,31 @@ describe("isQuietLensAction — read traffic writes no rows", () => {
       assert.equal(isQuietLensAction(d, a), true, `${d}/${a} should be quiet`);
     }
   });
+  it("classroom names a quiz and a material, and list loads stay quiet", () => {
+    assert.equal(lensActivityLabel("classroom", "quiz-create"), "quiz posted");
+    assert.equal(
+      lensActivityObject("classroom", "quiz-create", { title: "PR2CLASS-QUIZ-1101" }, { quiz: { title: "PR2CLASS-QUIZ-1101" } }),
+      "PR2CLASS-QUIZ-1101",
+    );
+    assert.equal(lensActivityLabel("classroom", "material-add"), "material added");
+    assert.equal(
+      lensActivityObject("classroom", "material-add", { title: "PR2CLASS-MAT-1101" }, { material: { title: "PR2CLASS-MAT-1101" } }),
+      "PR2CLASS-MAT-1101",
+    );
+    assert.equal(
+      lensActivityObject("classroom", "quiz-create", {}, { quiz: { title: "From the result" } }),
+      "From the result",
+    );
+    for (const action of [
+      "assignment-list", "stream-list", "gradebook", "material-list",
+      "todo", "quiz-list", "quiz-get", "quiz-attempts", "list_cohorts",
+    ]) {
+      assert.equal(isQuietLensAction("classroom", action), true, action);
+    }
+    for (const action of ["quiz-create", "material-add", "quiz-submit", "create_cohort", "assignment-create"]) {
+      assert.equal(isQuietLensAction("classroom", action), false, action);
+    }
+  });
   it("never quiets a write", () => {
     for (const [d, a] of [
       ["commonsense", "check-ask"], ["commonsense", "check-finding"],

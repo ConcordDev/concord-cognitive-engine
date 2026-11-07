@@ -16,6 +16,10 @@ import { chatAgentRoute, answerViaAgent, sourcesFromToolCalls, routeHint } from 
 import { collectRetrievedDtus, guardDtuCitations, asksAboutOwnDtus } from "../lib/chat/dtu-citation-guard.js";
 import { filterCarryOverDtus, currentTurnAnchor, isBackReference } from "../lib/chat/turn-context.js";
 
+// These tests pin the keyword route lists; the agent-by-default fallback
+// (route "general") is covered in tests/chat-agent-default-route.test.js.
+process.env.CONCORD_CHAT_AGENT_DEFAULT = "0";
+
 const HEAT_PROMPT = "What does my Concord substrate (DTUs) know about heat pumps? Cite the DTUs you used.";
 const INVENTED_REPLY = `You're asking about what your Concord substrate knows about heat pumps.
 

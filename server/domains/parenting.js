@@ -7,6 +7,20 @@ import { lookupUserIdentity } from "../lib/user-identity.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 
+// 3 is "3rd", not "3th". 11–13 stay "th".
+export function pgPercentileLabel(n) {
+  const v = Math.round(Number(n));
+  if (!Number.isFinite(v)) return "N/A";
+  const mod100 = Math.abs(v) % 100;
+  const mod10 = mod100 % 10;
+  const suffix = mod100 >= 11 && mod100 <= 13 ? "th"
+    : mod10 === 1 ? "st"
+    : mod10 === 2 ? "nd"
+    : mod10 === 3 ? "rd"
+    : "th";
+  return `${v}${suffix}`;
+}
+
 export default function registerParentingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -14,9 +28,30 @@ export default function registerParentingActions(registerLensAction) {
    * Evaluate developmental milestones against age-appropriate expectations.
    * artifact.data: { childName, childAge, milestones: [{ category, name, date }] }
    */
-  registerLensAction("parenting", "milestoneCheck", (ctx, artifact, _params) => {
+  registerLensAction("parenting", "milestoneCheck", (ctx, artifact, params) => {
   try {
-    const data = artifact.data || {};
+    const fromArtifact = artifact && artifact.data && typeof artifact.data === "object" && !Array.isArray(artifact.data) ? artifact.data : {};
+    const fromParams = params && typeof params === "object" && !Array.isArray(params) ? params : {};
+    const data = { ...fromArtifact, ...fromParams };
+    const childId = typeof data.childId === "string" ? data.childId.trim() : "";
+    // A child id reads the stored CDC record. An empty observation list
+    // must not score that record as 0%.
+    if (childId) {
+      const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = pgBucket(s, ctx, childId);
+      const child = pgChild(s, userId, childId);
+      if (!child) return { ok: false, error: "child not found" };
+      return {
+        ok: true,
+        result: {
+          basis: "record",
+          childId: child.id,
+          childName: child.name,
+          ...pgMilestoneRecord(s, userId, child),
+          note: "From this child's milestone record. Not a developmental assessment.",
+        },
+      };
+    }
     const childAge = data.childAge || "";
     const milestones = requireList(data.milestones, "milestones");
     if (!Array.isArray(milestones)) return milestones;
@@ -67,6 +102,7 @@ export default function registerParentingActions(registerLensAction) {
     return {
       ok: true,
       result: {
+        basis: "age-table",
         childName: data.childName,
         ageMonths,
         ageDisplay: childAge,
@@ -77,6 +113,7 @@ export default function registerParentingActions(registerLensAction) {
           : overallRate >= 50 ? "Mostly on track — a few areas to monitor"
           : overallRate >= 20 ? "Some delays noted — consider pediatrician consultation"
           : ageMonths > 0 ? "Limited milestone data — record more observations" : "Enter child age to assess milestones",
+        note: "Age table only. This is not a child's milestone record.",
       },
     };
     } catch (e) { return handlerFailure(e); }
@@ -138,9 +175,9 @@ export default function registerParentingActions(registerLensAction) {
           bmi,
         },
         percentiles: {
-          height: heightPct !== null ? `${heightPct}th` : "N/A",
-          weight: weightPct !== null ? `${weightPct}th` : "N/A",
-          headCircumference: headPct !== null ? `${headPct}th` : "N/A",
+          height: heightPct !== null ? pgPercentileLabel(heightPct) : "N/A",
+          weight: weightPct !== null ? pgPercentileLabel(weightPct) : "N/A",
+          headCircumference: headPct !== null ? pgPercentileLabel(headPct) : "N/A",
         },
         flags,
         note: "Percentiles are approximations. Consult your pediatrician for precise growth chart plotting.",
@@ -304,65 +341,123 @@ export default function registerParentingActions(registerLensAction) {
     } catch (e) { return handlerFailure(e); }
 });
 
-  /**
-   * immunizationTracker
-   * Track and recommend childhood immunizations per CDC schedule.
-   * artifact.data: { childAge, vaccinations: [{ name, date }] }
-   */
-  registerLensAction("parenting", "immunizationTracker", (ctx, artifact, _params) => {
-  try {
-    const data = artifact.data || {};
-    const childAge = data.childAge || "1y";
-    const vaccinations = data.vaccinations ? data.vaccinations.split(",").map(v => v.trim()) : [];
+  // Dose 1 on the CDC childhood schedule, not the age the series finishes.
+  // A 72-month series end hid DTaP, IPV, MMR, and Varicella from a toddler.
+  const PG_CDC = [
+    { vaccine: "Hepatitis B", firstDueMonths: 0, critical: true },
+    { vaccine: "DTaP", firstDueMonths: 2, critical: true },
+    { vaccine: "IPV (Polio)", firstDueMonths: 2, critical: true },
+    { vaccine: "Hib", firstDueMonths: 2, critical: true },
+    { vaccine: "PCV13 (Pneumococcal)", firstDueMonths: 2, critical: true },
+    { vaccine: "RV (Rotavirus)", firstDueMonths: 2, critical: true },
+    { vaccine: "MMR", firstDueMonths: 12, critical: true },
+    { vaccine: "Varicella", firstDueMonths: 12, critical: true },
+    { vaccine: "Hepatitis A", firstDueMonths: 12, critical: true },
+    { vaccine: "Influenza", firstDueMonths: 6, critical: false, note: "Annual" },
+  ];
+  const PG_CDC_NAMES = new Set(PG_CDC.map((v) => v.vaccine));
 
-    const ageMatch = childAge.match(/(\d+)\s*y/i);
-    const ageYears = ageMatch ? parseInt(ageMatch[1]) : 1;
-    const ageMonths = ageYears * 12;
-
-    const cdcSchedule = [
-      { vaccine: "Hepatitis B", doses: 3, byMonths: 6, critical: true },
-      { vaccine: "DTaP", doses: 5, byMonths: 72, critical: true },
-      { vaccine: "IPV (Polio)", doses: 4, byMonths: 72, critical: true },
-      { vaccine: "Hib", doses: 4, byMonths: 15, critical: true },
-      { vaccine: "PCV13 (Pneumococcal)", doses: 4, byMonths: 15, critical: true },
-      { vaccine: "RV (Rotavirus)", doses: 3, byMonths: 8, critical: true },
-      { vaccine: "MMR", doses: 2, byMonths: 72, critical: true },
-      { vaccine: "Varicella", doses: 2, byMonths: 72, critical: true },
-      { vaccine: "Hepatitis A", doses: 2, byMonths: 24, critical: true },
-      { vaccine: "Influenza", doses: 1, byMonths: 6, critical: false, note: "Annual" },
-    ];
-
-    const applicable = cdcSchedule.filter(v => ageMonths >= v.byMonths - 6);
-    const received = applicable.map(v => {
-      const got = vaccinations.some(vax => vax.toLowerCase().includes(v.vaccine.toLowerCase().slice(0, 5)));
+  function pgMacroData(artifact, params) {
+    const fromArtifact = artifact && artifact.data && typeof artifact.data === "object" && !Array.isArray(artifact.data) ? artifact.data : {};
+    const fromParams = params && typeof params === "object" && !Array.isArray(params) ? params : {};
+    return { ...fromArtifact, ...fromParams };
+  }
+  function pgAgeFromLabel(childAge) {
+    const text = String(childAge || "").trim();
+    const ageMatch = text.match(/(\d+)\s*y(?:ear)?s?\s*(?:(\d+)\s*m(?:onth)?s?)?/i);
+    if (ageMatch) return (parseInt(ageMatch[1], 10) || 0) * 12 + (parseInt(ageMatch[2], 10) || 0);
+    const monthsOnly = text.match(/(\d+)\s*m(?:onth)?s?/i);
+    if (monthsOnly) return parseInt(monthsOnly[1], 10) || 0;
+    return 12;
+  }
+  function pgCanonVaccine(name) {
+    const text = String(name || "").trim().toLowerCase();
+    if (!text) return "";
+    return PG_CDC.find((v) => v.vaccine.toLowerCase() === text)?.vaccine || "";
+  }
+  function pgVaccineRows(ageMonths, receivedNames) {
+    const got = new Set(receivedNames);
+    const immunizations = PG_CDC.map((v) => {
+      const received = got.has(v.vaccine);
+      let status = "upcoming";
+      if (received) status = "completed";
+      else if (ageMonths >= v.firstDueMonths) status = v.critical ? "overdue" : "annual";
       return {
         vaccine: v.vaccine,
         required: v.critical,
-        received: got,
-        status: got ? "completed" : ageMonths > v.byMonths ? "overdue" : "upcoming",
+        received,
+        status,
         note: v.note || null,
       };
     });
+    const overdue = immunizations.filter((r) => r.status === "overdue").length;
+    const completed = immunizations.filter((r) => r.received).length;
+    return { immunizations, overdue, completed };
+  }
 
-    const overdue = received.filter(r => r.status === "overdue" && r.required).length;
-
+  /**
+   * immunizationTracker
+   * The ten CDC categories, from each vaccine's first recommended dose.
+   * A childId reads that child's stored received-state and birth date.
+   * Without one, childAge and vaccinations are a generic check.
+   */
+  registerLensAction("parenting", "immunizationTracker", (ctx, artifact, params) => {
+  try {
+    const data = pgMacroData(artifact, params);
+    let ageMonths;
+    let receivedNames = [];
+    let childAge = data.childAge || "";
+    if (data.childId) {
+      const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const access = pgAccess(s, ctx, data.childId);
+      if (!access.child) return { ok: false, error: "child not found" };
+      ageMonths = Math.round(pgAgeMonths(access.child.birthDate));
+      childAge = pgAgeDisplay(access.child.birthDate);
+      receivedNames = Array.isArray(access.child.vaccinesReceived) ? access.child.vaccinesReceived.filter((n) => PG_CDC_NAMES.has(n)) : [];
+    } else {
+      ageMonths = pgAgeFromLabel(childAge || "1y");
+      const raw = data.vaccinations;
+      const list = Array.isArray(raw) ? raw : String(raw || "").split(",");
+      receivedNames = list.map(pgCanonVaccine).filter(Boolean);
+    }
+    const rows = pgVaccineRows(ageMonths, receivedNames);
     return {
       ok: true,
       result: {
-        childAge,
+        childAge: childAge || `${Math.floor(ageMonths / 12)}y ${ageMonths % 12}m`,
         ageMonths,
-        immunizations: received,
+        immunizations: rows.immunizations,
         summary: {
-          total: received.length,
-          completed: received.filter(r => r.received).length,
-          overdue,
-          complianceRate: received.length > 0 ? Math.round((received.filter(r => r.received).length / received.length) * 100) : 0,
+          total: rows.immunizations.length,
+          completed: rows.completed,
+          overdue: rows.overdue,
+          complianceRate: rows.immunizations.length > 0 ? Math.round((rows.completed / rows.immunizations.length) * 100) : 0,
         },
-        action: overdue > 0 ? `${overdue} critical immunization(s) overdue — schedule pediatrician visit` : "Immunizations on track",
+        action: rows.overdue > 0 ? `${rows.overdue} critical immunization(s) overdue — schedule pediatrician visit` : "Immunizations on track",
       },
     };
     } catch (e) { return handlerFailure(e); }
 });
+
+  registerLensAction("parenting", "immunization-record", (ctx, artifact, params) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const data = pgMacroData(artifact, params);
+    const access = pgAccess(s, ctx, data.childId);
+    if (!access.child) return { ok: false, error: "child not found" };
+    const vaccine = pgCanonVaccine(data.vaccine);
+    if (!vaccine) return { ok: false, error: "invalid_input", field: "vaccine" };
+    const received = data.received;
+    const on = received === true || received === "true" || received === 1;
+    const off = received === false || received === "false" || received === 0;
+    if (!on && !off) return { ok: false, error: "invalid_input", field: "received" };
+    if (!Array.isArray(access.child.vaccinesReceived)) access.child.vaccinesReceived = [];
+    const list = access.child.vaccinesReceived;
+    const i = list.indexOf(vaccine);
+    if (on && i < 0) list.push(vaccine);
+    if (off && i >= 0) list.splice(i, 1);
+    savePgState();
+    return { ok: true, result: { childId: access.child.id, vaccinesReceived: list.slice() } };
+  });
 
   // ─── Huckleberry 2026 parity — smart baby-care tracker ──────────────
   // Child profiles, one-touch logging (feeds, sleep, diapers, pumping,
@@ -410,6 +505,54 @@ export default function registerParentingActions(registerLensAction) {
   const pgNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const pgClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const PG_DAY = 86400000;
+  // A logged nap may end a couple of minutes ahead of this clock. Further
+  // than that, the window has not happened and must not be stored or used
+  // as a wake to predict from.
+  const PG_SLEEP_SKEW_MS = 2 * 60000;
+
+  function pgSleepWindow(input) {
+    const rawStart = pgClean(input.startAt, 80);
+    if (!rawStart) return { error: { ok: false, error: "invalid_input", field: "startAt" } };
+    const startMs = Date.parse(rawStart);
+    if (!Number.isFinite(startMs)) {
+      return { error: { ok: false, error: "invalid_input", field: "startAt" } };
+    }
+    const dur = Number(input.durationMin);
+    if (!Number.isFinite(dur) || dur <= 0) {
+      return { error: { ok: false, error: "invalid_input", field: "durationMin" } };
+    }
+    const durationMin = Math.round(dur);
+    if (durationMin < 1) {
+      return { error: { ok: false, error: "invalid_input", field: "durationMin" } };
+    }
+    const endMs = startMs + durationMin * 60000;
+    const rawEnd = pgClean(input.endAt, 80);
+    if (rawEnd) {
+      const sentEnd = Date.parse(rawEnd);
+      if (!Number.isFinite(sentEnd) || Math.abs(sentEnd - endMs) > 60000) {
+        return { error: { ok: false, error: "invalid_input", field: "endAt" } };
+      }
+    }
+    const now = Date.now();
+    if (startMs > now + PG_SLEEP_SKEW_MS) {
+      return { error: { ok: false, error: "invalid_input", field: "startAt", reason: "start_in_future" } };
+    }
+    if (endMs > now + PG_SLEEP_SKEW_MS) {
+      return { error: { ok: false, error: "invalid_input", field: "endAt", reason: "end_in_future" } };
+    }
+    return {
+      durationMin,
+      startAt: new Date(startMs).toISOString(),
+      endAt: new Date(endMs).toISOString(),
+    };
+  }
+
+  function pgCompletedWakeMs(sleeps, now = Date.now()) {
+    const ends = sleeps
+      .map((e) => Date.parse(e.endAt))
+      .filter((t) => Number.isFinite(t) && t <= now + PG_SLEEP_SKEW_MS);
+    return ends.length ? Math.max(...ends) : null;
+  }
 
   function pgAgeMonths(birthDate) {
     const b = Date.parse(`${birthDate}T00:00:00Z`);
@@ -419,8 +562,13 @@ export default function registerParentingActions(registerLensAction) {
   function pgAgeDisplay(birthDate) {
     const m = pgAgeMonths(birthDate);
     if (m < 1) return `${Math.round(m * 30.4375)} days`;
-    if (m < 24) return `${Math.round(m)} months`;
-    return `${Math.floor(m / 12)}y ${Math.round(m % 12)}m`;
+    // The growth chart plots this same tenth. Flooring the calendar
+    // months keeps a partial month from reading as a finished one
+    // (31.6 months was "2y 8m").
+    const precise = Math.round(m * 10) / 10;
+    const whole = Math.floor(m);
+    if (whole < 24) return `${precise} months`;
+    return `${Math.floor(whole / 12)}y ${whole % 12}m · ${precise} months`;
   }
   function pgChild(s, userId, childId) {
     return (s.children.get(userId) || []).find((c) => c.id === childId) || null;
@@ -718,6 +866,7 @@ export default function registerParentingActions(registerLensAction) {
       createdAt: c.createdAt,
       ageMonths: Math.round(pgAgeMonths(c.birthDate) * 10) / 10,
       ageDisplay: pgAgeDisplay(c.birthDate),
+      vaccinesReceived: Array.isArray(c.vaccinesReceived) ? c.vaccinesReceived.filter((n) => PG_CDC_NAMES.has(n)) : [],
       shared: !!c.shared,
     }));
     return { ok: true, result: { children, count: children.length } };
@@ -798,17 +947,19 @@ export default function registerParentingActions(registerLensAction) {
   });
 
   // ── Sleep ───────────────────────────────────────────────────────────
-  registerLensAction("parenting", "sleep-log", (ctx, _a, params = {}) => {
+  registerLensAction("parenting", "sleep-log", (ctx, artifact, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgBucket(s, ctx, params.childId);
-    if (!pgChild(s, userId, params.childId)) return { ok: false, error: "child not found" };
-    const durationMin = Math.max(1, Math.round(pgNum(params.durationMin)));
-    const startAt = pgClean(params.startAt, 30) || pgNow();
+    const input = { ...(artifact && artifact.data), ...params };
+    const userId = pgBucket(s, ctx, input.childId);
+    if (!pgChild(s, userId, input.childId)) return { ok: false, error: "child not found" };
+    const window = pgSleepWindow(input);
+    if (window.error) return window.error;
     const entry = {
-      id: pgId("slp"), childId: String(params.childId),
-      type: ["nap", "night"].includes(String(params.type)) ? String(params.type) : "nap",
-      durationMin, startAt,
-      endAt: new Date(Date.parse(startAt) + durationMin * 60000).toISOString(),
+      id: pgId("slp"), childId: String(input.childId),
+      type: ["nap", "night"].includes(String(input.type)) ? String(input.type) : "nap",
+      durationMin: window.durationMin,
+      startAt: window.startAt,
+      endAt: window.endAt,
     };
     pgListB(s.sleeps, userId).push(entry);
     savePgState();
@@ -854,9 +1005,7 @@ export default function registerParentingActions(registerLensAction) {
     const ageMonths = pgAgeMonths(child.birthDate);
     const ww = pgWakeWindow(ageMonths);
     const sleeps = (s.sleeps.get(userId) || []).filter((e) => e.childId === child.id);
-    const lastWake = sleeps.length
-      ? sleeps.reduce((m, e) => Math.max(m, Date.parse(e.endAt)), 0)
-      : null;
+    const lastWake = pgCompletedWakeMs(sleeps);
     if (ageMonths >= 36) {
       return {
         ok: true,
@@ -868,7 +1017,9 @@ export default function registerParentingActions(registerLensAction) {
       return {
         ok: true,
         result: { ageMonths: Math.round(ageMonths), wakeWindow: ww, predictedNap: null,
-          note: "Log a sleep to predict the next SweetSpot nap window." },
+          note: sleeps.length
+            ? "No completed wake to predict from. A nap that has not ended is not a SweetSpot anchor."
+            : "Log a sleep to predict the next SweetSpot nap window." },
       };
     }
     return {
@@ -997,15 +1148,18 @@ export default function registerParentingActions(registerLensAction) {
     const result = { ageMonths: Math.round(ageMonths * 10) / 10, sex: child.sex, measuredOn: latest.date };
     if (latest.weightKg) {
       const m = pgWhoMedian(who.weight, ageMonths);
-      result.weight = { value: latest.weightKg, whoMedian: Math.round(m * 100) / 100, percentile: pgPercentile(latest.weightKg, m, PG_CV.weight) };
+      const percentile = pgPercentile(latest.weightKg, m, PG_CV.weight);
+      result.weight = { value: latest.weightKg, whoMedian: Math.round(m * 100) / 100, percentile, percentileLabel: pgPercentileLabel(percentile) };
     }
     if (latest.heightCm) {
       const m = pgWhoMedian(who.height, ageMonths);
-      result.height = { value: latest.heightCm, whoMedian: Math.round(m * 10) / 10, percentile: pgPercentile(latest.heightCm, m, PG_CV.height) };
+      const percentile = pgPercentile(latest.heightCm, m, PG_CV.height);
+      result.height = { value: latest.heightCm, whoMedian: Math.round(m * 10) / 10, percentile, percentileLabel: pgPercentileLabel(percentile) };
     }
     if (latest.headCm) {
       const m = pgWhoMedian(who.head, ageMonths);
-      result.head = { value: latest.headCm, whoMedian: Math.round(m * 10) / 10, percentile: pgPercentile(latest.headCm, m, PG_CV.head) };
+      const percentile = pgPercentile(latest.headCm, m, PG_CV.head);
+      result.head = { value: latest.headCm, whoMedian: Math.round(m * 10) / 10, percentile, percentileLabel: pgPercentileLabel(percentile) };
     }
     result.note = "Percentiles are estimates from WHO median references. Confirm growth on your pediatrician's official chart.";
     return { ok: true, result };
@@ -1065,12 +1219,7 @@ export default function registerParentingActions(registerLensAction) {
     return { ok: true, result: { record: rec } };
   });
 
-  registerLensAction("parenting", "milestone-progress", (ctx, _a, params = {}) => {
-  try {
-    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = pgBucket(s, ctx, params.childId);
-    const child = pgChild(s, userId, params.childId);
-    if (!child) return { ok: false, error: "child not found" };
+  function pgMilestoneRecord(s, userId, child) {
     const ageMonths = pgAgeMonths(child.birthDate);
     const eligible = PG_MILESTONES.filter((m) => m.ageMonths <= ageMonths + 0.5);
     const recorded = (s.milestones.get(userId) || []).filter((r) => r.childId === child.id && r.achieved);
@@ -1082,14 +1231,20 @@ export default function registerParentingActions(registerLensAction) {
       byCategory[cat] = { total, achieved: done };
     }
     return {
-      ok: true,
-      result: {
-        ageMonths: Math.round(ageMonths),
-        eligibleCount: eligible.length,
-        achievedCount: eligible.filter((m) => recorded.some((r) => r.milestoneId === m.id)).length,
-        byCategory,
-      },
+      ageMonths: Math.round(ageMonths),
+      eligibleCount: eligible.length,
+      achievedCount: eligible.filter((m) => recorded.some((r) => r.milestoneId === m.id)).length,
+      byCategory,
     };
+  }
+
+  registerLensAction("parenting", "milestone-progress", (ctx, _a, params = {}) => {
+  try {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = pgBucket(s, ctx, params.childId);
+    const child = pgChild(s, userId, params.childId);
+    if (!child) return { ok: false, error: "child not found" };
+    return { ok: true, result: pgMilestoneRecord(s, userId, child) };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -1236,11 +1391,11 @@ export default function registerParentingActions(registerLensAction) {
     // Age-driven nap count for the remainder of the day.
     const napsPerDay = ageMonths < 4 ? 4 : ageMonths < 7 ? 3 : ageMonths < 15 ? 2 : ageMonths < 36 ? 1 : 0;
 
-    // Anchor: last logged wake; otherwise "now".
-    const lastEnd = sleeps.length
-      ? sleeps.reduce((m, e) => Math.max(m, Date.parse(e.endAt)), 0)
-      : Date.now();
-    const anchor = Math.max(lastEnd, Date.now());
+    // Anchor on the latest wake that has already happened. A stored end
+    // still in the future is not a record to chain from.
+    const now = Date.now();
+    const lastEnd = pgCompletedWakeMs(sleeps, now);
+    const anchor = lastEnd != null ? Math.max(lastEnd, now) : now;
 
     // Target night sleep duration → derive a bedtime by working back from
     // a 07:00 target wake.
@@ -1248,7 +1403,9 @@ export default function registerParentingActions(registerLensAction) {
 
     const schedule = [];
     let cursor = anchor;
-    let napsDone = sleeps.filter((e) => e.type === "nap" && e.startAt.slice(0, 10) === pgNow().slice(0, 10)).length;
+    let napsDone = sleeps.filter((e) => e.type === "nap"
+      && e.startAt.slice(0, 10) === pgNow().slice(0, 10)
+      && Date.parse(e.endAt) <= now + PG_SLEEP_SKEW_MS).length;
     let napsLeft = Math.max(0, napsPerDay - napsDone);
     for (let i = 0; i < napsLeft; i++) {
       const napStart = cursor + ww.typical * 60000;
@@ -1284,13 +1441,17 @@ export default function registerParentingActions(registerLensAction) {
         ageMonths: Math.round(ageMonths),
         wakeWindow: ww,
         learnedNapMin,
+        napSampleCount: napDurations.length,
+        napBasis: napDurations.length ? "logged" : "age",
         napsPerDay,
         napsLogged: napsDone,
         schedule,
-        anchoredOn: sleeps.length ? new Date(lastEnd).toISOString() : null,
-        note: sleeps.length
+        anchoredOn: lastEnd != null ? new Date(lastEnd).toISOString() : null,
+        note: lastEnd != null
           ? "Predicted from this child's own logged sleep patterns and age-based wake windows."
-          : "No sleep logged yet — schedule anchored to now using age-based wake windows.",
+          : sleeps.length
+            ? "No completed wake to predict from. Schedule stays anchored to now."
+            : "No sleep logged yet — schedule anchored to now using age-based wake windows.",
       },
     };
     } catch (e) { return handlerFailure(e); }
@@ -1334,11 +1495,13 @@ export default function registerParentingActions(registerLensAction) {
         if (!(v > 0)) return null;
         const childAgeAt = Math.max(0, (Date.parse(`${e.date}T00:00:00Z`) - Date.parse(`${child.birthDate}T00:00:00Z`)) / (PG_DAY * 30.4375));
         const median = pgWhoMedian(table, childAgeAt);
+        const percentile = pgPercentile(v, median, cv);
         return {
           ageMonths: Math.round(childAgeAt * 10) / 10,
           value: v,
           date: e.date,
-          percentile: pgPercentile(v, median, cv),
+          percentile,
+          percentileLabel: pgPercentileLabel(percentile),
         };
       })
       .filter(Boolean)
@@ -1606,22 +1769,30 @@ export default function registerParentingActions(registerLensAction) {
     const sleeps = (s.sleeps.get(userId) || []).filter((e) => e.childId === cid);
     const diapers = (s.diapers.get(userId) || []).filter((e) => e.childId === cid);
 
-    const daily = dayKeys.map((d) => ({
+    const dailyAll = dayKeys.map((d) => ({
       date: d,
       feeds: feeds.filter((e) => e.at.slice(0, 10) === d).length,
       sleepMin: sleeps.filter((e) => e.startAt.slice(0, 10) === d).reduce((a, e) => a + e.durationMin, 0),
       diapers: diapers.filter((e) => e.at.slice(0, 10) === d).length,
     }));
-    const withData = daily.filter((d) => d.feeds + d.sleepMin + d.diapers > 0);
+    // Empty days before the profile are not "no logs" — the child was not
+    // here yet. A day with a real backfilled log stays, even if it predates
+    // createdAt. Empty days on or after the profile stay.
+    const createdDay = String(child.createdAt || "").slice(0, 10);
+    const hasLogs = (d) => d.feeds + d.sleepMin + d.diapers > 0;
+    const daily = dailyAll.filter((d) => hasLogs(d) || (createdDay && d.date >= createdDay));
+    const withData = daily.filter(hasLogs);
     const avg = (arr, k) => withData.length ? Math.round((withData.reduce((a, d) => a + d[k], 0) / withData.length) * 10) / 10 : 0;
     const avgFeeds = avg(withData, "feeds");
     const avgSleep = avg(withData, "sleepMin");
     const avgDiapers = avg(withData, "diapers");
 
-    // Anomaly detection: today vs trailing average.
-    const today = daily[daily.length - 1];
+    // Anomaly detection: today vs trailing average. Today is the last
+    // requested day, not whichever plotted row happens to sort last.
+    const todayKey = dayKeys[dayKeys.length - 1];
+    const today = daily.find((d) => d.date === todayKey) || null;
     const anomalies = [];
-    if (withData.length >= 3) {
+    if (withData.length >= 3 && today) {
       if (avgFeeds > 0 && today.feeds > 0 && today.feeds < avgFeeds * 0.6) {
         anomalies.push({ severity: "watch", metric: "feeds", text: `Feeds today (${today.feeds}) are well below the ${days}-day average (${avgFeeds}).` });
       }
@@ -1636,9 +1807,10 @@ export default function registerParentingActions(registerLensAction) {
         anomalies.push({ severity: "info", metric: "logging", text: `${dryDays} day(s) in the window have no diaper entries.` });
       }
     }
-    // Simple linear trend on sleep.
-    let sleepTrend = "steady";
+    // A direction needs four logged days. Fewer than that is not "steady".
+    let sleepTrend = null;
     if (withData.length >= 4) {
+      sleepTrend = "steady";
       const half = Math.floor(withData.length / 2);
       const early = withData.slice(0, half).reduce((a, d) => a + d.sleepMin, 0) / half;
       const late = withData.slice(half).reduce((a, d) => a + d.sleepMin, 0) / (withData.length - half);
@@ -1813,6 +1985,36 @@ export default function registerParentingActions(registerLensAction) {
   // startAt and endAt must both be all-day dates or both be timed
   // datetimes — mixing the two shapes makes iCal export ambiguous.
   function pgSameDateTimeShape(a, b) { return (a.length === 10) === (b.length === 10); }
+  const PG_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const PG_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  // A stored start stays ISO. This is only the line a person reads.
+  function pgWhenLabel(value) {
+    const raw = String(value || "").trim();
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+    const timed = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(raw);
+    const parts = dateOnly || timed;
+    if (!parts) return raw;
+    const year = Number(parts[1]);
+    const month = Number(parts[2]);
+    const day = Number(parts[3]);
+    const stamp = new Date(Date.UTC(year, month - 1, day));
+    if (stamp.getUTCFullYear() !== year || stamp.getUTCMonth() !== month - 1 || stamp.getUTCDate() !== day) return raw;
+    const dateLabel = `${PG_WEEKDAYS[stamp.getUTCDay()]}, ${PG_MONTHS[month - 1]} ${day}, ${year}`;
+    if (!timed) return dateLabel;
+    let hour = Number(parts[4]);
+    const minute = parts[5];
+    if (hour > 23 || Number(minute) > 59) return raw;
+    const ap = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12 || 12;
+    return `${dateLabel}, ${hour}:${minute} ${ap}`;
+  }
+  function pgPresentEvent(e) {
+    return {
+      ...e,
+      whenLabel: pgWhenLabel(e.startAt),
+      endLabel: e.endAt ? pgWhenLabel(e.endAt) : null,
+    };
+  }
   // "Is this event still relevant/upcoming?" basis: explicit endAt if set,
   // otherwise end-of-day for all-day events, otherwise the start instant.
   function pgEventEndMs(e) {
@@ -1885,9 +2087,11 @@ export default function registerParentingActions(registerLensAction) {
     if (params.scope === "upcoming") all = all.filter((e) => pgEventEndMs(e) >= nowMs);
     all.sort((a, b) => a.startAt.localeCompare(b.startAt));
     const upcoming = all.filter((e) => pgEventEndMs(e) >= nowMs);
+    const events = all.map(pgPresentEvent);
+    const next = upcoming[0] ? events.find((e) => e.id === upcoming[0].id) || null : null;
     return {
       ok: true,
-      result: { events: all, count: all.length, nextUp: upcoming[0] || null },
+      result: { events, count: events.length, nextUp: next },
     };
     } catch (e) { return handlerFailure(e); }
 });

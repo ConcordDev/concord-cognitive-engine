@@ -19,6 +19,7 @@ export interface Case {
   court: string;
   jurisdiction: string;
   filedAt: string;
+  matterId?: string | null;
   status: 'active' | 'on_hold' | 'closed' | 'appealed';
   matterType: 'civil' | 'criminal' | 'family' | 'probate' | 'corporate' | 'admin';
   nextDeadline?: string;
@@ -26,8 +27,11 @@ export interface Case {
   events: CaseEvent[];
 }
 
+interface MatterRef { id: string; name: string; number?: string }
+
 export function CaseTracker() {
   const [cases, setCases] = useState<Case[]>([]);
+  const [matters, setMatters] = useState<MatterRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<Partial<Case>>({ matterType: 'civil' });
@@ -39,6 +43,8 @@ export function CaseTracker() {
     try {
       const res = await lensRun({ domain: 'legal', action: 'case-list', input: {} });
       setCases((res.data?.result?.cases || []) as Case[]);
+      const m = await lensRun({ domain: 'legal', action: 'matters-list', input: {} });
+      setMatters((m.data?.result?.matters || []) as MatterRef[]);
     } catch (e) { console.error('[Cases] failed', e); }
     finally { setLoading(false); }
   }
@@ -46,12 +52,15 @@ export function CaseTracker() {
   async function add() {
     if (!draft.caption?.trim() || !draft.caseNumber?.trim()) return;
     try {
-      await lensRun({ domain: 'legal', action: 'case-add', input: draft });
+      const r = await lensRun({ domain: 'legal', action: 'case-add', input: draft });
+      if (r.data?.ok === false) { console.error('[Cases] add failed', r.data?.error); return; }
       setDraft({ matterType: 'civil' });
       setAdding(false);
       await refresh();
     } catch (e) { console.error('[Cases] add failed', e); }
   }
+
+  const matterName = (id?: string | null) => matters.find(m => m.id === id);
 
   const upcomingDeadlines = cases.filter(c => {
     if (!c.nextDeadline) return false;
@@ -78,6 +87,10 @@ export function CaseTracker() {
             <option value="civil">Civil</option><option value="criminal">Criminal</option><option value="family">Family</option><option value="probate">Probate</option><option value="corporate">Corporate</option><option value="admin">Administrative</option>
           </select>
           <input type="date" value={draft.filedAt || ''} onChange={e => setDraft({ ...draft, filedAt: e.target.value })} className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <select value={draft.matterId || ''} onChange={e => setDraft({ ...draft, matterId: e.target.value || null })} className="col-span-2 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white">
+            <option value="">No linked matter</option>
+            {matters.map(m => <option key={m.id} value={m.id}>Matter: {m.number ? `${m.number} · ` : ''}{m.name}</option>)}
+          </select>
           <button onClick={add} className="col-span-2 py-1.5 rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Add case</button>
         </div>
       )}
@@ -113,6 +126,9 @@ export function CaseTracker() {
                       </span>
                     )}
                     <span className="inline-flex items-center gap-1 font-mono tabular-nums"><Clock className="w-3 h-3" /> {c.events.length} events</span>
+                    {c.matterId && (
+                      <span className="text-cyan-300/80">Matter: {matterName(c.matterId)?.number ? `${matterName(c.matterId)?.number} · ` : ''}{matterName(c.matterId)?.name || c.matterId}</span>
+                    )}
                   </div>
                 </li>
               );

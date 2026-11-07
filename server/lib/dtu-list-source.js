@@ -148,6 +148,7 @@ export function shouldFallbackFromSidecarList(body, {
 export function dtuSearchHaystack(d) {
   const creti = typeof d?.creti === "string" ? d.creti : "";
   const parts = [
+    d?.id,
     d?.title,
     d?.content,
     creti,

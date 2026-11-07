@@ -23,22 +23,31 @@ export function FactionWarIntel() {
     refetchInterval: 30000,
   });
 
+  // F2: a feed entry without faction names is not a war this panel can
+  // present. Placeholder rows dressed as wars ("⚔ ? vs ?") were saved as
+  // real data by this panel's Save-as-DTU — entries are split, the
+  // unnamed ones reported as a feed gap, never rendered or saved as wars.
+  // The header no longer claims the feed is "live" either.
+  const allWars = wars.data || [];
+  const named = allWars.filter((w) => w.aggressorFaction || w.defenderFaction);
+  const unnamedCount = allWars.length - named.length;
+
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-cyan-400" />
           <h2 className="text-sm font-semibold text-white">Faction war intel</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">/api/faction-war/active · live</span>
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">/api/faction-war/active</span>
         </div>
-        {(wars.data?.length ?? 0) > 0 && (
+        {named.length > 0 && (
           <SaveAsDtuButton
             compact
             apiSource="concord-faction-war"
-            title={`Active faction wars — ${wars.data?.length}`}
-            content={(wars.data || []).map((w, i) => `${i + 1}. ${w.aggressorFaction || '?'} → ${w.defenderFaction || '?'} · phase ${w.phase || '?'} · momentum ${w.momentum ?? '—'} · casualties ${w.casualties ?? 0}`).join('\n')}
+            title={`Active faction wars — ${named.length}`}
+            content={named.map((w, i) => `${i + 1}. ${w.aggressorFaction || '?'} → ${w.defenderFaction || '?'} · phase ${w.phase || '?'} · momentum ${w.momentum ?? '—'} · casualties ${w.casualties ?? 0}`).join('\n')}
             extraTags={['alliance', 'faction-war', 'concord']}
-            rawData={{ wars: wars.data }}
+            rawData={{ wars: named }}
           />
         )}
       </header>
@@ -47,7 +56,7 @@ export function FactionWarIntel() {
       {wars.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Polling faction wars…</div>}
 
       <div className="space-y-2">
-        {(wars.data || []).map((w, i) => (
+        {named.map((w, i) => (
           <div key={w.id || w.warId || i} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -68,6 +77,11 @@ export function FactionWarIntel() {
         ))}
         {wars.data && wars.data.length === 0 && (
           <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">No active wars. Alliances are stable — for now.</div>
+        )}
+        {unnamedCount > 0 && (
+          <div className="rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-200" role="note">
+            The faction-war feed also returned {unnamedCount} entr{unnamedCount !== 1 ? 'ies' : 'y'} without faction data — not shown or saved as wars.
+          </div>
         )}
       </div>
     </div>

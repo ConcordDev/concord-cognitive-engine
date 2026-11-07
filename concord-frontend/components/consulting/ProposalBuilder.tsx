@@ -17,6 +17,7 @@ interface Signature { signerName: string; signedAt: string; ip: string }
 interface Proposal {
   id: string; title: string; client: string; value: number;
   sections: Section[]; status: string; signature: Signature | null; completeness: number;
+  sectionCount?: number; filledCount?: number;
 }
 interface TemplateSection { key: string; prompt: string }
 
@@ -98,7 +99,10 @@ export function ProposalBuilder() {
               <FileSignature className="w-4 h-4 text-indigo-400 shrink-0" />
               <button onClick={() => setExpanded(expanded === p.id ? null : p.id)} className="text-left min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{p.title}</p>
-                <p className="text-[10px] text-zinc-400">{p.client} · ${p.value.toLocaleString()} · {p.completeness}% complete · {p.status}</p>
+                <p className="text-[10px] text-zinc-400">{p.client} · ${p.value.toLocaleString()} · {p.sectionCount ?? p.sections.length} sections · {p.completeness}% complete · {p.status}</p>
+                {p.signature && (
+                  <p className="text-[10px] text-emerald-400">Signed by {p.signature.signerName} on {new Date(p.signature.signedAt).toLocaleDateString()}</p>
+                )}
               </button>
               {p.signature ? (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold">SIGNED</span>
@@ -137,8 +141,8 @@ export function ProposalBuilder() {
       </ul>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-xl p-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} role="button" tabIndex={0}>
+          <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-xl p-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()} role="button" tabIndex={0}>
             <h4 className="text-sm font-bold text-zinc-100 mb-3">New Proposal</h4>
             <div className="space-y-2">
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Proposal title"
@@ -168,8 +172,8 @@ export function ProposalBuilder() {
       )}
 
       {signFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSignFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSignFor(null)} role="button" tabIndex={0}>
+          <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0}>
             <h4 className="text-sm font-bold text-zinc-100 mb-1">E-signature acceptance</h4>
             <p className="text-[10px] text-zinc-400 mb-3">Typing a name records a binding acceptance with a timestamp.</p>
             <input value={signerName} onChange={e => setSignerName(e.target.value)} placeholder="Signer full name"

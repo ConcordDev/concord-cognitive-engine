@@ -23,17 +23,27 @@ interface Props {
 
 type Phase = 'idle' | 'casting' | 'waiting' | 'biting' | 'reeling' | 'caught' | 'missed';
 
+/** F5 fix: generic ability groups (not per-species special-casing) driving
+ *  real fight behavior from the catalog's own `abilities` field — present in
+ *  the real fauna file as e.g. evade/vanish, dart/leap, pull/thrash, etc. */
+const EVASIVE_ABILITIES = new Set(['evade', 'vanish']);
+
 export function FishingMinigameOverlay({ open, worldId, position, onClose }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [biteAt, setBiteAt] = useState<number | null>(null);
-  const [outcome, setOutcome] = useState<{ fishName?: string; tier?: string; qualityScore?: number } | null>(null);
+  const [outcome, setOutcome] = useState<{ fishName?: string; tier?: string; qualityScore?: number; mintFailed?: boolean; rarity?: string }>({});
   const [tension, setTension] = useState(0.5);
+  // F5 fix: the species is now chosen server-side at BITE time (pickBiteFish)
+  // instead of only at reel-resolve time, so the fight can honestly reflect
+  // it — real name + real abilities from the catalog, not a decorative row.
+  const [biteFish, setBiteFish] = useState<{ fishName?: string; rarity?: string; abilities?: string[] } | null>(null);
+  const [evading, setEvading] = useState(false);
   const reelStartRef = useRef<number>(0);
   const tensionSamplesRef = useRef<number[]>([]);
 
   useEffect(() => {
-    if (!open) { setPhase('idle'); setSessionId(null); setBiteAt(null); setOutcome(null); }
+    if (!open) { setPhase('idle'); setSessionId(null); setBiteAt(null); setOutcome({}); setBiteFish(null); setEvading(false); }
   }, [open]);
 
   // Cast on open
@@ -62,12 +72,15 @@ export function FishingMinigameOverlay({ open, worldId, position, onClose }: Pro
 
   // Bite arrives
   useEffect(() => {
-    const off = subscribe<{ userId: string; sessionId: string }>(
+    const off = subscribe<{ userId: string; sessionId: string; fishName?: string; rarity?: string; abilities?: string[] }>(
       'fishing:bite',
       (msg) => {
         if (msg.sessionId === sessionId) {
           reelStartRef.current = Date.now();
           setPhase('biting');
+          // F5 fix: capture the real species the server picked at bite time
+          // (name/rarity/abilities) so the fight can honestly show it.
+          if (msg.fishName) setBiteFish({ fishName: msg.fishName, rarity: msg.rarity, abilities: msg.abilities });
           setTimeout(() => setPhase('reeling'), 600);
         }
       },
@@ -86,6 +99,24 @@ export function FishingMinigameOverlay({ open, worldId, position, onClose }: Pro
     return () => clearInterval(id);
   }, [phase, tension]);
 
+  // F5 fix: species whose real catalog abilities include evade/vanish get a
+  // periodic "evasive kick" during the fight — tension is yanked toward an
+  // edge and the player must counter-pull it back within ~800ms. This is
+  // driven by the real `abilities` field (not fabricated per-species data)
+  // and is surmountable — the player can beat it by reacting, matching the
+  // review's "evade/vanish behaviours present and surmountable" test.
+  useEffect(() => {
+    if (phase !== 'reeling') return;
+    const isEvasive = (biteFish?.abilities || []).some((a) => EVASIVE_ABILITIES.has(a));
+    if (!isEvasive) return;
+    const kick = setInterval(() => {
+      setEvading(true);
+      setTension((t) => (t > 0.5 ? Math.min(1, t + 0.35) : Math.max(0, t - 0.35)));
+      setTimeout(() => setEvading(false), 800);
+    }, 1100);
+    return () => clearInterval(kick);
+  }, [phase, biteFish]);
+
   // Define submitReel BEFORE the auto-submit useEffect so it can sit in
   // the dependency array without TDZ ("used before declaration"). Wrapped
   // in useCallback so the useEffect doesn't re-fire on every render.
@@ -103,11 +134,18 @@ export function FishingMinigameOverlay({ open, worldId, position, onClose }: Pro
         body: JSON.stringify({ reactionMs, tensionAccuracy }),
       });
       const j = await r.json();
+      // F2 fix: the reel can win the fight (a real fish is chosen) while the
+      // inventory mint still fails — the server now folds mint.ok into the
+      // top-level `ok`, so this branch is reachable and must be shown
+      // honestly rather than celebrated as a plain catch.
       if (j?.ok) {
-        setOutcome({ fishName: j.fish?.name, tier: j.tier, qualityScore: j.qualityScore });
+        setOutcome({ fishName: j.fish?.name, tier: j.tier, qualityScore: j.qualityScore, rarity: j.fish?.rarity });
+        setPhase('caught');
+      } else if (j?.fish?.name) {
+        setOutcome({ fishName: j.fish.name, tier: j.tier, qualityScore: j.qualityScore, mintFailed: true, rarity: j.fish?.rarity });
         setPhase('caught');
       } else {
-        setOutcome({ fishName: j?.error || 'no_fish' });
+        setOutcome({ fishName: j?.reason || j?.error || 'no_fish' });
         setPhase('missed');
       }
     } catch {
@@ -175,14 +213,34 @@ export function FishingMinigameOverlay({ open, worldId, position, onClose }: Pro
 
         {phase === 'reeling' && (
           <div className="py-4">
-            <div className="mb-2 text-xs text-slate-400">Hold tension in the green zone — W up, S down</div>
+            {/* F5 fix: the real species + its real catalog abilities, known
+                since bite time — a behaviour verb the player can actually
+                see, not a decorative catalog-only row. */}
+            {biteFish?.fishName && (
+              <div className="mb-2 flex items-center justify-between text-[11px]">
+                <span className="text-slate-300">
+                  Fighting: <span className="font-medium text-amber-200">{biteFish.fishName}</span>
+                  {biteFish.rarity && <span className="ml-1 text-slate-500 capitalize">({biteFish.rarity})</span>}
+                </span>
+                {(biteFish.abilities?.length ?? 0) > 0 && (
+                  <span className="text-slate-500">{biteFish.abilities!.join(', ')}</span>
+                )}
+              </div>
+            )}
+            <div className="mb-2 text-xs text-slate-400">
+              {evading ? (
+                <span className="font-semibold text-rose-300 animate-pulse">It&apos;s evading! Counter now — W up, S down</span>
+              ) : (
+                'Hold tension in the green zone — W up, S down'
+              )}
+            </div>
             <div className="relative h-32 w-full overflow-hidden rounded bg-slate-800">
               <div
                 className="absolute left-0 right-0 bg-emerald-500/30"
                 style={{ top: '30%', height: '40%' }}
               />
               <div
-                className="absolute left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-amber-300 transition-all"
+                className={`absolute left-1/2 h-3 w-3 -translate-x-1/2 rounded-full transition-all ${evading ? 'bg-rose-400' : 'bg-amber-300'}`}
                 style={{ top: `${(1 - tension) * 100}%` }}
               />
             </div>
@@ -200,10 +258,22 @@ export function FishingMinigameOverlay({ open, worldId, position, onClose }: Pro
 
         {phase === 'caught' && outcome && (
           <div className="py-4 text-center">
-            <Fish className="mx-auto mb-2 h-10 w-10 text-amber-300" />
-            <div className="text-lg font-bold text-amber-100">Caught: {outcome.fishName}</div>
-            {outcome.tier && <div className="mt-1 text-xs text-slate-300">Quality: {outcome.tier}</div>}
-            {outcome.qualityScore !== undefined && (
+            <Fish className={`mx-auto mb-2 h-10 w-10 ${outcome.mintFailed ? 'text-rose-300' : 'text-amber-300'}`} />
+            {outcome.mintFailed ? (
+              <>
+                <div className="text-lg font-bold text-rose-200">Caught — but not saved</div>
+                <div className="mt-1 text-xs text-slate-300">
+                  {outcome.fishName} fought the line but couldn&apos;t be written to your inventory. Try again.
+                </div>
+              </>
+            ) : (
+              <div className="text-lg font-bold text-amber-100">
+                Caught: {outcome.fishName}
+                {outcome.rarity && <span className="ml-1.5 text-xs font-normal text-slate-400 capitalize">({outcome.rarity})</span>}
+              </div>
+            )}
+            {!outcome.mintFailed && outcome.tier && <div className="mt-1 text-xs text-slate-300">Quality: {outcome.tier}</div>}
+            {!outcome.mintFailed && outcome.qualityScore !== undefined && (
               <div className="text-[10px] text-slate-400">Score: {Math.round(outcome.qualityScore * 100)}%</div>
             )}
             <button

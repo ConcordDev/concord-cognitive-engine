@@ -78,6 +78,8 @@ export function FormulaNotebookPanel() {
   const [expression, setExpression] = useState('');
   const [result, setResult] = useState<{ value: string; verified: boolean } | null>(null);
   const [evaluating, setEvaluating] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [formulaSaveError, setFormulaSaveError] = useState<string | null>(null);
 
   const [newFormulaName, setNewFormulaName] = useState('');
   const [newFormulaLatex, setNewFormulaLatex] = useState('');
@@ -89,10 +91,11 @@ export function FormulaNotebookPanel() {
     if (!expression.trim()) return;
     setEvaluating(true);
     setResult(null);
+    setSaveError(null);
+    let evalValue: string;
+    let verified: boolean;
     try {
       const r = await lensRun<{ answer?: unknown; kind?: string }>('math', 'naturalQuery', { query: expression });
-      let evalValue: string;
-      let verified: boolean;
       if (r.data.ok && r.data.result) {
         const answer = r.data.result.answer;
         evalValue = answer != null ? String(answer) : 'No result';
@@ -101,7 +104,18 @@ export function FormulaNotebookPanel() {
         evalValue = `Error: ${r.data.error || 'Could not evaluate expression'}`;
         verified = false;
       }
-      setResult({ value: evalValue, verified });
+    } catch {
+      // The evaluation call itself failed — report exactly that, and do
+      // not persist anything dressed as a computation.
+      setResult({ value: 'Error: Failed to evaluate', verified: false });
+      setEvaluating(false);
+      return;
+    }
+    setResult({ value: evalValue, verified });
+    // Persistence is a separate step with its own failure surface (F7):
+    // the old single-try shape let a save failure overwrite a computed
+    // result and report it as "Failed to evaluate".
+    try {
       await createExpression({
         title: expression,
         data: {
@@ -110,10 +124,13 @@ export function FormulaNotebookPanel() {
           verified,
           evaluatedAt: new Date().toISOString(),
         } as unknown as Partial<ExpressionRecord>,
-        meta: { tags: ['math', verified ? 'verified' : 'unverified'], status: verified ? 'verified' : 'error' },
+        // meta.status must come from the math domain rule's validStatuses
+        // (draft/conjecture/in-proof/proven/published/archived) — the old
+        // 'verified'/'error' values failed create validation outright (F7).
+        meta: { tags: ['math', verified ? 'verified' : 'unverified'], status: verified ? 'proven' : 'draft' },
       });
     } catch {
-      setResult({ value: 'Error: Failed to evaluate', verified: false });
+      setSaveError('Computed, but the result could not be saved to the notebook.');
     } finally {
       setEvaluating(false);
     }
@@ -121,16 +138,26 @@ export function FormulaNotebookPanel() {
 
   const handleSaveFormula = async () => {
     if (!newFormulaName.trim() || !newFormulaLatex.trim()) return;
-    await createFormula({
-      title: newFormulaName,
-      data: {
-        name: newFormulaName,
-        latex: newFormulaLatex,
-        description: newFormulaDesc,
-        category: newFormulaCat,
-      } as unknown as Partial<FormulaRecord>,
-      meta: { tags: ['math', 'formula', newFormulaCat], status: 'active' },
-    });
+    setFormulaSaveError(null);
+    try {
+      await createFormula({
+        title: newFormulaName,
+        data: {
+          name: newFormulaName,
+          latex: newFormulaLatex,
+          description: newFormulaDesc,
+          category: newFormulaCat,
+        } as unknown as Partial<FormulaRecord>,
+        // 'draft' is a valid status under the math domain rule; the old
+        // 'active' failed create validation on every save (F8).
+        meta: { tags: ['math', 'formula', newFormulaCat], status: 'draft' },
+      });
+    } catch {
+      // Keep the form open with its contents — a rejected save (F8) must
+      // read as a save failure, not silently swallow the formula.
+      setFormulaSaveError('Save failed — the formula was not stored. Try again.');
+      return;
+    }
     setNewFormulaName('');
     setNewFormulaLatex('');
     setNewFormulaDesc('');
@@ -195,6 +222,9 @@ export function FormulaNotebookPanel() {
             {result.verified ? <CheckCircle className="h-5 w-5 shrink-0" /> : <XCircle className="h-5 w-5 shrink-0" />}
             {result.value}
           </div>
+        )}
+        {saveError && (
+          <p className="mt-2 text-xs text-amber-300" role="status">{saveError}</p>
         )}
       </section>
 
@@ -279,6 +309,9 @@ export function FormulaNotebookPanel() {
               <button type="button" onClick={handleSaveFormula} disabled={!newFormulaName.trim() || !newFormulaLatex.trim()} className={ds.btnPrimary}>Save</button>
               <button type="button" onClick={() => setShowAddFormula(false)} className={ds.btnGhost}>Cancel</button>
             </div>
+            {formulaSaveError && (
+              <p className="text-xs text-red-300" role="alert">{formulaSaveError}</p>
+            )}
           </div>
         )}
 

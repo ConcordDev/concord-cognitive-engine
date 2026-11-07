@@ -66,6 +66,18 @@ describe('AppsPanel', () => {
     expect(screen.getByText('published')).toBeInTheDocument();
   });
 
+  it('"Avg Promotion Progress" reflects real promotion stage, not a dead version check', async () => {
+    // APP_A is draft (progress 0), APP_B is published (progress 1 of 3) ->
+    // (0 + 1) / (2 apps * 3 max stages) = 16.67% -> rounds to 17%. This
+    // replaces the old "Avg Maturity" stat, which compared `version !==
+    // '0.0.1'` against a default version ('1.0.0') that's never '0.0.1',
+    // so it always read 100% regardless of any app's real state.
+    render(<AppsPanel />);
+    await waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
+    expect(screen.getByText('17%')).toBeInTheDocument();
+    expect(screen.getByText(/Avg Promotion Progress/i)).toBeInTheDocument();
+  });
+
   it('creates a new app with the real primitive/UI shape and reloads the list', async () => {
     render(<AppsPanel />);
     await waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
@@ -162,13 +174,13 @@ describe('AppsPanel', () => {
     await waitFor(() => expect(screen.getByText(/No apps match the current filters/i)).toBeInTheDocument());
   });
 
-  it('Build Your App: picking a template and deploying calls create() with that template and shows a success state', async () => {
+  it('Build Your App: picking a template and creating calls create() with that template and shows a success state', async () => {
     render(<AppsPanel />);
     await waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
 
     fireEvent.click(screen.getByText('E-Commerce'));
     fireEvent.change(screen.getByPlaceholderText('Enter your app name...'), { target: { value: 'My Shop' } });
-    fireEvent.click(screen.getByRole('button', { name: /Deploy App/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Create App/i }));
 
     await waitFor(() =>
       expect(appsCreate).toHaveBeenCalledWith(
@@ -178,12 +190,12 @@ describe('AppsPanel', () => {
         }),
       ),
     );
-    await waitFor(() => expect(screen.getByText(/Deployed Successfully!/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/App Created!/i)).toBeInTheDocument());
   });
 
-  it('Deploy App button is disabled until a build name is entered', async () => {
+  it('Create App button is disabled until a build name is entered', async () => {
     render(<AppsPanel />);
     await waitFor(() => expect(screen.getByText('Alpha CRM')).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: /Deploy App/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Create App/i })).toBeDisabled();
   });
 });

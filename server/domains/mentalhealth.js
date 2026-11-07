@@ -326,7 +326,7 @@ export default function registerMentalhealthActions(registerLensAction) {
     const avg = moods.reduce((a, m) => a + m.mood, 0) / moods.length;
     const distribution = {};
     for (let i = 1; i <= 5; i++) distribution[i] = moods.filter((m) => m.mood === i).length;
-    let trend = "stable";
+    let trend = moods.length >= 4 ? "stable" : "not-enough-data";
     if (moods.length >= 4) {
       const half = Math.floor(moods.length / 2);
       const early = moods.slice(0, half).reduce((a, m) => a + m.mood, 0) / half;
@@ -466,7 +466,13 @@ export default function registerMentalhealthActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        streak: streakFromDates(new Set(sessions.map((x) => x.date))),
+        streak: streakFromDates(new Set([
+          ...sessions.map((x) => x.date),
+          ...moods.map((x) => x.date),
+          ...sleep.map((x) => x.date),
+          ...(s.gratitude.get(userId) || []).map((x) => x.date),
+          ...(s.breathing.get(userId) || []).map((x) => x.date),
+        ])),
         sessionsThisWeek: sessions.filter((x) => x.date >= weekAgo).length,
         minutesThisWeek: sessions.filter((x) => x.date >= weekAgo).reduce((a, x) => a + x.durationMin, 0),
         latestMood: recentMood,
@@ -480,6 +486,76 @@ export default function registerMentalhealthActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ── Wellness score from the tracked store ─────────────────────────
+  // The Analysis view's headline score: the wellnessScore formula fed
+  // from the member's own tracked data instead of hand-typed boxes.
+  //   sleep    = average hours over the last 7 sleep entries (dashboard basis)
+  //   mood     = average check-in (1-5) over the last 14 days, x2 onto 0-10
+  //   activity = practice minutes (sessions + breathing) over the last
+  //              7 days, averaged per day
+  // Social interactions are tracked nowhere in this lens and are never
+  // invented: when the caller supplies them the score is the exact
+  // four-pillar formula; otherwise it is the three tracked pillars
+  // renormalized to 100, and the basis says so. With no tracked data
+  // at all there is no score (the pass's zero-input form).
+  registerLensAction("mental-health", "wellness-score-tracked", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = mhAid(ctx);
+    const moods = s.moods.get(userId) || [];
+    const sleep = s.sleep.get(userId) || [];
+    const sessions = s.sessions.get(userId) || [];
+    const breathing = s.breathing.get(userId) || [];
+    const cutoff14 = new Date(Date.now() - 14 * MH_DAY).toISOString().slice(0, 10);
+    const weekAgo = new Date(Date.now() - 7 * MH_DAY).toISOString().slice(0, 10);
+    const recentMoods = moods.filter((m) => m.date >= cutoff14);
+    const sleepHours = sleep.length
+      ? Math.round((sleep.slice(-7).reduce((a, x) => a + x.hoursSlept, 0) / Math.min(7, sleep.length)) * 10) / 10
+      : null;
+    const moodAvg = recentMoods.length
+      ? recentMoods.reduce((a, m) => a + m.mood, 0) / recentMoods.length : null;
+    const practiceMinWeek = sessions.filter((x) => x.date >= weekAgo).reduce((a, x) => a + x.durationMin, 0)
+      + breathing.filter((x) => x.date >= weekAgo).reduce((a, x) => a + x.durationSec, 0) / 60;
+    const tracked = {
+      sleepHours,
+      moodScore: moodAvg == null ? null : Math.round(moodAvg * 2 * 10) / 10,
+      exerciseMinutes: (sessions.length || breathing.length) ? Math.round((practiceMinWeek / 7) * 10) / 10 : null,
+    };
+    const present = Object.values(tracked).filter((v) => v != null).length;
+    if (present === 0) {
+      return { ok: true, result: { wellnessScore: null, basis: "no-tracked-data", tracked,
+        message: "No tracked sleep, mood or practice data yet - log a check-in, a night's sleep or a practice session and your score appears here." } };
+    }
+    const social = params.socialInteractions == null ? null : Math.max(0, Math.trunc(mhNum(params.socialInteractions)));
+    const parts = {
+      sleep: tracked.sleepHours == null ? 0 : Math.min(tracked.sleepHours / 8, 1) * 25,
+      exercise: tracked.exerciseMinutes == null ? 0 : Math.min(tracked.exerciseMinutes / 30, 1) * 25,
+      mood: tracked.moodScore == null ? 0 : (tracked.moodScore / 10) * 25,
+    };
+    let wellnessScore, basis;
+    if (social != null) {
+      wellnessScore = Math.min(100, Math.round(parts.sleep + parts.exercise + parts.mood + Math.min(social / 3, 1) * 25));
+      basis = "tracked+social";
+    } else {
+      wellnessScore = Math.min(100, Math.round(((parts.sleep + parts.exercise + parts.mood) / 75) * 100));
+      basis = "tracked";
+    }
+    return { ok: true, result: {
+      wellnessScore, basis, tracked, socialInteractions: social,
+      breakdown: {
+        sleep: tracked.sleepHours == null ? "not tracked" : `${tracked.sleepHours}h avg (last ${Math.min(7, sleep.length)} nights)`,
+        exercise: tracked.exerciseMinutes == null ? "not tracked" : `${tracked.exerciseMinutes} practice min/day (last 7 days)`,
+        social: social == null ? "not tracked - not counted" : `${social} interactions (supplied)`,
+        mood: tracked.moodScore == null ? "not tracked" : `${tracked.moodScore}/10 (avg check-in x2, last 14 days)`,
+      },
+      areas: wellnessScore < 60 ? [
+        tracked.sleepHours != null && tracked.sleepHours < 7 ? "Improve sleep" : null,
+        tracked.exerciseMinutes != null && tracked.exerciseMinutes < 20 ? "Increase activity" : null,
+        social == null ? "Add social interactions in the manual calculator for the full picture" : (social < 2 ? "Reach out to someone" : null),
+      ].filter(Boolean) : ["Keep up the good work"],
+      note: "Computed from your own tracked sleep, practice and mood in this lens. Self-reflection only - not a clinical assessment.",
+    } };
+  });
 
   // ── [M] Conversational AI check-in companion (Wysa-style) ───────────
   // Supportive, non-clinical chat backed by the conscious brain.
