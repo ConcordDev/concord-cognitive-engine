@@ -76,12 +76,22 @@ export function HealthPanel() {
                     </div>
                   </div>
                   <div className="flex-1 space-y-2">
+                    {/* F6/F18: the verdict follows the warning state, not
+                        the average alone — a critical warning must never
+                        sit under a "healthy range" sentence. */}
                     <p className="text-sm text-gray-400">
-                      {overallScore >= 0.65
-                        ? 'Emotional state is in a healthy range. All dimensions are operating within normal parameters.'
-                        : overallScore >= 0.35
-                          ? 'Emotional state shows some areas of concern. Monitor affected dimensions.'
-                          : 'Emotional health is compromised. Immediate attention recommended for low-scoring dimensions.'}
+                      {warnings.some((w) => w.severity === 'critical')
+                        ? `Needs attention — ${warnings
+                            .filter((w) => w.severity === 'critical')
+                            .map((w) => w.message)
+                            .join('; ')}. A critical warning is active, whatever the average score says.`
+                        : warnings.length > 0
+                          ? `Some dimensions need watching — ${warnings.map((w) => w.message).join('; ')}.`
+                          : 'Emotional state is in a healthy range. All dimensions are operating within normal parameters.'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Score = mean of the seven dimensions, with Fatigue counted inverted (1 −
+                      fatigue). The verdict follows the warning state below, not the average alone.
                     </p>
                     {/* Compact dimension summary */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -224,12 +234,25 @@ export function HealthPanel() {
                       </p>
                       <p className="text-lg font-bold font-mono">
                         {typeof val === 'number'
-                          ? val.toFixed(3)
+                          ? Number.isInteger(val)
+                            ? String(val)
+                            : val.toFixed(3)
                           : typeof val === 'boolean'
                             ? val
                               ? 'Yes'
                               : 'No'
-                            : String(val)}
+                            : Array.isArray(val)
+                              ? val.length > 0
+                                ? val.join(' · ')
+                                : '—'
+                              : val && typeof val === 'object'
+                                ? Object.entries(val as Record<string, unknown>)
+                                    .map(
+                                      ([k, v]) =>
+                                        `${k} ${typeof v === 'number' ? `${Math.round(v * 100)}%` : String(v)}`
+                                    )
+                                    .join(' · ')
+                                : String(val)}
                       </p>
                     </div>
                   ))}

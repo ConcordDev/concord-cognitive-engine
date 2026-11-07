@@ -9,7 +9,7 @@ import { useAffectAts } from '@/components/affect/useAffectAts';
 import { ErrorState } from '@/components/common/EmptyState';
 
 export function PolicyPanel() {
-  const { policyData, isLoading, isError, errorMessage, refetchAll } = useAffectAts();
+  const { policyData, policyDerivations, isLoading, isError, errorMessage, refetchAll } = useAffectAts();
 
   if (isLoading) {
     return (
@@ -37,6 +37,7 @@ export function PolicyPanel() {
                 {Object.entries(policyData).map(([category, values]) => {
                   const isObj = typeof values === 'object' && values !== null && !Array.isArray(values);
                   const isArr = Array.isArray(values);
+                  const derivationsFor = policyDerivations[category] || {};
 
                   return (
                     <div key={category} className="lens-card">
@@ -71,10 +72,15 @@ export function PolicyPanel() {
                                   key={key}
                                   className="flex items-center justify-between py-1.5 border-b border-gray-700/20 last:border-0"
                                 >
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex flex-col">
                                     <span className="text-sm text-gray-300">
                                       {key.replace(/_/g, ' ')}
                                     </span>
+                                    {typeof derivationsFor[key] === 'string' && (
+                                      <span className="text-xs text-gray-500 font-mono">
+                                        = {derivationsFor[key]}
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="flex items-center gap-2">
                                     {isNumber ? (

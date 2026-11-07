@@ -4,11 +4,13 @@ import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useAffectSession } from '@/components/affect/AffectSessionContext';
+import { useUIStore } from '@/store/ui';
 import { clamp, DIMS } from '@/components/affect/affect-model';
 
 export function useAffectAts() {
   const { sessionId, setSessionId } = useAffectSession();
   const queryClient = useQueryClient();
+  const addToast = useUIStore((s) => s.addToast);
 
   const stateQ = useQuery({
     queryKey: ['affect-state', sessionId],
@@ -43,9 +45,24 @@ export function useAffectAts() {
 
   const resetAffect = useMutation({
     mutationFn: (mode?: string) => apiHelpers.affect.reset(sessionId, mode),
-    onSuccess: invalidate,
+    // F11: Reset was a silent no-op to the user — no toast, and its
+    // failure path was console-only. It now confirms visibly (toast +
+    // the strip's status line) and reports an ok:false payload as the
+    // failure it is.
+    onSuccess: (res) => {
+      invalidate();
+      const data = (res as { data?: { ok?: boolean; error?: string } } | undefined)?.data;
+      if (data?.ok === false) {
+        addToast({ type: 'error', message: `Reset failed — ${data.error || 'the ATS refused the reset.'}` });
+      } else {
+        addToast({ type: 'success', message: 'Affect session reset to baseline.' });
+      }
+    },
     onError: (err) => {
-      console.error('Failed to reset affect:', err instanceof Error ? err.message : err);
+      addToast({
+        type: 'error',
+        message: `Reset failed — ${err instanceof Error ? err.message : 'unknown error'}`,
+      });
     },
   });
 
@@ -57,6 +74,15 @@ export function useAffectAts() {
   const policyData = useMemo(() => {
     const raw = policyQ.data?.policy || policyQ.data;
     return raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  }, [policyQ.data]);
+
+  // S-AFF-4: the derivation receipt for each policy signal, served as a
+  // sibling of the policy object by GET /api/affect/policy.
+  const policyDerivations = useMemo(() => {
+    const raw = policyQ.data?.derivations;
+    return raw && typeof raw === 'object'
+      ? (raw as Record<string, Record<string, string>>)
+      : {};
   }, [policyQ.data]);
 
   const healthData = useMemo(() => {
@@ -125,18 +151,31 @@ export function useAffectAts() {
     if (Array.isArray(apiRecs)) {
       for (const r of apiRecs) recs.push(typeof r === 'string' ? r : JSON.stringify(r));
     }
+    // Local rules always run (API recommendations no longer suppress
+    // them) and now cover Arousal, which had no rule at all — the
+    // pass's critical (F6/F18) was an arousal warning.
+    for (const d of dimValues) {
+      if (d.key === 'f' && d.value > 0.7) recs.push('Consider a cooldown period to reduce fatigue levels.');
+      if (d.key === 'a' && d.value < 0.3) recs.push('Arousal is low. Engaging, novel stimulation may help restore activation.');
+      if (d.key === 'a' && d.value > 0.85) recs.push('Arousal is very high. A cooldown period may help settle activation before further input.');
+      if (d.key === 'v' && d.value < 0.3) recs.push('Valence is low. Positive feedback or success events may help restore balance.');
+      if (d.key === 's' && d.value < 0.3) recs.push('Stability is low. Reducing event frequency may help stabilize emotional state.');
+      if (d.key === 'c' && d.value < 0.3) recs.push('Coherence is degraded. Consistent interaction patterns may improve internal alignment.');
+      if (d.key === 'g' && d.value < 0.3) recs.push('Agency is low. Successful task completions can restore sense of control.');
+      if (d.key === 't' && d.value < 0.3) recs.push('Trust is diminished. Reliable, transparent interactions can help rebuild trust.');
+    }
+    // Verdict integrity: a critical warning must never sit beside
+    // "no recovery actions needed". If nothing above fired, name the
+    // critical dimension explicitly.
     if (recs.length === 0) {
-      for (const d of dimValues) {
-        if (d.key === 'f' && d.value > 0.7) recs.push('Consider a cooldown period to reduce fatigue levels.');
-        if (d.key === 'v' && d.value < 0.3) recs.push('Valence is low. Positive feedback or success events may help restore balance.');
-        if (d.key === 's' && d.value < 0.3) recs.push('Stability is low. Reducing event frequency may help stabilize emotional state.');
-        if (d.key === 'c' && d.value < 0.3) recs.push('Coherence is degraded. Consistent interaction patterns may improve internal alignment.');
-        if (d.key === 'g' && d.value < 0.3) recs.push('Agency is low. Successful task completions can restore sense of control.');
-        if (d.key === 't' && d.value < 0.3) recs.push('Trust is diminished. Reliable, transparent interactions can help rebuild trust.');
+      for (const w of warnings) {
+        if (w.severity === 'critical') {
+          recs.push(`${w.dimension} needs attention: ${w.message} Review the event stream and reduce load on this dimension.`);
+        }
       }
     }
-    return recs;
-  }, [healthData, dimValues]);
+    return [...new Set(recs)];
+  }, [healthData, dimValues, warnings]);
 
   const isLoading = stateQ.isLoading;
   const isError = stateQ.isError || policyQ.isError || healthQ.isError || eventsQ.isError;
@@ -154,6 +193,7 @@ export function useAffectAts() {
     setSessionId,
     affectState,
     policyData,
+    policyDerivations,
     healthData,
     eventList,
     dimValues,

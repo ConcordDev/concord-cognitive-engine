@@ -12,6 +12,7 @@ import {
   Heart, AlertTriangle, Clock, TrendingUp, TrendingDown, Users, Brain, RefreshCw,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { moodToAffectEvent } from '@/components/affect/affect-model';
 
 export function AnalysisToolsPanel() {
   // panel-owned analysis macros
@@ -26,7 +27,7 @@ export function AnalysisToolsPanel() {
   const { data: checkinHistoryResult } = useQuery({
     queryKey: ['affect-checkin-history-for-analysis'],
     queryFn: () =>
-      lensRun<{ entries?: Array<{ id: string; note: string; promptAnswer: string; createdAt: string }> }>(
+      lensRun<{ entries?: Array<{ id: string; note: string; promptAnswer: string; createdAt: string; mood?: number }> }>(
         'affect',
         'checkinHistory',
         { limit: 200 }
@@ -46,6 +47,41 @@ export function AnalysisToolsPanel() {
       .reverse();
   }, [checkinHistoryResult]);
 
+  // All check-ins, oldest first — the Timeline's and Empathy Map's real
+  // population. A check-in with no note still carries its mood value.
+  const allCheckins = useMemo(() => {
+    const entries = checkinHistoryResult?.entries || [];
+    return [...entries].reverse();
+  }, [checkinHistoryResult]);
+
+  const { data: scaleResult } = useQuery({
+    queryKey: ['affect-scale-for-analysis'],
+    queryFn: () =>
+      lensRun<{ scale?: { points?: Array<{ value: number }> } }>('affect', 'getScale', {}).then(
+        (r) => r.data.result
+      ),
+    staleTime: 60000,
+  });
+
+  const scaleValues = useMemo(() => {
+    const pts = scaleResult?.scale?.points;
+    return Array.isArray(pts) && pts.length > 0 ? pts.map((p) => p.value) : [1, 2, 3, 4, 5];
+  }, [scaleResult]);
+
+  // F4: the arc computes from the mood values on record. Each entry
+  // carries its scale-normalised mood valence (-1..1); note text rides
+  // along for intensity colour only.
+  const arcEntries = useMemo(() => {
+    return allCheckins.map((e) => ({
+      id: e.id,
+      timestamp: e.createdAt,
+      text: [e.note, e.promptAnswer].filter((s) => typeof s === 'string' && s.trim()).join('. ').trim(),
+      ...(typeof e.mood === 'number'
+        ? { valence: moodToAffectEvent(scaleValues, e.mood).polarity }
+        : {}),
+    }));
+  }, [allCheckins, scaleValues]);
+
   const runSentimentAnalysis = async () => {
     const text = analysisText.trim() || journalEntries.map((e) => e.text).join('. ');
     if (!text) {
@@ -63,13 +99,13 @@ export function AnalysisToolsPanel() {
   };
 
   const runEmotionTimeline = async () => {
-    if (journalEntries.length === 0) {
-      setTimelineResult({ message: 'No journal entries yet. Log a few mood check-ins with notes (Mood tab) to trace an emotional arc.' });
+    if (arcEntries.length === 0) {
+      setTimelineResult({ message: 'No mood check-ins yet. Log a few mood check-ins (Mood tab) to trace an emotional arc.' });
       return;
     }
     setIsRunning('emotionTimeline');
     try {
-      const r = await lensRun<Record<string, unknown>>('affect', 'emotionTimeline', { entries: journalEntries });
+      const r = await lensRun<Record<string, unknown>>('affect', 'emotionTimeline', { entries: arcEntries });
       setTimelineResult(r.data.ok && r.data.result ? r.data.result : { message: r.data.error || 'Timeline build failed' });
     } catch (e) {
       setTimelineResult({ message: e instanceof Error ? e.message : 'Timeline build failed' });
@@ -78,13 +114,20 @@ export function AnalysisToolsPanel() {
   };
 
   const runEmpathyMap = async () => {
-    if (journalEntries.length === 0) {
-      setEmpathyResult({ message: 'No journal entries yet. Log a few mood check-ins with notes (Mood tab) to build an empathy map.' });
+    if (allCheckins.length === 0) {
+      setEmpathyResult({ message: 'No mood check-ins yet. Log a few mood check-ins (Mood tab) to build an empathy map.' });
       return;
     }
     setIsRunning('empathyMap');
     try {
-      const feedback = journalEntries.map((e) => ({ userId: 'self', text: e.text, context: e.timestamp }));
+      const feedback = allCheckins.map((e) => ({
+        userId: 'self',
+        text: [e.note, e.promptAnswer].filter((s) => typeof s === 'string' && s.trim()).join('. ').trim(),
+        context: e.createdAt,
+        ...(typeof e.mood === 'number'
+          ? { moodValence: moodToAffectEvent(scaleValues, e.mood).polarity }
+          : {}),
+      }));
       const r = await lensRun<Record<string, unknown>>('affect', 'empathyMap', { feedback });
       setEmpathyResult(r.data.ok && r.data.result ? r.data.result : { message: r.data.error || 'Empathy map failed' });
     } catch (e) {
@@ -134,9 +177,9 @@ export function AnalysisToolsPanel() {
               />
             </div>
             <p className="text-xs text-gray-400">
-              {journalEntries.length > 0
-                ? `${journalEntries.length} journal entr${journalEntries.length === 1 ? 'y' : 'ies'} with notes available for Timeline / Empathy Map / Pattern Detection.`
-                : 'No journal entries with notes yet — log a mood check-in with a note (Mood tab) to power Timeline / Empathy Map / Pattern Detection.'}
+              {arcEntries.length > 0
+                ? `${arcEntries.length} check-in${arcEntries.length === 1 ? '' : 's'} on record — the Timeline reads their mood values${journalEntries.length > 0 ? `; ${journalEntries.length} with notes power Empathy Map / Pattern Detection` : ''}.`
+                : 'No mood check-ins yet — log one (Mood tab) to power the Timeline; add a note to power Empathy Map / Pattern Detection.'}
             </p>
           </div>
 
@@ -303,7 +346,7 @@ export function AnalysisToolsPanel() {
                 </h2>
                 <button
                   onClick={runEmotionTimeline}
-                  disabled={isRunning !== null || journalEntries.length === 0}
+                  disabled={isRunning !== null || arcEntries.length === 0}
                   className="btn-neon text-xs flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isRunning === 'emotionTimeline' ? (
@@ -328,6 +371,15 @@ export function AnalysisToolsPanel() {
                     <span className="text-xs text-gray-400">
                       {String(timelineResult.entryCount)} entries analyzed
                     </span>
+                    {!!timelineResult.basis && (
+                      <span className="text-xs text-gray-400">
+                        {timelineResult.basis === 'mood'
+                          ? 'Arc computed from your check-in mood values'
+                          : timelineResult.basis === 'mixed'
+                            ? 'Arc computed from check-in mood values and note text'
+                            : 'Arc computed from note text'}
+                      </span>
+                    )}
                     <span className="text-xs text-gray-400">
                       Volatility: <span className="font-mono text-gray-300">{String(timelineResult.volatility)}</span>
                     </span>
@@ -466,7 +518,7 @@ export function AnalysisToolsPanel() {
                 </h2>
                 <button
                   onClick={runEmpathyMap}
-                  disabled={isRunning !== null || journalEntries.length === 0}
+                  disabled={isRunning !== null || allCheckins.length === 0}
                   className="btn-neon text-xs flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isRunning === 'empathyMap' ? (

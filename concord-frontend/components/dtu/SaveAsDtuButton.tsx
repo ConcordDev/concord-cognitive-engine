@@ -169,8 +169,14 @@ export function SaveAsDtuButton({
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
 
-  useEffect(() => { setEditTitle(clampDtuTitle(title)); }, [title]);
-  useEffect(() => { setEditTags([apiSource, ...extraTags].join(', ')); }, [apiSource, extraTags]);
+  // Prefill sync runs only while the confirm modal is CLOSED. Once the
+  // user opens it, their edits own the fields: callers re-render on
+  // polls (and some embed a fresh timestamp in the title prop, or pass
+  // an inline extraTags array), which used to overwrite a typed title
+  // mid-edit (F10). The values synced while closed are the ones the
+  // modal opens with.
+  useEffect(() => { if (!open) setEditTitle(clampDtuTitle(title)); }, [title, open]);
+  useEffect(() => { if (!open) setEditTags([apiSource, ...extraTags].join(', ')); }, [apiSource, extraTags, open]);
 
   const createMutation = useMutation({
     mutationFn: async (opts: {

@@ -69432,7 +69432,7 @@ app.get("/api/affect/state", (req, res) => {
 // POST /api/affect/event — apply an affect event
 app.post("/api/affect/event", (req, res) => {
   if (!ATS) return res.status(501).json({ ok: false, error: "ATS not loaded" });
-  const sessionId = req.body?.source?.sessionId || req._atsSessionId || "default";
+  const sessionId = req.body?.source?.sessionId || req.body?.sessionId || req._atsSessionId || "default";
   const result = ATS.emitAffectEvent(sessionId, req.body);
   if (!result.ok) return res.status(400).json(result);
   res.json(result);
@@ -69444,7 +69444,7 @@ app.get("/api/affect/policy", (req, res) => {
   const sessionId = req.query.sessionId || req._atsSessionId || "default";
   const policy = ATS.getSessionPolicy(sessionId);
   if (!policy) return res.status(404).json({ ok: false, error: "Session not found" });
-  res.json({ ok: true, policy });
+  res.json({ ok: true, policy, derivations: ATS.POLICY_DERIVATIONS || null });
 });
 
 // POST /api/affect/reset — reset to baseline or cooldown

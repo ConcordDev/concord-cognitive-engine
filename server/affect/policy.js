@@ -99,6 +99,42 @@ function computeMemory(v, a, s, c, g, t, f) {
   };
 }
 
+/**
+ * Human-readable derivation of every policy signal — the receipt the
+ * Policy surface prints under each value (S-AFF-4 / F5: the numbers
+ * were bare floats with no stated derivation). These strings are the
+ * formulas in the compute* functions below, written with dimension
+ * NAMES. tests/affect-policy-derivations.test.js pins that every
+ * signal getAffectPolicy returns has an entry here, and that
+ * spot-checked entries agree numerically with the code.
+ * Every signal is clamped to [0, 1] except latencyBudgetMs.
+ */
+export const POLICY_DERIVATIONS = {
+  style: {
+    verbosity: "0.5 + (coherence − 0.5) × 0.3 − arousal × 0.2 − fatigue × 0.15",
+    directness: "0.5 + arousal × 0.25 − coherence × 0.15 + (1 − stability) × 0.1",
+    warmth: "0.4 + valence × 0.3 + trust × 0.2 − fatigue × 0.1",
+    creativity: "0.3 + valence × 0.2 + coherence × 0.2 + agency × 0.15 − fatigue × 0.2",
+    caution: "0.3 + (1 − trust) × 0.25 + (1 − stability) × 0.2 + arousal × 0.1 − coherence × 0.1",
+  },
+  cognition: {
+    exploration: "0.3 + agency × 0.3 + valence × 0.15 − fatigue × 0.2 − (1 − stability) × 0.1",
+    riskBudget: "0.4 + trust × 0.25 + stability × 0.15 − fatigue × 0.2 − (1 − coherence) × 0.1",
+    depthBudget: "0.5 + coherence × 0.2 + trust × 0.15 − fatigue × 0.25 − arousal × 0.1",
+    latencyBudgetMs: "round(3000 + (1 − fatigue) × 7000 + coherence × 3000 − arousal × 2000), clamped to 1,000–15,000",
+    toolUseBias: "0.5 + agency × 0.2 + trust × 0.15 − fatigue × 0.15 − (1 − stability) × 0.1",
+  },
+  memory: {
+    writeStrength: "0.4 + arousal × 0.25 + (1 − fatigue) × 0.2 + valence × 0.1",
+    summarizeBias: "0.4 + coherence × 0.25 + (1 − arousal) × 0.15 + stability × 0.1",
+    retentionBias: "0.5 + trust × 0.2 + stability × 0.15 + (1 − fatigue) × 0.1",
+  },
+  safety: {
+    strictness: "0.4 + (1 − trust) × 0.25 + (1 − stability) × 0.15 + fatigue × 0.1 + (1 − coherence) × 0.1",
+    refuseThreshold: "0.3 + (1 − trust) × 0.3 + (1 − stability) × 0.2 + fatigue × 0.1",
+  },
+};
+
 function computeSafety(v, a, s, c, g, t, f) {
   // Lower trust → stricter safety
   // Lower stability → higher refusal threshold

@@ -1524,7 +1524,10 @@ export const apiHelpers = {
     state: (sessionId?: string) =>
       api.get('/api/affect/state', { params: { sessionId } }),
     emit: (sessionId: string, event: { type: string; intensity: number; polarity: number; payload?: unknown }) =>
-      api.post('/api/affect/event', { sessionId, ...event }),
+      // The event route (and the ATS event schema) key the session from
+      // body.source.sessionId — a top-level sessionId is never read there,
+      // which silently landed every emit on the fallback session.
+      api.post('/api/affect/event', { ...event, source: { sessionId } }),
     policy: (sessionId?: string) =>
       api.get('/api/affect/policy', { params: { sessionId } }),
     reset: (sessionId: string, mode?: string) =>

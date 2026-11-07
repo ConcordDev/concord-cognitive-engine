@@ -54,6 +54,14 @@ export default function AffectLensPage() {
   useLensIdentity('affect');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('affect');
   const [active, setActive] = useState<AffectView>('dimensions');
+  // F17: a view mounts on first visit and then STAYS mounted (hidden
+  // when inactive), so panel-local state survives view switches —
+  // without mounting unvisited views' queries and error surfaces.
+  const [visited, setVisited] = useState<ReadonlySet<AffectView>>(() => new Set(['dimensions']));
+  const activate = (v: AffectView) => {
+    setActive(v);
+    setVisited((prev) => (prev.has(v) ? prev : new Set(prev).add(v)));
+  };
 
   useLensCommand(
     [
@@ -62,14 +70,12 @@ export default function AffectLensPage() {
         keys: v.keys,
         description: `${v.label} — ${v.hint}`,
         category: 'navigation' as const,
-        action: () => setActive(v.id),
+        action: () => activate(v.id),
       })),
-      { id: 'check-in', keys: 'n', description: 'Log a mood check-in', category: 'actions' as const, action: () => setActive('mood') },
+      { id: 'check-in', keys: 'n', description: 'Log a mood check-in', category: 'actions' as const, action: () => activate('mood') },
     ],
     { lensId: 'affect' },
   );
-
-  const Panel = PANELS[active];
 
   return (
     <LensShell lensId="affect" asMain={false}>
@@ -108,7 +114,7 @@ export default function AffectLensPage() {
                 <button
                   key={v.id}
                   type="button"
-                  onClick={() => setActive(v.id)}
+                  onClick={() => activate(v.id)}
                   title={`${v.hint} (${v.keys})`}
                   className={cn(
                     'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
@@ -126,9 +132,19 @@ export default function AffectLensPage() {
             })}
           </nav>
 
-          <section key={active}>
-            <Panel />
-          </section>
+          {/* F17: visited views stay mounted; inactive ones hide.
+              Keying a single section by the active view unmounted the
+              panel subtree on every switch and destroyed panel-local
+              state (check-in drafts, analysis inputs and results,
+              event-log filters). */}
+          {VIEWS.filter((v) => visited.has(v.id)).map((v) => {
+            const P = PANELS[v.id];
+            return (
+              <section key={v.id} hidden={active !== v.id}>
+                <P />
+              </section>
+            );
+          })}
 
           {realtimeData && (
             <RealtimeDataPanel
@@ -144,7 +160,7 @@ export default function AffectLensPage() {
 
           <button
             type="button"
-            onClick={() => setActive('mood')}
+            onClick={() => activate('mood')}
             title="Log a mood check-in (N)"
             className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
           >
