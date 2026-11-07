@@ -70,8 +70,10 @@ beforeEach(() => {
 
 const PANELS: Array<[string, () => React.ReactElement]> = [
   ['AdvocacyPanel', () => <AdvocacyPanel />],
-  ['CaseOpsPanel (files)', () => <CaseOpsPanel artifactType={'Permit' as never} />],
-  ['CaseOpsPanel (dashboard)', () => <CaseOpsPanel artifactType={'Permit' as never} surface="dashboard" />],
+  ...(['Permit', 'Project', 'Violation', 'EmergencyPlan', 'Record', 'CourtCase'] as const).flatMap((t): Array<[string, () => React.ReactElement]> => [
+    [`CaseOpsPanel ${t} (files)`, () => <CaseOpsPanel artifactType={t as never} />],
+    [`CaseOpsPanel ${t} (dashboard)`, () => <CaseOpsPanel artifactType={t as never} surface="dashboard" />],
+  ]),
   ['DocumentLibraryPanel', () => <DocumentLibraryPanel />],
   ['ElectionsPanel', () => <ElectionsPanel />],
   ['FOIATracker', () => <FOIATracker />],
