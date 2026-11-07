@@ -159,7 +159,7 @@ describe('ProjectTracker', () => {
     });
     lensRunMock.mockResolvedValueOnce({ data: { ok: false, result: null, error: 'unrecognized status: (none)' } });
     const approvedCard = screen.getByText('Riverside Tower').closest('div.rounded-lg') as HTMLElement;
-    const advance = within(approvedCard).getByText('Under Construction');
+    const advance = within(approvedCard).getByText('Permit Issued');
     await act(async () => {
       fireEvent.click(advance);
     });
@@ -172,8 +172,8 @@ describe('ProjectTracker', () => {
       render(<ProjectTracker />);
     });
     const approvedCard = screen.getByText('Riverside Tower').closest('div.rounded-lg') as HTMLElement;
-    // approved -> [under_construction, cancelled]
-    expect(within(approvedCard).getByText('Under Construction')).toBeInTheDocument();
+    // approved -> [permit_issued, cancelled] (Review 5 F4: permit issuance sits between approval and construction)
+    expect(within(approvedCard).getByText('Permit Issued')).toBeInTheDocument();
     expect(within(approvedCard).getByText('Cancelled')).toBeInTheDocument();
     // Terminal statuses like "built" or "denied" are not offered from "approved".
     expect(within(approvedCard).queryByText('Built')).not.toBeInTheDocument();
@@ -195,12 +195,12 @@ describe('ProjectTracker', () => {
     });
     const approvedCard = screen.getByText('Riverside Tower').closest('div.rounded-lg') as HTMLElement;
     lensRunMock.mockResolvedValueOnce({
-      data: { ok: true, result: { project: { ...PROJECTS[0], status: 'under_construction' } }, error: null },
+      data: { ok: true, result: { project: { ...PROJECTS[0], status: 'permit_issued' } }, error: null },
     });
     await act(async () => {
-      fireEvent.click(within(approvedCard).getByText('Under Construction'));
+      fireEvent.click(within(approvedCard).getByText('Permit Issued'));
     });
-    expect(lensRunMock).toHaveBeenCalledWith('urban-planning', 'project-status-update', { id: 'proj_1', status: 'under_construction' });
+    expect(lensRunMock).toHaveBeenCalledWith('urban-planning', 'project-status-update', { id: 'proj_1', status: 'permit_issued' });
     // Refresh re-fetches the list.
     expect(lensRunMock.mock.calls.filter((c) => c[0] === 'urban-planning' && c[1] === 'project-list').length).toBeGreaterThan(1);
   });

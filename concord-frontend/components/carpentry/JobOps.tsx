@@ -408,7 +408,7 @@ function CrewSchedule() {
                         <div className="mt-2 space-y-1.5 border-t border-zinc-800 pt-2">
                           <input className={`${inp} w-full`} placeholder="Job title" value={editForm.title} onChange={(ev) => setEditForm((f) => ({ ...f, title: ev.target.value }))} />
                           <input className={`${inp} w-full`} placeholder="Address" value={editForm.address} onChange={(ev) => setEditForm((f) => ({ ...f, address: ev.target.value }))} />
-                          <div className="grid grid-cols-3 gap-1.5">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
                             <input className={`${inp} font-mono`} type="date" value={editForm.date} onChange={(ev) => setEditForm((f) => ({ ...f, date: ev.target.value }))} />
                             <input className={`${inp} font-mono`} type="time" value={editForm.startTime} onChange={(ev) => setEditForm((f) => ({ ...f, startTime: ev.target.value }))} />
                             <input className={`${inp} font-mono`} type="time" value={editForm.endTime} onChange={(ev) => setEditForm((f) => ({ ...f, endTime: ev.target.value }))} />

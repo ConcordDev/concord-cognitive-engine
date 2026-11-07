@@ -96,7 +96,10 @@ describe('RfEntryDetailModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /summarize entry/i }));
     await waitFor(() => expect(lensRun).toHaveBeenCalledWith('reflection', 'entry-summarize', { id: 'ent_1' }));
     expect(await screen.findByText(/A good day overall\./)).toBeInTheDocument();
-    expect(screen.getByText(/deterministic/)).toBeInTheDocument();
+    // The modal no longer prints a composer tag: the summary is the deterministic text, and an
+    // assistant rewording shows ONLY when the result carries `assisted` (it does not here).
+    expect(screen.queryByText(/deterministic/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Assistant's rewording/)).not.toBeInTheDocument();
   });
 
   it('runs reflect-deepen and renders the three follow-up questions', async () => {

@@ -99,13 +99,16 @@ describe('StudyCanvas', () => {
     expect(onSaved).not.toHaveBeenCalled();
   });
 
-  it('CLOSE: the X button and backdrop click both call onClose', () => {
+  it('CLOSE: the X button and Escape call onClose; a backdrop click does NOT (F5 — no backdrop dismissal)', () => {
     const onClose = vi.fn();
     const view = render(<StudyCanvas onSaved={vi.fn()} onClose={onClose} />);
     fireEvent.click(view.getByLabelText('Close drawing tool'));
     expect(onClose).toHaveBeenCalledTimes(1);
     const dialog = view.getByTestId('study-canvas');
+    // A backdrop click must not dismiss unsaved work.
     fireEvent.click(dialog.parentElement as HTMLElement);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 });
