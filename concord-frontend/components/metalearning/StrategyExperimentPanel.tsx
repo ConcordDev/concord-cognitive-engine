@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { FlaskConical, Plus, Loader2 } from 'lucide-react';
+import { FlaskConical, Plus, Loader2, Trash2 } from 'lucide-react';
 
 interface ArmStats { name: string; n: number; mean: number; stdDev: number; }
 interface Experiment {
@@ -34,6 +34,7 @@ export function StrategyExperimentPanel() {
   const [strategyB, setStrategyB] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [trial, setTrial] = useState<Record<string, { arm: string; score: string }>>({});
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -62,6 +63,18 @@ export function StrategyExperimentPanel() {
       await refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed to create experiment');
+    } finally { setBusy(null); }
+  };
+
+  const remove = async (experimentId: string) => {
+    setBusy(experimentId);
+    try {
+      const { data: r } = await lensRun<any>('metalearning', 'experimentDelete', { experimentId });
+      if (r?.ok === false) { setErr(r.error || 'Delete failed'); return; }
+      setConfirmDeleteId(null);
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Delete failed');
     } finally { setBusy(null); }
   };
 
@@ -127,7 +140,21 @@ export function StrategyExperimentPanel() {
           const t = trial[e.id] || { arm: 'A', score: '' };
           return (
             <div key={e.id} className="bg-lattice-surface rounded-lg p-3 border border-white/5">
-              <p className="text-sm font-semibold">{e.title}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-semibold">{e.title}</p>
+                {confirmDeleteId === e.id ? (
+                  <button onClick={() => remove(e.id)} disabled={busy === e.id}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/25 hover:bg-red-500/35 text-red-300 disabled:opacity-50 flex-shrink-0"
+                    title={`Confirm delete — removes the experiment "${e.title}"`}>
+                    Delete?
+                  </button>
+                ) : (
+                  <button onClick={() => setConfirmDeleteId(e.id)}
+                    className="text-gray-600 hover:text-red-400 flex-shrink-0" title="Delete experiment" aria-label={`Delete experiment ${e.title}`}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
               {e.hypothesis && <p className="text-xs text-gray-400">{e.hypothesis}</p>}
               <div className="grid grid-cols-2 gap-2 mt-2">
                 {[s.armA, s.armB].map((arm, i) => (

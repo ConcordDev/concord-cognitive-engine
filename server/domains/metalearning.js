@@ -3,6 +3,7 @@
 // transfer analysis between domains, and learner performance profiling.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 export default function registerMetalearningActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -45,14 +46,22 @@ export default function registerMetalearningActions(registerLensAction) {
         .map(([strategy, score]) => ({ strategy, score: Math.round(Math.max(0, score) * 10000) / 10000 }))
         .sort((a, b) => b.score - a.score);
 
+      // A heuristic score is not a probability; the confidence this
+      // branch can honestly report is the winner's margin over the
+      // runner-up, and it is labelled as exactly that (S-META-5 —
+      // this branch returned no confidence at all, and the surface
+      // printed the missing field as "Confidence: undefined").
+      const margin = ranked.length > 1 ? ranked[0].score - ranked[1].score : ranked[0].score;
       return {
         ok: true,
         result: {
           method: "heuristic",
           taskFeatures,
           recommended: ranked[0].strategy,
+          confidence: Math.round(Math.max(0, margin) * 10000) / 10000,
+          confidenceBasis: "margin between the top two heuristic scores — a separation measure, not a probability",
           rankings: ranked,
-          note: "No landmark tasks provided; using built-in heuristic rules.",
+          note: "No landmark tasks provided; using built-in heuristic rules over the five task features.",
         },
       };
     }
@@ -618,6 +627,19 @@ export default function registerMetalearningActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
+
+  registerLensAction("metalearning", "planDelete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = mlList(s.plans, mlActor(ctx));
+      const idx = arr.findIndex((x) => x.id === params.planId);
+      if (idx < 0) return { ok: false, error: "plan not found" };
+      arr.splice(idx, 1);
+      saveML();
+      return { ok: true, result: { deleted: params.planId, remaining: arr.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   registerLensAction("metalearning", "planToggleStep", (ctx, _a, params = {}) => {
     try {
       const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -825,15 +847,34 @@ export default function registerMetalearningActions(registerLensAction) {
 
   // ─── Goal setting & tracking ────────────────────────────────────────────
 
+  // Goals whose metric names a lens store COMPUTE their value from
+  // that store (S-META-6/F9); any other metric is a free-form,
+  // self-reported goal and is labelled as such wherever it shows.
+  // (Before this, every goal's "achieved" rested on a typed-in
+  // current value — unverified self-report wearing a progress bar.)
+  const COMPUTED_GOAL_METRICS = {
+    cards_mastered: (s, userId) => mlList(s.cards, userId).filter((c) => c.repetitions >= 3 && c.ease >= 2.3).length,
+    reviews: (s, userId) => mlList(s.cards, userId).reduce((n, c) => n + (c.history || []).length, 0),
+    journal_sessions: (s, userId) => mlList(s.journal, userId).length,
+    journal_minutes: (s, userId) => mlList(s.journal, userId).reduce((n, e) => n + (e.minutesStudied || 0), 0),
+  };
+  const goalMetricKind = (metric) => (Object.prototype.hasOwnProperty.call(COMPUTED_GOAL_METRICS, metric) ? "computed" : "self_reported");
+  const computeGoalValue = (s, userId, goal) => {
+    const fn = COMPUTED_GOAL_METRICS[goal.metric];
+    return fn ? fn(s, userId) : null;
+  };
+
   registerLensAction("metalearning", "goalCreate", (ctx, _a, params = {}) => {
     try {
       const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const title = mlClean(params.title, 200);
       if (!title) return { ok: false, error: "goal title required" };
+      const metric = mlClean(params.metric, 120) || "completion";
       const goal = {
         id: mlId("goal"),
         title,
-        metric: mlClean(params.metric, 120) || "completion",
+        metric,
+        metricKind: goalMetricKind(metric),
         targetValue: mlNum(params.targetValue, 100),
         currentValue: mlNum(params.currentValue, 0),
         deadline: params.deadline ? mlClean(params.deadline, 40) : null,
@@ -841,6 +882,12 @@ export default function registerMetalearningActions(registerLensAction) {
         checkIns: [],
         createdAt: new Date().toISOString(),
       };
+      if (goal.metricKind === "computed") {
+        goal.currentValue = computeGoalValue(s, mlActor(ctx), goal);
+        if (goal.targetValue > 0 && goal.currentValue >= goal.targetValue && goal.status !== "abandoned" && goal.status !== "paused") {
+          goal.status = "achieved";
+        }
+      }
       mlList(s.goals, mlActor(ctx)).push(goal);
       saveML();
       return { ok: true, result: { goal } };
@@ -852,6 +899,27 @@ export default function registerMetalearningActions(registerLensAction) {
       const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const goal = mlList(s.goals, mlActor(ctx)).find((g) => g.id === params.goalId);
       if (!goal) return { ok: false, error: "goal not found" };
+      // A computed goal takes its value from its store — a typed-in
+      // value is refused, in words, rather than silently overriding
+      // the record (F9). Notes still record.
+      if ((goal.metricKind || goalMetricKind(goal.metric)) === "computed") {
+        goal.currentValue = computeGoalValue(s, mlActor(ctx), goal);
+        if (params.note) {
+          goal.checkIns.push({ at: new Date().toISOString(), value: goal.currentValue, note: mlClean(params.note, 500) });
+          if (goal.checkIns.length > 100) goal.checkIns = goal.checkIns.slice(-100);
+        }
+        if (goal.targetValue > 0 && goal.currentValue >= goal.targetValue) goal.status = "achieved";
+        else if (goal.status === "achieved") goal.status = "active";
+        saveML();
+        return {
+          ok: true,
+          result: {
+            goal, computed: true,
+            progress: goal.targetValue > 0 ? Math.round((goal.currentValue / goal.targetValue) * 1000) / 1000 : 0,
+            note: `This goal tracks "${goal.metric}" from the lens record — its value is computed, not typed in.`,
+          },
+        };
+      }
       goal.currentValue = mlNum(params.value, goal.currentValue);
       goal.checkIns.push({
         at: new Date().toISOString(),
@@ -872,14 +940,39 @@ export default function registerMetalearningActions(registerLensAction) {
   registerLensAction("metalearning", "goalList", (ctx, _a, _params = {}) => {
     try {
       const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
-      const goals = mlList(s.goals, mlActor(ctx)).map((g) => ({
-        ...g,
-        progress: g.targetValue > 0 ? Math.round((g.currentValue / g.targetValue) * 1000) / 1000 : 0,
-        checkInCount: g.checkIns.length,
-      }));
+      const userId = mlActor(ctx);
+      const goals = mlList(s.goals, userId).map((g) => {
+        const kind = g.metricKind || goalMetricKind(g.metric);
+        const computed = kind === "computed" ? computeGoalValue(s, userId, g) : null;
+        const currentValue = computed != null ? computed : g.currentValue;
+        const status = computed != null && g.targetValue > 0 && g.status !== "paused" && g.status !== "abandoned"
+          ? (currentValue >= g.targetValue ? "achieved" : (g.status === "achieved" ? "active" : g.status))
+          : g.status;
+        return {
+          ...g,
+          metricKind: kind,
+          currentValue,
+          status,
+          progress: g.targetValue > 0 ? Math.round((currentValue / g.targetValue) * 1000) / 1000 : 0,
+          checkInCount: g.checkIns.length,
+        };
+      });
       const active = goals.filter((g) => g.status === "active").length;
       const achieved = goals.filter((g) => g.status === "achieved").length;
       return { ok: true, result: { goals, count: goals.length, active, achieved } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+
+  registerLensAction("metalearning", "goalDelete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = mlList(s.goals, mlActor(ctx));
+      const idx = arr.findIndex((x) => x.id === params.goalId);
+      if (idx < 0) return { ok: false, error: "goal not found" };
+      arr.splice(idx, 1);
+      saveML();
+      return { ok: true, result: { deleted: params.goalId, remaining: arr.length } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
@@ -959,6 +1052,31 @@ export default function registerMetalearningActions(registerLensAction) {
 
   // ─── Reflection / study-log journaling ──────────────────────────────────
 
+
+  registerLensAction("metalearning", "experimentDelete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = mlList(s.experiments, mlActor(ctx));
+      const idx = arr.findIndex((x) => x.id === params.experimentId);
+      if (idx < 0) return { ok: false, error: "experiment not found" };
+      arr.splice(idx, 1);
+      saveML();
+      return { ok: true, result: { deleted: params.experimentId, remaining: arr.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("metalearning", "journalDelete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = mlList(s.journal, mlActor(ctx));
+      const idx = arr.findIndex((x) => x.id === params.entryId);
+      if (idx < 0) return { ok: false, error: "journal entry not found" };
+      arr.splice(idx, 1);
+      saveML();
+      return { ok: true, result: { deleted: params.entryId, remaining: arr.length } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   registerLensAction("metalearning", "journalAdd", (ctx, _a, params = {}) => {
     try {
       const s = getMLState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1018,5 +1136,35 @@ export default function registerMetalearningActions(registerLensAction) {
         },
       };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // S-META-7/F16: the ↓.dtu export reads this lens's actual stores —
+  // the caller's own plans, goals, journal entries, experiments and
+  // cards. (Before this, no provider was registered for the lens and
+  // the export answered "no saved data" over a full lens.) The
+  // substrate-A strategies are deliberately NOT rows here: they live
+  // in the global server.js meta-learning system with no per-user
+  // ownership, so exporting them to any caller would hand one user's
+  // record to another. Read-only.
+  registerLensExportProvider("metalearning", (ctx) => {
+    const s = getMLState(); if (!s) return [];
+    const userId = mlActor(ctx);
+    const rows = [];
+    for (const p of mlList(s.plans, userId)) {
+      rows.push({ type: "plan", title: p.title, goal: p.goal, topics: Array.isArray(p.topics) ? p.topics.length : 0, createdAt: p.createdAt });
+    }
+    for (const g of mlList(s.goals, userId)) {
+      rows.push({ type: "goal", title: g.title, metric: g.metric, status: g.status, targetValue: g.targetValue, currentValue: g.currentValue, createdAt: g.createdAt });
+    }
+    for (const e of mlList(s.journal, userId)) {
+      rows.push({ type: "journal_entry", title: e.topic, technique: e.technique, minutesStudied: e.minutesStudied, effectiveness: e.effectiveness, reflection: e.reflection, createdAt: e.createdAt });
+    }
+    for (const x of mlList(s.experiments, userId)) {
+      rows.push({ type: "experiment", title: x.title, status: x.status, strategyA: x.strategyA?.name, strategyB: x.strategyB?.name, createdAt: x.createdAt });
+    }
+    for (const c of mlList(s.cards, userId)) {
+      rows.push({ type: "spaced_card", title: c.front, topic: c.topic, repetitions: c.repetitions, ease: c.ease, createdAt: c.createdAt });
+    }
+    return rows;
   });
 }
