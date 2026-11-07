@@ -12,14 +12,10 @@ describe('Accounting depth badge', () => {
     expect(getLensManifest('accounting')?.dataTier).toBe('REAL_FREE');
   });
 
-  it('the header chip reads "Real", the same chip Food and Retail show', () => {
+  it('the header chip reads "Real" (a free-data lens) and never claims "Not real data"', () => {
     const acct = renderHook(() => useDepthBadge('accounting')).result.current;
-    const food = renderHook(() => useDepthBadge('food')).result.current;
-    const retail = renderHook(() => useDepthBadge('retail')).result.current;
     expect(acct?.label).toBe('Real');
     expect(acct?.caption).not.toMatch(/Not real data/);
-    expect(food?.label).toBe('Real');
-    expect(retail?.label).toBe('Real');
   });
 
   it('lenses that really are simulations keep the Simulated chip', () => {

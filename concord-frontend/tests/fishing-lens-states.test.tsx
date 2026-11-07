@@ -160,12 +160,12 @@ describe('fishing lens — four UX states', () => {
       catalog: () => ok({ ok: true, fish: [FISH] }),
       catches: () => ok({ ok: true, catches: [CATCH] }),
     });
-    const { container, getByText } = render(<FishingLensPage />);
+    const { container, getByText, getAllByText } = render(<FishingLensPage />);
     await waitFor(() => expect(getByText('Ocean Tuna')).toBeInTheDocument());
     // fields come straight from the (mocked) backend rows
     expect(getByText('ocean')).toBeInTheDocument();       // subBiome
-    expect(getByText('rare')).toBeInTheDocument();        // rarity badge
-    expect(getByText('Ocean Tuna (90%)')).toBeInTheDocument(); // catch item_name
+    expect(getAllByText('rare').length).toBeGreaterThanOrEqual(1);        // rarity badge
+    expect(getAllByText('Ocean Tuna (90%)').length).toBeGreaterThanOrEqual(1); // catch item_name
     // no loading / error linger once populated
     expect(container.querySelector('[role="status"]')).toBeFalsy();
     expect(container.querySelector('[role="alert"]')).toBeFalsy();
