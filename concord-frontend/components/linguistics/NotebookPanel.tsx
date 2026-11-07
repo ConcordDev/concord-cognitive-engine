@@ -12,7 +12,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 import {
-  Languages, Plus, Search, X, Trash2, Eye,
+  Languages, Plus, Search, X, Trash2, Eye, Pencil,
   BookOpen, Hash, Type, Globe,
   FileText, Sparkles, BookA, GraduationCap, Zap, Loader2,
 } from 'lucide-react';
@@ -23,8 +23,29 @@ import {
   type ArtifactType,
   type LingSubfield,
   type LinguisticsArtifact,
+  type BracketTreeNode,
   SUBFIELD_COLORS,
+  parseBracketTree,
 } from '@/components/linguistics/linguistics-shared';
+
+const TYPE_PLURALS: Record<ArtifactType, string> = {
+  Analysis: 'analyses',
+  LexiconEntry: 'lexicon entries',
+  Grammar: 'grammars',
+  Corpus: 'corpora',
+  Translation: 'translations',
+};
+
+/** Renders a parsed bracket tree as nested, labelled nodes (S-LIN-3). */
+function TreeView({ node, depth = 0 }: { node: BracketTreeNode; depth?: number }) {
+  return (
+    <div style={{ marginLeft: depth ? 14 : 0 }} className="mt-1">
+      <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-blue-400/10 text-blue-300">{node.label}</span>
+      {node.word && <span className="text-xs text-gray-200 ml-2 italic">{node.word}</span>}
+      {node.children.map((c, i) => <TreeView key={i} node={c} depth={depth + 1} />)}
+    </div>
+  );
+}
 
 const MODE_TABS: { id: ModeTab; label: string; icon: typeof Languages; type: ArtifactType }[] = [
   { id: 'Analyses', label: 'Analyses', icon: FileText, type: 'Analysis' },
@@ -67,6 +88,14 @@ export function NotebookPanel({
   const [formMorphemes, setFormMorphemes] = useState('');
   const [formSyntaxTree, setFormSyntaxTree] = useState('');
   const [formGlosses, setFormGlosses] = useState('');
+  const [formTexts, setFormTexts] = useState('');
+  // S-LIN-2 lifecycle state: which record the form is editing (null = create),
+  // the form-level refusal line (duplicate title / unbalanced tree), the
+  // two-step delete arm, and the receipt line every mutation lands on.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Result of running the real `linguistics.analyze` macro against a saved artifact
   // (the "Zap" button in the detail panel). Keyed so switching the selected item doesn't
@@ -97,7 +126,8 @@ export function NotebookPanel({
   // actually rendering the macro's response instead of discarding it silently.
   const handleAction = useCallback((artifactId: string) => {
     const target = items.find(i => i.id === artifactId);
-    const text = (target?.data.sourceText || target?.data.description || '').trim();
+    const memberTexts = target?.data.artifactType === 'Corpus' ? (target?.data.texts || []).join('\n\n') : '';
+    const text = (memberTexts || target?.data.sourceText || target?.data.description || '').trim();
     setActionResult(null);
     setActionError(null);
     if (!text) {
@@ -145,28 +175,7 @@ export function NotebookPanel({
 
   const selected = useMemo(() => items.find(i => i.id === selectedId), [items, selectedId]);
 
-  const handleCreate = () => {
-    if (!formTitle.trim()) return;
-    const splitList = (s: string): string[] | undefined => {
-      const parts = s.split(/[,\n]+/).map(x => x.trim()).filter(Boolean);
-      return parts.length ? parts : undefined;
-    };
-    create({
-      title: formTitle,
-      data: {
-        artifactType: currentType,
-        subfield: formSubfield,
-        language: formLanguage || undefined,
-        description: formDescription,
-        sourceText: formSourceText || undefined,
-        targetText: formTargetText || undefined,
-        ipa: currentType === 'LexiconEntry' ? (formIpa.trim() || undefined) : undefined,
-        examples: currentType === 'LexiconEntry' ? splitList(formExamples) : undefined,
-        morphemes: currentType === 'Grammar' ? splitList(formMorphemes) : undefined,
-        syntaxTree: currentType === 'Grammar' ? (formSyntaxTree.trim() || undefined) : undefined,
-        glosses: currentType === 'Grammar' ? splitList(formGlosses) : undefined,
-      },
-    });
+  const resetForm = () => {
     setFormTitle('');
     setFormDescription('');
     setFormLanguage('');
@@ -177,9 +186,78 @@ export function NotebookPanel({
     setFormMorphemes('');
     setFormSyntaxTree('');
     setFormGlosses('');
+    setFormTexts('');
+    setEditingId(null);
+    setFormError(null);
+  };
+
+  const startEdit = (item: LinguisticsArtifact & { id: string; title: string }) => {
+    setEditingId(item.id);
+    setFormTitle(item.title);
+    setFormSubfield(item.data.subfield);
+    setFormLanguage(item.data.language || '');
+    setFormDescription(item.data.description || '');
+    setFormSourceText(item.data.sourceText || '');
+    setFormTargetText(item.data.targetText || '');
+    setFormIpa(item.data.ipa || '');
+    setFormExamples((item.data.examples || []).join(', '));
+    setFormMorphemes((item.data.morphemes || []).join(', '));
+    setFormSyntaxTree(item.data.syntaxTree || '');
+    setFormGlosses((item.data.glosses || []).join(', '));
+    setFormTexts((item.data.texts || []).join('\n'));
+    setFormError(null);
+    setShowCreate(true);
+  };
+
+  const handleCreate = () => {
+    if (!formTitle.trim()) return;
+    const splitList = (s: string): string[] | undefined => {
+      const parts = s.split(/[,\n]+/).map(x => x.trim()).filter(Boolean);
+      return parts.length ? parts : undefined;
+    };
+    // Duplicate titles are refused, never silently stacked (F4a — Paper's behaviour).
+    const dupe = items.some(i => i.id !== editingId && i.title.trim().toLowerCase() === formTitle.trim().toLowerCase());
+    if (dupe) {
+      setFormError(`A ${currentType} titled \u201c${formTitle.trim()}\u201d already exists. Rename it or edit the existing record.`);
+      return;
+    }
+    // Grammar trees validate on save: an unbalanced tree is refused with the position named (F4b).
+    if (currentType === 'Grammar' && formSyntaxTree.trim()) {
+      const parsed = parseBracketTree(formSyntaxTree);
+      if (!parsed.ok) { setFormError(parsed.error); return; }
+    }
+    const data = {
+      artifactType: currentType,
+      subfield: formSubfield,
+      language: formLanguage || undefined,
+      description: formDescription,
+      sourceText: formSourceText || undefined,
+      targetText: formTargetText || undefined,
+      ipa: currentType === 'LexiconEntry' ? (formIpa.trim() || undefined) : undefined,
+      examples: currentType === 'LexiconEntry' ? splitList(formExamples) : undefined,
+      morphemes: currentType === 'Grammar' ? splitList(formMorphemes) : undefined,
+      syntaxTree: currentType === 'Grammar' ? (formSyntaxTree.trim() || undefined) : undefined,
+      glosses: currentType === 'Grammar' ? splitList(formGlosses) : undefined,
+      texts: currentType === 'Corpus' ? splitList(formTexts) : undefined,
+    };
+    if (editingId) {
+      void update(editingId, { title: formTitle.trim(), data: data as unknown as Partial<LinguisticsArtifact> });
+      setNotice(`Saved changes to \u201c${formTitle.trim()}\u201d.`);
+    } else {
+      create({ title: formTitle, data });
+      setNotice(`Created ${currentType} \u201c${formTitle.trim()}\u201d.`);
+    }
+    resetForm();
     setShowCreate(false);
   };
 
+  const handleDelete = (item: { id: string; title: string }) => {
+    if (confirmDeleteId !== item.id) { setConfirmDeleteId(item.id); return; }
+    void remove(item.id);
+    setConfirmDeleteId(null);
+    if (selectedId === item.id) setSelectedId(null);
+    setNotice(`Deleted \u201c${item.title}\u201d.`);
+  };
 
   if (isError) {
     return (
@@ -192,11 +270,12 @@ export function NotebookPanel({
   return (
     <div className="space-y-6">
       {/* Quick Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { icon: FileText, label: 'Analyses', value: analyses.length, color: 'text-pink-400' },
           { icon: BookA, label: 'Lexicon', value: lexicon.length, color: 'text-purple-400' },
           { icon: Type, label: 'Grammars', value: grammars.length, color: 'text-blue-400' },
+          { icon: Hash, label: 'Corpora', value: corpora.length, color: 'text-green-400' },
           { icon: Globe, label: 'Translations', value: translations.length, color: 'text-neon-cyan' },
         ].map((stat, i) => (
           <motion.div
@@ -215,8 +294,9 @@ export function NotebookPanel({
 
       {/* Language Family Tree & Proficiency Badges */}
       {(() => {
-        const langs = [...new Set(items.map(i => i.data.language).filter(Boolean))];
-        const subfieldCounts = items.reduce<Record<string, number>>((acc, i) => {
+        const allRecords = [...analyses, ...lexicon, ...grammars, ...corpora, ...translations];
+        const langs = [...new Set(allRecords.map(i => i.data.language).filter(Boolean))];
+        const subfieldCounts = allRecords.reduce<Record<string, number>>((acc, i) => {
           acc[i.data.subfield] = (acc[i.data.subfield] || 0) + 1;
           return acc;
         }, {});
@@ -229,7 +309,7 @@ export function NotebookPanel({
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {langs.map(lang => {
-                    const count = items.filter(i => i.data.language === lang).length;
+                    const count = allRecords.filter(i => i.data.language === lang).length;
                     return (
                       <motion.span
                         key={lang}
@@ -249,7 +329,7 @@ export function NotebookPanel({
             {Object.keys(subfieldCounts).length > 0 && (
               <div className="panel p-4 space-y-3">
                 <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
-                  <GraduationCap className="w-4 h-4 text-purple-400" /> Proficiency by Subfield
+                  <GraduationCap className="w-4 h-4 text-purple-400" /> Entries by Subfield
                 </h3>
                 <div className="space-y-2">
                   {Object.entries(subfieldCounts).sort((a, b) => b[1] - a[1]).map(([subfield, count]) => (
@@ -334,13 +414,17 @@ export function NotebookPanel({
             >
               <Plus className="w-4 h-4" /> New {currentType}
             </button>
+            {notice && (
+              <span className="text-xs text-emerald-300 w-full" role="status">{notice}</span>
+            )}
             <span className="text-sm text-gray-400 ml-auto">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</span>
           </div>
 
           {/* Create Form */}
           {showCreate && (
             <div className="panel p-4 space-y-3">
-              <h3 className="font-semibold text-sm">New {currentType}</h3>
+              <h3 className="font-semibold text-sm">{editingId ? `Edit ${currentType}` : `New ${currentType}`}</h3>
+              {formError && <p className="text-xs text-red-300" role="alert">{formError}</p>}
               <input
                 value={formTitle}
                 onChange={e => setFormTitle(e.target.value)}
@@ -375,6 +459,14 @@ export function NotebookPanel({
                 placeholder="Description..."
                 className="input-lattice w-full h-20 resize-none"
               />
+              {currentType === 'Corpus' && (
+                <textarea
+                  value={formTexts}
+                  onChange={e => setFormTexts(e.target.value)}
+                  placeholder="Member texts, one per line — the corpus is its texts; analysis runs over all of them..."
+                  className="input-lattice w-full h-24 resize-none"
+                />
+              )}
               {currentType === 'Translation' && (
                 <div className="grid grid-cols-2 gap-3">
                   <textarea
@@ -437,8 +529,8 @@ export function NotebookPanel({
                 </div>
               )}
               <div className="flex gap-2">
-                <button onClick={handleCreate} disabled={!formTitle.trim()} className="px-3 py-1.5 bg-pink-400/20 text-pink-400 rounded-lg text-sm font-medium hover:bg-pink-400/30 disabled:opacity-50">Create</button>
-                <button onClick={() => setShowCreate(false)} className="text-sm text-gray-400 hover:text-white">Cancel</button>
+                <button onClick={handleCreate} disabled={!formTitle.trim()} className="px-3 py-1.5 bg-pink-400/20 text-pink-400 rounded-lg text-sm font-medium hover:bg-pink-400/30 disabled:opacity-50">{editingId ? 'Save changes' : 'Create'}</button>
+                <button onClick={() => { resetForm(); setShowCreate(false); }} className="text-sm text-gray-400 hover:text-white">Cancel</button>
               </div>
             </div>
           )}
@@ -453,7 +545,7 @@ export function NotebookPanel({
               ) : filtered.length === 0 ? (
                 <div className="text-center py-16 text-gray-400">
                   <Languages className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                  <p className="text-sm">No {currentType.toLowerCase()}s yet. Create one to get started.</p>
+                  <p className="text-sm">No {TYPE_PLURALS[currentType]} yet. Create one to get started.</p>
                 </div>
               ) : (
                 filtered.map((item, idx) => (
@@ -481,6 +573,9 @@ export function NotebookPanel({
                           {item.data.language && (
                             <span className="text-xs text-gray-400">{item.data.language}</span>
                           )}
+                          {item.data.texts && item.data.texts.length > 0 && (
+                            <span className="text-xs text-gray-400">{item.data.texts.length} text{item.data.texts.length === 1 ? '' : 's'}</span>
+                          )}
                         </div>
                       </div>
                       <Eye className="w-4 h-4 text-gray-600 flex-shrink-0 mt-1" />
@@ -505,10 +600,14 @@ export function NotebookPanel({
                       >
                         {runArtifact.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                       </button>
-                      <button onClick={() => update(selected.id, { data: { ...selected.data, lastReviewed: new Date().toISOString() } as unknown as Partial<LinguisticsArtifact> })} className="text-gray-400 hover:text-blue-400" title="Update"><Eye className="w-4 h-4" /></button>
-                      <button onClick={() => remove(selected.id)} className="text-red-400 hover:text-red-300" aria-label="Delete">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <button onClick={() => startEdit(selected as LinguisticsArtifact & { id: string; title: string })} className="text-gray-400 hover:text-blue-400" title="Edit this record"><Pencil className="w-4 h-4" /></button>
+                      {confirmDeleteId === selected.id ? (
+                        <button onClick={() => handleDelete(selected)} className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30" aria-label="Confirm delete">Delete \u201c{selected.title}\u201d?</button>
+                      ) : (
+                        <button onClick={() => handleDelete(selected)} className="text-red-400 hover:text-red-300" aria-label="Delete">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -541,6 +640,7 @@ export function NotebookPanel({
                   {selected.data.ipa && (
                     <div>
                       <h3 className="text-xs font-medium text-gray-400 mb-1">IPA Transcription</h3>
+                      <p className="text-sm font-mono text-gray-100 mb-1">{selected.data.ipa}</p>
                       <IpaBreakdown ipa={selected.data.ipa} />
                     </div>
                   )}
@@ -554,10 +654,30 @@ export function NotebookPanel({
                       </div>
                     </div>
                   )}
-                  {selected.data.syntaxTree && (
+                  {selected.data.syntaxTree && (() => {
+                    const parsed = parseBracketTree(selected.data.syntaxTree);
+                    return (
+                      <div>
+                        <h3 className="text-xs font-medium text-gray-400 mb-1">Syntax Tree</h3>
+                        {parsed.ok ? (
+                          <div className="bg-lattice-deep p-2 rounded overflow-auto max-h-64">
+                            <TreeView node={parsed.root} />
+                          </div>
+                        ) : (
+                          <p className="text-xs text-amber-300">This stored tree does not parse: {parsed.error}</p>
+                        )}
+                        <pre className="text-[11px] font-mono text-gray-500 bg-lattice-deep/60 p-2 rounded overflow-auto max-h-24 mt-1">{selected.data.syntaxTree}</pre>
+                      </div>
+                    );
+                  })()}
+                  {selected.data.texts && selected.data.texts.length > 0 && (
                     <div>
-                      <h3 className="text-xs font-medium text-gray-400 mb-1">Syntax Tree</h3>
-                      <pre className="text-xs font-mono text-gray-300 bg-lattice-deep p-2 rounded overflow-auto max-h-32">{selected.data.syntaxTree}</pre>
+                      <h3 className="text-xs font-medium text-gray-400 mb-1">Member Texts ({selected.data.texts.length})</h3>
+                      <ul className="space-y-1">
+                        {selected.data.texts.map((t, i) => (
+                          <li key={i} className="text-xs text-gray-300 pl-3 border-l-2 border-green-400/30 line-clamp-3">{t}</li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                   {selected.data.sourceText && (
