@@ -83,8 +83,20 @@ export function DTUExportButton({
         { responseType: 'blob' }
       );
 
+      // A9 (export genus): inspect what came back before calling it
+      // an export. A 200 carrying a JSON error body (a misroute, an
+      // intermediary) used to download AS a ".dtu" file and still
+      // earn the checkmark — success declared without inspecting the
+      // blob, the F10 mechanism. An empty or JSON-typed body is a
+      // failure in words, never a download.
+      const received = response.data as Blob;
+      if (!received || typeof received.size !== 'number' || received.size === 0 || /json/i.test(received.type || '')) {
+        addToast({ type: 'error', message: 'Export failed — the server did not return a DTU file.' });
+        return;
+      }
+
       // Trigger browser download
-      const blob = new Blob([response.data], { type: 'application/octet-stream' });
+      const blob = new Blob([received], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
