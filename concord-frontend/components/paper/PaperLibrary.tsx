@@ -12,6 +12,8 @@ import { Library, Plus, Trash2, Loader2, Star } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { PaperVersionHistory } from '@/components/paper/PaperVersionHistory';
+import { useLensData } from '@/lib/hooks/use-lens-data';
+import { requestManuscriptSeed } from './EditorPanel';
 import { KeepRecordActions } from '@/components/lens/KeepRecordActions';
 import { paperItemKeepRecord } from '@/components/lens/recordKeep';
 
@@ -202,6 +204,7 @@ export function PaperLibrary() {
                 collections={collections}
                 onSaveNotes={notes => void update(p.id, { notes })}
                 onToggleCollection={(collectionId, remove) => void toggleCollection(p.id, collectionId, remove)}
+                onUpdateTags={tags => void update(p.id, { tags })}
               />
             )}
           </li>
@@ -222,13 +225,32 @@ export function PaperLibrary() {
 // blurred/persisted via paper-update yet.
 // ---------------------------------------------------------------------------
 
-function PaperDetail({ paper, collections, onSaveNotes, onToggleCollection }: {
+function PaperDetail({ paper, collections, onSaveNotes, onToggleCollection, onUpdateTags }: {
   paper: Paper;
   collections: CollectionMeta[];
   onSaveNotes: (notes: string) => void;
   onToggleCollection: (collectionId: string, remove: boolean) => void;
+  onUpdateTags: (tags: string[]) => void;
 }) {
   const [notes, setNotes] = useState(paper.notes);
+  const [tagDraft, setTagDraft] = useState('');
+  const [bibAdded, setBibAdded] = useState(false);
+  // S1 bridge: this paper becomes a Bibliography citation artifact.
+  const { create: createCitation } = useLensData('paper', 'citation', { noSeed: true });
+  async function addToBibliography() {
+    await createCitation({
+      title: paper.title,
+      data: { doi: paper.doi || '', authors: (paper.authors || []).join(', '), year: paper.year || undefined, journal: paper.venue || '', citedByCount: 0 },
+      meta: { tags: [] },
+    });
+    setBibAdded(true);
+  }
+  function openInManuscript() {
+    // S1 bridge: seed the Manuscript from this library paper, then ask
+    // the page to switch views; EditorPanel consumes the seed on mount.
+    requestManuscriptSeed({ title: paper.title, abstract: paper.abstract, authors: paper.authors, year: paper.year, doi: paper.doi });
+    window.dispatchEvent(new CustomEvent('paper:view', { detail: 'editor' }));
+  }
 
   const kept = paperItemKeepRecord(paper);
   return (
@@ -241,6 +263,42 @@ function PaperDetail({ paper, collections, onSaveNotes, onToggleCollection }: {
         className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
 
       <PaperVersionHistory paperId={paper.id} currentContent={notes} />
+
+      {/* F11: the promised tag control — tags already live on the
+          record server-side; this is their surface. */}
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="text-[9px] text-zinc-400 uppercase tracking-wide mr-1">Tags</span>
+        {(paper.tags || []).map(t => (
+          <span key={t} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-300">
+            {t}
+            <button aria-label={`Remove tag ${t}`} onClick={() => onUpdateTags((paper.tags || []).filter(x => x !== t))} className="text-zinc-500 hover:text-rose-300">×</button>
+          </span>
+        ))}
+        <input
+          value={tagDraft}
+          onChange={e => setTagDraft(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && tagDraft.trim()) {
+              const t = tagDraft.trim().toLowerCase();
+              if (!(paper.tags || []).includes(t)) onUpdateTags([...(paper.tags || []), t]);
+              setTagDraft('');
+            }
+          }}
+          placeholder="Add tag + Enter"
+          className="bg-zinc-950 border border-zinc-800 rounded-full px-2 py-0.5 text-[10px] text-zinc-200 w-28"
+        />
+      </div>
+
+      {/* S1 bridges: the three stores connect here. */}
+      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+        <span className="text-[9px] text-zinc-400 uppercase tracking-wide mr-1">Open in</span>
+        <button onClick={openInManuscript} className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-300 hover:text-white">
+          Manuscript →
+        </button>
+        <button onClick={() => void addToBibliography()} disabled={bibAdded} className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-300 hover:text-white disabled:opacity-60">
+          {bibAdded ? 'In Bibliography ✓' : 'Add to Bibliography'}
+        </button>
+      </div>
 
       {collections.length > 0 && (
         <div className="flex flex-wrap items-center gap-1">

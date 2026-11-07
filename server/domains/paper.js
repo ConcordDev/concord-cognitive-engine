@@ -170,6 +170,52 @@ export default function registerPaperActions(registerLensAction) {
     }
   });
 
+  // ── S6 (F10): summaries are work products — they persist. The
+  // Summarizer's output used to evaporate on a view switch; a saved
+  // summary now stands in the member's own list until deleted.
+  registerLensAction("paper", "summary-save", (ctx, _a, params = {}) => {
+    try {
+      const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = hydrateLibrary(s, ctx);
+      const summary = (params.summary && typeof params.summary === "object") ? params.summary : null;
+      if (!summary) return { ok: false, error: "summary required" };
+      const entry = {
+        id: ppId("ps"),
+        savedAt: ppNow(),
+        sourceTitle: ppClean(params.sourceTitle, 200) || "Pasted text",
+        sourceExcerpt: ppClean(params.sourceText, 400),
+        summary,
+      };
+      const list = s.summaries.get(userId) || [];
+      list.unshift(entry);
+      s.summaries.set(userId, list.slice(0, 50));
+      savePaper(ctx);
+      return { ok: true, result: { summary: entry, count: list.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("paper", "summary-list", (ctx, _a, _params = {}) => {
+    try {
+      const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = hydrateLibrary(s, ctx);
+      const summaries = s.summaries.get(userId) || [];
+      return { ok: true, result: { summaries, count: summaries.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("paper", "summary-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = hydrateLibrary(s, ctx);
+      const list = s.summaries.get(userId) || [];
+      const next = list.filter((x) => x.id !== params.id);
+      if (next.length === list.length) return { ok: false, error: "summary not found" };
+      s.summaries.set(userId, next);
+      savePaper(ctx);
+      return { ok: true, result: { deleted: params.id, count: next.length } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
   registerLensAction("paper", "summarize", async (ctx, _artifact, params = {}) => {
     const text = String(params.text || "").trim();
     if (text.length < 300) return { ok: false, error: "text too short" };
@@ -202,6 +248,7 @@ export default function registerPaperActions(registerLensAction) {
     const s = STATE.paperLens;
     if (!(s.papers instanceof Map)) s.papers = new Map();           // userId -> Array
     if (!(s.collections instanceof Map)) s.collections = new Map(); // userId -> Array
+    if (!(s.summaries instanceof Map)) s.summaries = new Map();     // userId -> Array
     return s;
   }
   // Keyed by the paperLens object, not stored on it. A restart deletes
@@ -237,6 +284,9 @@ export default function registerPaperActions(registerLensAction) {
     // already has, so a fresh table does not wipe an older library.
     const dbPapers = readKind(ctx, userId, "papers");
     const dbCols = readKind(ctx, userId, "collections");
+    const dbSummaries = readKind(ctx, userId, "summaries");
+    if (dbSummaries) s.summaries.set(userId, dbSummaries);
+    else if (!s.summaries.has(userId)) s.summaries.set(userId, []);
     if (dbPapers) s.papers.set(userId, dbPapers);
     else if (!s.papers.has(userId)) s.papers.set(userId, []);
     if (dbCols) s.collections.set(userId, dbCols);
@@ -259,6 +309,7 @@ export default function registerPaperActions(registerLensAction) {
       const now = ppNow();
       if (s.papers.has(userId)) stmt.run(userId, "papers", JSON.stringify(s.papers.get(userId) || []), now);
       if (s.collections.has(userId)) stmt.run(userId, "collections", JSON.stringify(s.collections.get(userId) || []), now);
+      if (s.summaries.has(userId)) stmt.run(userId, "summaries", JSON.stringify(s.summaries.get(userId) || []), now);
     } catch { /* table missing on a DB that has not migrated yet */ }
   }
   function savePaper(ctx) {
