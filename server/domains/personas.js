@@ -84,7 +84,16 @@ function normTags(raw) {
     .filter((t) => t.length >= 2 && t.length <= 24))].slice(0, 8);
 }
 
-function publicView(p) {
+function authorNameFor(ctx, authorUserId) {
+  // Close-out A7 (identity-display): the author's name, resolved at the
+  // read through the platform resolver; null when unresolved — the raw
+  // authorUserId is never the display.
+  try {
+    const db = ctx?.db || globalThis._concordSTATE?.db || null;
+    return lookupUserIdentity(db, authorUserId).displayName;
+  } catch { return null; }
+}
+function publicView(p, ctx) {
   const r = ratingsFor(p.id);
   return {
     id: p.id,
@@ -94,7 +103,9 @@ function publicView(p) {
     tags: p.tags,
     portrait: p.portrait,
     greeting: p.greeting,
+    voice: p.voice,
     authorUserId: p.authorUserId,
+    authorName: authorNameFor(ctx, p.authorUserId),
     version: p.version,
     published: p.published,
     installCount: p.installCount,
@@ -181,6 +192,7 @@ async function composeReply(ctx, persona, userMessage, priorTurns) {
 // =========================================================================
 
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 export default function registerPersonasActions(registerLensAction) {
   registerLensAction = saveAfterWrites(registerLensAction); // persist STATE after a successful write (lib/lens-save-on-write.js)
   const reg = registerLensAction;
@@ -232,7 +244,7 @@ export default function registerPersonasActions(registerLensAction) {
         greeting: persona.greeting, exampleDialogue: persona.exampleDialogue,
       });
       store().personas.set(id, persona);
-      return { ok: true, result: { persona: publicView(persona) } };
+      return { ok: true, result: { persona: publicView(persona, ctx) } };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   });
 
@@ -244,6 +256,21 @@ export default function registerPersonasActions(registerLensAction) {
       const p = store().personas.get(String(params.personaId || ""));
       if (!p) return { ok: false, error: "persona_not_found" };
       if (p.authorUserId !== userId) return { ok: false, error: "not_author" };
+      // Every edit mints a version: snapshot the current state first, in
+      // the same shape revise keeps, so the ordinary save path holds a
+      // history too — not only published edits with a changelog.
+      p.history.push({
+        version: p.version,
+        contentHash: p.contentHash,
+        snapshot: {
+          name: p.name, tagline: p.tagline, personality: p.personality,
+          voice: p.voice, greeting: p.greeting, exampleDialogue: p.exampleDialogue,
+        },
+        changelog: String(params.changelog || "").trim().slice(0, 400) || "edit",
+        at: now(),
+      });
+      if (p.history.length > 30) p.history = p.history.slice(-30);
+      p.version += 1;
       const fields = ["name", "tagline", "personality", "voice", "greeting", "category"];
       for (const f of fields) {
         if (params[f] !== undefined) p[f] = String(params[f]).trim();
@@ -263,7 +290,7 @@ export default function registerPersonasActions(registerLensAction) {
         name: p.name, personality: p.personality, voice: p.voice,
         greeting: p.greeting, exampleDialogue: p.exampleDialogue,
       });
-      return { ok: true, result: { persona: publicView(p) } };
+      return { ok: true, result: { persona: publicView(p, ctx) } };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   });
 
@@ -281,7 +308,7 @@ export default function registerPersonasActions(registerLensAction) {
         ok: true,
         result: {
           persona: {
-            ...publicView(p),
+            ...publicView(p, ctx),
             personality: p.personality,
             exampleDialogue: p.exampleDialogue,
             contentHash: p.contentHash,
@@ -303,7 +330,7 @@ export default function registerPersonasActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const rows = [];
       for (const p of store().personas.values()) {
-        if (p.authorUserId === userId) rows.push(publicView(p));
+        if (p.authorUserId === userId) rows.push(publicView(p, ctx));
       }
       rows.sort((a, b) => b.updatedAt - a.updatedAt);
       return { ok: true, result: { personas: rows } };
@@ -354,7 +381,7 @@ export default function registerPersonasActions(registerLensAction) {
           const hay = `${p.name} ${p.tagline} ${p.tags.join(" ")}`.toLowerCase();
           if (!hay.includes(q)) continue;
         }
-        rows.push(publicView(p));
+        rows.push(publicView(p, ctx));
       }
       if (sort === "recent") rows.sort((a, b) => b.updatedAt - a.updatedAt);
       else if (sort === "rating") rows.sort((a, b) => b.rating - a.rating || b.ratingCount - a.ratingCount);
@@ -400,7 +427,9 @@ export default function registerPersonasActions(registerLensAction) {
       store().chats.set(chatId, {
         id: chatId, personaId: p.id, userId, turns: [greetTurn], createdAt: now(),
       });
-      p.chatCount += 1;
+      // Opening a chat does NOT move the counter — the "chats" figure
+      // counts conversations that actually happened, counted once at a
+      // chat's first sent message (see chat_send).
       return { ok: true, result: { chatId, personaId: p.id, turns: [greetTurn] } };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   });
@@ -423,6 +452,12 @@ export default function registerPersonasActions(registerLensAction) {
       chat.turns.push(userTurn);
       const personaTurn = { role: "persona", text: reply.text, at: now(), basis: reply.basis };
       chat.turns.push(personaTurn);
+      // Count the act the name claims: a chat counts when its first
+      // message is sent — once per chat, never per open or per message.
+      if (!chat.counted) {
+        chat.counted = true;
+        persona.chatCount += 1;
+      }
       if (chat.turns.length > 200) chat.turns = chat.turns.slice(-200);
       return { ok: true, result: { reply: personaTurn, turnCount: chat.turns.length } };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }

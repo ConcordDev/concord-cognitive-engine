@@ -8,44 +8,108 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 export default function registerDailyActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
-  registerLensAction("daily", "dailySummary", (ctx, artifact, _params) => {
+  registerLensAction("daily", "dailySummary", (ctx, artifact, params = {}) => {
     const data = artifact.data || {};
-    const entries = data.entries || [];
-    const sessions = data.sessions || [];
+    const userId = dyActor(ctx);
+    const date = dyExplicitDay(params?.date) || dyExplicitDay(data.date) || dyToday();
+    // D2: the action reads the caller's real records — the union journal
+    // for the day and the day's session artifacts — not only arrays
+    // riding the artifact it was run against (the pre-build shape, kept
+    // as a fallback merge for callers that still carry them).
+    const dayEntries = dyUnionEntries(userId).filter((e) => e.date === date);
+    const legacyEntries = Array.isArray(data.entries) ? data.entries : [];
+    const entries = [...dayEntries, ...legacyEntries];
+    const sessions = [
+      ...dyArtifacts(userId, "session").map((a) => a.data || {})
+        .filter((s2) => String(s2.startedAt || s2.date || "").startsWith(date)),
+      ...(Array.isArray(data.sessions) ? data.sessions : []),
+    ];
     const tasks = data.tasks || [];
     const completedTasks = tasks.filter(t => t.completed || t.status === "completed").length;
     const totalMinutes = sessions.reduce((s, ses) => s + (parseInt(ses.duration) || 0), 0);
-    const mood = data.mood !== undefined ? data.mood : null;
-    return { ok: true, result: { date: data.date || new Date().toISOString().split("T")[0], entriesLogged: entries.length, sessionsCompleted: sessions.length, totalFocusMinutes: totalMinutes, tasksCompleted: completedTasks, totalTasks: tasks.length, completionRate: tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0, mood: mood !== null ? mood : "not-recorded", productivityScore: Math.min(100, Math.round(completedTasks * 15 + totalMinutes / 5 + entries.length * 10)) } };
+    const dayMood = [...dayEntries].reverse().find((e) => e.mood != null)?.mood;
+    const mood = dayMood !== undefined ? dayMood : (data.mood !== undefined ? data.mood : null);
+    return { ok: true, result: { date, entriesLogged: entries.length, sessionsCompleted: sessions.length, totalFocusMinutes: totalMinutes, tasksCompleted: completedTasks, totalTasks: tasks.length, completionRate: tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0, mood: mood !== null ? mood : "not-recorded", productivityScore: Math.min(100, Math.round(completedTasks * 15 + totalMinutes / 5 + entries.length * 10)) } };
   });
   registerLensAction("daily", "habitStreak", (ctx, artifact, _params) => {
-    const habits = artifact.data?.habits || [];
-    const history = artifact.data?.history || [];
-    const analyzed = habits.map(h => {
-      const name = h.name || h;
+    // D2: habits + check-ins come from the caller's real records (the
+    // domain store), merged with any legacy arrays on the artifact.
+    const userId = dyActor(ctx);
+    const s = getDailyState();
+    const legacyHabits = artifact.data?.habits || [];
+    const history = [...(artifact.data?.history || [])];
+    if (s) {
+      const checkins = dyList(s.checkins, userId);
+      const byDate = new Map();
+      for (const c of checkins) {
+        const habit = dyList(s.habits, userId).find((h) => h.id === c.habitId);
+        if (!habit) continue;
+        if (!byDate.has(c.date)) byDate.set(c.date, []);
+        byDate.get(c.date).push(habit.name);
+      }
+      for (const [date, names] of byDate) history.push({ date, habits: names });
+    }
+    const habits = [
+      ...legacyHabits,
+      ...(s ? dyList(s.habits, userId).filter((h) => !h.archived).map((h) => h.name) : []),
+    ];
+    const analyzed = [...new Set(habits.map((h) => (typeof h === "string" ? h : h.name || String(h))))].map((name) => {
       const completions = history.filter(d => (d.habits || []).includes(name));
       let currentStreak = 0; const now = new Date();
       for (let i = 0; i < 365; i++) { const date = new Date(now.getTime() - i * 86400000).toISOString().split("T")[0]; if (completions.some(c => c.date === date)) currentStreak++; else break; }
-      return { habit: name, currentStreak, longestStreak: Math.max(currentStreak, parseInt(h.longestStreak) || 0), totalCompletions: completions.length, status: currentStreak >= 7 ? "strong" : currentStreak >= 3 ? "building" : currentStreak >= 1 ? "starting" : "broken" };
+      const legacy = legacyHabits.find((h) => (typeof h === "object" ? h.name : h) === name);
+      return { habit: name, currentStreak, longestStreak: Math.max(currentStreak, parseInt(legacy?.longestStreak) || 0), totalCompletions: completions.length, status: currentStreak >= 7 ? "strong" : currentStreak >= 3 ? "building" : currentStreak >= 1 ? "starting" : "broken" };
     });
-    return { ok: true, result: { habits: analyzed, activeHabits: analyzed.filter(h => h.currentStreak > 0).length, totalHabits: habits.length, bestStreak: analyzed.sort((a, b) => b.currentStreak - a.currentStreak)[0] } };
+    return { ok: true, result: { habits: analyzed, activeHabits: analyzed.filter(h => h.currentStreak > 0).length, totalHabits: analyzed.length, bestStreak: analyzed.sort((a, b) => b.currentStreak - a.currentStreak)[0] } };
   });
   registerLensAction("daily", "focusTimer", (ctx, artifact, _params) => {
-    const sessions = artifact.data?.sessions || [];
+    const userId = dyActor(ctx);
     const today = new Date().toISOString().split("T")[0];
+    // D2: today's sessions are the caller's session artifacts for today,
+    // merged with any legacy sessions array on the artifact.
+    const sessions = [
+      ...dyArtifacts(userId, "session").map((a) => a.data || {}),
+      ...(artifact.data?.sessions || []),
+    ];
     const todaySessions = sessions.filter(s => (s.date || s.startedAt || "").startsWith(today));
     const totalMinutes = todaySessions.reduce((s, ses) => s + (parseInt(ses.duration) || 25), 0);
     const categories = {};
     for (const s of todaySessions) { const cat = s.category || s.project || "General"; categories[cat] = (categories[cat] || 0) + (parseInt(s.duration) || 25); }
     return { ok: true, result: { date: today, sessionsToday: todaySessions.length, totalMinutes, totalHours: Math.round(totalMinutes / 60 * 10) / 10, byCategory: categories, pomodorosCompleted: Math.floor(totalMinutes / 25), targetMinutes: 240, progress: Math.round((totalMinutes / 240) * 100) } };
   });
-  registerLensAction("daily", "weeklyReview", (ctx, artifact, _params) => {
-    const days = artifact.data?.days || [];
+  registerLensAction("daily", "weeklyReview", (ctx, artifact, params = {}) => {
+    // D2: the review week is built from the caller's real records — the
+    // union journal + session artifacts over the last 7 days — merged
+    // with any legacy per-day rows on the artifact. The empty message
+    // now stands only when the week truly holds nothing.
+    const userId = dyActor(ctx);
+    const end = dyExplicitDay(params?.date) || dyToday();
+    const byDate = new Map();
+    const row = (date) => { if (!byDate.has(date)) byDate.set(date, { date, tasksCompleted: 0, focusMinutes: 0, moods: [], entries: 0 }); return byDate.get(date); };
+    for (const d of artifact.data?.days || []) {
+      if (!d?.date) continue;
+      const r = row(d.date);
+      r.tasksCompleted += parseInt(d.tasksCompleted) || 0;
+      r.focusMinutes += parseInt(d.focusMinutes) || 0;
+      if (d.mood !== undefined && Number.isFinite(Number(d.mood))) r.moods.push(Number(d.mood));
+    }
+    for (const e of dyUnionEntries(userId)) { const r = row(e.date); r.entries += 1; if (e.mood != null) r.moods.push(e.mood); }
+    for (const a of dyArtifacts(userId, "session")) {
+      const d = a.data || {};
+      const date = String(d.startedAt || d.date || "").slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) row(date).focusMinutes += parseInt(d.duration) || 0;
+    }
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const r = byDate.get(dyShiftDay(end, -i));
+      if (r && (r.entries > 0 || r.focusMinutes > 0 || r.tasksCompleted > 0)) days.push(r);
+    }
     if (days.length === 0) return { ok: true, result: { message: "Log daily data to generate weekly review." } };
-    const totalTasks = days.reduce((s, d) => s + (parseInt(d.tasksCompleted) || 0), 0);
-    const totalFocus = days.reduce((s, d) => s + (parseInt(d.focusMinutes) || 0), 0);
-    const avgMood = days.filter(d => d.mood !== undefined).length > 0 ? Math.round(days.filter(d => d.mood !== undefined).reduce((s, d) => s + d.mood, 0) / days.filter(d => d.mood !== undefined).length * 10) / 10 : null;
-    const bestDay = days.sort((a, b) => (b.tasksCompleted || 0) - (a.tasksCompleted || 0))[0];
+    const totalTasks = days.reduce((s, d) => s + d.tasksCompleted, 0);
+    const totalFocus = days.reduce((s, d) => s + d.focusMinutes, 0);
+    const allMoods = days.flatMap((d) => d.moods);
+    const avgMood = allMoods.length > 0 ? Math.round((allMoods.reduce((a, b) => a + b, 0) / allMoods.length) * 10) / 10 : null;
+    const bestDay = [...days].sort((a, b) => (b.focusMinutes + b.entries * 10) - (a.focusMinutes + a.entries * 10))[0];
     return { ok: true, result: { daysTracked: days.length, totalTasksCompleted: totalTasks, totalFocusMinutes: totalFocus, totalFocusHours: Math.round(totalFocus / 60 * 10) / 10, avgMood, bestDay: bestDay?.date || "N/A", avgTasksPerDay: Math.round(totalTasks / Math.max(days.length, 1) * 10) / 10, avgFocusPerDay: Math.round(totalFocus / Math.max(days.length, 1)) } };
   });
 
@@ -94,6 +158,58 @@ export default function registerDailyActions(registerLensAction) {
       h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
     }
     return h.toString(16).padStart(8, "0");
+  }
+
+  // ─── Cross-store read-back (D1/D2) ──────────────────────────────────
+  // The Today panel writes the generic lens-artifact store
+  // (STATE.lensArtifacts — domain "daily", types entry/session/reminder);
+  // the Studio writes this domain store. The journal's read-back — the
+  // Studio timeline, dashboard, streak grid, the four Daily Actions and
+  // the full export — reads the UNION of both stores, so a day written
+  // on either surface is the same day everywhere it is read back. The
+  // write paths and both stores are untouched; nothing migrates.
+  function dyArtifacts(userId, type) {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE || !(STATE.lensArtifacts instanceof Map)) return [];
+    const out = [];
+    for (const a of STATE.lensArtifacts.values()) {
+      if (a && a.domain === "daily" && a.ownerId === userId && a.type === type) out.push(a);
+    }
+    return out;
+  }
+  const DY_MOOD_LABELS = ["Frustrated", "Meh", "Neutral", "Good vibes", "On fire"];
+  function dyTodayEntry(a) {
+    const d = a.data || {};
+    const parts = [];
+    if (d.notes) parts.push(String(d.notes));
+    if (d.workedOn) parts.push(`Worked on: ${d.workedOn}`);
+    if (d.learned) parts.push(`Learned: ${d.learned}`);
+    if (d.goals) parts.push(`Goals: ${d.goals}`);
+    const moodIdx = Number.isInteger(d.mood) ? d.mood : null;
+    return {
+      id: `today:${a.id}`,
+      journalId: null,
+      title: d.date || a.title || "",
+      body: parts.join("\n\n"),
+      mood: moodIdx != null && moodIdx >= 0 && moodIdx <= 4 ? moodIdx + 1 : null,
+      moodLabel: moodIdx != null ? (DY_MOOD_LABELS[moodIdx] || null) : null,
+      tags: [],
+      media: [],
+      template: null,
+      date: /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : String(a.createdAt || "").slice(0, 10),
+      weather: null,
+      location: null,
+      source: "today",
+      createdAt: a.createdAt || dyNow(),
+      updatedAt: a.updatedAt || a.createdAt || dyNow(),
+    };
+  }
+  function dyUnionEntries(userId) {
+    // Read-only: a review/report must not lazily create persisted state (the save-on-write
+    // guard counts that as a mutation without a save), so peek instead of getDailyState().
+    const dl = globalThis._concordSTATE?.dailyLens;
+    const own = dl?.entries instanceof Map ? (dl.entries.get(userId) || []) : [];
+    return [...own, ...dyArtifacts(userId, "entry").map(dyTodayEntry)];
   }
 
   const PROMPTS = [
@@ -187,7 +303,12 @@ export default function registerDailyActions(registerLensAction) {
 
   registerLensAction("daily", "entry-list", (ctx, _a, params = {}) => {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    let entries = [...dyList(s.entries, dyActor(ctx))];
+    const userId = dyActor(ctx);
+    let entries = [...dyList(s.entries, userId)];
+    // D1: the timeline reads the union — Today-panel entries join the
+    // list (labelled source: "today") unless a journal filter scopes
+    // the read to the Studio's own books.
+    if (!params.journalId) entries = [...entries, ...dyArtifacts(userId, "entry").map(dyTodayEntry)];
     if (params.journalId) entries = entries.filter((e) => e.journalId === params.journalId);
     if (params.tag) {
       const t = dyClean(params.tag, 30).toLowerCase();
@@ -243,7 +364,7 @@ export default function registerDailyActions(registerLensAction) {
     const ref = dyExplicitDay(params.date) || dyExplicitDay(params.today) || dyToday();
     const md = ref.slice(5); // MM-DD
     const year = ref.slice(0, 4);
-    const entries = dyList(s.entries, dyActor(ctx))
+    const entries = dyUnionEntries(dyActor(ctx))
       .filter((e) => e.date.slice(5) === md && e.date.slice(0, 4) !== year)
       .sort((a, b) => b.date.localeCompare(a.date));
     return { ok: true, result: { entries, count: entries.length, monthDay: md } };
@@ -253,16 +374,16 @@ export default function registerDailyActions(registerLensAction) {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const q = dyClean(params.query, 100).toLowerCase();
     if (!q) return { ok: false, error: "query required" };
-    const entries = dyList(s.entries, dyActor(ctx))
+    const entries = dyUnionEntries(dyActor(ctx))
       .filter((e) => e.body.toLowerCase().includes(q) || e.title.toLowerCase().includes(q) || e.tags.some((t) => t.includes(q)))
       .sort((a, b) => b.date.localeCompare(a.date))
-      .map((e) => ({ id: e.id, title: e.title, date: e.date, excerpt: e.body.slice(0, 160), mood: e.mood }));
+      .map((e) => ({ id: e.id, title: e.title, date: e.date, excerpt: e.body.slice(0, 160), mood: e.mood, source: e.source || "studio" }));
     return { ok: true, result: { entries, count: entries.length } };
   });
 
   registerLensAction("daily", "mood-trend", (ctx, _a, _params = {}) => {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const withMood = dyList(s.entries, dyActor(ctx)).filter((e) => e.mood != null);
+    const withMood = dyUnionEntries(dyActor(ctx)).filter((e) => e.mood != null);
     const byDate = {};
     for (const e of withMood) {
       if (!byDate[e.date]) byDate[e.date] = [];
@@ -279,7 +400,7 @@ export default function registerDailyActions(registerLensAction) {
   try {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = dyActor(ctx);
-    const entries = dyList(s.entries, userId);
+    const entries = dyUnionEntries(userId);
     const dates = new Set(entries.map((e) => e.date));
     const today = dyClientToday(params);
     // current journaling streak ending today or yesterday, in calendar days
@@ -374,7 +495,7 @@ export default function registerDailyActions(registerLensAction) {
   registerLensAction("daily", "entry-heatmap", (ctx, _a, params = {}) => {
   try {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const entries = dyList(s.entries, dyActor(ctx));
+    const entries = dyUnionEntries(dyActor(ctx));
     const days = Math.max(7, Math.min(366, Math.round(muNumDy(params.days, 365))));
     const byDate = {};
     for (const e of entries) {
@@ -616,6 +737,86 @@ export default function registerDailyActions(registerLensAction) {
         entryCount: entries.length,
         filename: `journal-archive-${dyToday()}.md`,
         bytes: Buffer.byteLength(markdown, "utf8"),
+      },
+    };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  // ─── Full own-records export (D4) ─────────────────────────────────────
+  // Every record the caller owns in this lens, from BOTH stores, in
+  // labelled sections: Studio entries, Today entries, sessions, habits
+  // and reminders. This is the export whose contents are the journal —
+  // the header bundle (the generic corpus export) is a different object.
+
+  registerLensAction("daily", "export-journal", (ctx, _a, _params = {}) => {
+  try {
+    const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = dyActor(ctx);
+    const studioEntries = [...dyList(s.entries, userId)].sort((a, b) => a.date.localeCompare(b.date));
+    const todayEntries = dyArtifacts(userId, "entry").map(dyTodayEntry).sort((a, b) => a.date.localeCompare(b.date));
+    const sessions = dyArtifacts(userId, "session").map((a) => a.data || {})
+      .sort((a, b) => String(a.startedAt || "").localeCompare(String(b.startedAt || "")));
+    const habits = dyList(s.habits, userId);
+    const checkins = dyList(s.checkins, userId);
+    const reminders = dyArtifacts(userId, "reminder").map((a) => a.data || {})
+      .sort((a, b) => String(a.dueAt || "").localeCompare(String(b.dueAt || "")));
+    const MOOD_LABEL = ["", "Difficult", "Low", "Neutral", "Good", "Great"];
+    const lines = [];
+    lines.push(`# My Daily Journal — everything`);
+    lines.push("");
+    lines.push(`Exported ${dyNow()} · your own records only: ${studioEntries.length} Studio entries · ${todayEntries.length} Today entries · ${sessions.length} sessions · ${habits.length} habits · ${reminders.length} reminders`);
+    lines.push("");
+    lines.push(`## Journal entries (Studio)`);
+    lines.push("");
+    if (studioEntries.length === 0) lines.push("(none)");
+    for (const e of studioEntries) {
+      lines.push(`### ${e.date}${e.title ? ` — ${e.title}` : ""}`);
+      if (e.mood != null) lines.push(`Mood: ${MOOD_LABEL[e.mood] || e.mood}`);
+      lines.push("");
+      lines.push(e.body);
+      lines.push("");
+    }
+    lines.push(`## Today entries`);
+    lines.push("");
+    if (todayEntries.length === 0) lines.push("(none)");
+    for (const e of todayEntries) {
+      lines.push(`### ${e.date}`);
+      if (e.moodLabel) lines.push(`Mood: ${e.moodLabel}`);
+      lines.push("");
+      lines.push(e.body || "(no notes)");
+      lines.push("");
+    }
+    lines.push(`## Sessions`);
+    lines.push("");
+    if (sessions.length === 0) lines.push("(none)");
+    for (const s2 of sessions) {
+      lines.push(`- ${String(s2.startedAt || "").slice(0, 10)} · ${s2.project || s2.title || "Session"} · ${s2.duration ?? "?"}m${s2.category ? ` · ${s2.category}` : ""}`);
+    }
+    lines.push("");
+    lines.push(`## Habits`);
+    lines.push("");
+    if (habits.length === 0) lines.push("(none)");
+    for (const h of habits) {
+      const n = checkins.filter((c) => c.habitId === h.id).length;
+      lines.push(`- ${h.name} · ${n} check-in${n === 1 ? "" : "s"} · target ${h.targetPerWeek}/week${h.archived ? " · archived" : ""}`);
+    }
+    lines.push("");
+    lines.push(`## Reminders`);
+    lines.push("");
+    if (reminders.length === 0) lines.push("(none)");
+    for (const r of reminders) {
+      lines.push(`- ${r.title || "Reminder"} · due ${r.dueAt || "?"} · ${r.completed ? "done" : "pending"}`);
+    }
+    lines.push("");
+    const markdown = lines.join("\n");
+    return {
+      ok: true,
+      result: {
+        markdown,
+        format: "markdown",
+        filename: `daily-journal-export-${dyToday()}.md`,
+        bytes: Buffer.byteLength(markdown, "utf8"),
+        counts: { studioEntries: studioEntries.length, todayEntries: todayEntries.length, sessions: sessions.length, habits: habits.length, reminders: reminders.length },
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

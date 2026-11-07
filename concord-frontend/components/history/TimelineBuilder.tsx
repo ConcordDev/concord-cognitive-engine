@@ -47,6 +47,10 @@ export function TimelineBuilder() {
   const [view, setView] = useState<View>('edit');
   const [newTimeline, setNewTimeline] = useState('');
   const [evForm, setEvForm] = useState({ title: '', year: '', category: '', description: '', track: '' });
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [armDelete, setArmDelete] = useState<string | null>(null);
+  const [formError, setFormError] = useState('');
+  const [pendingForceCreate, setPendingForceCreate] = useState(false);
   const [eraForm, setEraForm] = useState({ name: '', startYear: '', endYear: '', color: '#8b5cf6' });
   const [mediaOpen, setMediaOpen] = useState<string | null>(null);
   // Real macro-dispatch pending state per triggering control — the specific
@@ -67,11 +71,18 @@ export function TimelineBuilder() {
   }, []);
   const reload = useCallback(async () => { if (active) await open(active.id); }, [active, open]);
 
-  async function createTimeline() {
+  async function createTimeline(force = false) {
     if (!newTimeline.trim()) return;
     setBusyAction('create');
     try {
-      const r = await lensRun<{ timeline: { id: string } }>('history', 'timeline-create', { title: newTimeline.trim() });
+      const r = await lensRun<{ timeline: { id: string } }>('history', 'timeline-create', { title: newTimeline.trim(), force });
+      if (!r.data?.ok) {
+        // S3: a duplicate title refuses with the match named.
+        setFormError(r.data?.error === 'duplicate_title' ? 'A timeline with this title already exists — press Enter again to create it anyway.' : (r.data?.error || 'Create failed'));
+        if (r.data?.error === 'duplicate_title' && force === false) { setPendingForceCreate(true); }
+        return;
+      }
+      setPendingForceCreate(false); setFormError('');
       setNewTimeline('');
       await refresh();
       if (r.data?.ok && r.data.result) await open(r.data.result.timeline.id);
@@ -80,7 +91,11 @@ export function TimelineBuilder() {
     }
   }
   async function deleteTimeline(id: string) {
-    if (!confirm('Delete this timeline?')) return;
+    // S2 (F2): the native confirm() gate is retired — it suppressed the
+    // call entirely in the walked environment and the verb never fired.
+    // Two-step in-page, with the deletion receipted by the refresh.
+    if (armDelete !== `tl:${id}`) { setArmDelete(`tl:${id}`); return; }
+    setArmDelete(null);
     await lensRun('history', 'timeline-delete', { id });
     if (active?.id === id) setActive(null);
     await refresh();
@@ -89,11 +104,19 @@ export function TimelineBuilder() {
     if (!active || !evForm.title.trim() || !evForm.year.trim()) return;
     setBusyAction('addEvent');
     try {
-      await lensRun('history', 'event-add', {
-        timelineId: active.id, title: evForm.title.trim(), year: Number(evForm.year),
+      // S3: the year goes as typed — the retired Number() coercion
+      // turned "abc" into NaN → null → a server-side year 0.
+      const payload = {
+        timelineId: active.id, title: evForm.title.trim(), year: evForm.year.trim(),
         category: evForm.category.trim(), description: evForm.description.trim(),
         track: evForm.track.trim() || undefined,
-      });
+      };
+      const r = editingEventId
+        ? await lensRun('history', 'event-update', { ...payload, eventId: editingEventId })
+        : await lensRun('history', 'event-add', payload);
+      if (!r.data?.ok) { setFormError(r.data?.error || 'Event not saved'); return; }
+      setFormError('');
+      setEditingEventId(null);
       setEvForm({ title: '', year: '', category: '', description: '', track: '' });
       await reload(); await refresh();
     } finally {
@@ -102,6 +125,8 @@ export function TimelineBuilder() {
   }
   async function delEvent(id: string) {
     if (!active) return;
+    if (armDelete !== `ev:${id}`) { setArmDelete(`ev:${id}`); return; }
+    setArmDelete(null);
     await lensRun('history', 'event-delete', { timelineId: active.id, eventId: id });
     await reload(); await refresh();
   }
@@ -109,12 +134,12 @@ export function TimelineBuilder() {
     if (!active || !eraForm.name.trim()) return;
     setBusyAction('addEra');
     try {
-      await lensRun('history', 'era-add', {
+      const er = await lensRun('history', 'era-add', {
         timelineId: active.id, name: eraForm.name.trim(),
-        startYear: eraForm.startYear ? Number(eraForm.startYear) : undefined,
-        endYear: eraForm.endYear ? Number(eraForm.endYear) : undefined,
+        startYear: eraForm.startYear.trim(), endYear: eraForm.endYear.trim(),
         color: eraForm.color,
       });
+      if (!er.data?.ok) { setFormError(er.data?.error || 'Era not saved'); return; }
       setEraForm({ name: '', startYear: '', endYear: '', color: '#8b5cf6' });
       await reload(); await refresh();
     } finally {
@@ -123,6 +148,8 @@ export function TimelineBuilder() {
   }
   async function delEra(id: string) {
     if (!active) return;
+    if (armDelete !== `era:${id}`) { setArmDelete(`era:${id}`); return; }
+    setArmDelete(null);
     await lensRun('history', 'era-delete', { timelineId: active.id, eraId: id });
     await reload(); await refresh();
   }
@@ -142,6 +169,9 @@ export function TimelineBuilder() {
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+      {formError && (
+        <p role="alert" className="mb-3 rounded border border-rose-900/60 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">{formError}</p>
+      )}
       <div className="flex items-center gap-2 mb-3">
         <History className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-bold text-zinc-100">Timeline Builder</h3>
@@ -159,16 +189,16 @@ export function TimelineBuilder() {
               {t.title} <span className="text-zinc-600">{t.eventCount}</span>
             </button>
             <button onClick={() => deleteTimeline(t.id)}
-              className="opacity-0 group-hover:opacity-100 text-rose-400" aria-label="Delete timeline">
-              <Trash2 className="w-3 h-3" />
+              className={armDelete === `tl:${t.id}` ? 'text-rose-300 text-[10px]' : 'opacity-0 group-hover:opacity-100 text-rose-400'} aria-label="Delete timeline">
+              {armDelete === `tl:${t.id}` ? 'Delete?' : <Trash2 className="w-3 h-3" />}
             </button>
           </span>
         ))}
         <input value={newTimeline} onChange={(e) => setNewTimeline(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') void createTimeline(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') void createTimeline(pendingForceCreate); }}
           placeholder="New timeline"
           className="w-32 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200" />
-        <button aria-label="Create timeline" onClick={createTimeline} disabled={busyAction === 'create' || !newTimeline.trim()}
+        <button aria-label="Create timeline" onClick={() => void createTimeline(pendingForceCreate)} disabled={busyAction === 'create' || !newTimeline.trim()}
           className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50">
           {busyAction === 'create' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
         </button>
@@ -221,7 +251,7 @@ export function TimelineBuilder() {
                 style={{ backgroundColor: `${era.color}22`, color: era.color }}>
                 {era.name}
                 {era.startYear != null && <span className="opacity-70">{era.startYear}–{era.endYear ?? '?'}</span>}
-                <button onClick={() => delEra(era.id)} className="opacity-0 group-hover:opacity-100" aria-label="Delete era">
+                <button onClick={() => delEra(era.id)} className={armDelete === `era:${era.id}` ? 'text-rose-300 text-[10px]' : 'opacity-0 group-hover:opacity-100'} aria-label="Delete era">{armDelete === `era:${era.id}` ? 'Delete?' : null}
                   <Trash2 className="w-2.5 h-2.5" />
                 </button>
               </span>
@@ -253,8 +283,11 @@ export function TimelineBuilder() {
             <button onClick={addEvent} disabled={busyAction === 'addEvent' || !evForm.title.trim() || !evForm.year.trim()}
               className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40">
               {busyAction === 'addEvent' && <Loader2 className="w-3 h-3 animate-spin" />}
-              Add event
+              {editingEventId ? 'Save event' : 'Add event'}
             </button>
+            {editingEventId && (
+              <button onClick={() => { setEditingEventId(null); setEvForm({ title: '', year: '', category: '', description: '', track: '' }); }} className="text-[11px] text-zinc-400 underline ml-2">cancel edit</button>
+            )}
           </div>
 
           {/* Event list */}
@@ -280,9 +313,18 @@ export function TimelineBuilder() {
                         className="text-[9px] text-amber-400 hover:text-amber-300">
                         {mediaOpen === ev.id ? 'close' : 'media/loc'}
                       </button>
+                      <button
+                        onClick={() => {
+                          setEditingEventId(ev.id);
+                          setEvForm({ title: ev.title, year: String(ev.year), category: ev.category || '', description: ev.description || '', track: ev.track || '' });
+                        }}
+                        className="opacity-0 group-hover:opacity-100 text-[9px] text-sky-400 hover:text-sky-300"
+                      >
+                        edit
+                      </button>
                       <button onClick={() => delEvent(ev.id)}
-                        className="opacity-0 group-hover:opacity-100 text-rose-400" aria-label="Delete event">
-                        <Trash2 className="w-3 h-3" />
+                        className={armDelete === `ev:${ev.id}` ? 'text-rose-300 text-[10px]' : 'opacity-0 group-hover:opacity-100 text-rose-400'} aria-label="Delete event">
+                        {armDelete === `ev:${ev.id}` ? 'Delete?' : <Trash2 className="w-3 h-3" />}
                       </button>
                     </div>
                     {ev.description && <p className="text-[11px] text-zinc-400 mt-0.5">{ev.description}</p>}

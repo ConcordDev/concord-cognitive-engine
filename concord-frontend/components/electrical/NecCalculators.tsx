@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Cable, Box, Ruler, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SafetyNote } from './SafetyNote';
 
 const AWG_LIST = [14, 12, 10, 8, 6, 4, 3, 2, 1];
 
@@ -268,6 +269,7 @@ function WireSizeCalc() {
 export function NecCalculators() {
   return (
     <div className="space-y-4">
+      <SafetyNote />
       <ConduitFillCalc />
       <div className="grid gap-4 lg:grid-cols-2">
         <BoxFillCalc />

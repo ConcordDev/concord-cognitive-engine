@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bell, Plus, Sparkles, CheckCircle2, Clock, Play, Pause, Square, RotateCcw,
   Coffee, CheckSquare, BookOpen, Target, TrendingUp, Flame, ChevronLeft,
-  ChevronRight, FileText, ListChecks, Loader2, XCircle,
+  ChevronRight, FileText, ListChecks, Loader2, XCircle, Trash2,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -134,6 +134,8 @@ export function DailyTodayPanel() {
   const calendarMoved = useRef(false);
   const [reminderTitle, setReminderTitle] = useState('');
   const [reminderDue, setReminderDue] = useState('');
+  const [reminderError, setReminderError] = useState<string | null>(null);
+  const [armDeleteReminder, setArmDeleteReminder] = useState<string | null>(null);
   const [selectedMood, setSelectedMood] = useState<number | null>(null);
   const [journalNotes, setJournalNotes] = useState('');
   const [workedOn, setWorkedOn] = useState('');
@@ -168,13 +170,13 @@ export function DailyTodayPanel() {
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunningAction, setIsRunningAction] = useState(false);
 
-  const { isLoading, isError: isError, error: error, refetch: refetch, items: entryItems, create: createEntry } = useLensData('daily', 'entry', {
+  const { isLoading, isError: isError, error: error, refetch: refetch, items: entryItems, create: createEntry, update: updateEntry } = useLensData('daily', 'entry', {
     seed: [],
   });
   const { isError: isError2, error: error2, refetch: refetch2, items: sessionItems, create: createSession } = useLensData('daily', 'session', {
     seed: [],
   });
-  const { isError: isError3, error: error3, refetch: refetch3, items: reminderItems, create: createReminder } = useLensData('daily', 'reminder', {
+  const { isError: isError3, error: error3, refetch: refetch3, items: reminderItems, create: createReminder, update: updateReminder, remove: removeReminder } = useLensData('daily', 'reminder', {
     seed: [],
   });
 
@@ -502,12 +504,38 @@ export function DailyTodayPanel() {
   }, [sessions, clips.length, localReminders, selectedMood]);
 
   // -- Handlers -------------------------------------------------------------
+  // Reminder rows live in local state seeded from reminder artifacts;
+  // reminderItems carry the artifact id for the same row's data id.
+  const reminderArtifactId = (dataId: string) =>
+    reminderItems.find((item) => ((item.data || {}) as Partial<Reminder>).id === dataId)?.id;
   const handleCompleteReminder = (id: string) => {
-    setLocalReminders((prev) => prev.map((r) => (r.id === id ? { ...r, completed: true } : r)));
+    const r = localReminders.find((x) => x.id === id);
+    setLocalReminders((prev) => prev.map((x) => (x.id === id ? { ...x, completed: true } : x)));
     completeReminderMut.mutate(id);
+    const aid = reminderArtifactId(id);
+    if (r && aid) void updateReminder(aid, { title: r.title, data: { ...r, completed: true } as unknown as Record<string, unknown> });
+  };
+  const handleRestoreReminder = (id: string) => {
+    const r = localReminders.find((x) => x.id === id);
+    setLocalReminders((prev) => prev.map((x) => (x.id === id ? { ...x, completed: false } : x)));
+    const aid = reminderArtifactId(id);
+    if (r && aid) void updateReminder(aid, { title: r.title, data: { ...r, completed: false } as unknown as Record<string, unknown> });
+  };
+  const handleDeleteReminder = (id: string) => {
+    setLocalReminders((prev) => prev.filter((x) => x.id !== id));
+    const aid = reminderArtifactId(id);
+    if (aid) void removeReminder(aid);
+    setArmDeleteReminder(null);
   };
   const handleAddReminder = () => {
     if (!reminderTitle.trim() || !reminderDue) return;
+    // D5/F7: a reminder set for a time that has already passed is
+    // refused in words instead of landing silently as pending.
+    if (new Date(reminderDue).getTime() <= Date.now()) {
+      setReminderError('That time has already passed — pick a future time.');
+      return;
+    }
+    setReminderError(null);
     const reminderData = { id: `r${Date.now()}`, title: reminderTitle, dueAt: reminderDue, completed: false };
     setLocalReminders((prev) => [...prev, reminderData]);
     createReminder({ title: reminderTitle, data: reminderData as unknown as Record<string, unknown> });
@@ -687,7 +715,14 @@ export function DailyTodayPanel() {
             <button
               onClick={() => {
                 if (!journalNotes.trim() && !workedOn.trim()) return;
-                createEntry({ title: selectedDate, data: { date: selectedDate, mood: selectedMood, notes: journalNotes, workedOn, learned, goals } as Record<string, unknown> });
+                const data = { date: selectedDate, mood: selectedMood, notes: journalNotes, workedOn, learned, goals } as Record<string, unknown>;
+                // D3/F3: Save updates the day's entry in place — a second
+                // click edits the same record instead of minting a copy.
+                if (entryForDate) {
+                  void updateEntry(entryForDate.id, { title: selectedDate, data });
+                } else {
+                  createEntry({ title: selectedDate, data });
+                }
               }}
               className="btn-neon purple text-sm w-full flex items-center justify-center gap-2"
             >
@@ -858,25 +893,77 @@ export function DailyTodayPanel() {
                 <Plus className="w-3 h-3" /> {createReminderMut.isPending ? 'Adding...' : 'Add'}
               </button>
             </div>
+            {reminderError && <p role="alert" className="text-xs text-rose-300 mb-3">{reminderError}</p>}
             <div className="space-y-2">
-              {localReminders.filter((r) => !r.completed).map((r) => (
+              {localReminders.filter((r) => !r.completed).map((r) => {
+                const overdue = new Date(r.dueAt).getTime() <= Date.now();
+                return (
                 <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-lattice-border">
                   <div>
                     <p className="text-sm font-medium">{r.title}</p>
                     <p className="text-xs text-gray-400">
                       Due {new Date(r.dueAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      {overdue && <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-semibold">OVERDUE</span>}
                     </p>
                   </div>
-                  <button onClick={() => handleCompleteReminder(r.id)}
-                    className="p-1.5 text-green-400 hover:bg-green-400/20 rounded-lg transition-colors" aria-label="Check circle2">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => handleCompleteReminder(r.id)}
+                      className="px-2 py-1.5 text-xs text-green-300 hover:bg-green-400/20 rounded-lg transition-colors inline-flex items-center gap-1" aria-label="Mark reminder done">
+                      <CheckCircle2 className="w-4 h-4" /> Mark done
+                    </button>
+                    {armDeleteReminder === r.id ? (
+                      <button onClick={() => handleDeleteReminder(r.id)}
+                        className="px-2 py-1.5 text-xs text-rose-200 bg-rose-600/80 hover:bg-rose-500 rounded-lg transition-colors" aria-label="Confirm delete reminder">
+                        Delete? Click again
+                      </button>
+                    ) : (
+                      <button onClick={() => setArmDeleteReminder(r.id)}
+                        className="p-1.5 text-rose-300 hover:bg-rose-400/20 rounded-lg transition-colors" aria-label="Delete reminder">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              ))}
+                );
+              })}
               {localReminders.filter((r) => !r.completed).length === 0 && (
                 <p className="text-center text-sm text-gray-400 py-3">All caught up!</p>
               )}
             </div>
+            {localReminders.some((r) => r.completed) && (
+              <div className="mt-4">
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Completed</p>
+                <div className="space-y-2">
+                  {localReminders.filter((r) => r.completed).map((r) => (
+                    <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.03] border border-lattice-border opacity-70">
+                      <div>
+                        <p className="text-sm font-medium line-through">{r.title}</p>
+                        <p className="text-xs text-gray-500">
+                          Due {new Date(r.dueAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => handleRestoreReminder(r.id)}
+                          className="px-2 py-1.5 text-xs text-sky-300 hover:bg-sky-400/20 rounded-lg transition-colors" aria-label="Restore reminder">
+                          Restore
+                        </button>
+                        {armDeleteReminder === r.id ? (
+                          <button onClick={() => handleDeleteReminder(r.id)}
+                            className="px-2 py-1.5 text-xs text-rose-200 bg-rose-600/80 hover:bg-rose-500 rounded-lg transition-colors" aria-label="Confirm delete reminder">
+                            Delete? Click again
+                          </button>
+                        ) : (
+                          <button onClick={() => setArmDeleteReminder(r.id)}
+                            className="p-1.5 text-rose-300 hover:bg-rose-400/20 rounded-lg transition-colors" aria-label="Delete reminder">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </motion.div>
 
           {/* Daily digest */}

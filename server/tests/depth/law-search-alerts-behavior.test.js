@@ -256,7 +256,7 @@ describe("law.search-alert-check — a failed underlying search is an HONEST err
     globalThis.fetch = async () => { throw new Error("getaddrinfo ENOTFOUND"); };
     const failed = await lensRun("law", "search-alert-check", { params: { id: alertId } }, ctx);
     assert.equal(failed.result.ok, false);
-    assert.match(failed.result.error, /unreachable/);
+    assert.match(failed.result.error, /could not be reached/);
 
     // Recovery: the next successful check must still treat this as the
     // FIRST real baseline (the failed attempt above never poisoned it).

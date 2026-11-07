@@ -222,7 +222,7 @@ export default function GarageLensPage() {
       // owner_id fragment. The World table never receives owner_id at all
       // (listVehiclesInWorld omits it), so it correctly falls through to
       // the generic owner_kind label there.
-      accessor: (v) => v.ownerDisplay || `${v.owner_kind}${v.owner_id ? `:${v.owner_id.slice(0, 8)}` : ''}`,
+      accessor: (v) => v.ownerDisplay || 'Member',
       sortValue: (v) => v.ownerDisplay || v.owner_kind,
       sortable: true,
     },

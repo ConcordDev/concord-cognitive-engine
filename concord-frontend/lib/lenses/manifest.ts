@@ -165,7 +165,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // that resolved to nothing. Actions are read-only verbs that map onto real
   // lore.* reads (list/facets/spine); the lens persists per-user bookmarks of the
   // canon through the generic /api/lens/codex artifact store (see page.tsx).
-  { domain: 'codex', label: 'Codex', artifacts: ['entry', 'lore', 'bookmark'], macros: { list: 'lore.list', get: 'lore.get' }, exports: ['json'], actions: ['list', 'facets', 'spine'], category: 'knowledge' },
+  { domain: 'codex', label: 'Codex', artifacts: ['entry', 'lore', 'bookmark'], macros: { list: 'lore.list', get: 'lore.get' }, exports: ['json'], actions: ['list', 'facets', 'spine'], category: 'knowledge', dataTier: 'REAL_FREE' },
   // Real translation.* macros (registered via registerTranslationMacros in server.js).
   // Action lens: `list`/`get` map to the languages catalog read and `run` to
   // translate, so the ManifestActionBar verbs resolve to LIVE macros instead of
@@ -176,7 +176,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // minting would contradict "text never leaves your server") and `pipeline`
   // (text→LLM→output engine isn't in the productization-roadmap registry). No
   // bit is faked.
-  { domain: 'translation', label: 'Translation', artifacts: ['translation'], macros: { list: 'translation.languages', get: 'translation.languages', run: 'translation.translate' }, exports: ['json'], actions: ['translate', 'detect', 'languages'], category: 'productivity' },
+  { domain: 'translation', label: 'Translation', dataTier: 'REAL_LIVE', artifacts: ['translation'], macros: { list: 'translation.languages', get: 'translation.languages', run: 'translation.translate' }, exports: ['json'], actions: ['translate', 'detect', 'languages'], category: 'productivity' },
   // Repair Telemetry is a read-only operator DASHBOARD over the REAL `repair`
   // domain (server/domains/repair.js — registerRepairMacros, registered at
   // server.js:25305 — register("repair", "health_log"|"escalations"|"memory"|
@@ -191,7 +191,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // no productization-roadmap pipeline). The operator decision `repair.resolve_escalation`
   // is a state mutation on an existing escalation, not artifact authoring.
   { domain: 'repair-telemetry', label: 'Repair Telemetry', artifacts: ['report'], macros: { list: 'repair.health_log', get: 'repair.escalations', run: 'repair.resolve_escalation' }, exports: ['json'], actions: ['health_log', 'escalations', 'memory', 'resolve_escalation'], category: 'system' },
-  { domain: 'move-builder', label: 'Move Builder', artifacts: ['move', 'recipe'], macros: { list: 'move-builder.list', get: 'move-builder.get', create: 'move-builder.mint' }, exports: ['json'], actions: ['compose', 'mint'], category: 'creative' },
+  { domain: 'move-builder', label: 'Move Builder', artifacts: ['move', 'recipe'], macros: { list: 'move-builder.list', get: 'move-builder.get', create: 'move-builder.mint' }, exports: ['json'], actions: ['compose', 'mint'], category: 'creative', dataTier: 'REAL_LIVE' },
   // Civic Bonds is a READER+ACTOR over the real `civic_bonds` domain
   // (server/domains/civic-bonds.js — registerCivicBondsMacros, registered at
   // server.js:25551 — register("civic_bonds", "list"|"get"|"spillover"|"ledger"|
@@ -801,12 +801,12 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'collab',
     label: 'Collab',
+    dataTier: 'REAL_LIVE',
     artifacts: ['session', 'participant', 'change', 'decision', 'conflict_resolution'],
     macros: { list: 'lens.collab.list', get: 'lens.collab.get', create: 'lens.collab.create', update: 'lens.collab.update', delete: 'lens.collab.delete', run: 'lens.collab.run', export: 'lens.collab.export' },
     exports: ['json', 'csv', 'md'],
     actions: ['merge', 'lock', 'unlock', 'summarize_thread', 'run_council', 'extract_actions', 'resolve_conflict', 'version_diff'],
     category: 'social',
-    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: 'No collab sessions yet.',
       caption: 'Start a session to co-author with another user. Locks, version diffs, and conflict resolution are first-class.',
@@ -1898,7 +1898,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'xml'],
     actions: ['permitTimeline', 'violationEscalation', 'resourceStaging', 'retentionCheck', 'budgetImpact', 'publicNoticeGenerate', 'ordinancePackage', 'foiaProcess'],
     category: 'government',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Government services.",
       caption: "Permits, projects, violations, court cases, ordinances \u2014 process, escalate, generate notices.",
@@ -1922,7 +1922,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'kml'],
     actions: ['currencyCheck', 'maintenanceDue', 'hobbsLog', 'dutyTimeCheck', 'flightSummary', 'calculate-wb', 'plan-create'],
     category: 'operations',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Your flying, on the record.",
       caption: "Aircraft, logbook, flight plans, currency and weight & balance \u2014 saved to your account, with live METAR/TAF, NOTAMs and FAA plates. Sending plans to ATC and maritime (vessels, slips) aren't supported yet.",
@@ -2042,7 +2042,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf', 'acord'],
     actions: ['coverageGap', 'premiumHistory', 'claimStatus', 'riskScore', 'renewalForecast', 'benefitComparison', 'fraudIndicator', 'lossRunReport'],
     category: 'finance',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Insurance + risk.",
       caption: "Policies, claims, benefits, renewals \u2014 modelled over your own records; no carrier feed is connected.",
@@ -2331,7 +2331,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'rss', 'mp3'],
     actions: ['publish', 'schedule', 'generateRSS', 'analyzeListeners', 'transcribe', 'distributeFeed'],
     category: 'creative',
-    dataTier: 'REAL_FREE',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Publish a podcast.",
       caption: "Episodes, subscribers, analytics, feeds \u2014 publish, schedule, transcribe, distribute.",
@@ -2713,7 +2713,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Carpentry projects.",
       caption: "Joints, materials, plans, cuts, assembly \u2014 calculate, validate, export.",
@@ -2801,7 +2801,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Construction projects.",
       caption: "Projects, permits, schedules, materials, inspections \u2014 analyze, generate, export.",
@@ -3069,7 +3069,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'trades',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Electrical work.",
       caption: "Circuits, components, loads, panels, wiring \u2014 calculate, validate, export.",
@@ -4334,7 +4334,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'operations',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Telecom workspace.",
       caption: "Networks, devices, signals, plans, coverage \u2014 simulated over your own records; no carrier is connected.",
@@ -4400,7 +4400,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'government',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Urban planning.",
       caption: "Zones, permits, projects, assessments, regulations \u2014 SIM_GRADE_A engine.",
@@ -4593,7 +4593,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['list_emergents', 'recent_feed', 'legendary_skills', 'subscribe_activity', 'name_emergent'],
     category: 'social',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Watch identities emerge.",
       caption: "Emergent identities, birth events, lineages, legendary skills \u2014 the substrate's social formation layer.",
@@ -4637,7 +4637,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json'],
     actions: ['scaffold_world', 'seed_lore', 'spawn_faction', 'register_anomaly', 'preview'],
     category: 'creative',
-    dataTier: 'SIM_GRADE_A',
+    dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Create a world.",
       caption: "World seeds, lore templates, faction templates, NPC archetypes, anomalies.",
@@ -5294,7 +5294,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     dataTier: 'REAL_LIVE',
     emptyState: {
       headline: "Browse the UX suite.",
-      caption: "20 absorbed components \u2014 Settings, Progress, World, Ops, Shell tabs.",
+      caption: "19 absorbed components \u2014 Settings, Progress, World, Ops, Shell tabs.",
       firstActionLabel: "Browse components",
     },
     firstRunGuide: {
@@ -5400,7 +5400,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // Macros follow the canonical lens.<domain>.<op> namespace contract.
   // The names are stable namespaces — they don't require a handler at the
   // exact name; the runMacro dispatcher resolves to the actual backend.
-  { domain: 'cognitive-replay', label: 'Cognitive Replay', artifacts: ['timeline_event', 'replay_segment'], macros: { list: 'lens.cognitive-replay.list', get: 'lens.cognitive-replay.get', create: 'lens.cognitive-replay.create', update: 'lens.cognitive-replay.update', delete: 'lens.cognitive-replay.delete', run: 'lens.cognitive-replay.run', export: 'lens.cognitive-replay.export' }, exports: ['json'], actions: ['scrub', 'export'], category: 'knowledge' },
+  { domain: 'cognitive-replay', label: 'Cognitive Replay', artifacts: ['timeline_event', 'replay_segment'], macros: { list: 'lens.cognitive-replay.list', get: 'lens.cognitive-replay.get', create: 'lens.cognitive-replay.create', update: 'lens.cognitive-replay.update', delete: 'lens.cognitive-replay.delete', run: 'lens.cognitive-replay.run', export: 'lens.cognitive-replay.export' }, exports: ['json'], actions: ['scrub', 'export'], category: 'knowledge', dataTier: 'REAL_LIVE' },
   { domain: 'classroom', label: 'Classroom', artifacts: ['homework_submission', 'peer_review', 'academic_transcript'], macros: { list: 'lens.classroom.list', get: 'lens.classroom.get', create: 'lens.classroom.create', update: 'lens.classroom.update', delete: 'lens.classroom.delete', run: 'lens.classroom.run', export: 'lens.classroom.export' }, exports: ['json', 'pdf'], actions: ['enrol', 'submit_homework', 'peer_review', 'transcript'], category: 'knowledge' },
   { domain: 'byo-keys', label: 'BYO API Keys', artifacts: ['api_key_grant'], macros: { list: 'lens.byo-keys.list', get: 'lens.byo-keys.get', create: 'lens.byo-keys.create', update: 'lens.byo-keys.update', delete: 'lens.byo-keys.delete', run: 'lens.byo-keys.run', export: 'lens.byo-keys.export' }, exports: ['json'], actions: ['add_key', 'remove_key', 'test_key'], category: 'system' },
   { domain: 'bounties', label: 'Bounties', artifacts: ['bounty_stake', 'autofix_proposal'], macros: { list: 'lens.bounties.list', get: 'lens.bounties.get', create: 'lens.bounties.create', update: 'lens.bounties.update', delete: 'lens.bounties.delete', run: 'lens.bounties.run', export: 'lens.bounties.export' }, exports: ['json'], actions: ['stake', 'vote', 'resolve'], category: 'social' },
@@ -5410,16 +5410,16 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // through the canonical `register` registry. The prior `lens.death-insurance.*`
   // macro ids were phantoms (no such macros are registered anywhere).
   { domain: 'death-insurance', label: 'Death-Lottery Insurance', artifacts: ['insurance_contract'], macros: { list: 'insurance.pact-list', get: 'insurance.pact-list', create: 'insurance.pact-write', update: 'insurance.pact-renew', delete: 'insurance.pact-revoke', run: 'insurance.pact-notifications', export: 'insurance.pact-payout-history' }, exports: ['json'], actions: ['pact-write', 'pact-revoke', 'pact-record-payout', 'pact-respond'], category: 'social' },
-  { domain: 'deities', label: 'Deities', artifacts: ['player_deity', 'pilgrimage'], macros: { list: 'lens.deities.list', get: 'lens.deities.get', create: 'lens.deities.create', update: 'lens.deities.update', delete: 'lens.deities.delete', run: 'lens.deities.run', export: 'lens.deities.export' }, exports: ['json'], actions: ['compose', 'pilgrimage'], category: 'social' },
-  { domain: 'dreams', label: 'Dreams', artifacts: ['dream'], macros: { list: 'lens.dreams.list', get: 'lens.dreams.get', create: 'lens.dreams.create', update: 'lens.dreams.update', delete: 'lens.dreams.delete', run: 'lens.dreams.run', export: 'lens.dreams.export' }, exports: ['json'], actions: ['publish', 'browse'], category: 'knowledge' },
-  { domain: 'event-timeline', label: 'Event Timeline', artifacts: ['timeline_event'], macros: { list: 'lens.event-timeline.list', get: 'lens.event-timeline.get', create: 'lens.event-timeline.create', update: 'lens.event-timeline.update', delete: 'lens.event-timeline.delete', run: 'lens.event-timeline.run', export: 'lens.event-timeline.export' }, exports: ['json'], actions: ['scrub', 'export'], category: 'social' },
+  { domain: 'deities', label: 'Deities', artifacts: ['player_deity', 'pilgrimage'], macros: { list: 'lens.deities.list', get: 'lens.deities.get', create: 'lens.deities.create', update: 'lens.deities.update', delete: 'lens.deities.delete', run: 'lens.deities.run', export: 'lens.deities.export' }, exports: ['json'], actions: ['compose', 'pilgrimage'], category: 'social', dataTier: 'REAL_LIVE' },
+  { domain: 'dreams', label: 'Dreams', dataTier: 'REAL_FREE', artifacts: ['dream'], macros: { list: 'lens.dreams.list', get: 'lens.dreams.get', create: 'lens.dreams.create', update: 'lens.dreams.update', delete: 'lens.dreams.delete', run: 'lens.dreams.run', export: 'lens.dreams.export' }, exports: ['json'], actions: ['browse'], category: 'knowledge' },
+  { domain: 'event-timeline', label: 'Event Timeline', dataTier: 'REAL_LIVE', artifacts: ['timeline_event'], macros: { list: 'lens.event-timeline.list', get: 'lens.event-timeline.get', create: 'lens.event-timeline.create', update: 'lens.event-timeline.update', delete: 'lens.event-timeline.delete', run: 'lens.event-timeline.run', export: 'lens.event-timeline.export' }, exports: ['json'], actions: ['scrub', 'export'], category: 'social' },
   { domain: 'expert-mode', label: 'Expert Mode', artifacts: ['expert_query', 'research_session'], macros: { list: 'lens.expert-mode.list', get: 'lens.expert-mode.get', create: 'lens.expert-mode.create', update: 'lens.expert-mode.update', delete: 'lens.expert-mode.delete', run: 'lens.expert-mode.run', export: 'lens.expert-mode.export' }, exports: ['json', 'md'], actions: ['query', 'export_session'], category: 'system' },
   { domain: 'gallery', label: 'Compression Art Gallery', artifacts: ['compression_art_sigil', 'mega_dtu'], macros: { list: 'lens.gallery.list', get: 'lens.gallery.get', create: 'lens.gallery.create', update: 'lens.gallery.update', delete: 'lens.gallery.delete', run: 'lens.gallery.run', export: 'lens.gallery.export' }, exports: ['json', 'svg'], actions: ['view', 'mint'], category: 'creative' },
-  { domain: 'goddess', label: 'Goddess Broadcast', artifacts: ['goddess_dispatch'], macros: { list: 'lens.goddess.list', get: 'lens.goddess.get', create: 'lens.goddess.create', update: 'lens.goddess.update', delete: 'lens.goddess.delete', run: 'lens.goddess.run', export: 'lens.goddess.export' }, exports: ['json'], actions: ['listen', 'subscribe'], category: 'social' },
+  { domain: 'goddess', label: 'Goddess Broadcast', artifacts: ['goddess_dispatch'], macros: { list: 'lens.goddess.list', get: 'lens.goddess.get', create: 'lens.goddess.create', update: 'lens.goddess.update', delete: 'lens.goddess.delete', run: 'lens.goddess.run', export: 'lens.goddess.export' }, exports: ['json'], actions: ['listen', 'subscribe'], category: 'social', dataTier: 'REAL_LIVE' },
   { domain: 'inheritance', label: 'NPC Inheritance Market', artifacts: ['npc_inheritance_link'], macros: { list: 'lens.inheritance.list', get: 'lens.inheritance.get', create: 'lens.inheritance.create', update: 'lens.inheritance.update', delete: 'lens.inheritance.delete', run: 'lens.inheritance.run', export: 'lens.inheritance.export' }, exports: ['json'], actions: ['browse', 'lock_heir'], category: 'social' },
   { domain: 'markets', label: 'Prediction Markets', artifacts: ['prediction_market', 'market_position'], macros: { list: 'lens.markets.list', get: 'lens.markets.get', create: 'lens.markets.create', update: 'lens.markets.update', delete: 'lens.markets.delete', run: 'lens.markets.run', export: 'lens.markets.export' }, exports: ['json'], actions: ['open_market', 'place_bet'], category: 'social' },
   { domain: 'observe', label: 'Observer Mode', artifacts: ['empirical_report'], macros: { list: 'lens.observe.list', get: 'lens.observe.get', create: 'lens.observe.create', update: 'lens.observe.update', delete: 'lens.observe.delete', run: 'lens.observe.run', export: 'lens.observe.export' }, exports: ['json', 'md'], actions: ['compose_report'], category: 'knowledge' },
-  { domain: 'personas', label: 'NPC Persona Marketplace', artifacts: ['npc_persona'], macros: { list: 'lens.personas.list', get: 'lens.personas.get', create: 'lens.personas.create', update: 'lens.personas.update', delete: 'lens.personas.delete', run: 'lens.personas.run', export: 'lens.personas.export' }, exports: ['json'], actions: ['package', 'import'], category: 'creative' },
+  { domain: 'personas', label: 'NPC Persona Marketplace', dataTier: 'REAL_LIVE', artifacts: ['npc_persona'], macros: { list: 'lens.personas.list', get: 'lens.personas.get', create: 'lens.personas.create', update: 'lens.personas.update', delete: 'lens.personas.delete', run: 'lens.personas.run', export: 'lens.personas.export' }, exports: ['json'], actions: ['package', 'import'], category: 'creative' },
   { domain: 'psyops', label: 'NPC Psyops Detector', artifacts: ['skill_revision_anomaly'], macros: { list: 'lens.psyops.list', get: 'lens.psyops.get', create: 'lens.psyops.create', update: 'lens.psyops.update', delete: 'lens.psyops.delete', run: 'lens.psyops.run', export: 'lens.psyops.export' }, exports: ['json'], actions: ['investigate', 'quarantine'], category: 'system' },
   { domain: 'sponsorship', label: 'NPC Sponsorship', artifacts: ['npc_sponsorship', 'npc_dispatch'], macros: { list: 'lens.sponsorship.list', get: 'lens.sponsorship.get', create: 'lens.sponsorship.create', update: 'lens.sponsorship.update', delete: 'lens.sponsorship.delete', run: 'lens.sponsorship.run', export: 'lens.sponsorship.export' }, exports: ['json'], actions: ['sponsor', 'cancel'], category: 'social' },
   { domain: 'schemes', label: 'Schemes', artifacts: ['npc_scheme', 'hook_artifact'], macros: { list: 'lens.schemes.list', get: 'lens.schemes.get', create: 'lens.schemes.create', update: 'lens.schemes.update', delete: 'lens.schemes.delete', run: 'lens.schemes.run', export: 'lens.schemes.export' }, exports: ['json'], actions: ['propose', 'gather_evidence', 'move', 'abandon', 'discover_evidence'], category: 'social' },
@@ -5429,7 +5429,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // The prior `lens.sub-worlds.*` ids were PHANTOM (never registered). Lens-id
   // is `sub-worlds`; the macro DOMAIN is `sub_worlds` (underscore) — distinct
   // and correct. Slots map onto the real handlers the page drives.
-  { domain: 'sub-worlds', label: 'Sub-Worlds (Research Zones)', artifacts: ['sub_world'], macros: { list: 'sub_worlds.list', get: 'sub_worlds.discover', create: 'sub_worlds.spawn', update: 'sub_worlds.update_settings', delete: 'sub_worlds.archive', run: 'sub_worlds.visit' }, exports: ['json'], actions: ['spawn', 'discover', 'visit', 'favorite', 'set_status', 'analytics'], category: 'knowledge' },
+  { domain: 'sub-worlds', label: 'Sub-Worlds (Research Zones)', artifacts: ['sub_world'], macros: { list: 'sub_worlds.list', get: 'sub_worlds.discover', create: 'sub_worlds.spawn', update: 'sub_worlds.update_settings', delete: 'sub_worlds.archive', run: 'sub_worlds.visit' }, exports: ['json'], actions: ['spawn', 'discover', 'visit', 'favorite', 'set_status', 'analytics'], category: 'knowledge', dataTier: 'REAL_LIVE' },
   { domain: 'sync', label: 'Cross-Device Sync', artifacts: ['sync_session'], macros: { list: 'lens.sync.list', get: 'lens.sync.get', create: 'lens.sync.create', update: 'lens.sync.update', delete: 'lens.sync.delete', run: 'lens.sync.run', export: 'lens.sync.export' }, exports: ['json'], actions: ['enable', 'sync'], category: 'system' },
   // Real wellness.* macros (registered via registerWellnessMacros in server.js,
   // canonical register convention → reachable via /api/lens/run AND runMacro).
@@ -5456,7 +5456,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // registerExpeditionJournalActions), so the generic CRUD verbs map onto REAL
   // macros: list → entry-list, get → progress, create → entry-add, run → mark-stage,
   // export → summary. `actions` enumerates the full real macro surface.
-  { domain: 'expedition-journal', label: 'Expedition Journal', artifacts: ['expedition_stage', 'journal_entry', 'expedition_photo', 'badge'], macros: { list: 'expedition-journal.entry-list', get: 'expedition-journal.progress', create: 'expedition-journal.entry-add', run: 'expedition-journal.mark-stage', export: 'expedition-journal.summary' }, exports: ['json'], actions: ['worlds', 'progress', 'mark-stage', 'entry-add', 'entry-list', 'entry-delete', 'photo-add', 'photo-list', 'photo-delete', 'rewards', 'summary'], category: 'knowledge' },
+  { domain: 'expedition-journal', label: 'Expedition Journal', dataTier: 'SIM_GRADE_A', artifacts: ['expedition_stage', 'journal_entry', 'expedition_photo', 'badge'], macros: { list: 'expedition-journal.entry-list', get: 'expedition-journal.progress', create: 'expedition-journal.entry-add', run: 'expedition-journal.mark-stage', export: 'expedition-journal.summary' }, exports: ['json'], actions: ['worlds', 'progress', 'mark-stage', 'entry-add', 'entry-list', 'entry-delete', 'photo-add', 'photo-list', 'photo-delete', 'rewards', 'summary'], category: 'knowledge' },
   // The Ghost Tracker lens (lensId 'ghost-tracker') is a READER/HUNTER over the
   // real `ghost-hunt` domain (server/domains/ghost-hunt.js — register("ghost-hunt",
   // "residues"|"detail"|"progress"|"advance"|"confront"|"history"|"leaderboard"|
@@ -5464,7 +5464,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // call lensRun('ghost-hunt', …) directly. The macro keys below point at the REAL
   // ghost-hunt verbs; `create` mints the Spectral Dossier DTU (the lens's
   // persistent artifact + dtu-exhaust path).
-  { domain: 'ghost-tracker', label: 'Ghost Tracker', artifacts: ['drift_alert', 'ghost_residue'], macros: { list: 'ghost-hunt.residues', get: 'ghost-hunt.detail', create: 'ghost-hunt.create', run: 'ghost-hunt.confront', export: 'ghost-hunt.history' }, exports: ['json'], actions: ['residues', 'detail', 'progress', 'advance', 'confront', 'history', 'leaderboard', 'create'], category: 'knowledge' },
+  { domain: 'ghost-tracker', label: 'Ghost Tracker', artifacts: ['drift_alert', 'ghost_residue'], macros: { list: 'ghost-hunt.residues', get: 'ghost-hunt.detail', create: 'ghost-hunt.create', run: 'ghost-hunt.confront', export: 'ghost-hunt.history' }, exports: ['json'], actions: ['residues', 'detail', 'progress', 'advance', 'confront', 'history', 'leaderboard', 'create'], category: 'knowledge', dataTier: 'REAL_LIVE' },
   // Phase 5 — cross-lens multi-step workflow session index.
   // Real sessions.* macros (registerSessionsMacros, canonical register convention
   // → reachable via /api/lens/run AND runMacro). The prior `lens.sessions.*` macro
@@ -5526,11 +5526,11 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // lens-manifest lint rule and the generic shell can resolve their id. Each
   // lens drives its own custom page; macros follow the lens.<domain>.* convention.
   { domain: 'achievements',  label: 'Achievements',       artifacts: ['achievement'], macros: { list: 'lens.achievements.list',  get: 'lens.achievements.get' },  exports: ['json'], actions: [], category: 'lifestyle' },
-  { domain: 'announcements', label: 'Announcements',      artifacts: ['announcement'],macros: { list: 'announcements.list',      get: 'announcements.get',     create: 'announcements.post', run: 'announcements.post' }, exports: ['json'], actions: ['post'], category: 'operations' },
+  { domain: 'announcements', label: 'Announcements',      dataTier: 'REAL_LIVE', artifacts: ['announcement'],macros: { list: 'announcements.list',      get: 'announcements.get',     create: 'announcements.post', run: 'announcements.post' }, exports: ['json'], actions: ['post'], category: 'operations' },
   { domain: 'auction',       label: 'Auction House',      artifacts: ['auction'],     macros: { list: 'auctions.active',         get: 'auctions.get',         create: 'auctions.create',  run: 'auctions.bid' },       exports: ['json'], actions: ['create', 'bid'], category: 'finance' },
   { domain: 'detective',     label: 'Detective',          artifacts: ['case'],        macros: { list: 'detective.list',          get: 'detective.get',        create: 'detective.deduce', run: 'detective.deduce' },   exports: ['json'], actions: ['deduce'], category: 'lifestyle' },
   { domain: 'housing',       label: 'Housing',            artifacts: ['house'],       macros: { list: 'housing.mine',            get: 'housing.get',          create: 'housing.claim',    run: 'housing.place_furniture' }, exports: ['json'], actions: ['claim', 'place_furniture', 'remove_furniture', 'set_visibility', 'set_lock', 'visit'], category: 'lifestyle', dataTier: 'REAL_LIVE' },
-  { domain: 'lfg',           label: 'Looking for Group',  artifacts: ['lfg_post'],    macros: { list: 'lfg.list',                get: 'lfg.list',             create: 'lfg.post',         run: 'lfg.join' },            exports: ['json'], actions: ['post', 'join', 'cancel'], category: 'social' },
+  { domain: 'lfg',           label: 'Looking for Group',  dataTier: 'REAL_LIVE', artifacts: ['lfg_post'],    macros: { list: 'lfg.list',                get: 'lfg.list',             create: 'lfg.post',         run: 'lfg.join' },            exports: ['json'], actions: ['post', 'join', 'cancel'], category: 'social' },
   { domain: 'mail',          label: 'Mail',               artifacts: ['mail'],        macros: { list: 'mail.list',               get: 'mail.get',             create: 'mail.send',        run: 'mail.claim' },          exports: ['json'], actions: ['send', 'read', 'claim'], category: 'social' },
   // narrative-walk is a self-contained authored-narrative READER — it surfaces
   // the 11 bundled cinematic JSONs (concord-frontend/content/cinematics/*.json)
@@ -5538,7 +5538,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // macros were phantoms (no server registration); a reader manifest legitimately
   // declares an empty `{}` (the ops-telemetry precedent). verify-lens-backends
   // reports NO-BACKEND-CALL for this lens by design.
-  { domain: 'narrative-walk',label: 'Narrative Walk',     artifacts: ['cinematic'],   macros: {},                                                                    exports: [],       actions: [], category: 'creative' },
+  { domain: 'narrative-walk',label: 'Narrative Walk',     artifacts: ['cinematic'],   macros: {},                                                                    exports: [],       actions: [], category: 'creative', dataTier: 'SIM_GRADE_A' },
   // Ops Telemetry is a read-only operator DASHBOARD, REST-backed by design (a
   // Datadog/Grafana analog). The page (app/lenses/ops-telemetry/page.tsx) does
   // NOT call the macro system — it fetches six REAL admin-gated HTTP routes,
@@ -5581,7 +5581,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // of existing getters — no new tables, no mutation. `actions` is
   // intentionally empty for the same reason as ops-telemetry: there is no
   // authoring/mutation action on this surface, only observation.
-  { domain: 'world-observatory', label: 'World Observatory', artifacts: ['world_state'], macros: { list: 'worldstate.overview', get: 'worldstate.world_detail' }, exports: ['json'], actions: [], category: 'operations' },
+  { domain: 'world-observatory', label: 'World Observatory', artifacts: ['world_state'], macros: { list: 'worldstate.overview', get: 'worldstate.world_detail' }, exports: ['json'], actions: [], category: 'operations', dataTier: 'REAL_LIVE' },
   // Concord Link Frontier is a read-only news/royalty-flow surface, REST-backed
   // by design (the ops-telemetry precedent) — `/api/cross-world/feed` and
   // `/api/cross-world/royalty-flow` (server/lib/cross-world-feed.js) are real

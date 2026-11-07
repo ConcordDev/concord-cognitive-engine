@@ -35,6 +35,50 @@ describe("government.representatives-find (api.congress.gov live)", () => {
     assert.match(r.error, /state required as 2-letter code/);
   });
 
+  it("resolves the state from a bare ZIP, as the surface's 'Address or ZIP' label promises (F10)", async () => {
+    process.env.CONGRESS_GOV_API_KEY = "test-key";
+    const urls = [];
+    globalThis.fetch = async (url) => {
+      urls.push(String(url));
+      return {
+        ok: true,
+        json: async () => ({
+          members: [
+            { bioguideId: "S000148", name: "Schumer, Charles E.", partyName: "Democratic", state: "New York", district: null, terms: { item: [{ chamber: "Senate", startYear: 2023 }] } },
+          ],
+          pagination: { count: 1 },
+        }),
+      };
+    };
+    const r = await call("representatives-find", ctxA, { address: "12601" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.state, "NY");
+    assert.match(urls[0], /\/v3\/member\/NY\?/);
+  });
+
+  it("resolves the state from an address carrying its state code", async () => {
+    process.env.CONGRESS_GOV_API_KEY = "test-key";
+    const urls = [];
+    globalThis.fetch = async (url) => {
+      urls.push(String(url));
+      return {
+        ok: true,
+        json: async () => ({ members: [], pagination: { count: 0 } }),
+      };
+    };
+    const r = await call("representatives-find", ctxA, { address: "1 Civic Center, Albany, NY" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.state, "NY");
+    assert.match(urls[0], /\/v3\/member\/NY\?/);
+  });
+
+  it("an input with neither ZIP nor state code still fails with the state-required error", async () => {
+    process.env.CONGRESS_GOV_API_KEY = "test-key";
+    const r = await call("representatives-find", ctxA, { address: "the old mill by the river" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /state required as 2-letter code/);
+  });
+
   it("parses Congress.gov response shape", async () => {
     process.env.CONGRESS_GOV_API_KEY = "test-key";
     globalThis.fetch = async (url) => {
@@ -253,6 +297,10 @@ describe("government.budget-breakdown (real USAspending.gov)", () => {
       const body = JSON.parse(opts.body);
       assert.equal(body.type, "budget_function");
       assert.equal(body.filters.fy, "2026");
+      // The API 400s without a fiscal period ("Missing required
+      // parameter, provide either \"period\" or \"quarter\"") — the exact
+      // failure the first pass recorded. A completed FY reads at 12.
+      assert.equal(body.filters.period, "12");
       return {
         ok: true,
         json: async () => ({
@@ -273,11 +321,39 @@ describe("government.budget-breakdown (real USAspending.gov)", () => {
     assert.ok(Math.abs(sumPct - 100) < 2);
   });
 
-  it("federal scope returns error when USAspending unreachable", async () => {
+  it("federal scope serves a repeat read from the per-year cache", async () => {
+    // Runs after the success test above: federal:2026:12 is cached, so a
+    // second read answers without touching the network at all.
     globalThis.fetch = async () => { throw new Error("network down"); };
     const r = await call("budget-breakdown", ctxA, { scope: "federal", year: 2026 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.fromCache, true);
+    assert.equal(r.result.source, "usaspending.gov");
+  });
+
+  it("federal scope returns a user-language error when USAspending unreachable", async () => {
+    // PIN UPDATED (government build, 2026-11-05): the old pin matched the
+    // debug string "usaspending unreachable" — the exact text the first
+    // pass filed as user-facing debug copy. The handler now answers in
+    // user language. Year 2023 (not 2026) so the read cannot be served
+    // from the success test's cache entry.
+    globalThis.fetch = async () => { throw new Error("network down"); };
+    const r = await call("budget-breakdown", ctxA, { scope: "federal", year: 2023 });
     assert.equal(r.ok, false);
-    assert.match(r.error, /usaspending unreachable/);
+    assert.match(r.error, /could not be reached/);
+    assert.doesNotMatch(r.error, /unreachable|network down/);
+  });
+
+  it("federal scope surfaces the API's own detail on a 400 instead of a bare status", async () => {
+    globalThis.fetch = async () => ({
+      ok: false,
+      status: 400,
+      json: async () => ({ detail: "Missing required parameter, provide either \"period\" or \"quarter\"." }),
+    });
+    const r = await call("budget-breakdown", ctxA, { scope: "federal", year: 2022 });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /USAspending reports:/);
+    assert.match(r.error, /Missing required parameter/);
   });
 
   it("state scope returns error pointing to state open-data portal (no hardcoded table)", async () => {
@@ -424,9 +500,20 @@ describe("government.open-data-search (data.gov CKAN)", () => {
     assert.equal(r.ok, false);
   });
   it("returns honest error on network failure", async () => {
-    const r = await call("open-data-search", ctxA, { query: "potholes" });
-    assert.equal(r.ok, false);
-    assert.match(r.error, /unreachable|network/);
+    // PIN UPDATED (government build, 2026-11-05): the handler now
+    // requires DATA_GOV_API_KEY first (data.gov retired its open CKAN
+    // endpoint; the search runs through GSA's keyed v3 gateway), so the
+    // test supplies a dummy key to reach the fetch path; and the failure
+    // text is user language now, not the old "data.gov unreachable"
+    // transport string the first pass filed as debug copy.
+    process.env.DATA_GOV_API_KEY = "test-key";
+    try {
+      const r = await call("open-data-search", ctxA, { query: "potholes" });
+      assert.equal(r.ok, false);
+      assert.match(r.error, /could not reach data\.gov/);
+    } finally {
+      delete process.env.DATA_GOV_API_KEY;
+    }
   });
 });
 

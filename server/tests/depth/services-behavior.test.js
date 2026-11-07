@@ -513,7 +513,9 @@ describe("services — CRUD round-trips (extended, shared owner ctx)", () => {
     const add = await lensRun("services", "waitlistAdd", { params: { client: "Nash" } }, wctx);
     const rm = await lensRun("services", "waitlistRemove", { params: { id: add.result.entry.id } }, wctx);
     assert.equal(rm.ok, true);
-    assert.equal(rm.result.entry.status, "removed");
+    // S4: a real removal, not a tombstone — the entry leaves the list.
+    assert.equal(rm.result.removed, true);
+    assert.equal(rm.result.id, add.result.entry.id);
 
     const bad = await lensRun("services", "waitlistRemove", { params: { id: "missing" } }, wctx);
     assert.equal(bad.result.ok, false);

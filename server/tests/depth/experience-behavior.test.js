@@ -16,6 +16,16 @@ import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
 import { _setExperienceMailerForTest } from "../../domains/experience.js";
 
+
+// S4: a clip is a cut from one of the caller's own recorded runs.
+async function recordedRun(c) {
+  const t = await lensRun("experience", "createTest", { params: { name: "Clip source", tasks: ["Do the thing"] } }, c);
+  const r = await lensRun("experience", "recordRun", {
+    params: { testId: t.result.test.id, participant: "P", tasks: [{ taskId: t.result.test.tasks[0].id, success: true, durationMs: 100 }] },
+  }, c);
+  return r.result.run.id;
+}
+
 describe("experience — analytical calc contracts (exact computed values)", () => {
   it("usabilityScore: SUS formula caps at 100 and grades A", async () => {
     const r = await lensRun("experience", "usabilityScore", {
@@ -352,8 +362,9 @@ describe("experience — invitations + highlight clips/reels (shared ctx)", () =
   });
 
   it("createClip: derives durationMs, clamps endMs above startMs, mints a shareUrl", async () => {
+    const runId = await recordedRun(ctx);
     const clip = await lensRun("experience", "createClip", {
-      params: { runId: "uxr_abc", label: "Aha moment", startMs: 1000, endMs: 4000, sentiment: "positive" },
+      params: { runId, label: "Aha moment", startMs: 1000, endMs: 4000, sentiment: "positive" },
     }, ctx);
     assert.equal(clip.result.clip.durationMs, 3000); // 4000 - 1000
     assert.equal(clip.result.clip.sentiment, "positive");
@@ -361,7 +372,7 @@ describe("experience — invitations + highlight clips/reels (shared ctx)", () =
 
     // endMs below startMs is clamped to startMs + 1
     const clamped = await lensRun("experience", "createClip", {
-      params: { runId: "uxr_abc", startMs: 5000, endMs: 100 },
+      params: { runId, startMs: 5000, endMs: 100 },
     }, ctx);
     assert.equal(clamped.result.clip.startMs, 5000);
     assert.equal(clamped.result.clip.endMs, 5001);
@@ -375,11 +386,13 @@ describe("experience — invitations + highlight clips/reels (shared ctx)", () =
   });
 
   it("listClips: filters by runId and tallies sentiment + total duration", async () => {
-    const c1 = await lensRun("experience", "createClip", { params: { runId: "run_X", startMs: 0, endMs: 1000, sentiment: "positive" } }, ctx);
-    const c2 = await lensRun("experience", "createClip", { params: { runId: "run_X", startMs: 0, endMs: 2000, sentiment: "negative" } }, ctx);
-    await lensRun("experience", "createClip", { params: { runId: "run_Y", startMs: 0, endMs: 9000, sentiment: "positive" } }, ctx);
+    const run_X = await recordedRun(ctx);
+    const run_Y = await recordedRun(ctx);
+    const c1 = await lensRun("experience", "createClip", { params: { runId: run_X, startMs: 0, endMs: 1000, sentiment: "positive" } }, ctx);
+    const c2 = await lensRun("experience", "createClip", { params: { runId: run_X, startMs: 0, endMs: 2000, sentiment: "negative" } }, ctx);
+    await lensRun("experience", "createClip", { params: { runId: run_Y, startMs: 0, endMs: 9000, sentiment: "positive" } }, ctx);
 
-    const onlyX = await lensRun("experience", "listClips", { params: { runId: "run_X" } }, ctx);
+    const onlyX = await lensRun("experience", "listClips", { params: { runId: run_X } }, ctx);
     assert.equal(onlyX.result.count, 2);
     assert.equal(onlyX.result.bySentiment.positive, 1);
     assert.equal(onlyX.result.bySentiment.negative, 1);
@@ -389,8 +402,9 @@ describe("experience — invitations + highlight clips/reels (shared ctx)", () =
   });
 
   it("buildReel: orders selected clips, sums duration, mints reel shareUrl", async () => {
-    const a = await lensRun("experience", "createClip", { params: { runId: "reel_run", startMs: 0, endMs: 1500 } }, ctx);
-    const b = await lensRun("experience", "createClip", { params: { runId: "reel_run", startMs: 0, endMs: 2500 } }, ctx);
+    const reelRun = await recordedRun(ctx);
+    const a = await lensRun("experience", "createClip", { params: { runId: reelRun, startMs: 0, endMs: 1500 } }, ctx);
+    const b = await lensRun("experience", "createClip", { params: { runId: reelRun, startMs: 0, endMs: 2500 } }, ctx);
     const reel = await lensRun("experience", "buildReel", {
       params: { name: "Top moments", clipIds: [b.result.clip.id, a.result.clip.id] },
     }, ctx);

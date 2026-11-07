@@ -130,6 +130,7 @@ export function MentorshipGoalsPanel() {
               </button>
             ))}
           </div>
+          <p className="text-[11px] text-zinc-500">Status and progress move together: reaching 100% marks the goal done, and marking it done sets progress to 100%.</p>
         </div>
 
         {/* Progress chart from check-ins */}

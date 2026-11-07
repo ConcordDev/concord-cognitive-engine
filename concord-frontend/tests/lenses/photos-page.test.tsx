@@ -71,7 +71,8 @@ describe('PhotosLensPage — four UX states', () => {
     render(<PhotosLensPage />);
     await waitFor(() => expect(screen.getByText('Summit at dawn')).toBeInTheDocument());
     expect(screen.getByText('Shared vista')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /share photo/i })).toBeInTheDocument();
+    // The un-shared frame offers an explicit publish action (mints a DTU, makes it public).
+    expect(screen.getByRole('button', { name: /publish photo/i })).toBeInTheDocument();
     expect(screen.getByText(/dtu minted/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Friends/i })).not.toBeInTheDocument();
   });

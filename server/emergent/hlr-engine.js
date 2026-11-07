@@ -1167,6 +1167,13 @@ export function runHLR(input = {}) {
         mode,
         depth,
         relatedDTUCount: (input.relatedDTUs || []).length,
+        // The caller's stamp (RT-S1): the log-access read policy shows a
+        // member only traces stamped with their user id (listTraces'
+        // summary and the projection both read input.userId), so a run
+        // that does not record its caller is invisible to the person who
+        // ran it. System callers pass no userId — their traces stay
+        // unstamped and operator-only, exactly as before.
+        userId: input.userId || null,
       },
       frame: {
         primaryDomain: frame.primaryDomain,
@@ -1175,6 +1182,7 @@ export function runHLR(input = {}) {
         unknowns: frame.unknowns,
         tagPool: frame.tagPool,
       },
+
       chains: chains.map(c => ({
         chainId: c.chainId,
         mode: c.mode,

@@ -56,7 +56,7 @@ const ctxA = { actor: { userId: "user_a" } };
 const ctxB = { actor: { userId: "user_b" } };
 
 describe("urban-planning — registration (every lens-driven macro present)", () => {
-  it("registers all 20 macros the page + children call", () => {
+  it("registers all 21 macros the page + children call", () => {
     for (const m of [
       // pure-compute calculators
       "zoningAnalysis", "walkabilityScore", "densityCalc", "trafficImpact",
@@ -67,7 +67,7 @@ describe("urban-planning — registration (every lens-driven macro present)", ()
       "massingEnvelope",
       "scenario-create", "scenario-list", "scenario-remove", "scenario-compare",
       "impactDashboard", "transitCoverage",
-      "comment-add", "comment-list", "comment-resolve",
+      "comment-add", "comment-list", "comment-resolve", "comment-remove",
       "exportPlan",
     ]) {
       assert.equal(typeof ACTIONS.get(m), "function", `missing urban-planning.${m}`);
@@ -125,13 +125,17 @@ describe("urban-planning — walkabilityScore (category folding, reads artifact.
     ];
     const r = call("walkabilityScore", ctxA, { amenities });
     assert.equal(r.ok, true);
-    // grocery 1 + restaurant 1 + transit 1 + park 0.3 = 3.3 over maxPoints (7*2=14)
-    // → round(3.3/14*100) = round(23.57) = 24 (24 < 25 → almost-all-errands).
-    assert.equal(r.result.walkabilityScore, 24);
-    assert.equal(r.result.rating, "almost-all-errands-require-car");
+    // UPDATED (urban-planning full build, Review 5 F5): the scale is now
+    // best-per-category coverage — grocery 1 + restaurant 1 + transit 1 +
+    // park 0.25 (present, not walkable) = 3.25 over 7 categories
+    // → round(3.25/7*100) = 46 (25–49 → car-dependent). The pre-fix pin
+    // (24, park 0.3) priced the old sum-over-14 scale whose endpoints
+    // mislabelled: all-categories-walkable scored 50.
+    assert.equal(r.result.walkabilityScore, 46);
+    assert.equal(r.result.rating, "car-dependent");
     assert.equal(r.result.totalAmenities, 4);
     assert.equal(r.result.amenityScores.grocery, 1);
-    assert.equal(r.result.amenityScores.park, 0.3);
+    assert.equal(r.result.amenityScores.park, 0.25);
   });
 
   it("an unknown amenity category is ignored (not counted)", () => {
@@ -184,17 +188,24 @@ describe("urban-planning — trafficImpact (trip-generation model, reads artifac
       newHousingUnits: 200, newCommercialSqFt: 50000, currentADT: 10000,
     });
     assert.equal(r.ok, true);
-    // 200*8 + 50000*0.01 = 1600 + 500 = 2100 daily trips
-    assert.equal(r.result.newDailyTrips, 2100);
-    assert.equal(r.result.peakHourTrips, 210, "10% of daily");
-    assert.equal(r.result.percentIncrease, 21, "2100/10000 → 21%");
+    // UPDATED (urban-planning full build, Review 5 F3): rates are now the
+    // named ITE averages the result prints — housing 200 × 7.32 (LU 220)
+    // = 1464; commercial 50000 × 0.03775 (LU 820, 37.75/ksf) = 1888;
+    // total 3352 daily trips. The pre-fix pin (2100) priced the unstated
+    // 8/unit + 0.01/sqft constants the pass found ~25% under band.
+    assert.equal(r.result.newDailyTrips, 3352);
+    assert.equal(r.result.housingTrips, 1464);
+    assert.equal(r.result.commercialTrips, 1888);
+    assert.equal(r.result.peakHourTrips, 335, "10% of daily");
+    assert.equal(r.result.percentIncrease, 34, "3352/10000 → 34%");
     assert.equal(r.result.impactLevel, "significant", ">10% increase");
     assert.ok(Array.isArray(r.result.mitigation) && r.result.mitigation.length > 1);
   });
 
   it("a tiny project is minimal impact with the standard-capacity note", () => {
     const r = call("trafficImpact", ctxA, { newHousingUnits: 5, currentADT: 10000 });
-    assert.equal(r.result.newDailyTrips, 40);
+    // 5 × 7.32 = 36.6 → 37 (ITE LU 220 rate; pre-fix pin was 40 at 8/unit).
+    assert.equal(r.result.newDailyTrips, 37);
     assert.equal(r.result.impactLevel, "minimal");
     assert.deepEqual(r.result.mitigation, ["Standard roadway capacity sufficient"]);
   });

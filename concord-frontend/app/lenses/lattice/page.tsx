@@ -98,6 +98,13 @@ const PANELS: Record<LatticeView, ComponentType> = {
 export default function LatticeLensPage() {
   useLensNav('lattice');
   const [active, setActive] = useState<LatticeView>('overview');
+  const [brainPickerOpen, setBrainPickerOpen] = useState(false);
+  const openBrain = (brainId: string) => {
+    setBrainPickerOpen(false);
+    setActive('brains');
+    sessionStorage.setItem('lattice.openBrain', brainId);
+    window.dispatchEvent(new CustomEvent('lattice:open-brain', { detail: brainId }));
+  };
 
   useLensCommand(
     [
@@ -108,7 +115,7 @@ export default function LatticeLensPage() {
         category: 'navigation' as const,
         action: () => setActive(v.id),
       })),
-      { id: 'open-brain', keys: 'n', description: 'Open a brain', category: 'actions' as const, action: () => setActive('brains') },
+      { id: 'open-brain', keys: 'n', description: 'Open a brain', category: 'actions' as const, action: () => setBrainPickerOpen((v) => !v) },
     ],
     { lensId: 'lattice' },
   );
@@ -154,10 +161,27 @@ export default function LatticeLensPage() {
 
         <CrossLensRecentsPanel lensId="lattice" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
 
+        {brainPickerOpen && (
+          <div className="fixed bottom-24 right-8 z-30 w-52 rounded-xl border border-white/10 bg-zinc-900 p-2 shadow-xl" role="menu" aria-label="Open a brain">
+            <p className="px-2 pb-1 pt-1 text-[11px] uppercase tracking-wider text-zinc-500">Open a brain</p>
+            {['conscious', 'subconscious', 'utility', 'repair', 'multimodal', 'lattice'].map((b) => (
+              <button
+                key={b}
+                type="button"
+                role="menuitem"
+                onClick={() => openBrain(b)}
+                className="block w-full rounded-lg px-2 py-1.5 text-left font-mono text-[13px] text-zinc-200 hover:bg-white/10"
+              >
+                {b}
+              </button>
+            ))}
+          </div>
+        )}
         <button
           type="button"
-          onClick={() => setActive('brains')}
+          onClick={() => setBrainPickerOpen((v) => !v)}
           title="Open a brain (N)"
+          aria-expanded={brainPickerOpen}
           className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
         >
           <BrainIcon className="h-4 w-4" />

@@ -24,6 +24,7 @@ import {
   RecallSlot,
 } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
+import { useBenchStore } from './bench-store';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -78,28 +79,40 @@ const PHASE_COLS: ColumnSpec<PhaseRow>[] = [
 
 export function ConstructionActionPanel() {
   const pipe = usePipe();
+  // F8: this bench and ProcorePanel are two editors over ONE store — seed
+  // every tool's rows and last result from the shared bench store and
+  // write back on compute, so work done on either surface exists on both.
+  const bench = useBenchStore();
 
-  const [lineItems, setLineItems] = useState<LineItemRow[]>([]);
-  const [laborPercent, setLaborPercent] = useState('40');
-  const [squareFootage, setSquareFootage] = useState('');
+  const [lineItems, setLineItems] = useState<LineItemRow[]>(() => bench.takeoff
+    ? bench.takeoff.payload.lineItems.map((i) => ({ description: i.description, quantity: String(i.quantity), unit: i.unit, unitCost: String(i.unitCost), wastePercent: String(i.wastePercent) }))
+    : []);
+  const [laborPercent, setLaborPercent] = useState(() => bench.takeoff?.payload.laborPercent != null ? String(bench.takeoff.payload.laborPercent) : '40');
+  const [squareFootage, setSquareFootage] = useState(() => bench.takeoff?.payload.squareFootage != null ? String(bench.takeoff.payload.squareFootage) : '');
 
-  const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [tasks, setTasks] = useState<TaskRow[]>(() => bench.cpm
+    ? bench.cpm.payload.tasks.map((t) => ({ name: t.name, duration: String(t.duration), dependencies: t.dependencies.join(', ') }))
+    : []);
 
-  const [checklist, setChecklist] = useState<ChecklistRow[]>([]);
-  const [incidentsCount, setIncidentsCount] = useState('0');
-  const [workers, setWorkers] = useState('');
-  const [hoursWorked, setHoursWorked] = useState('');
+  const [checklist, setChecklist] = useState<ChecklistRow[]>(() => bench.safety
+    ? bench.safety.payload.safetyChecklist.map((c) => ({ item: c.item, passed: c.passed ? 'yes' : 'no', critical: c.critical ? 'yes' : 'no' }))
+    : []);
+  const [incidentsCount, setIncidentsCount] = useState(() => bench.safety ? String(bench.safety.payload.incidents) : '0');
+  const [workers, setWorkers] = useState(() => bench.safety?.payload.workerCount ? String(bench.safety.payload.workerCount) : '');
+  const [hoursWorked, setHoursWorked] = useState(() => bench.safety?.payload.totalHoursWorked ? String(bench.safety.payload.totalHoursWorked) : '');
 
-  const [phases, setPhases] = useState<PhaseRow[]>([]);
+  const [phases, setPhases] = useState<PhaseRow[]>(() => bench.progress
+    ? bench.progress.payload.phases.map((p) => ({ phase: p.name, plannedPercent: String(p.plannedPercent), actualPercent: String(p.actualPercent) }))
+    : []);
 
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
-  const [takeoffResult, setTakeoffResult] = useState<TakeoffResult | null>(null);
-  const [cpmResult, setCpmResult] = useState<CpmResult | null>(null);
-  const [safetyResult, setSafetyResult] = useState<SafetyResult | null>(null);
-  const [progResult, setProgResult] = useState<ProgResult | null>(null);
+  const [takeoffResult, setTakeoffResult] = useState<TakeoffResult | null>(() => (bench.takeoff?.result as TakeoffResult) ?? null);
+  const [cpmResult, setCpmResult] = useState<CpmResult | null>(() => (bench.cpm?.result as CpmResult) ?? null);
+  const [safetyResult, setSafetyResult] = useState<SafetyResult | null>(() => (bench.safety?.result as SafetyResult) ?? null);
+  const [progResult, setProgResult] = useState<ProgResult | null>(() => (bench.progress?.result as ProgResult) ?? null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
@@ -124,7 +137,7 @@ export function ConstructionActionPanel() {
       if (laborPercent.trim()) data.laborPercent = Number(laborPercent);
       if (squareFootage.trim()) data.squareFootage = Number(squareFootage);
       const r = await callMacro<TakeoffResult>('takeoffEstimate', { artifact: { data } });
-      if (r.ok && r.result) { setTakeoffResult(r.result); pipe.publish('construction.takeoff', r.result, { label: `Takeoff $${r.result.grandTotal.toLocaleString()}` }); ok(`$${r.result.grandTotal.toLocaleString()} grand total.`); } else err(r.error ?? 'takeoff failed');
+      if (r.ok && r.result) { setTakeoffResult(r.result); bench.setTool('takeoff', { payload: { lineItems: data.lineItems as Array<{ description: string; quantity: number; unit: string; unitCost: number; wastePercent: number }>, laborPercent: data.laborPercent as number | undefined, squareFootage: data.squareFootage as number | undefined }, result: r.result }); pipe.publish('construction.takeoff', r.result, { label: `Takeoff $${r.result.grandTotal.toLocaleString()}` }); ok(`$${r.result.grandTotal.toLocaleString()} grand total.`); } else err(r.error ?? 'takeoff failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actCpm() {
@@ -139,7 +152,7 @@ export function ConstructionActionPanel() {
         })),
       };
       const r = await callMacro<CpmResult>('criticalPath', { artifact: { data } });
-      if (r.ok && r.result) { setCpmResult(r.result); pipe.publish('construction.cpm', r.result, { label: `CPM ${r.result.projectDuration}d` }); ok(`${r.result.projectDuration}d · CP: ${r.result.criticalPath.join(' → ')}.`); } else err(r.error ?? 'cpm failed');
+      if (r.ok && r.result) { setCpmResult(r.result); bench.setTool('cpm', { payload: data, result: r.result }); pipe.publish('construction.cpm', r.result, { label: `CPM ${r.result.projectDuration}d` }); ok(`${r.result.projectDuration}d · CP: ${r.result.criticalPath.join(' → ')}.`); } else err(r.error ?? 'cpm failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSafety() {
@@ -154,7 +167,7 @@ export function ConstructionActionPanel() {
         totalHoursWorked: Number(hoursWorked) || 0,
       };
       const r = await callMacro<SafetyResult>('safetyCompliance', { artifact: { data } });
-      if (r.ok && r.result) { setSafetyResult(r.result); pipe.publish('construction.safety', r.result, { label: `Safety ${r.result.complianceRate}%` }); ok(`${r.result.complianceRate}% · TRIR ${r.result.incidentRate} · ${r.result.rating}.`); } else err(r.error ?? 'safety failed');
+      if (r.ok && r.result) { setSafetyResult(r.result); bench.setTool('safety', { payload: { safetyChecklist: data.safetyChecklist, incidents: data.incidents.length, workerCount: data.workerCount, totalHoursWorked: data.totalHoursWorked }, result: r.result }); pipe.publish('construction.safety', r.result, { label: `Safety ${r.result.complianceRate}%` }); ok(`${r.result.complianceRate}% · TRIR ${r.result.incidentRate} · ${r.result.rating}.`); } else err(r.error ?? 'safety failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actProgress() {
@@ -168,7 +181,7 @@ export function ConstructionActionPanel() {
         })),
       };
       const r = await callMacro<ProgResult>('progressReport', { artifact: { data } });
-      if (r.ok && r.result) { setProgResult(r.result); pipe.publish('construction.progress', r.result, { label: `${r.result.overallActualPercent}% (${r.result.projectStatus})` }); ok(`${r.result.overallActualPercent}% vs ${r.result.overallPlannedPercent}% (${r.result.projectStatus}).`); } else err(r.error ?? 'progress failed');
+      if (r.ok && r.result) { setProgResult(r.result); bench.setTool('progress', { payload: { phases: data.phases }, result: r.result }); pipe.publish('construction.progress', r.result, { label: `${r.result.overallActualPercent}% (${r.result.projectStatus})` }); ok(`${r.result.overallActualPercent}% vs ${r.result.overallPlannedPercent}% (${r.result.projectStatus}).`); } else err(r.error ?? 'progress failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {

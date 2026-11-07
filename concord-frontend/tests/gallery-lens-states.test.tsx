@@ -113,7 +113,9 @@ describe('gallery wall', () => {
     });
     const view = render(<GalleryPage />);
     await view.findByRole('heading', { name: 'Doomed study' });
+    // Take-down is two-step (#2231): the first click arms it, the confirm button does it.
     fireEvent.click(view.getByRole('button', { name: 'Take down' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Confirm take down' }));
     expect(await view.findByText('The wall is empty.')).toBeInTheDocument();
     const remove = lensRun.mock.calls.find((call) => call[1] === 'artwork-remove');
     expect(remove?.[2]).toEqual({ collectionId: 'col_1', artworkId: 'art_1' });

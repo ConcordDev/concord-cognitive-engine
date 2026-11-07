@@ -76,10 +76,11 @@ describe('LegalCaseSearch', () => {
     create.mockReset();
   });
 
-  it('renders empty state with key-token hint', () => {
+  it('renders the empty state: states the source and that an unavailable index is said plainly', () => {
     renderWithQuery(<LegalCaseSearch />);
     expect(screen.getByPlaceholderText(/Brown v\. Board/)).toBeInTheDocument();
-    expect(screen.getByText(/COURTLISTENER_API_TOKEN/)).toBeInTheDocument();
+    expect(screen.getByText(/CourtListener REST API/)).toBeInTheDocument();
+    expect(screen.getByText(/says so plainly instead of guessing/)).toBeInTheDocument();
   });
 
   it('posts query + parses hit list with case-name, citations, snippet', async () => {

@@ -200,7 +200,7 @@ export function ElectricalDeskPanel({
           <Wrench className="w-5 h-5 text-blue-400 mb-2" />
           <p className={ds.textMuted}>Active Jobs</p>
           <p className="text-xl font-bold text-white">
-            {all.filter((j) => j.status === 'in_progress' || j.status === 'scheduled').length}
+            {all.filter((j) => j.status === 'active' || j.status === 'in_progress' || j.status === 'scheduled').length}
           </p>
         </div>
         <div className={ds.panel}>
@@ -575,8 +575,10 @@ export function ElectricalDeskPanel({
     <div className="space-y-6">
       {(() => {
         const allItems = items.map((i) => i.data as unknown as TradeArtifact);
+        // F5: the lens's own status vocabulary includes 'active'
+        // (STATUS_CONFIG) — a job standing at Active was not counted.
         const activeJobs = allItems.filter(
-          (j) => j.status === 'in_progress' || j.status === 'scheduled'
+          (j) => j.status === 'active' || j.status === 'in_progress' || j.status === 'scheduled'
         ).length;
         const certifiedCount = allItems.filter(
           (j) => j.type === 'Certification' && j.status === 'active'
@@ -584,8 +586,11 @@ export function ElectricalDeskPanel({
         const completedCount = allItems.filter(
           (j) => j.status === 'completed' || j.status === 'paid'
         ).length;
-        const safetyScore =
-          allItems.length > 0 ? ((completedCount / allItems.length) * 100).toFixed(0) : '100';
+        // F5: this figure is a completion ratio — it previously wore a
+        // "Safety Score" label and defaulted to a vacuous 100 at zero
+        // items. It now carries its true name and no invented value.
+        const completionRate =
+          allItems.length > 0 ? `${((completedCount / allItems.length) * 100).toFixed(0)}%` : '—';
         return (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
@@ -605,8 +610,8 @@ export function ElectricalDeskPanel({
             <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
               <ShieldCheck className="w-5 h-5 text-green-400" />
               <div>
-                <p className="text-lg font-bold text-white">{safetyScore}%</p>
-                <p className="text-xs text-gray-400">Safety Score</p>
+                <p className="text-lg font-bold text-white">{completionRate}</p>
+                <p className="text-xs text-gray-400">Completion Rate</p>
               </div>
             </div>
           </div>

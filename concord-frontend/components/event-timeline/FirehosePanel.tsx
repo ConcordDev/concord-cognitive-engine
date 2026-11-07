@@ -413,6 +413,7 @@ export function FirehosePanel() {
 
       {knownChannels.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-1.5">
+          <span className="mr-1 text-[10px] text-zinc-500">Channels · counts, last 7 days:</span>
           <span className="mr-1 text-[10px] uppercase tracking-wider text-zinc-400">
             channels
           </span>

@@ -301,6 +301,9 @@ export default function registerForumActions(registerLensAction) {
     const authorId = fmUser(ctx);
     const title = fmClean(params.title, 200);
     if (!title) return { ok: false, error: "topic title required" };
+    // D7/F8: a topic needs a body — an empty body was the asymmetry the
+    // first pass caught (title refused, body silent). The floor is named.
+    if (!fmClean(params.body, 8000)) return { ok: false, error: "topic body required — a topic needs something to discuss" };
     let categoryId = params.categoryId ? String(params.categoryId) : null;
     if (categoryId) {
       const cat = fmShared(s.categories).find((c) => c.id === categoryId);
@@ -332,6 +335,30 @@ export default function registerForumActions(registerLensAction) {
     return { ok: true, result: { topic } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // Edit own topic — the title is frozen (the Reddit shape); the body
+  // and tags move. Each edit appends the prior version to `revisions`
+  // and stamps editedAt (the Discourse audit shape at its minimum).
+  registerLensAction("forum", "topic-edit", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const topic = fmFindTopic(s, ctx, params.id);
+    if (!topic) return { ok: false, error: "topic not found" };
+    if (!fmIsAuthor(topic, ctx)) return { ok: false, error: "only the author can edit" };
+    const body = fmClean(params.body, 8000);
+    if (!body) return { ok: false, error: "topic body required" };
+    if (!Array.isArray(topic.revisions)) topic.revisions = [];
+    topic.revisions.push({ body: topic.body, format: topic.format || "plain", editedAt: fmNow() });
+    topic.body = body;
+    if (params.format === "markdown" || params.format === "plain") topic.format = params.format;
+    if (Array.isArray(params.tags)) {
+      topic.tags = [...new Set(params.tags.map((t) => fmClean(t, 30).toLowerCase()).filter(Boolean))].slice(0, 8);
+    }
+    topic.editedAt = fmNow();
+    topic.updatedAt = fmNow();
+    saveFmState();
+    return { ok: true, result: { topic } };
+  });
 
   registerLensAction("forum", "topic-list", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -458,6 +485,25 @@ export default function registerForumActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // Edit own reply — body only, prior versions kept in `revisions`,
+  // editedAt stamped (same audit shape as topic-edit).
+  registerLensAction("forum", "post-edit", (ctx, _a, params = {}) => {
+    const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = fmNeedUser(ctx); if (gate) return gate;
+    const post = fmFindPost(s, ctx, params.id);
+    if (!post) return { ok: false, error: "post not found" };
+    if (!fmIsAuthor(post, ctx)) return { ok: false, error: "only the author can edit" };
+    const body = fmClean(params.body, 8000);
+    if (!body) return { ok: false, error: "reply body required" };
+    if (!Array.isArray(post.revisions)) post.revisions = [];
+    post.revisions.push({ body: post.body, format: post.format || "plain", editedAt: fmNow() });
+    post.body = body;
+    if (params.format === "markdown" || params.format === "plain") post.format = params.format;
+    post.editedAt = fmNow();
+    saveFmState();
+    return { ok: true, result: { post } };
+  });
+
   registerLensAction("forum", "post-delete", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const gate = fmNeedUser(ctx); if (gate) return gate;
@@ -482,6 +528,11 @@ export default function registerForumActions(registerLensAction) {
       ? fmFindPost(s, ctx, params.targetId)
       : fmFindTopic(s, ctx, params.targetId);
     if (!item) return { ok: false, error: `${targetType} not found` };
+    // D5/F5: standing cannot be self-minted — a ballot on your own item
+    // is refused, so karma only ever counts other readers' votes.
+    if (item.authorId && item.authorId === userId) {
+      return { ok: false, error: "you cannot vote on your own post — karma comes from other readers" };
+    }
     const dir = Math.sign(fmNum(params.direction));
     if (!item.voters || typeof item.voters !== "object" || Array.isArray(item.voters)) item.voters = {};
     if (dir === 0) delete item.voters[userId];

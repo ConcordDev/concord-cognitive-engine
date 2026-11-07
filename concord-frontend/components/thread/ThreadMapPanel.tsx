@@ -219,6 +219,7 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
   const [mergeBusy, setMergeBusy] = useState(false);
 
   const [summary, setSummary] = useState<ThreadSummary | null>(null);
+  const [nodeDeleteArmed, setNodeDeleteArmed] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
   const [threadActionResult, setThreadActionResult] = useState<{ action: string; result: Record<string, unknown> } | null>(null);
@@ -433,6 +434,8 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
       setThreadActiveAction(null);
     }
   }, [selectedThreadId, runThreadAction]);
+
+  useEffect(() => { setNodeDeleteArmed(false); }, [selectedNodeId]);
 
   const toggleNode = (nodeId: string) => {
     setExpandedNodes((prev) => {
@@ -675,6 +678,25 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
               </div>
             </div>
           </div>
+          {threadItems.length > 0 && composerDrafts.length > 0 && (
+            <div className="border-t border-lattice-border p-3">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                Composer Drafts
+              </p>
+              <ul className="space-y-1 mb-2">
+                {composerDrafts.slice(0, 5).map((draft) => (
+                  <li key={draft.id} className="text-sm text-gray-300 truncate">{draft.title || 'Untitled draft'}</li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={() => onOpenComposer?.()}
+                className="text-sm text-neon-purple hover:underline"
+              >
+                {`Drafts (${composerDrafts.length}) -> Composer`}
+              </button>
+            </div>
+          )}
         </aside>
 
         <main className="flex-1 flex flex-col overflow-hidden">
@@ -914,12 +936,26 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
                     </button>
                   </div>
                   <button
-                    onClick={() => void deleteNode(selectedNode.id)}
+                    onClick={() => {
+                      if (!nodeDeleteArmed) { setNodeDeleteArmed(true); return; }
+                      setNodeDeleteArmed(false);
+                      void deleteNode(selectedNode.id);
+                    }}
                     className="w-full p-2 rounded-lg border border-red-500/20 hover:bg-red-500/10 text-red-400 flex items-center justify-center gap-1.5 text-xs"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    Delete message{selectedNode.children.length > 0 ? ` (and ${selectedNode.children.length} repl${selectedNode.children.length === 1 ? 'y' : 'ies'})` : ''}
+                    {nodeDeleteArmed
+                      ? `Confirm delete — removes this message${selectedNode.children.length > 0 ? ` and ${selectedNode.children.length} repl${selectedNode.children.length === 1 ? 'y' : 'ies'}` : ''}`
+                      : `Delete message${selectedNode.children.length > 0 ? ` (and ${selectedNode.children.length} repl${selectedNode.children.length === 1 ? 'y' : 'ies'})` : ''}`}
                   </button>
+                  {nodeDeleteArmed && (
+                    <button
+                      onClick={() => setNodeDeleteArmed(false)}
+                      className="w-full mt-1.5 p-1.5 rounded-lg text-gray-400 hover:text-white text-xs"
+                    >
+                      Keep message
+                    </button>
+                  )}
 
                   {selectedThread && (
                     <ThreadNodeActions

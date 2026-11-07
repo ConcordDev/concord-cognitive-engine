@@ -26,6 +26,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Languages, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { useUIStore } from '@/store/ui';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import {
   SingleTranslatePanel,
@@ -42,19 +43,39 @@ import {
 
 const DOMAIN = 'translation';
 
+// S4: the working settings (source / target / register / mode) persist
+// across reloads, like the saved data they operate on.
+const SETTINGS_KEY = 'concord.translation.settings.v1';
+function storedSetting<K extends string>(key: string, fallback: K): K {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_KEY);
+    const v = raw ? (JSON.parse(raw) as Record<string, unknown>)[key] : undefined;
+    return typeof v === 'string' ? (v as K) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function TranslationLens() {
   useLensNav('translation');
   const [languages, setLanguages] = useState<Language[]>([]);
   const [formalities, setFormalities] = useState<string[]>(['neutral', 'formal', 'informal']);
   const [catalogLoading, setCatalogLoading] = useState(true);
-  const [source, setSource] = useState('auto');
-  const [target, setTarget] = useState('es');
-  const [formality, setFormality] = useState('neutral');
-  const [mode, setMode] = useState<'single' | 'batch' | 'document'>('single');
+  const [source, setSource] = useState<string>(() => storedSetting('source', 'auto'));
+  const [target, setTarget] = useState<string>(() => storedSetting('target', 'es'));
+  const [formality, setFormality] = useState<string>(() => storedSetting('formality', 'neutral'));
+  const [mode, setMode] = useState<'single' | 'batch' | 'document'>(() => storedSetting('mode', 'single'));
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify({ source, target, formality, mode }));
+    } catch { /* storage unavailable — settings just do not persist */ }
+  }, [source, target, formality, mode]);
 
   // Saved translations — the generic per-user, server-LOCAL lens artifact store
   // (sovereignty intact: text still never leaves your server). Shared by both modes.
-  const { items: saved, create: saveTranslation, remove: removeTranslation } =
+  const { items: saved, create: saveTranslation, remove: removeTranslation, update: updateTranslation } =
     useLensData<SavedTranslation>(DOMAIN, 'translation', { noSeed: true });
 
   const { items: glossaryItems, create: addGlossary, remove: removeGlossary } =
@@ -74,9 +95,20 @@ export default function TranslationLens() {
     setTarget(source);
   }, [source, target]);
 
+  const addToast = useUIStore((s) => s.addToast);
   const onSave = useCallback((t: SavedTranslation) => {
+    // S4: an identical save (same input, output and target) is refused
+    // with a notice instead of stacking a silent duplicate row.
+    if (saved.some((s) => s.data.input === t.input && s.data.output === t.output && s.data.target === t.target)) {
+      addToast({ type: 'info', message: 'That translation is already saved.', duration: 2500 });
+      return;
+    }
     saveTranslation({ title: `${t.input.slice(0, 40) || 'Translation'} → ${t.target}`, data: t });
-  }, [saveTranslation]);
+  }, [saveTranslation, saved, addToast]);
+
+  const onUpdateSaved = useCallback((id: string, data: SavedTranslation) => {
+    void updateTranslation?.(id, { data });
+  }, [updateTranslation]);
 
   // Load the supported-language catalog (public read — no auth needed).
   const loadCatalog = useCallback(() => {
@@ -220,7 +252,7 @@ export default function TranslationLens() {
               <DocumentTranslatePanel target={target} formality={formality} glossary={glossary} />
             )}
 
-            <SavedTranslations saved={saved} onRemove={removeTranslation} />
+            <SavedTranslations saved={saved} onRemove={removeTranslation} onUpdate={onUpdateSaved} />
           </>
         )}
 

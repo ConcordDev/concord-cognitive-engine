@@ -10,6 +10,7 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 import { inviteToParty, createParty } from "./parties.js";
+import { lookupUserIdentity } from "./user-identity.js";
 
 export function postLfg(db, userId, opts = {}) {
   if (!db || !userId) return { ok: false, error: "missing_inputs" };
@@ -63,7 +64,7 @@ export function listOpenLfg(db, opts = {}) {
     const params = [];
     if (worldId) { where.push("world_id = ?"); params.push(worldId); }
     if (roleFilter) { where.push("role = ?"); params.push(roleFilter); }
-    return db.prepare(`
+    const rows = db.prepare(`
       SELECT id, requester_user_id AS userId, world_id AS worldId, role,
              party_type AS partyType, note, created_at AS createdAt,
              expires_at AS expiresAt, party_max_size AS partyMaxSize,
@@ -73,6 +74,15 @@ export function listOpenLfg(db, opts = {}) {
       ORDER BY created_at DESC
       LIMIT ?
     `).all(...params, limit);
+    // Close-out A7 (identity-display): the board renders the poster's
+    // NAME, resolved here at the read through the platform resolver —
+    // null when unresolved, and the surface falls back to a neutral
+    // label. The raw userId stays on the row for ownership checks; it
+    // is never the display.
+    return rows.map((r) => ({
+      ...r,
+      posterName: lookupUserIdentity(db, r.userId).displayName,
+    }));
   } catch {
     return [];
   }

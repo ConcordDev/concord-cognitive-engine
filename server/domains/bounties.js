@@ -13,6 +13,7 @@
 // the acting user but a global index makes the open board cross-user.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 import { isAdmin, requireActor } from "../lib/lens-authz.js";
 
 export default function registerBountiesActions(registerLensAction) {
@@ -89,12 +90,22 @@ export default function registerBountiesActions(registerLensAction) {
     }
     return b.status === "paid" || b.status === "resolved" ? num(b.rewardCc, 0) : 0;
   }
-  function publicView(b) {
+  function ownerNameFor(ctx, ownerId) {
+    // Close-out A7 (identity-display): resolve the poster's name at the
+    // read through the platform resolver; null when unresolved — the
+    // raw ownerId is never the display.
+    try {
+      const db = ctx?.db || globalThis._concordSTATE?.db || null;
+      return lookupUserIdentity(db, ownerId).displayName;
+    } catch { return null; }
+  }
+  function publicView(b, ctx) {
     return {
       id: b.id,
       title: b.title,
       description: b.description,
       ownerId: b.ownerId,
+      ownerName: ownerNameFor(ctx, b.ownerId),
       category: b.category,
       tags: b.tags,
       difficulty: b.difficulty,
@@ -165,12 +176,12 @@ export default function registerBountiesActions(registerLensAction) {
       s.bounties.set(bounty.id, bounty);
       ownerSet(s, userId).add(bounty.id);
       save();
-      return { ok: true, result: { bounty: publicView(bounty) } };
+      return { ok: true, result: { bounty: publicView(bounty, ctx) } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
   // ── Browse / search / filter the open board ────────────────────────
-  registerLensAction("bounties", "list", (_ctx, _a, params = {}) => {
+  registerLensAction("bounties", "list", (ctx, _a, params = {}) => {
     try {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const q = clean(params.query, 80).toLowerCase();
@@ -197,7 +208,7 @@ export default function registerBountiesActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          bounties: rows.slice(0, limit).map(publicView),
+          bounties: rows.slice(0, limit).map((b) => publicView(b, ctx)),
           total: rows.length,
           categories: CATEGORIES,
           difficulties: DIFFICULTIES,
@@ -207,12 +218,12 @@ export default function registerBountiesActions(registerLensAction) {
   });
 
   // ── Read a single bounty ───────────────────────────────────────────
-  registerLensAction("bounties", "get", (_ctx, _a, params = {}) => {
+  registerLensAction("bounties", "get", (ctx, _a, params = {}) => {
     try {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const b = s.bounties.get(clean(params.bountyId, 64));
       if (!b) return { ok: false, error: "bounty not found" };
-      return { ok: true, result: { bounty: publicView(b) } };
+      return { ok: true, result: { bounty: publicView(b, ctx) } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
@@ -248,7 +259,7 @@ export default function registerBountiesActions(registerLensAction) {
       if (b.status === "open") b.status = "claimed";
       b.updatedAt = now();
       save();
-      return { ok: true, result: { submission, bounty: publicView(b) } };
+      return { ok: true, result: { submission, bounty: publicView(b, ctx) } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
@@ -271,7 +282,7 @@ export default function registerBountiesActions(registerLensAction) {
         sub.status = "rejected";
         b.updatedAt = now();
         save();
-        return { ok: true, result: { submission: sub, bounty: publicView(b) } };
+        return { ok: true, result: { submission: sub, bounty: publicView(b, ctx) } };
       }
 
       // Accept → payout (milestone-scoped or whole bounty).
@@ -301,7 +312,7 @@ export default function registerBountiesActions(registerLensAction) {
       }
       b.updatedAt = now();
       save();
-      return { ok: true, result: { submission: sub, bounty: publicView(b), paidCc: paid, currency: "CC" } };
+      return { ok: true, result: { submission: sub, bounty: publicView(b, ctx), paidCc: paid, currency: "CC" } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
@@ -327,7 +338,7 @@ export default function registerBountiesActions(registerLensAction) {
       if (allPaid) bumpResolved(s, userId);
       b.updatedAt = now();
       save();
-      return { ok: true, result: { milestone: { ...ms }, bounty: publicView(b), paidCc: num(ms.rewardCc, 0), currency: "CC" } };
+      return { ok: true, result: { milestone: { ...ms }, bounty: publicView(b, ctx), paidCc: num(ms.rewardCc, 0), currency: "CC" } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
@@ -356,7 +367,7 @@ export default function registerBountiesActions(registerLensAction) {
       b.status = "disputed";
       b.updatedAt = now();
       save();
-      return { ok: true, result: { dispute: { ...b.dispute }, bounty: publicView(b) } };
+      return { ok: true, result: { dispute: { ...b.dispute }, bounty: publicView(b, ctx) } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
@@ -399,7 +410,7 @@ export default function registerBountiesActions(registerLensAction) {
       }
       b.updatedAt = now();
       save();
-      return { ok: true, result: { dispute: { ...b.dispute }, bounty: publicView(b) } };
+      return { ok: true, result: { dispute: { ...b.dispute }, bounty: publicView(b, ctx) } };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   });
 
@@ -432,7 +443,7 @@ export default function registerBountiesActions(registerLensAction) {
       const posted = [...ownerSet(s, userId)]
         .map((bid) => s.bounties.get(bid))
         .filter(Boolean)
-        .map(publicView)
+        .map((b) => publicView(b, ctx))
         .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
       const submitted = [];
       for (const b of s.bounties.values()) {

@@ -34,6 +34,11 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeJournal, setActiveJournal] = useState<string>('');
+  // F7: the composer shows (and lets the writer change) its destination
+  // journal. It defaults to the active filter — the filing rule is stated
+  // on the form instead of being discoverable only by experiment.
+  const [destJournal, setDestJournal] = useState<string | null>(null);
+  const saveTo = destJournal ?? activeJournal;
   const [newJournal, setNewJournal] = useState('');
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -73,7 +78,11 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
     await refresh();
   };
 
+  const [confirmJournalId, setConfirmJournalId] = useState<string | null>(null);
+  const [confirmEntryId, setConfirmEntryId] = useState<string | null>(null);
   const delJournal = async (id: string) => {
+    if (confirmJournalId !== id) { setConfirmJournalId(id); return; }
+    setConfirmJournalId(null);
     await lensRun('reflection', 'journal-delete', { id });
     if (activeJournal === id) setActiveJournal('');
     await refresh();
@@ -83,7 +92,7 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
     if (!form.text.trim()) { setError('Write something before saving.'); return; }
     const r = await lensRun('reflection', 'entry-create', {
       date: calendarDateKey(),
-      journalId: activeJournal || undefined,
+      journalId: saveTo || undefined,
       title: form.title.trim(),
       text: form.text.trim(),
       mood: form.mood || undefined,
@@ -99,6 +108,8 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
   };
 
   const delEntry = async (id: string) => {
+    if (confirmEntryId !== id) { setConfirmEntryId(id); return; }
+    setConfirmEntryId(null);
     await lensRun('reflection', 'entry-delete', { id });
     await refresh();
   };
@@ -137,8 +148,9 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
             <span key={j.id} className={cn('flex items-center gap-1 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
               activeJournal === j.id ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
               <button type="button" onClick={() => setActiveJournal(j.id)}>{j.name} ({j.entryCount})</button>
-              <button aria-label="Delete" type="button" onClick={() => delJournal(j.id)} className="text-zinc-400 hover:text-rose-300">
-                <Trash2 className="w-3 h-3" />
+              <button aria-label="Delete" type="button" onClick={() => delJournal(j.id)}
+                className={confirmJournalId === j.id ? 'text-rose-300 font-semibold' : 'text-zinc-400 hover:text-rose-300'}>
+                {confirmJournalId === j.id ? <span className="text-[10px]">Delete “{j.name}”? Click again</span> : <Trash2 className="w-3 h-3" />}
               </button>
             </span>
           ))}
@@ -175,6 +187,15 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
             onChange={(e) => setForm({ ...form, photoCount: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         </div>
+        <div className="flex items-center gap-2 text-[11px] text-zinc-400">
+          <label htmlFor="rf-dest-journal">Save to</label>
+          <select id="rf-dest-journal" value={saveTo} onChange={(e) => setDestJournal(e.target.value)}
+            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100">
+            <option value="">Default journal</option>
+            {journals.map((j) => <option key={j.id} value={j.id}>{j.name}</option>)}
+          </select>
+          <span>{destJournal === null ? 'Follows the journal filter above — change it here if this entry belongs elsewhere.' : 'Your choice for this entry.'}</span>
+        </div>
         <div className="flex items-center gap-2">
           <input placeholder="Tags (comma-separated)" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })}
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
@@ -209,7 +230,7 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
           <ErrorState message={loadError} onRetry={refresh} variant="inline" />
         ) : entries.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic py-6 text-center">
-            {searching ? 'No entries match your search.' : 'No entries yet. Write your first one above.'}
+            {searching ? 'No entries match your search.' : activeJournal ? `No entries in “${journals.find((j) => j.id === activeJournal)?.name ?? 'this journal'}” yet — entries under All Journals are unaffected.` : 'No entries yet. Write your first one above.'}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -240,9 +261,9 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
                   <button
                     aria-label="Delete" type="button"
                     onClick={() => delEntry(e.id)}
-                    className="text-zinc-600 hover:text-rose-400 shrink-0"
+                    className={confirmEntryId === e.id ? 'text-rose-300 shrink-0 text-[10px] font-semibold' : 'text-zinc-600 hover:text-rose-400 shrink-0'}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    {confirmEntryId === e.id ? `Delete “${e.title || e.date}”? Click again` : <Trash2 className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </li>

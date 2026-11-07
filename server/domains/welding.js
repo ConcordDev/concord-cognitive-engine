@@ -106,6 +106,17 @@ export default function registerWeldingActions(registerLensAction) {
       const inspection = inspections.find(i => i.item === c.item || i.id === c.item);
       return { ...c, status: inspection ? (inspection.passed ? "pass" : "fail") : "pending" };
     });
+    // The inspector's own findings count (F4): a user-entered inspection that
+    // matches no built-in item is an inspection item in its own right — it is
+    // appended as its own row and counted in the totals and the verdict,
+    // never silently dropped from the run's output.
+    const matchedNames = new Set(baseChecklist.map((c) => c.item));
+    for (const i of inspections) {
+      const name = typeof i.item === "string" && i.item.trim() ? i.item.trim() : (typeof i.id === "string" ? i.id : "");
+      if (!name || matchedNames.has(name)) continue;
+      matchedNames.add(name);
+      checklist.push({ item: name, category: "user", required: true, status: i.passed ? "pass" : "fail" });
+    }
     const passed = checklist.filter(c => c.status === "pass").length;
     const failed = checklist.filter(c => c.status === "fail").length;
     const pending = checklist.filter(c => c.status === "pending").length;
@@ -127,6 +138,7 @@ export default function registerWeldingActions(registerLensAction) {
     if (!(w.estimates instanceof Map)) w.estimates = new Map(); // userId -> Array<estimate>
     if (!(w.invoices instanceof Map)) w.invoices = new Map();  // userId -> Array<invoice>
     if (!(w.wps instanceof Map)) w.wps = new Map();           // userId -> Array<wps>
+    if (!(w.pqr instanceof Map)) w.pqr = new Map();           // userId -> Array<pqr>
     if (!(w.certs instanceof Map)) w.certs = new Map();       // userId -> Array<cert>
     if (!(w.portal instanceof Map)) w.portal = new Map();     // token -> { ownerId, kind, refId }
     return w;
@@ -150,6 +162,7 @@ export default function registerWeldingActions(registerLensAction) {
   // crypto.randomBytes(24) base64url, no timestamp prefix.
   const wPortalToken = () => crypto.randomBytes(24).toString("base64url");
   const wActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
+  const wActorName = (ctx) => ctx?.actor?.name || ctx?.actor?.displayName || ctx?.userName || wActor(ctx);
   const wClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
   const wNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
   const wList = (s, key, userId) => { if (!s[key].has(userId)) s[key].set(userId, []); return s[key].get(userId); };
@@ -242,6 +255,17 @@ export default function registerWeldingActions(registerLensAction) {
           scheduledCount: jobs.filter((j) => j.scheduledDate).length,
         },
       };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // The job's own surface (F5): every job the user holds, in full — the
+  // calendar projects jobs onto days, but a job must be openable, operable
+  // and completable on its own legs, not only through its invoice.
+  registerLensAction("welding", "job-list", (ctx, _a, _params = {}) => {
+    try {
+      const s = getWeldState(); if (!s) return noState;
+      const jobs = wList(s, "jobs", wActor(ctx)).slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return { ok: true, result: { jobs } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -483,10 +507,54 @@ export default function registerWeldingActions(registerLensAction) {
       if (!wps.thicknessRange) missing.push("thicknessRange");
       if (missing.length) return { ok: false, error: "incomplete_wps", result: { missing } };
       wps.status = "approved";
-      wps.approvedBy = wClean(params.approvedBy, 120) || "Certified Welding Inspector";
+      // The stamp names the account that actually clicked (F7): the former
+      // default asserted "Certified Welding Inspector" — an attestation by a
+      // role the approver does not hold. An explicitly supplied name stands;
+      // otherwise the stamp is the actor's own name/id, never a title.
+      wps.approvedBy = wClean(params.approvedBy, 120) || wActorName(ctx);
       wps.approvedAt = new Date().toISOString();
       saveWeld();
       return { ok: true, result: { wps } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── PQR (Procedure Qualification Record) ──────────────────────────
+  // The qualification-evidence half of the compliance set: the record that
+  // a procedure was test-welded and passed, which a WPS stands on.
+  registerLensAction("welding", "pqr-create", (ctx, _a, params = {}) => {
+    try {
+      const s = getWeldState(); if (!s) return noState;
+      const userId = wActor(ctx);
+      const list = wList(s, "pqr", userId);
+      const outcome = (v) => (v === "pass" || v === "fail" ? v : "not_recorded");
+      const pqr = {
+        id: wId("pqr"),
+        pqrNumber: wClean(params.pqrNumber, 60) || `PQR-${String(list.length + 1).padStart(3, "0")}`,
+        wpsNumber: wClean(params.wpsNumber, 60),
+        process: wClean(params.process, 40) || "SMAW",
+        baseMetal: wClean(params.baseMetal, 120) || "mild-steel",
+        baseMetalSpec: wClean(params.baseMetalSpec, 80),
+        couponThickness: wClean(params.couponThickness, 60),
+        jointDesign: wClean(params.jointDesign, 120),
+        welder: wClean(params.welder, 160),
+        testDate: wClean(params.testDate, 40),
+        tensileResult: outcome(params.tensileResult),
+        bendResult: outcome(params.bendResult),
+        qualifiedRange: wClean(params.qualifiedRange, 120),
+        code: wClean(params.code, 60) || "AWS D1.1",
+        notes: wClean(params.notes, 1000),
+        createdAt: new Date().toISOString(),
+      };
+      list.push(pqr); saveWeld();
+      return { ok: true, result: { pqr } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("welding", "pqr-list", (ctx, _a, _params = {}) => {
+    try {
+      const s = getWeldState(); if (!s) return noState;
+      const list = wList(s, "pqr", wActor(ctx));
+      return { ok: true, result: { pqr: list.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)) } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -721,6 +789,29 @@ export default function registerWeldingActions(registerLensAction) {
       message: "Online payment isn't available yet for this invoice. Please contact the business directly to arrange payment.",
     };
   });
+
+  // ── Deletes — every object type the lens creates has an exit (F3) ──
+  const wDelete = (key, idParam, notFound) => (ctx, _a, params = {}) => {
+    try {
+      const s = getWeldState(); if (!s) return noState;
+      const userId = wActor(ctx);
+      const list = wList(s, key, userId);
+      const idx = list.findIndex((o) => o.id === params[idParam]);
+      if (idx < 0) return { ok: false, error: notFound };
+      const [removed] = list.splice(idx, 1);
+      // A deleted document's portal link dies with it: the token is the only
+      // gate on the public view, so it must not outlive the record.
+      if (removed.portalToken) s.portal.delete(removed.portalToken);
+      saveWeld();
+      return { ok: true, result: { deleted: removed.id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  };
+  registerLensAction("welding", "job-delete", wDelete("jobs", "jobId", "job_not_found"));
+  registerLensAction("welding", "estimate-delete", wDelete("estimates", "estimateId", "estimate_not_found"));
+  registerLensAction("welding", "invoice-delete", wDelete("invoices", "invoiceId", "invoice_not_found"));
+  registerLensAction("welding", "wps-delete", wDelete("wps", "wpsId", "wps_not_found"));
+  registerLensAction("welding", "cert-delete", wDelete("certs", "certId", "cert_not_found"));
+  registerLensAction("welding", "pqr-delete", wDelete("pqr", "pqrId", "pqr_not_found"));
 
   // ── Operations dashboard rollup ───────────────────────────────────
   registerLensAction("welding", "ops-summary", (ctx, _a, _params = {}) => {

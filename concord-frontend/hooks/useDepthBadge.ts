@@ -58,6 +58,167 @@ const TIER_INFO: Record<DataTier, DepthBadgeInfo> = {
  * chip names the two surfaces that actually are simulations.
  */
 const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'caption'>> = {
+  'event-timeline': {
+    label: 'Live',
+    // Event-Timeline reads the platform's OWN substrate event log
+    // (server/domains/event-timeline.js over event_timeline_log) — real
+    // events streamed as they occur, not an external feed, so REAL_LIVE's
+    // generic "polled live from an external source" caption would
+    // misdescribe the source. Declared REAL_LIVE in the registry under
+    // both spellings; the manifest entry now carries the tier.
+    caption: 'Live — the platform’s own substrate event log, streamed as events occur.',
+  },
+  /**
+   * Expedition-Journal (S-EJ-1): the canon-world expeditions are simulated,
+   * but SIM_GRADE_A's generic "Not real data" caption would misdescribe the
+   * other two things on the page — the traveller's own server-kept progress
+   * and journal, and the base-camp almanac's real sunrise-sunset data.
+   */
+  'expedition-journal': {
+    label: 'Simulated',
+    caption: 'Simulated canon-world expeditions. Your stage progress and journal entries are your own records, kept on the server; the base-camp almanac is real sunrise-sunset data.',
+  },
+  'collab': {
+    label: 'Live',
+    // Collab's rooms are the caller's OWN records (title + note kept on
+    // the account, dual-stored server-side) and its sessions are live
+    // when collaborators join — not an external feed, so REAL_LIVE's
+    // generic "polled live from an external source" caption would
+    // misdescribe the source. Declared REAL_LIVE in the registry.
+    caption: 'Live — your rooms and sessions, kept on your account.',
+  },
+  /**
+   * Urban Planning's workspace records (parcels, scenarios, projects,
+   * comments) are the account's own persisted data, and its County Data
+   * tab pulls live US Census ACS + HUD figures for its six preset metro
+   * counties — neither half is simulation (Review 5's Step-0a finding:
+   * the lens shipped a Simulated banner over a live-data surface). The
+   * generic REAL_LIVE caption names only the external half, so the
+   * override names both.
+   */
+  'urban-planning': {
+    label: 'Live',
+    caption: 'Live: your own parcels, scenarios, projects and comments, saved as you work — plus live US Census ACS and HUD figures for the six preset metro counties in County Data.',
+  },
+  /**
+   * Ghost Tracker's residues are the world's real drift events, read
+   * live from the world's drift_alerts state — not an external feed, so
+   * the generic REAL_LIVE caption ("polled live from an external
+   * source") is false here. The caption answers the question this lens
+   * most needs answered (Review 4's compilation): whether an empty
+   * plane means a healthy world, an unconnected tracker, or a
+   * simulation.
+   */
+  'ghost-tracker': {
+    label: 'Live',
+    caption: 'Live: residues are the world\'s real drift events, read from live world state as they occur — an empty plane means the world is quiet right now, not a simulation or a dead feed. Your hunts, dossiers and confront history are your own records.',
+  },
+  /**
+   * Reflection holds two systems: the member's own journal (entries,
+   * insights, analytics computed from those records) and the engine's
+   * self-critique log. Nothing is polled from an external source — the
+   * generic REAL_LIVE caption would be false here; the only outside data
+   * is Studio weather, fetched live when a place is pinned.
+   */
+  reflection: {
+    label: 'Live',
+    caption: 'Entries, insights and analytics here are computed live from your own journal records in the platform store; the Self-Critique Log holds the engine\'s own evaluation records. The only outside data is Studio weather, fetched live when you pin a place.',
+  },
+  /**
+   * Inference's knowledge bases are the member's own persisted records
+   * and its engines (the desk's syllogism/forward chain, the Rule
+   * Engine's Prolog) run in-process — REAL_LIVE's generic "polled from
+   * an external source" caption would be false for this lens.
+   */
+  inference: {
+    label: 'Live',
+    caption:
+      'Facts, rules and derivations here are your own records in the platform store, reasoned over by engines that run in-process. Nothing is polled from an external source; the only live outside data is the Frameworks view\'s GitHub reads, labelled there.',
+  },
+  /**
+   * Cognition (branch (b)): a personal question log — the member's own
+   * entries in the platform store. REAL_LIVE's generic "polled from an
+   * external source" caption would be false for this lens.
+   */
+  cognition: {
+    label: 'Live',
+    caption:
+      'Your question log lives here — your own entries, kept in the platform store until you mark them answered. Nothing is polled from an external source; the platform\'s emergent entities are system content, labelled separately on this page.',
+  },
+  /**
+   * The lens presents as Moments — the member's own moment journal
+   * (Lead ruling 2026-11-01: the rename path). Its records are the
+   * member's own dated notes, persisted server-side; the generic
+   * REAL_LIVE caption ("polled from an external source") would be
+   * false here, and any replay framing would be falser.
+   */
+  'cognitive-replay': {
+    label: 'Live',
+    caption: 'Live: your moment journal — the moments you add are your own records, kept with their dates and saved server-side. Nothing here is recorded from your sessions or replayed.',
+  },
+  /**
+   * Invariant: monitors and violations are the member's own records in
+   * the platform store, evaluated in-process. REAL_LIVE's generic
+   * "polled from an external source" caption would be false here.
+   */
+  invariant: {
+    label: 'Live',
+    caption:
+      'Monitors, violations and checks here are your own records in the platform store, evaluated by engines that run in-process. Nothing is polled from an external source.',
+  },
+  /**
+   * Meditation's data is the member's own practice record — the
+   * generic REAL_LIVE caption ("polled from an external source")
+   * would be false here. The caption states the lens's one rule:
+   * only performed time counts.
+   */
+  meditation: {
+    label: 'Live',
+    caption: 'Live: your own practice record — the sessions you sit and the check-ins you make, kept on your account. Only performed time counts toward your minutes and streak.',
+  },
+  /**
+   * UX Suite: the catalogue and the member's saved prop overrides live
+   * in the platform store. REAL_LIVE's generic "polled from an external
+   * source" caption would be false here (the GitHub browser inside the
+   * lens is the labelled exception).
+   */
+  'ux-suite': {
+    label: 'Live',
+    caption:
+      'The component catalogue and your saved prop overrides live here, in the platform store. Nothing is polled from an external source; the GitHub browser inside the lens reads live from GitHub, labelled there.',
+  },
+  /**
+   * Codex's canon is first-party authored lore — hand-written files
+   * served exactly as recorded. REAL_FREE's generic "open-access
+   * dataset" caption would misdescribe it in both directions (it is
+   * neither external nor open-access), so the caption names the truth.
+   */
+  codex: {
+    label: 'Real',
+    caption: 'The authored Concordia canon: hand-written lore, served exactly as recorded — nothing here is generated or polled.',
+  },
+  /**
+   * World-Observatory reads live simulation state from the platform's
+   * own world stores (the worldstate macros) — REAL_LIVE's generic
+   * "polled from an external source" caption would be false, and the
+   * caption must answer the pass's standing question: what kind of
+   * numbers these are.
+   */
+  'world-observatory': {
+    label: 'Live',
+    caption:
+      'Simulation state here is read live from the platform\'s own world stores — population, factions, realms and districts as the simulation currently holds them. A young realm\'s figures may still sit at the values it was seeded with; that is its current state, not a placeholder. Worlds named as test or harness data are badged TEST wherever they appear.',
+  },
+  /**
+   * Understanding's substrate is the account's own notes plus an
+   * in-process engine over its own tables — REAL_LIVE's generic
+   * "polled live from an external source" caption would be false.
+   */
+  understanding: {
+    label: 'Live',
+    caption:
+      'Your notes, outline, review queue and graph live here, in the platform store, and the compose / evolve pipeline runs in-process over them. Nothing is polled from an external source.',
+  },
   /**
    * Plumbing's field-service records are the account's own shop data,
    * persisted server-side — the Simulated declaration was false on its own
@@ -67,6 +228,50 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
   plumbing: {
     label: 'Live',
     caption: 'Your own live shop records: technicians, jobs, invoices, parts and inspections are your account\'s real data, saved as you work.',
+  },
+  /**
+   * A minted move is a real DTU in the canonical store (a move_recipe
+   * DTU) — not demo data and not a lens-local fixture — so the generic
+   * REAL_LIVE caption ("polled live from an external source") would
+   * misdescribe both the store and the act (Review 4's gate record:
+   * the undeclared act here is a mint).
+   */
+  'move-builder': {
+    label: 'Live',
+    caption: 'Live: a minted move is a real DTU (a move_recipe DTU in the canonical store) in your library. Compose and preview derive from the same deterministic resolver the server stamps at mint time.',
+  },
+  /**
+   * Carpentry's trade records are the account's own shop data, persisted
+   * server-side (Review 5's determination: PROBE-LIVE — a fixture job
+   * survived reloads), and its species lookups read live from Wikipedia —
+   * the Simulated declaration was false on its own terms.
+   */
+  carpentry: {
+    label: 'Live',
+    caption: 'Your own live shop records: schedule, crew, time, invoices and photo logs are your account\'s real data, saved as you work. Species lookups pull live reference data from Wikipedia.',
+  },
+  /**
+   * Genesis observes the platform's own emergent substrate — identities,
+   * observations, communications and activity recorded by the live
+   * emergent system in its own tables. The Simulated declaration was
+   * false for this lens (the serving reads the real tables; R3's gate
+   * determination 2026-10-30, B2's premise 2026-11-05), and REAL_LIVE's
+   * generic "polled from an external source" caption would be its own
+   * falsehood: nothing here is external.
+   */
+  genesis: {
+    label: 'Live',
+    caption: 'Live: the emergent identities, their observations, communications and activity are the platform’s own recorded substrate, served from its live tables — not a simulation and not an external feed.',
+  },
+  /**
+   * Translation runs on this server's own local model — the generic
+   * REAL_LIVE caption ("polled from an external source") would be
+   * exactly backwards for the lens whose pitch is that text never
+   * leaves the server.
+   */
+  translation: {
+    label: 'Live',
+    caption: 'Live: translation runs on this server\'s local model — your text never leaves your server. Saved translations and glossaries are your own records.',
   },
   game: {
     label: 'Lab & arcade sim',
@@ -82,6 +287,53 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your workspace store: connections and datasets live in Concord’s workspace, not on a remote database server.',
   },
   /**
+   * Construction's substrate is the user's own project record — jobs,
+   * RFIs, submittals, logs and budgets persist server-side per account
+   * (PROBE-LIVE in Review 5's full first pass) and the bench tools
+   * compute over the user's own inputs. The generic REAL_LIVE line
+   * ("polled live from an external source") is false for this lens;
+   * its one external surface (federal datasets) links out and claims
+   * no feed (F1/F4).
+   */
+  construction: {
+    label: 'Live',
+    caption: 'Your project records: jobs, RFIs, submittals, logs and budgets are your real workspace data, and the bench tools compute over your inputs. Federal datasets open on catalog.data.gov — no external feed is polled.',
+  },
+  /**
+   * Aviation's records are the user's own, saved server-side, and its
+   * weather/feed surfaces poll real external sources (NOAA METAR/TAF,
+   * NOTAMs, the OpenSky network). The generic REAL_FREE line ("static /
+   * open-access dataset") was false for this lens in both directions
+   * (gate record G1/G2); the caption states what is live.
+   */
+  aviation: {
+    label: 'Live',
+    caption: 'Live: your aircraft, logbook and plans are saved in your own workspace, with live METAR/TAF, NOTAMs and OpenSky traffic.',
+  },
+  /**
+   * Telecommunications records (sites, spectrum, outages, drive tests) are
+   * the user's own live workspace data, and the planning figures are
+   * computed over them — but nothing here is carrier telemetry, so the
+   * generic REAL_LIVE line ("polled live from an external source") would
+   * overclaim in the other direction (G1/F1).
+   */
+  telecommunications: {
+    label: 'Workspace',
+    caption: 'Your workspace planning data: sites, spectrum, outages and drive tests are your live records; coverage, capacity and SLA figures are computed over them — not live carrier-network data.',
+  },
+  /**
+   * Electrical's substrate is the user's own trade record — panels,
+   * estimates, invoices, checklists and diagrams persist server-side
+   * per account (PROBE-LIVE in Review 5's full first pass) and the NEC
+   * bench computes over the user's own inputs. The generic REAL_LIVE
+   * line ("polled live from an external source") is false for this
+   * lens; no external source is polled (F1).
+   */
+  electrical: {
+    label: 'Live',
+    caption: 'Your trade records: panels, estimates, invoices, checklists and diagrams are your real workspace data, and the NEC bench tools compute over your inputs. No external feed is polled.',
+  },
+  /**
    * The world vehicle fleet (spawn/mine/inspector) is a real persistent DB
    * store, not a feed polled from an external source (F1) — so the generic
    * REAL_LIVE caption is false here.
@@ -89,6 +341,70 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
   garage: {
     label: 'Live',
     caption: 'Real account + world state: vehicles you spawn are persisted and shared with the 3D world, not demo data.',
+  },
+  /**
+   * Sub-Worlds mixes three content kinds on one surface (the compilation's
+   * census flag for this lens): spawned worlds are users' own records in
+   * the platform store — not demo data, and not polled from anywhere —
+   * while the Repos view is a live GitHub search, labelled in that view.
+   * The generic REAL_LIVE caption ("polled live from an external source")
+   * is true of the Repos view only, so the declaration carries the
+   * distinction in its own text: ONE lens declaration, kinds named.
+   */
+  'sub-worlds': {
+    label: 'Live',
+    caption: 'Worlds here are real records in the platform store — yours and other creators’ public worlds, spawned, hosted and visited in Concord. The Repos view is a live GitHub search, labelled there; the worlds themselves are not polled from an external source.',
+  },
+  /**
+   * Deities is the census's badge-only pole: the Explore panel carries a
+   * "wikipedia REST · live" SOURCE badge for its feed, which is not a
+   * lens declaration (the gate record's own census rule). The pantheon
+   * itself is player-composed religion — other players' creations, kept
+   * as live records in the platform store — so over this content the
+   * declaration is a trust statement: not authored content, not
+   * simulation, and not polled from Wikipedia either; only the Explore
+   * panel reads from there. The generic REAL_LIVE caption would blur
+   * exactly that distinction, so the caption carries it.
+   */
+  deities: {
+    label: 'Live',
+    caption: 'Deities here are composed by players and kept as live records in the platform store — the pantheon is other players’ creations, not authored or simulated content. The Explore panel reads live from Wikipedia, badged there.',
+  },
+  /**
+   * Goddess is the family row whose declaration is written AGAINST a
+   * determination (the compilation joins S1 to A1): the composer
+   * (server/lib/goddess-broadcaster.js) is real composition — the
+   * tone bands on the world's ecosystem score, the body varies with
+   * refusal-field strength and drift kind, all three inputs read from
+   * live world machinery and persisted with each dispatch. The flat
+   * archive of record is that composer faithfully reporting a
+   * dead-flat world, not a constant emitter — so the tier is
+   * REAL_LIVE (the integration registry already reads it so), and
+   * the caption states the consequence a reader needs: a quiet
+   * world reads quiet. No cadence is asserted here; the "composed
+   * hourly" reconciliation (A2) is the pass's live leg.
+   */
+  goddess: {
+    label: 'Live',
+    caption: 'Broadcasts are composed live from this world’s own signals — ecosystem score, refusal-field strength, and drift events — and each dispatch is recorded with the inputs it was composed from. A quiet world reads quiet: identical dispatches mean the signals have not moved, not that the feed is simulated.',
+  },
+  /**
+   * World Creator's declaration follows its DETERMINATION (the
+   * compilation's form — S1 priced on the determination's result):
+   * the authoring execution is real (drafts persist in the platform
+   * store with the full editor verb set; playtest mints a real world
+   * via /api/worlds and routes the creator into it), so the old
+   * Simulated banner was a taxonomy error. But the cross-lens seam
+   * (A3) is NOT wired: a published draft is discoverable in this
+   * lens's own Discover and does not yet surface in Sub-Worlds'
+   * discovery — the two lenses keep separate stores. The caption
+   * states both halves in the open rather than letting REAL_LIVE
+   * imply the loop is closed; the seam bridge is priced separately
+   * at the Lead.
+   */
+  'world-creator': {
+    label: 'Live',
+    caption: 'Drafts here are your real records — sculpted scenes, props, spawn points, zones, NPCs and factions persist, and playtest mints a real world you enter in the World lens. Published drafts are discoverable in this lens; they do not yet surface in Sub-Worlds’ discovery.',
   },
   /**
    * Retail's store is the account's own live store — products, orders and
@@ -100,6 +416,17 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
   retail: {
     label: 'Live',
     caption: 'Your own live store: products, orders and stock are your account’s real records, updated as you sell.',
+  },
+  /**
+   * Hypothesis' registry is the platform's hypothesis engine — the
+   * generic REAL_LIVE line ("polled live from an external source") was
+   * false about it: nothing is polled. Facts promoted on confirmation
+   * land in the canonical DTU store (F2 fix).
+   */
+  hypothesis: {
+    label: 'Live',
+    caption:
+      "Hypotheses here are live records in the platform's hypothesis engine — proposed, evidenced, tested, and promoted to Facts retrievable in the Global Library. Statistics run in-process; the only outside data is the arXiv feed, labelled at its panel.",
   },
   /**
    * Emergency Services' registry is the user's own live substrate —
@@ -190,6 +517,71 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     caption: 'Your world records: land claims and houses are your real persistent state in Concord’s worlds, and the tools work on your own plots and buildings. No external feed is polled.',
   },
   /**
+   * Experience's portfolio and research records are the account's own,
+   * kept in the platform store and computed in-process; published
+   * portfolios surface in the Directory for peer endorsement. The
+   * generic REAL_LIVE line ("polled live from an external source") is
+   * false for that substrate — the one live outside read is the Atlas's
+   * GitHub pull, named here and labelled at its panel.
+   */
+  experience: {
+    label: 'Live',
+    caption: 'Your portfolio and research records live here, in the platform store; published portfolios appear in the Directory for peers to endorse. The Atlas reads live from GitHub, labelled there.',
+  },
+  /**
+   * Forum is one shared board held in the platform store — topics,
+   * replies, categories and communities are every member's records on
+   * the same board; subscriptions, saves and notifications are per-user;
+   * flags land in a moderator-gated queue. The generic REAL_LIVE line
+   * ("polled live from an external source") is false for this lens.
+   */
+  forum: {
+    label: 'Live',
+    caption: 'One shared board: topics, replies, categories and communities are live records in the platform store, and flags go to a moderator-gated queue. Nothing is polled from an external source.',
+  },
+  /**
+   * Social's records are the platform's own social graph — posts,
+   * follows, reactions and drafts live in Concord's store, written and
+   * read by the people here. The generic REAL_LIVE line ("polled live
+   * from an external source") is false for this lens; nothing external
+   * is polled.
+   */
+  social: {
+    label: 'Live',
+    caption: 'The social graph lives here: posts, follows, reactions and drafts are real records in the platform store, written by the people on this instance. Nothing is polled from an external source.',
+  },
+  /**
+   * Daily's journal lives in two of the platform's own stores (the
+   * Today panel's artifacts and the Studio's domain store) and the
+   * lens's read-back — timeline, dashboard, streaks, the Daily Actions
+   * and the journal export — computes over the union of both. The
+   * generic REAL_LIVE line ("polled live from an external source") is
+   * false for the journal; only the Inspiration/feed quotes are
+   * external, and they are labelled at their panels.
+   */
+  daily: {
+    label: 'Live',
+    caption: 'Your journal lives here, in the platform store — Today and Studio read the same days from both of its stores, and the summaries, streaks and exports are computed from those records. Inspiration quotes and the quote feed are read live from ZenQuotes, labelled at their panels.',
+  },
+  /**
+   * LFG rows are the players' own live requests in the platform's
+   * lfg_requests store — the board itself is the source, not an external
+   * poll. The caption names that and reads an empty board truthfully.
+   */
+  lfg: {
+    label: 'Live',
+    caption: 'Live group requests posted by players across Concord’s worlds, read from the board itself — an empty board means nobody is looking right now.',
+  },
+  /**
+   * Personas are authored by users on the platform and traded in its own
+   * marketplace — the store is the source, not an external poll. Chat
+   * replies carry their own basis labels in the chat itself.
+   */
+  personas: {
+    label: 'Live',
+    caption: 'Personas authored by you and other authors, read live from the platform’s own store — an empty marketplace means nobody has published one yet.',
+  },
+  /**
    * Nonprofit's own records (campaigns, donors, volunteers, pages, events)
    * are live per-user workspace data; the 990 research data is ProPublica's
    * open-access IRS dataset — real, but static reference data. The generic
@@ -198,6 +590,70 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
   nonprofit: {
     label: 'Workspace',
     caption: 'Your workspace data: campaigns, donors, volunteers and pages are your live records; 990 research data is ProPublica’s open-access IRS dataset.',
+  },
+  /**
+   * Insurance's book — clients, policies, claims and certificates — is
+   * the account's own data, persisted server-side, and its tools compute
+   * over that book (Review 5's first pass: PROBE-LIVE over a live store;
+   * the re-pass on PR #2210 failed F1 alone — a Simulated banner beside
+   * the LIVE badge). The generic REAL_LIVE line ("polled live from an
+   * external source") would claim a carrier feed this lens does not
+   * poll — Quote Shopping refuses to invent quotes precisely because
+   * there is none — so the caption names the actual substrate.
+   */
+  insurance: {
+    label: 'Live',
+    caption: 'Live: your clients, policies, claims and certificates are your own records, saved in your workspace as you work, and the tools compute over your book. Carrier reference data is static, and no live carrier quotes are polled.',
+  },
+  /**
+   * Government declared REAL_FREE ("Real but static / open-access
+   * dataset") over a live write layer — the probe CourtCase persisted
+   * and moved the Caseload counts (Review 2's first pass, F1: the
+   * declaration contradicted itself four ways). The lens's own records
+   * are per-user workspace records on this server; its external reads
+   * (Congress.gov bills and members, USAspending, data.gov, NWS) are
+   * live public sources. Nothing in the lens files with any authority,
+   * and the caption says so — the S2 half of the declaration.
+   */
+  government: {
+    label: 'Live',
+    caption: 'Live: your caseload, permits, records and FOIA drafts are your own workspace records on this server, and bills, members, spending, datasets and alerts are read live from Congress.gov, USAspending, data.gov and NWS. Nothing here is an official government service, and nothing you enter is filed with any authority.',
+  },
+  /**
+   * Dreams' records are real and persisted, but they are composed by the
+   * dream engine from the member's substrate activity — not written by the
+   * member, and not a live feed (determination PROBE-STATIC, 2026-11-01;
+   * the Lead's disposition rules the lens an engine-corpus surface,
+   * S-DRM-1). The generic REAL_FREE line ("static / open-access dataset")
+   * would misdescribe whose records these are in both directions, so the
+   * caption states the engine character the census carries.
+   */
+  dreams: {
+    label: 'Engine corpus',
+    caption: 'Real records composed by Concord’s dream engine from your substrate activity while you were away — written by the engine, not by you. You can read them and add your own tags.',
+  },
+  /**
+   * Announcements are Concord's OWN operator record — published by admins
+   * into the platform's announcements table and read live from it. The
+   * generic REAL_LIVE line ('polled live from an external source') is
+   * false here; the caption names the source and reads an empty feed
+   * truthfully (nothing published yet, not a broken surface).
+   */
+  announcements: {
+    label: 'Live',
+    caption: 'Concord’s own operator announcements, read live from the platform’s record — an empty feed means nothing has been published yet.',
+  },
+  /**
+   * Feed's timeline is the platform's own social store — posts by the
+   * people on this instance — and its tools state (lists, polls, folders,
+   * saved searches, threads, controls) persists per account on Concord's
+   * backend. The generic REAL_LIVE line ("polled live from an external
+   * source") is false for this lens; the one external surface is the HN
+   * view, labelled there.
+   */
+  feed: {
+    label: 'Live',
+    caption: 'The timeline is this instance’s own social store: posts by the people here, and your lists, polls, folders and saved searches persist on Concord’s backend. Nothing here is polled from an external source; the HN view is the one external feed and says so.',
   },
 };
 

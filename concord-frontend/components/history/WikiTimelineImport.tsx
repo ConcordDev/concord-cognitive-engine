@@ -12,6 +12,8 @@ import { BookOpen, Wand2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface BuiltResult {
+  createdNewTimeline?: boolean;
+  extraction?: { sentences: number; eventsExtracted: number };
   timeline: { id: string; title: string; description: string; eventCount: number; sourceArticle: string };
   extractedCount: number;
   usedCount: number;
@@ -45,6 +47,7 @@ export function WikiTimelineImport({ onBuilt }: { onBuilt?: (timelineId: string)
       <p className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1">
         <BookOpen className="w-3.5 h-3.5 text-amber-400" /> Auto-build from Wikipedia
       </p>
+      <p className="text-[10px] text-zinc-500">Builds a NEW timeline from the article's dated sentences — events are extracted from real dates in the text; sentences without a date are skipped, never guessed.</p>
       <div className="flex flex-wrap gap-1.5">
         <input value={article} onChange={(e) => setArticle(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void build(); }}

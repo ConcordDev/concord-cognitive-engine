@@ -152,7 +152,7 @@ describe('AllianceWorkspace — channel search', () => {
     fireEvent.click(await screen.findByText('Concord Pact'));
     fireEvent.click(screen.getByRole('button', { name: 'Members' }));
     const handle = screen.getByLabelText('Handle to invite');
-    expect(handle).toHaveAttribute('placeholder', '@handle');
+    expect(handle.getAttribute('placeholder') || '').toMatch(/^@username/);
     expect(screen.queryByPlaceholderText(/user id/i)).not.toBeInTheDocument();
     expect(screen.getByText('Ada (you)')).toBeInTheDocument();
     expect(screen.queryByText('u1')).not.toBeInTheDocument();

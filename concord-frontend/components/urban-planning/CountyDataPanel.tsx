@@ -13,14 +13,32 @@ interface CensusData {
   medianHouseholdIncome?: number;
   medianAge?: number;
   bachelorsPlusPct?: number | null;
-  ownerOccupied?: number;
-  renterOccupied?: number;
-  ownerPct?: number | null;
+  // The server macro returns ownerOccupiedPct — this interface previously
+  // declared ownerPct, a field the server never sends, so the
+  // Owner-occupied cell rendered blank on every pull (Review 5 F2).
+  ownerOccupiedPct?: number | null;
   longCommutePct?: number | null;
   totalCommuters?: number;
   source?: string;
 }
-interface HudData { areaName?: string; medianIncome?: number; veryLowIncome50Pct?: Record<string, number>; extremelyLowIncome30Pct?: Record<string, number>; lowIncome80Pct?: Record<string, number>; year: number }
+// HUD tiers arrive shaped by the server into household-size rows
+// ({ householdSize, limit }) — the raw il*_pNp API keys never reach this
+// panel (Review 5 F2). The legacy object shape is still tolerated here so
+// the panel degrades gracefully against an older server deploy.
+interface HudTierRow { householdSize: number; limit: number }
+type HudTier = HudTierRow[] | Record<string, number> | null | undefined;
+interface HudData { areaName?: string; medianIncome?: number; veryLowIncome50Pct?: HudTier; extremelyLowIncome30Pct?: HudTier; lowIncome80Pct?: HudTier; year: number }
+
+function tierRows(tier: HudTier): HudTierRow[] {
+  if (!tier) return [];
+  if (Array.isArray(tier)) return tier;
+  const rows: HudTierRow[] = [];
+  for (const [k, v] of Object.entries(tier)) {
+    const m = /p(\d+)p/i.exec(k) || /^(\d+)$/.exec(k.trim());
+    if (m && Number.isFinite(v)) rows.push({ householdSize: Number(m[1]), limit: v });
+  }
+  return rows.sort((a, b) => a.householdSize - b.householdSize);
+}
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 
@@ -61,7 +79,11 @@ export function CountyDataPanel() {
   });
 
   const fmtCurrency = (v?: number) => v ? `$${v.toLocaleString()}` : '—';
-  const familySize = (size: string) => `${size}p`;
+  const familySize = (size: number) => (size === 1 ? '1 person' : `${size} people`);
+  const tierLine = (label: string, tier: HudTier) => {
+    const rows = tierRows(tier);
+    return rows.length ? `${label}: ${rows.map((r) => `${familySize(r.householdSize)} ${fmtCurrency(r.limit)}`).join(' · ')}` : `${label}: —`;
+  };
 
   return (
     <div className="space-y-4">
@@ -72,6 +94,10 @@ export function CountyDataPanel() {
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">census acs 5-yr · hud income limits</span>
         </div>
       </header>
+
+      <p className="text-[11px] text-zinc-400">
+        Six preset metro counties. Figures are fetched live from US Census ACS and HUD on each pull — counties outside the six presets are not covered yet.
+      </p>
 
       <div className="flex flex-wrap items-center gap-2">
         <select value={`${preset.stateFips}-${preset.countyFips}`} onChange={(e) => { const p = PRESETS.find((x) => `${x.stateFips}-${x.countyFips}` === e.target.value); if (p) setPreset(p); }} className="flex-1 min-w-[200px] rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
@@ -86,7 +112,7 @@ export function CountyDataPanel() {
             compact
             apiSource="census-hud"
             title={`${preset.label} county snapshot (ACS ${census?.year}, HUD ${hud?.year})`}
-            content={`${preset.label}\n\nCensus ACS:\n  Pop ${census?.totalPopulation?.toLocaleString()}\n  Median income ${fmtCurrency(census?.medianHouseholdIncome)}\n  Median age ${census?.medianAge}\n  Bach+: ${census?.bachelorsPlusPct}%\n  Owner-occupied: ${census?.ownerPct}%\n  Long commute (60+min): ${census?.longCommutePct}%\n\nHUD Income Limits:\n  Area: ${hud?.areaName}\n  Median: ${fmtCurrency(hud?.medianIncome)}\n  Very-low (50%): see raw`}
+            content={`${preset.label}\n\nCensus ACS:\n  Pop ${census?.totalPopulation?.toLocaleString()}\n  Median income ${fmtCurrency(census?.medianHouseholdIncome)}\n  Median age ${census?.medianAge}\n  Bach+: ${census?.bachelorsPlusPct}%\n  Owner-occupied: ${census?.ownerOccupiedPct}%\n  Long commute (60+min): ${census?.longCommutePct}%\n\nHUD Income Limits:\n  Area: ${hud?.areaName}\n  Median: ${fmtCurrency(hud?.medianIncome)}\n  ${tierLine('Extremely-low (30%)', hud?.extremelyLowIncome30Pct)}\n  ${tierLine('Very-low (50%)', hud?.veryLowIncome50Pct)}\n  ${tierLine('Low (80%)', hud?.lowIncome80Pct)}`}
             extraTags={['urban-planning', 'census-acs', 'hud', preset.stateAbbr.toLowerCase()]}
             rawData={{ preset, census, hud }}
           />
@@ -106,7 +132,7 @@ export function CountyDataPanel() {
                 <Cell label="Median income" value={fmtCurrency(census.medianHouseholdIncome)} />
                 <Cell label="Median age" value={census.medianAge ? `${census.medianAge.toFixed(1)} yr` : '—'} />
                 <Cell label="Bachelors+" value={census.bachelorsPlusPct != null ? `${census.bachelorsPlusPct}%` : '—'} />
-                <Cell label="Owner-occupied" value={census.ownerPct != null ? `${census.ownerPct}%` : '—'} icon={Home} />
+                <Cell label="Owner-occupied" value={census.ownerOccupiedPct != null ? `${census.ownerOccupiedPct}%` : '—'} icon={Home} />
                 <Cell label="60+ min commute" value={census.longCommutePct != null ? `${census.longCommutePct}%` : '—'} />
               </div>
               <p className="mt-2 text-[10px] text-zinc-400">FIPS {census.stateFips}/{census.countyFips} · {census.source}</p>
@@ -124,16 +150,15 @@ export function CountyDataPanel() {
               <Cell label="HUD median income" value={fmtCurrency(hud.medianIncome)} />
               <div className="mt-3 space-y-2">
                 {(['extremelyLowIncome30Pct', 'veryLowIncome50Pct', 'lowIncome80Pct'] as const).map((k) => {
-                  const tier = hud[k] || {};
+                  const rows = tierRows(hud[k]);
                   const label = k === 'extremelyLowIncome30Pct' ? 'Extremely low (30% AMI)' : k === 'veryLowIncome50Pct' ? 'Very low (50% AMI)' : 'Low (80% AMI)';
-                  const sizes = Object.keys(tier).slice(0, 4);
-                  if (sizes.length === 0) return null;
+                  if (rows.length === 0) return null;
                   return (
                     <div key={k}>
                       <div className="mb-0.5 text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
                       <div className="flex flex-wrap gap-1">
-                        {sizes.map((sz) => (
-                          <span key={sz} className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">{familySize(sz)} {fmtCurrency(tier[sz])}</span>
+                        {rows.map((r) => (
+                          <span key={r.householdSize} className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">{familySize(r.householdSize)} {fmtCurrency(r.limit)}</span>
                         ))}
                       </div>
                     </div>

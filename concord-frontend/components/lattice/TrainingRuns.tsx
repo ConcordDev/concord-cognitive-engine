@@ -21,7 +21,7 @@ import {
   AlertTriangle, RefreshCw,
 } from 'lucide-react';
 
-const BRAINS = ['conscious', 'subconscious', 'utility', 'repair'] as const;
+const BRAINS = ['conscious', 'subconscious', 'utility', 'repair', 'multimodal', 'lattice'] as const;
 
 function ErrorRow({ message, onRetry, retrying }: { message: string; onRetry: () => void; retrying?: boolean }) {
   return (

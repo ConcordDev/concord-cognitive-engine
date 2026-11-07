@@ -7,7 +7,179 @@ import { advisory } from "../lib/lens-inputs.js";
 
 export default function registerPhilosophyActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
-  registerLensAction("philosophy", "argumentMap", advisory("structural text helper; no logical validity proof", (ctx, artifact, _params) => { const premises = artifact.data?.premises || []; const conclusion = artifact.data?.conclusion || ""; if (premises.length === 0) return { ok: true, result: { message: "Add premises and conclusion to map argument." } }; const valid = premises.length >= 2 && conclusion; const soundness = valid ? (premises.every(p => p.supported !== false) ? "sound" : "valid-but-unsound") : "invalid"; return { ok: true, result: { premises: premises.map((p,i) => ({ number: i+1, text: typeof p === "string" ? p : p.text, supported: p.supported !== false })), conclusion, premiseCount: premises.length, validity: valid ? "valid" : "invalid", soundness, form: premises.length === 2 ? "syllogism" : "complex-argument" } }; }));
+
+  // ─── Argument evaluation (S1) ─────────────────────────────────────
+  // Deterministic form checker for the Argument map. Premises and the
+  // conclusion are parsed into categorical form (All / No / Some /
+  // Some-not) or singular form ("Socrates is a human"); when every
+  // line parses, validity is decided by exhaustive set semantics over
+  // the terms — the conclusion follows iff NO assignment of nonempty
+  // regions and named-individual placements makes every premise true
+  // and the conclusion false. Lines that do not parse are named, and
+  // the tool returns the structure echo with NO verdict: an
+  // unevaluated argument is never stamped. "Soundness" (the premises
+  // actually being true) is not machine-checkable and is never
+  // claimed — the surface says so where the word used to stand.
+  function argTerm(raw) {
+    let t = String(raw || "").toLowerCase().trim().replace(/\s+/g, " ");
+    t = t.replace(/^(a|an|the)\s+/, "").replace(/[.!?]+$/, "").trim();
+    if (t.length > 3 && t.endsWith("ies")) t = t.slice(0, -3) + "y";
+    else if (t.length > 3 && t.endsWith("s") && !t.endsWith("ss") && !t.endsWith("us")) t = t.slice(0, -1);
+    // "white things" and "white" are the same class in generic English —
+    // the dummy noun carries no term content.
+    if (t.endsWith(" thing")) t = t.slice(0, -" thing".length);
+    return t;
+  }
+  function argConst(raw) {
+    return String(raw || "").trim().replace(/\s+/g, " ").replace(/[.!?]+$/, "").trim();
+  }
+  // {kind:'A'|'E'|'I'|'O', s, p} | {kind:'M', x, xKey, p, neg} | null
+  function argParse(line) {
+    const text = String(line || "").trim().replace(/\s+/g, " ").replace(/[.!?]+$/, "").trim();
+    if (!text) return null;
+    let m;
+    if ((m = /^all\s+(.+?)\s+are\s+(.+)$/i.exec(text))) {
+      if (/^not\s/i.test(m[2])) return null; // "All A are not B" is ambiguous — not evaluated
+      return { kind: "A", s: argTerm(m[1]), p: argTerm(m[2]) };
+    }
+    if ((m = /^no\s+(.+?)\s+(?:are|is)\s+(.+)$/i.exec(text))) {
+      if (/^not\s/i.test(m[2])) return null;
+      return { kind: "E", s: argTerm(m[1]), p: argTerm(m[2]) };
+    }
+    if ((m = /^some\s+(.+?)\s+(?:are|is)\s+not\s+(.+)$/i.exec(text))) {
+      return { kind: "O", s: argTerm(m[1]), p: argTerm(m[2]) };
+    }
+    if ((m = /^some\s+(.+?)\s+(?:are|is)\s+(.+)$/i.exec(text))) {
+      return { kind: "I", s: argTerm(m[1]), p: argTerm(m[2]) };
+    }
+    if ((m = /^(.+?)\s+is\s+not\s+(?:a\s+|an\s+|the\s+)?(.+)$/i.exec(text))) {
+      const x = argConst(m[1]);
+      if (/^(all|no|some)\b/i.test(x) || x.split(/\s+/).length > 3) return null;
+      return { kind: "M", x, xKey: x.toLowerCase(), p: argTerm(m[2]), neg: true };
+    }
+    if ((m = /^(.+?)\s+is\s+(?:a\s+|an\s+|the\s+)?(.+)$/i.exec(text))) {
+      const x = argConst(m[1]);
+      if (/^(all|no|some)\b/i.test(x) || x.split(/\s+/).length > 3) return null;
+      return { kind: "M", x, xKey: x.toLowerCase(), p: argTerm(m[2]), neg: false };
+    }
+    return null;
+  }
+  function argNegate(stmt) {
+    if (stmt.kind === "A") return { kind: "O", s: stmt.s, p: stmt.p };
+    if (stmt.kind === "O") return { kind: "A", s: stmt.s, p: stmt.p };
+    if (stmt.kind === "E") return { kind: "I", s: stmt.s, p: stmt.p };
+    if (stmt.kind === "I") return { kind: "E", s: stmt.s, p: stmt.p };
+    return { kind: "M", x: stmt.x, xKey: stmt.xKey, p: stmt.p, neg: !stmt.neg };
+  }
+  // Exhaustive countermodel search. Returns { validity, witness } or
+  // { tooComplex: true }. Regions are membership patterns over the
+  // class terms; a model is a set of nonempty regions plus one region
+  // per named individual.
+  function argEvaluate(parsedPremises, parsedConclusion) {
+    const terms = []; const termIdx = new Map();
+    const consts = []; const constIdx = new Map();
+    const regT = (t) => { if (!termIdx.has(t)) { termIdx.set(t, terms.length); terms.push(t); } return termIdx.get(t); };
+    const regC = (k) => { if (!constIdx.has(k)) { constIdx.set(k, consts.length); consts.push(k); } return constIdx.get(k); };
+    const norm = (st) => st.kind === "M"
+      ? { kind: "M", ci: regC(st.xKey), pi: regT(st.p), neg: st.neg }
+      : { kind: st.kind, si: regT(st.s), pi: regT(st.p) };
+    const premises = parsedPremises.map(norm);
+    const conclusion = norm(parsedConclusion);
+    const negConclusion = norm(argNegate(parsedConclusion));
+    if (terms.length > 4 || consts.length > 3) return { tooComplex: true };
+    const regionCount = 1 << terms.length;
+    const bit = (region, ti) => (region >> ti) & 1;
+    // Universal (A/E) statements constrain the region set alone.
+    const universalHolds = (st, mask) => {
+      for (let r = 0; r < regionCount; r++) {
+        if (!((mask >> r) & 1)) continue;
+        if (st.kind === "A" && bit(r, st.si) === 1 && bit(r, st.pi) === 0) return false;
+        if (st.kind === "E" && bit(r, st.si) === 1 && bit(r, st.pi) === 1) return false;
+      }
+      return true;
+    };
+    // Existential (I/O) statements need a witness region.
+    const existentialHolds = (st, mask) => {
+      for (let r = 0; r < regionCount; r++) {
+        if (!((mask >> r) & 1)) continue;
+        if (st.kind === "I" && bit(r, st.si) === 1 && bit(r, st.pi) === 1) return true;
+        if (st.kind === "O" && bit(r, st.si) === 1 && bit(r, st.pi) === 0) return true;
+      }
+      return false;
+    };
+    const all = [...premises, negConclusion];
+    const universals = all.filter((st) => st.kind === "A" || st.kind === "E");
+    const existentials = all.filter((st) => st.kind === "I" || st.kind === "O");
+    // Per-constant bit requirements from every M statement about it.
+    const constReqs = consts.map(() => []);
+    for (const st of all) if (st.kind === "M") constReqs[st.ci].push({ pi: st.pi, want: st.neg ? 0 : 1 });
+    const maxMask = 1 << regionCount;
+    for (let mask = 0; mask < maxMask; mask++) {
+      if (!universals.every((st) => universalHolds(st, mask))) continue;
+      let placeable = true;
+      for (let ci = 0; ci < consts.length && placeable; ci++) {
+        let okPlace = false;
+        for (let r = 0; r < regionCount && !okPlace; r++) {
+          if (!((mask >> r) & 1)) continue;
+          okPlace = constReqs[ci].every((req) => bit(r, req.pi) === req.want);
+        }
+        if (!okPlace) placeable = false;
+      }
+      if (!placeable) continue;
+      if (!existentials.every((st) => existentialHolds(st, mask))) continue;
+      // A countermodel exists: premises true, conclusion false.
+      const c = parsedConclusion;
+      let witness;
+      if (c.kind === "A") witness = `the premises allow something that is ${c.s} but not ${c.p}`;
+      else if (c.kind === "E") witness = `the premises allow something that is both ${c.s} and ${c.p}`;
+      else if (c.kind === "I") witness = `the premises are consistent with nothing being both ${c.s} and ${c.p}`;
+      else if (c.kind === "O") witness = `the premises are consistent with every ${c.s} being ${c.p}`;
+      else witness = c.neg ? `the premises allow ${c.x} to be ${c.p} after all` : `the premises allow ${c.x} not to be ${c.p}`;
+      return { validity: "invalid", witness };
+    }
+    return { validity: "valid", witness: null };
+  }
+
+  registerLensAction("philosophy", "argumentMap", (ctx, artifact, _params) => {
+    const rawPremises = artifact.data?.premises || [];
+    const texts = rawPremises
+      .map((p) => (typeof p === "string" ? p : String(p?.text ?? "")))
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const conclusion = String(artifact.data?.conclusion || "").trim();
+    if (texts.length === 0 || !conclusion) {
+      return { ok: true, result: { message: "Add premises (one per line) + conclusion." } };
+    }
+    const echo = {
+      premises: texts.map((text, i) => ({ number: i + 1, text })),
+      conclusion, premiseCount: texts.length,
+    };
+    if (texts.length < 2) {
+      return { ok: true, result: { ...echo, evaluated: false, reason: "needs-two-premises",
+        note: "A syllogism needs two premises — with one premise there is no form to check. Structure only; no verdict is stamped." } };
+    }
+    const parsedPremises = texts.map(argParse);
+    const parsedConclusion = argParse(conclusion);
+    const unparsed = [];
+    parsedPremises.forEach((p, i) => { if (!p) unparsed.push(`P${i + 1}`); });
+    if (!parsedConclusion) unparsed.push("the conclusion");
+    if (unparsed.length > 0) {
+      return { ok: true, result: { ...echo, evaluated: false, reason: "not-in-checkable-form", unparsed,
+        note: "Structure only — no evaluation. The checker reads categorical lines (All / No / Some … are …) and singular lines (X is a …) with the same terms throughout. The lines listed did not parse, so nothing is stamped on this argument." } };
+    }
+    const ev = argEvaluate(parsedPremises, parsedConclusion);
+    if (ev.tooComplex) {
+      return { ok: true, result: { ...echo, evaluated: false, reason: "too-many-terms",
+        note: "More distinct terms than the exhaustive check covers (4 classes, 3 named individuals). Structure only; no verdict is stamped." } };
+    }
+    const hasSingular = [...parsedPremises, parsedConclusion].some((p) => p.kind === "M");
+    const form = hasSingular ? "argument with singular premises"
+      : texts.length === 2 ? "syllogism" : "categorical argument";
+    return { ok: true, result: { ...echo, evaluated: true, validity: ev.validity, form,
+      countermodel: ev.witness,
+      provenance: { method: "exhaustive set-semantics check over the parsed terms", terms: [...new Set([...parsedPremises, parsedConclusion].flatMap((p) => (p.kind === "M" ? [p.p] : [p.s, p.p])))] },
+      note: "Validity is a property of form: whether the conclusion must be true if the premises are. Whether the premises are actually true — 'soundness' — cannot be checked by a machine, and this tool does not claim it." } };
+  });
   registerLensAction("philosophy", "thoughtExperiment", advisory("structural text helper; no logical validity proof", (ctx, artifact, _params) => { const data = artifact.data || {}; const scenario = data.scenario || ""; const variables = data.variables || []; return { ok: true, result: { scenario: scenario.slice(0,300), variables: variables.map(v => ({ name: v.name || v, values: v.values || ["A","B"] })), permutations: Math.pow(2, variables.length), methodNote: "Consider each permutation — does your intuition change?", frameworks: ["Consequentialism: What outcome is best?", "Deontology: What rule applies?", "Virtue Ethics: What would a virtuous person do?"] } }; }));
   registerLensAction("philosophy", "dialecticSynthesis", advisory("structural text helper; no logical validity proof", (ctx, artifact, _params) => { const thesis = artifact.data?.thesis || ""; const antithesis = artifact.data?.antithesis || ""; if (!thesis || !antithesis) return { ok: true, result: { message: "Provide thesis and antithesis for dialectic synthesis." } }; return { ok: true, result: { thesis, antithesis, method: "Hegelian dialectic", steps: ["Identify the core truth in the thesis", "Identify the core truth in the antithesis", "Find where they genuinely conflict", "Synthesize: what position preserves both truths?"], synthesis: "Requires human reasoning — the framework guides but cannot replace philosophical judgment" } }; }));
   registerLensAction("philosophy", "ethicalFramework", (ctx, artifact, _params) => { const dilemma = artifact.data?.dilemma || ""; const frameworks = { utilitarian: "Choose the action producing greatest good for greatest number", deontological: "Act only according to rules you could will to be universal", virtue: "Act as a person of good character would act", care: "Prioritize relationships and responsiveness to others needs", rights: "Protect individual rights even at cost to majority", justice: "Ensure fair distribution of benefits and burdens" }; return { ok: true, result: { dilemma: dilemma.slice(0,200), frameworks: Object.entries(frameworks).map(([k,v]) => ({ framework: k, principle: v })), note: "Different frameworks may give different answers — that is the nature of ethics" } }; });
@@ -100,6 +272,10 @@ export default function registerPhilosophyActions(registerLensAction) {
     const s = getPhiloState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = phClean(params.title, 160);
     if (!title) return { ok: false, error: "channel title required" };
+    // Duplicate titles silently accepted made channels ambiguous in
+    // every picker (F3's second leg) — refuse, naming the existing one.
+    const dupe = phChannels(s, phActor(ctx)).find((c) => c.title.trim().toLowerCase() === title.toLowerCase());
+    if (dupe) return { ok: false, error: `a channel titled "${dupe.title}" already exists` };
     const channel = {
       id: phId("ch"), title,
       description: phClean(params.description, 600),
@@ -169,6 +345,15 @@ export default function registerPhilosophyActions(registerLensAction) {
     const content = phClean(params.content, 8000);
     if (!content) return { ok: false, error: "block content required" };
     const kind = BLOCK_KINDS.includes(params.kind) ? params.kind : "text";
+    // An image block's URL is rendered as an <img> — a non-URL used to
+    // be accepted silently and minted a broken-image tile (F7).
+    if (params.imageUrl != null && String(params.imageUrl).trim() !== "") {
+      let parsedUrl = null;
+      try { parsedUrl = new URL(String(params.imageUrl).trim()); } catch (_e) { /* refused below */ }
+      if (!parsedUrl || (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:")) {
+        return { ok: false, error: "image URL must be a valid http(s) URL" };
+      }
+    }
     const block = {
       id: phId("bk"), kind, content,
       source: phClean(params.source, 300) || null,
@@ -350,7 +535,7 @@ export default function registerPhilosophyActions(registerLensAction) {
         const blockCount = phBlocks(s, ownerId).filter((b) => b.channelIds.includes(c.id)).length;
         out.push({
           id: c.id, title: c.title, description: c.description || "",
-          ownerId, blockCount,
+          ownerId, ownerName: phPublicName(ctx, ownerId), blockCount,
           collaboratorCount: Array.isArray(c.collaborators) ? c.collaborators.length : 0,
           publishedAt: c.publishedAt || c.createdAt,
         });
@@ -371,7 +556,7 @@ export default function registerPhilosophyActions(registerLensAction) {
     const blocks = phBlocks(s, found.ownerId)
       .filter((b) => b.channelIds.includes(found.channel.id))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    return { ok: true, result: { channel: found.channel, ownerId: found.ownerId, blocks } };
+    return { ok: true, result: { channel: found.channel, ownerId: found.ownerId, ownerName: phPublicName(ctx, found.ownerId), blocks } };
   });
 
   // ─── Channel collaborators ──────────────────────────────────────────

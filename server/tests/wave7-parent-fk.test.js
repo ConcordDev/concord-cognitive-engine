@@ -64,14 +64,14 @@ function refuse(domain, name, ctx, params, error, countFn) {
 
 describe("wave 7 parent ids", () => {
   it("forum topic-create refuses an unknown category and subforum", () => {
-    refuse("forum", "topic-create", ctxA, { title: "Hello", categoryId: "cat_missing" }, "category not found",
+    refuse("forum", "topic-create", ctxA, { body: "Discussion body", title: "Hello", categoryId: "cat_missing" }, "category not found",
       () => call("forum", "topic-list", ctxA, {}).result.count);
-    refuse("forum", "topic-create", ctxA, { title: "Hello", subforumId: "sf_missing" }, "subforum not found",
+    refuse("forum", "topic-create", ctxA, { body: "Discussion body", title: "Hello", subforumId: "sf_missing" }, "subforum not found",
       () => call("forum", "topic-list", ctxA, {}).result.count);
     const cat = call("forum", "category-create", ctxA, { name: "Sealed", visibility: "private" }).result.category;
-    refuse("forum", "topic-create", ctxB, { title: "Sneak", categoryId: cat.id }, "category not found",
+    refuse("forum", "topic-create", ctxB, { body: "Discussion body", title: "Sneak", categoryId: cat.id }, "category not found",
       () => call("forum", "topic-list", ctxB, {}).result.count);
-    const open = call("forum", "topic-create", ctxA, { title: "Loose" });
+    const open = call("forum", "topic-create", ctxA, { body: "Discussion body", title: "Loose" });
     assert.equal(open.ok, true);
     assert.equal(open.result.topic.categoryId, null);
     assert.equal(open.result.topic.subforumId, null);

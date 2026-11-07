@@ -14,6 +14,8 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 export default function registerFeedActions(registerLensAction) {
   registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── Per-user parity state ──────────────────────────────────────────────
@@ -40,6 +42,38 @@ export default function registerFeedActions(registerLensAction) {
     }
   }
   function feedActor(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  // Display identity for an author id — the same resolution the social
+  // layer's serializePost performs (publicIdentity): the in-memory social
+  // profile's displayName first, then the users-table identity. Returns
+  // nulls when nothing resolves — callers render a handle only when one
+  // exists and never present the raw id as a name (F3: raw identifiers
+  // were rendered as identity in the ranking output and threads).
+  function feedAuthorIdentity(authorId) {
+    const STATE = globalThis._concordSTATE;
+    const id = String(authorId || "");
+    if (!id) return { authorName: null, authorHandle: null };
+    let profile = null;
+    const profiles = STATE?._social?.profiles;
+    if (profiles && typeof profiles.get === "function") {
+      try { profile = profiles.get(id) || null; } catch (_e) { profile = null; }
+    }
+    const profileName = profile?.displayName && profile.displayName !== id ? profile.displayName : null;
+    const idn = lookupUserIdentity(STATE?.db, id);
+    const handle = (idn.username && idn.username !== id ? idn.username : null)
+      || (profile?.username && profile.username !== id ? profile.username : null);
+    const name = profileName
+      || (idn.displayName && idn.displayName !== id ? idn.displayName : null)
+      || handle;
+    return { authorName: name, authorHandle: handle };
+  }
+  // A post's title at this layer is its own first line (posts carry no
+  // separate title field in the feed candidate shape).
+  function feedPostTitle(p) {
+    const text = String(p?.title || p?.content || "").trim();
+    if (!text) return "";
+    const first = text.split("\n")[0].trim();
+    return first.length > 120 ? `${first.slice(0, 117)}…` : first;
+  }
   function nextFeedId(p) {
     return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   }
@@ -98,7 +132,11 @@ export default function registerFeedActions(registerLensAction) {
             const eng = (parseInt(p.likes) || 0) + (parseInt(p.comments) || 0) * 2 + (parseInt(p.reposts) || 0) * 3;
             const engagement = Math.log10(eng + 1);
             const score = Math.round((affinity * 2.0 + recency * 3.0 + engagement * 1.5) * 1000) / 1000;
-            return { ...p, score, affinity, reasons: affinity > 0 ? [`you engage with @${authorId}`] : (recency > 0.6 ? ["recent"] : []) };
+            const ident = feedAuthorIdentity(authorId);
+            const reasons = affinity > 0
+              ? [ident.authorName ? `you engage with ${ident.authorName}` : "you engage with this author"]
+              : (recency > 0.6 ? ["recent"] : []);
+            return { ...p, score, affinity, title: feedPostTitle(p), authorName: ident.authorName, authorHandle: ident.authorHandle, reasons };
           })
           .sort((a, b) => b.score - a.score)
           .slice(0, limit);
@@ -225,10 +263,11 @@ export default function registerFeedActions(registerLensAction) {
         const engagement = Math.log10(eng + 1);
         const score = Math.round((affinity * 2.0 + recency * 3.0 + engagement * 1.5) * 1000) / 1000;
         const reasons = [];
-        if (affinity > 0) reasons.push(`you engage with @${authorId}`);
+        const ident = feedAuthorIdentity(authorId);
+        if (affinity > 0) reasons.push(ident.authorName ? `you engage with ${ident.authorName}` : "you engage with this author");
         if (recency > 0.6) reasons.push("recent");
         if (engagement > 1) reasons.push("popular");
-        return { id: p.id, authorId, score, affinity, recency: Math.round(recency * 1000) / 1000, engagement: Math.round(engagement * 1000) / 1000, reasons };
+        return { id: p.id, authorId, title: feedPostTitle(p), authorName: ident.authorName, authorHandle: ident.authorHandle, score, affinity, recency: Math.round(recency * 1000) / 1000, engagement: Math.round(engagement * 1000) / 1000, reasons };
       })
       .sort((a, b) => b.score - a.score);
     return {
@@ -249,7 +288,7 @@ export default function registerFeedActions(registerLensAction) {
     const userId = feedActor(ctx);
     const map = s.interactions.get(userId) || new Map();
     const authors = Array.from(map.entries())
-      .map(([authorId, rec]) => ({ authorId, affinity: affinityScore(rec), ...rec }))
+      .map(([authorId, rec]) => ({ authorId, ...feedAuthorIdentity(authorId), affinity: affinityScore(rec), ...rec }))
       .sort((a, b) => b.affinity - a.affinity);
     return { ok: true, result: { authors, total: authors.length } };
   });
@@ -306,6 +345,7 @@ export default function registerFeedActions(registerLensAction) {
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       return {
         ...node,
+        ...feedAuthorIdentity(node.author),
         replyCount: countDescendants(node.id),
         children: node.collapsed ? [] : kids.map(build),
       };
@@ -857,4 +897,61 @@ export default function registerFeedActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // Q79: register Feed's state-resident records with the shared export
+  // (lib/lens-export.js). The caller's feed workspace — bookmark folders,
+  // saved searches, lists, thread trees, polls, spaces and content
+  // controls — lives in STATE.feedLens, not the generic artifact store,
+  // so an artifacts-only export contained none of it (F5: the header
+  // export produced nothing the user had made). Scoped to the calling
+  // user, like every other feed read. Spaces are cross-user rooms: only
+  // the caller's OWN hosted spaces are exported, never other hosts'.
+  registerLensExportProvider("feed", (ctx) => {
+    const s = getFeedState();
+    if (!s) return [];
+    const userId = feedActor(ctx);
+    const rows = [];
+    const folders = s.folders.get(userId);
+    if (folders) {
+      for (const f of folders.values()) {
+        rows.push({ id: f.id, type: "bookmark-folder", title: f.name || "Bookmark folder", createdAt: f.createdAt, updatedAt: f.createdAt, data: f });
+      }
+    }
+    const searches = s.savedSearches.get(userId);
+    if (searches) {
+      for (const q of searches.values()) {
+        rows.push({ id: q.id, type: "saved-search", title: q.query || "Saved search", createdAt: q.createdAt, updatedAt: q.lastChecked || q.createdAt, data: q });
+      }
+    }
+    const lists = s.lists.get(userId);
+    if (lists) {
+      for (const l of lists.values()) {
+        rows.push({ id: l.id, type: "list", title: l.name || "List", createdAt: l.createdAt, updatedAt: l.createdAt, data: l });
+      }
+    }
+    const threads = s.threads.get(userId);
+    if (threads) {
+      for (const n of threads.values()) {
+        const body = String(n.body || "");
+        rows.push({ id: n.id, type: "thread-node", title: body ? (body.length > 120 ? `${body.slice(0, 117)}…` : body) : "Thread node", createdAt: n.createdAt, updatedAt: n.createdAt, data: n });
+      }
+    }
+    const polls = s.polls.get(userId);
+    if (polls) {
+      for (const p of polls.values()) {
+        rows.push({ id: p.id, type: "poll", title: p.question || "Poll", createdAt: p.createdAt, updatedAt: p.createdAt, data: p });
+      }
+    }
+    const spaces = s.spaces.get(userId);
+    if (spaces) {
+      for (const sp of spaces.values()) {
+        rows.push({ id: sp.id, type: "space", title: sp.title || "Space", createdAt: sp.createdAt, updatedAt: sp.endedAt || sp.createdAt, data: sp });
+      }
+    }
+    if (s.controls.has(userId)) {
+      const c = s.controls.get(userId);
+      rows.push({ id: `controls-${userId}`, type: "content-controls", title: "Content controls", createdAt: null, updatedAt: null, data: c });
+    }
+    return rows;
+  });
 }

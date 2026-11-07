@@ -51,10 +51,10 @@ interface InsightsResult {
 interface GrowthResult {
   message?: string;
   entriesAnalyzed?: number;
-  sentiment?: { overall: number; trend: string; slope: number };
-  vocabularyDiversity?: { avgTTR: number; trend: string; totalUniqueTerms: number };
+  sentiment?: { overall: number; trend: string; slope: number; basis?: string };
+  vocabularyDiversity?: { avgTTR: number; trend: string; slope?: number; basis?: string; totalUniqueTerms: number };
   topicExpansion?: { expansionRatio: number | null };
-  entryDepth?: { avgWordCount: number; trend: string };
+  entryDepth?: { avgWordCount: number; trend: string; slope?: number; basis?: string };
 }
 interface HabitProfile { name: string; currentStreak: number; longestStreak: number; consistency: number; peakDay?: string }
 interface HabitsResult {
@@ -151,7 +151,7 @@ export function RfAnalyticsPanel() {
       <div className="flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-[11px] text-zinc-400">
           <Info className="w-3.5 h-3.5 text-indigo-400" />
-          Computed from your {entries.length} saved {entries.length === 1 ? 'entry' : 'entries'} — real TF-IDF theme extraction, sentiment/vocabulary trend regression, and tag-derived habit consistency. No entries yet? Write some in the Entries tab first.
+          Computed from your {entries.length} saved {entries.length === 1 ? 'entry' : 'entries'} — real TF-IDF theme extraction, sentiment/vocabulary trend regression, and tag-derived habit consistency.{entries.length === 0 ? ' No entries yet — write some in the Entries tab first.' : ''}
         </p>
         <button type="button" onClick={run}
           className="flex items-center gap-1 rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:bg-zinc-800 shrink-0 ml-2">
@@ -211,6 +211,14 @@ export function RfAnalyticsPanel() {
           </div>
         ) : (
           <p className="text-[11px] text-zinc-400 italic">No growth signal yet.</p>
+        )}
+        {growth?.sentiment && (
+          <div className="space-y-0.5 text-[10px] leading-relaxed text-zinc-500">
+            <p><span className="text-zinc-400">How these are computed</span> — every label below states its rule, so you can reconcile it against your own entries:</p>
+            {growth.sentiment.basis && <p>· Sentiment ({growth.sentiment.slope}): {growth.sentiment.basis}</p>}
+            {growth.vocabularyDiversity?.basis && <p>· Vocabulary ({growth.vocabularyDiversity.slope}): {growth.vocabularyDiversity.basis}</p>}
+            {growth.entryDepth?.basis && <p>· Entry depth ({growth.entryDepth.slope} words/entry): {growth.entryDepth.basis}</p>}
+          </div>
         )}
       </section>
 
