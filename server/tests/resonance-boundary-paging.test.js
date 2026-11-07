@@ -54,6 +54,7 @@ const boundarySrc = serverSrc.slice(boundaryStart, boundaryEnd);
 
 function makeBoundary(dtus) {
   const registry = new Map();
+  // eslint-disable-next-line no-new-func -- these tests execute function bodies sliced out of server.js (not importable: server.js is a monolith), so dynamic construction is the point
   const factory = new Function(
     "register",
     "dtusArray",

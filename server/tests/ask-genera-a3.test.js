@@ -35,6 +35,7 @@ function extractFn(name) {
 }
 
 describe("A3 Genus 1 — the fallback answers honestly", () => {
+  // eslint-disable-next-line no-new-func -- these tests execute function bodies sliced out of server.js (not importable: server.js is a monolith), so dynamic construction is the point
   const fallback = new Function(`${extractFn("deterministicFallbackReply")}; return deterministicFallbackReply;`)();
   it("a substantive question that produced no reply gets a no-answer statement, never the greeting", () => {
     const out = fallback({ body: { mode: "nonprofit", message: "How many campaigns do I have?" } });
@@ -53,6 +54,7 @@ describe("A3 Genus 3 — the exhaust DTU carries its record", () => {
   function loadEmit() {
     const set = [];
     const STATE = { dtus: { set: (id, dtu) => set.push(dtu), get: (id) => set.find((d) => d.id === id) } };
+    // eslint-disable-next-line no-new-func -- these tests execute function bodies sliced out of server.js (not importable: server.js is a monolith), so dynamic construction is the point
     const factory = new Function(
       "uid", "nowISO", "STATE", "applyEnrichment", "linkArtifactDTU",
       "renderAndAttach", "recordEnrichmentMetric", "updateCrossDomainContext",
