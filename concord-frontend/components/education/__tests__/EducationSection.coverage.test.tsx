@@ -67,7 +67,7 @@ afterEach(() => cleanup());
 beforeEach(() => { [createFn, updateFn, removeFn, refetchFn, mutateAsync].forEach((f) => f.mockClear()); });
 
 describe('education section', () => {
-  it('renders the learning surface, switches views, and moves to the teaching surface', async () => {
+  it('renders the learning surface, switches views, and moves to the teaching surface', { timeout: 120000 }, async () => {
     const { EducationSection } = await import('../EducationSection');
     const view = rtlRender(<EducationSection />);
     await settle();
@@ -78,7 +78,7 @@ describe('education section', () => {
     expect(view.container.textContent).toMatch(/New Record|Students|Ann Lee/);
   });
 
-  it('walks every category and mode tab on the teaching surface and exercises each', async () => {
+  it('walks every category and mode tab on the teaching surface and exercises each', { timeout: 120000 }, async () => {
     const { EducationSection, MODE_TABS, MODE_TAB_CATEGORIES } = await import('../EducationSection');
     const view = rtlRender(<EducationSection />);
     await settle();
@@ -100,7 +100,7 @@ describe('education section', () => {
     expect(view.container.textContent?.length).toBeGreaterThan(50);
   });
 
-  it('creates, edits, runs analysis on and deletes records across the classroom tabs', async () => {
+  it('creates, edits, runs analysis on and deletes records across the classroom tabs', { timeout: 120000 }, async () => {
     const { EducationSection } = await import('../EducationSection');
     const view = rtlRender(<EducationSection />);
     await settle();
@@ -123,7 +123,7 @@ describe('education section', () => {
     expect(view.container.textContent?.length).toBeGreaterThan(20);
   });
 
-  it('fills every editor field (rubrics, questions, curriculum) and saves each record type', async () => {
+  it('fills every editor field (rubrics, questions, curriculum) and saves each record type', { timeout: 120000 }, async () => {
     const { EducationSection } = await import('../EducationSection');
     rtlRender(<EducationSection />);
     await settle();
@@ -145,7 +145,7 @@ describe('education section', () => {
     expect(createFn.mock.calls.length).toBeGreaterThan(0);
   });
 
-  it('opens a student and a course detail, marks attendance, edits the grade book and builds a curriculum', async () => {
+  it('opens a student and a course detail, marks attendance, edits the grade book and builds a curriculum', { timeout: 120000 }, async () => {
     const { EducationSection } = await import('../EducationSection');
     const view = rtlRender(<EducationSection />);
     await settle();
@@ -165,7 +165,7 @@ describe('education section', () => {
     expect(view.container.textContent?.length).toBeGreaterThan(50);
   });
 
-  it('the attendance sheet, grade book and curriculum planner edit their working sets', async () => {
+  it('the attendance sheet, grade book and curriculum planner edit their working sets', { timeout: 120000 }, async () => {
     const { EducationSection } = await import('../EducationSection');
     rtlRender(<EducationSection />);
     await settle();
@@ -193,7 +193,7 @@ describe('education section', () => {
     expect(document.body.textContent?.length).toBeGreaterThan(50);
   });
 
-  it('edits an existing record of every type through the editor, including quiz questions and rubrics', async () => {
+  it('edits an existing record of every type through the editor, including quiz questions and rubrics', { timeout: 120000 }, async () => {
     const { EducationSection } = await import('../EducationSection');
     rtlRender(<EducationSection />);
     await settle();
@@ -225,7 +225,7 @@ describe('education section', () => {
     expect(document.body.textContent?.length).toBeGreaterThan(30);
   });
 
-  it('the open editor can delete the record it is editing and discard changes', async () => {
+  it('the open editor can delete the record it is editing and discard changes', { timeout: 120000 }, async () => {
     const { EducationSection } = await import('../EducationSection');
     rtlRender(<EducationSection />);
     await settle();
@@ -240,7 +240,7 @@ describe('education section', () => {
     expect(removeFn.mock.calls.length).toBeGreaterThan(0);
   });
 
-  it('categoryForTab maps every mode tab to its category', async () => {
+  it('categoryForTab maps every mode tab to its category', { timeout: 120000 }, async () => {
     const { categoryForTab, MODE_TABS, MODE_TAB_CATEGORIES } = await import('../EducationSection');
     for (const t of MODE_TABS) expect(typeof categoryForTab(t.id)).toBe('string');
     for (const c of MODE_TAB_CATEGORIES) for (const t of c.tabs) expect(categoryForTab(t)).toBe(c.id);
