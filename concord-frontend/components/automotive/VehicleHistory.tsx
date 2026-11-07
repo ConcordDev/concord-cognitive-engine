@@ -16,14 +16,8 @@
  * (calc form). Timeline-rail layout is the Carfax signature.
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { getLensState, useLensStatePersistence } from '@/lib/lens-state-persistence';
-
-/** Display name from the parts the decode actually returned — an absent
- *  field renders as absent, never as the literal word "null". */
-const nameOf = (v: { year?: number; make?: string; model?: string }) =>
-  [v.year, v.make, v.model].filter(Boolean).join(' ');
 import {
   Loader2, AlertTriangle, Wrench, Gauge, Car, ChevronDown, ChevronUp,
   ShieldAlert, ShieldCheck, FileText,
@@ -58,13 +52,10 @@ type TimelineEvent =
   | { kind: 'maintenance'; mileage: number; item: ScheduleItem };
 
 export function VehicleHistory() {
-  const { persist: persistHistory } = useLensStatePersistence('automotive-history');
-  const [vin, setVin] = useState(() => (getLensState('automotive-history')?.vin as string | undefined) ?? '');
-  const [odometer, setOdometer] = useState<number>(() => (getLensState('automotive-history')?.odometer as number | undefined) ?? 0);
-  useEffect(() => { persistHistory({ vin, odometer }); }, [vin, odometer, persistHistory]);
+  const [vin, setVin] = useState('');
+  const [odometer, setOdometer] = useState(0);
   const [vinData, setVinData] = useState<VinData | null>(null);
   const [recalls, setRecalls] = useState<Recall[]>([]);
-  const [recallGap, setRecallGap] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<ScheduleResult | null>(null);
   const [expandedRecall, setExpandedRecall] = useState<string | null>(null);
 
@@ -74,13 +65,10 @@ export function VehicleHistory() {
       setVinData(v);
       const make = v?.make; const model = v?.model; const year = v?.year;
       const [recallsEnv, schedEnv] = await Promise.all([
-        callAuto<{ recalls?: Recall[]; gap?: string }>('recall-lookup', { make, model, year }),
+        callAuto<{ recalls?: Recall[] }>('recall-lookup', { make, model, year }),
         callAuto<ScheduleResult>('maintenanceSchedule', { artifact: { data: { mileage: odometer, year } } }),
       ]);
       setRecalls(recallsEnv?.recalls || []);
-      // A partial decode flags the recall gap instead of refusing the
-      // report: the gap renders in the report, never as a clean result.
-      setRecallGap(recallsEnv?.gap ?? null);
       setSchedule(schedEnv);
       return { v, recallsEnv, schedEnv };
     },
@@ -120,7 +108,7 @@ export function VehicleHistory() {
               />
               {vinData && (
                 <div className="text-[12px] text-zinc-300">
-                  <span className="font-semibold text-white">{nameOf(vinData)}</span>
+                  <span className="font-semibold text-white">{vinData.year} {vinData.make} {vinData.model}</span>
                   {vinData.trim && <span className="text-zinc-400"> · {vinData.trim}</span>}
                 </div>
               )}
@@ -139,8 +127,8 @@ export function VehicleHistory() {
               <SaveAsDtuButton
                 compact
                 apiSource="concord-auto-vehicle-history"
-                title={`${vinData ? nameOf(vinData) : ''} VIN ${vin} — ${recallGap ? 'recalls not checked' : `${recalls.length} recalls`} · ${overdueCount} overdue services`}
-                content={`VIN: ${vin}\nVehicle: ${vinData ? nameOf(vinData) : ''} ${vinData?.trim || ''}\nEngine: ${vinData?.engine || 'unknown'}\nOdometer: ${odometer.toLocaleString()} mi\n\nRecalls (${recalls.length}):\n${recallGap ? `  Not checked — ${recallGap}` : recalls.map((r) => `  [${r.recallDate || 'undated'}] ${r.component} — ${r.summary}`).join('\n') || '  None'}\n\nMaintenance (${overdueCount} overdue, ${upcomingCount} upcoming):\n${(schedule?.services || []).filter((i) => i.status !== 'ok').map((i) => `  ${i.status === 'due-now' ? '⚠' : '○'} ${i.service} (${i.milesUntilDue} mi)`).join('\n') || '  All caught up'}`}
+                title={`${vinData?.year ?? ''} ${vinData?.make ?? ''} ${vinData?.model ?? ''} VIN ${vin} — ${recalls.length} recalls · ${overdueCount} overdue services`}
+                content={`VIN: ${vin}\nVehicle: ${vinData?.year} ${vinData?.make} ${vinData?.model} ${vinData?.trim || ''}\nEngine: ${vinData?.engine || 'unknown'}\nOdometer: ${odometer.toLocaleString()} mi\n\nRecalls (${recalls.length}):\n${recalls.map((r) => `  [${r.recallDate || 'undated'}] ${r.component} — ${r.summary}`).join('\n') || '  None'}\n\nMaintenance (${overdueCount} overdue, ${upcomingCount} upcoming):\n${(schedule?.services || []).filter((i) => i.status !== 'ok').map((i) => `  ${i.status === 'due-now' ? '⚠' : '○'} ${i.service} (${i.milesUntilDue} mi)`).join('\n') || '  All caught up'}`}
                 extraTags={['automotive', 'vin', vinData?.make?.toLowerCase() || 'unknown']}
                 rawData={{ vin, odometer, vinData, recalls, schedule }}
               />
@@ -195,14 +183,8 @@ export function VehicleHistory() {
         {!pull.isPending && events.length === 0 && !vinData && (
           <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">Enter a VIN and odometer above, then "Pull report".</div>
         )}
-        {!pull.isPending && events.length === 0 && vinData && recallGap && (
-          <div className="rounded border border-amber-500/20 bg-amber-500/5 p-6 text-center text-[11px] text-amber-200">Recalls not checked: {recallGap} The maintenance timeline below reflects the schedule only.</div>
-        )}
-        {!pull.isPending && events.length === 0 && vinData && !recallGap && (
+        {!pull.isPending && events.length === 0 && vinData && (
           <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-6 text-center text-[11px] text-emerald-200">No active recalls. All maintenance current.</div>
-        )}
-        {recallGap && events.length > 0 && (
-          <div className="mb-2 rounded border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">Recalls not checked: {recallGap}</div>
         )}
         {pull.isPending && (
           <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" />Pulling NHTSA data…</div>

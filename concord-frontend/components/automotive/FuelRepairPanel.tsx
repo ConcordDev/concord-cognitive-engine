@@ -9,16 +9,15 @@
  * `concord-frontend/components/lens-primitives/CalcPanel.tsx`.
  */
 
+import { useState } from 'react';
 import { Plus, Trash2, Fuel, Wrench, Car } from 'lucide-react';
 import { CalcPanel } from '@/components/lens-primitives/CalcPanel';
 import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
-import { useEffect, useState } from 'react';
-import { getLensState, useLensStatePersistence } from '@/lib/lens-state-persistence';
 
 interface FillUp { date: string; mileage: string; gallons: string; pricePerGallon: string }
 interface Repair { name: string; partsCost: string; laborHours: string; priority: 'low' | 'medium' | 'high' }
-interface FuelResult { status?: string; message?: string; avgMPG?: number; bestMPG?: number; worstMPG?: number; totalGallons?: number; totalFuelCost?: number; costPerMile?: number; readings?: Array<{ date?: string; mpg: number; miles: number; gallons: number }> }
-interface RepairResult { status?: string; message?: string; repairs?: Array<{ repair: string; partsCost: number; laborHours: number; laborRate: number; laborCost: number; total: number; priority: string }>; subtotalParts?: number; subtotalLabor?: number; grandTotal?: number; tax?: number; totalWithTax?: number; recommendation?: string }
+interface FuelResult { avgMPG?: number; bestMPG?: number; worstMPG?: number; totalGallons?: number; totalFuelCost?: number; costPerMile?: number; readings?: Array<{ date?: string; mpg: number; miles: number; gallons: number }> }
+interface RepairResult { repairs?: Array<{ repair: string; partsCost: number; laborHours: number; laborRate: number; laborCost: number; total: number; priority: string }>; subtotalParts?: number; subtotalLabor?: number; grandTotal?: number; tax?: number; totalWithTax?: number; recommendation?: string }
 
 const dayOffset = (n: number) => shiftDateKey(calendarDateKey(), -n);
 
@@ -29,16 +28,9 @@ const prBadge = (p: string) => {
 };
 
 export function FuelRepairPanel() {
-  // Staged rows persist across view navigation (sessionStorage) — a
-  // service log that evaporates on a tab switch is a scratchpad, not a log.
-  // Staged rows restore from the established lens-state store and
-  // persist on change, so they survive view navigation instead of
-  // evaporating when the panel unmounts.
-  const { persist: persistStaged } = useLensStatePersistence('automotive-fuel-repair');
-  const [fillups, setFillups] = useState<FillUp[]>(() => (getLensState('automotive-fuel-repair')?.fillups as FillUp[] | undefined) ?? [{ date: dayOffset(0), mileage: '', gallons: '', pricePerGallon: '' }, { date: dayOffset(0), mileage: '', gallons: '', pricePerGallon: '' }]);
-  const [repairs, setRepairs] = useState<Repair[]>(() => (getLensState('automotive-fuel-repair')?.repairs as Repair[] | undefined) ?? [{ name: '', partsCost: '', laborHours: '', priority: 'medium' }]);
-  const [shopRate, setShopRate] = useState<number>(() => (getLensState('automotive-fuel-repair')?.shopRate as number | undefined) ?? 120);
-  useEffect(() => { persistStaged({ fillups, repairs, shopRate }); }, [fillups, repairs, shopRate, persistStaged]);
+  const [fillups, setFillups] = useState<FillUp[]>([{ date: dayOffset(0), mileage: '', gallons: '', pricePerGallon: '' }, { date: dayOffset(0), mileage: '', gallons: '', pricePerGallon: '' }]);
+  const [repairs, setRepairs] = useState<Repair[]>([{ name: '', partsCost: '', laborHours: '', priority: 'medium' }]);
+  const [shopRate, setShopRate] = useState(120);
 
   const addFill = () => setFillups((fs) => [...fs, { date: dayOffset(0), mileage: '', gallons: '', pricePerGallon: '' }]);
   const updateFill = <K extends keyof FillUp>(i: number, key: K, value: FillUp[K]) =>
@@ -59,10 +51,7 @@ export function FuelRepairPanel() {
       accent="blue"
       left={{
         macro: 'fuelEfficiency',
-        // Send every row the user has touched — Analyze must count the
-        // rows it displays. Partially-filled rows go too, so the handler
-        // can name the failing row/field instead of silently dropping it.
-        buildArtifact: () => ({ data: { fillups: fillups.filter((f) => f.mileage || f.gallons || f.pricePerGallon) } }),
+        buildArtifact: () => ({ data: { fillups: fillups.filter((f) => f.mileage && f.gallons) } }),
         render: (
           <div className="space-y-2">
             <div className="text-[10px] uppercase tracking-wider text-zinc-400">Fill-ups (chronological)</div>
@@ -84,7 +73,7 @@ export function FuelRepairPanel() {
       }}
       right={{
         macro: 'repairEstimate',
-        buildArtifact: () => ({ data: { repairs: repairs.filter((r) => r.name.trim() || r.partsCost || r.laborHours), shopRate } }),
+        buildArtifact: () => ({ data: { repairs: repairs.filter((r) => r.name.trim()), shopRate } }),
         render: (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -118,8 +107,7 @@ export function FuelRepairPanel() {
           <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
             <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Fuel className="h-3 w-3" />Fuel economy</div>
             {!fuelResult && <div className="text-[11px] text-zinc-400">Analyze to compute.</div>}
-            {fuelResult?.status === 'NOT_COMPUTED' && <div className="text-[11px] text-amber-200">{fuelResult.message || 'Not computed — an input is missing.'}</div>}
-            {fuelResult && fuelResult.status !== 'NOT_COMPUTED' && (
+            {fuelResult && (
               <div className="space-y-2 text-[11px]">
                 <div className="rounded border border-blue-500/20 bg-zinc-950/40 px-2 py-1">
                   <div className="text-[9px] text-zinc-400">Average MPG</div>
@@ -146,8 +134,7 @@ export function FuelRepairPanel() {
           <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3">
             <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Wrench className="h-3 w-3" />Repair estimate</div>
             {!repairResult && <div className="text-[11px] text-zinc-400">Analyze to compute.</div>}
-            {repairResult?.status === 'NOT_COMPUTED' && <div className="text-[11px] text-amber-200">{repairResult.message || 'Not computed — an input is missing.'}</div>}
-            {repairResult && repairResult.status !== 'NOT_COMPUTED' && (
+            {repairResult && (
               <div className="space-y-1.5 text-[11px]">
                 <div className="rounded border border-orange-500/20 bg-zinc-950/40 px-2 py-1">
                   <div className="text-[9px] text-zinc-400">Total with tax</div>

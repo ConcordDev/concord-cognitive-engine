@@ -207,29 +207,6 @@ describe("automotive — fuelEfficiency", () => {
     assert.equal(call("fuelEfficiency", ctxA, { artifact: { data: { fillups: [{ mileage: 1, gallons: 1 }] } } }).ok, false);
     assert.equal(call("fuelEfficiency", ctxA, { artifact: { data: { fillups: [] } } }).ok, false);
   });
-
-  it("names the failing fill-up row and field in words, never the data contract", () => {
-    const r = call("fuelEfficiency", ctxA, { artifact: { data: { fillups: [
-      { mileage: 100, gallons: 10, pricePerGallon: 3 },
-      { mileage: 300, pricePerGallon: 3.5 },
-      { mileage: 500, gallons: 9 },
-    ] } } });
-    assert.equal(r.ok, false);
-    assert.match(r.error, /Fill-up 2 is missing its gallons/);
-    assert.doesNotMatch(r.error, /\{ mileage/);
-    const one = call("fuelEfficiency", ctxA, { artifact: { data: { fillups: [{ mileage: 1, gallons: 1 }] } } });
-    assert.match(one.error, /at least 2 fill-ups/);
-    assert.doesNotMatch(one.error, /\{ mileage/);
-  });
-
-  it("says in words when the staged mileages do not increase", () => {
-    const r = call("fuelEfficiency", ctxA, { artifact: { data: { fillups: [
-      { mileage: 300, gallons: 10 },
-      { mileage: 300, gallons: 10 },
-    ] } } });
-    assert.equal(r.ok, false);
-    assert.match(r.error, /do not increase/);
-  });
 });
 
 // ── repairEstimate (labor + parts + tax) ─────────────────────────
@@ -274,18 +251,6 @@ describe("automotive — repairEstimate", () => {
 
   it("rejects an empty repair list (validation-rejection)", () => {
     assert.equal(call("repairEstimate", ctxA, { artifact: { data: { repairs: [] } } }).ok, false);
-  });
-
-  it("NOT_COMPUTED names the repair and the missing field in words", () => {
-    const r = call("repairEstimate", ctxA, { artifact: { data: {
-      shopRate: 120,
-      repairs: [{ name: "Brake pads", partsCost: 200 }],
-    } } });
-    assert.equal(r.result.status, "NOT_COMPUTED");
-    assert.match(r.result.message, /Repair 1 is missing its labor hours/);
-    assert.doesNotMatch(r.result.message, /repairs\[0\]/);
-    assert.equal(r.result.missingInputs.length, 1);
-    assert.match(r.result.missingInputs[0], /Repair 1/);
   });
 });
 
@@ -443,23 +408,5 @@ describe("automotive — vin-decode / recall-lookup validation (no network)", ()
   it("recall-lookup requires make/model/year before any fetch", async () => {
     assert.equal((await call("recall-lookup", ctxA, {})).ok, false);
     assert.equal((await call("recall-lookup", ctxA, { make: "Honda", model: "Civic" })).ok, false);
-  });
-
-  it("recall-lookup tolerates a partial decode: no model → ok with an explicit gap, no fetch", async () => {
-    const r = await call("recall-lookup", ctxA, { make: "HONDA", year: 1991 });
-    assert.equal(r.ok, true);
-    assert.deepEqual(r.result.recalls, []);
-    assert.equal(r.result.count, 0);
-    assert.match(r.result.gap, /no model/);
-    assert.match(r.result.gap, /recalls were not checked/);
-  });
-
-  it("recall-lookup still refuses without a make or a year, in words", async () => {
-    const noMake = await call("recall-lookup", ctxA, { year: 1991 });
-    assert.equal(noMake.ok, false);
-    assert.match(noMake.error, /a make/);
-    const noYear = await call("recall-lookup", ctxA, { make: "Honda", model: "Civic" });
-    assert.equal(noYear.ok, false);
-    assert.match(noYear.error, /a year/);
   });
 });

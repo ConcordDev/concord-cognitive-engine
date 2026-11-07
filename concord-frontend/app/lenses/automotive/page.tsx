@@ -79,7 +79,6 @@ export default function AutomotiveLensPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [upcomingRenewals, setUpcomingRenewals] = useState<UpcomingRenewal[] | null>(null);
   const [view, setView] = useState<AutoView>('garage');
-  const [addNonce, setAddNonce] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,7 +116,7 @@ export default function AutomotiveLensPage() {
         activeTab={view}
         onTab={(id) => setView(id as AutoView)}
         tabsLabel="Automotive views"
-        cta={{ label: 'Add a vehicle', icon: Plus, onClick: () => { setView('garage'); setAddNonce((n) => n + 1); }, title: 'Add a vehicle to your garage' }}
+        cta={{ label: 'Add a vehicle', icon: Plus, onClick: () => setView('garage'), title: 'Open your garage to add a vehicle' }}
       >
         <div className="space-y-5">
         {view === 'garage' && (<>
@@ -194,7 +193,7 @@ export default function AutomotiveLensPage() {
           </section>
         )}
 
-        <GarageSection addSignal={addNonce} />
+        <GarageSection />
         </>)}
 
         {view === 'service' && (
