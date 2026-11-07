@@ -33,7 +33,7 @@ describe('DomainAssistant request shape (A3)', () => {
     render(<DomainAssistant domain="nonprofit" domainLabel="Nonprofit" />);
     expect(toggleAssistant).toBeTruthy();
     act(() => { toggleAssistant!(); });
-    const box = await screen.findByPlaceholderText(/ask the nonprofit specialist/i);
+    const box = await screen.findByPlaceholderText(/ask about nonprofit/i);
     fireEvent.change(box, { target: { value: 'How many campaigns do I have?' } });
     fireEvent.click(screen.getByLabelText('Send message'));
     await waitFor(() => expect(askCalls.length).toBe(1));
