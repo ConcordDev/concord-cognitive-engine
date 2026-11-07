@@ -29,9 +29,9 @@ describe('hypothesis declaration (REAL_LIVE, registry agreement)', () => {
     expect(line).toContain('TIER.REAL_LIVE');
     expect(line).toContain('liveFromSubstrate: true');
   });
-  it('aviation control untouched: REAL_FREE / Real', () => {
-    expect(getLensManifest('aviation')?.dataTier).toBe('REAL_FREE');
-    const { result } = renderHook(() => useDepthBadge('aviation'));
+  it('astronomy control untouched: REAL_FREE / Real', () => {
+    expect(getLensManifest('astronomy')?.dataTier).toBe('REAL_FREE');
+    const { result } = renderHook(() => useDepthBadge('astronomy'));
     expect(result.current.label).toBe('Real');
   });
 });

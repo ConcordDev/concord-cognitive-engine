@@ -45,9 +45,9 @@ describe('Deities declaration (F1)', () => {
     expect(line).toContain('liveFromSubstrate: true');
   });
 
-  it('a control lens keeps its own declaration (aviation stays Real / REAL_FREE)', () => {
-    expect(getLensManifest('aviation')?.dataTier).toBe('REAL_FREE');
-    const badge = renderHook(() => useDepthBadge('aviation')).result.current;
+  it('a control lens keeps its own declaration (astronomy stays Real / REAL_FREE)', () => {
+    expect(getLensManifest('astronomy')?.dataTier).toBe('REAL_FREE');
+    const badge = renderHook(() => useDepthBadge('astronomy')).result.current;
     expect(badge?.label).toBe('Real');
   });
 });
