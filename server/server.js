@@ -39050,6 +39050,24 @@ register("resonance", "boundary", (ctx, input = {}) => {
     timestamp: nowISO(),
   });
 
+  // Pairs surfacing: the full crossPairs set used to leave this macro only
+  // as a 10-pair slice, so the Pairs view's headline count (pairsFound)
+  // could not be audited. Callers may now page the whole set, and the score
+  // distribution ships with every reading so uniformity is visible as
+  // uniformity.
+  const pairsOffset = clamp(Math.floor(Number(input.pairsOffset ?? 0)) || 0, 0, crossPairs.length);
+  const pairsLimit = clamp(Math.floor(Number(input.pairsLimit ?? 10)) || 10, 1, 500);
+  const scoreBuckets = [[0, 0.03], [0.03, 0.1], [0.1, 0.3], [0.3, 0.5], [0.5, 0.7], [0.7, 0.9], [0.9, 1.01]]
+    .map(([min, max]) => ({
+      min,
+      max: Math.min(max, 1),
+      count: crossPairs.filter((x) => x.resonance >= min && x.resonance < max).length,
+    }));
+  const sortedScores = crossPairs.map((x) => x.resonance).sort((a, b) => a - b);
+  const scorePct = (q) => (sortedScores.length
+    ? Math.round(sortedScores[Math.min(sortedScores.length - 1, Math.floor(q * sortedScores.length))] * 1000) / 1000
+    : 0);
+
   return {
     ok: true,
     signal: Math.round(signal * 1000) / 1000,
@@ -39072,6 +39090,10 @@ register("resonance", "boundary", (ctx, input = {}) => {
       topResonance: Math.round(topResonance * 1000) / 1000,
       avgResonance: Math.round(avgResonance * 1000) / 1000,
       topPairs: crossPairs.slice(0, 10),
+      pairsOffset,
+      pairsLimit,
+      pairsPage: crossPairs.slice(pairsOffset, pairsOffset + pairsLimit),
+      scoreDistribution: { buckets: scoreBuckets, p50: scorePct(0.5), p90: scorePct(0.9) },
     },
   };
 }, { summary: "Resonance boundary detection: measures cross-domain constraint alignment at the frontier of the knowledge graph. Positive signal = x=0 showing coherence when probed by x=1." });

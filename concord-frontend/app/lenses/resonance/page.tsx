@@ -22,7 +22,6 @@ import {
   Dna,
   Layers,
   BookOpen,
-  Zap,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -52,7 +51,6 @@ import { PairsPanel } from '@/components/resonance/PairsPanel';
 import { HistoryPanel } from '@/components/resonance/HistoryPanel';
 import { HealthPanel } from '@/components/resonance/HealthPanel';
 import { GrowthPanel } from '@/components/resonance/GrowthPanel';
-import { ActionsPanel } from '@/components/resonance/ActionsPanel';
 import { WorkbenchPanel } from '@/components/resonance/WorkbenchPanel';
 import { ArxivPanel } from '@/components/resonance/ArxivPanel';
 
@@ -62,7 +60,6 @@ type ResonanceView =
   | 'history'
   | 'health'
   | 'growth'
-  | 'actions'
   | 'workbench'
   | 'arxiv';
 
@@ -72,7 +69,6 @@ const VIEWS: { id: ResonanceView; label: string; keys: string; icon: typeof Radi
   { id: 'history', label: 'History', keys: 'h', icon: Activity },
   { id: 'health', label: 'Health', keys: 'y', icon: Heart },
   { id: 'growth', label: 'Growth', keys: 'g', icon: Dna },
-  { id: 'actions', label: 'Analysis', keys: 'z', icon: Zap },
   { id: 'workbench', label: 'Workbench', keys: 'w', icon: Layers },
   { id: 'arxiv', label: 'arXiv', keys: 'x', icon: BookOpen },
 ];
@@ -143,6 +139,16 @@ export default function ResonanceBoundaryPage() {
     scanMutation.mutate();
   }, [scanMutation]);
 
+  // Auto-scan records: the boundary query's refetch only re-reads, so with
+  // auto-scan on, the interval drives the scan mutation itself — each tick
+  // appends a History reading, as the toggle's label promises.
+  useEffect(() => {
+    if (!autoScan) return;
+    const t = setInterval(() => scanMutation.mutate(), 15000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoScan]);
+
   const signal = scan?.signal ?? 0;
   const classification = scan?.classification ?? 'noise_floor';
   const meta = CLASSIFICATION_META[classification] || CLASSIFICATION_META.noise_floor;
@@ -151,20 +157,6 @@ export default function ResonanceBoundaryPage() {
   const homeostasis = growth?.resonance?.homeostasis ?? 0;
   const repairRate = growth?.resonance?.repairRate ?? 0.5;
 
-  const classifyPairSignal = (resonance: number): string => {
-    if (resonance >= thresholds.strongResonance) return 'strong_resonance';
-    if (resonance >= thresholds.moderateResonance) return 'moderate_resonance';
-    if (resonance >= thresholds.weakSignal) return 'weak_signal';
-    return 'noise_floor';
-  };
-
-  const allPairs = scan?.crossDomainAlignment?.topPairs ?? [];
-  const pairsByClass = {
-    strong: allPairs.filter((p) => classifyPairSignal(p.resonance) === 'strong_resonance').length,
-    moderate: allPairs.filter((p) => classifyPairSignal(p.resonance) === 'moderate_resonance').length,
-    weak: allPairs.filter((p) => classifyPairSignal(p.resonance) === 'weak_signal').length,
-    noise: allPairs.filter((p) => classifyPairSignal(p.resonance) === 'noise_floor').length,
-  };
 
   if (scanError) {
     return (
@@ -293,8 +285,6 @@ export default function ResonanceBoundaryPage() {
             {active === 'pairs' && (
               <PairsPanel
                 scan={scan}
-                allPairs={allPairs}
-                pairsByClass={pairsByClass}
                 thresholds={thresholds}
                 onThresholdsChange={setThresholds}
               />
@@ -304,11 +294,6 @@ export default function ResonanceBoundaryPage() {
               <HealthPanel scan={scan} signal={signal} homeostasis={homeostasis} repairRate={repairRate} />
             )}
             {active === 'growth' && <GrowthPanel />}
-            {active === 'actions' && (
-              <div className="p-6">
-                <ActionsPanel />
-              </div>
-            )}
             {active === 'workbench' && <WorkbenchPanel />}
             {active === 'arxiv' && <ArxivPanel />}
           </main>
