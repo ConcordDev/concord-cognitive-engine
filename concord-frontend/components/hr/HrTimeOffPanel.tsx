@@ -13,7 +13,7 @@ import { ErrorState } from '@/components/ui';
 
 interface Employee { id: string; name: string }
 interface TimeoffRequest {
-  id: string; employeeId: string; employeeName: string; kind: string;
+  id: string; employeeId: string; employeeName: string; employeeStatus?: string; kind: string;
   startDate: string; endDate: string; days: number; status: string;
 }
 interface Balance { kind: string; accrued: number; used: number; remaining: number }
@@ -137,7 +137,7 @@ export function HrTimeOffPanel({ onChange }: { onChange: () => void }) {
             {requests.map((r) => (
               <li key={r.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
-                  <p className="text-xs text-zinc-200">{r.employeeName} · <span className="capitalize">{r.kind}</span></p>
+                  <p className="text-xs text-zinc-200">{r.employeeName}{r.employeeStatus === "terminated" ? " (Former)" : ""} · <span className="capitalize">{r.kind}</span></p>
                   <p className="text-[10px] text-zinc-400">{r.days} days from {r.startDate}</p>
                 </div>
                 {r.status === 'pending' ? (

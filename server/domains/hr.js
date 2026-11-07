@@ -399,6 +399,30 @@ export default function registerHRActions(registerLensAction) {
   const hrDay = (v) => hrClean(v, 10).slice(0, 10);
   const findEmployee = (s, userId, id) => (s.employees.get(userId) || []).find((e) => e.id === id) || null;
 
+  // ── Retain + label (Group B B10; founder ruling, decision walk #1
+  // item 4: A — RETAIN + LABEL, excluded from active counts). ONE
+  // treatment of former-employee records on every surface: the record
+  // is retained entire and labelled with the employee's status
+  // wherever it surfaces, and every current/active figure runs over
+  // CURRENT active employees only — the F4 statistics rule
+  // (compliance-doc-list) generalised to the surfaces it never
+  // reached. Nothing here deletes or archives anything.
+  const hrActiveIds = (s, userId) => new Set(
+    (s.employees.get(userId) || []).filter((e) => e.status === "active").map((e) => e.id));
+  const hrStatusOf = (s, userId, employeeId) =>
+    (s.employees.get(userId) || []).find((e) => e.id === employeeId)?.status || null;
+  const hrLabelled = (s, userId, rows) =>
+    rows.map((r) => ({ ...r, employeeStatus: hrStatusOf(s, userId, r.employeeId) }));
+  // The counting scope for the figures above: a read scoped to ONE
+  // employee is that person's own record — its figures describe them,
+  // whatever their status; an unscoped (workspace) read's current
+  // figures run over active employees only.
+  const hrCountsFor = (s, userId, employeeIdParam) => {
+    if (employeeIdParam) return () => true;
+    const activeIds = hrActiveIds(s, userId);
+    return (r) => activeIds.has(r.employeeId);
+  };
+
   const PTO_ACCRUAL = { vacation: 15, sick: 10, personal: 5 };
 
   // ── Employees ───────────────────────────────────────────────────────
@@ -559,11 +583,12 @@ export default function registerHRActions(registerLensAction) {
     let reqs = [...(s.timeoff.get(userId) || [])];
     if (params.employeeId) reqs = reqs.filter((r) => r.employeeId === params.employeeId);
     if (params.status) reqs = reqs.filter((r) => r.status === String(params.status).toLowerCase());
-    reqs = reqs.map((r) => ({ ...r, employeeName: empName.get(r.employeeId) || "(unknown)" }))
+    reqs = reqs.map((r) => ({ ...r, employeeName: empName.get(r.employeeId) || "(unknown)", employeeStatus: hrStatusOf(s, userId, r.employeeId) }))
       .sort((a, b) => String(b.startDate).localeCompare(String(a.startDate)));
+    const countsFor = hrCountsFor(s, userId, params.employeeId);
     return {
       ok: true,
-      result: { requests: reqs, pending: reqs.filter((r) => r.status === "pending").length },
+      result: { requests: reqs, pending: reqs.filter((r) => r.status === "pending" && countsFor(r)).length },
     };
   });
 
@@ -616,9 +641,13 @@ export default function registerHRActions(registerLensAction) {
     const userId = hrAid(ctx);
     let tasks = [...(s.onboarding.get(userId) || [])];
     if (params.employeeId) tasks = tasks.filter((t) => t.employeeId === params.employeeId);
+    const countsFor = hrCountsFor(s, userId, params.employeeId);
     return {
       ok: true,
-      result: { tasks, total: tasks.length, done: tasks.filter((t) => t.done).length },
+      result: {
+        tasks: hrLabelled(s, userId, tasks), total: tasks.length,
+        done: tasks.filter((t) => t.done && countsFor(t)).length,
+      },
     };
   });
 
@@ -651,11 +680,17 @@ export default function registerHRActions(registerLensAction) {
 
   registerLensAction("hr", "review-list", (ctx, _a, params = {}) => {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    let reviews = [...(s.reviews.get(hrAid(ctx)) || [])];
+    const userId = hrAid(ctx);
+    let reviews = [...(s.reviews.get(userId) || [])];
     if (params.employeeId) reviews = reviews.filter((r) => r.employeeId === params.employeeId);
     reviews.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const avg = reviews.length ? Math.round((reviews.reduce((a, r) => a + r.rating, 0) / reviews.length) * 10) / 10 : 0;
-    return { ok: true, result: { reviews, averageRating: avg } };
+    // Retain + label: reviews are retained entire; the workspace
+    // average is a current-team figure, so it runs over active
+    // employees' reviews only.
+    const countsFor = hrCountsFor(s, userId, params.employeeId);
+    const current = reviews.filter(countsFor);
+    const avg = current.length ? Math.round((current.reduce((a, r) => a + r.rating, 0) / current.length) * 10) / 10 : 0;
+    return { ok: true, result: { reviews: hrLabelled(s, userId, reviews), averageRating: avg } };
   });
 
   registerLensAction("hr", "goal-set", (ctx, _a, params = {}) => {
@@ -676,11 +711,16 @@ export default function registerHRActions(registerLensAction) {
 
   registerLensAction("hr", "goal-list", (ctx, _a, params = {}) => {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    let goals = [...(s.goals.get(hrAid(ctx)) || [])];
+    const userId = hrAid(ctx);
+    let goals = [...(s.goals.get(userId) || [])];
     if (params.employeeId) goals = goals.filter((g) => g.employeeId === params.employeeId);
+    const countsFor = hrCountsFor(s, userId, params.employeeId);
     return {
       ok: true,
-      result: { goals, completed: goals.filter((g) => g.progress >= 100).length },
+      result: {
+        goals: hrLabelled(s, userId, goals),
+        completed: goals.filter((g) => g.progress >= 100 && countsFor(g)).length,
+      },
     };
   });
 
@@ -989,8 +1029,12 @@ export default function registerHRActions(registerLensAction) {
     const empName = new Map((s.employees.get(userId) || []).map((e) => [e.id, e.name]));
     let enrolls = [...(s.benefitEnrollments.get(userId) || [])];
     if (params.employeeId) enrolls = enrolls.filter((e) => e.employeeId === params.employeeId);
-    enrolls = enrolls.map((e) => ({ ...e, employeeName: empName.get(e.employeeId) || "(unknown)" }));
-    const active = enrolls.filter((e) => e.status === "enrolled");
+    enrolls = enrolls.map((e) => ({ ...e, employeeName: empName.get(e.employeeId) || "(unknown)", employeeStatus: hrStatusOf(s, userId, e.employeeId) }));
+    // Retain + label: the enrollment record is retained entire; the
+    // enrolled count and the cost totals are CURRENT figures, so they
+    // run over active employees' enrollments only.
+    const countsFor = hrCountsFor(s, userId, params.employeeId);
+    const active = enrolls.filter((e) => e.status === "enrolled" && countsFor(e));
     return {
       ok: true,
       result: {
@@ -1051,15 +1095,16 @@ export default function registerHRActions(registerLensAction) {
     let entries = [...(s.timeclock.get(userId) || [])];
     if (params.employeeId) entries = entries.filter((e) => e.employeeId === params.employeeId);
     entries = entries
-      .map((e) => ({ ...e, employeeName: empName.get(e.employeeId) || "(unknown)" }))
+      .map((e) => ({ ...e, employeeName: empName.get(e.employeeId) || "(unknown)", employeeStatus: hrStatusOf(s, userId, e.employeeId) }))
       .sort((a, b) => String(b.clockIn).localeCompare(String(a.clockIn)));
     const totalHours = Math.round(entries.reduce((a, e) => a + (e.hours || 0), 0) * 100) / 100;
+    const countsFor = hrCountsFor(s, userId, params.employeeId);
     return {
       ok: true,
       result: {
         entries,
         totalHours,
-        openShifts: entries.filter((e) => !e.clockOut).length,
+        openShifts: entries.filter((e) => !e.clockOut && countsFor(e)).length,
       },
     };
   });
@@ -1086,8 +1131,9 @@ export default function registerHRActions(registerLensAction) {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = hrAid(ctx);
     const assignments = s.courseAssignments.get(userId) || [];
+    const activeIds = hrActiveIds(s, userId);
     const courses = (s.courses.get(userId) || []).map((c) => {
-      const a = assignments.filter((x) => x.courseId === c.id);
+      const a = assignments.filter((x) => x.courseId === c.id && activeIds.has(x.employeeId));
       return {
         ...c,
         assignedCount: a.length,
@@ -1146,13 +1192,14 @@ export default function registerHRActions(registerLensAction) {
     let assigns = [...(s.courseAssignments.get(userId) || [])];
     if (params.employeeId) assigns = assigns.filter((a) => a.employeeId === params.employeeId);
     if (params.courseId) assigns = assigns.filter((a) => a.courseId === params.courseId);
-    assigns = assigns.map((a) => ({ ...a, employeeName: empName.get(a.employeeId) || "(unknown)" }));
+    assigns = assigns.map((a) => ({ ...a, employeeName: empName.get(a.employeeId) || "(unknown)", employeeStatus: hrStatusOf(s, userId, a.employeeId) }));
+    const countsFor = hrCountsFor(s, userId, params.employeeId);
     return {
       ok: true,
       result: {
         assignments: assigns,
-        completed: assigns.filter((a) => a.status === "completed").length,
-        overdue: assigns.filter((a) => a.status !== "completed" && a.dueDate
+        completed: assigns.filter((a) => a.status === "completed" && countsFor(a)).length,
+        overdue: assigns.filter((a) => a.status !== "completed" && countsFor(a) && a.dueDate
           && a.dueDate < hrDay(hrNow())).length,
       },
     };
@@ -1689,17 +1736,21 @@ export default function registerHRActions(registerLensAction) {
     const userId = hrAid(ctx);
     const emps = s.employees.get(userId) || [];
     const active = emps.filter((e) => e.status === "active");
+    const activeIds = new Set(active.map((e) => e.id));
     const jobs = s.jobs.get(userId) || [];
     return {
       ok: true,
       result: {
         headcount: active.length,
         departments: new Set(active.map((e) => e.department)).size,
-        pendingTimeoff: (s.timeoff.get(userId) || []).filter((r) => r.status === "pending").length,
-        openOnboarding: (s.onboarding.get(userId) || []).filter((t) => !t.done).length,
+        pendingTimeoff: (s.timeoff.get(userId) || []).filter((r) => r.status === "pending" && activeIds.has(r.employeeId)).length,
+        openOnboarding: (s.onboarding.get(userId) || []).filter((t) => !t.done && activeIds.has(t.employeeId)).length,
         openJobs: jobs.filter((j) => j.status === "open").length,
         applicants: (s.applicants.get(userId) || []).filter((a) => !["hired", "rejected"].includes(a.stage)).length,
-        openGoals: (s.goals.get(userId) || []).filter((g) => g.progress < 100).length,
+        // Retain + label: a former employee's open goals are their
+        // retained record (goal-list, labelled) — they are not the
+        // current team's open work, and never count here.
+        openGoals: (s.goals.get(userId) || []).filter((g) => g.progress < 100 && activeIds.has(g.employeeId)).length,
       },
     };
   });

@@ -17,7 +17,7 @@ interface Plan {
   monthlyCost: number; employerContribution: number;
 }
 interface Enrollment {
-  id: string; employeeId: string; employeeName: string; planName: string;
+  id: string; employeeId: string; employeeName: string; employeeStatus?: string; planName: string;
   category: string; coverageTier: string; employeeMonthlyCost: number;
   employerMonthlyCost: number; status: string;
 }
@@ -168,7 +168,7 @@ export function HrBenefitsPanel() {
             {enrollments.map((en) => (
               <li key={en.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
-                  <p className="text-xs text-zinc-200">{en.employeeName} · {en.planName}</p>
+                  <p className="text-xs text-zinc-200">{en.employeeName}{en.employeeStatus === "terminated" ? " (Former)" : ""} · {en.planName}</p>
                   <p className="text-[10px] text-zinc-400">
                     {en.coverageTier.replace(/_/g, ' ')} · EE {usd(en.employeeMonthlyCost)} · ER {usd(en.employerMonthlyCost)}
                   </p>
