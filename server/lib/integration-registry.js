@@ -220,7 +220,7 @@ export const REGISTRY = Object.freeze({
   music:        { tier: TIER.REAL_FREE, sources: ["music-soundcloud-charts", "wikipedia.music"], note: "SoundCloud + Wikipedia" },
   podcast:      { tier: TIER.REAL_FREE, sources: ["itunes.podcast.search"], note: "iTunes podcast search" },
   linguistics:  { tier: TIER.REAL_FREE, sources: ["wiktionary.api", "wikipedia.linguistics"], note: "Wiktionary + Wikipedia" },
-  forestry:     { tier: TIER.REAL_FREE, sources: ["usda.forest"], note: "USDA Forest Service" },
+  forestry:     { tier: TIER.REAL_LIVE, liveFromSubstrate: true, sources: ["inciweb", "nifc-wfigs"], note: "live per-user stand registry on STATE (stands, cruises, pests, replanting, carbon credits, polygons) + InciWeb incidents and NIFC WFIGS perimeters" },
   pets:         { tier: TIER.REAL_FREE, sources: ["petfinder.api"], note: "PetFinder API" },
   veterinary:   { tier: TIER.REAL_FREE, sources: ["wikipedia.veterinary"], note: "Wikipedia veterinary" },
   nonprofit:    { tier: TIER.REAL_FREE, sources: ["propublica.nonprofits"], note: "ProPublica Nonprofit Explorer" },

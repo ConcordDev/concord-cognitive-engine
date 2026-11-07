@@ -17,7 +17,7 @@ interface FeedResult { ingested: number; skipped: number; source: string; dtuIds
  * `compact` renders an inline header button (result/error in its tooltip and a
  * small status line) instead of the full-width banner card.
  */
-export function LensFeedButton({ domain, label, compact = false }: { domain: string; label?: string; compact?: boolean }) {
+export function LensFeedButton({ domain, label, compact = false, errorText }: { domain: string; label?: string; compact?: boolean; errorText?: string }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<FeedResult | null>(null);
   const [err, setErr] = useState('');
@@ -77,7 +77,7 @@ export function LensFeedButton({ domain, label, compact = false }: { domain: str
           {result.skipped > 0 && <span className="text-zinc-400"> · {result.skipped} already seen</span>}
         </p>
       )}
-      {err && <p className="mt-2 text-[11px] text-rose-400">{err}</p>}
+      {err && <p className="mt-2 text-[11px] text-rose-400">{errorText || err}</p>}
     </div>
   );
 }

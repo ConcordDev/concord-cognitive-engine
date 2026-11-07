@@ -74,6 +74,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
       setTaxon(null);
       setOccurrences([]);
       setTotal(0);
+      setLastQuery('');
       return;
     }
     setLoading(true);
@@ -128,7 +129,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
       {error && (
         <div className="px-3 py-3 text-xs text-rose-300/80">
           <AlertTriangle className="inline w-3.5 h-3.5 mr-1" aria-hidden="true" />
-          GBIF unreachable ({error})
+          Couldn't reach GBIF — the species lookup didn't respond. Try again in a bit.
         </div>
       )}
 
