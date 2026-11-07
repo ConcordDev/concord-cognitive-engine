@@ -40023,6 +40023,17 @@ function _llmReadyForReq(req) {
 
 function deterministicFallbackReply(req) {
   const mode = String(req?.body?.mode || "chat");
+  // Close-out A3 (Genus 1): this fallback fires when the pipeline produced
+  // NO reply. If the request carried a substantive question, answering with
+  // the cold-start greeting pretends no question was asked — the canned
+  // Assistant defect at its 60th–74th lens. Say plainly that no answer was
+  // produced. The greeting remains for genuine cold starts (nothing asked).
+  const asked = String(
+    req?.body?.prompt || req?.body?.message || req?.body?.query || req?.body?.content || "",
+  ).trim();
+  if (asked) {
+    return "I don't have an answer for that right now — nothing came back from the part of Concord that answers questions. Please try again, or rephrase the question.";
+  }
   // Cold-start clarity invariant: keep it helpful and short.
   return (
     mode === "chat"
@@ -49847,11 +49858,26 @@ function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
     // INC-SWEEP agents F1 — shadow exhaust of a private fleet artifact must
     // carry owner + private visibility so anon/acct2 cannot read the id.
     const ownerId = artifact?.ownerId || ctx?.actor?.userId || null;
+    // Close-out A3 (Genus 3): the exhaust DTU is the artifact's only
+    // presence in the DTU store, so it must carry the record it points
+    // at. The artifact-titled summary belongs in human.summary — the
+    // field the inverted index and the search fallback actually read —
+    // not only in the top-level summary no search path consults; and
+    // the artifact's own text rides creti, the scanned body field.
+    // Without both, a capture is unretrievable by construction.
+    const titledSummary = `${action} ${artifactType} "${artifact.title || artifact.id}" in ${domain} lens`;
+    const artifactText = [
+      artifact?.title,
+      artifact?.data?.content,
+      artifact?.data?.text,
+      artifact?.data?.body,
+    ].filter((t) => typeof t === "string" && t.trim()).join("\n").slice(0, 4000);
     const dtu = {
       id: dtuId,
       title: `Lens:${domain} ${action} ${artifactType}`,
       tier: "regular",
-      summary: `${action} ${artifactType} "${artifact.title || artifact.id}" in ${domain} lens`,
+      summary: titledSummary,
+      creti: artifactText || undefined,
       content: JSON.stringify({ domain, action, artifactType, artifactId: artifact.id, ...extra }),
       tags: [`lens:${domain}`, `artifact:${artifactType}`, `action:${action}`],
       createdAt: nowISO(),
@@ -49859,7 +49885,7 @@ function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
       ownerId: ownerId || undefined,
       visibility: "private",
       machine: { kind: "lens_exhaust", domain, action, artifactType, artifactId: artifact.id },
-      human: { summary: `${action} ${artifactType} in ${domain}` },
+      human: { summary: titledSummary },
       claims: extra.claims || [],
     };
     STATE.dtus.set(dtuId, dtu);

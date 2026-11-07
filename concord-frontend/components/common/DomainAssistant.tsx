@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { apiHelpers } from '@/lib/api/client';
-import type { ChatRequest } from '@/lib/api/generated-types';
 import { cn } from '@/lib/utils';
 import { Send, X, Bot, User, AlertCircle, Loader2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -13,7 +12,7 @@ import { useLensTool } from '@/lib/lens-dock';
 // ---------------------------------------------------------------------------
 
 interface DomainAssistantProps {
-  /** Machine-readable domain key passed as the chat mode (e.g. "music", "research"). */
+  /** Machine-readable domain key (e.g. "music", "research") — carried by the specialist prefix, never as the chat mode. */
   domain: string;
   /** Human-readable label shown in the header (e.g. "Music Production"). */
   domainLabel: string;
@@ -83,8 +82,11 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
     setIsLoading(true);
 
     // Build the full prompt with domain-specialist system context.
-    // The backend /api/chat accepts { message, mode } — we send the domain as
-    // mode so the server can select the right persona / retrieval scope.
+    // ChatRequest.mode is a closed union (overview/deep/creative/…) — the
+    // domain is NOT a mode. Casting it as one sent a mode the pipeline
+    // cannot serve, and the empty reply came back as the canned greeting
+    // (close-out A3, Genus 1). The domain rides the specialist prefix,
+    // which is what actually scopes the answer; the mode is a real one.
     const systemPrefix = `You are a ${domainLabel} specialist. `;
     const fullMessage = systemPrefix + trimmed;
 
@@ -92,12 +94,12 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
       // Prefer apiHelpers.chat.ask for one-shot Q&A; falls back to chat.send.
       let reply: string;
       try {
-        const res = await apiHelpers.chat.ask(fullMessage, domain as ChatRequest['mode']);
+        const res = await apiHelpers.chat.ask(fullMessage, 'overview');
         const data = res.data;
         reply = data?.reply || data?.answer || data?.response || 'No response received.';
       } catch {
         // Fallback: try the streaming-less chat.send endpoint
-        const res = await apiHelpers.chat.send(fullMessage, domain as ChatRequest['mode']);
+        const res = await apiHelpers.chat.send(fullMessage, 'overview');
         const data = res.data;
         reply = data?.reply || data?.answer || data?.response || 'No response received.';
       }
