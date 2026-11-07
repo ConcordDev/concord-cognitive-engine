@@ -231,7 +231,9 @@ describe('ProductCatalogPanel', () => {
 
     render(<ProductCatalogPanel />);
     await screen.findByText('Widget');
+    // F7: deleting is two-step — the first click arms, the second confirms.
     fireEvent.click(screen.getByLabelText('Delete Widget'));
+    fireEvent.click(await screen.findByLabelText('Confirm delete Widget'));
 
     await waitFor(() =>
       expect(lensRun).toHaveBeenCalledWith({ domain: 'retail', action: 'product-delete', input: { sku: 'WIDGET' } }),
