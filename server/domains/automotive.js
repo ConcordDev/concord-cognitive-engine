@@ -184,25 +184,8 @@ export default function registerAutomotiveActions(registerLensAction) {
     const make = String(params.make || "").trim();
     const model = String(params.model || "").trim();
     const year = Number(params.year);
-    if (!make || !Number.isFinite(year)) {
-      const missing = [!make && "a make", !Number.isFinite(year) && "a year"].filter(Boolean).join(" and ");
-      return { ok: false, error: `recall lookup needs ${missing} — the decode did not return ${missing}` };
-    }
-    if (!model) {
-      // Partial decode (older VINs legitimately return no model): the
-      // report path flags the gap instead of refusing over it. NHTSA's
-      // recall search cannot run without a model, so recalls were NOT
-      // checked — the empty list must never read as a clean result.
-      return {
-        ok: true,
-        result: {
-          make, model: null, year,
-          recalls: [],
-          count: 0,
-          source: "nhtsa-recalls",
-          gap: "NHTSA returned no model for this vehicle, and recall lookup needs a model — recalls were not checked.",
-        },
-      };
+    if (!make || !model || !Number.isFinite(year)) {
+      return { ok: false, error: "make, model, year required" };
     }
     try {
       const url = `${NHTSA_RECALLS_BASE}?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&modelYear=${year}`;
@@ -298,19 +281,7 @@ export default function registerAutomotiveActions(registerLensAction) {
   registerLensAction("automotive", "fuelEfficiency", (_ctx, artifact, params = {}) => {
     const fillups = resolveData(artifact, params).fillups || [];
     if (fillups.length < 2) {
-      return { ok: false, error: `Fuel economy needs at least 2 fill-ups to compare — ${fillups.length === 1 ? "only 1 fill-up was staged" : "no fill-ups were staged"}. Stage another fill-up with its mileage and gallons.` };
-    }
-    // Name the failing row/field in words — never refuse over the staged
-    // rows with a data-contract citation the registration never named.
-    const rowProblems = [];
-    fillups.forEach((f, i) => {
-      const missing = [];
-      if (!Number.isFinite(parseFloat(f?.mileage))) missing.push("its mileage");
-      if (!Number.isFinite(parseFloat(f?.gallons))) missing.push("its gallons");
-      if (missing.length) rowProblems.push(`Fill-up ${i + 1} is missing ${missing.join(" and ")}`);
-    });
-    if (rowProblems.length) {
-      return { ok: false, error: `${rowProblems.join("; ")}.` };
+      return { ok: false, error: "log at least 2 fill-ups with { mileage, gallons, pricePerGallon?, date? }" };
     }
     const sorted = [...fillups].sort((a, b) => (parseInt(a.mileage, 10) || 0) - (parseInt(b.mileage, 10) || 0));
     const mpgReadings = [];
@@ -326,7 +297,7 @@ export default function registerAutomotiveActions(registerLensAction) {
         });
       }
     }
-    if (mpgReadings.length === 0) return { ok: false, error: "The staged fill-ups' mileages do not increase — each fill-up's mileage must be higher than the one before it." };
+    if (mpgReadings.length === 0) return { ok: false, error: "no valid mile deltas between fill-ups" };
     const avgMPG = Math.round(mpgReadings.reduce((s, r) => s + r.mpg, 0) / mpgReadings.length * 10) / 10;
     const totalGallons = sorted.reduce((s, f) => s + (parseFloat(f.gallons) || 0), 0);
     const totalCost = sorted.reduce((s, f) => s + (parseFloat(f.gallons) || 0) * (parseFloat(f.pricePerGallon) || 0), 0);
@@ -354,13 +325,13 @@ export default function registerAutomotiveActions(registerLensAction) {
     const data = resolveData(artifact, params);
     const repairs = data.repairs || [];
     if (repairs.length === 0) {
-      return { ok: false, error: "Add at least one repair — each repair needs a name, its parts cost, and its labor hours." };
+      return { ok: false, error: "add repair items with { name, partsCost, laborHours, laborRate?, priority? }" };
     }
     // No assumed $120/h shop rate or 1 h of labour per repair.
     const shopRate = parseFloat(data.shopRate) > 0 ? parseFloat(data.shopRate) : null;
     const _m = [];
-    repairs.forEach((r, i) => { if (!(parseFloat(r.laborHours) >= 0)) _m.push(`Repair ${i + 1} is missing its labor hours`); if (!(parseFloat(r.laborRate) > 0) && shopRate === null) _m.push(`Repair ${i + 1} has no labor rate and no shop rate was given`); });
-    if (_m.length) return notComputed(_m, `Repair estimate not computed — ${_m.join("; ")}.`);
+    repairs.forEach((r, i) => { if (!(parseFloat(r.laborHours) >= 0)) _m.push(`repairs[${i}].laborHours`); if (!(parseFloat(r.laborRate) > 0) && shopRate === null) _m.push(`repairs[${i}].laborRate or shopRate`); });
+    if (_m.length) return notComputed(_m, "Repair estimates need labour hours per repair and a labour rate (per repair or shopRate).");
     const estimated = repairs.map((r) => {
       const partsCost = parseFloat(r.partsCost) || 0;
       const laborHours = parseFloat(r.laborHours);
