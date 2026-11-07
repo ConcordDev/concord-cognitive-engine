@@ -69,7 +69,9 @@ describe('Forestry F3 — GBIF panel states its empties', () => {
   const gbif = read('components/environment/GbifPanel.tsx');
   it('names the query and the source when nothing matches', () => {
     expect(gbif).toContain('No GBIF match for');
-    expect(gbif).toContain('holds no occurrence records');
+    // Both folded PRs (#2168 environment, #2175 forestry) fixed this empty; the combined
+    // build keeps environment's wording for the matched-but-no-records case.
+    expect(gbif).toContain('No occurrences with coordinates recorded for');
   });
   it('does not leak the raw failure reason to the user', () => {
     expect(gbif).not.toContain('GBIF unreachable ({error})');
