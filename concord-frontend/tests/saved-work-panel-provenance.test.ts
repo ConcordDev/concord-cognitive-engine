@@ -1,7 +1,7 @@
 // A4 (saved-work-as-DTU) PR 3 — LensContextPanel provenance:
 // dtuProvenance exercised behaviourally (verbatim extraction), plus
 // the publish-gating pins.
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

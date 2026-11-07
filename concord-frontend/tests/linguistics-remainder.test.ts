@@ -2,13 +2,13 @@
 // Run: node --experimental-strip-types --test tests/linguistics-remainder.test.ts
 // (vitest also picks this file up in the full FE run.)
 
-import { test } from "node:test";
+import { test } from 'vitest';
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { parseBracketTree } from "../components/linguistics/linguistics-shared.ts";
+import { parseBracketTree } from "../components/linguistics/linguistics-shared";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(join(here, "..", rel), "utf8");

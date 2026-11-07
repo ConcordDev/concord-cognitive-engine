@@ -7,7 +7,7 @@
 // the server halves lives in the domain parity suite and the build's
 // extraction harness.
 
-import { describe, it } from "node:test";
+import { describe, it } from 'vitest';
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

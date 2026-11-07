@@ -1,6 +1,6 @@
 // A4 (saved-work-as-DTU) PR 2 — CrossDomainConnections merges the
 // registered graph nodes (the lens's own saved work) into its items.
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

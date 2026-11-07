@@ -2,7 +2,7 @@
 // settle discipline exercised behaviourally through badgeClaim (the
 // component's pure decision helper, extracted verbatim), plus the
 // LensToolbar named-count pin.
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

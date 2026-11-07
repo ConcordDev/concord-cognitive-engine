@@ -1,6 +1,6 @@
 // Resonance build — FE source pins (node:test; the sandbox has no FE
 // toolchain, so these pin the wiring in source).
-import { test } from "node:test";
+import { test } from 'vitest';
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

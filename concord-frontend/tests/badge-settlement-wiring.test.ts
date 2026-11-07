@@ -1,6 +1,6 @@
 // Badge Settlement pins (register A2, lens-wiring PR) — Commonsense
 // F8's selection persistence + Nonprofit's per-view pill removal.
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

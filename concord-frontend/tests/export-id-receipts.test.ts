@@ -1,7 +1,7 @@
 // A9 PR 1 — receipts + inspected success: source pins over the shared
 // components (full ID on save receipts; the export blob inspected
 // before the checkmark; Creative's receipts carrying the full ID).
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
