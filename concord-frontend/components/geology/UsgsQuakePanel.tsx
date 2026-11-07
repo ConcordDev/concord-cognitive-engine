@@ -13,7 +13,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Loader2, Activity, AlertTriangle, RefreshCw, Waves, ExternalLink } from 'lucide-react';
-import { apiHelpers } from '@/lib/api/client';
+import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface Quake {
@@ -29,20 +29,9 @@ interface Quake {
 }
 
 async function runMacro<T>(name: string, input: Record<string, unknown> = {}): Promise<T | null> {
-  // Same unwrap as the working sibling panel (EarthquakeList): the run
-  // endpoint answers { ok, result }, and the handler's own payload —
-  // which carries its own `ok` — lives at data.result. This panel
-  // previously read the fields off the envelope itself, so `quakes`
-  // was never an array and every load settled at its 'fetch_failed'
-  // fallback while the sibling panel rendered the same USGS source.
   try {
-    const r = await apiHelpers.lens.runDomain('geology', name, { input });
-    const data = (r as { data?: { ok: boolean; result?: T } }).data;
-    if (!data) return null;
-    if (data.ok && data.result && typeof data.result === 'object' && 'ok' in data.result) {
-      return data.result;
-    }
-    return data as T;
+    const r = await api.post('/api/lens/run', { domain: 'geology', name, input });
+    return r?.data as T;
   } catch {
     return null;
   }

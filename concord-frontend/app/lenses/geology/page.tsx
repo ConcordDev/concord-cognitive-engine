@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
@@ -16,7 +17,6 @@ import { SeismicHazardPanel } from '@/components/geology/SeismicHazardPanel';
 import { StratigraphicColumnPanel } from '@/components/geology/StratigraphicColumnPanel';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { UsgsQuakePanel } from '@/components/geology/UsgsQuakePanel';
-import { FieldSitesMap } from '@/components/geology/FieldSitesMap';
 import { WikipediaSearchPanel } from '@/components/wiki/WikipediaSearchPanel';
 import { useState } from 'react';
 import {
@@ -29,7 +29,7 @@ import {
   Plus,
 } from 'lucide-react';
 
-
+const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 
 type GeoTab = 'field' | 'identify' | 'structure' | 'seismic' | 'map' | 'collection';
@@ -112,7 +112,15 @@ export default function GeologyLensPage() {
 
         {activeTab === 'map' && (
           <div className="space-y-4">
-            <FieldSitesMap />
+            <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <Map className="w-4 h-4 text-orange-400" /> Field Sites Map
+              </h3>
+              <MapView markers={[]} className="h-[420px]" />
+              <p className="text-[11px] text-gray-500 mt-2">
+                Geotagged observations and strike/dip measurements appear on the bedrock overlay below once logged in Field Log / Structure.
+              </p>
+            </div>
             {/* Macrostrat geologic-map overlay + "rocks near me" bedrock lookup */}
             <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
               <GeologicMapPanel />

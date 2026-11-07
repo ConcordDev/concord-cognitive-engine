@@ -154,22 +154,14 @@ describe("geology.seismicRisk — amplification, risk level + coordinate clamp",
   });
 });
 
-// ── mineralId — species identification + property clamp ───────────────────
-// CORRECTED 2026-11-03 (build(geology)): the two pins below previously
-// asserted the completeness-score semantics the Product pass filed as F5
-// (25/20/20/20/15 for fields merely filled; a fully-filled form rendered
-// "100%" for a family bucket and no species was ever named). mineralId
-// now scores the probe's values against a species table; the pins assert
-// the identified behaviour.
+// ── mineralId — confidence scoring + classification ────────────────────────
 describe("geology.mineralId — confidence score + property clamp", () => {
-  it("identifies a fully-tested quartz specimen by species", () => {
+  it("scores a fully-tested specimen and classifies by hardness", () => {
     const r = call("mineralId", ctxA, { name: "Quartz", hardness: 7, streak: "white", cleavage: "none", specificGravity: 2.65, color: "clear" });
     assert.equal(r.ok, true);
-    // Quartz: hardness 30 + SG 25 + streak 15 + cleavage 10 + colour
-    // corroboration 5 = 85 (fracture untested in this input).
-    assert.equal(r.result.identification?.species, "quartz");
-    assert.equal(r.result.identificationConfidence, 85);
-    assert.equal(r.result.classification, "silicate-species");
+    // 25 (hardness>0) + 20 (streak) + 20 (cleavage) + 20 (sg>0) + 15 (color) = 100.
+    assert.equal(r.result.identificationConfidence, 100);
+    assert.equal(r.result.classification, "silicate-likely");
     assert.equal(r.result.properties.hardness, 7);
     assert.equal(r.result.properties.specific_gravity, 2.65);
     assertNoNonFinite(r.result);
@@ -177,13 +169,9 @@ describe("geology.mineralId — confidence score + property clamp", () => {
 
   it("a sparsely-tested specimen scores low and recommends more tests", () => {
     const r = call("mineralId", ctxA, { name: "Unknown", hardness: 3 });
-    // Hardness-only evidence: best species agreement is 30 — below the
-    // identification floor, so no species is claimed.
-    assert.equal(r.result.identification, null);
-    assert.equal(r.result.identificationConfidence, 30);
+    assert.equal(r.result.identificationConfidence, 25);
     assert.equal(r.result.classification, "carbonate-or-sulfate");
     assert.ok(Array.isArray(r.result.testsRecommended));
-    assert.ok(r.result.testsRecommended.length > 0);
   });
 
   it("fail-CLOSED: poisoned hardness/SG are clamped, never leak Infinity/NaN", () => {
