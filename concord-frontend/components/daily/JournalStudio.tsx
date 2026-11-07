@@ -27,6 +27,7 @@ interface MediaItem { id?: string; kind: 'image' | 'audio' | 'video' | 'link'; u
 interface Entry {
   id: string; title: string; body: string; mood: number | null;
   tags: string[]; date: string; media: MediaItem[]; template: string | null;
+  source?: string;
 }
 interface Template { id: string; name: string; icon: string; description: string; tags: string[]; body: string }
 interface Dash { totalEntries: number; daysJournaled: number; currentStreak: number; entriesThisMonth: number; wroteToday: boolean }
@@ -189,6 +190,20 @@ export function JournalStudio() {
       URL.revokeObjectURL(a.href);
     }
   }, [tagFilter]);
+
+  const exportAll = useCallback(async () => {
+    // D4: the full own-records export — both stores + sessions + habits
+    // + reminders, in labelled sections (the domain's export-journal).
+    const r = await lensRun<{ markdown: string; filename: string }>('daily', 'export-journal', {});
+    if (r.data?.ok && r.data.result?.markdown) {
+      const blob = new Blob([r.data.result.markdown], { type: 'text/markdown' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = r.data.result.filename || 'daily-journal-export.md';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+  }, []);
 
   const shown = results ?? entries;
   const tabs: { id: Tab; label: string }[] = useMemo(() => [
@@ -374,6 +389,11 @@ export function JournalStudio() {
               className="px-2 py-1.5 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 inline-flex items-center gap-1 disabled:opacity-40">
               {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3.5 h-3.5" />}Export
             </button>
+            <button onClick={exportAll}
+              title="Every record you own in this lens — Studio + Today entries, sessions, habits, reminders"
+              className="px-2 py-1.5 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 inline-flex items-center gap-1">
+              <Download className="w-3.5 h-3.5" />Export my journal
+            </button>
           </div>
 
           {/* Timeline */}
@@ -388,10 +408,15 @@ export function JournalStudio() {
                   {e.mood != null && <span className="text-base">{MOODS[e.mood - 1]}</span>}
                   <span className="text-[11px] font-mono text-zinc-400">{e.date}</span>
                   {e.template && <span className="text-[9px] px-1 rounded bg-zinc-800 text-zinc-400">{e.template}</span>}
+                  {e.source === 'today' && <span className="text-[9px] px-1 rounded bg-sky-900/50 text-sky-300">from Today — edit it there</span>}
                   <div className="ml-auto flex items-center gap-1">
                     {(e.tags || []).map((t) => <span key={t} className="text-[9px] px-1 rounded bg-rose-900/40 text-rose-300">{t}</span>)}
-                    <button onClick={() => startEdit(e)} aria-label="Edit entry" className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-zinc-300"><Pencil className="w-3 h-3" /></button>
-                    <button onClick={() => del(e.id)} aria-label="Delete entry" className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                    {e.source !== 'today' && (
+                      <>
+                        <button onClick={() => startEdit(e)} aria-label="Edit entry" className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-zinc-300"><Pencil className="w-3 h-3" /></button>
+                        <button onClick={() => del(e.id)} aria-label="Delete entry" className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                      </>
+                    )}
                   </div>
                 </div>
                 {editId === e.id ? (
