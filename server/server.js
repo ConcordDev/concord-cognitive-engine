@@ -72559,17 +72559,36 @@ app.get("/api/dream/convergences", requireAuth(), requireRole("owner"), asyncHan
 }));
 
 // App Maker
-app.get("/api/apps", requireAuth(), asyncHandler(async (_req, res) => {
+app.get("/api/apps", requireAuth(), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
-  res.json(m.listApps());
+  const base = m.listApps();
+  // F9 — one app object: the caller's Studio projects ride the same list as
+  // app objects, projected from the appmaker domain's own store. The stores
+  // are not merged; the union is at this read and writes route to the owner.
+  const mine = m.collectCallerProjects(globalThis._concordSTATE?.appMakerLens, req.user);
+  const seen = new Set(base.apps.map((a) => a.id));
+  const projected = mine
+    .filter(({ project }) => project?.id && !seen.has(project.id))
+    .map(({ project, ownerKey }) => m.projectAsApp(project, ownerKey));
+  res.json({ ok: true, apps: [...base.apps, ...projected] });
 }));
 app.get("/api/apps/:id", requireAuth(), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
-  res.json(m.getApp(req.params.id));
+  const found = m.getApp(req.params.id);
+  if (found.ok) return res.json(found);
+  const mine = m.collectCallerProjects(globalThis._concordSTATE?.appMakerLens, req.user);
+  const hit = mine.find(({ project }) => project?.id === req.params.id);
+  if (hit) return res.json({ ok: true, app: m.projectAsApp(hit.project, hit.ownerKey) });
+  return res.json(found);
 }));
 app.post("/api/apps", requireAuth(), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
-  res.json(m.createApp(req.body));
+  // The author of record is the AUTHENTICATED CALLER, never the request
+  // body: the promote verb's ownership check stands on this stamp, so a
+  // client-supplied author is ignored (the integrity leg of the B7 ruling).
+  const author = m.appCallerKey(req.user);
+  if (!author) return res.status(401).json({ ok: false, error: "Authentication required" });
+  res.json(m.createApp({ ...(req.body || {}), author }));
 }));
 app.post("/api/apps/:id/validate", requireAuth(), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
@@ -72577,9 +72596,63 @@ app.post("/api/apps/:id/validate", requireAuth(), asyncHandler(async (req, res) 
   if (!app.ok) return res.json(app);
   res.json(m.validateApp(app.app));
 }));
-app.post("/api/apps/:id/promote", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
+app.post("/api/apps/:id/promote", requireAuth(), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
-  res.json(m.promoteApp(req.params.id));
+  // Founder ruling (decision walk #1, Decision 11): promote is an owner
+  // action checked against OWNERSHIP. The platform 'owner' ROLE gate that
+  // stood on this route made the verb unusable by the app's own creator;
+  // only this route's gate changes — the admin promotion pipeline below
+  // keeps its role gate entire.
+  const callerKey = m.appCallerKey(req.user);
+  const found = m.getApp(req.params.id);
+  if (found.ok) {
+    if (!m.isAppOwner(found.app, callerKey)) {
+      return res.status(403).json({ ok: false, error: "Insufficient permissions: only the app's owner can promote it" });
+    }
+    return res.json(m.promoteApp(req.params.id));
+  }
+  const mine = m.collectCallerProjects(globalThis._concordSTATE?.appMakerLens, req.user);
+  const hit = mine.find(({ project }) => project?.id === req.params.id);
+  if (hit) {
+    // The projection only ever surfaces the caller's own shelf, so holding
+    // the project here IS the ownership check — by construction.
+    const r = m.promoteProject(hit.project);
+    if (r.ok && typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+    return res.json(r);
+  }
+  return res.json(found);
+}));
+app.put("/api/apps/:id", requireAuth(), asyncHandler(async (req, res) => {
+  const m = await import("./emergent/app-maker.js");
+  const found = m.getApp(req.params.id);
+  if (!found.ok) {
+    const mine = m.collectCallerProjects(globalThis._concordSTATE?.appMakerLens, req.user);
+    if (mine.some(({ project }) => project?.id === req.params.id)) {
+      return res.json({ ok: false, error: "Studio projects are edited in Studio" });
+    }
+    return res.json(found);
+  }
+  if (!m.isAppOwner(found.app, m.appCallerKey(req.user))) {
+    return res.status(403).json({ ok: false, error: "Insufficient permissions: only the app's owner can edit it" });
+  }
+  res.json(m.updateApp(req.params.id, req.body || {}));
+}));
+app.delete("/api/apps/:id", requireAuth(), asyncHandler(async (req, res) => {
+  const m = await import("./emergent/app-maker.js");
+  const found = m.getApp(req.params.id);
+  if (!found.ok) {
+    const mine = m.collectCallerProjects(globalThis._concordSTATE?.appMakerLens, req.user);
+    if (mine.some(({ project }) => project?.id === req.params.id)) {
+      return res.json({ ok: false, error: "Studio projects are deleted in Studio" });
+    }
+    return res.json(found);
+  }
+  if (!m.isAppOwner(found.app, m.appCallerKey(req.user))) {
+    return res.status(403).json({ ok: false, error: "Insufficient permissions: only the app's owner can delete it" });
+  }
+  res.json(m.deleteApp(req.params.id));
 }));
 
 // Reality Explorer
