@@ -7,7 +7,7 @@
 // snapshot; the title field commits on blur with visible refusals;
 // the two write-through field types edit local drafts.
 
-import { describe, it } from "node:test";
+import { describe, it } from 'vitest';
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

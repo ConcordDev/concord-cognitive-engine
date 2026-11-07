@@ -2,7 +2,7 @@
 // (tier declaration). Behavioural where the sandbox allows: the pillar
 // selection is a pure id lookup, exercised here against the panel's
 // own constant shape via the spine fixture form.
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';

@@ -3,7 +3,7 @@
 // comment, re-implemented here against the shipped rule and exercised
 // on the two real comment forms; the lifecycle and declaration legs
 // are source-pinned.
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';

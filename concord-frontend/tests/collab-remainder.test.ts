@@ -1,7 +1,7 @@
 // Collab remainder pins (F-B row 12, D1's lifecycle remainder) —
 // source-level contract pins. Behavioural coverage of the new verbs
 // lives in server/tests/collab-room-lifecycle.test.js.
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
