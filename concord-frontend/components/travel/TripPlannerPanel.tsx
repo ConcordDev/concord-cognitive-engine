@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Globe, Loader2, DollarSign, Plane, Users2, Clock, Phone, Car } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { formatConverted, plannerStart, tripPlanTags, visaDestination, visaHeadline, visaSaveLine } from './planner-run';
 
 interface Country {
   name: string; officialName: string; iso2: string; iso3: string;
@@ -43,11 +44,20 @@ export function TripPlannerPanel() {
   const plan = useMutation({
     mutationFn: async () => {
       setError(null);
-      const ci = await callMacro<Country>('country-info', { country: destination });
+      const start = plannerStart(destination);
+      if (start.kind === 'field') {
+        setError(start.error);
+        setCountry(null); setConvert(null); setVisa(null);
+        return;
+      }
+      const ci = await callMacro<Country>('country-info', { country: destination.trim() });
       if (!ci.ok || !ci.result) { setError(ci.error || 'country lookup failed'); setCountry(null); setConvert(null); setVisa(null); return; }
-      setCountry(ci.result);
-      const localCurrency = ci.result.currencies?.[0]?.code;
-      const vc = await callMacro<Visa>('visaCheck', { passportCountry: passport, destination: ci.result.iso2, durationDays: days === '' ? undefined : days });
+      const destCode = visaDestination(ci.result.iso2);
+      if (!destCode) { setError('country lookup returned no country code'); setCountry(null); setConvert(null); setVisa(null); return; }
+      const shown = { ...ci.result, iso2: destCode };
+      setCountry(shown);
+      const localCurrency = shown.currencies?.[0]?.code;
+      const vc = await callMacro<Visa>('visaCheck', { passportCountry: passport, destination: destCode, durationDays: days === '' ? undefined : days });
       if (vc.ok && vc.result) setVisa(vc.result); else setVisa(null);
       if (localCurrency && localCurrency !== 'USD') {
         const cv = await callMacro<Convert>('currency-convert', { amount: amount === '' ? undefined : amount, from: 'USD', to: localCurrency });
@@ -99,8 +109,8 @@ export function TripPlannerPanel() {
               apiSource="rest-countries"
               apiUrl="https://restcountries.com/v3.1/"
               title={`Trip plan — ${country.name} (${passport} passport, ${days}d)`}
-              content={`Destination: ${country.name} (${country.iso2})\nCapital: ${country.capital}\nPopulation: ${country.population?.toLocaleString()}\nLanguages: ${country.languages?.join(', ')}\nCurrencies: ${country.currencies?.map(c => `${c.code} (${c.symbol})`).join(', ')}\nTZ: ${country.timezones?.join(', ')}\nDriving: ${country.drivingSide}\n\nVisa (${passport} → ${country.iso2}, ${days}d): ${visa ? `${visa.arrangement || 'check embassy'} — ${visa.visaRequired ? 'visa required' : 'visa-free'} (${visa.maxFreeStay || '?'})` : 'no bilateral entry on file'}\n\nFX: $${amount} USD → ${convert ? `${convert.converted} ${convert.to} @ ${convert.rate}` : 'n/a'}`}
-              extraTags={['travel', 'trip-plan', country.iso2.toLowerCase()]}
+              content={`Destination: ${country.name} (${country.iso2})\nCapital: ${country.capital}\nPopulation: ${country.population?.toLocaleString()}\nLanguages: ${country.languages?.join(', ')}\nCurrencies: ${country.currencies?.map(c => `${c.code} (${c.symbol})`).join(', ')}\nTZ: ${country.timezones?.join(', ')}\nDriving: ${country.drivingSide}\n\n${visaSaveLine(visa, passport, country.iso2, days)}\n\nFX: $${amount} USD → ${convert && formatConverted(convert.converted) != null ? `${formatConverted(convert.converted)} ${convert.to} @ ${convert.rate}` : 'n/a'}`}
+              extraTags={tripPlanTags(country.iso2)}
               rawData={{ country, visa, convert, amount, passport, days }}
             />
           </div>
@@ -135,12 +145,12 @@ export function TripPlannerPanel() {
                 setAmount(Math.max(0, n));
               }} className="w-20 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-right font-mono text-[11px] text-white" />
             </div>
-            {convert ? (
+            {convert && formatConverted(convert.converted) != null ? (
               <div className="text-center">
-                <div className="font-mono text-2xl text-cyan-300">{convert.converted.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-sm text-zinc-400">{convert.to}</span></div>
+                <div className="font-mono text-2xl text-cyan-300">{formatConverted(convert.converted)} <span className="text-sm text-zinc-400">{convert.to}</span></div>
                 <p className="mt-1 text-[10px] text-zinc-400">${convert.amount} {convert.from} @ {convert.rate?.toFixed(4)} (ECB · {convert.date})</p>
               </div>
-            ) : country.currencies[0]?.code === 'USD' ? (
+            ) : country.currencies?.[0]?.code === 'USD' ? (
               <div className="text-center text-[11px] text-zinc-400">USD is the local currency.</div>
             ) : (
               <div className="text-center text-[11px] text-zinc-400">FX not available.</div>
@@ -148,10 +158,10 @@ export function TripPlannerPanel() {
           </div>
           <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
             <div className="mb-2 flex items-center gap-1 text-xs font-semibold text-zinc-200"><Globe className="h-3.5 w-3.5 text-cyan-400" /> Entry ({passport} → {country.iso2})</div>
-            {visa ? (
+            {visa && visaHeadline(visa.visaRequired) ? (
               <div className="text-center">
                 <div className={`font-mono text-lg ${visa.visaRequired ? 'text-amber-300' : 'text-emerald-300'}`}>
-                  {visa.visaRequired ? 'Visa required' : 'Visa-free'}
+                  {visaHeadline(visa.visaRequired)}
                 </div>
                 <p className="mt-1 text-[11px] text-zinc-400">{visa.arrangement || 'bilateral entry'} · max stay {visa.maxFreeStay || '?'}</p>
               </div>
