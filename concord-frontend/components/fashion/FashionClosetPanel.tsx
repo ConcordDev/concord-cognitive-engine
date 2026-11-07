@@ -8,10 +8,11 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, Repeat, Scissors, Eye, Shirt } from 'lucide-react';
+import { Loader2, Plus, Trash2, Repeat, Scissors, Eye, Shirt, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { closetItemEditInput } from './closet-item-edit';
 
 interface Item {
   id: string; name: string; category: string; brand: string | null; color: string | null;
@@ -46,6 +47,8 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
   const [laundryFilter, setLaundryFilter] = useState<LaundryStatus | ''>('');
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', category: 'top', brand: '', color: '', cost: '', photo: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', category: 'top', brand: '', color: '', cost: '' });
   const [bgBusy, setBgBusy] = useState<string | null>(null);
   const [visionBusy, setVisionBusy] = useState(false);
   const [visionNote, setVisionNote] = useState<string | null>(null);
@@ -78,6 +81,27 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
     setForm({ name: '', category: 'top', brand: '', color: '', cost: '', photo: '' });
     setShowAdd(false); setError(null); setVisionNote(null);
     await refresh(); onChange();
+  };
+  const beginEdit = (item: Item) => {
+    setEditingId(item.id);
+    setEditForm({
+      name: item.name,
+      category: item.category,
+      brand: item.brand || '',
+      color: item.color || '',
+      cost: Number.isFinite(item.cost) ? String(item.cost) : '',
+    });
+    setError(null);
+  };
+  const saveEdit = async (id: string) => {
+    const built = closetItemEditInput(id, editForm);
+    if (!built.ok) { setError(built.error); return; }
+    const r = await lensRun('fashion', 'item-update', built.input);
+    if (r.data?.ok === false) { setError(r.data?.error || 'Item was not updated.'); return; }
+    setEditingId(null);
+    setError(null);
+    await refresh();
+    onChange();
   };
   const wear = async (id: string) => { await lensRun('fashion', 'item-wear', { id }); await refresh(); onChange(); };
   const del = async (id: string) => { await lensRun('fashion', 'item-delete', { id }); await refresh(); onChange(); };
@@ -152,7 +176,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
         </div>
       </div>
 
-      {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
+      {error && <div role="alert" className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {showAdd && (
         <div className="grid grid-cols-3 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
@@ -211,10 +235,35 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
                     {i.category}{i.brand ? ` · ${i.brand}` : ''}{i.color ? ` · ${i.color}` : ''}
                   </p>
                 </div>
-                <button aria-label="Delete" type="button" onClick={() => del(i.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button aria-label={`Edit ${i.name}`} type="button" onClick={() => beginEdit(i)} className="text-zinc-500 hover:text-fuchsia-300">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button aria-label={`Delete ${i.name}`} type="button" onClick={() => del(i.id)} className="text-zinc-600 hover:text-rose-400">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
+              {editingId === i.id && (
+                <div className="mt-2 grid grid-cols-2 gap-1.5">
+                  <input aria-label={`Name for ${i.name}`} value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
+                  <select aria-label={`Category for ${i.name}`} value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                    className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100">
+                    {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <input aria-label={`Cost for ${i.name}`} inputMode="decimal" value={editForm.cost} onChange={(e) => setEditForm({ ...editForm, cost: e.target.value })}
+                    className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" placeholder="Cost" />
+                  <input aria-label={`Brand for ${i.name}`} value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })}
+                    className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" placeholder="Brand" />
+                  <input aria-label={`Color for ${i.name}`} value={editForm.color} onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
+                    className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" placeholder="Color" />
+                  <button type="button" onClick={() => saveEdit(i.id)}
+                    className="col-span-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-medium rounded-lg px-2 py-1">
+                    Save
+                  </button>
+                </div>
+              )}
               {i.photo && !i.bgRemoved && (
                 <button type="button" onClick={() => removeBg(i.id)} disabled={bgBusy === i.id}
                   className="flex items-center gap-1 mt-2 px-2 py-0.5 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg disabled:opacity-50">
