@@ -110,13 +110,13 @@ describe("space — reentryAnalysis (exact KE / heating / corridor)", () => {
 });
 
 describe("space — launchWindow + orbit-3d (geometry)", () => {
-  it("launchWindow: GEO target has 2 windows/day and direct ascent at matched inclination", async () => {
+  it("launchWindow: GEO target has 1 window/day and direct ascent at matched inclination", async () => {
     const r = await lensRun("space", "launchWindow", {
       data: { targetOrbit: "GEO", launchLatitude: 28.5 },
     });
     assert.equal(r.ok, true);
     assert.equal(r.result.targetOrbit, "GEO");
-    assert.equal(r.result.windowsPerDay, 2);
+    assert.equal(r.result.windowsPerDay, 1);   // GEO: the launch plane crosses the site once a day (R2 space pass F4)
     assert.equal(r.result.windowDuration, "~1 hour");
     // inclination defaults to latitude → |28.5 - 28.5| = 0 ≤ 5 → direct
     assert.match(r.result.inclinationPenalty, /Direct ascent/);
@@ -272,9 +272,20 @@ describe("space — external-API failure branches (deterministic, no live data)"
   });
 
   it("launch-library-upcoming: refuses with a launch-library-prefixed error", async () => {
-    const r = await lensRun("space", "launch-library-upcoming", { params: { limit: 5 } });
-    assert.equal(r.result.ok, false);
-    startsWith(r.result.error, "launch library");
+    // The handler reads the live Launch Library 2 API through the global
+    // fetch, so the refusal branch is only deterministic with egress
+    // denied. Deny it here explicitly (restored in finally) rather than
+    // relying on the gate's ambient network: with egress open the same
+    // call honestly returns live launches (GB-1339 reconciliation).
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async () => { throw new Error("egress denied by test"); };
+    try {
+      const r = await lensRun("space", "launch-library-upcoming", { params: { limit: 5 } });
+      assert.equal(r.result.ok, false);
+      startsWith(r.result.error, "launch library");
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 
   it("iss-track: refuses with an iss-api-prefixed error and no position", async () => {
