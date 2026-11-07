@@ -638,10 +638,12 @@ export default function registerAllianceActions(registerLensAction) {
       const cols = userColumns(db);
       if (cols && !cols.has("username")) return { ok: false, error: "user lookup unavailable" };
       const active = !!(cols && cols.has("is_active"));
+      // The only varying part is a constant suffix appended to LITERAL statements — no template
+      // interpolation into SQL, and the token is always a bound '?'.
       const act = active ? " AND is_active = 1" : "";
-      let row = db.prepare(`SELECT id, username FROM users WHERE username = ?${act}`).get(token)
-        || db.prepare(`SELECT id, username FROM users WHERE lower(username) = lower(?)${act}`).get(token)
-        || db.prepare(`SELECT id, username FROM users WHERE id = ?${act}`).get(token);
+      let row = db.prepare("SELECT id, username FROM users WHERE username = ?" + act).get(token)
+        || db.prepare("SELECT id, username FROM users WHERE lower(username) = lower(?)" + act).get(token)
+        || db.prepare("SELECT id, username FROM users WHERE id = ?" + act).get(token);
       if (!row && cols && cols.has("display_name")) {
         const selectNamed = (sql) => {
           const stmt = db.prepare(sql);

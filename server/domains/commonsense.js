@@ -1497,40 +1497,28 @@ export default function registerCommonsenseActions(registerLensAction) {
       throw err;
     }
     const schema = checkSchema(db);
-    const extraCols = [
-      ...(schema.flagged ? ["flagged"] : []),
-      ...(schema.findingAt ? ["finding_at"] : []),
-      ...(schema.exceptionAt ? ["exception_at"] : []),
-    ];
-    const extraVals = [
-      ...(schema.flagged ? [check.flagged ? 1 : 0] : []),
-      ...(schema.findingAt ? [check.findingAt || null] : []),
-      ...(schema.exceptionAt ? [check.exceptionAt || null] : []),
-    ];
-    const allCols = ["id", "user_id", "question", "finding", "exception", "created_at", "updated_at", ...extraCols];
-    const updates = [
-      "question = excluded.question",
-      "finding = excluded.finding",
-      "exception = excluded.exception",
-      "updated_at = excluded.updated_at",
-      ...extraCols.map((c) => `${c} = excluded.${c}`),
-    ];
-    db.prepare(`
-      INSERT INTO commonsense_checks
-        (${allCols.join(", ")})
-      VALUES (${allCols.map(() => "?").join(", ")})
-      ON CONFLICT(id) DO UPDATE SET
-        ${updates.join(",\n        ")}
-    `).run(
-      check.id,
-      userId,
-      check.question,
-      check.finding,
-      check.exception,
-      check.createdAt,
-      check.updatedAt,
-      ...extraVals,
-    );
+    // Fixed literal statements only (no SQL text built from data): the base upsert covers the
+    // seven always-present columns; each optional, schema-probed column gets its own literal UPDATE.
+    // One transaction so a check is never half-written.
+    const write = () => {
+      db.prepare(
+        "INSERT INTO commonsense_checks (id, user_id, question, finding, exception, created_at, updated_at) "
+        + "VALUES (?, ?, ?, ?, ?, ?, ?) "
+        + "ON CONFLICT(id) DO UPDATE SET question = excluded.question, finding = excluded.finding, "
+        + "exception = excluded.exception, updated_at = excluded.updated_at",
+      ).run(check.id, userId, check.question, check.finding, check.exception, check.createdAt, check.updatedAt);
+      if (schema.flagged) {
+        db.prepare("UPDATE commonsense_checks SET flagged = ? WHERE id = ?").run(check.flagged ? 1 : 0, check.id);
+      }
+      if (schema.findingAt) {
+        db.prepare("UPDATE commonsense_checks SET finding_at = ? WHERE id = ?").run(check.findingAt || null, check.id);
+      }
+      if (schema.exceptionAt) {
+        db.prepare("UPDATE commonsense_checks SET exception_at = ? WHERE id = ?").run(check.exceptionAt || null, check.id);
+      }
+    };
+    if (typeof db.transaction === "function") db.transaction(write)();
+    else write();
   }
   function hydrateChecks(ctx, userId) {
     const bucket = checkBucket(userId);
