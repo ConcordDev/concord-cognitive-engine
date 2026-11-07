@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { actionOf } from '../../../tests/helpers/exercise';
 
 const lensRunMock = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/api/client', () => ({ lensRun: (...a: unknown[]) => lensRunMock(...a) }));
@@ -14,9 +13,8 @@ afterEach(() => { cleanup(); vi.useRealTimers(); });
 beforeEach(() => {
   mode = 'ok';
   lensRunMock.mockReset();
-  lensRunMock.mockImplementation(async (...a: unknown[]) => {
+  lensRunMock.mockImplementation(async () => {
     if (mode === 'down') throw new Error('down');
-    void actionOf;
     if (mode === 'empty') return { data: { ok: true, result: { ok: true, taxon: null, occurrences: [], total: 0 } } };
     return { data: { ok: true, result: { ok: true, taxon: TAXON, occurrences: OCC, total: 321, fetchedAt: 1_760_000_000 } } };
   });
