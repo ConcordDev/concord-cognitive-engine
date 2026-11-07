@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 const { lensRun, authUser, lensCommandCalls } = vi.hoisted(() => ({
@@ -204,5 +204,90 @@ describe('creative writing page', () => {
     fireEvent.change(bodyField, { target: { value: 'one\ntwo\nthree' } });
     const list = view.getAllByRole('listitem').filter((li) => /^\d+$/.test(li.textContent || ''));
     expect(list.map((li) => li.textContent)).toEqual(['1', '2', '3']);
+  });
+
+  it('EXPORT JSON: downloads a real file built from project-get, not a silent no-op', async () => {
+    const createObjectURL = vi.fn(() => 'blob:mock-url');
+    const revokeObjectURL = vi.fn();
+    (URL as unknown as { createObjectURL: typeof createObjectURL }).createObjectURL = createObjectURL;
+    (URL as unknown as { revokeObjectURL: typeof revokeObjectURL }).revokeObjectURL = revokeObjectURL;
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    let capturedBlob: Blob | null = null;
+    createObjectURL.mockImplementation((blob: Blob) => { capturedBlob = blob; return 'blob:mock-url'; });
+
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'project-list') return listed([{ id: 'man_1', title: 'Door page' }]);
+      if (action === 'project-get') {
+        return {
+          data: {
+            ok: true,
+            result: {
+              project: { id: 'man_1', title: 'Door page', genre: null, targetWords: 0 },
+              chapters: [], scenes: [], characters: [], threads: [], wordCount: 0,
+            },
+            error: null,
+          },
+        };
+      }
+      throw new Error(action);
+    });
+    const view = render(<CreativeWritingPage />);
+    fireEvent.click(await view.findByTestId('export-json-man_1'));
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1));
+    expect(capturedBlob).not.toBeNull();
+    expect((capturedBlob as unknown as Blob).type).toBe('application/json');
+    const text = await (capturedBlob as unknown as Blob).text();
+    const parsed = JSON.parse(text);
+    expect(parsed.project.title).toBe('Door page');
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    clickSpy.mockRestore();
+  });
+
+  it('EXPORT CSV: downloads a real summary row when there are no scenes', async () => {
+    const createObjectURL = vi.fn();
+    let capturedBlob: Blob | null = null;
+    createObjectURL.mockImplementation((blob: Blob) => { capturedBlob = blob; return 'blob:mock-url'; });
+    (URL as unknown as { createObjectURL: typeof createObjectURL }).createObjectURL = createObjectURL;
+    (URL as unknown as { revokeObjectURL: (u: string) => void }).revokeObjectURL = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'project-list') return listed([{ id: 'man_1', title: 'Door page' }]);
+      if (action === 'project-get') {
+        return {
+          data: {
+            ok: true,
+            result: {
+              project: { id: 'man_1', title: 'Door page', genre: 'noir', targetWords: 5000, createdAt: 1, updatedAt: 2 },
+              chapters: [], scenes: [], characters: [], threads: [], wordCount: 0,
+            },
+            error: null,
+          },
+        };
+      }
+      throw new Error(action);
+    });
+    const view = render(<CreativeWritingPage />);
+    fireEvent.click(await view.findByTestId('export-csv-man_1'));
+    await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1));
+    const text = await (capturedBlob as unknown as Blob).text();
+    expect(text.split('\n')[0]).toBe('id,title,genre,targetWords,wordCount,createdAt,updatedAt');
+    expect(text.split('\n')[1]).toBe('man_1,Door page,noir,5000,0,1,2');
+    clickSpy.mockRestore();
+  });
+
+  it('EXPORT: a failed project-get surfaces a real error, never a silent no-op', async () => {
+    const createObjectURL = vi.fn();
+    (URL as unknown as { createObjectURL: typeof createObjectURL }).createObjectURL = createObjectURL;
+    lensRun.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'project-list') return listed([{ id: 'man_1', title: 'Door page' }]);
+      if (action === 'project-get') return { data: { ok: false, result: null, error: 'project not found' } };
+      throw new Error(action);
+    });
+    const view = render(<CreativeWritingPage />);
+    fireEvent.click(await view.findByTestId('export-json-man_1'));
+    expect(await view.findByTestId('creative-writing-export-error')).toHaveTextContent(/project not found/);
+    expect(createObjectURL).not.toHaveBeenCalled();
   });
 });
