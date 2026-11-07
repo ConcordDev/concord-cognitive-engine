@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { closetItemEditInput } from './closet-item-edit.ts';
+import { closetItemEditInput } from './closet-item-edit';
 
 describe('closet item edit', () => {
   it('sends brand and cost and leaves wear history off the body', () => {

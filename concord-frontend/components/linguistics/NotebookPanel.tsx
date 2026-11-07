@@ -8,7 +8,7 @@
 
 import { useState, useMemo, useCallback, useRef, type RefObject } from 'react';
 import { motion } from 'framer-motion';
-import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useLensData, type LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 import {
@@ -191,7 +191,7 @@ export function NotebookPanel({
     setFormError(null);
   };
 
-  const startEdit = (item: LinguisticsArtifact & { id: string; title: string }) => {
+  const startEdit = (item: LensItem<LinguisticsArtifact>) => {
     setEditingId(item.id);
     setFormTitle(item.title);
     setFormSubfield(item.data.subfield);
@@ -600,7 +600,7 @@ export function NotebookPanel({
                       >
                         {runArtifact.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                       </button>
-                      <button onClick={() => startEdit(selected as LinguisticsArtifact & { id: string; title: string })} className="text-gray-400 hover:text-blue-400" title="Edit this record"><Pencil className="w-4 h-4" /></button>
+                      <button onClick={() => startEdit(selected)} className="text-gray-400 hover:text-blue-400" title="Edit this record"><Pencil className="w-4 h-4" /></button>
                       {confirmDeleteId === selected.id ? (
                         <button onClick={() => handleDelete(selected)} className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30" aria-label="Confirm delete">Delete \u201c{selected.title}\u201d?</button>
                       ) : (

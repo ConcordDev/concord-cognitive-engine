@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parksView, postalView } from "./reference-panels.ts";
+import { parksView, postalView } from "./reference-panels";
 
 const yosemite = { parkCode: "yose", name: "Yosemite National Park", designation: "National Park" };
 

@@ -7,7 +7,7 @@ import {
   visaDestination,
   visaHeadline,
   visaSaveLine,
-} from "./planner-run.ts";
+} from "./planner-run";
 
 describe("planner start", () => {
   it("names a blank destination and does not look it up", () => {

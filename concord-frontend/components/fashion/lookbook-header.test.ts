@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { notifyLookbookHeader } from './lookbook-header.ts';
+import { notifyLookbookHeader } from './lookbook-header';
 
 test('a stored lookbook asks the header to refresh', () => {
   let calls = 0;

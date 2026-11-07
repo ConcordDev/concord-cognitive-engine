@@ -187,12 +187,12 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
     queryKey: ['cross-domain-registered', domain],
     queryFn: async () => {
       try {
-        const r = await lensRun<{ result?: { nodes?: Array<{ id: string; title: string; domain: string; summary?: string }> } }>(
+        const r = await lensRun<{ nodes?: Array<{ id: string; title: string; domain: string; summary?: string }> }>(
           'graph',
           'registered-nodes',
           { domain },
         );
-        return r?.result?.nodes || [];
+        return r?.data?.result?.nodes || [];
       } catch {
         return [];
       }
