@@ -825,6 +825,18 @@ export default function registerDomainRoutes(app, {
     const out = await runMacro("grounding", "pending_actions", {}, makeCtx(req));
     return res.json(out);
   }));
+  app.post("/api/grounding/sensors/:sensorId/remove", asyncHandler(async (req, res) => {
+    const out = await runMacro("grounding", "remove_sensor", { sensorId: req.params.sensorId }, makeCtx(req));
+    return res.json(out);
+  }));
+  app.post("/api/grounding/readings/:readingId/remove", asyncHandler(async (req, res) => {
+    const out = await runMacro("grounding", "remove_reading", { readingId: req.params.readingId }, makeCtx(req));
+    return res.json(out);
+  }));
+  app.post("/api/grounding/actions/:actionId/withdraw", asyncHandler(async (req, res) => {
+    const out = await runMacro("grounding", "withdraw_action", { actionId: req.params.actionId }, makeCtx(req));
+    return res.json(out);
+  }));
   app.post("/api/grounding/actions/:actionId/approve", asyncHandler(async (req, res) => {
     const out = await runMacro("grounding", "approve_action", { actionId: req.params.actionId }, makeCtx(req));
     return res.json(out);
