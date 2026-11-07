@@ -47,6 +47,24 @@ describe("pets.pet-* CRUD", () => {
     assert.equal(call("pet-detail", ctxA, { id: pet.id }).ok, false);
   });
 
+  it("keeps the profile weight and the latest weigh-in as different figures", () => {
+    const pet = newPet(ctxA, { weightKg: 10 });
+    const before = call("pet-detail", ctxA, { id: pet.id });
+    assert.equal(before.result.pet.weightKg, 10);
+    assert.equal(before.result.latestWeighIn, null);
+    assert.equal(before.result.counts.weightLogs, 0);
+    assert.equal(before.result.counts.vaccines, 0);
+    call("weight-log", ctxA, { petId: pet.id, weightKg: 10.5, date: "2026-10-01" });
+    call("weight-log", ctxA, { petId: pet.id, weightKg: 11, date: "2026-11-01" });
+    call("vaccine-record", ctxA, { petId: pet.id, name: "Rabies", date: "2026-11-01", nextDueDate: "2027-11-01" });
+    const after = call("pet-detail", ctxA, { id: pet.id });
+    assert.equal(after.result.pet.weightKg, 10);
+    assert.equal(after.result.latestWeighIn.weightKg, 11);
+    assert.equal(after.result.latestWeighIn.date, "2026-11-01");
+    assert.equal(after.result.counts.weightLogs, 2);
+    assert.equal(after.result.counts.vaccines, 1);
+  });
+
   it("cannot touch another user's pet", () => {
     const pet = newPet(ctxA);
     assert.equal(call("pet-update", ctxB, { id: pet.id, weightKg: 5 }).ok, false);

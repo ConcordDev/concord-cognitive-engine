@@ -110,7 +110,7 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
           </h3>
           {trend.latest != null && (
             <span className="flex items-center gap-1 text-[11px] text-zinc-400">
-              <TrendIcon className="w-3 h-3" /> {trend.latest} kg
+              <TrendIcon className="w-3 h-3" /> Latest weigh-in {trend.latest} kg
               {trend.changeKg !== 0 && <span className="text-zinc-400">({trend.changeKg > 0 ? '+' : ''}{trend.changeKg})</span>}
             </span>
           )}
