@@ -70,12 +70,17 @@ describe("daily — pure-compute calc contracts (exact computed values)", () => 
     assert.equal(empty.ok, true);
     assert.ok(String(empty.result.message).includes("weekly review"));
 
-    // The review is a 7-day window ending at params.date and keyed by real ISO days (D2).
+    // Reconciled to the shipped D2 behaviour (Daily full build, PR #2312):
+    // weeklyReview computes over the caller's real records in the last
+    // 7 days — legacy rows count only when they carry a real ISO date
+    // inside that window. The rows below are today and yesterday; every
+    // expected aggregate is unchanged from the original contract.
+    const d1 = TODAY;
+    const d2 = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     const full = await lensRun("daily", "weeklyReview", {
-      params: { date: "2026-03-07" },
       data: { days: [
-        { date: "2026-03-06", tasksCompleted: 4, focusMinutes: 120, mood: 4 },
-        { date: "2026-03-07", tasksCompleted: 2, focusMinutes: 60, mood: 2 },
+        { date: d1, tasksCompleted: 4, focusMinutes: 120, mood: 4 },
+        { date: d2, tasksCompleted: 2, focusMinutes: 60, mood: 2 },
       ] },
     });
     assert.equal(full.result.daysTracked, 2);
@@ -83,7 +88,7 @@ describe("daily — pure-compute calc contracts (exact computed values)", () => 
     assert.equal(full.result.totalFocusMinutes, 180);
     assert.equal(full.result.totalFocusHours, 3);
     assert.equal(full.result.avgMood, 3);                 // (4+2)/2
-    assert.equal(full.result.bestDay, "2026-03-06");      // most focus
+    assert.equal(full.result.bestDay, d1);                // most focus + tasks
     assert.equal(full.result.avgTasksPerDay, 3);          // 6/2
     assert.equal(full.result.avgFocusPerDay, 90);         // 180/2
   });

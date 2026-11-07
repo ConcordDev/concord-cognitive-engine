@@ -97,8 +97,11 @@ describe("feed — algorithmic ranking + affinity (shared ctx round-trips)", () 
     assert.equal(r.result.ranked[0].id, "p_alice");
     assert.ok(r.result.ranked[0].affinity > r.result.ranked[1].affinity);
     assert.ok(r.result.modelTrained);
-    // the reason names the resolved identity; an unresolved author id reads as "this author" (never a raw handle)
-    assert.ok(r.result.ranked[0].reasons.some((x) => /^you engage with /.test(x)));
+    // Reconciled to the shipped F3 behaviour (Feed full build, PR #2311):
+    // the reason names the author only when identity resolves through
+    // the social profile / users table; for an unresolved id it reads
+    // "you engage with this author" — the raw id never renders.
+    assert.ok(r.result.ranked[0].reasons.includes("you engage with this author"));
   });
 
   it("rank-for-you: muted-word and blocked-author candidates are filtered out", async () => {
