@@ -705,6 +705,18 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Player mail is real: messages, items and Concord Coin move between accounts on this instance and persist on Concord’s backend. The Gmail side is your own Google account, connected by you and revocable; until you connect it, that side shows its connect wall and holds nothing.',
   },
+  /**
+   * Courtship's records (courtships, marriages, pregnancies, children) are
+   * the caller's real persistent state in Concord's romance engine — no
+   * external feed is polled, and proposals between players are consent-gated.
+   * The generic REAL_LIVE caption ("polled live from an external source")
+   * would misstate the substrate, so the caption names it (F1, courtship
+   * full build).
+   */
+  courtship: {
+    label: 'Live',
+    caption: 'Your courtships, marriages and children are real records on this instance, kept by Concord’s romance engine. Courtships begin with an NPC in the world, or with an interaction here; proposals between players stay pending until the other player accepts.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {

@@ -65232,9 +65232,13 @@ app.get("/api/sports/league/:leagueId/teams", asyncHandler(async (req, res) => {
 
 // Phase CF2 — romance/dating sim (surface romance-engine.js).
 app.get("/api/courtship/mine", requireAuth(), asyncHandler(async (req, res) => {
-  const { listMyCourtships } = await import("./lib/romance-engine.js");
+  const { listMyCourtships, presentCourtship } = await import("./lib/romance-engine.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json({ ok: true, courtships: listMyCourtships(db, userId, req.query.status) });
+  // Presented with the same shared helper as the macro surface (courtship
+  // full build, S2) so the lens's two read paths cannot diverge: NPC
+  // partners carry their resolved name; player partners keep the
+  // consent machinery's id-strip.
+  res.json({ ok: true, courtships: listMyCourtships(db, userId, req.query.status).map((row) => presentCourtship(row, userId, db)) });
 }));
 
 app.post("/api/courtship/interact", requireAuth(), asyncHandler(async (req, res) => {
@@ -65275,7 +65279,7 @@ app.get("/api/courtship/marriages/mine", requireAuth(), asyncHandler(async (req,
   const userId = req.user?.id || req.user?.userId;
   res.json({
     ok: true,
-    marriages: listMyMarriages(db, userId, true),
+    marriages: listMyMarriages(db, userId, true, db),
     children: listChildren(db, userId),
   });
 }));
