@@ -149,12 +149,17 @@ describe("tier marking (§2)", () => {
     assert.match(SERVER_SRC, /import \{ MCP_TOOLS_LOCAL_OR_REAL_AUTH \} from "\.\/lib\/mcp-local-guard\.js";/);
   });
 
-  it("every tool classifies to the lane's amended totals: 100 real / 3 local / 24 anonymous of 127", () => {
+  // walk_guide joined the anonymous-by-design set with the Walk → Registry
+  // Merge Pilot (2026-11-06): a Tier-1 read-only documentation tool, in
+  // neither enforcement set (100/24 of 127 -> 100/25 of 128). With
+  // CONCORD_WALK_OVERLAY=off it is not registered and this census returns
+  // to 127 — the toggle is the measurement's enrichment switch.
+  it("every tool classifies to the lane's amended totals: 100 real / 3 local / 25 anonymous of 128", () => {
     const realSet = realAuthSet();
     const counts = { real: 0, local: 0, anonymous: 0 };
     for (const t of MCP_TOOLS) counts[expectedAuth(t.name, realSet)]++;
-    assert.equal(MCP_TOOLS.length, 127);
-    assert.deepEqual(counts, { real: 100, local: 3, anonymous: 24 });
+    assert.equal(MCP_TOOLS.length, 128);
+    assert.deepEqual(counts, { real: 100, local: 3, anonymous: 25 });
   });
 
   it("acceptance sample classifications (P0 surfaces, writes, compute, rt_* trio, anonymous-by-design)", () => {
@@ -165,6 +170,7 @@ describe("tier marking (§2)", () => {
       dhtp_detect: "real", csl_classify: "real", breakdown_build: "real",
       rt_tick: "local", rt_drives: "local", rt_tick_history: "local",
       reflect_search: "anonymous", lens_list: "anonymous", dtu_search: "anonymous",
+      walk_guide: "anonymous",
       tool_compile_universe: "anonymous", browser_check_incidents: "anonymous",
       sentinel_health_snapshot: "anonymous", sentinel_watch: "anonymous",
     };

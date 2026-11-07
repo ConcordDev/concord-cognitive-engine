@@ -29,6 +29,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { WALK_OVERLAY_ENABLED, walkOverlayEntry } from './walk-registry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -397,10 +398,22 @@ export async function reflectMacros(options = {}) {
   for (const [domain, names] of MACRO_REGISTRY) {
     for (const [name, meta] of names) {
       if (count >= maxTools) break;
+      // Walk → Registry Merge Pilot overlay: where the lens-walk corpus
+      // verified this macro's behaviour with concrete inputs, the
+      // reflected description is composed from the distilled entry
+      // (verified behaviour + argument shape) instead of the source
+      // JSDoc / generic fallback, inside the same 500-char discipline.
+      // The schema stays permissive; only its description text gains
+      // the verified argument shape. No entry → fallback untouched.
+      const walkOv = WALK_OVERLAY_ENABLED ? walkOverlayEntry(domain, name) : null;
       REFLECTED_TOOLS.push({
         name: `macro.${meta.toolName}`,
-        description: `[${meta.file}] ${meta.description}`.slice(0, 500),
-        inputSchema: buildPermissiveSchema(meta.description),
+        description: walkOv
+          ? `[${meta.file}] ${walkOv.text} Args: ${walkOv.args}.`.slice(0, 500)
+          : `[${meta.file}] ${meta.description}`.slice(0, 500),
+        inputSchema: walkOv
+          ? buildPermissiveSchema(`Arguments for macro.${meta.toolName}: ${walkOv.args}. Verified behaviour: ${walkOv.text}`)
+          : buildPermissiveSchema(meta.description),
         _meta: {
           kind: 'macro',
           domain,
