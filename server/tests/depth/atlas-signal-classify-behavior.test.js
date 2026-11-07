@@ -132,8 +132,8 @@ describe("cortex.classify — manual signal submission (Wave 4 gap-closure)", ()
     const s = await runMacro("cortex", "spectrum", {}, ctx);
     assert.equal(s.ok, true);
     assert.equal(s.totalSignals, 1);
-    // spectrum bucket: freq < 3000 → "LF/MF" band (see getSpectralOccupancy).
-    assert.equal(s.bands["LF/MF"], 1);
+    // Frequencies are MHz (F6): 900 MHz is on the standard ladder's "UHF+" rung (>= 300 MHz), not "LF/MF".
+    assert.equal(s.bands["UHF+"], 1);
   });
 
   it("a signal outside every known category+keyword pattern lands in cortex.unknown", async () => {
