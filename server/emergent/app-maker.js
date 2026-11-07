@@ -213,6 +213,104 @@ export function demoteApp(id) {
   return { ok: true, id, stage: prevStage };
 }
 
+// ── Pipeline ownership + the Studio projection (B7) ─────────────────────────
+// Founder ruling (decision walk #1, Decision 11): promote is an OWNER
+// action, checked against ownership — never a platform role. The REST layer
+// in server.js enforces it with these helpers; the check compares the app's
+// recorded author against the authenticated caller's key. The create route
+// stamps that author from the session, so the field is a record of who was
+// authenticated — never a value the request body asserted.
+
+/** The identity key an app record's `author` is stamped and checked with. */
+export function appCallerKey(user) {
+  if (!user || typeof user !== "object") return null;
+  for (const k of [user.userId, user.id, user.username]) {
+    if (typeof k === "string" && k.trim()) return k;
+    if (typeof k === "number") return String(k);
+  }
+  return null;
+}
+
+export function isAppOwner(app, callerKey) {
+  return !!app && typeof callerKey === "string" && callerKey !== "" && app.author === callerKey;
+}
+
+// Studio projects (the appmaker domain's per-user store) are app objects in
+// the same pipeline. Their deployment vocabulary maps onto the promotion
+// stages exactly once, here: undeployed -> draft, snapshotted -> published.
+// Nothing in the mapping claims a hosted URL — deploy stays a snapshot verb.
+// A project's own stage, once advanced past what its deployment implies,
+// lives on the record as _pipelineStage and wins.
+export function projectStage(project) {
+  if (!project) return "draft";
+  if (project._pipelineStage && PROMOTION_STAGES.includes(project._pipelineStage)) return project._pipelineStage;
+  return project.deployment?.status === "snapshotted" ? "published" : "draft";
+}
+
+export function projectAsApp(project, ownerKey) {
+  return {
+    id: project.id,
+    name: project.name,
+    status: projectStage(project),
+    author: ownerKey,
+    // Projects predate per-project versioning; the platform's own default
+    // version (createApp's) is the baseline, and the snapshot count rides
+    // separately rather than dressing itself as a version.
+    version: "1.0.0",
+    createdAt: project.createdAt,
+    source: "studio",
+    deploymentStatus: project.deployment?.status || "undeployed",
+    snapshotCount: Array.isArray(project.versions) ? project.versions.length : 0,
+  };
+}
+
+/**
+ * Collect a caller's Studio projects from the appmaker domain store
+ * (STATE.appMakerLens.projects: userId -> project[]). The domain keys its
+ * map by the lens actor's userId; the REST caller's key candidates are
+ * tried in order, so the projection finds the caller's own shelf whichever
+ * identity form was recorded. Other accounts' shelves are never read.
+ */
+export function collectCallerProjects(appMakerState, user) {
+  const out = [];
+  const projects = appMakerState?.projects;
+  if (!(projects instanceof Map)) return out;
+  const keys = [];
+  for (const k of [user?.userId, user?.id, user?.username]) {
+    if (typeof k === "string" && k && !keys.includes(k)) keys.push(k);
+  }
+  const seenIds = new Set();
+  for (const key of keys) {
+    const shelf = projects.get(key);
+    if (!Array.isArray(shelf)) continue;
+    for (const project of shelf) {
+      if (!project?.id || seenIds.has(project.id)) continue;
+      seenIds.add(project.id);
+      out.push({ project, ownerKey: key });
+    }
+  }
+  return out;
+}
+
+/**
+ * Advance a Studio project's pipeline stage by one. Leaving draft requires
+ * the snapshot that 'published' names: a project with no snapshot refuses
+ * in words rather than claiming a published state nothing backs.
+ */
+export function promoteProject(project) {
+  if (!project) return { ok: false, error: "Project not found" };
+  const current = projectStage(project);
+  const idx = PROMOTION_STAGES.indexOf(current);
+  if (idx < 0 || idx >= PROMOTION_STAGES.length - 1) return { ok: false, error: "Already at max stage" };
+  const next = PROMOTION_STAGES[idx + 1];
+  if (current === "draft" && next === "published" && project.deployment?.status !== "snapshotted") {
+    return { ok: false, error: "Deploy (snapshot) the project in Studio before promoting it to published" };
+  }
+  project._pipelineStage = next;
+  project.updatedAt = nowISO();
+  return { ok: true, id: project.id, stage: next };
+}
+
 // ── Stats ───────────────────────────────────────────────────────────────────
 
 export function countApps() {
