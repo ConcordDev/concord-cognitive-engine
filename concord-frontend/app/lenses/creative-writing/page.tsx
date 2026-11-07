@@ -16,6 +16,13 @@
  * (useLayoutEffect, before paint) the instant the composer mounts —
  * closing the race where early keystrokes land on no focused element
  * and get read as shortcut letters instead of prose.
+ *
+ * Narrative trail (F5): the host workspace groups this lens with
+ * narrative-walk as a sibling tab, which can read as a feed relationship.
+ * narrative-walk is a self-contained authored-narrative reader with no
+ * backend call (lib/lenses/lens-status.ts) — nothing written here can
+ * flow into it. The page says so plainly instead of leaving the tab
+ * adjacency to imply a link that doesn't exist.
  */
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -200,6 +207,9 @@ export default function CreativeWritingPage() {
     <LensShell lensId="creative-writing" asMain={false}>
       <div data-lens-theme="creative-writing" className="relative min-h-full bg-black px-8 pb-28 pt-6">
         <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Creative Writing</h1>
+        <p data-testid="creative-writing-trail-note" className="mb-5 -mt-3 font-mono text-[12px] text-zinc-600">
+          Narrative trail (above) is a separate, authored story walk — pages written here do not appear there.
+        </p>
 
         <section
           aria-label="Page"
