@@ -1,10 +1,17 @@
+import React from 'react';
 /**
  * Paper item actions — open a library paper, Save as DTU, then Draft in Thread.
  * The DTU payload is the paper the library already loaded.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react';
+
+// The paper keep menu reads the QueryClient; every mount needs a provider.
+const render = (ui: React.ReactElement) => rtlRender(
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>,
+);
 
 const lensRunMock = vi.fn();
 vi.mock('@/lib/api/client', () => ({
