@@ -148,6 +148,8 @@ export default function registerDailyActions(registerLensAction) {
   const dyActor = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const dyClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const dyList = (m, k) => { if (!m.has(k)) m.set(k, []); return m.get(k); };
+  // Read-only twin: never creates the caller's bucket, so read paths (weeklyReview) do not mutate persisted STATE.
+  const dyPeek = (m, k) => m.get(k) || [];
   // Deterministic non-reversible hash for passcode locks (no crypto import needed
   // in the macro layer; this is a soft client-side privacy gate, not a secret store).
   function dyHash(str) {
@@ -205,8 +207,9 @@ export default function registerDailyActions(registerLensAction) {
     };
   }
   function dyUnionEntries(userId) {
-    const s = getDailyState();
-    const own = s ? dyList(s.entries, userId) : [];
+    // Pure read: peek at the existing container instead of getDailyState() (which creates it on first call).
+    const entries = globalThis._concordSTATE?.dailyLens?.entries;
+    const own = entries instanceof Map ? dyPeek(entries, userId) : [];
     return [...own, ...dyArtifacts(userId, "entry").map(dyTodayEntry)];
   }
 
