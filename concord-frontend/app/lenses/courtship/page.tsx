@@ -23,7 +23,6 @@ import { CourtshipsPanel } from '@/components/courtship/CourtshipsPanel';
 import { MarriagesPanel } from '@/components/courtship/MarriagesPanel';
 import { FamilyPanel } from '@/components/courtship/FamilyPanel';
 import { PastMarriagesPanel } from '@/components/courtship/PastMarriagesPanel';
-import { partnerLabel } from '@/components/courtship/courtship-types';
 
 type CourtshipView = 'courtships' | 'marriages' | 'family' | 'past';
 
@@ -161,7 +160,7 @@ export default function CourtshipLensPage() {
 
       {desk.dissolveTarget && (
         <ConfirmDissolveModal
-          partnerLabel={partnerLabel(desk.dissolveTarget.partner_kind, desk.dissolveTarget.partnerName)}
+          partnerLabel={`${desk.dissolveTarget.partner_kind}:${String(desk.dissolveTarget.partner_id ?? "").slice(0, 14)}`}
           pending={desk.pending}
           onConfirm={desk.confirmDissolve}
           onCancel={() => desk.setDissolveTarget(null)}

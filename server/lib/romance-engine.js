@@ -82,39 +82,18 @@ function notePlayerInteraction(db, playerUserId, partnerKind, partnerId) {
   return { ok: true };
 }
 
-/**
- * Resolve an NPC partner's display name from the world roster
- * (world_npcs.npc_emergent_id — migration 042; the same exact-id read
- * spouse-reactivity performs). NPC partners only: a PLAYER partner's name
- * is never resolved here — the consent machinery deliberately keeps the
- * other player's account id off these payloads, and no name is invented
- * for them. Unresolvable → null (the surface renders a neutral word,
- * never the raw id dressed up as a name). Guarded: a DB without the
- * world roster (minimal test DBs) resolves to null, not a throw.
- */
-export function resolvePartnerName(db, partnerKind, partnerId) {
-  if (!db || partnerKind !== "npc" || !partnerId) return null;
-  try {
-    const row = db.prepare("SELECT npc_emergent_id FROM world_npcs WHERE id = ?").get(String(partnerId));
-    const name = row?.npc_emergent_id ? String(row.npc_emergent_id).trim() : "";
-    return name || null;
-  } catch { return null; }
-}
-
 /** Drop the other player's raw account id from a row the viewer did not author as themselves. */
-export function presentCourtship(row, viewerId, db = null) {
-  if (!row) return row;
-  const out = { ...row, partnerName: resolvePartnerName(db, row.partner_kind, row.partner_id) };
-  if (out.partner_kind !== "player") return out;
+export function presentCourtship(row, viewerId) {
+  if (!row || row.partner_kind !== "player") return row;
+  const out = { ...row };
   if (out.player_user_id && out.player_user_id !== viewerId) delete out.player_user_id;
   if (out.partner_id && out.partner_id !== viewerId) delete out.partner_id;
   return out;
 }
 
-export function presentMarriage(row, viewerId, db = null) {
-  if (!row) return row;
-  const out = { ...row, partnerName: resolvePartnerName(db, row.partner_kind, row.partner_id) };
-  if (out.partner_kind !== "player") return out;
+function presentMarriage(row, viewerId) {
+  if (!row || row.partner_kind !== "player") return row;
+  const out = { ...row };
   if (out.player_user_id && out.player_user_id !== viewerId) delete out.player_user_id;
   if (out.partner_id && out.partner_id !== viewerId) delete out.partner_id;
   return out;
@@ -174,32 +153,6 @@ export function listMyCourtships(db, playerUserId, status = null) {
         SELECT * FROM player_courtship WHERE player_user_id = ?
         ORDER BY last_interaction DESC LIMIT 200
       `).all(playerUserId);
-}
-
-/**
- * The caller's own in-flight pregnancies (conceived, not yet born) — the
- * read the engine never surfaced: conceive() handed back an id + due date
- * and nothing could list them back, so the lens kept them in a per-browser
- * cache (courtship full build, S2). Rows are presented with the partner's
- * resolved name where one exists (NPC partners); player partners carry a
- * null name, never a raw account id.
- */
-export function listPregnancies(db, carrierUserId) {
-  if (!db || !carrierUserId) return [];
-  try {
-    return db.prepare(`
-      SELECT * FROM player_pregnancies
-       WHERE carrier_user_id = ? AND born_at IS NULL
-       ORDER BY conceived_at DESC LIMIT 50
-    `).all(carrierUserId).map((row) => ({
-      pregnancyId: row.id,
-      partnerKind: row.partner_kind,
-      partnerId: row.partner_id,
-      partnerName: resolvePartnerName(db, row.partner_kind, row.partner_id),
-      dueAt: row.due_at,
-      conceivedAt: row.conceived_at,
-    }));
-  } catch { return []; }
 }
 
 /* ───────── Engagement + marriage ───────────────────────────────────── */
@@ -392,7 +345,7 @@ export function dissolveMarriage(db, marriageId, reason = "estranged", expectedU
   return { ok: true, dissolvedReason: reason, courtStatus };
 }
 
-export function listMyMarriages(db, playerUserId, activeOnly = true, presentDb = null) {
+export function listMyMarriages(db, playerUserId, activeOnly = true) {
   const owned = activeOnly
     ? db.prepare("SELECT * FROM player_marriages WHERE player_user_id = ? AND dissolved_at IS NULL ORDER BY married_at DESC").all(playerUserId)
     : db.prepare("SELECT * FROM player_marriages WHERE player_user_id = ? ORDER BY married_at DESC LIMIT 50").all(playerUserId);
@@ -407,7 +360,7 @@ export function listMyMarriages(db, playerUserId, activeOnly = true, presentDb =
   for (const row of [...owned, ...asPartner]) {
     if (!row || seen.has(row.id)) continue;
     seen.add(row.id);
-    out.push(presentMarriage(row, playerUserId, presentDb));
+    out.push(presentMarriage(row, playerUserId));
   }
   return out;
 }

@@ -60,9 +60,6 @@ describe("courtship domain macros", () => {
       "list", "get", "interact", "propose", "wed", "marriages",
       "dissolve", "conceive", "birth", "children", "spouses",
       "spouse_react", "constants",
-      // "pregnancies" added by the courtship full build (S2) — the read
-      // whose absence the FE's retired localStorage cache existed to cover.
-      "pregnancies",
     ]) {
       assert.equal(typeof macros.get(name), "function", `missing macro: ${name}`);
     }

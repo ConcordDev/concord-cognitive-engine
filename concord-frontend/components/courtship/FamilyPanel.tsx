@@ -1,7 +1,6 @@
 'use client';
 
 import { Baby, Sparkles } from 'lucide-react';
-import { partnerLabel } from './courtship-types';
 import type { useCourtshipDesk } from './useCourtshipDesk';
 
 type Desk = ReturnType<typeof useCourtshipDesk>;
@@ -22,7 +21,7 @@ export function FamilyPanel({ desk }: { desk: Desk }) {
               return (
                 <li key={p.pregnancyId} className="flex flex-col gap-1 rounded border border-fuchsia-500/30 bg-fuchsia-950/20 p-2 text-xs sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-col">
-                    <span className="text-fuchsia-100">{partnerLabel(p.partnerKind, p.partnerName)}</span>
+                    <span className="font-mono text-fuchsia-100">{p.partnerKind}:{String(p.partnerId ?? "").slice(0, 14)}</span>
                     <span className="text-fuchsia-300/70">
                       {due ? 'ready to birth' : `due ${new Date(p.dueAt * 1000).toLocaleDateString()}`}
                     </span>
@@ -55,7 +54,7 @@ export function FamilyPanel({ desk }: { desk: Desk }) {
           <ul className="space-y-1">
             {children.map((c) => (
               <li key={c.id} className="flex flex-col gap-1 rounded border border-emerald-500/30 bg-emerald-950/30 p-2 text-xs sm:flex-row sm:justify-between">
-                <span className="text-emerald-100">{c.name}</span>
+                <span className="font-mono text-emerald-100">{c.name || String(c.id ?? "").slice(0, 16)}</span>
                 <span className="text-emerald-300/70">{c.maturity}</span>
               </li>
             ))}
