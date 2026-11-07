@@ -1,7 +1,7 @@
 // Event-Timeline remainder pins (F-C row 18) — source-level contract pins
 // for the guards and labels this build adds. Behavioural coverage of the
 // server semantics lives in server/tests/event-timeline-build.test.js.
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

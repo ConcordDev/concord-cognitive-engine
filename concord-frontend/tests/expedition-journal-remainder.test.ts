@@ -3,7 +3,7 @@
 // the polar derivation exercised behaviourally on the verbatim-extracted
 // helper (the component is .tsx; the helper's text is extracted and run).
 
-import test from "node:test";
+import { test } from 'vitest';
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

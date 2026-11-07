@@ -4,7 +4,7 @@
 // the slices require — dual readings, the metrics contract, the earned
 // semantic, lifecycle wiring, and the preserved standing testids.
 
-import { describe, it } from "node:test";
+import { describe, it } from 'vitest';
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
