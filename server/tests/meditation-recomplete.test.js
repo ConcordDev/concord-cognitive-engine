@@ -23,9 +23,25 @@ beforeEach(() => { globalThis._concordSTATE = {}; });
 
 const COURSE = "course-basics-7";
 
-describe("meditation course-day completion (Q22)", () => {
-  it("first completion logs one session; repeats log none and say so", () => {
-    const first = call("completeCourseDay", { courseId: COURSE, day: 1 });
+const DAY_SESSION = { 1: "g-morn-7", 2: "g-focus-10" };
+// S-MED-1: completing a day requires the day's session to have been PRACTISED — log it first.
+function practise(day, seconds = 600) {
+  const r = call("sessionLog", { trackId: DAY_SESSION[day], title: `Day ${day}`, performedSeconds: seconds });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  return r.result.entry.id;
+}
+
+describe("meditation course-day completion (Q22, S-MED-1)", () => {
+  it("completion without a practised session is refused and writes nothing", () => {
+    const refused = call("completeCourseDay", { courseId: COURSE, day: 1 });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.error, "session_not_run");
+    assert.equal(call("history", {}).result.count, 0, "a bare click credits no session");
+  });
+
+  it("first completion of a practised day completes it; repeats add nothing and say so", () => {
+    const entryId = practise(1);
+    const first = call("completeCourseDay", { courseId: COURSE, day: 1, sessionEntryId: entryId });
     assert.equal(first.ok, true, JSON.stringify(first));
     assert.equal(first.result.alreadyCompleted, false);
     assert.equal(first.result.completedCount, 1);
@@ -34,7 +50,7 @@ describe("meditation course-day completion (Q22)", () => {
     assert.equal(before.totalSessions, 1);
 
     for (let i = 0; i < 3; i++) {
-      const again = call("completeCourseDay", { courseId: COURSE, day: 1 });
+      const again = call("completeCourseDay", { courseId: COURSE, day: 1, sessionEntryId: entryId });
       assert.equal(again.ok, true);
       assert.equal(again.result.alreadyCompleted, true, "a repeat names itself");
       assert.equal(again.result.completedCount, 1, "course progress unchanged");
@@ -45,9 +61,10 @@ describe("meditation course-day completion (Q22)", () => {
     assert.equal(after.totalMinutes, before.totalMinutes, "minutes not inflated");
   });
 
-  it("a different day still logs, and course progress advances", () => {
-    call("completeCourseDay", { courseId: COURSE, day: 1 });
-    const second = call("completeCourseDay", { courseId: COURSE, day: 2 });
+  it("a different practised day advances course progress", () => {
+    call("completeCourseDay", { courseId: COURSE, day: 1, sessionEntryId: practise(1) });
+    const second = call("completeCourseDay", { courseId: COURSE, day: 2, sessionEntryId: practise(2) });
+    assert.equal(second.ok, true, JSON.stringify(second));
     assert.equal(second.result.alreadyCompleted, false);
     assert.equal(second.result.completedCount, 2);
     assert.equal(call("history", {}).result.count, 2);

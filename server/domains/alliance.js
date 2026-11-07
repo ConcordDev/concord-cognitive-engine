@@ -638,10 +638,25 @@ export default function registerAllianceActions(registerLensAction) {
       const cols = userColumns(db);
       if (cols && !cols.has("username")) return { ok: false, error: "user lookup unavailable" };
       const active = !!(cols && cols.has("is_active"));
-      const act = active ? " AND is_active = 1" : "";
-      let row = db.prepare(`SELECT id, username FROM users WHERE username = ?${act}`).get(token)
-        || db.prepare(`SELECT id, username FROM users WHERE lower(username) = lower(?)${act}`).get(token)
-        || db.prepare(`SELECT id, username FROM users WHERE id = ?${act}`).get(token);
+      // Literal statements only (no SQL interpolation): the active-only variants are spelled out.
+      const q = active
+        ? {
+            exact: "SELECT id, username FROM users WHERE username = ? AND is_active = 1",
+            lower: "SELECT id, username FROM users WHERE lower(username) = lower(?) AND is_active = 1",
+            byId: "SELECT id, username FROM users WHERE id = ? AND is_active = 1",
+            named: "SELECT id, username FROM users WHERE display_name = ? AND is_active = 1",
+            namedLower: "SELECT id, username FROM users WHERE lower(display_name) = lower(?) AND is_active = 1",
+          }
+        : {
+            exact: "SELECT id, username FROM users WHERE username = ?",
+            lower: "SELECT id, username FROM users WHERE lower(username) = lower(?)",
+            byId: "SELECT id, username FROM users WHERE id = ?",
+            named: "SELECT id, username FROM users WHERE display_name = ?",
+            namedLower: "SELECT id, username FROM users WHERE lower(display_name) = lower(?)",
+          };
+      let row = db.prepare(q.exact).get(token)
+        || db.prepare(q.lower).get(token)
+        || db.prepare(q.byId).get(token);
       if (!row && cols && cols.has("display_name")) {
         const selectNamed = (sql) => {
           const stmt = db.prepare(sql);
@@ -649,8 +664,8 @@ export default function registerAllianceActions(registerLensAction) {
           const one = stmt && typeof stmt.get === "function" ? stmt.get(token) : null;
           return one ? [one] : [];
         };
-        const named = selectNamed(`SELECT id, username FROM users WHERE display_name = ?${act}`);
-        const matches = (named.length ? named : selectNamed(`SELECT id, username FROM users WHERE lower(display_name) = lower(?)${act}`))
+        const named = selectNamed(q.named);
+        const matches = (named.length ? named : selectNamed(q.namedLower))
           .filter((x) => x && x.id);
         if (matches.length > 1) {
           return { ok: false, error: "that name matches more than one account — use their @username instead" };

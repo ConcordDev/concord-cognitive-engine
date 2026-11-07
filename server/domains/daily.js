@@ -205,8 +205,10 @@ export default function registerDailyActions(registerLensAction) {
     };
   }
   function dyUnionEntries(userId) {
-    const s = getDailyState();
-    const own = s ? dyList(s.entries, userId) : [];
+    // Read-only: a review/report must not lazily create persisted state (the save-on-write
+    // guard counts that as a mutation without a save), so peek instead of getDailyState().
+    const dl = globalThis._concordSTATE?.dailyLens;
+    const own = dl?.entries instanceof Map ? (dl.entries.get(userId) || []) : [];
     return [...own, ...dyArtifacts(userId, "entry").map(dyTodayEntry)];
   }
 

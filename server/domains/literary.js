@@ -376,12 +376,15 @@ export default function registerLiteraryMacros(register) {
         // every lens's citation history rendered under this lens's name (the
         // "236 nodes over a 0-work corpus" defect). Resonance edges need no
         // such filter: they are literary-anchored by construction.
-        const scoped = input.scope === "literary"
-          ? " AND (parent_id IN (SELECT dtu_id FROM literary_chunks) OR child_id IN (SELECT dtu_id FROM literary_chunks))"
-          : "";
+        // Literal statements only (no SQL interpolation): the scoped variants are spelled out.
+        const SCOPE_LIT = input.scope === "literary";
         const rows = focus
-          ? db.prepare(`SELECT parent_id AS src, child_id AS tgt, generation FROM royalty_lineage WHERE (parent_id = ? OR child_id = ?)${scoped} ORDER BY created_at DESC LIMIT ?`).all(focus, focus, limit)
-          : db.prepare(`SELECT parent_id AS src, child_id AS tgt, generation FROM royalty_lineage WHERE 1=1${scoped} ORDER BY created_at DESC LIMIT ?`).all(limit);
+          ? (SCOPE_LIT
+            ? db.prepare("SELECT parent_id AS src, child_id AS tgt, generation FROM royalty_lineage WHERE (parent_id = ? OR child_id = ?) AND (parent_id IN (SELECT dtu_id FROM literary_chunks) OR child_id IN (SELECT dtu_id FROM literary_chunks)) ORDER BY created_at DESC LIMIT ?").all(focus, focus, limit)
+            : db.prepare("SELECT parent_id AS src, child_id AS tgt, generation FROM royalty_lineage WHERE (parent_id = ? OR child_id = ?) ORDER BY created_at DESC LIMIT ?").all(focus, focus, limit))
+          : (SCOPE_LIT
+            ? db.prepare("SELECT parent_id AS src, child_id AS tgt, generation FROM royalty_lineage WHERE 1=1 AND (parent_id IN (SELECT dtu_id FROM literary_chunks) OR child_id IN (SELECT dtu_id FROM literary_chunks)) ORDER BY created_at DESC LIMIT ?").all(limit)
+            : db.prepare("SELECT parent_id AS src, child_id AS tgt, generation FROM royalty_lineage WHERE 1=1 ORDER BY created_at DESC LIMIT ?").all(limit));
         for (const r of rows) { edges.push({ source: r.src, target: r.tgt, kind: "citation", weight: 1 / (1 + (r.generation || 0)) }); ids.add(r.src); ids.add(r.tgt); }
       } catch { /* table absent → skip */ }
     }
