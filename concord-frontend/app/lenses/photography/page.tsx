@@ -1,25 +1,34 @@
 'use client';
 
 /**
- * Photography — one roll.
+ * Photography — rolls of real uploaded photos.
  *
- * shoot-list is the card. Import a roll calls shoot-create, then shows
- * the name and the filenames only after shoot-list contains that id, the
- * same name, and the same filenames. A blank name is not sent. Names and
- * filenames are stored in photography_rolls and photography_roll_frames,
- * so a server restart still lists them. Date, location, and client stay
- * off this screen. The catalog is other macros. It is not on this screen.
+ * Import a roll opens a name + file picker. The file uploads to
+ * /api/media/upload-raw (the real binary-body transport the platform
+ * already uses for music/video — the base64 JSON path truncates past
+ * ~7.5KB and can't carry a real photo), then shoot-create attaches the
+ * resulting mediaId as the roll's first frame. A roll (and each frame)
+ * is shown only after shoot-list contains it back. Additional photos
+ * add onto an existing roll via shoot-add-frame; Delete removes a roll
+ * and its frames (shoot-delete); the × on a frame removes just that
+ * frame (shoot-remove-frame). Legacy frames created before real upload
+ * existed (typed filename only, no mediaId) still render as a filename
+ * row, never a broken image. Date, location, and client stay off this
+ * screen; the catalog is other macros, not this one.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
+import { rawPhotoUploadQuery, describePhotoUploadError } from '@/lib/photography/upload';
 
 interface Frame {
   id: string;
   filename: string;
+  mediaId: string | null;
 }
 
 interface Roll {
@@ -39,7 +48,8 @@ function framesFrom(rows: unknown): Frame[] {
     const filename = (row as { filename?: string }).filename;
     if (typeof id !== 'string' || !id) continue;
     if (typeof filename !== 'string' || !filename.trim()) continue;
-    out.push({ id, filename: filename.trim() });
+    const mediaId = (row as { mediaId?: unknown }).mediaId;
+    out.push({ id, filename: filename.trim(), mediaId: typeof mediaId === 'string' && mediaId ? mediaId : null });
   }
   return out;
 }
@@ -62,9 +72,9 @@ function rollsFrom(rows: unknown): Roll[] {
   return out;
 }
 
-function sameFrames(frames: Frame[], filenames: string[]): boolean {
-  if (frames.length !== filenames.length) return false;
-  return frames.every((frame, index) => frame.filename === filenames[index]);
+function sameFrames(frames: Frame[], mediaIds: string[]): boolean {
+  if (frames.length !== mediaIds.length) return false;
+  return frames.every((frame, index) => frame.mediaId === mediaIds[index]);
 }
 
 function isWarming(message: string): boolean {
@@ -86,6 +96,19 @@ async function readRolls(): Promise<Roll[]> {
   throw new Error(last);
 }
 
+/** Uploads one image file and returns its real media id. */
+async function uploadPhoto(file: File): Promise<string> {
+  const title = file.name.replace(/\.[^.]+$/, '') || 'Untitled';
+  const resp = await api.post(
+    `/api/media/upload-raw?${rawPhotoUploadQuery({ title, filename: file.name })}`,
+    file,
+    { headers: { 'Content-Type': file.type || 'application/octet-stream' }, timeout: 0, maxBodyLength: Infinity },
+  );
+  const mediaId = resp.data?.mediaDTU?.id || resp.data?.id || resp.data?.media?.id;
+  if (typeof mediaId !== 'string' || !mediaId) throw new Error('Upload did not return a media id.');
+  return mediaId;
+}
+
 export default function PhotographyPage() {
   useLensNav('photography');
   const [phase, setPhase] = useState<Phase>('loading');
@@ -94,8 +117,11 @@ export default function PhotographyPage() {
   const [actionError, setActionError] = useState('');
   const [composing, setComposing] = useState(false);
   const [name, setName] = useState('');
-  const [filename, setFilename] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [addingTo, setAddingTo] = useState<string | null>(null);
+  const addFileInput = useRef<HTMLInputElement | null>(null);
 
   const pull = useCallback(async () => readRolls(), []);
 
@@ -134,22 +160,22 @@ export default function PhotographyPage() {
       return;
     }
     const trimmed = name.trim();
-    const frameName = filename.trim();
     if (!trimmed) {
       setActionError('A name is required.');
       return;
     }
-    if (!frameName) {
-      setActionError('A filename is required.');
+    if (!file) {
+      setActionError('A photo is required.');
       return;
     }
     setBusy(true);
     setActionError('');
     try {
+      const mediaId = await uploadPhoto(file);
       const created = await lensRun<{ shoot?: { id?: string; name?: string } }>(
         'photography',
         'shoot-create',
-        { name: trimmed, frames: [frameName] },
+        { name: trimmed, frames: [{ mediaId }] },
       );
       const id = created.data?.result?.shoot?.id;
       if (!created.data?.ok || !id) {
@@ -157,19 +183,74 @@ export default function PhotographyPage() {
       }
       const rows = await readRolls();
       const row = rows.find((item) => item.id === id);
-      if (!row || row.name !== trimmed || !sameFrames(row.frames, [frameName])) {
+      if (!row || row.name !== trimmed || !sameFrames(row.frames, [mediaId])) {
         throw new Error('Imported, but the roll did not read it back.');
       }
       setRolls(rows);
       setName('');
-      setFilename('');
+      setFile(null);
       setComposing(false);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not import that roll.');
+      setActionError(describePhotoUploadError(err));
     } finally {
       setBusy(false);
     }
-  }, [busy, composing, filename, name, phase]);
+  }, [busy, composing, file, name, phase]);
+
+  const addFrame = useCallback(async (rollId: string, picked: File) => {
+    setBusy(true);
+    setActionError('');
+    try {
+      const mediaId = await uploadPhoto(picked);
+      const added = await lensRun('photography', 'shoot-add-frame', { rollId, mediaId });
+      if (!added.data?.ok) throw new Error(added.data?.error || 'Could not add that photo.');
+      const rows = await readRolls();
+      const row = rows.find((item) => item.id === rollId);
+      if (!row || !row.frames.some((f) => f.mediaId === mediaId)) {
+        throw new Error('Added, but the roll did not read it back.');
+      }
+      setRolls(rows);
+    } catch (err) {
+      setActionError(describePhotoUploadError(err));
+    } finally {
+      setBusy(false);
+      setAddingTo(null);
+    }
+  }, []);
+
+  const deleteRoll = useCallback(async (rollId: string) => {
+    setBusy(true);
+    setActionError('');
+    try {
+      const deleted = await lensRun('photography', 'shoot-delete', { rollId });
+      if (!deleted.data?.ok) throw new Error(deleted.data?.error || 'Could not delete that roll.');
+      const rows = await readRolls();
+      if (rows.some((row) => row.id === rollId)) {
+        throw new Error('Deleted, but the roll still lists.');
+      }
+      setRolls(rows);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not delete that roll.');
+    } finally {
+      setBusy(false);
+      setConfirmDeleteId(null);
+    }
+  }, []);
+
+  const removeFrame = useCallback(async (rollId: string, frameId: string) => {
+    setBusy(true);
+    setActionError('');
+    try {
+      const removed = await lensRun('photography', 'shoot-remove-frame', { rollId, frameId });
+      if (!removed.data?.ok) throw new Error(removed.data?.error || 'Could not remove that photo.');
+      const rows = await readRolls();
+      setRolls(rows);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not remove that photo.');
+    } finally {
+      setBusy(false);
+    }
+  }, []);
 
   useLensCommand(
     [{ id: 'photography-import', keys: 'n', description: 'Import a roll', category: 'actions', action: () => { void importRoll(); } }],
@@ -181,7 +262,10 @@ export default function PhotographyPage() {
   return (
     <LensShell lensId="photography" asMain={false}>
       <div data-lens-theme="photography" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Photography</h1>
+        <div className="mb-5 mt-1 flex items-center justify-between gap-4">
+          <h1 className="font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Photography</h1>
+          <DTUExportButton domain="photography" data={{}} compact />
+        </div>
 
         <section
           aria-label="Roll"
@@ -206,15 +290,73 @@ export default function PhotographyPage() {
             </div>
           )}
           {phase === 'ready' && rolls.length > 0 && (
-            <ul data-testid="ph-rolls" className="space-y-6">
+            <ul data-testid="ph-rolls" className="space-y-8">
               {rolls.map((roll) => (
                 <li key={roll.id}>
-                  <h2 className="font-vault text-[1.5rem] leading-8 text-zinc-100">{roll.name}</h2>
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="font-vault text-[1.5rem] leading-8 text-zinc-100">{roll.name}</h2>
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer text-[13px] text-zinc-400 underline hover:text-zinc-200">
+                        {addingTo === roll.id && busy ? 'Adding…' : 'Add photo'}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          disabled={busy}
+                          onChange={(event) => {
+                            const picked = event.target.files?.[0];
+                            event.target.value = '';
+                            if (picked) { setAddingTo(roll.id); void addFrame(roll.id, picked); }
+                          }}
+                        />
+                      </label>
+                      {confirmDeleteId === roll.id ? (
+                        <button
+                          type="button"
+                          onClick={() => void deleteRoll(roll.id)}
+                          disabled={busy}
+                          className="text-[13px] text-red-400 underline"
+                        >
+                          Confirm delete?
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(roll.id)}
+                          disabled={busy}
+                          className="text-[13px] text-zinc-500 underline hover:text-zinc-300"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   {roll.frames.length > 0 && (
-                    <ul className="mt-3 space-y-1">
+                    <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6">
                       {roll.frames.map((frame) => (
-                        <li key={frame.id} data-testid="ph-frame" className="font-mono text-[14px] text-zinc-400">
-                          {frame.filename}
+                        <li key={frame.id} data-testid="ph-frame" className="group relative">
+                          {frame.mediaId ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={`/api/media/${frame.mediaId}/stream`}
+                              alt={frame.filename}
+                              className="aspect-square w-full rounded-md border border-white/10 object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="flex aspect-square w-full items-center justify-center rounded-md border border-white/10 bg-zinc-900 px-2 text-center font-mono text-[11px] text-zinc-400">
+                              {frame.filename}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => void removeFrame(roll.id, frame.id)}
+                            disabled={busy}
+                            className="absolute right-1 top-1 hidden h-5 w-5 rounded-full bg-black/70 text-[11px] text-zinc-200 group-hover:block"
+                            aria-label={`Remove ${frame.filename}`}
+                          >
+                            ×
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -236,17 +378,17 @@ export default function PhotographyPage() {
                 />
               </label>
               <label className="block text-[14px] text-zinc-400">
-                Filename
+                Photo
                 <input
-                  data-testid="ph-filename"
-                  value={filename}
-                  onChange={(event) => setFilename(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') { event.preventDefault(); void importRoll(); }
-                  }}
-                  className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-mono text-[14px] text-zinc-100 outline-none"
+                  data-testid="ph-file"
+                  type="file"
+                  accept="image/*"
+                  ref={addFileInput}
+                  onChange={(event) => setFile(event.target.files?.[0] || null)}
+                  className="mt-1 block w-full text-[14px] text-zinc-300"
                 />
               </label>
+              {file ? <p className="text-[13px] text-zinc-500">{file.name}</p> : null}
             </div>
           )}
         </section>
@@ -261,7 +403,7 @@ export default function PhotographyPage() {
           disabled={phase !== 'ready' || busy}
           className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
         >
-          Import a roll
+          {busy ? 'Working…' : 'Import a roll'}
         </button>
       </div>
     </LensShell>

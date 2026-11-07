@@ -6,6 +6,8 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
+import { getMediaDTU } from "../lib/media-dtu.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 const PEXELS_BASE = "https://api.pexels.com/v1";
 
@@ -130,10 +132,15 @@ export default function registerPhotographyActions(registerLensAction) {
     const db = phDb(ctx);
     if (!framesReady(db)) return;
     db.prepare(`
-      INSERT INTO photography_roll_frames (id, roll_id, user_id, filename, created_at)
-      VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET filename = excluded.filename
-    `).run(frame.id, rollId, phaid(ctx), frame.filename, frame.createdAt);
+      INSERT INTO photography_roll_frames (id, roll_id, user_id, filename, created_at, media_id, mime_type, file_size)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        filename = excluded.filename, media_id = excluded.media_id,
+        mime_type = excluded.mime_type, file_size = excluded.file_size
+    `).run(
+      frame.id, rollId, phaid(ctx), frame.filename, frame.createdAt,
+      frame.mediaId || null, frame.mimeType || null, frame.fileSize || null,
+    );
   }
   function readRollRows(ctx) {
     const db = phDb(ctx);
@@ -146,19 +153,113 @@ export default function registerPhotographyActions(registerLensAction) {
     const db = phDb(ctx);
     if (!framesReady(db) || !rollId) return [];
     return db.prepare(
-      "SELECT id, filename, created_at FROM photography_roll_frames WHERE roll_id = ? AND user_id = ? ORDER BY created_at ASC",
+      "SELECT id, filename, created_at, media_id, mime_type, file_size FROM photography_roll_frames WHERE roll_id = ? AND user_id = ? ORDER BY created_at ASC",
     ).all(rollId, phaid(ctx));
   }
-  function rollFilenames(params) {
-    if (!Array.isArray(params.frames)) return { filenames: [] };
-    const filenames = [];
+  function deleteRollRows(ctx, rollId) {
+    const db = phDb(ctx);
+    if (rollsReady(db)) db.prepare("DELETE FROM photography_rolls WHERE id = ? AND user_id = ?").run(rollId, phaid(ctx));
+    if (framesReady(db)) db.prepare("DELETE FROM photography_roll_frames WHERE roll_id = ? AND user_id = ?").run(rollId, phaid(ctx));
+  }
+  function deleteFrameRow(ctx, frameId) {
+    const db = phDb(ctx);
+    if (framesReady(db)) db.prepare("DELETE FROM photography_roll_frames WHERE id = ? AND user_id = ?").run(frameId, phaid(ctx));
+  }
+  // A real upload (POST /api/media/upload or /upload-raw) already measured
+  // the mimeType and fileSize and stored the original filename — none of
+  // that is user-typed here. Ownership is enforced: a mediaId authored by
+  // someone else is refused, not silently attached to this roll.
+  function resolveMediaForFrame(ctx, mediaId) {
+    const STATE = globalThis._concordSTATE;
+    if (!STATE || !mediaId) return { error: "media not found" };
+    const r = getMediaDTU(STATE, String(mediaId));
+    if (!r.ok || !r.mediaDTU) return { error: "media not found" };
+    const dtu = r.mediaDTU;
+    if (dtu.author !== phaid(ctx)) return { error: "media not found" };
+    return {
+      mediaId: dtu.id,
+      filename: dtu.originalFilename || dtu.id,
+      mimeType: dtu.mimeType || null,
+      fileSize: Number.isFinite(dtu.fileSize) ? dtu.fileSize : null,
+    };
+  }
+  // Each item is either a typed filename string (legacy/manual entry) or
+  // { mediaId } from a real upload — resolved against the real media DTU,
+  // never trusting a client-supplied filename/size for that case.
+  function rollFrameSpecs(ctx, params) {
+    if (!Array.isArray(params.frames)) return { frames: [] };
+    const frames = [];
     for (const item of params.frames) {
+      if (item && typeof item === "object" && item.mediaId) {
+        const resolved = resolveMediaForFrame(ctx, item.mediaId);
+        if (resolved.error) return { error: resolved.error };
+        frames.push(resolved);
+        continue;
+      }
       const filename = phclean(typeof item === "string" ? item : item?.filename, 200);
-      if (filename) filenames.push(filename);
+      if (filename) frames.push({ filename, mediaId: null, mimeType: null, fileSize: null });
     }
-    if (params.frames.length > 0 && filenames.length === 0) return { error: "filename required" };
-    if (filenames.length > 72) return { error: "roll is too long" };
-    return { filenames };
+    if (params.frames.length > 0 && frames.length === 0) return { error: "filename required" };
+    if (frames.length > 72) return { error: "roll is too long" };
+    return { frames };
+  }
+  // A roll created before a process restart only exists as DB rows. Any
+  // macro that mutates an existing roll (add a frame, delete it) needs the
+  // in-memory shape back first, or it silently operates on nothing.
+  function hydrateShoot(ctx, s, userId, rollId) {
+    if (!rollId) return null;
+    const existing = (s.shoots.get(userId) || []).find((sh) => sh.id === rollId);
+    if (existing) return existing;
+    const row = readRollRows(ctx).find((r) => r.id === rollId);
+    if (!row) return null;
+    const shoot = { id: row.id, name: row.name, date: null, location: null, client: null, createdAt: row.created_at || phnow() };
+    phlistB(s.shoots, userId).push(shoot);
+    const photos = phlistB(s.photos, userId);
+    for (const frameRow of readFrameRows(ctx, rollId)) {
+      if (photos.some((p) => p.id === frameRow.id)) continue;
+      photos.push({
+        id: frameRow.id, filename: frameRow.filename, title: frameRow.filename,
+        camera: null, lens: null, iso: null, aperture: null, shutter: null, focalLength: null,
+        width: null, height: null, captureDate: null, rating: 0, flag: "unflagged", colorLabel: null,
+        keywords: [], develop: {}, shootId: rollId, importedAt: frameRow.created_at || phnow(),
+        mediaId: frameRow.media_id || null, mimeType: frameRow.mime_type || null, fileSize: frameRow.file_size || null,
+      });
+    }
+    return shoot;
+  }
+  // The single place shoot-list and the export provider (F5/Q79) both
+  // compose a roll's real shape from in-memory + restart-durable DB rows.
+  function listShoots(ctx, s) {
+    const userId = phaid(ctx);
+    const photos = s.photos.get(userId) || [];
+    const shoots = (s.shoots.get(userId) || []).map((sh) => {
+      const mine = photos.filter((p) => p.shootId === sh.id);
+      return {
+        ...sh,
+        photoCount: mine.length,
+        frames: mine.map((p) => ({ id: p.id, filename: p.filename, mediaId: p.mediaId || null, mimeType: p.mimeType || null, fileSize: p.fileSize || null })),
+      };
+    });
+    const seen = new Set(shoots.map((sh) => sh.id));
+    for (const row of readRollRows(ctx)) {
+      if (!row?.id || seen.has(row.id)) continue;
+      if (typeof row.name !== "string" || !row.name.trim()) continue;
+      const frames = readFrameRows(ctx, row.id).map((frame) => ({
+        id: frame.id, filename: frame.filename,
+        mediaId: frame.media_id || null, mimeType: frame.mime_type || null, fileSize: frame.file_size || null,
+      }));
+      shoots.push({
+        id: row.id,
+        name: row.name,
+        date: null,
+        location: null,
+        client: null,
+        createdAt: row.created_at || "",
+        photoCount: frames.length,
+        frames,
+      });
+    }
+    return shoots;
   }
   const phid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const phnow = () => new Date().toISOString();
@@ -414,7 +515,7 @@ export default function registerPhotographyActions(registerLensAction) {
     const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = phclean(params.name, 120);
     if (!name) return { ok: false, error: "shoot name required" };
-    const parsed = rollFilenames(params);
+    const parsed = rollFrameSpecs(ctx, params);
     if (parsed.error) return { ok: false, error: parsed.error };
     const createdAt = phnow();
     const shoot = {
@@ -425,10 +526,10 @@ export default function registerPhotographyActions(registerLensAction) {
       createdAt,
     };
     const userId = phaid(ctx);
-    const frames = parsed.filenames.map((filename) => ({
+    const frames = parsed.frames.map((spec) => ({
       id: phid("img"),
-      filename,
-      title: filename,
+      filename: spec.filename,
+      title: spec.filename,
       camera: null,
       lens: null,
       iso: null,
@@ -445,6 +546,9 @@ export default function registerPhotographyActions(registerLensAction) {
       develop: {},
       shootId: shoot.id,
       importedAt: createdAt,
+      mediaId: spec.mediaId || null,
+      mimeType: spec.mimeType || null,
+      fileSize: spec.fileSize || null,
     }));
     phlistB(s.shoots, userId).push(shoot);
     const photos = phlistB(s.photos, userId);
@@ -453,7 +557,12 @@ export default function registerPhotographyActions(registerLensAction) {
       const db = phDb(ctx);
       const write = () => {
         writeRollRow(ctx, shoot);
-        for (const frame of frames) writeFrameRow(ctx, shoot.id, { id: frame.id, filename: frame.filename, createdAt });
+        for (const frame of frames) {
+          writeFrameRow(ctx, shoot.id, {
+            id: frame.id, filename: frame.filename, createdAt,
+            mediaId: frame.mediaId, mimeType: frame.mimeType, fileSize: frame.fileSize,
+          });
+        }
       };
       if (db && typeof db.transaction === "function" && (rollsReady(db) || framesReady(db))) db.transaction(write)();
       else write();
@@ -466,37 +575,94 @@ export default function registerPhotographyActions(registerLensAction) {
       return { ok: false, error: "roll_not_saved", detail: String(e?.message || e) };
     }
     savePhotoState();
-    return { ok: true, result: { shoot, frames: frames.map((frame) => ({ id: frame.id, filename: frame.filename })) } };
+    return {
+      ok: true,
+      result: {
+        shoot,
+        frames: frames.map((frame) => ({ id: frame.id, filename: frame.filename, mediaId: frame.mediaId, mimeType: frame.mimeType, fileSize: frame.fileSize })),
+      },
+    };
+  });
+
+  // Adds one real-upload frame to an existing roll (restart-durable or
+  // still in memory — hydrateShoot covers both). The review's re-pass
+  // test is "open a roll, add a photo" as a second, separate action from
+  // create — this is that verb.
+  registerLensAction("photography", "shoot-add-frame", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phaid(ctx);
+    const rollId = phclean(params.rollId, 80);
+    if (!rollId) return { ok: false, error: "rollId required" };
+    const shoot = hydrateShoot(ctx, s, userId, rollId);
+    if (!shoot) return { ok: false, error: "shoot not found" };
+    let spec;
+    if (params.mediaId) {
+      const resolved = resolveMediaForFrame(ctx, params.mediaId);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      spec = resolved;
+    } else {
+      const filename = phclean(params.filename, 200);
+      if (!filename) return { ok: false, error: "filename required" };
+      spec = { filename, mediaId: null, mimeType: null, fileSize: null };
+    }
+    const createdAt = phnow();
+    const frame = {
+      id: phid("img"), filename: spec.filename, title: spec.filename,
+      camera: null, lens: null, iso: null, aperture: null, shutter: null, focalLength: null,
+      width: null, height: null, captureDate: null, rating: 0, flag: "unflagged", colorLabel: null,
+      keywords: [], develop: {}, shootId: shoot.id, importedAt: createdAt,
+      mediaId: spec.mediaId, mimeType: spec.mimeType, fileSize: spec.fileSize,
+    };
+    phlistB(s.photos, userId).push(frame);
+    try {
+      writeFrameRow(ctx, shoot.id, { id: frame.id, filename: frame.filename, createdAt, mediaId: frame.mediaId, mimeType: frame.mimeType, fileSize: frame.fileSize });
+    } catch (e) {
+      const photos = s.photos.get(userId) || [];
+      const idx = photos.findIndex((p) => p.id === frame.id);
+      if (idx >= 0) photos.splice(idx, 1);
+      return { ok: false, error: "frame_not_saved", detail: String(e?.message || e) };
+    }
+    savePhotoState();
+    return { ok: true, result: { shoot, frame: { id: frame.id, filename: frame.filename, mediaId: frame.mediaId, mimeType: frame.mimeType, fileSize: frame.fileSize } } };
+  });
+
+  // Reviews F3: rolls were write-once, read-never — no delete existed.
+  registerLensAction("photography", "shoot-delete", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phaid(ctx);
+    const rollId = phclean(params.rollId, 80);
+    if (!rollId) return { ok: false, error: "rollId required" };
+    const shoot = hydrateShoot(ctx, s, userId, rollId);
+    if (!shoot) return { ok: false, error: "shoot not found" };
+    const shoots = s.shoots.get(userId) || [];
+    const idx = shoots.findIndex((sh) => sh.id === rollId);
+    if (idx >= 0) shoots.splice(idx, 1);
+    s.photos.set(userId, (s.photos.get(userId) || []).filter((p) => p.shootId !== rollId));
+    deleteRollRows(ctx, rollId);
+    savePhotoState();
+    return { ok: true, result: { deleted: rollId } };
+  });
+
+  registerLensAction("photography", "shoot-remove-frame", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phaid(ctx);
+    const rollId = phclean(params.rollId, 80);
+    const frameId = phclean(params.frameId, 80);
+    if (!rollId || !frameId) return { ok: false, error: "rollId and frameId required" };
+    const shoot = hydrateShoot(ctx, s, userId, rollId);
+    if (!shoot) return { ok: false, error: "shoot not found" };
+    const photos = s.photos.get(userId) || [];
+    const idx = photos.findIndex((p) => p.id === frameId && p.shootId === rollId);
+    if (idx < 0) return { ok: false, error: "frame not found" };
+    photos.splice(idx, 1);
+    deleteFrameRow(ctx, frameId);
+    savePhotoState();
+    return { ok: true, result: { deleted: frameId } };
   });
 
   registerLensAction("photography", "shoot-list", (ctx, _a, _params = {}) => {
     const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const userId = phaid(ctx);
-    const photos = s.photos.get(userId) || [];
-    const shoots = (s.shoots.get(userId) || []).map((sh) => {
-      const mine = photos.filter((p) => p.shootId === sh.id);
-      return {
-        ...sh,
-        photoCount: mine.length,
-        frames: mine.map((p) => ({ id: p.id, filename: p.filename })),
-      };
-    });
-    const seen = new Set(shoots.map((sh) => sh.id));
-    for (const row of readRollRows(ctx)) {
-      if (!row?.id || seen.has(row.id)) continue;
-      if (typeof row.name !== "string" || !row.name.trim()) continue;
-      const frames = readFrameRows(ctx, row.id).map((frame) => ({ id: frame.id, filename: frame.filename }));
-      shoots.push({
-        id: row.id,
-        name: row.name,
-        date: null,
-        location: null,
-        client: null,
-        createdAt: row.created_at || "",
-        photoCount: frames.length,
-        frames,
-      });
-    }
+    const shoots = listShoots(ctx, s);
     return { ok: true, result: { shoots, count: shoots.length } };
   });
 
@@ -1198,5 +1364,22 @@ export default function registerPhotographyActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `artic unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // F5: the shared Export menu read ("↓.dtu") had nothing to read — no
+  // export provider existed for this domain, so an empty-payload export
+  // silently produced an empty bundle. Rolls (merging the in-memory and
+  // restart-durable DB-only shapes, same as shoot-list) are the real data.
+  registerLensExportProvider("photography", (ctx) => {
+    const s = getPhotoState();
+    if (!s) return [];
+    return listShoots(ctx, s).map((sh) => ({
+      id: sh.id,
+      type: "photography_roll",
+      title: sh.name,
+      createdAt: sh.createdAt,
+      updatedAt: sh.createdAt,
+      data: sh,
+    }));
   });
 }
