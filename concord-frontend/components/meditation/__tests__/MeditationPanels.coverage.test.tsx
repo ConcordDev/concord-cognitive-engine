@@ -149,7 +149,7 @@ describe('meditation flows', () => {
       return !!b;
     };
     // start the timer, run it out
-    await press(/^(Play|Start|Begin)/i) || await press(/play/i);
+    if (!(await press(/^(Play|Start|Begin)/i))) await press(/play/i);
     await act(async () => { await vi.advanceTimersByTimeAsync(65_000); });
     expect(view.container.textContent).toMatch(/complete|Log|Finished|Well done/i);
     // rate and journal
