@@ -33,6 +33,7 @@ import {
   buildContentLicensePayload,
   type ContentClass,
 } from '@/components/dtu/ContentClassLicenseFields';
+import { DtuId } from '@/components/dtu/DtuId';
 
 export interface SaveAsDtuButtonProps {
   /**
@@ -169,8 +170,14 @@ export function SaveAsDtuButton({
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
 
-  useEffect(() => { setEditTitle(clampDtuTitle(title)); }, [title]);
-  useEffect(() => { setEditTags([apiSource, ...extraTags].join(', ')); }, [apiSource, extraTags]);
+  // Prefill sync runs only while the confirm modal is CLOSED. Once the
+  // user opens it, their edits own the fields: callers re-render on
+  // polls (and some embed a fresh timestamp in the title prop, or pass
+  // an inline extraTags array), which used to overwrite a typed title
+  // mid-edit (F10). The values synced while closed are the ones the
+  // modal opens with.
+  useEffect(() => { if (!open) setEditTitle(clampDtuTitle(title)); }, [title, open]);
+  useEffect(() => { if (!open) setEditTags([apiSource, ...extraTags].join(', ')); }, [apiSource, extraTags, open]);
 
   const createMutation = useMutation({
     mutationFn: async (opts: {
@@ -223,7 +230,11 @@ export function SaveAsDtuButton({
       }
       const id = data?.id || data?.dtu?.id || 'saved';
       setSavedId(id);
-      addToast({ type: 'success', message: `Saved as DTU (source: ${apiSource})` });
+      // The receipt carries the FULL DTU id. It was already in hand here and
+      // simply not rendered — so no surface in any lens let the user copy
+      // the id their save had just minted, and library retrieval by id was
+      // impossible from the receipt (the F8 shape, filed per-lens).
+      addToast({ type: 'success', message: id !== 'saved' ? `Saved as DTU ${id} (source: ${apiSource})` : `Saved as DTU (source: ${apiSource})` });
       queryClient.invalidateQueries({ queryKey: ['dtus-recent'] });
       queryClient.invalidateQueries({ queryKey: ['dtus-mine'] });
       queryClient.invalidateQueries({ queryKey: ['lensDTUs'] });
@@ -287,6 +298,15 @@ export function SaveAsDtuButton({
         )}
         {!compact && <span>{savedId ? 'Saved' : 'Save as DTU'}</span>}
       </button>
+
+      {/* A9 (full-ID display): the receipt names the DTU it made, in
+          full — the ID is the only handle the user has to find the
+          item again, and a checkmark alone strands it. */}
+      {savedId && (
+        <span className="inline-flex items-baseline gap-1 text-[10px] text-zinc-400">
+          Saved as DTU <DtuId id={savedId} />
+        </span>
+      )}
 
       {open && <SaveModal
         apiSource={apiSource}

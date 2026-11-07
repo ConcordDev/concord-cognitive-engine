@@ -33,7 +33,7 @@
 //
 // Key material and plaintext API keys are never logged.
 
-import { webcrypto } from "node:crypto";
+import { webcrypto, pbkdf2Sync, createHash, randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
 
 const V1_ITERATIONS = 10_000;
 const V2_ITERATIONS = 600_000;
@@ -236,6 +236,74 @@ export async function decryptKey(userId, encrypted) {
       cipher,
     );
     return new TextDecoder().decode(plainBuf);
+  } catch (err) {
+    if (err && err.code === "BYO_SECRET_REFUSED") throw err;
+    return null;
+  }
+}
+
+// ── Synchronous twins (DBX-2) ──────────────────────────────────────────────
+//
+// Some consumers are synchronous by architecture (lens domain macros
+// whose suites and dispatch call them without await). The twins below
+// produce and consume the IDENTICAL BYOv2 byte format as the async
+// functions above — same secret material, same PBKDF2 parameters, same
+// salt, same framing — via node:crypto's sync primitives, so a blob
+// written by either path opens with the other (pinned by cross-tests).
+// Derived key bytes are cached under the same LRU discipline as
+// deriveKey's CryptoKey cache. Prefer the async functions on any hot
+// path: a 600k-iteration PBKDF2 derivation blocks the event loop for
+// its duration on a cache miss, which is acceptable only on rare,
+// user-initiated writes (e.g. saving a connection password).
+
+const derivedBytesCache = new Map();
+
+function deriveKeyBytesSync(userId, iterations) {
+  const secret = wrappingSecret();
+  const fp = createHash("sha256").update(secret).digest("hex");
+  const cacheId = `${iterations}\0${userId}\0${fp}`;
+  const hit = derivedBytesCache.get(cacheId);
+  if (hit) {
+    derivedBytesCache.delete(cacheId);
+    derivedBytesCache.set(cacheId, hit);
+    return hit;
+  }
+  const salt = createHash("sha256").update(`byo-salt:${userId}`).digest().subarray(0, SALT_LENGTH_BYTES);
+  const key = pbkdf2Sync(`${secret}:${userId}`, salt, iterations, KEY_LENGTH_BITS / 8, "sha256");
+  derivedBytesCache.set(cacheId, key);
+  while (derivedBytesCache.size > DERIVED_KEY_CACHE_MAX) {
+    derivedBytesCache.delete(derivedBytesCache.keys().next().value);
+  }
+  return key;
+}
+
+/** Synchronous encryptKey: same inputs, same BYOv2 output bytes. */
+export function encryptKeySync(userId, plaintextKey) {
+  assertByoCryptoReady();
+  if (!userId || !plaintextKey) throw new Error("missing inputs");
+  const key = deriveKeyBytesSync(userId, V2_ITERATIONS);
+  const iv = randomBytes(IV_LENGTH_BYTES);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const body = Buffer.concat([cipher.update(String(plaintextKey), "utf8"), cipher.final()]);
+  return Buffer.concat([V2_MAGIC, iv, body, cipher.getAuthTag()]);
+}
+
+/** Synchronous decryptKey: null on tampering/wrong user, like the async form. */
+export function decryptKeySync(userId, encrypted) {
+  assertByoCryptoReady();
+  if (!userId || !encrypted) return null;
+  let u8;
+  try { u8 = toU8(encrypted); } catch { return null; }
+  const versioned = hasMagic(u8);
+  const header = versioned ? V2_MAGIC.length : 0;
+  if (u8.length <= header + IV_LENGTH_BYTES) return null;
+  try {
+    const key = deriveKeyBytesSync(userId, versioned ? V2_ITERATIONS : V1_ITERATIONS);
+    const iv = Buffer.from(u8.slice(header, header + IV_LENGTH_BYTES));
+    const blob = Buffer.from(u8.slice(header + IV_LENGTH_BYTES));
+    const decipher = createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(blob.subarray(blob.length - 16));
+    return Buffer.concat([decipher.update(blob.subarray(0, blob.length - 16)), decipher.final()]).toString("utf8");
   } catch (err) {
     if (err && err.code === "BYO_SECRET_REFUSED") throw err;
     return null;

@@ -25,7 +25,7 @@ const CATALOG = [
     name: "AccessibilityPanel", group: "settings",
     description: "Color contrast, motion, font size, screen-reader settings.",
     homePath: "/settings/accessibility", homeLabel: "Settings → Accessibility",
-    importPath: "@/components/settings/AccessibilityPanel", icon: "Accessibility",
+    importPath: "@/components/world-lens/AccessibilityPanel", icon: "Accessibility",
     states: ["default", "loading", "error", "empty"],
     a11y: { interactive: true, keyboard: true, landmark: "form", minTapTargetPx: 44, ariaRequired: ["aria-label"] },
     propSchema: [
@@ -38,7 +38,7 @@ const CATALOG = [
     name: "SettingsPanel", group: "settings",
     description: "Master settings surface (incl. accessibility tab).",
     homePath: "/settings", homeLabel: "Settings",
-    importPath: "@/components/settings/SettingsPanel", icon: "Settings",
+    importPath: "@/components/code/SettingsPanel", icon: "Settings",
     states: ["default", "loading", "error"],
     a11y: { interactive: true, keyboard: true, landmark: "region", minTapTargetPx: 44, ariaRequired: ["aria-label"] },
     propSchema: [
@@ -50,7 +50,7 @@ const CATALOG = [
     name: "SaveSystem", group: "settings",
     description: "Save state, cloud sync, offline calcs, world persistence.",
     homePath: "/lenses/world/save", homeLabel: "World → Save",
-    importPath: "@/components/world/SaveSystem", icon: "Save",
+    importPath: "@/components/world-lens/SaveSystem", icon: "Save",
     states: ["default", "loading", "error", "empty"],
     a11y: { interactive: true, keyboard: true, landmark: "region", minTapTargetPx: 44, ariaRequired: [] },
     propSchema: [
@@ -62,7 +62,7 @@ const CATALOG = [
     name: "SoundSystem", group: "settings",
     description: "District-aware ambient soundscape, weather audio.",
     homePath: "/world", homeLabel: "World (auto-mounted in Providers)",
-    importPath: "@/components/world/SoundSystem", icon: "Music2",
+    importPath: "@/components/world-lens/SoundSystem", icon: "Music2",
     states: ["default", "loading", "error"],
     a11y: { interactive: true, keyboard: true, landmark: "region", minTapTargetPx: 44, ariaRequired: ["aria-label"] },
     propSchema: [
@@ -74,7 +74,7 @@ const CATALOG = [
     name: "AdaptiveComplexity", group: "settings",
     description: "Progressive disclosure of features by expertise tier.",
     homePath: "/", homeLabel: "Root (auto-mounted in Providers)",
-    importPath: "@/components/AdaptiveComplexity", icon: "Layers",
+    importPath: "@/components/world-lens/AdaptiveComplexity", icon: "Layers",
     states: ["default", "loading"],
     a11y: { interactive: true, keyboard: true, landmark: "region", minTapTargetPx: 44, ariaRequired: [] },
     propSchema: [
@@ -86,7 +86,7 @@ const CATALOG = [
     name: "AchievementSystem", group: "progress",
     description: "Tiered achievement tracking with share.",
     homePath: "/lenses/self", homeLabel: "Self lens",
-    importPath: "@/components/progress/AchievementSystem", icon: "Trophy",
+    importPath: "@/components/world-lens/AchievementSystem", icon: "Trophy",
     states: ["default", "loading", "error", "empty"],
     a11y: { interactive: true, keyboard: true, landmark: "region", minTapTargetPx: 44, ariaRequired: ["aria-label"] },
     propSchema: [
@@ -98,7 +98,7 @@ const CATALOG = [
     name: "ProgressionPanel", group: "progress",
     description: "Level, XP, rank, milestones, unlocks.",
     homePath: "/lenses/world", homeLabel: "World → Skills",
-    importPath: "@/components/progress/ProgressionPanel", icon: "TrendingUp",
+    importPath: "@/components/world-lens/ProgressionPanel", icon: "TrendingUp",
     states: ["default", "loading", "error", "empty"],
     a11y: { interactive: false, keyboard: false, landmark: "region", minTapTargetPx: 0, ariaRequired: [] },
     propSchema: [
@@ -110,7 +110,7 @@ const CATALOG = [
     name: "DailyRituals", group: "progress",
     description: "Recurring daily prompts + streak tracking.",
     homePath: "/lenses/self", homeLabel: "Self lens",
-    importPath: "@/components/progress/DailyRituals", icon: "Sun",
+    importPath: "@/components/world-lens/DailyRituals", icon: "Sun",
     states: ["default", "loading", "error", "empty"],
     a11y: { interactive: true, keyboard: true, landmark: "list", minTapTargetPx: 44, ariaRequired: ["aria-label"] },
     propSchema: [
@@ -121,7 +121,7 @@ const CATALOG = [
     name: "SecretsDiscovery", group: "progress",
     description: "Reveals discoverable secrets on conditions.",
     homePath: "/", homeLabel: "Root (auto-mounted in Providers)",
-    importPath: "@/components/progress/SecretsDiscovery", icon: "Eye",
+    importPath: "@/components/world-lens/SecretsDiscovery", icon: "Eye",
     states: ["default", "empty"],
     a11y: { interactive: true, keyboard: true, landmark: "region", minTapTargetPx: 44, ariaRequired: [] },
     propSchema: [
@@ -132,7 +132,7 @@ const CATALOG = [
     name: "SeasonalContent", group: "progress",
     description: "Seasonal events, monthly challenges, annual competitions.",
     homePath: "/lenses/self", homeLabel: "Self lens",
-    importPath: "@/components/progress/SeasonalContent", icon: "CalendarDays",
+    importPath: "@/components/world-lens/SeasonalContent", icon: "CalendarDays",
     states: ["default", "loading", "error", "empty"],
     a11y: { interactive: true, keyboard: true, landmark: "region", minTapTargetPx: 44, ariaRequired: ["aria-label"] },
     propSchema: [
@@ -144,7 +144,7 @@ const CATALOG = [
     name: "DistrictTimeline", group: "world",
     description: "Time-series of district snapshots.",
     homePath: "/lenses/world", homeLabel: "World lens",
-    importPath: "@/components/world/DistrictTimeline", icon: "MountainSnow",
+    importPath: "@/components/world-lens/DistrictTimeline", icon: "MountainSnow",
     states: ["default", "loading", "error", "empty"],
     a11y: { interactive: false, keyboard: false, landmark: "region", minTapTargetPx: 0, ariaRequired: [] },
     propSchema: [
@@ -155,7 +155,7 @@ const CATALOG = [
     name: "EnvironmentalStorytelling", group: "world",
     description: "Buildings/lots/roads narrative overlay.",
     homePath: "/lenses/world", homeLabel: "World lens",
-    importPath: "@/components/world/EnvironmentalStorytelling", icon: "MountainSnow",
+    importPath: "@/components/world-lens/EnvironmentalStorytelling", icon: "MountainSnow",
     states: ["default", "loading", "empty"],
     a11y: { interactive: false, keyboard: false, landmark: "region", minTapTargetPx: 0, ariaRequired: [] },
     propSchema: [
@@ -166,7 +166,7 @@ const CATALOG = [
     name: "WorldTravel", group: "world",
     description: "Browse + travel between sub-worlds, invites, bookmarks.",
     homePath: "/lenses/world/travel", homeLabel: "World → Travel",
-    importPath: "@/components/world/WorldTravel", icon: "Globe",
+    importPath: "@/components/world-lens/WorldTravel", icon: "Globe",
     states: ["default", "loading", "error", "empty"],
     a11y: { interactive: true, keyboard: true, landmark: "navigation", minTapTargetPx: 44, ariaRequired: ["aria-label"] },
     propSchema: [
@@ -177,7 +177,7 @@ const CATALOG = [
     name: "ARPreview", group: "world",
     description: "Augmented-reality preview of a DTU artifact.",
     homePath: "/lenses/world/ar", homeLabel: "World → AR",
-    importPath: "@/components/world/ARPreview", icon: "ImageIcon",
+    importPath: "@/components/world-lens/ARPreview", icon: "ImageIcon",
     states: ["default", "loading", "error"],
     a11y: { interactive: true, keyboard: false, landmark: "region", minTapTargetPx: 44, ariaRequired: ["aria-label"] },
     propSchema: [
@@ -189,7 +189,7 @@ const CATALOG = [
     name: "AgentBuilder", group: "ops",
     description: "Compose marathon-session agents from skill primitives.",
     homePath: "/lenses/society", homeLabel: "Society lens",
-    importPath: "@/components/ops/AgentBuilder", icon: "Bot",
+    importPath: "@/components/world-lens/AgentBuilder", icon: "Bot",
     states: ["default", "loading", "error", "empty"],
     a11y: { interactive: true, keyboard: true, landmark: "form", minTapTargetPx: 44, ariaRequired: ["aria-label"] },
     propSchema: [
@@ -200,7 +200,7 @@ const CATALOG = [
     name: "AnalyticsDashboard", group: "ops",
     description: "System-wide metrics with time-range selector.",
     homePath: "/lenses/system", homeLabel: "System lens",
-    importPath: "@/components/ops/AnalyticsDashboard", icon: "BarChart3",
+    importPath: "@/components/world-lens/AnalyticsDashboard", icon: "BarChart3",
     states: ["default", "loading", "error", "empty"],
     a11y: { interactive: true, keyboard: true, landmark: "region", minTapTargetPx: 44, ariaRequired: ["aria-label"] },
     propSchema: [
@@ -211,7 +211,7 @@ const CATALOG = [
     name: "LensPluginSystem", group: "ops",
     description: "Install lens plugins + place widgets.",
     homePath: "/lenses/system", homeLabel: "System lens",
-    importPath: "@/components/ops/LensPluginSystem", icon: "Puzzle",
+    importPath: "@/components/world-lens/LensPluginSystem", icon: "Puzzle",
     states: ["default", "loading", "error", "empty"],
     a11y: { interactive: true, keyboard: true, landmark: "region", minTapTargetPx: 44, ariaRequired: ["aria-label"] },
     propSchema: [
@@ -223,7 +223,7 @@ const CATALOG = [
     name: "HiddenAssistance", group: "shell",
     description: "Context-sensitive hints when user is stuck.",
     homePath: "/", homeLabel: "Root (auto-mounted in Providers)",
-    importPath: "@/components/shell/HiddenAssistance", icon: "Lightbulb",
+    importPath: "@/components/world-lens/HiddenAssistance", icon: "Lightbulb",
     states: ["default", "empty"],
     a11y: { interactive: true, keyboard: true, landmark: "status", minTapTargetPx: 44, ariaRequired: ["aria-live"] },
     propSchema: [
@@ -233,8 +233,8 @@ const CATALOG = [
   {
     name: "MobileCompanion", group: "shell",
     description: "Phone-screen UI for the running lens.",
-    homePath: "/", homeLabel: "Root",
-    importPath: "@/components/shell/MobileCompanion", icon: "Smartphone",
+    homePath: "/lenses/root", homeLabel: "Root lens",
+    importPath: "@/components/world-lens/MobileCompanion", icon: "Smartphone",
     states: ["default", "loading"],
     a11y: { interactive: true, keyboard: true, landmark: "region", minTapTargetPx: 48, ariaRequired: ["aria-label"] },
     propSchema: [
@@ -317,7 +317,7 @@ export default function registerUxSuiteActions(registerLensAction) {
           total: components.length,
           groups,
           components,
-          source: "code-derived (server/domains/ux-suite.js CATALOG manifest)",
+          source: "The platform's own component catalog",
         },
       };
     } catch (e) {
@@ -383,7 +383,7 @@ export default function registerUxSuiteActions(registerLensAction) {
           sandbox: {
             isolated: true,
             background: "#0a0a0f",
-            note: "Preview renders the component shell with the chosen state + props. Live backend state is at liveMount.",
+            note: "Inspector: the component shell with the chosen state + props. The component itself runs at its live mount, linked above.",
           },
         },
       };
@@ -521,69 +521,118 @@ export default function registerUxSuiteActions(registerLensAction) {
       const comp = findComponent(params.component || params.name);
       if (!comp) return { ok: false, error: "unknown component" };
       const a = comp.a11y || {};
-      const findings = [];
 
-      // Rule: interactive components need keyboard support.
+      // ── S-UX-1: the audit evaluates the CONFIGURATION — the effective
+      // props and the preview state it is given — not the catalog's
+      // declarations. Before this build the verb read only comp.a11y,
+      // so every component in every configuration scored 100: a verdict
+      // rendered from the manifest (generation-as-execution, the
+      // namesake-figure pattern's seventh instance).
+      const props = (params.props && typeof params.props === "object") ? params.props : null;
+      const state = typeof params.state === "string" ? params.state : "default";
+      const schema = Array.isArray(comp.propSchema) ? comp.propSchema : [];
+      const configuration = [];
+
+      if (props) {
+        // Text scale — a range prop whose value directly sizes body text.
+        for (const entry of schema) {
+          if (entry.type !== "range") continue;
+          const v = props[entry.key];
+          if (typeof v !== "number") continue;
+          const isTextScale = entry.key === "fontScale" || /font scale/i.test(entry.label || "");
+          if (isTextScale) {
+            configuration.push(v < 1
+              ? { rule: "text-scale-legibility", category: "a11y", severity: "warn", basis: "configuration",
+                  detail: `${entry.label} is ${v} — body text renders at ${Math.round(v * 100)}% of design size, under the suite's legibility floor of 1.00.` }
+              : { rule: "text-scale-legibility", category: "a11y", severity: "pass", basis: "configuration",
+                  detail: `${entry.label} is ${v} — at or above the legibility floor of 1.00.` });
+          } else if (v <= entry.min || v >= entry.max) {
+            configuration.push({ rule: "range-extreme", category: "a11y", severity: "info", basis: "configuration",
+              detail: `"${entry.label}" sits at the edge of its declared range (${v} of ${entry.min}–${entry.max}).` });
+          }
+        }
+        // State — an error render owes an accessible announcement; the
+        // catalog declares none for any component, which is a finding
+        // about the declaration, stated as one.
+        if (state === "error") {
+          configuration.push({ rule: "error-state-announcement", category: "a11y", severity: "warn", basis: "configuration",
+            detail: "The error state is under audit and the catalog declares no accessible error announcement (role=\"alert\" / aria-live) for this component \u2014 a failed render would be silent to assistive technology." });
+        } else {
+          configuration.push({ rule: "state-presentation", category: "a11y", severity: "pass", basis: "configuration",
+            detail: `Audited in the "${state}" state; no error presentation is owed in this state.` });
+        }
+      }
+
+      // ── Catalog declarations — listed, labelled, UNSCORED. These are
+      // what the component's catalog entry claims, not measurements.
+      const declarations = [];
       if (a.interactive) {
-        findings.push({
+        declarations.push({
           rule: "keyboard-operable", category: "a11y",
-          severity: a.keyboard ? "pass" : "error",
+          severity: a.keyboard ? "pass" : "error", basis: "catalog-declaration",
           detail: a.keyboard
-            ? "Interactive surface is keyboard operable."
-            : "Interactive surface lacks keyboard operability.",
+            ? "Catalog declares the interactive surface keyboard operable."
+            : "Catalog declares the interactive surface NOT keyboard operable.",
         });
       }
-      // Rule: required ARIA attributes present.
       const ariaReq = a.ariaRequired || [];
-      findings.push({
+      declarations.push({
         rule: "aria-required-attrs", category: "a11y",
-        severity: ariaReq.length ? "pass" : "info",
+        severity: ariaReq.length ? "pass" : "info", basis: "catalog-declaration",
         detail: ariaReq.length
-          ? `Declares required ARIA attributes: ${ariaReq.join(", ")}.`
-          : "No ARIA attributes required for this component shape.",
+          ? `Catalog declares required ARIA attributes: ${ariaReq.join(", ")}.`
+          : "Catalog declares no required ARIA attributes for this component shape.",
       });
-      // Rule: landmark role present.
-      findings.push({
+      declarations.push({
         rule: "landmark-role", category: "a11y",
-        severity: a.landmark ? "pass" : "warn",
+        severity: a.landmark ? "pass" : "warn", basis: "catalog-declaration",
         detail: a.landmark
-          ? `Mounted under a "${a.landmark}" landmark.`
-          : "No landmark role — screen-reader users cannot jump to it.",
+          ? `Catalog declares it mounted under a "${a.landmark}" landmark.`
+          : "Catalog declares no landmark role.",
       });
-      // Rule: tap target size on interactive components.
       if (a.interactive) {
         const ok = (a.minTapTargetPx || 0) >= 44;
-        findings.push({
+        declarations.push({
           rule: "tap-target-size", category: "responsive",
-          severity: ok ? "pass" : "warn",
+          severity: ok ? "pass" : "warn", basis: "catalog-declaration",
           detail: ok
-            ? `Tap targets are ≥44px (${a.minTapTargetPx}px).`
-            : `Tap targets are ${a.minTapTargetPx}px — below the 44px WCAG 2.5.5 minimum.`,
+            ? `Catalog declares tap targets \u226544px (${a.minTapTargetPx}px).`
+            : `Catalog declares tap targets of ${a.minTapTargetPx}px \u2014 below the 44px WCAG 2.5.5 minimum.`,
         });
       }
-      // Responsive checks across breakpoints.
+
+      // Responsive checks across breakpoints (declaration-level).
       const responsive = BREAKPOINTS.map((bp) => ({
         breakpoint: bp.id, label: bp.label, widthPx: bp.widthPx,
-        // Mobile-companion is phone-first; everything else must reflow.
         fits: comp.name === "MobileCompanion" ? bp.id !== "desktop" : true,
         note: comp.name === "MobileCompanion" && bp.id === "desktop"
-          ? "Phone-screen surface — desktop renders a framed device."
-          : "Fluid layout reflows at this width.",
+          ? "Phone-screen surface \u2014 desktop renders a framed device."
+          : "Fluid layout reflows at this width (catalog declaration).",
       }));
 
-      const errors = findings.filter((f) => f.severity === "error").length;
-      const warnings = findings.filter((f) => f.severity === "warn").length;
-      const passes = findings.filter((f) => f.severity === "pass").length;
-      const score = Math.round(
-        (passes / Math.max(1, passes + warnings + errors)) * 100,
-      );
+      // The score covers CONFIGURATION findings only, formula printed.
+      const scored = configuration.filter((f) => f.severity === "pass" || f.severity === "warn" || f.severity === "error");
+      const passes = scored.filter((f) => f.severity === "pass").length;
+      const warnings = scored.filter((f) => f.severity === "warn").length;
+      const errors = scored.filter((f) => f.severity === "error").length;
+      const score = scored.length
+        ? Math.round((passes / Math.max(1, passes + warnings + errors)) * 100)
+        : null;
       return {
         ok: true,
         result: {
           component: comp.name,
           score,
-          summary: { errors, warnings, passes, total: findings.length },
-          findings,
+          scoreFormula: "score = passes \u00f7 (passes + warnings + errors) over configuration findings only; catalog declarations are listed unscored",
+          scoreNote: score === null
+            ? "No score: this audit ran without a configuration to measure (no props supplied). A score ships only over measured configuration findings."
+            : `Measured over the supplied configuration (${state} state).`,
+          basis: props ? "configuration" : "catalog-declarations-only",
+          auditedState: state,
+          auditedProps: props,
+          summary: { errors, warnings, passes, total: scored.length },
+          findings: configuration,
+          declarations,
           responsive,
           standard: "WCAG 2.2 AA (subset) + Concord responsive grid",
         },

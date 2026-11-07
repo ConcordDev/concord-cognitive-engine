@@ -87,6 +87,41 @@ export function eventTypeColor(type: string): string {
   return 'bg-gray-500/20 text-gray-400';
 }
 
+/**
+ * Map a mood check-in to the ATS FEEDBACK event it emits (S-AFF-1: a
+ * check-in is an input to the affective state, not a parallel record).
+ * Polarity is the value's distance from the scale's midpoint, normalised
+ * to -1..1; intensity is its magnitude — a midpoint check-in honestly
+ * moves nothing.
+ */
+export function moodToAffectEvent(
+  scaleValues: number[],
+  value: number
+): { type: 'FEEDBACK'; intensity: number; polarity: number } {
+  const min = scaleValues.length ? Math.min(...scaleValues) : 1;
+  const max = scaleValues.length ? Math.max(...scaleValues) : 5;
+  const mid = (min + max) / 2;
+  const half = Math.max((max - min) / 2, 0.5);
+  const polarity = Math.round(clamp((value - mid) / half, -1, 1) * 100) / 100;
+  return { type: 'FEEDBACK', intensity: Math.abs(polarity), polarity };
+}
+
+/**
+ * One-line summary of an applied state delta for the emit receipt, e.g.
+ * "Valence +4.0 · Fatigue -1.0". Returns '' when nothing moved.
+ */
+export function summarizeDelta(delta: Record<string, unknown> | undefined): string {
+  if (!delta || typeof delta !== 'object') return '';
+  return DIMS.filter(
+    (d) => typeof delta[d.key] === 'number' && Math.abs(delta[d.key] as number) >= 0.001
+  )
+    .map((d) => {
+      const v = delta[d.key] as number;
+      return `${d.label} ${v >= 0 ? '+' : '-'}${Math.abs(v * 100).toFixed(1)}`;
+    })
+    .join(' · ');
+}
+
 export function radarPoints(values: { value: number }[], radius: number): string {
   const n = values.length;
   return values

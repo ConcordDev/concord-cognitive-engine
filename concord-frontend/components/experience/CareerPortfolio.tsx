@@ -70,7 +70,7 @@ const EMPTY_PORTFOLIO: PortfolioData = { skills: [], experience: [], education: 
 
 export function CareerPortfolio() {
   const { user } = useAuth();
-  const { items, isLoading, create, update } = useLensData<PortfolioData>('experience', 'portfolio', { noSeed: true, limit: 1 });
+  const { items, isLoading, create, update, remove } = useLensData<PortfolioData>('experience', 'portfolio', { noSeed: true, limit: 50 });
   // Directory: a second, higher-limit fetch of the SAME domain/type. The
   // backend's non-social-domain visibility rule (server.js `lens.list`,
   // ~38836-38849) already returns the caller's own artifacts PLUS every
@@ -84,6 +84,10 @@ export function CareerPortfolio() {
   const [result, setResult] = useState<{ kind: string; data: Record<string, unknown> } | null>(null);
   const [view, setView] = useState<'mine' | 'directory'>('mine');
   const [peerStatus, setPeerStatus] = useState<Record<string, 'ok' | 'error'>>({});
+  const [armDeletePortfolio, setArmDeletePortfolio] = useState(false);
+  // Row editing: which experience / education row is open in its form.
+  const [editExp, setEditExp] = useState<number | null>(null);
+  const [editEdu, setEditEdu] = useState<number | null>(null);
 
   // Skill draft
   const [skillName, setSkillName] = useState('');
@@ -98,7 +102,16 @@ export function CareerPortfolio() {
   const [institution, setInstitution] = useState(''); const [degree, setDegree] = useState('');
   const [field, setField] = useState(''); const [year, setYear] = useState('');
 
-  const portfolio = items[0];
+  // My Portfolio is the caller's OWN artifact — selected by owner, never
+  // items.at(0). The lens list serves own + published + ownerless artifacts
+  // to any caller, so adopting the first row served one account another
+  // account's record as its own, and wrote new contents into whichever
+  // artifact happened to head the list (F1/F2). The directory fetch below
+  // is the same list; peers are everything that is not this artifact.
+  const portfolio = useMemo(
+    () => items.find(p => !!user?.id && p.ownerId === user.id),
+    [items, user]
+  );
   const data: PortfolioData = useMemo(() => ({ ...EMPTY_PORTFOLIO, ...(portfolio?.data || {}) }), [portfolio]);
 
   const doCreate = async () => {
@@ -127,13 +140,70 @@ export function CareerPortfolio() {
 
   const addExperience = async () => {
     if (!role.trim() || !company.trim()) return;
-    await saveData({ experience: [...data.experience, { role: role.trim(), company: company.trim(), startDate, endDate }] });
+    const entry: ExperienceEntry = { role: role.trim(), company: company.trim(), startDate, endDate };
+    if (editExp !== null) {
+      await saveData({ experience: data.experience.map((e, i) => (i === editExp ? entry : e)) });
+      setEditExp(null);
+    } else {
+      await saveData({ experience: [...data.experience, entry] });
+    }
     setRole(''); setCompany(''); setStartDate(''); setEndDate('');
+  };
+  const startEditExperience = (i: number) => {
+    const e = data.experience[i];
+    if (!e) return;
+    setEditExp(i);
+    setRole(e.role); setCompany(e.company); setStartDate(e.startDate || ''); setEndDate(e.endDate || '');
+  };
+  const removeExperience = async (i: number) => {
+    if (editExp === i) { setEditExp(null); setRole(''); setCompany(''); setStartDate(''); setEndDate(''); }
+    await saveData({ experience: data.experience.filter((_, x) => x !== i) });
   };
   const addEducation = async () => {
     if (!institution.trim()) return;
-    await saveData({ education: [...data.education, { institution: institution.trim(), degree, field, year }] });
+    const entry: EducationEntry = { institution: institution.trim(), degree, field, year };
+    if (editEdu !== null) {
+      await saveData({ education: data.education.map((e, i) => (i === editEdu ? entry : e)) });
+      setEditEdu(null);
+    } else {
+      await saveData({ education: [...data.education, entry] });
+    }
     setInstitution(''); setDegree(''); setField(''); setYear('');
+  };
+  const startEditEducation = (i: number) => {
+    const e = data.education[i];
+    if (!e) return;
+    setEditEdu(i);
+    setInstitution(e.institution); setDegree(e.degree || ''); setField(e.field || ''); setYear(e.year || '');
+  };
+  const removeEducation = async (i: number) => {
+    if (editEdu === i) { setEditEdu(null); setInstitution(''); setDegree(''); setField(''); setYear(''); }
+    await saveData({ education: data.education.filter((_, x) => x !== i) });
+  };
+
+  const deletePortfolio = async () => {
+    if (!portfolio) return;
+    setBusy('delete-portfolio');
+    await remove(portfolio.id);
+    setArmDeletePortfolio(false);
+    setBusy(null);
+  };
+
+  const exportPortfolioJson = () => {
+    if (!portfolio) return;
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      title: portfolio.title,
+      visibility: portfolio.meta?.visibility || 'private',
+      data,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `experience-portfolio-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const saveSnapshot = async () => {
@@ -254,6 +324,21 @@ export function CareerPortfolio() {
             <button onClick={() => callAction('validate_claims')} disabled={!!busy || data.skills.length === 0} className="btn-neon text-xs flex items-center gap-1 disabled:opacity-40">
               {busy === 'validate_claims' ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />} Validate claims
             </button>
+            <button onClick={exportPortfolioJson} disabled={!!busy} className="btn-neon text-xs flex items-center gap-1 disabled:opacity-40">
+              <FileText className="w-3 h-3" /> Export portfolio (JSON)
+            </button>
+            {!armDeletePortfolio ? (
+              <button onClick={() => setArmDeletePortfolio(true)} disabled={!!busy} className="btn-neon text-xs flex items-center gap-1 text-red-300 disabled:opacity-40">
+                <Trash2 className="w-3 h-3" /> Delete portfolio
+              </button>
+            ) : (
+              <>
+                <button onClick={deletePortfolio} disabled={!!busy} className="btn-neon text-xs flex items-center gap-1 bg-red-500/20 text-red-200 disabled:opacity-40">
+                  {busy === 'delete-portfolio' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Delete this portfolio and its contents? Click again to confirm
+                </button>
+                <button onClick={() => setArmDeletePortfolio(false)} className="btn-neon text-xs">Keep</button>
+              </>
+            )}
           </div>
           {data.snapshots.length === 0 && <p className="text-[10px] text-gray-500">Compare needs at least one saved snapshot — save one before making further changes to see a real diff.</p>}
 
@@ -307,11 +392,18 @@ export function CareerPortfolio() {
                   <Field label="Start"><input className={inputCls} value={startDate} onChange={e => setStartDate(e.target.value)} placeholder="2023-01" /></Field>
                   <Field label="End (blank = current)"><input className={inputCls} value={endDate} onChange={e => setEndDate(e.target.value)} placeholder="2024-06" /></Field>
                 </div>
-                <button onClick={addExperience} disabled={!role.trim() || !company.trim()} className="btn-neon text-xs flex items-center gap-1 disabled:opacity-40"><Plus className="w-3 h-3" /> Add</button>
+                <button onClick={addExperience} disabled={!role.trim() || !company.trim()} className="btn-neon text-xs flex items-center gap-1 disabled:opacity-40"><Plus className="w-3 h-3" /> {editExp !== null ? 'Save changes' : 'Add'}</button>
+                {editExp !== null && <button onClick={() => { setEditExp(null); setRole(''); setCompany(''); setStartDate(''); setEndDate(''); }} className="btn-neon text-xs ml-2">Cancel edit</button>}
               </div>
               <div className="space-y-1">
                 {data.experience.map((e, i) => (
-                  <div key={i} className="bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-white">{e.role} · {e.company} <span className="text-[10px] text-gray-400">({e.startDate || '?'} – {e.endDate || 'present'})</span></div>
+                  <div key={i} className="bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-white flex items-center justify-between gap-2">
+                    <span>{e.role} · {e.company} <span className="text-[10px] text-gray-400">({e.startDate || '?'} – {e.endDate || 'present'})</span></span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => startEditExperience(i)} className="text-gray-400 hover:text-white" aria-label={`edit experience ${e.role}`}>Edit</button>
+                      <button onClick={() => removeExperience(i)} className="text-gray-500 hover:text-red-400" aria-label={`delete experience ${e.role}`}><Trash2 className="w-3.5 h-3.5" /></button>
+                    </span>
+                  </div>
                 ))}
                 {data.experience.length === 0 && <p className="text-xs text-gray-400">No experience entries yet.</p>}
               </div>
@@ -326,11 +418,18 @@ export function CareerPortfolio() {
                   <Field label="Field"><input className={inputCls} value={field} onChange={e => setField(e.target.value)} /></Field>
                   <Field label="Year"><input className={inputCls} value={year} onChange={e => setYear(e.target.value)} /></Field>
                 </div>
-                <button onClick={addEducation} disabled={!institution.trim()} className="btn-neon text-xs flex items-center gap-1 disabled:opacity-40"><Plus className="w-3 h-3" /> Add</button>
+                <button onClick={addEducation} disabled={!institution.trim()} className="btn-neon text-xs flex items-center gap-1 disabled:opacity-40"><Plus className="w-3 h-3" /> {editEdu !== null ? 'Save changes' : 'Add'}</button>
+                {editEdu !== null && <button onClick={() => { setEditEdu(null); setInstitution(''); setDegree(''); setField(''); setYear(''); }} className="btn-neon text-xs ml-2">Cancel edit</button>}
               </div>
               <div className="space-y-1">
                 {data.education.map((e, i) => (
-                  <div key={i} className="bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-white">{e.degree} {e.field ? `in ${e.field}` : ''} · {e.institution} <span className="text-[10px] text-gray-400">{e.year}</span></div>
+                  <div key={i} className="bg-zinc-900 border border-zinc-800 rounded p-2 text-xs text-white flex items-center justify-between gap-2">
+                    <span>{e.degree} {e.field ? `in ${e.field}` : ''} · {e.institution} <span className="text-[10px] text-gray-400">{e.year}</span></span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => startEditEducation(i)} className="text-gray-400 hover:text-white" aria-label={`edit education ${e.institution}`}>Edit</button>
+                      <button onClick={() => removeEducation(i)} className="text-gray-500 hover:text-red-400" aria-label={`delete education ${e.institution}`}><Trash2 className="w-3.5 h-3.5" /></button>
+                    </span>
+                  </div>
                 ))}
                 {data.education.length === 0 && <p className="text-xs text-gray-400">No education entries yet.</p>}
               </div>

@@ -6,13 +6,14 @@
  * quiz-from-text (LLM) + mint/DM/publish/agent.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { GraduationCap, TrendingUp, BookOpen, ListChecks, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
+import { restoreBench } from '@/components/education/bench-restore';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -62,6 +63,30 @@ export function EducationActionPanel() {
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
   const [agentReply, setAgentReply] = useState<string | null>(null);
+  const [benchLoadError, setBenchLoadError] = useState<string | null>(null);
+  const benchGen = useRef(0);
+
+  useEffect(() => {
+    const gen = benchGen.current;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await callMacro<Record<string, unknown>>('bench-last', {});
+        if (cancelled || benchGen.current !== gen) return;
+        if (!r.ok || !r.result) {
+          setBenchLoadError('Could not load the last grade or progress.');
+          return;
+        }
+        const restored = restoreBench(r.result);
+        if (restored.grade) setGradeResult(restored.grade as GradeResult);
+        if (restored.prog) setProgResult(restored.prog as ProgResult);
+        if (restored.mintedDtuId) setMintedDtuId(restored.mintedDtuId);
+      } catch {
+        if (!cancelled && benchGen.current === gen) setBenchLoadError('Could not load the last grade or progress.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
@@ -84,7 +109,7 @@ export function EducationActionPanel() {
       // (that shape put the payload at artifact.data.artifact.data.students,
       // which the handler never reads — every grade silently came back empty).
       const r = await callMacro<GradeResult>('gradeCalculation', parsed);
-      if (r.ok && r.result) { setGradeResult(r.result); pipe.publish('education.grade', r.result, { label: `${r.result.studentsGraded} graded · avg ${r.result.classStats?.average}%` }); ok(`${r.result.studentsGraded} graded · class avg ${r.result.classStats?.average}%.`); } else err(r.error ?? 'grade failed');
+      if (r.ok && r.result) { benchGen.current += 1; setGradeResult(r.result); setBenchLoadError(null); pipe.publish('education.grade', r.result, { label: `${r.result.studentsGraded} graded · avg ${r.result.classStats?.average}%` }); ok(`${r.result.studentsGraded} graded · class avg ${r.result.classStats?.average}%.`); } else err(r.error ?? 'grade failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actProg() {
@@ -95,7 +120,7 @@ export function EducationActionPanel() {
       // progressTrack reads artifact.data.requirements / artifact.data.completions —
       // same double-nesting fix as gradeCalculation above.
       const r = await callMacro<ProgResult>('progressTrack', parsed);
-      if (r.ok && r.result) { setProgResult(r.result); pipe.publish('education.prog', r.result, { label: `Progress ${r.result.overallCompletionPct}%` }); ok(`${r.result.overallCompletionPct}% complete · ${r.result.completedRequirements}/${r.result.totalRequirements} reqs.`); } else err(r.error ?? 'prog failed');
+      if (r.ok && r.result) { benchGen.current += 1; setProgResult(r.result); setBenchLoadError(null); pipe.publish('education.prog', r.result, { label: `Progress ${r.result.overallCompletionPct}%` }); ok(`${r.result.overallCompletionPct}% complete · ${r.result.completedRequirements}/${r.result.totalRequirements} reqs.`); } else err(r.error ?? 'prog failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actLesson() {
@@ -121,7 +146,15 @@ export function EducationActionPanel() {
     try {
       const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Class — ${lessonTopic}`, tags: ['education', 'class', `grade-${lessonGrade}`], source: 'education:class:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ed: { grade: gradeResult, prog: progResult, lesson: lessonResult, quiz: quizResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('education.mintedDtuId', id, { label: `Class DTU ${id.slice(0, 8)}…` }); ok(`Class DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) {
+        benchGen.current += 1;
+        setMintedDtuId(id);
+        setBenchLoadError(null);
+        pipe.publish('education.mintedDtuId', id, { label: `Class DTU ${id.slice(0, 8)}…` });
+        const noted = await callMacro<{ mintedDtuId?: string }>('bench-note-mint', { dtuId: id });
+        if (noted.ok) ok(`Class DTU ${id.slice(0, 8)}…`);
+        else err(noted.error || 'The class DTU was created. The bench could not store its id.');
+      } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
@@ -188,6 +221,7 @@ export function EducationActionPanel() {
         <h3 className="text-sm font-semibold text-white">Classroom bench</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">grades · progress · lesson plan · quiz</span>
       </header>
+      {benchLoadError && <p role="status" className="text-[11px] text-red-300">{benchLoadError}</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div>

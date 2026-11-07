@@ -184,7 +184,17 @@ function failureResponse(raw) {
 export function respondMacroResult(res, out) {
   if (isFailure(out)) {
     const error = String(out.error || out.reason || "lens_failed");
-    return res.status(httpStatusForLensFailure(error, out)).json(out);
+    // A8 (shared validation), failure speech: validateArtifact's
+    // errors are already sentences ("Invalid type \"x\" for domain
+    // \"y\". Valid types: …"), but the body carried only the code —
+    // so surfaces rendered the raw literal (ML F11's "validation
+    // failed" toast) and the user never saw the reason. Carry the
+    // first error sentence as `message` whenever a failure brings
+    // errors and no message of its own; one honest refusal, named.
+    const message = typeof out.message === "string" && out.message
+      ? out.message
+      : (Array.isArray(out.errors) && typeof out.errors[0] === "string" ? out.errors[0] : null);
+    return res.status(httpStatusForLensFailure(error, out)).json(message ? { ...out, message } : out);
   }
   return res.json(out);
 }

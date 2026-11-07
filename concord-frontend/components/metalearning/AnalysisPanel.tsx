@@ -57,7 +57,7 @@ export function AnalysisPanel() {
         ] as const).map(([id, label]) => (
           <button
             key={id}
-            onClick={() => setAnalysisTab(id)}
+            onClick={() => { setAnalysisTab(id); setActionResult(null); }}
             className={`px-3 py-1.5 rounded-t transition-colors ${analysisTab === id ? 'bg-neon-cyan/10 text-neon-cyan border-b-2 border-neon-cyan' : 'text-gray-400 hover:text-white'}`}
           >
             {label}
@@ -68,7 +68,9 @@ export function AnalysisPanel() {
       {analysisTab === 'strategySelection' && (
         <div className="space-y-2">
           <p className="text-xs text-gray-400">
-            Feature-based k-NN meta-learning: describe the task, get the recommended model family.
+            Describe the task, get the recommended model family. This form runs the built-in
+            heuristic over the five features below; the engine's feature-based k-NN runs when
+            landmark tasks are supplied with the request. The result names the method that ran.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {(Object.keys(taskFeatures) as Array<keyof typeof taskFeatures>).map((k) => (
@@ -77,7 +79,7 @@ export function AnalysisPanel() {
                 <input
                   type="number" min={0} max={1} step={0.05}
                   value={taskFeatures[k]}
-                  onChange={(e) => setTaskFeatures((prev) => ({ ...prev, [k]: Math.max(0, Math.min(1, Number(e.target.value) || 0)) }))}
+                  onChange={(e) => setTaskFeatures((prev) => ({ ...prev, [k]: Math.round(Math.max(0, Math.min(1, Number(e.target.value) || 0)) * 100) / 100 }))}
                   className="input-lattice w-full text-xs"
                 />
               </label>
@@ -121,8 +123,8 @@ export function AnalysisPanel() {
       {analysisTab === 'performanceProfile' && (
         <div className="space-y-2">
           <p className="text-xs text-gray-400">
-            Add a few (skill, difficulty, score) assessments to build a strengths/weaknesses radar
-            and find your zone-of-proximal-development difficulty target.
+            Add a few (skill, difficulty, score) assessments to build your strengths and
+            weaknesses, and find your zone-of-proximal-development difficulty target.
           </p>
           <div className="flex flex-wrap items-end gap-2">
             <label className="text-[11px] text-gray-400 space-y-1">
@@ -131,11 +133,11 @@ export function AnalysisPanel() {
             </label>
             <label className="text-[11px] text-gray-400 space-y-1">
               <span>Difficulty (0-1)</span>
-              <input type="number" min={0} max={1} step={0.1} value={newAssessment.difficulty} onChange={(e) => setNewAssessment((p) => ({ ...p, difficulty: Math.max(0, Math.min(1, Number(e.target.value) || 0)) }))} className="input-lattice text-xs w-20" />
+              <input type="number" min={0} max={1} step={0.1} value={newAssessment.difficulty} onChange={(e) => setNewAssessment((p) => ({ ...p, difficulty: Math.round(Math.max(0, Math.min(1, Number(e.target.value) || 0)) * 100) / 100 }))} className="input-lattice text-xs w-20" />
             </label>
             <label className="text-[11px] text-gray-400 space-y-1">
               <span>Score (0-1)</span>
-              <input type="number" min={0} max={1} step={0.1} value={newAssessment.score} onChange={(e) => setNewAssessment((p) => ({ ...p, score: Math.max(0, Math.min(1, Number(e.target.value) || 0)) }))} className="input-lattice text-xs w-20" />
+              <input type="number" min={0} max={1} step={0.1} value={newAssessment.score} onChange={(e) => setNewAssessment((p) => ({ ...p, score: Math.round(Math.max(0, Math.min(1, Number(e.target.value) || 0)) * 100) / 100 }))} className="input-lattice text-xs w-20" />
             </label>
             <button
               onClick={() => { if (newAssessment.skill.trim()) { setAssessments((p) => [...p, { ...newAssessment, skill: newAssessment.skill.trim() }]); setNewAssessment((p) => ({ ...p, skill: '' })); } }}
@@ -169,15 +171,20 @@ export function AnalysisPanel() {
               <div className="flex items-center gap-3">
                 <span className="text-gray-400 text-xs">Method: <span className="text-neon-cyan font-bold">{String(actionResult.method)}</span></span>
                 <span className="text-gray-400 text-xs">Recommended: <span className="text-neon-green font-bold">{String(actionResult.recommended)}</span></span>
-                <span className="text-gray-400 text-xs">Confidence: <span className="text-yellow-400">{String(actionResult.confidence)}</span></span>
+                {typeof actionResult.confidence === 'number' && (
+                  <span className="text-gray-400 text-xs">Confidence: <span className="text-yellow-400">{(actionResult.confidence as number).toFixed(2)}</span></span>
+                )}
               </div>
+              {typeof actionResult.confidenceBasis === 'string' && (
+                <p className="text-[11px] text-gray-500">Confidence here is the {actionResult.confidenceBasis as string}.</p>
+              )}
               {'rankings' in actionResult && Array.isArray(actionResult.rankings) && actionResult.rankings.length > 0 && (
                 <div className="space-y-1">
                   <p className="text-xs text-gray-400 uppercase tracking-wider">Rankings</p>
                   {(actionResult.rankings as Array<Record<string, unknown>>).slice(0, 5).map((r, i) => (
                     <div key={i} className="flex justify-between text-xs bg-lattice-surface rounded px-2 py-1">
                       <span className="text-gray-300">{String(r.strategy || r.name)}</span>
-                      <span className="text-neon-cyan">{String(r.score || r.rank || i + 1)}</span>
+                      <span className="text-neon-cyan">{typeof r.score === 'number' ? (r.score as number).toFixed(2) : i + 1}</span>
                     </div>
                   ))}
                 </div>
@@ -189,11 +196,34 @@ export function AnalysisPanel() {
               <div className="flex items-center gap-3">
                 <span className="text-gray-400 text-xs">Transferability: <span className="text-neon-green font-bold">{String(actionResult.transferability)}</span></span>
               </div>
+              {'similarity' in actionResult && typeof actionResult.similarity === 'object' && actionResult.similarity != null && (
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+                  {(['overall', 'concepts', 'skills', 'vocabulary'] as const).map((k) => {
+                    const v = (actionResult.similarity as Record<string, unknown>)[k];
+                    return typeof v === 'number' ? (
+                      <span key={k} className="capitalize">{k} overlap: <span className="text-neon-cyan">{(v * 100).toFixed(0)}%</span></span>
+                    ) : null;
+                  })}
+                </div>
+              )}
               {'sharedConcepts' in actionResult && Array.isArray(actionResult.sharedConcepts) && actionResult.sharedConcepts.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {(actionResult.sharedConcepts as string[]).map((c, i) => (
-                    <span key={i} className="text-xs bg-neon-cyan/10 border border-neon-cyan/20 rounded px-2 py-0.5 text-neon-cyan">{c}</span>
-                  ))}
+                <div className="space-y-1">
+                  <p className="text-[11px] text-gray-500 uppercase tracking-wider">Shared concepts</p>
+                  <div className="flex flex-wrap gap-1">
+                    {(actionResult.sharedConcepts as string[]).map((c, i) => (
+                      <span key={i} className="text-xs bg-neon-cyan/10 border border-neon-cyan/20 rounded px-2 py-0.5 text-neon-cyan">{c}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {'sharedSkills' in actionResult && Array.isArray(actionResult.sharedSkills) && actionResult.sharedSkills.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[11px] text-gray-500 uppercase tracking-wider">Shared skills</p>
+                  <div className="flex flex-wrap gap-1">
+                    {(actionResult.sharedSkills as string[]).map((c, i) => (
+                      <span key={i} className="text-xs bg-neon-purple/10 border border-neon-purple/20 rounded px-2 py-0.5 text-neon-purple">{c}</span>
+                    ))}
+                  </div>
                 </div>
               )}
               {'recommendation' in actionResult && <p className="text-xs text-gray-300">{String(actionResult.recommendation)}</p>}
@@ -201,10 +231,18 @@ export function AnalysisPanel() {
           )}
           {'overallScore' in actionResult && (
             <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <span className="text-neon-cyan font-bold text-xl">{String(actionResult.overallScore)}</span>
+              <div className="flex items-baseline gap-3">
+                <span className="text-neon-cyan font-bold text-xl">{typeof actionResult.overallScore === 'number' ? (actionResult.overallScore as number).toFixed(2) : String(actionResult.overallScore)}</span>
+                <span className="text-gray-500 text-[11px]">overall score — mean of your difficulty-adjusted skill scores</span>
                 <span className="text-gray-400 text-xs">Style: <span className="text-neon-purple">{String(actionResult.learningStyle)}</span></span>
               </div>
+              {'optimalDifficulty' in actionResult && typeof actionResult.optimalDifficulty === 'object' && actionResult.optimalDifficulty != null && (
+                <p className="text-xs text-gray-300">
+                  Zone of proximal development: aim for difficulty ≈{' '}
+                  <span className="text-neon-green font-bold">{((actionResult.optimalDifficulty as { recommendedDifficulty: number }).recommendedDifficulty ?? 0).toFixed(2)}</span>
+                  {' '}— the difficulty where your success rate crosses {Math.round(((actionResult.optimalDifficulty as { targetSuccessRate: number }).targetSuccessRate ?? 0.75) * 100)}%.
+                </p>
+              )}
               {'strengths' in actionResult && Array.isArray(actionResult.strengths) && actionResult.strengths.length > 0 && (
                 <div>
                   <p className="text-xs text-neon-green font-semibold mb-1">Strengths</p>

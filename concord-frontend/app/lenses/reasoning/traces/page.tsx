@@ -5,7 +5,7 @@
 //   GET /api/reasoning/traces?limit=100
 //   GET /api/reasoning/trace/:id
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { FileSearch } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -14,13 +14,19 @@ import { HlrTracesPanel } from '@/components/reasoning/HlrTracesPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 
 export default function ReasoningTracesPage() {
+  // RT-S2: when there is no trace to open, the CTA says so in words
+  // (the panel's own empty-state sentence) instead of silently
+  // shifting focus.
+  const [ctaNotice, setCtaNotice] = useState(false);
 
   const openTrace = useCallback(() => {
     const first = document.querySelector<HTMLElement>('[role="listbox"][aria-label="Reasoning traces"] [role="option"]');
     if (first) {
+      setCtaNotice(false);
       first.scrollIntoView({ behavior: 'smooth', block: 'center' });
       first.click();
     } else {
+      setCtaNotice(true);
       document.getElementById('reasoning-mode-filter')?.focus();
     }
   }, []);
@@ -36,6 +42,13 @@ export default function ReasoningTracesPage() {
       <DepthBadge lensId="reasoning" size="sm" className="ml-2" />
       <div data-lens-theme="reasoning" className="relative min-h-full px-8 pb-28 pt-6">
         <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">HLR Traces</h1>
+
+        {ctaNotice && (
+          <p role="status" className="mb-4 max-w-xl text-sm text-zinc-400">
+            No traces yet — the HLR engine records a trace each time it runs a reasoning pass.
+            When one fires, it shows up here, and this button opens the latest one.
+          </p>
+        )}
 
         <HlrTracesPanel />
 

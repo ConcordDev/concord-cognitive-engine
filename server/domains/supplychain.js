@@ -547,8 +547,15 @@ export default function registerSupplychainActions(registerLensAction) {
       const primary = evalSource(baseLeadTime, baseUnitCost, "Primary source");
       const options = [primary];
       if (altLeadTime > 0) options.push(evalSource(altLeadTime, altUnitCost || baseUnitCost, "Alternate source"));
+      // Rank by projected stockout first; break ties on lead-demand exposure
+      // (demand during lead × effective unit cost). replenishCost cannot be
+      // the tie-break: it prices only the stockout units, so it is 0 for
+      // every source that does not stock out and the ranking would degenerate
+      // to insertion order — an explicit alternate could never win a
+      // no-stockout comparison.
       const ranked = [...options].sort((a, b) =>
-        (a.projectedStockoutUnits - b.projectedStockoutUnits) || (a.replenishCost - b.replenishCost));
+        (a.projectedStockoutUnits - b.projectedStockoutUnits) ||
+        ((a.demandDuringLead * a.effectiveUnitCost) - (b.demandDuringLead * b.effectiveUnitCost)));
       const scenario = {
         id: scId("scn"), name: scClean(params?.name) || `${disruption} scenario`,
         disruption, baseDemand, baseLeadTime, baseUnitCost, onHand,

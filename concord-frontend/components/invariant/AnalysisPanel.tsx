@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { Shield, Play, Loader2 } from 'lucide-react';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import type { Invariant } from './invariant-types';
@@ -16,34 +16,47 @@ export function AnalysisPanel() {
   const runAction = useRunArtifact('invariant');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
-  const { items: invariantItems, refetch } = useLensData<Invariant>('invariant', 'invariant', { seed: [] });
+  const { items: invariantItems } = useLensData<Invariant>('invariant', 'invariant', { seed: [] });
 
   const handleAction = async (action: string) => {
-    let targetId = invariantItems[0]?.id;
-    if (!targetId) {
+    // S-INV-1 (F9): Check Invariants reads the MONITOR store — the same
+    // store the Workbench registers into. It previously ran against an
+    // authored artifact (auto-creating SYSTEM_INVARIANTS when none
+    // existed), so it answered "No invariants defined." while monitors
+    // ran, and littered Rules with an undeletable set.
+    if (action === 'invariantCheck') {
+      setIsRunning(action);
       try {
-        const created = await apiHelpers.lens.create('invariant', {
-          type: 'invariant',
-          title: 'System Invariant Set',
-          data: {
-            name: 'SYSTEM_INVARIANTS',
-            description: 'Auto-created invariant set for analysis',
-            status: 'enforced',
-            category: 'structural',
-            frozen: true,
-          },
+        const [monRes, vioRes] = await Promise.all([
+          lensRun<{ monitors?: { name: string; active: boolean; lastResult: string | null }[]; summary?: { total: number; active: number; violating: number } }>('invariant', 'listMonitors', {}),
+          lensRun<{ violations?: Record<string, unknown>[]; summary?: { open: number } }>('invariant', 'violationHistory', { resolved: false }),
+        ]);
+        const summary = monRes.data?.result?.summary;
+        const monitors = monRes.data?.result?.monitors ?? [];
+        if (!summary || summary.total === 0) {
+          setActionResult({ message: 'No monitors registered yet — register one in the Workbench, then check here. (Authored sets in Rules are documents; monitors are what this check evaluates.)' });
+          return;
+        }
+        const openViolations = vioRes.data?.result?.violations ?? [];
+        setActionResult({
+          systemStatus: summary.violating > 0 ? 'critical' : 'healthy',
+          healthScore: summary.total > 0 ? Math.round(((summary.total - summary.violating) / summary.total) * 100) : 100,
+          summary: { monitors: summary.total, active: summary.active, violating: summary.violating, openViolations: vioRes.data?.result?.summary?.open ?? openViolations.length },
+          violations: openViolations.map((v) => ({ severity: v.severity, name: v.name, expression: v.expression })),
+          message: `${summary.total} monitor(s) on record; ${summary.violating} violating at last check. Monitors: ${monitors.map((m) => `${m.name} (${m.active ? (m.lastResult ?? 'unchecked') : 'paused'})`).join(' · ')}`,
         });
-        targetId = created?.data?.artifact?.id;
-        if (targetId) refetch();
       } catch (e) {
-        console.error('[Invariant] Failed to auto-create artifact:', e);
-        setActionResult({ message: 'No invariant artifact found. Please try again.' });
-        return;
+        setActionResult({ message: `Check failed: ${e instanceof Error ? e.message : 'Unknown error'}` });
+      } finally {
+        setIsRunning(null);
       }
-      if (!targetId) {
-        setActionResult({ message: 'Could not create invariant artifact. Please try again.' });
-        return;
-      }
+      return;
+    }
+    const targetId = invariantItems[0]?.id;
+    if (!targetId) {
+      // No auto-create (F3): these two tools run against an AUTHORED set.
+      setActionResult({ message: 'Consistency Proof and Constraint Satisfaction run against an authored invariant set, and none exists yet. Authored sets live in Rules — nothing has been created on your behalf.' });
+      return;
     }
     setIsRunning(action);
     try {

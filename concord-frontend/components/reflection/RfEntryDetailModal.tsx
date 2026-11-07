@@ -57,9 +57,9 @@ export function RfEntryDetailModal({
   const [mood, setMood] = useState<string>('');
   const [tagsInput, setTagsInput] = useState('');
 
-  const [summary, setSummary] = useState<{ text: string; composer: string } | null>(null);
+  const [summary, setSummary] = useState<{ text: string; assisted: string | null } | null>(null);
   const [summarizing, setSummarizing] = useState(false);
-  const [questions, setQuestions] = useState<{ list: string[]; composer: string } | null>(null);
+  const [questions, setQuestions] = useState<{ list: string[]; assisted: string[] | null } | null>(null);
   const [deepening, setDeepening] = useState(false);
 
   const load = useCallback(async () => {
@@ -114,18 +114,18 @@ export function RfEntryDetailModal({
   async function runSummarize() {
     if (!entry) return;
     setSummarizing(true);
-    const r = await rf<{ summary: string; composer: string }>('entry-summarize', { id: entry.id });
+    const r = await rf<{ summary: string; assisted: string | null }>('entry-summarize', { id: entry.id });
     setSummarizing(false);
-    if (r?.ok && r.result) setSummary({ text: r.result.summary, composer: r.result.composer });
+    if (r?.ok && r.result) setSummary({ text: r.result.summary, assisted: r.result.assisted ?? null });
     else setError(r?.error || 'Summarize failed.');
   }
 
   async function runDeepen() {
     if (!entry) return;
     setDeepening(true);
-    const r = await rf<{ questions: string[]; composer: string }>('reflect-deepen', { id: entry.id });
+    const r = await rf<{ questions: string[]; assistedQuestions: string[] | null }>('reflect-deepen', { id: entry.id });
     setDeepening(false);
-    if (r?.ok && r.result) setQuestions({ list: r.result.questions, composer: r.result.composer });
+    if (r?.ok && r.result) setQuestions({ list: r.result.questions, assisted: r.result.assistedQuestions ?? null });
     else setError(r?.error || 'Reflect deeper failed.');
   }
 
@@ -244,10 +244,16 @@ export function RfEntryDetailModal({
                     </button>
                   </div>
                   {summary && (
-                    <p className="text-[11px] text-zinc-300">
-                      {summary.text}
-                      <span className="ml-1 text-zinc-500">({summary.composer})</span>
-                    </p>
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] text-zinc-300">
+                        <span className="mr-1 text-zinc-500">From your entry:</span>{summary.text}
+                      </p>
+                      {summary.assisted && (
+                        <p className="text-[11px] text-zinc-400 border-l-2 border-yellow-700/40 pl-2">
+                          <span className="mr-1 text-zinc-500">Assistant's rewording — its words, from your entry; read it against what you wrote:</span>{summary.assisted}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </section>
                 <section className="space-y-1.5 rounded-lg border border-cyan-500/20 bg-zinc-900/60 p-3">
@@ -263,10 +269,19 @@ export function RfEntryDetailModal({
                     </button>
                   </div>
                   {questions && (
-                    <ul className="space-y-1 text-[11px] text-zinc-300">
-                      {questions.list.map((q, i) => <li key={i}>• {q}</li>)}
-                      <li className="text-zinc-500">({questions.composer})</li>
-                    </ul>
+                    <div className="space-y-1.5">
+                      <ul className="space-y-1 text-[11px] text-zinc-300">
+                        {questions.list.map((q, i) => <li key={i}>• {q}</li>)}
+                      </ul>
+                      {questions.assisted && questions.assisted.length > 0 && (
+                        <div className="border-l-2 border-cyan-700/40 pl-2">
+                          <p className="text-[10px] text-zinc-500">Assistant's questions — check they fit what you actually wrote:</p>
+                          <ul className="space-y-1 text-[11px] text-zinc-400">
+                            {questions.assisted.map((q, i) => <li key={i}>• {q}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </section>
               </div>

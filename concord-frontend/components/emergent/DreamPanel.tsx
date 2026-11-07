@@ -20,6 +20,8 @@ function DreamPanel() {
   const [text, setText] = useState('');
   const [dreams, setDreams] = useState<DreamEntry[]>([]);
   const [capturing, setCapturing] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState(false);
   const [lastCapture, setLastCapture] = useState<{ convergence: boolean; title: string } | null>(
     null
   );
@@ -32,6 +34,7 @@ function DreamPanel() {
       })
       .catch((err) => {
         console.error('[Dream] Failed to load history:', err);
+        setHistoryError(true);
         showToast('error', 'Failed to load dream history');
       });
 
@@ -58,6 +61,7 @@ function DreamPanel() {
   const capture = async () => {
     if (!text.trim() || text.length < 10) return;
     setCapturing(true);
+    setCaptureError(null);
     try {
       const resp = await apiHelpers.dream.capture(text.trim());
       if (resp.data?.ok) {
@@ -69,9 +73,16 @@ function DreamPanel() {
         // Refresh list
         const hist = await apiHelpers.dream.history(10);
         setDreams(hist.data?.dreams || []);
+        setHistoryError(false);
+      } else {
+        // A non-ok response used to be swallowed whole — the capture
+        // looked identical to success-with-no-effect. Say so, keep the
+        // text, and let the user retry.
+        setCaptureError('That capture was not saved — the dream service did not accept it. Your text is still above; try again.');
       }
     } catch (e) {
       console.error('[Dream] Failed to capture dream:', e);
+      setCaptureError('That capture was not saved — the dream service could not be reached. Your text is still above; try again.');
       useUIStore.getState().addToast({ type: 'error', message: 'Failed to capture dream' });
     }
     setCapturing(false);
@@ -92,6 +103,16 @@ function DreamPanel() {
           placeholder="Describe your derivation, insight, or dream..."
           className="w-full bg-lattice-deep border border-lattice-edge rounded px-3 py-2 text-sm resize-none h-20"
         />
+        <p className="text-[11px] text-gray-500">
+          {text.length >= 10
+            ? 'A sentence is plenty — capture keeps the whole text.'
+            : `Ten characters or more to capture${text.length > 0 ? ` — ${10 - text.length} to go` : ''}.`}
+        </p>
+        {captureError && (
+          <p role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-xs text-red-300">
+            {captureError}
+          </p>
+        )}
         <button
           onClick={capture}
           disabled={capturing || text.length < 10}
@@ -122,6 +143,10 @@ function DreamPanel() {
             </>
           )}
         </div>
+      )}
+
+      {historyError && dreams.length === 0 && (
+        <p className="text-xs text-gray-400">Dream history could not be loaded.</p>
       )}
 
       {/* Recent dreams */}

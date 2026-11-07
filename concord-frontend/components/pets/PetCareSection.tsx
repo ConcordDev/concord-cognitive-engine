@@ -53,6 +53,7 @@ export function PetCareSection() {
   const [showAdd, setShowAdd] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recordTick, setRecordTick] = useState(0);
   const [form, setForm] = useState({ name: '', species: 'dog', breed: '', birthdate: '', weightKg: '' });
 
   const refresh = useCallback(async () => {
@@ -71,6 +72,7 @@ export function PetCareSection() {
     setDash((d.data?.result as Dash | null) || null);
     setSelected((cur) => (cur && list.some((x) => x.id === cur)) ? cur : (list[0]?.id || ''));
     setLoading(false);
+    setRecordTick((n) => n + 1);
   }, []);
 
   useEffect(() => { void Promise.resolve().then(refresh); }, [refresh]);
@@ -174,7 +176,7 @@ export function PetCareSection() {
         </div>
       ) : (
         <>
-          {selected && <PetProfileCard key={selected} petId={selected} onChange={refresh} />}
+          {selected && <PetProfileCard key={selected} petId={selected} recordTick={recordTick} onChange={refresh} />}
           <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">
             {TABS.map((t) => {
               const Icon = t.icon;

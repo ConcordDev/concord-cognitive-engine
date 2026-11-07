@@ -15,8 +15,8 @@ import { ErrorState } from '@/components/ui';
 import { ProductivityTaskDetail } from './ProductivityTaskDetail';
 
 interface Project { id: string; name: string }
-interface Collaborator { id: string; collaboratorId: string; role: string; sharedAt: string }
-interface TaskOption { id: string; content: string; assigneeId: string | null }
+interface Collaborator { id: string; collaboratorId: string; collaboratorName?: string | null; collaboratorUsername?: string | null; role: string; sharedAt: string }
+interface TaskOption { id: string; content: string; assigneeId: string | null; assigneeName?: string | null }
 
 export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -44,7 +44,8 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
     setLoadError(null);
     setProjects((p.data?.result?.projects || []).map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })));
     setTasks((t.data?.result?.tasks || []).map(
-      (x: { id: string; content: string; assigneeId: string | null }) => ({ id: x.id, content: x.content, assigneeId: x.assigneeId })));
+      (x: { id: string; content: string; assigneeId: string | null; assigneeName?: string | null }) =>
+        ({ id: x.id, content: x.content, assigneeId: x.assigneeId, assigneeName: x.assigneeName ?? null })));
     setLoading(false);
   }, []);
 
@@ -66,7 +67,7 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
 
   const share = async () => {
     if (!activeProject) { setError('Pick a project first.'); return; }
-    if (!shareForm.collaboratorId.trim()) { setError('Collaborator id is required.'); return; }
+    if (!shareForm.collaboratorId.trim()) { setError('Collaborator is required — an @username or the name on their profile.'); return; }
     const r = await lensRun('productivity', 'project-share', {
       projectId: activeProject,
       collaboratorId: shareForm.collaboratorId.trim(),
@@ -111,7 +112,7 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
             {activeProject && (
               <>
                 <div className="flex gap-2">
-                  <input placeholder="Collaborator user id" value={shareForm.collaboratorId}
+                  <input placeholder="Collaborator — @username or profile name" value={shareForm.collaboratorId}
                     onChange={(e) => setShareForm({ ...shareForm, collaboratorId: e.target.value })}
                     className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
                   <select value={shareForm.role} onChange={(e) => setShareForm({ ...shareForm, role: e.target.value })}
@@ -133,7 +134,12 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
                     {collaborators.map((c) => (
                       <li key={c.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1.5">
                         <Users className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                        <span className="flex-1 text-xs text-zinc-200 truncate">{c.collaboratorId}</span>
+                        <span className="flex-1 text-xs text-zinc-200 truncate">
+                          {c.collaboratorName || c.collaboratorId}
+                          {c.collaboratorUsername && c.collaboratorName && (
+                            <span className="text-zinc-500"> @{c.collaboratorUsername}</span>
+                          )}
+                        </span>
                         <span className="text-[10px] text-zinc-400 uppercase">{c.role}</span>
                         <button aria-label="Delete" type="button" onClick={() => unshare(c.collaboratorId)}
                           className="text-zinc-600 hover:text-rose-400 shrink-0">
@@ -162,7 +168,7 @@ export function ProductivityCollabPanel({ onChange }: { onChange: () => void }) 
                   className={cn('w-full text-left flex items-center gap-2 border rounded-lg px-3 py-2 text-xs',
                     openTask === t.id ? 'border-red-700/50 bg-red-950/30 text-red-200' : 'border-zinc-800 bg-zinc-900/70 text-zinc-200 hover:bg-zinc-800/60')}>
                   <span className="flex-1 truncate">{t.content}</span>
-                  {t.assigneeId && <span className="text-[10px] text-violet-400">@{t.assigneeId}</span>}
+                  {t.assigneeId && <span className="text-[10px] text-violet-400">{t.assigneeName || `@${t.assigneeId}`}</span>}
                 </button>
                 {openTask === t.id && (
                   <div className="mt-1 ml-2 border-l-2 border-zinc-800 pl-3">

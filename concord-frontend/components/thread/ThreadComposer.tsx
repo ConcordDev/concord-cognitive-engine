@@ -25,11 +25,18 @@ import {
 
 interface Post { index: number; text: string; chars: number }
 interface DraftMeta { id: string; title: string; platform: string; status: string; postCount: number; scheduledAt: string | null; citedDtuId?: string | null }
-interface Draft { id: string; title: string; content: string; platform: string; status: string; posts: Post[]; postedManually?: boolean }
+interface Draft { id: string; title: string; content: string; platform: string; status: string; posts: Post[]; postedManually?: boolean; scheduledAt?: string | null }
 interface Slot { day: string; time: string; score: number }
 interface Dash { drafts: number; scheduled: number; published: number; total: number }
 
 const PLATFORMS = ['x', 'threads', 'linkedin', 'bluesky', 'mastodon'];
+
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 export function ThreadComposer() {
   const [drafts, setDrafts] = useState<DraftMeta[]>([]);
@@ -39,6 +46,8 @@ export function ThreadComposer() {
   const [platform, setPlatform] = useState('x');
   const [preview, setPreview] = useState<Post[]>([]);
   const [bestSlots, setBestSlots] = useState<Slot[]>([]);
+  const [bestBasis, setBestBasis] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [schedAt, setSchedAt] = useState('');
   const [listErr, setListErr] = useState('');
@@ -55,6 +64,7 @@ export function ThreadComposer() {
     setDrafts((dl.data?.result?.drafts as DraftMeta[]) || []);
     setDash((d.data?.result as Dash) || null);
     setBestSlots((bt.data?.result?.slots as Slot[]) || []);
+    setBestBasis(String(bt.data?.result?.basis || ''));
     setLoading(false);
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
@@ -74,9 +84,10 @@ export function ThreadComposer() {
     if (r.data?.ok) {
       const d = r.data.result?.draft as Draft;
       setActive(d); setContent(d.content); setPlatform(d.platform);
+      setSchedAt(d.scheduledAt ? toLocalInput(d.scheduledAt) : '');
     }
   }
-  function newDraft() { setActive(null); setContent(''); }
+  function newDraft() { setActive(null); setContent(''); setSchedAt(''); setConfirmDeleteId(null); }
 
   async function save() {
     if (!content.trim()) return;
@@ -89,6 +100,8 @@ export function ThreadComposer() {
     await refresh();
   }
   async function del(id: string) {
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
+    setConfirmDeleteId(null);
     await lensRun('thread', 'draft-delete', { id });
     if (active?.id === id) newDraft();
     await refresh();
@@ -111,8 +124,16 @@ export function ThreadComposer() {
   }
   async function schedule() {
     if (!active || !schedAt) return;
-    await lensRun('thread', 'draft-schedule', { id: active.id, scheduledAt: new Date(schedAt).toISOString() });
-    setSchedAt('');
+    const r = await lensRun('thread', 'draft-schedule', { id: active.id, scheduledAt: new Date(schedAt).toISOString() });
+    const d = r.data?.result?.draft as Draft | undefined;
+    if (r.data?.ok && d) { setActive(d); setSchedAt(d.scheduledAt ? toLocalInput(d.scheduledAt) : ''); }
+    await refresh();
+  }
+  async function unschedule() {
+    if (!active) return;
+    const r = await lensRun('thread', 'draft-unschedule', { id: active.id });
+    const d = r.data?.result?.draft as Draft | undefined;
+    if (r.data?.ok && d) { setActive(d); setSchedAt(''); }
     await refresh();
   }
   async function markPostedByMe() {
@@ -206,13 +227,13 @@ export function ThreadComposer() {
                 <button onClick={() => open(d.id)}
                   className={cn('flex-1 text-left rounded-lg px-2 py-1.5 border', active?.id === d.id ? 'bg-sky-600/15 border-sky-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                   <p className="text-[11px] font-semibold text-zinc-100 truncate">{d.title}</p>
-                  <p className="text-[9px] text-zinc-400">{d.postCount} posts · {d.status}</p>
+                  <p className="text-[9px] text-zinc-400">{d.postCount} posts · {d.status}{d.scheduledAt ? ` · ${new Date(d.scheduledAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}</p>
                   {d.citedDtuId && (
                     <p className="text-[9px] text-sky-400/80 truncate" title="The report this draft cites">{d.citedDtuId}</p>
                   )}
                 </button>
                 <button aria-label="Duplicate" onClick={() => duplicate(d.id)} className="opacity-0 group-hover:opacity-100 text-sky-400"><Copy className="w-3 h-3" /></button>
-                <button aria-label="Delete" onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label={confirmDeleteId === d.id ? 'Confirm delete' : 'Delete'} onClick={() => del(d.id)} className={confirmDeleteId === d.id ? 'text-rose-400 text-[10px] font-semibold whitespace-nowrap' : 'opacity-0 group-hover:opacity-100 text-rose-400'}>{confirmDeleteId === d.id ? 'Confirm?' : <Trash2 className="w-3 h-3" />}</button>
               </li>
             ))}
           </ul>
@@ -245,6 +266,11 @@ export function ThreadComposer() {
               <button onClick={schedule} disabled={!schedAt} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 disabled:opacity-40 inline-flex items-center gap-1">
                 <Calendar className="w-3 h-3" />Queue
               </button>
+              {active.status === 'scheduled' && (
+                <button onClick={unschedule} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-amber-300 inline-flex items-center gap-1">
+                  Unschedule
+                </button>
+              )}
               <button onClick={markPostedByMe} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-100 inline-flex items-center gap-1">
                 <Check className="w-3 h-3" />I posted this
               </button>
@@ -263,7 +289,7 @@ export function ThreadComposer() {
           )}
           {bestSlots.length > 0 && (
             <p className="text-[10px] text-zinc-400 mt-1 inline-flex items-center gap-1">
-              <Clock className="w-3 h-3" />Best time: {bestSlots[0].day} {bestSlots[0].time}
+              <Clock className="w-3 h-3" />Best time: {bestSlots[0].day} {bestSlots[0].time}{bestBasis === 'generic_guideline' ? ' (generic guideline)' : bestBasis === 'your_history' ? ' (from your posting history)' : ''}
             </p>
           )}
         </div>

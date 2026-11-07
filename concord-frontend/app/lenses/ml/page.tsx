@@ -82,7 +82,17 @@ export default function MLLensPage() {
             <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">ML</h1>
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            {/* F19: the indicator paints only from the SETTLED state —
+                before the first realtime event it shows a neutral
+                connecting state, never a transient "OFF" that flips to
+                LIVE on every load. */}
+            {isLive || lastUpdated ? (
+              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
+                <span className="w-2 h-2 rounded-full bg-zinc-600" /> connecting…
+              </span>
+            )}
             <DTUExportButton domain="ml" data={realtimeData || {}} compact />
           </div>
         </div>
@@ -112,7 +122,12 @@ export default function MLLensPage() {
 
         {/* Tab content — every panel wired to real backend macros */}
         {tab === 'hub' && <ModelHubPanel onUseInPlayground={useInPlayground} />}
-        {tab === 'playground' && <InferencePlayground initialModel={playgroundModel} />}
+        {/* F5: the Playground stays MOUNTED across tab switches (hidden,
+            not unmounted) — its model/input/result are working state,
+            and unmounting wiped them on every sub-tab switch. */}
+        <div className={tab === 'playground' ? undefined : 'hidden'}>
+          <InferencePlayground initialModel={playgroundModel} />
+        </div>
         {tab === 'experiments' && <ExperimentTracker />}
         {tab === 'datasets' && <DatasetHubPanel />}
         {tab === 'compare' && <ModelComparePanel />}

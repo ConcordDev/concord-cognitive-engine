@@ -57,6 +57,41 @@ export function requestNewDoc() {
   window.dispatchEvent(new Event(DOCS_NEW_EVENT));
 }
 
+/**
+ * The page title field (S-DOCS-3 / F13). Edits are local and commit on
+ * blur/Enter — the previous form fired page-update per keystroke. An
+ * empty title is refused visibly (the server keeps the stored title,
+ * so accepting the keystrokes would desync editor and list silently),
+ * and a server refusal (a duplicate title — [[title]] links resolve
+ * by title) reverts the field and names the reason.
+ */
+function PageTitleField({ title, pageId, onCommit, onNotice }: {
+  title: string;
+  pageId: string;
+  onCommit: (t: string) => Promise<boolean>;
+  onNotice: (msg: string | null) => void;
+}) {
+  const [draft, setDraft] = useState(title);
+  useEffect(() => { setDraft(title); }, [title, pageId]);
+  const commit = async () => {
+    const t = draft.trim();
+    if (t === title) return;
+    if (!t) {
+      setDraft(title);
+      onNotice('A page needs a title — the rename was reverted.');
+      return;
+    }
+    const ok = await onCommit(t);
+    if (!ok) setDraft(title);
+  };
+  return (
+    <input value={draft} onChange={e => setDraft(e.target.value)} onBlur={() => void commit()}
+      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+      aria-label="Page title"
+      className="flex-1 bg-transparent text-lg font-bold text-zinc-100 focus:outline-none border-b border-transparent focus:border-zinc-700" />
+  );
+}
+
 export function DocsWorkspace() {
   const [pages, setPages] = useState<PageMeta[]>([]);
   const [active, setActive] = useState<Page | null>(null);
@@ -69,6 +104,7 @@ export function DocsWorkspace() {
   const [side, setSide] = useState<SidePanel>('none');
   const [showTemplates, setShowTemplates] = useState(false);
   const [openCommentCount, setOpenCommentCount] = useState(0);
+  const [titleNotice, setTitleNotice] = useState<string | null>(null);
 
   const refreshTree = useCallback(async () => {
     const r = await lensRun('docs', 'page-list', {});
@@ -158,11 +194,15 @@ export function DocsWorkspace() {
       },
     });
   }
-  async function renamePage(title: string) {
-    if (!active) return;
+  async function renamePage(title: string): Promise<{ ok: boolean; error?: string }> {
+    if (!active) return { ok: false };
+    const r = await lensRun('docs', 'page-update', { id: active.id, title });
+    if (!r.data?.ok) {
+      return { ok: false, error: r.data?.error || 'Rename failed.' };
+    }
     setActive({ ...active, title });
-    await lensRun('docs', 'page-update', { id: active.id, title });
     await refreshTree();
+    return { ok: true };
   }
   async function setIcon(icon: string) {
     if (!active || !icon.trim()) return;
@@ -215,11 +255,25 @@ export function DocsWorkspace() {
     await reloadActive();
   }
 
-  async function runSearch() {
-    if (!search.trim()) { setResults(null); return; }
-    const r = await lensRun('docs', 'docs-search', { query: search.trim() });
+  const searchRunRef = useRef(0);
+  const runSearch = useCallback(async (raw: string) => {
+    const q = raw.trim();
+    if (!q) { setResults(null); return; }
+    const run = ++searchRunRef.current;
+    const r = await lensRun('docs', 'docs-search', { query: q });
+    if (run !== searchRunRef.current) return; // a newer keystroke superseded this run
     setResults((r.data?.result?.results as { id: string; title: string; icon: string; snippet?: string }[]) || []);
-  }
+  }, []);
+
+  // Search runs as the user types (S3 / F2). The control previously
+  // searched only on Enter, so typing accepted input and changed
+  // nothing — the tree below kept listing every page. Debounced;
+  // Enter still runs the search immediately.
+  useEffect(() => {
+    if (!search.trim()) { setResults(null); return; }
+    const t = setTimeout(() => { void runSearch(search); }, 250);
+    return () => clearTimeout(t);
+  }, [search, runSearch]);
 
   async function snapshotNow() {
     if (!active) return;
@@ -279,7 +333,7 @@ export function DocsWorkspace() {
               <div className="relative flex-1">
                 <Search className="w-3 h-3 text-zinc-400 absolute left-2 top-1/2 -translate-y-1/2" />
                 <input value={search} onChange={e => setSearch(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') void runSearch(); }}
+                  onKeyDown={e => { if (e.key === 'Enter') void runSearch(search); }}
                   placeholder="Search" className="w-full bg-zinc-950 border border-zinc-800 rounded pl-6 pr-2 py-1 text-xs text-zinc-200" />
               </div>
               <button onClick={() => createPage(null)} title="New page"
@@ -293,6 +347,11 @@ export function DocsWorkspace() {
                   {results.length} results{' '}
                   <button onClick={() => { setResults(null); setSearch(''); }} className="text-zinc-400 underline">clear</button>
                 </p>
+                {results.length === 0 && (
+                  <p className="text-[11px] text-zinc-400 italic px-2">
+                    No pages match &ldquo;{search.trim()}&rdquo;.
+                  </p>
+                )}
                 {results.map(r => (
                   <button key={r.id} onClick={() => { void openPage(r.id); setResults(null); }}
                     className="block w-full text-left px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 rounded">
@@ -319,12 +378,16 @@ export function DocsWorkspace() {
               <div className="flex items-center gap-2 mb-2">
                 <input value={active.icon} onChange={e => setIcon(e.target.value)} maxLength={4}
                   className="w-9 text-center text-xl bg-transparent" />
-                <input value={active.title} onChange={e => renamePage(e.target.value)}
-                  className="flex-1 bg-transparent text-lg font-bold text-zinc-100 focus:outline-none border-b border-transparent focus:border-zinc-700" />
+                <PageTitleField title={active.title} pageId={active.id}
+                  onCommit={async (t) => { const r = await renamePage(t); if (!r.ok) setTitleNotice(r.error ?? 'Rename failed.'); else setTitleNotice(null); return r.ok; }}
+                  onNotice={setTitleNotice} />
                 <ConfirmDeleteButton itemLabel={active.title || 'Untitled page'} deleteTitle="Delete page"
                   onConfirm={() => deletePage(active.id)} iconClassName="w-4 h-4"
                   className="p-1 text-rose-400 hover:bg-rose-500/10 rounded" />
               </div>
+              {titleNotice && (
+                <p className="text-[11px] text-amber-300 mb-1">{titleNotice}</p>
+              )}
 
               {/* page toolbar */}
               <div className="flex flex-wrap items-center gap-1 mb-3 pb-2 border-b border-zinc-800">

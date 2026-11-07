@@ -83,7 +83,9 @@ const invalidateQueriesMock = vi.fn();
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
-    if (String(queryKey[0]) === 'trending-topics') {
+    // The feed panel caches its trending rows under its own key (R4 Feed F6); the shared
+    // TrendingTopics component keeps 'trending-topics'. Route both to the trending channel.
+    if (String(queryKey[0]) === 'trending-topics' || String(queryKey[0]) === 'feed-trending-topics') {
       return {
         data: [],
         isLoading: false,

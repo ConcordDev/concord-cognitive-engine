@@ -65,6 +65,29 @@ async function readHudIncome(url, token) {
   return { kind: "ok", data: d };
 }
 
+// HUD's il payload carries each income tier as an object keyed by raw API
+// field names (il30_p1p, il50_p4p, …) — Review 5's pass found those raw
+// keys printed as row labels in the County Data tab (F2). Shape each tier
+// into household-size rows ({ householdSize, limit }) sorted by size, so
+// no surface ever has to render an API key. Keys that carry no parseable
+// household size are dropped from the rows but the parse is conservative:
+// a tier where NO key parses is passed through untouched rather than
+// silently emptied.
+function shapeHudTier(tier) {
+  if (!tier || typeof tier !== "object" || Array.isArray(tier)) return tier ?? null;
+  const rows = [];
+  let sawKey = false;
+  for (const [k, v] of Object.entries(tier)) {
+    sawKey = true;
+    const m = /p(\d+)p/i.exec(k) || /^(\d+)$/.exec(k.trim()) || /(\d+)\s*[- ]?person/i.exec(k);
+    const limit = Number(v);
+    if (m && Number.isFinite(limit)) rows.push({ householdSize: Number(m[1]), limit });
+  }
+  if (rows.length === 0 && sawKey) return tier;
+  rows.sort((a, b) => a.householdSize - b.householdSize);
+  return rows;
+}
+
 function shapeHudIncome(d, fields) {
   return {
     ok: true,
@@ -76,9 +99,9 @@ function shapeHudIncome(d, fields) {
       ...(fields.yearNote ? { yearNote: fields.yearNote } : {}),
       areaName: d.area_name || d.county_name || d.state_name || d.statename || null,
       medianIncome: d.median_income,
-      veryLowIncome50Pct: d.very_low ?? null,
-      extremelyLowIncome30Pct: d.extremely_low ?? null,
-      lowIncome80Pct: d.low ?? null,
+      veryLowIncome50Pct: shapeHudTier(d.very_low),
+      extremelyLowIncome30Pct: shapeHudTier(d.extremely_low),
+      lowIncome80Pct: shapeHudTier(d.low),
       source: "hud-income-limits",
     },
   };
@@ -222,7 +245,16 @@ import { needNums, optNum, notComputed, advisory } from "../lib/lens-inputs.js";
 export default function registerUrbanplanningActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("urban-planning", "zoningAnalysis", advisory("generic zoning-class lookup table (FAR/height/setback); not your municipal code — verify with the local zoning ordinance", (ctx, artifact, _params) => { const data = artifact.data || {}; const zone = (data.zoneType || "residential").toLowerCase(); const rawLot = parseFloat(data.lotSizeSqFt); const lotSize = Number.isFinite(rawLot) ? (rawLot > 0 ? rawLot : 0) : 5000; const specs = { residential: { far: 0.5, maxHeight: 35, setback: 20, parking: 2, density: "low" }, commercial: { far: 2.0, maxHeight: 60, setback: 10, parking: 1, density: "medium" }, mixed: { far: 3.0, maxHeight: 85, setback: 5, parking: 1.5, density: "high" }, industrial: { far: 1.0, maxHeight: 45, setback: 30, parking: 0.5, density: "low" } }; const s = specs[zone] || specs.residential; const maxBuildable = Math.round(lotSize * s.far); return { ok: true, result: { zoneType: zone, lotSize, floorAreaRatio: s.far, maxBuildableSqFt: maxBuildable, maxHeight: `${s.maxHeight} ft`, setback: `${s.setback} ft`, parkingRequired: `${s.parking} spaces per unit`, density: s.density } }; }));
-  registerLensAction("urban-planning", "walkabilityScore", advisory("weighted amenity count heuristic; not Walk Score® or a GIS network analysis", (ctx, artifact, _params) => { const amenities = artifact.data?.amenities || []; const categories = { grocery: 0, restaurant: 0, school: 0, park: 0, transit: 0, retail: 0, healthcare: 0 }; for (const a of amenities) { const cat = (a.category || "retail").toLowerCase(); if (categories[cat] !== undefined) categories[cat] += (a.withinWalkingDistance ? 1 : 0.3); } const maxPoints = Object.keys(categories).length * 2; const score = Math.min(100, Math.round(Object.values(categories).reduce((s,v)=>s+v,0) / maxPoints * 100)); return { ok: true, result: { walkabilityScore: score, rating: score >= 90 ? "walkers-paradise" : score >= 70 ? "very-walkable" : score >= 50 ? "somewhat-walkable" : score >= 25 ? "car-dependent" : "almost-all-errands-require-car", amenityScores: categories, totalAmenities: amenities.length } }; }));
+  registerLensAction("urban-planning", "walkabilityScore", advisory("best-per-category amenity coverage heuristic; not Walk Score® or a GIS network analysis", (ctx, artifact, _params) => { const amenities = artifact.data?.amenities || []; const categories = { grocery: 0, restaurant: 0, school: 0, park: 0, transit: 0, retail: 0, healthcare: 0 }; for (const a of amenities) { const cat = (a.category || "retail").toLowerCase(); if (categories[cat] !== undefined) { const v = a.withinWalkingDistance ? 1 : 0.25; if (v > categories[cat]) categories[cat] = v; } } const score = Math.min(100, Math.round((Object.values(categories).reduce((s,v)=>s+v,0) / Object.keys(categories).length) * 100)); return { ok: true, result: { walkabilityScore: score, rating: score >= 90 ? "walkers-paradise" : score >= 70 ? "very-walkable" : score >= 50 ? "somewhat-walkable" : score >= 25 ? "car-dependent" : "almost-all-errands-require-car", amenityScores: categories, totalAmenities: amenities.length } }; }));
+  // Scale note (Review 5 F5): the score is the mean of per-category
+  // coverage — a category counts 1 when any amenity in it is within
+  // walking distance, 0.25 when it exists only farther away, else 0.
+  // The endpoints therefore mean what the ratings say: every category
+  // walkable = 100 (walkers-paradise); amenities present but none
+  // walkable = 25 (car-dependent); nothing present = 0. The pre-fix
+  // scale summed raw counts over a 14-point cap, so a fully walkable
+  // neighbourhood scored 50 ("somewhat-walkable") and a non-walkable
+  // one still scored 15.
   registerLensAction("urban-planning", "densityCalc", (ctx, artifact, _params) => { const data = artifact.data || {}; const _req = needNums(data, ["population>=0", "areaSqMiles>0"]); if (_req.missing.length) return notComputed(_req.missing, "Density needs population and land area (sq mi). Census ACS figures are available via urban-planning.census-acs-county."); const population = Math.trunc(_req.values.population); const areaSqMiles = _req.values.areaSqMiles; const _u = optNum(data.housingUnits); const units = _u === null ? null : Math.trunc(_u); const popDensity = Math.round(population / areaSqMiles); const unitDensity = units === null ? null : Math.round(units / areaSqMiles); return { ok: true, result: { population, area: `${areaSqMiles} sq mi`, populationDensity: `${popDensity}/sq mi`, housingDensity: unitDensity === null ? null : `${unitDensity} units/sq mi`, classification: popDensity > 10000 ? "urban-core" : popDensity > 3000 ? "urban" : popDensity > 1000 ? "suburban" : "rural", transitViability: popDensity > 5000 ? "supports-rail" : popDensity > 2000 ? "supports-bus" : "car-dependent" } }; });
   registerLensAction("urban-planning", "trafficImpact", (ctx, artifact, _params) => { const data = artifact.data || {};
     // Fail-CLOSED finite coercion: parseFloat("Infinity")/parseFloat("1e999") both
@@ -232,7 +264,20 @@ export default function registerUrbanplanningActions(registerLensAction) {
     // finite-but-absurd magnitude so the products can never overflow to Infinity.
     const SANE_MAX = 1e12;
     const finPos = (v, d = 0) => { const n = typeof v === "number" ? v : parseFloat(v); return (Number.isFinite(n) && n >= 0) ? Math.min(n, SANE_MAX) : d; };
-    const newUnits = finPos(data.newHousingUnits, 0); const newCommercialSqFt = finPos(data.newCommercialSqFt, 0); const tripsPerUnit = 8; const tripsPerSqFt = 0.01; const newTrips = Math.round(newUnits * tripsPerUnit + newCommercialSqFt * tripsPerSqFt); const peakHourTrips = Math.round(newTrips * 0.1); const currentADT = finPos(data.currentADT, 0) || 10000; const increase = currentADT > 0 ? Math.round((newTrips / currentADT) * 100) : 0; return { ok: true, result: { newDailyTrips: newTrips, peakHourTrips, currentADT, percentIncrease: increase, impactLevel: increase > 10 ? "significant" : increase > 5 ? "moderate" : "minimal", mitigation: increase > 5 ? ["Traffic signal optimization", "Turn lane additions", "Pedestrian improvements", "Transit service enhancement"] : ["Standard roadway capacity sufficient"] } }; });
+    const newUnits = finPos(data.newHousingUnits, 0); const newCommercialSqFt = finPos(data.newCommercialSqFt, 0);
+    // Trip-generation rates, named and sourced (Review 5 F3: the pre-fix
+    // rates were unstated constants — 8/unit and 0.01/sqft — that put the
+    // headline ~25% under the ITE-class band for the same inputs, with no
+    // split printed for a user to audit against). ITE Trip Generation
+    // average weekday daily rates: multifamily low-rise housing (LU 220)
+    // 7.32 trips/unit; shopping-center commercial (LU 820) 37.75
+    // trips/1,000 sq ft. The result prints both rates, the split they
+    // produce, and this basis string.
+    const TRIPS_PER_HOUSING_UNIT = 7.32;
+    const TRIPS_PER_COMMERCIAL_SQFT = 0.03775;
+    const housingTrips = Math.round(newUnits * TRIPS_PER_HOUSING_UNIT);
+    const commercialTrips = Math.round(newCommercialSqFt * TRIPS_PER_COMMERCIAL_SQFT);
+    const newTrips = housingTrips + commercialTrips; const peakHourTrips = Math.round(newTrips * 0.1); const currentADT = finPos(data.currentADT, 0) || 10000; const increase = currentADT > 0 ? Math.round((newTrips / currentADT) * 100) : 0; return { ok: true, result: { newDailyTrips: newTrips, housingTrips, commercialTrips, tripsPerHousingUnit: TRIPS_PER_HOUSING_UNIT, tripsPerCommercialSqFt: TRIPS_PER_COMMERCIAL_SQFT, rateBasis: "ITE Trip Generation average weekday daily rates — housing: multifamily low-rise (LU 220) 7.32 trips/unit; commercial: shopping center (LU 820) 37.75 trips/1,000 sq ft; peak hour = 10% of daily", peakHourTrips, currentADT, percentIncrease: increase, impactLevel: increase > 10 ? "significant" : increase > 5 ? "moderate" : "minimal", mitigation: increase > 5 ? ["Traffic signal optimization", "Turn lane additions", "Pedestrian improvements", "Transit service enhancement"] : ["Standard roadway capacity sufficient"] } }; });
 
   /**
    * census-acs-county — Real US Census ACS 5-year demographic data
@@ -255,13 +300,24 @@ export default function registerUrbanplanningActions(registerLensAction) {
       "B19013_001E",  // median household income
       "B01002_001E",  // median age
       "B15003_022E",  // bachelor's degree count
+      "B15003_023E",  // master's degree count
+      "B15003_024E",  // professional degree count
+      "B15003_025E",  // doctorate count
       "B15003_001E",  // total 25+ for education denom
       "B25003_002E",  // owner-occupied units
       "B25003_003E",  // renter-occupied units
       "B08303_001E",  // total commuters
-      "B08303_013E",  // 60+ min commute
+      "B08303_014E",  // 60–89 min commute
+      "B08303_015E",  // 90+ min commute
       "NAME",
     ];
+    // Field-mapping note (Review 5 F2 — the County Data truth test):
+    // "bachelor's or higher" is B15003 _022+_023+_024+_025; the pre-fix
+    // code read _022 alone (bachelor's only) under a BACHELORS+ label,
+    // printing about half the source value. "60+ min commute" is
+    // B08303 _014 (60–89) + _015 (90+); the pre-fix code read _013,
+    // which is the 45–59 minute bucket, printing ~2.7% against a ~27.5%
+    // source value in the pass's Manhattan pull.
     const url = `${CENSUS_API}/${year}/acs/acs5?get=${VARS.join(",")}&for=county:${countyFips}&in=state:${stateFips}${apiKey ? `&key=${encodeURIComponent(apiKey)}` : ""}`;
     try {
       const r = await fetch(url);
@@ -275,11 +331,11 @@ export default function registerUrbanplanningActions(registerLensAction) {
       const n = (k) => parseFloat(row[idx(k)]) || 0;
       const totalPop = n("B01003_001E");
       const total25 = n("B15003_001E");
-      const bachelors = n("B15003_022E");
+      const bachelors = n("B15003_022E") + n("B15003_023E") + n("B15003_024E") + n("B15003_025E");
       const owners = n("B25003_002E");
       const renters = n("B25003_003E");
       const totalCommute = n("B08303_001E");
-      const longCommute = n("B08303_013E");
+      const longCommute = n("B08303_014E") + n("B08303_015E");
       return {
         ok: true,
         result: {
@@ -435,6 +491,12 @@ export default function registerUrbanplanningActions(registerLensAction) {
       zoneType: zone,
       lotSizeSqFt: lot,
       floorAreaRatio: spec.far,
+      // The DERIVED floor-area ratio of the massing actually computed
+      // (GFA / lot) — Review 5 F7 found scenario cards printing the
+      // zone's nominal FAR (spec.far above) where this derived figure
+      // belongs (a card printed 3 against a true 3.2). Null when the lot
+      // is zero and no ratio exists.
+      derivedFar: lot > 0 ? round(grossFloorAreaSqFt / lot, 2) : null,
       lotCoveragePct: round(spec.lotCoverage * 100),
       footprintSqFt,
       floors,
@@ -870,6 +932,25 @@ export default function registerUrbanplanningActions(registerLensAction) {
     }
   });
 
+  // Review 5 F7: comments had NO delete path at any layer — a fixture
+  // comment outlived its deleted scenario and kept counting on the
+  // dashboard with no way to remove it. Removal is scoped to the
+  // caller's own comment list, mirroring parcel-remove's shape.
+  registerLensAction("urban-planning", "comment-remove", (ctx, _a, params = {}) => {
+    try {
+      const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = upList(s.comments, upAid(ctx));
+      const id = String(params.id || "");
+      const next = arr.filter((c) => c.id !== id);
+      if (!id || next.length === arr.length) return { ok: false, error: "not_found" };
+      s.comments.set(upAid(ctx), next);
+      saveUpState();
+      return { ok: true, result: { removed: 1 } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   registerLensAction("urban-planning", "comment-resolve", (ctx, _a, params = {}) => {
     try {
       const s = getUpState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -902,13 +983,18 @@ export default function registerUrbanplanningActions(registerLensAction) {
     "residential_development", "commercial_development", "mixed_use",
     "infrastructure", "public_space", "transit", "rezoning", "other",
   ];
-  // Six-stage lifecycle. The capability-map's own framing names
+  // Seven-stage lifecycle. The capability-map's own framing names
   // proposed→approved→built as the minimum arc, but a real civic project
   // also needs a construction stage (approved projects don't teleport to
   // built) and two honest non-happy-path terminals — most real projects
   // that don't get built were DENIED or CANCELLED, not silently stuck.
+  // permit_issued sits between approved and under_construction (Review 5
+  // F4: the lens's own copy promises a "proposed → approved → built
+  // permit lifecycle", and a permit state existed in the lens's status
+  // vocabulary and filters while the advance path offered it at no step
+  // — the state is now wired through, not retired).
   const PROJECT_STATUSES = [
-    "proposed", "approved", "under_construction", "built", "denied", "cancelled",
+    "proposed", "approved", "permit_issued", "under_construction", "built", "denied", "cancelled",
   ];
 
   registerLensAction("urban-planning", "project-add", (ctx, _a, params = {}) => {

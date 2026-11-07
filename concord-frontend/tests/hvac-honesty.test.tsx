@@ -55,9 +55,12 @@ const saved = {
 describe('HVAC lens honesty', () => {
   beforeEach(() => { calls.length = 0; loads = []; failCalc = false; });
 
-  it('is on the Real tier with copy that names what is not supported', () => {
+  it('is on the Workspace tier with copy that names what is not supported', () => {
     const m = getLensManifest('hvac')!;
-    expect(m.dataTier).toBe('REAL_FREE');
+    // Close-out A5: the declaration flip moves HVAC to REAL_WORKSPACE —
+    // its business records persist per-account; the old REAL_FREE pin
+    // named the dataset reading the review disproved.
+    expect(m.dataTier).toBe('REAL_WORKSPACE');
     const copy = JSON.stringify([m.emptyState, m.firstRunGuide]);
     expect(copy).toMatch(/not an ACCA Manual J/);
     expect(copy).not.toMatch(/stream against real building data|Schedule optimization|maintenance pack/);

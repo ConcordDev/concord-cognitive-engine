@@ -17,6 +17,7 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api/client';
+import { getLensManifest } from '@/lib/lenses/manifest';
 import {
   Share2, Send, Store, ExternalLink, X, Check, Copy,
   Link2, Rss, ChevronRight, Loader2, Globe, Lock,
@@ -92,7 +93,12 @@ export function ContentPublisher({
   const [copiedPlatform, setCopiedPlatform] = useState<string | null>(null);
   const [postText, setPostText] = useState(description || title);
   const [selectedLens, setSelectedLens] = useState<string | null>(null);
-  const [visibility, setVisibility] = useState<'public' | 'followers'>('public');
+  // Platform Chrome II (S-PA-3) — a lens declaring minorData gets the
+  // child-privacy share shape: followers-only by default (never public),
+  // with the preview + statement below. Undeclared lenses keep the
+  // generic shape and the public default, unchanged.
+  const minorData = getLensManifest(domain)?.minorData === true;
+  const [visibility, setVisibility] = useState<'public' | 'followers'>(minorData ? 'followers' : 'public');
 
   const shareUrl = typeof window !== 'undefined'
     ? artifactId
@@ -327,6 +333,21 @@ export function ContentPublisher({
                             </span>
                           </div>
                         </div>
+
+                        {/* Minor-data share shape (S-PA-3): the preview names
+                            what would be shared from this lens, from its own
+                            declaration, beside the privacy statement. */}
+                        {minorData && (
+                          <div className="p-2.5 rounded-lg bg-amber-400/10 border border-amber-300/30 text-amber-100/90 space-y-1">
+                            <p className="text-xs font-medium">This lens holds a child&apos;s developmental record.</p>
+                            <p className="text-[11px] leading-relaxed text-amber-100/70">
+                              Sharing is set to Followers only by default. What will be shared:{' '}
+                              {title ? `“${title}”` : 'this item'} ({contentType}) from the {domain} lens.
+                              This lens&apos;s records include: {(getLensManifest(domain)?.artifacts || []).join(' · ') || 'its saved records'}.
+                              Review the item before publishing — shared posts can be seen and reshared by their audience.
+                            </p>
+                          </div>
+                        )}
 
                         {/* Source info */}
                         {title && (

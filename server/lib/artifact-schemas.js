@@ -19,6 +19,13 @@ export function getArtifactSchema(domain, action) {
     || null;
 }
 
+export function listArtifactSchemas() {
+  return [...ARTIFACT_SCHEMAS.entries()].map(([key, schema]) => {
+    const dot = key.indexOf(".");
+    return { domain: key.slice(0, dot), action: key.slice(dot + 1), schema };
+  });
+}
+
 export function getSchemaCount() {
   return ARTIFACT_SCHEMAS.size;
 }

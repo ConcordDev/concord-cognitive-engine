@@ -9,6 +9,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { lookupUserIdentity } from "./user-identity.js";
 
 const MAX_BODY_LEN = 4000;
 const MAX_SUBJECT_LEN = 120;
@@ -135,7 +136,7 @@ export function listInbox(db, userId, opts = {}) {
       FROM player_mail
       WHERE ${where}
       ORDER BY sent_at DESC LIMIT ?
-    `).all(...params, limit).map(_hydrate);
+    `).all(...params, limit).map((row) => _withNames(db, _hydrate(row)));
   } catch {
     return [];
   }
@@ -151,9 +152,9 @@ export function listSent(db, userId, opts = {}) {
              expires_at AS expiresAt, attachment_dtu_ids, attachment_cc AS attachmentCc,
              cod_cc AS codCc
       FROM player_mail
-      WHERE from_user_id = ?
+      WHERE from_user_id = ? AND sender_deleted_at IS NULL
       ORDER BY sent_at DESC LIMIT ?
-    `).all(userId, limit).map(_hydrate);
+    `).all(userId, limit).map((row) => _withNames(db, _hydrate(row)));
   } catch {
     return [];
   }
@@ -171,7 +172,7 @@ export function getMail(db, mailId, userId) {
     `).get(mailId);
     if (!row) return null;
     if (userId && row.fromUser !== userId && row.toUser !== userId) return null;
-    return _hydrate(row);
+    return _withNames(db, _hydrate(row));
   } catch {
     return null;
   }
@@ -192,6 +193,31 @@ export function readMail(db, mailId, userId) {
       // Already read/claimed/expired — idempotent ok.
     }
     return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+/**
+ * Remove the SENDER's own copy of a piece of mail from their Sent list.
+ * Local to the sender's outbox: the recipient's copy is the same row
+ * read from the other side, and it is never touched — the row survives
+ * for the recipient; only the sender's view of it ends. A copy already
+ * claimed carries the claim record (payout + DTU transfer history), so
+ * it is refused rather than silently erasing the receipt.
+ *
+ * @returns {{ ok, deleted?, error? }}
+ */
+export function deleteSentMail(db, mailId, userId) {
+  if (!db || !mailId || !userId) return { ok: false, error: "missing_inputs" };
+  try {
+    const row = db.prepare(`SELECT from_user_id AS fromUser, status, sender_deleted_at AS senderDeletedAt FROM player_mail WHERE id = ?`).get(mailId);
+    if (!row) return { ok: false, error: "not_found" };
+    if (row.fromUser !== userId) return { ok: false, error: "not_authorized" };
+    if (row.status === "claimed") return { ok: false, error: "already_claimed" };
+    if (row.senderDeletedAt) return { ok: true, deleted: true, alreadyDeleted: true };
+    db.prepare(`UPDATE player_mail SET sender_deleted_at = unixepoch() WHERE id = ? AND from_user_id = ?`).run(mailId, userId);
+    return { ok: true, deleted: true };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
@@ -327,6 +353,23 @@ export function sweepExpiredMail(db) {
 }
 
 // ── helpers ─────────────────────────────────────────────────────────────
+
+// The mail rows carry the caller's correspondents' display names beside
+// the join keys. Player mail's parties are Concord accounts, so the
+// users-table identity is the resolver. A party that does not resolve
+// carries nulls — the raw account id is NEVER substituted as a name
+// (F3: raw-identifiers-as-identity, third surface).
+function _withNames(db, row) {
+  const from = lookupUserIdentity(db, row.fromUser);
+  const to = lookupUserIdentity(db, row.toUser);
+  return {
+    ...row,
+    fromName: from.displayName,
+    fromHandle: from.username,
+    toName: to.displayName,
+    toHandle: to.username,
+  };
+}
 
 function _hydrate(row) {
   return {

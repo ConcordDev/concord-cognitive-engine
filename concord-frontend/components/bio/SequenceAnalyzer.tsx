@@ -28,6 +28,7 @@ interface AnalysisResult {
   kind: Kind;
   gcPercent?: number;
   tm?: number;
+  tmModel?: string;
   orfs?: Array<{ frame: number; start: number; end: number; length: number; protein?: string }>;
   composition?: Record<string, number>;
   molecularWeight?: number;
@@ -226,6 +227,7 @@ export function SequenceAnalyzer() {
               <Stat label="Kind" value={analysis.kind.toUpperCase()} />
               {analysis.gcPercent !== undefined && <Stat label="GC %" value={`${analysis.gcPercent.toFixed(1)}%`} />}
               {analysis.tm !== undefined && <Stat label="Tm" value={`${analysis.tm.toFixed(1)}°C`} />}
+              {analysis.tmModel && <p className="col-span-2 text-[10px] text-zinc-500 sm:col-span-4">Tm model: {analysis.tmModel}</p>}
               {analysis.molecularWeight !== undefined && <Stat label="MW (avg)" value={`${analysis.molecularWeight} Da`} />}
               {analysis.orfs !== undefined && <Stat label="ORFs" value={`${analysis.orfs.length}`} />}
             </dl>

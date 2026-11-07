@@ -322,6 +322,8 @@ function PlacesPanel({ places, onChanged, onShowOnMap, keepPlace, onPlaceCreated
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ name: '', category: 'other', address: '', notes: '', rating: '' });
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   async function create() {
     if (!draft.name.trim() || !draft.lat || !draft.lng) return;
@@ -335,10 +337,18 @@ function PlacesPanel({ places, onChanged, onShowOnMap, keepPlace, onPlaceCreated
       onChanged();
     } catch (e) { console.error('[Places] create', e); }
   }
+  // S2 (F2): two-step in-page delete — the native confirm() this used
+  // is suppressed in the shell, so the control read as inert (no dialog,
+  // no toast, no removal). First click arms; second click fires; a
+  // failure shows its error instead of dying in the console.
   async function remove(id: string) {
-    if (!confirm('Delete this place?')) return;
-    try { await lensRun({ domain: 'atlas', action: 'places-delete', input: { id } }); onChanged(); }
-    catch (e) { console.error('[Places] delete', e); }
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); setDeleteError(''); return; }
+    setConfirmDeleteId(null);
+    try {
+      const r = await lensRun({ domain: 'atlas', action: 'places-delete', input: { id } });
+      if (r.data?.ok === false) { setDeleteError(r.data?.error || 'Could not delete that place.'); return; }
+      onChanged();
+    } catch { setDeleteError('Could not delete that place.'); }
   }
   function startEdit(p: Place) {
     setEditingId(p.id);
@@ -367,6 +377,7 @@ function PlacesPanel({ places, onChanged, onShowOnMap, keepPlace, onPlaceCreated
         <button onClick={() => onShowOnMap(places.map(p => ({ lat: p.lat, lng: p.lng, label: `${CAT_EMOJI[p.category]} ${p.name}` })))} className="ml-auto text-[10px] text-teal-300 hover:text-teal-200">Show all</button>
         <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-0.5 text-teal-300 hover:text-teal-200"><Plus className="w-3.5 h-3.5" /></button>
       </header>
+      {deleteError && <div className="px-3 py-1.5 text-[11px] text-rose-300 bg-rose-500/10 border-b border-rose-500/20">{deleteError}</div>}
       {creating && (
         <div className="p-2 border-b border-white/10 space-y-1.5 bg-black/30">
           <input value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} placeholder="Name *" className="w-full px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -412,7 +423,15 @@ function PlacesPanel({ places, onChanged, onShowOnMap, keepPlace, onPlaceCreated
             </div>
             {p.rating !== null && <span className="text-[10px] text-amber-300 inline-flex items-center gap-0.5"><Star className="w-2.5 h-2.5 fill-current" />{p.rating}</span>}
             <button aria-label="Edit" onClick={(e) => { e.stopPropagation(); startEdit(p); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-teal-300"><Pencil className="w-3 h-3" /></button>
-            <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); remove(p.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+            {confirmDeleteId === p.id ? (
+              <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <span className="text-[10px] text-rose-300">Delete?</span>
+                <button data-testid="place-delete-confirm" onClick={(e) => { e.stopPropagation(); remove(p.id); }} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-500/20 text-rose-200 hover:bg-rose-500/30">Delete</button>
+                <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }} className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 text-gray-300">Keep</button>
+              </span>
+            ) : (
+              <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); remove(p.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+            )}
           </li>
         ))}
       </ul>
@@ -428,6 +447,8 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
   const [expand, setExpand] = useState<string | null>(null);
   const [addTo, setAddTo] = useState('');
   const [showGraph, setShowGraph] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   async function create() {
     if (!name.trim()) return;
@@ -443,10 +464,16 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
     try { await lensRun({ domain: 'atlas', action: 'lists-remove-place', input: { listId, placeId } }); onChanged(); }
     catch (e) { console.error('[Lists] remove', e); }
   }
+  // S2 (F2): two-step in-page delete, same shape as Places above —
+  // no native confirm(), failures surface.
   async function del(id: string) {
-    if (!confirm('Delete this list?')) return;
-    try { await lensRun({ domain: 'atlas', action: 'lists-delete', input: { id } }); onChanged(); }
-    catch (e) { console.error('[Lists] delete', e); }
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); setDeleteError(''); return; }
+    setConfirmDeleteId(null);
+    try {
+      const r = await lensRun({ domain: 'atlas', action: 'lists-delete', input: { id } });
+      if (r.data?.ok === false) { setDeleteError(r.data?.error || 'Could not delete that list.'); return; }
+      onChanged();
+    } catch { setDeleteError('Could not delete that list.'); }
   }
 
   return (
@@ -463,6 +490,7 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
         </button>
         <button aria-label="Add" onClick={() => setCreating(v => !v)} className="p-0.5 text-teal-300 hover:text-teal-200"><Plus className="w-3.5 h-3.5" /></button>
       </header>
+      {deleteError && <div className="px-3 py-1.5 text-[11px] text-rose-300 bg-rose-500/10 border-b border-rose-500/20">{deleteError}</div>}
       {creating && (
         <div className="p-2 border-b border-white/10 flex gap-1">
           <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && create()} placeholder="List name" className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -487,7 +515,15 @@ function ListsPanel({ lists, places, onChanged, onShowOnMap }: { lists: MapList[
                 <span className="flex-1 text-xs text-white truncate">{l.name}</span>
                 <span className="text-[10px] text-gray-400 font-mono tabular-nums">{l.placeCount}</span>
                 <button onClick={() => onShowOnMap(l.places.map(p => ({ lat: p.lat, lng: p.lng, label: `${CAT_EMOJI[p.category]} ${p.name}` })))} className="opacity-0 group-hover:opacity-100 text-[10px] text-teal-300">map</button>
-                <button aria-label="Delete" onClick={() => del(l.id)} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                {confirmDeleteId === l.id ? (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="text-[10px] text-rose-300">Delete?</span>
+                    <button data-testid="list-delete-confirm" onClick={() => del(l.id)} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-500/20 text-rose-200 hover:bg-rose-500/30">Delete</button>
+                    <button onClick={() => setConfirmDeleteId(null)} className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 text-gray-300">Keep</button>
+                  </span>
+                ) : (
+                  <button aria-label="Delete" onClick={() => del(l.id)} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                )}
               </div>
               {isOpen && (
                 <div className="px-3 pb-2 space-y-1">
@@ -521,6 +557,8 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
   const [name, setName] = useState('');
   const [expand, setExpand] = useState<string | null>(null);
   const [addStop, setAddStop] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   async function create() {
     if (!name.trim()) return;
@@ -544,10 +582,15 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
     try { await lensRun({ domain: 'atlas', action: 'trips-reorder-stops', input: { tripId: trip.id, stopIds } }); onChanged(); }
     catch (e) { console.error('[Trips] reorderStops', e); }
   }
+  // S2 (F2): two-step in-page delete, same shape as Places above.
   async function del(id: string) {
-    if (!confirm('Delete this trip?')) return;
-    try { await lensRun({ domain: 'atlas', action: 'trips-delete', input: { id } }); onChanged(); }
-    catch (e) { console.error('[Trips] delete', e); }
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); setDeleteError(''); return; }
+    setConfirmDeleteId(null);
+    try {
+      const r = await lensRun({ domain: 'atlas', action: 'trips-delete', input: { id } });
+      if (r.data?.ok === false) { setDeleteError(r.data?.error || 'Could not delete that trip.'); return; }
+      onChanged();
+    } catch { setDeleteError('Could not delete that trip.'); }
   }
 
   return (
@@ -556,6 +599,7 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
         <span className="text-xs font-semibold text-gray-200">Trips</span>
         <span className="text-[10px] text-gray-400 font-mono tabular-nums">{trips.length}</span>
       </header>
+      {deleteError && <div className="px-3 py-1.5 text-[11px] text-rose-300 bg-rose-500/10 border-b border-rose-500/20">{deleteError}</div>}
       <div className="p-2 border-b border-white/10 flex gap-1">
         <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && create()} placeholder="New trip name" className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={create} className="px-2 py-1 text-xs rounded bg-teal-500 text-black font-bold hover:bg-teal-400">Add</button>
@@ -573,7 +617,15 @@ function TripsPanel({ trips, places, onChanged, onShowOnMap }: { trips: Trip[]; 
                 <span className="flex-1 text-xs text-white truncate">{t.name}</span>
                 <span className="text-[10px] text-gray-400">{t.stops.length} stop(s)</span>
                 <button onClick={() => onShowOnMap(t.stops.map(st => ({ lat: st.lat, lng: st.lng, label: st.name })))} className="opacity-0 group-hover:opacity-100 text-[10px] text-teal-300">map</button>
-                <button aria-label="Delete" onClick={() => del(t.id)} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                {confirmDeleteId === t.id ? (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="text-[10px] text-rose-300">Delete?</span>
+                    <button data-testid="trip-delete-confirm" onClick={() => del(t.id)} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-500/20 text-rose-200 hover:bg-rose-500/30">Delete</button>
+                    <button onClick={() => setConfirmDeleteId(null)} className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 text-gray-300">Keep</button>
+                  </span>
+                ) : (
+                  <button aria-label="Delete" onClick={() => del(t.id)} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                )}
               </div>
               {isOpen && (
                 <div className="px-3 pb-2 space-y-1">

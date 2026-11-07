@@ -1524,7 +1524,10 @@ export const apiHelpers = {
     state: (sessionId?: string) =>
       api.get('/api/affect/state', { params: { sessionId } }),
     emit: (sessionId: string, event: { type: string; intensity: number; polarity: number; payload?: unknown }) =>
-      api.post('/api/affect/event', { sessionId, ...event }),
+      // The event route (and the ATS event schema) key the session from
+      // body.source.sessionId — a top-level sessionId is never read there,
+      // which silently landed every emit on the fallback session.
+      api.post('/api/affect/event', { ...event, source: { sessionId } }),
     policy: (sessionId?: string) =>
       api.get('/api/affect/policy', { params: { sessionId } }),
     reset: (sessionId: string, mode?: string) =>
@@ -1564,6 +1567,7 @@ export const apiHelpers = {
     introspection: () => api.get('/api/metacognition/introspection-status'),
     predictions: () => api.get('/api/metacognition/predictions'),
     assessments: () => api.get('/api/metacognition/assessments'),
+    domainRecord: () => api.get('/api/metacognition/domain-record'),
     // NOTE: the backend macro (recordPrediction, server.js) reads `input.statement`,
     // not `claim` — a prior version of this helper sent `claim` and every prediction
     // silently recorded an empty statement. Keep the caller-facing param named
@@ -1581,9 +1585,10 @@ export const apiHelpers = {
     // user), and the Knowledge Confidence Map / Skill Timeline could never populate.
     assess: (data: { domain: string }) =>
       api.post('/api/metacognition/assess', { topic: data.domain }),
-    // NOTE: introspectOnFailures (server.js) ignores its input entirely (analyzes
-    // ALL resolved predictions, unfiltered) — `focus` is accepted here for a
-    // future filtered pass but currently has no effect server-side.
+    // NOTE: introspectOnFailures (server.js) scopes the run by `focus`
+    // (predictions whose statement or domain mentions a focus term) and
+    // names the scope in its result — the S-MC-3 build made the focus
+    // real server-side; it was previously accepted and ignored.
     introspect: (data: { focus?: string }) =>
       api.post('/api/metacognition/introspect', data),
     // NOTE: selectStrategy (server.js) reads `input.problem`, not `strategy` — not
@@ -1615,6 +1620,9 @@ export const apiHelpers = {
     curriculum: (data: { topic: string }) =>
       api.post('/api/metalearning/curriculum', data),
     adaptations: () => api.get('/api/metalearning/adaptations'),
+    curricula: () => api.get('/api/metalearning/curricula'),
+    deleteStrategy: (strategyId: string) =>
+      api.delete(`/api/metalearning/strategies/${strategyId}`),
   },
 
   // Reasoning chains — field names match the real backend contract
@@ -1790,6 +1798,12 @@ export const apiHelpers = {
       api.post('/api/grounding/actions', data),
     approveAction: (actionId: string) =>
       api.post(`/api/grounding/actions/${actionId}/approve`, {}),
+    removeSensor: (sensorId: string) =>
+      api.post(`/api/grounding/sensors/${sensorId}/remove`, {}),
+    removeReading: (readingId: string) =>
+      api.post(`/api/grounding/readings/${readingId}/remove`, {}),
+    withdrawAction: (actionId: string) =>
+      api.post(`/api/grounding/actions/${actionId}/withdraw`, {}),
     actions: { pending: () => api.get('/api/grounding/actions/pending') },
   },
 
@@ -2230,7 +2244,7 @@ export const apiHelpers = {
   // interior crispness, constraint gradient, coherence direction, and the
   // ranked cross-domain invariant-alignment pairs the lens visualizes).
   resonance: {
-    boundary: (params?: { window?: number }) =>
+    boundary: (params?: { window?: number; pairsOffset?: number; pairsLimit?: number }) =>
       api.get('/api/resonance/boundary', { params }),
     scan: (params?: { window?: number }) =>
       api.post('/api/resonance/scan', params || {}),

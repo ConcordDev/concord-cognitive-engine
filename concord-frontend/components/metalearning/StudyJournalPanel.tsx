@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
-import { NotebookPen, Plus, Loader2, Star } from 'lucide-react';
+import { NotebookPen, Plus, Loader2, Star, Trash2 } from 'lucide-react';
 
 interface JournalEntry {
   id: string;
@@ -35,6 +35,8 @@ export function StudyJournalPanel() {
   const [effectiveness, setEffectiveness] = useState(3);
   const [reflection, setReflection] = useState('');
   const [busy, setBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -70,6 +72,18 @@ export function StudyJournalPanel() {
     } finally { setBusy(false); }
   };
 
+  const remove = async (entryId: string) => {
+    setBusyId(entryId);
+    try {
+      const { data: r } = await lensRun<any>('metalearning', 'journalDelete', { entryId });
+      if (r?.ok === false) { setErr(r.error || 'Delete failed'); return; }
+      setConfirmDeleteId(null);
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Delete failed');
+    } finally { setBusyId(null); }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -101,7 +115,7 @@ export function StudyJournalPanel() {
               type="number" placeholder="Minutes" className="input-lattice w-24 text-sm" />
             <span className="text-xs text-gray-400">Effectiveness:</span>
             {[1, 2, 3, 4, 5].map((n) => (
-              <button aria-label="Favorite" key={n} onClick={() => setEffectiveness(n)}>
+              <button aria-label={`Effectiveness ${n} of 5`} key={n} onClick={() => setEffectiveness(n)}>
                 <Star className={`w-4 h-4 ${n <= effectiveness ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}`} />
               </button>
             ))}
@@ -150,9 +164,23 @@ export function StudyJournalPanel() {
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-1">{e.reflection}</p>
-            <p className="text-[10px] text-gray-400 mt-1">
-              {new Date(e.createdAt).toLocaleDateString()}
-            </p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-[10px] text-gray-400">
+                {new Date(e.createdAt).toLocaleDateString()}
+              </p>
+              {confirmDeleteId === e.id ? (
+                <button onClick={() => remove(e.id)} disabled={busyId === e.id}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/25 hover:bg-red-500/35 text-red-300 disabled:opacity-50"
+                  title="Confirm delete — removes this journal entry">
+                  Delete?
+                </button>
+              ) : (
+                <button onClick={() => setConfirmDeleteId(e.id)}
+                  className="text-gray-600 hover:text-red-400" title="Delete entry" aria-label={`Delete journal entry ${e.topic}`}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

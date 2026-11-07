@@ -66,6 +66,11 @@ function ResolvedImage({ src, alt, className }: { src: string; alt: string; clas
 
 export function ProjectStudio() {
   const [projects, setProjects] = useState<Project[]>([]);
+  // F6 (unconfirmed-destructive): the study card's Delete used to fire
+  // projectDelete on a single click. The family's two-step applies
+  // (cf. Gallery F6 / game-design F5 / animation F5): the first click
+  // arms an in-place confirm; the delete call fires only from it.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -141,6 +146,7 @@ export function ProjectStudio() {
 
   const openEdit = useCallback((p: Project) => {
     setEditingId(p.id);
+    setConfirmDeleteId(null);
     setSaveError(null);
     setFTitle(p.title); setFDesc(p.description || ''); setFDiscipline(p.discipline);
     setFTools((p.tools || []).join(', ')); setFTags((p.tags || []).join(', ')); setFCover(p.coverUrl || '');
@@ -199,6 +205,7 @@ export function ProjectStudio() {
 
   const remove = useCallback(async (id: string) => {
     await lensRun('artistry', 'projectDelete', { projectId: id });
+    setConfirmDeleteId(null);
     if (openId === id) { setOpenId(null); setDetail(null); }
     load();
   }, [openId, load]);
@@ -274,9 +281,15 @@ export function ProjectStudio() {
                   <button type="button" onClick={() => openEdit(p)} className="text-[11px] text-gray-400 hover:text-neon-pink flex items-center gap-1">
                     <Pencil className="w-3 h-3" /> Edit
                   </button>
-                  <button onClick={() => remove(p.id)} className="text-[11px] text-gray-400 hover:text-red-400 flex items-center gap-1">
-                    <Trash2 className="w-3 h-3" /> Delete
-                  </button>
+                  {confirmDeleteId === p.id ? (
+                    <button type="button" onClick={() => remove(p.id)} className="text-[11px] font-semibold text-red-300 flex items-center gap-1">
+                      <Trash2 className="w-3 h-3" /> Delete?
+                    </button>
+                  ) : (
+                    <button type="button" aria-label={`Delete ${p.title}`} onClick={() => setConfirmDeleteId(p.id)} className="text-[11px] text-gray-400 hover:text-red-400 flex items-center gap-1">
+                      <Trash2 className="w-3 h-3" /> Delete
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -6,13 +6,15 @@
  * anywhere in page.tsx (see docs/lens-specs/metacognition-capability-map.md,
  * "Genuinely missing, deferred"):
  *
- *  - `select_strategy` (server.js) reads `{problem}`, matches it against 7
- *    named reasoning-strategy triggers (deductive/inductive/abductive/
- *    analogical/decomposition/simulation/empirical), and returns
- *    `{ok, strategy: {name, description}, alternatives: [...]}`.
+ *  - `select_strategy` (server.js) reads `{problem}` and selects from
+ *    the same twelve-strategy library the Practice view lists
+ *    (StrategyLibrary), returning
+ *    `{ok, strategy: {id, name, description}, alternatives: [...]}`.
  *  - `adjust_confidence` (server.js) reads `{domain, confidence}` and returns
- *    `{original, adjusted, factor, domain, explanation}` — a domain-specific
- *    confidence adjustment learned from past introspection passes.
+ *    `{original, adjusted, factor, domain, explanation}` — derived from
+ *    the domain's own prediction record (resolved accuracy vs mean
+ *    stated confidence) once the domain has at least 3 resolved
+ *    predictions; below that volume it returns ×1.00 and says why.
  *
  * Both are read via the canonical `lensRun()` client helper (POST
  * /api/lens/run), matching the direct-call pattern already used by the
@@ -40,6 +42,10 @@ interface ConfidenceResult {
   factor: number;
   domain: string;
   explanation: string;
+  resolvedCount?: number;
+  requiredCount?: number;
+  accuracy?: number;
+  meanConfidence?: number;
 }
 
 export function ReasoningToolkit() {
@@ -255,6 +261,13 @@ export function ReasoningToolkit() {
                 <span className="text-xs text-gray-400 font-mono ml-auto">×{confResult.factor.toFixed(2)}</span>
               </div>
               <p className="text-xs text-gray-400">{confResult.explanation}</p>
+              {typeof confResult.resolvedCount === 'number' && confResult.resolvedCount > 0 && (
+                <p className="text-[11px] text-gray-500">
+                  Based on {confResult.resolvedCount} resolved prediction{confResult.resolvedCount === 1 ? '' : 's'} in this domain
+                  {typeof confResult.accuracy === 'number' ? ` — accuracy ${(confResult.accuracy * 100).toFixed(0)}%` : ''}
+                  {typeof confResult.meanConfidence === 'number' ? ` vs mean stated confidence ${(confResult.meanConfidence * 100).toFixed(0)}%` : ''}.
+                </p>
+              )}
             </div>
           )}
         </div>

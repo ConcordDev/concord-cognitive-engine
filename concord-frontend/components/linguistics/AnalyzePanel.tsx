@@ -50,7 +50,7 @@ export function AnalyzePanel() {
         <input
           type="text"
           value={analyzeText}
-          onChange={e => setAnalyzeText(e.target.value)}
+          onChange={e => { setAnalyzeText(e.target.value); if (!e.target.value.trim()) setAnalyzeResult(null); }}
           onKeyDown={e => e.key === 'Enter' && handleAnalyze()}
           placeholder="Enter text for linguistic analysis..."
           className="flex-1 px-4 py-2.5 bg-lattice-deep border border-lattice-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-pink-400 text-sm"

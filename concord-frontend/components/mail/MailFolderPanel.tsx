@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Mail, Inbox, Coins, Package, X, Paperclip, Search } from 'lucide-react';
+import { Mail, Inbox, Coins, Package, X, Paperclip, Search, Trash2 } from 'lucide-react';
 import { Skeleton, EmptyState, ErrorState } from '@/components/ui';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { MailKeepMenu } from './MailKeepMenu';
 import { mailRecordSentence } from './mailKeep';
-import { claimResultText, playerMail } from './playerMail';
+import { claimResultText, deleteResultText, mailPartyLabel, playerMail } from './playerMail';
 import { STATUS_FILTERS, type MailRow, type StatusFilter } from './types';
 
 export function MailFolderPanel({
@@ -27,6 +27,8 @@ export function MailFolderPanel({
   const [query, setQuery] = useState('');
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const [claimNote, setClaimNote] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [openNote, setOpenNote] = useState<string | null>(null);
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
     setFlash({ kind, msg });
@@ -41,8 +43,7 @@ export function MailFolderPanel({
         playerMail('sent'),
       ]);
       if (!i.ok || !s.ok) {
-        const err = !i.ok ? i.error : !s.ok ? s.error : 'mail_failed';
-        throw new Error(err.replace(/_/g, ' '));
+        throw new Error('Could not reach your mail just now. Try again in a moment.');
       }
       const nextInbox = i.mail || [];
       const nextSent = s.mail || [];
@@ -62,9 +63,19 @@ export function MailFolderPanel({
   useEffect(() => { setLoading(true); refresh(); }, [refresh]);
 
   useEffect(() => {
-    if (!selected || selected.status !== 'unread') return;
-    playerMail('read', { id: selected.id }).then(() => refresh());
-  }, [selected, refresh]);
+    if (!selected || selected.status !== 'unread' || folder !== 'inbox') return;
+    // Opening is list-local: the row already carries the full message.
+    // The one open-time verb is mail.read, recipient-side — it flips
+    // this copy unread → read exactly once. Its failure is ONE inline
+    // notice in product words, never a raw authorization string (F4).
+    let cancelled = false;
+    playerMail('read', { id: selected.id }).then((j) => {
+      if (cancelled) return;
+      if (j.ok) { void refresh(); return; }
+      setOpenNote('This copy could not be marked as read. The message itself is open and unchanged.');
+    });
+    return () => { cancelled = true; };
+  }, [selected, refresh, folder]);
 
   useEffect(() => {
     let off: (() => void) | undefined;
@@ -76,6 +87,20 @@ export function MailFolderPanel({
     })();
     return () => off?.();
   }, [refresh]);
+
+  const handleDeleteSent = useCallback(async (mailId: string) => {
+    setBusy(`delete-${mailId}`);
+    try {
+      const j = await playerMail('delete', { id: mailId });
+      const note = deleteResultText(j);
+      showFlash(note.kind, note.msg);
+      if (j.ok) {
+        setSelected(null);
+        setConfirmDelete(false);
+        void refresh();
+      }
+    } finally { setBusy(null); }
+  }, [refresh, showFlash]);
 
   const handleClaim = useCallback(async (mailId: string) => {
     setBusy(`claim-${mailId}`);
@@ -97,11 +122,13 @@ export function MailFolderPanel({
     const q = query.trim().toLowerCase();
     if (!q) return base;
     return base.filter((m) => {
-      const other = folder === 'inbox' ? m.fromUser : m.toUser;
+      const otherName = folder === 'inbox'
+        ? mailPartyLabel(m.fromName, m.fromHandle)
+        : mailPartyLabel(m.toName, m.toHandle);
       return (
         m.subject?.toLowerCase().includes(q) ||
         m.body?.toLowerCase().includes(q) ||
-        other?.toLowerCase().includes(q)
+        otherName.toLowerCase().includes(q)
       );
     });
   }, [folderRows, folder, statusFilter, query]);
@@ -192,14 +219,16 @@ export function MailFolderPanel({
         {!loading && !loadError && rows.length > 0 && (
           <ul className="space-y-0.5">
             {rows.map((m) => {
-              const other = folder === 'inbox' ? m.fromUser : m.toUser;
+              const otherLabel = folder === 'inbox'
+                ? mailPartyLabel(m.fromName, m.fromHandle)
+                : mailPartyLabel(m.toName, m.toHandle);
               const hasAttach = (m.attachment_dtu_ids?.length || 0) > 0 || m.attachmentCc > 0 || m.codCc > 0;
               const isUnread = m.status === 'unread';
               const isSelected = selected?.id === m.id;
               return (
                 <li key={m.id}>
                   <button
-                    onClick={() => setSelected(m)}
+                    onClick={() => { setConfirmDelete(false); setOpenNote(null); setSelected(m); }}
                     aria-current={isSelected ? 'true' : undefined}
                     className={cn(
                       'w-full rounded-md border-l-2 px-2.5 py-1.5 text-left transition-colors',
@@ -213,8 +242,8 @@ export function MailFolderPanel({
                     <div className="flex items-center justify-between gap-2 text-[11px]">
                       <span className="flex min-w-0 items-center gap-1.5">
                         {isUnread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-neon-blue" aria-hidden="true" />}
-                        <span className={cn('truncate font-mono', isUnread ? 'text-gray-100' : 'text-gray-400')}>
-                          {other?.slice(0, 16) ?? '—'}
+                        <span className={cn('truncate', isUnread ? 'text-gray-100' : 'text-gray-400')}>
+                          {otherLabel}
                         </span>
                       </span>
                       <span className="shrink-0 font-mono text-[10px] tabular-nums text-gray-500">
@@ -266,7 +295,7 @@ export function MailFolderPanel({
               <div className="min-w-0">
                 <h2 className="truncate text-base font-semibold text-white">{selected.subject}</h2>
                 <p className="mt-1 text-[10px] text-gray-400">
-                  From <span className="font-mono text-gray-300">{selected.fromUser}</span> to <span className="font-mono text-gray-300">{selected.toUser}</span>
+                  From <span className="text-gray-200">{mailPartyLabel(selected.fromName, selected.fromHandle)}</span> to <span className="text-gray-200">{mailPartyLabel(selected.toName, selected.toHandle)}</span>
                   {' · '}
                   <span className="tabular-nums">{new Date(selected.sentAt * 1000).toLocaleString()}</span>
                 </p>
@@ -280,8 +309,41 @@ export function MailFolderPanel({
               </button>
             </header>
             <p className="text-[11px] text-emerald-200" role="status">{mailRecordSentence(selected, folder)}</p>
+            {openNote && <p className="mt-1 text-[11px] text-amber-200" role="status">{openNote}</p>}
             <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-gray-200">{selected.body}</p>
             <MailKeepMenu key={selected.id} mail={selected} />
+            {folder === 'sent' && (
+              <div className="mt-3">
+                {!confirmDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className={cn('inline-flex items-center gap-1 rounded-md border border-lattice-border px-2.5 py-1 text-[11px] text-gray-300 transition-colors hover:border-red-500/40 hover:text-red-200', ds.focusRing)}
+                  >
+                    <Trash2 className="h-3 w-3" /> Remove from Sent
+                  </button>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span className="text-gray-300">Remove this copy from your Sent list? The recipient keeps theirs.</span>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteSent(selected.id)}
+                      disabled={busy === `delete-${selected.id}`}
+                      className={cn('rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-red-200 transition-colors hover:bg-red-500/20', ds.focusRing)}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className={cn('rounded-md border border-lattice-border px-2.5 py-1 text-gray-300 transition-colors hover:bg-lattice-elevated', ds.focusRing)}
+                    >
+                      Keep it
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {(selected.attachmentCc > 0 || selected.attachment_dtu_ids?.length > 0 || selected.codCc > 0) && (
               <div className="mt-4 rounded-md border border-lattice-border bg-lattice-void/50 p-2.5 text-[11px]">

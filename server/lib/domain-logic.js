@@ -153,23 +153,31 @@ DOMAIN_RULES.set("agents", {
 // === Sim (Simulation) ===
 DOMAIN_RULES.set("sim", {
   types: ["scenario", "monte-carlo", "agent-based", "system-dynamics", "discrete-event"],
-  validStatuses: ["draft", "configured", "running", "completed", "archived"],
+  // "failed" covers a run artifact whose Monte Carlo execution threw —
+  // SimConsole's handleRunSimulation catch block persists status:'failed',
+  // which previously had no valid status (missing here) and no valid
+  // transition from "running" (below), so even once the run artifact's id
+  // was addressed correctly, a genuine failure couldn't be recorded either.
+  validStatuses: ["draft", "configured", "running", "completed", "failed", "archived"],
   transitions: {
     draft: ["configured", "archived"],
     configured: ["running", "draft", "archived"],
-    running: ["completed", "configured"],
+    running: ["completed", "failed", "configured"],
     completed: ["configured", "archived"],
+    failed: ["configured", "archived"],
     archived: [],
   },
   requiredFields: { scenario: ["title"] },
   computedFields: (type, data) => {
     data.runCount = data.runCount || 0;
-    data.hasResults = !!data.lastRun;
+    // Run artifacts set `results` on completion (SimConsole's SimRun shape);
+    // `lastRun` is a field no caller ever writes — this flag was always false.
+    data.hasResults = !!data.results || !!data.lastRun;
     return data;
   },
   scoring: (type, data) => {
     const assumptions = data.assumptions || [];
-    const hasRun = !!data.lastRun;
+    const hasRun = !!data.results || !!data.lastRun;
     const runs = data.runs || [];
     return Math.round((
       Math.min(assumptions.length / 5, 1) * 0.3 +
@@ -582,14 +590,21 @@ DOMAIN_RULES.set("research", {
 // === Education ===
 DOMAIN_RULES.set("education", {
   types: ["course", "lesson", "quiz", "assignment", "curriculum", "certificate"],
-  validStatuses: ["draft", "active", "in-progress", "completed", "graded", "archived"],
+  // The classroom record dialog saves meta.status from its own list
+  // (enrolled, active, completed, withdrawn, graduated). enrolled,
+  // withdrawn, and graduated were rejected, and the client showed only
+  // "validation failed".
+  validStatuses: ["draft", "active", "in-progress", "completed", "graded", "archived", "enrolled", "withdrawn", "graduated"],
   transitions: {
-    draft: ["active", "archived"],
-    active: ["in-progress", "draft", "archived"],
-    "in-progress": ["completed", "active"],
-    completed: ["graded", "archived"],
-    graded: ["archived"],
+    draft: ["active", "archived", "enrolled", "withdrawn", "graduated"],
+    active: ["in-progress", "draft", "archived", "enrolled", "completed", "withdrawn", "graduated"],
+    "in-progress": ["completed", "active", "enrolled", "withdrawn", "graduated"],
+    completed: ["graded", "archived", "active", "enrolled", "withdrawn", "graduated"],
+    graded: ["archived", "completed"],
     archived: [],
+    enrolled: ["active", "completed", "withdrawn", "graduated", "archived"],
+    withdrawn: ["enrolled", "active", "archived"],
+    graduated: ["archived", "enrolled"],
   },
   requiredFields: { course: ["title"], lesson: ["title"], quiz: ["title", "questions"] },
   computedFields: (type, data) => {

@@ -55,7 +55,7 @@ function mockLensRun(overrides: Record<string, Override> = {}, decisions: unknow
 
 async function renderJournal() {
   render(<DecisionJournal />);
-  await waitFor(() => expect(lensRun).toHaveBeenCalledWith('metacognition', 'journalList', { status: 'all' }));
+  await waitFor(() => expect(lensRun).toHaveBeenCalledWith('metacognition', 'journalList', {}));
 }
 
 describe('DecisionJournal — backward compatibility with legacy flat-string options', () => {

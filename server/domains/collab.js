@@ -1157,4 +1157,79 @@ export default function registerCollabActions(registerLensAction) {
       };
     } catch (e) { return { ok: false, error: e.message }; }
   });
+
+  // ── room-update ─────────────────────────────────────────────────────
+  // Edit the caller's own room (title and/or note). Dual-store like
+  // room-open: the STATE row is updated and the collab_rooms row follows
+  // through writeRoomRow's upsert. A room that exists only as a SQL row
+  // (restored after a restart, not yet merged into STATE) is adopted
+  // into STATE first so the edit has one home.
+  registerLensAction("collab", "room-update", (ctx, _artifact, params) => {
+    try {
+      const userId = roomActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = cbClean(params?.id || params?.roomId, 80);
+      if (!id) return { ok: false, error: "missing_room_id" };
+      const title = params?.title != null ? cbClean(params.title, 160) : null;
+      const note = params?.note != null ? cbClean(params.note, 8000) : null;
+      if (title !== null && !title) return { ok: false, error: "room title required" };
+      if (note !== null && !note) return { ok: false, error: "room note required" };
+      if (title === null && note === null) return { ok: false, error: "nothing_to_update" };
+      let room = roomList(userId).find((item) => item.id === id);
+      if (!room) {
+        const row = readRoomRows(ctx).find((item) => item.id === id);
+        if (!row || typeof row.title !== "string" || !row.title.trim()) {
+          return { ok: false, error: "room_not_found" };
+        }
+        room = { id: row.id, title: row.title.trim(), note: typeof row.note === "string" ? row.note : "", createdAt: row.created_at || "" };
+        roomList(userId).unshift(room);
+      }
+      const prevTitle = room.title;
+      const prevNote = room.note;
+      if (title !== null) room.title = title;
+      if (note !== null) room.note = note;
+      try {
+        writeRoomRow(ctx, room);
+      } catch (err) {
+        // room-open's honesty, kept: a write that fails does not stand —
+        // the STATE edit reverts rather than diverging from the SQL row.
+        room.title = prevTitle;
+        room.note = prevNote;
+        return { ok: false, error: "room_not_saved", detail: String(err?.message || err) };
+      }
+      saveCollabState();
+      return { ok: true, result: { room: { id: room.id, title: room.title, note: room.note } } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  // ── room-close ──────────────────────────────────────────────────────
+  // Close (delete) the caller's own room from BOTH stores: the STATE list
+  // and the collab_rooms row. Deleting only the STATE entry would let
+  // room-list's merge resurrect the room from its SQL row on the next
+  // read — the merge is exactly what list does — so the SQL delete is
+  // part of the act, and its failure is reported, never swallowed.
+  registerLensAction("collab", "room-close", (ctx, _artifact, params) => {
+    try {
+      const userId = roomActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = cbClean(params?.id || params?.roomId, 80);
+      if (!id) return { ok: false, error: "missing_room_id" };
+      const arr = roomList(userId);
+      const idx = arr.findIndex((item) => item.id === id);
+      const inState = idx >= 0;
+      const row = readRoomRows(ctx).find((item) => item.id === id);
+      if (!inState && !row) return { ok: false, error: "room_not_found" };
+      const db = roomDb(ctx);
+      if (roomsReady(db)) {
+        try {
+          db.prepare("DELETE FROM collab_rooms WHERE id = ? AND user_id = ?").run(id, userId);
+        } catch (err) {
+          return { ok: false, error: "room_not_closed", detail: String(err?.message || err) };
+        }
+      }
+      if (inState) arr.splice(idx, 1);
+      saveCollabState();
+      return { ok: true, result: { closed: id } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
 }

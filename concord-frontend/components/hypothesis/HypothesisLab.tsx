@@ -59,7 +59,7 @@ const STATUS_COLOR: Record<string, string> = {
 async function hyp<T>(action: string, input: Record<string, unknown> = {}): Promise<{ ok: boolean; data: T | null; error: string | null }> {
   const r = await lensRun('hypothesis', action, input);
   const d = r.data;
-  if (!d.ok) return { ok: false, data: null, error: d.error || 'request failed' };
+  if (!d.ok) return { ok: false, data: (d.result as T) ?? null, error: d.error || 'request failed' };
   // `get` returns { ok, hypothesis }; list returns a raw array; metrics/
   // propose/add_* return their own shape directly — pass through as-is.
   return { ok: true, data: d.result as T, error: null };
@@ -82,6 +82,11 @@ export function HypothesisLab() {
   const [rejectReason, setRejectReason] = useState('');
   const [refineStatement, setRefineStatement] = useState('');
   const [showReject, setShowReject] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dupWarning, setDupWarning] = useState<{ id: string; statement: string; status: string } | null>(null);
+  const [armArchive, setArmArchive] = useState(false);
+  const [armDelete, setArmDelete] = useState(false);
+  const [factReceipt, setFactReceipt] = useState<string | null>(null);
   const [showRefine, setShowRefine] = useState(false);
   const statementRef = useRef<HTMLTextAreaElement>(null);
 
@@ -120,11 +125,16 @@ export function HypothesisLab() {
   }, [qc, selectedId]);
 
   const propose = useMutation({
-    mutationFn: () => hyp<{ hypothesis: HypothesisDTU }>('propose', { statement: newStatement, domain: newDomain || undefined, priority: newPriority }),
+    mutationFn: (force: boolean) => hyp<{ hypothesis: HypothesisDTU; error?: string; duplicateOf?: { id: string; statement: string; status: string } }>('propose', { statement: newStatement, domain: newDomain || undefined, priority: newPriority, force }),
     onSuccess: (r) => {
       if (r.ok && r.data?.hypothesis) {
         setNewStatement(''); setNewDomain('');
+        setDupWarning(null);
         setSelectedId(r.data.hypothesis.id);
+      } else if (r.error === 'duplicate_statement' && r.data?.duplicateOf) {
+        // S4 (F5): the duplicate is named, never silently accepted —
+        // and replication stays possible through the explicit override.
+        setDupWarning(r.data.duplicateOf);
       }
       invalidateAll();
     },
@@ -153,7 +163,21 @@ export function HypothesisLab() {
     onSuccess: invalidateAll,
   });
 
-  const confirmHyp = useMutation({ mutationFn: () => hyp('confirm', { id: selectedId }), onSuccess: invalidateAll });
+  const confirmHyp = useMutation({
+    mutationFn: () => hyp<{ factDtuId?: string }>('confirm', { id: selectedId }),
+    onSuccess: (r) => {
+      if (r.ok && r.data?.factDtuId) setFactReceipt(r.data.factDtuId);
+      invalidateAll();
+    },
+  });
+  const deleteHyp = useMutation({
+    mutationFn: () => hyp('delete', { id: selectedId }),
+    onSuccess: (r) => {
+      setArmDelete(false);
+      if (r.ok) setSelectedId(null);
+      invalidateAll();
+    },
+  });
   const rejectHyp = useMutation({
     mutationFn: () => hyp('reject', { id: selectedId, reason: rejectReason }),
     onSuccess: () => { setShowReject(false); setRejectReason(''); invalidateAll(); },
@@ -169,6 +193,11 @@ export function HypothesisLab() {
   const archiveHyp = useMutation({ mutationFn: () => hyp('archive', { id: selectedId }), onSuccess: invalidateAll });
 
   const list: HypothesisDTU[] = useMemo(() => (Array.isArray(listQ.data?.data) ? listQ.data!.data! : []), [listQ.data]);
+  const visibleList = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((h) => (h.machine?.hypothesis?.statement || '').toLowerCase().includes(q));
+  }, [list, searchQuery]);
   const metrics = metricsQ.data?.data || null;
   const detail: HypothesisDTU | null = detailQ.data?.data?.hypothesis || null;
   const h = detail?.machine?.hypothesis;
@@ -191,6 +220,14 @@ export function HypothesisLab() {
           </div>
         )}
       </header>
+      <details className="text-[11px] text-gray-400 -mt-2">
+        <summary className="cursor-pointer text-gray-500">How confidence is computed</summary>
+        <p className="mt-1 leading-relaxed">
+          Confidence = the evidence balance, shrunk toward 50% by a prior of weight 2 — (weight for + 1) ÷ (weight for + weight against + 2) —
+          plus 20 points × the share of tests passed, plus 5 per verified prediction, minus 10 per falsified one, clamped to 0–100%.
+          One 0.5-weight note on its own reads 60%, not 100%: the number firms up only as evidence accumulates.
+        </p>
+      </details>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Propose + list */}
@@ -214,16 +251,31 @@ export function HypothesisLab() {
               </select>
             </div>
             <button
-              onClick={() => propose.mutate()}
+              onClick={() => propose.mutate(false)}
               disabled={!newStatement.trim() || propose.isPending}
               className="btn-neon purple w-full text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               {propose.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5" />}
               Propose
             </button>
+            {dupWarning && (
+              <div className="rounded border border-amber-400/30 bg-amber-400/10 px-2 py-1.5 text-[11px] text-amber-200 space-y-1">
+                <p>Already on the books ({dupWarning.status}): “{dupWarning.statement}”</p>
+                <div className="flex gap-2">
+                  <button onClick={() => { setSelectedId(dupWarning.id); setDupWarning(null); }} className="underline">Open the existing one</button>
+                  <button onClick={() => propose.mutate(true)} className="underline">Propose anyway (replication)</button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="lens-card">
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search statements…"
+              className="input-lattice w-full text-xs mb-2"
+            />
             <div className="flex gap-1 flex-wrap text-[10px] mb-2">
               {(['all', ...STATUS_ORDER] as const).map((s) => (
                 <button
@@ -237,10 +289,10 @@ export function HypothesisLab() {
             </div>
             <div className="space-y-1.5 max-h-96 overflow-y-auto">
               {listQ.isLoading && <p className="text-xs text-gray-500 text-center py-3">Loading…</p>}
-              {!listQ.isLoading && list.length === 0 && (
+              {!listQ.isLoading && visibleList.length === 0 && (
                 <p className="text-xs text-gray-500 text-center py-4">No hypotheses{statusFilter !== 'all' ? ` in "${statusFilter}"` : ' yet'}. Propose one above.</p>
               )}
-              {list.map((item, i) => {
+              {visibleList.map((item, i) => {
                 const ih = item.machine?.hypothesis;
                 if (!ih) return null;
                 return (
@@ -313,9 +365,23 @@ export function HypothesisLab() {
                 <button onClick={() => setShowRefine((v) => !v)} disabled={h.status === 'archived'} className="btn-neon text-[11px] px-2.5 py-1 flex items-center gap-1 disabled:opacity-40">
                   <GitBranch className="w-3 h-3" /> Refine
                 </button>
-                <button onClick={() => archiveHyp.mutate()} disabled={h.status === 'archived'} className="btn-neon text-[11px] px-2.5 py-1 flex items-center gap-1 disabled:opacity-40">
-                  <Archive className="w-3 h-3" /> Archive
+                <button
+                  onClick={() => { if (armArchive) { archiveHyp.mutate(); setArmArchive(false); } else { setArmArchive(true); } }}
+                  disabled={h.status === 'archived'}
+                  className="btn-neon text-[11px] px-2.5 py-1 flex items-center gap-1 disabled:opacity-40"
+                >
+                  <Archive className="w-3 h-3" /> {armArchive ? 'Archive? Click again to confirm' : 'Archive'}
                 </button>
+                {h.status !== 'confirmed' ? (
+                  <button
+                    onClick={() => { if (armDelete) { deleteHyp.mutate(); } else { setArmDelete(true); } }}
+                    className="btn-neon text-[11px] px-2.5 py-1 flex items-center gap-1 text-red-300"
+                  >
+                    {armDelete ? 'Delete permanently? Click again' : 'Delete'}
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-gray-500 self-center">A confirmed hypothesis is a Fact's source — archive it, don't delete it.</span>
+                )}
               </div>
               <AnimatePresence>
                 {showReject && (
@@ -420,6 +486,9 @@ export function HypothesisLab() {
               {/* Lifecycle timeline */}
               <details className="text-[11px]">
                 <summary className="cursor-pointer text-gray-400 flex items-center gap-1"><Clock className="w-3 h-3" /> Lifecycle ({h.lifecycle.length} events)</summary>
+                {factReceipt && h.status === 'confirmed' && (
+                  <p className="text-[11px] text-emerald-300 mb-1">Promoted to a Fact — DTU <span className="font-mono">{factReceipt}</span>, retrievable in the <a href="/global" className="underline">Global Library</a>.</p>
+                )}
                 <div className="mt-1.5 space-y-1 max-h-40 overflow-y-auto">
                   {h.lifecycle.slice().reverse().map((ev, i) => (
                     <div key={i} className="flex items-start gap-1.5 text-gray-500">

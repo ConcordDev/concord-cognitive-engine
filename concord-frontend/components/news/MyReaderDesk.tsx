@@ -19,8 +19,9 @@
  */
 
 import { useState } from 'react';
-import { Newspaper, BookOpenText, Wrench } from 'lucide-react';
+import { Newspaper, BookOpenText, Wrench, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { lensRun } from '@/lib/api/client';
 import { ArticleDetailProvider } from './ArticleDetailContext';
 import { ArticleDetailModal } from './ArticleDetailModal';
 import { NewsSearchBar } from './NewsSearchBar';
@@ -28,6 +29,72 @@ import { NewsReaderSection } from './NewsReaderSection';
 import { NewsParitySuite } from './NewsParitySuite';
 
 type Mode = 'reader' | 'tools';
+
+/**
+ * F5/D5 — the reader's own-records export. Composes the caller's articles,
+ * saved stories, alert subscriptions and digest schedule from the standing
+ * actions into one JSON file that actually downloads, with the counts
+ * receipted in the surface; a failed read says so and downloads nothing.
+ */
+function ReaderExport() {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  async function run() {
+    if (busy) return;
+    setBusy(true);
+    setNote(null);
+    try {
+      const [articles, saved, alerts, digest] = await Promise.all([
+        lensRun('news', 'article-list', {}),
+        lensRun('news', 'saved-list', {}),
+        lensRun('news', 'alert-list', {}),
+        lensRun('news', 'digest-schedule-get', {}),
+      ]);
+      const failed = [articles, saved, alerts, digest].find((r) => !r?.data?.ok);
+      if (failed) {
+        setNote(`Export failed — ${failed?.data?.error || 'the reader store did not answer'}. Nothing was downloaded.`);
+        return;
+      }
+      const payload = {
+        kind: 'concord-news-my-records',
+        exportedAt: new Date().toISOString(),
+        articles: articles.data.result?.articles ?? [],
+        saved: saved.data.result?.articles ?? [],
+        alertSubscriptions: alerts.data.result?.subscriptions ?? [],
+        digestSchedule: digest.data.result ?? null,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'news-my-records.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      setNote(`Exported ${payload.articles.length} articles · ${payload.saved.length} saved · ${payload.alertSubscriptions.length} alert subscriptions — the file is in your downloads.`);
+    } catch {
+      setNote('Export failed — the reader store did not answer. Nothing was downloaded.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={run}
+        disabled={busy}
+        className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:text-white disabled:opacity-50"
+      >
+        <Download className="h-3.5 w-3.5" /> {busy ? 'Preparing…' : 'Export my records (JSON)'}
+      </button>
+      {note && <p className="text-[11px] text-zinc-400" role="status">{note}</p>}
+    </div>
+  );
+}
 
 export function MyReaderDesk() {
   const [mode, setMode] = useState<Mode>('reader');
@@ -50,6 +117,8 @@ export function MyReaderDesk() {
             media-literacy tools below all read from the same real directory.
           </p>
         </div>
+
+        <ReaderExport />
 
         <NewsSearchBar />
 

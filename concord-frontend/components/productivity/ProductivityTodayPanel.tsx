@@ -13,18 +13,35 @@ import { ProductivityTaskRow, type ProdTask } from './ProductivityTaskRow';
 
 interface UpcomingDay { date: string; tasks: ProdTask[] }
 
+// F1: due dates are calendar days in the viewer's timezone. The local
+// today is computed from local components (never a UTC slice) and sent
+// to the views; day labels are formatted from the date string's own
+// components — parsing "2026-11-01" as a UTC instant and formatting it
+// locally shifted every bucket label one day early behind UTC.
+function localToday(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function dayLabel(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
 export function ProductivityTodayPanel({ onChange }: { onChange: () => void }) {
   const [todayTasks, setTodayTasks] = useState<ProdTask[]>([]);
   const [overdue, setOverdue] = useState(0);
   const [days, setDays] = useState<UpcomingDay[]>([]);
+  const [overdueTasks, setOverdueTasks] = useState<ProdTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    const today = localToday();
     const [t, u] = await Promise.all([
-      lensRun('productivity', 'today-view', {}),
-      lensRun('productivity', 'upcoming-view', {}),
+      lensRun('productivity', 'today-view', { today }),
+      lensRun('productivity', 'upcoming-view', { today }),
     ]);
     if (t.data?.ok === false || u.data?.ok === false) {
       setLoadError(t.data?.error || u.data?.error || 'Could not load today’s agenda.');
@@ -32,9 +49,13 @@ export function ProductivityTodayPanel({ onChange }: { onChange: () => void }) {
       return;
     }
     setLoadError(null);
-    setTodayTasks(t.data?.result?.tasks || []);
+    // The Today section lists tasks due today; overdue tasks render in
+    // their own group at the head of the agenda below (today-view
+    // returns both, separated by dueState).
+    setTodayTasks((t.data?.result?.tasks || []).filter((x: ProdTask) => x.dueState === 'today'));
     setOverdue(t.data?.result?.overdue || 0);
     setDays(u.data?.result?.days || []);
+    setOverdueTasks(u.data?.result?.overdue || []);
     setLoading(false);
     onChange();
   }, [onChange]);
@@ -48,8 +69,6 @@ export function ProductivityTodayPanel({ onChange }: { onChange: () => void }) {
   if (loadError) {
     return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
-
-  const weekday = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 
   return (
     <div className="space-y-4">
@@ -74,9 +93,17 @@ export function ProductivityTodayPanel({ onChange }: { onChange: () => void }) {
           <CalendarDays className="w-3.5 h-3.5 text-red-400" /> Next 7 days
         </h3>
         <div className="space-y-3">
+          {overdueTasks.length > 0 && (
+            <div>
+              <p className="text-[11px] text-rose-400 mb-1">Overdue</p>
+              <ul className="space-y-1">
+                {overdueTasks.map((t) => <ProductivityTaskRow key={t.id} task={t} onChange={refresh} />)}
+              </ul>
+            </div>
+          )}
           {days.map((d) => (
             <div key={d.date}>
-              <p className="text-[11px] text-zinc-400 mb-1">{weekday(d.date)}</p>
+              <p className="text-[11px] text-zinc-400 mb-1">{dayLabel(d.date)}</p>
               {d.tasks.length === 0 ? (
                 <p className="text-[10px] text-zinc-400 italic pl-1">No tasks</p>
               ) : (

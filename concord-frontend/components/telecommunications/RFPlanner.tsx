@@ -19,7 +19,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Antenna, Radar, Radio, TrendingUp, Network, Wifi, AlertTriangle,
-  Route, Plus, Trash2, Loader2, Check, X, RefreshCw,
+  Route, Plus, Trash2, Loader2, Check, X, RefreshCw, Pencil,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit, TimelineView, TreeDiagram, MapView } from '@/components/viz';
@@ -100,7 +100,7 @@ interface Outage {
 }
 interface SlaResult {
   windowDays: number; slaTargetPercent: number; availabilityPercent: number;
-  downtimeHours: number; incidents: number; openIncidents: number; mttrHours: number | null;
+  downtimeHours: number; openDowntimeHours: number; incidents: number; openIncidents: number; mttrHours: number | null;
   slaMet: boolean; breachBudgetHours: number;
   bySeverity: Array<{ severity: string; count: number }>;
 }
@@ -186,11 +186,14 @@ export const RF_PLANNER_TABS: { key: SubTab; label: string }[] = [
   { key: 'drivetest', label: 'Drive Test' },
 ];
 
-export function RFPlanner({ tab: controlledTab, onTabChange }: {
+export function RFPlanner({ tab: controlledTab, onTabChange, onDataChanged }: {
   /** Optional controlled active sub-tab — lets the host page drive discoverable
    * keyboard shortcuts. Falls back to internal state when omitted. */
   tab?: SubTab;
   onTabChange?: (tab: SubTab) => void;
+  /** Called after a successful mutation so the host page can refresh its
+   * header counters in-session (F7 — they previously lagged until reload). */
+  onDataChanged?: () => void;
 } = {}) {
   const [internalTab, setInternalTab] = useState<SubTab>('sites');
   const tab = controlledTab ?? internalTab;
@@ -298,7 +301,7 @@ export function RFPlanner({ tab: controlledTab, onTabChange }: {
       )}
 
       {tab === 'sites' && (
-        <SitesTab towers={towers} run={run} busy={busy} refreshTowers={refreshTowers} flash={flash} />
+        <SitesTab towers={towers} run={run} busy={busy} refreshTowers={refreshTowers} flash={flash} onChanged={onDataChanged} />
       )}
       {tab === 'propagation' && (
         <PropagationTab towers={towers} run={run} busy={busy} />
@@ -313,10 +316,10 @@ export function RFPlanner({ tab: controlledTab, onTabChange }: {
         <TopologyTab towers={towers} run={run} busy={busy} />
       )}
       {tab === 'spectrum' && (
-        <SpectrumTab allocations={allocations} run={run} busy={busy} refreshSpectrum={refreshSpectrum} flash={flash} />
+        <SpectrumTab allocations={allocations} run={run} busy={busy} refreshSpectrum={refreshSpectrum} flash={flash} onChanged={onDataChanged} />
       )}
       {tab === 'outages' && (
-        <OutagesTab outages={outages} run={run} busy={busy} refreshOutages={refreshOutages} flash={flash} />
+        <OutagesTab outages={outages} run={run} busy={busy} refreshOutages={refreshOutages} flash={flash} onChanged={onDataChanged} />
       )}
       {tab === 'drivetest' && (
         <DriveTestTab towers={towers} run={run} busy={busy} />
@@ -331,9 +334,10 @@ export function RFPlanner({ tab: controlledTab, onTabChange }: {
 
 interface RunFn { <T>(action: string, input?: Record<string, unknown>): Promise<T | null>; }
 
-function SitesTab({ towers, run, busy, refreshTowers, flash }: {
+function SitesTab({ towers, run, busy, refreshTowers, flash, onChanged }: {
   towers: Tower[]; run: RunFn; busy: string | null;
   refreshTowers: () => Promise<void>; flash: (m: string) => void;
+  onChanged?: () => void;
 }) {
   const [form, setForm] = useState({
     name: '', lat: '', lon: '', heightM: '30', powerWatts: '40',
@@ -341,9 +345,31 @@ function SitesTab({ towers, run, busy, refreshTowers, flash }: {
     status: 'active', backhaul: 'fiber', sectors: '3',
   });
   const set = (k: string) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+  // F5: sites were create-only on the surface (rows offered Delete only)
+  // though towerSave has always upserted by id. Edit loads the row into the
+  // form and saves it back under its id — a power change no longer means
+  // delete-and-recreate.
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const startEdit = (t: Tower) => {
+    setEditingId(t.id);
+    setForm({
+      name: t.name, lat: String(t.lat), lon: String(t.lon),
+      heightM: String(t.heightM), powerWatts: String(t.powerWatts),
+      gainDbi: String(t.gainDbi), freqMhz: String(t.freqMhz),
+      technology: t.technology, terrain: t.terrain, status: t.status,
+      backhaul: t.backhaul, sectors: String(t.sectors),
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm((f) => ({ ...f, name: '', lat: '', lon: '' }));
+  };
 
   const save = async () => {
     const r = await run<{ tower: Tower }>('towerSave', {
+      id: editingId || undefined,
       name: form.name || undefined,
       lat: parseFloat(form.lat),
       lon: parseFloat(form.lon),
@@ -359,14 +385,21 @@ function SitesTab({ towers, run, busy, refreshTowers, flash }: {
     });
     if (r) {
       await refreshTowers();
-      flash(`Saved ${r.tower.name}`);
+      onChanged?.();
+      flash(editingId ? `Updated ${r.tower.name}` : `Saved ${r.tower.name}`);
+      setEditingId(null);
       setForm((f) => ({ ...f, name: '', lat: '', lon: '' }));
     }
   };
 
   const del = async (id: string) => {
     const r = await run<{ removed: number }>('towerDelete', { id });
-    if (r) { await refreshTowers(); flash(`Removed ${r.removed} site`); }
+    if (r) {
+      if (editingId === id) setEditingId(null);
+      await refreshTowers();
+      onChanged?.();
+      flash(`Removed ${r.removed} site`);
+    }
   };
 
   const markers: MapMarker[] = towers.map((t) => ({
@@ -391,14 +424,28 @@ function SitesTab({ towers, run, busy, refreshTowers, flash }: {
         <Select label="Status" value={form.status} onChange={set('status')} options={['active', 'maintenance', 'planned', 'decommissioned']} />
         <Select label="Backhaul" value={form.backhaul} onChange={set('backhaul')} options={['fiber', 'microwave', 'satellite']} />
       </div>
-      <button
-        onClick={save}
-        disabled={!!busy}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-md text-[12px]"
-      >
-        {busy === 'towerSave' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-        Save site
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={save}
+          disabled={!!busy}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-md text-[12px]"
+        >
+          {busy === 'towerSave' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+          {editingId ? 'Update site' : 'Save site'}
+        </button>
+        {editingId && (
+          <button
+            onClick={cancelEdit}
+            disabled={!!busy}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-white rounded-md text-[12px]"
+          >
+            <X className="w-3.5 h-3.5" /> Cancel edit
+          </button>
+        )}
+      </div>
+      {editingId && (
+        <p className="text-[11px] text-violet-300">Editing {towers.find((t) => t.id === editingId)?.name || 'site'} — Save writes the changes back to the same site.</p>
+      )}
 
       <div>
         <div className="text-[10px] uppercase tracking-wider text-violet-400 mb-1">
@@ -416,14 +463,24 @@ function SitesTab({ towers, run, busy, refreshTowers, flash }: {
                 {t.lat.toFixed(3)},{t.lon.toFixed(3)} · {t.technology} · {t.freqMhz}MHz · {t.powerWatts}W · {t.terrain} · {t.status}
               </span>
             </div>
-            <button
-              onClick={() => del(t.id)}
-              disabled={!!busy}
-              className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
-              aria-label="Delete site"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            <span className="flex items-center gap-1">
+              <button
+                onClick={() => startEdit(t)}
+                disabled={!!busy}
+                className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-violet-300"
+                aria-label="Edit site"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => del(t.id)}
+                disabled={!!busy}
+                className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
+                aria-label="Delete site"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </span>
           </div>
         ))}
         {towers.length === 0 && (
@@ -800,9 +857,10 @@ function TopologyTab({ towers, run, busy }: { towers: Tower[]; run: RunFn; busy:
 // Spectrum — frequency-band allocation planner
 // ===========================================================================
 
-function SpectrumTab({ allocations, run, busy, refreshSpectrum, flash }: {
+function SpectrumTab({ allocations, run, busy, refreshSpectrum, flash, onChanged }: {
   allocations: Allocation[]; run: RunFn; busy: string | null;
   refreshSpectrum: () => Promise<void>; flash: (m: string) => void;
+  onChanged?: () => void;
 }) {
   const [plan, setPlan] = useState<SpectrumPlan | null>(null);
   const [f, setF] = useState({
@@ -823,6 +881,7 @@ function SpectrumTab({ allocations, run, busy, refreshSpectrum, flash }: {
     });
     if (r) {
       await refreshSpectrum();
+      onChanged?.();
       flash(`Allocated ${r.allocation.band}`);
       setF((s) => ({ ...s, band: '', startMhz: '', widthMhz: '' }));
     }
@@ -830,7 +889,7 @@ function SpectrumTab({ allocations, run, busy, refreshSpectrum, flash }: {
 
   const del = async (id: string) => {
     const r = await run<{ removed: number }>('spectrumDelete', { id });
-    if (r) { await refreshSpectrum(); setPlan(null); flash('Allocation removed'); }
+    if (r) { await refreshSpectrum(); onChanged?.(); setPlan(null); flash('Allocation removed'); }
   };
 
   const analyzePlan = async () => {
@@ -960,28 +1019,36 @@ function SpectrumTab({ allocations, run, busy, refreshSpectrum, flash }: {
 // Outages — fault dashboard + SLA tracking
 // ===========================================================================
 
-function OutagesTab({ outages, run, busy, refreshOutages, flash }: {
+function OutagesTab({ outages, run, busy, refreshOutages, flash, onChanged }: {
   outages: Outage[]; run: RunFn; busy: string | null;
   refreshOutages: () => Promise<void>; flash: (m: string) => void;
+  onChanged?: () => void;
 }) {
   const [sla, setSla] = useState<SlaResult | null>(null);
   const [windowDays, setWindowDays] = useState('30');
   const [slaTarget, setSlaTarget] = useState('99.9');
   const [f, setF] = useState({
-    site: '', cause: '', severity: 'minor', affectedSubscribers: '0',
+    site: '', cause: '', severity: 'minor', affectedSubscribers: '0', startedHoursAgo: '0',
   });
   const set = (k: string) => (v: string) => setF((s) => ({ ...s, [k]: v }));
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
   const report = async () => {
+    // F2: an incident's duration is its SLA substance. The form previously
+    // stamped every outage "now", so a real incident logged after the fact
+    // carried no duration and the SLA read as vacuously met. "Started …
+    // hours ago" lets the record carry when the incident actually began.
+    const hoursAgo = Math.max(0, parseFloat(f.startedHoursAgo) || 0);
     const r = await run<{ outage: Outage }>('outageReport', {
       site: f.site || undefined,
       cause: f.cause || undefined,
       severity: f.severity,
       affectedSubscribers: parseInt(f.affectedSubscribers, 10),
-      startedAt: Date.now(),
+      startedAt: Date.now() - Math.round(hoursAgo * 3600 * 1000),
     });
     if (r) {
       await refreshOutages();
+      onChanged?.();
       flash(`Outage logged for ${r.outage.site}`);
       setF((s) => ({ ...s, site: '', cause: '' }));
     }
@@ -989,7 +1056,19 @@ function OutagesTab({ outages, run, busy, refreshOutages, flash }: {
 
   const resolve = async (id: string) => {
     const r = await run<{ outage: Outage }>('outageResolve', { id });
-    if (r) { await refreshOutages(); flash('Outage resolved'); }
+    if (r) { await refreshOutages(); onChanged?.(); flash('Outage resolved'); }
+  };
+
+  // F9: the exit path — a record (and its timeline entry, rendered from the
+  // same list) can be removed, two-step like the fleet's other deletes.
+  const del = async (id: string) => {
+    const r = await run<{ removed: number }>('outageDelete', { id });
+    if (r) {
+      setConfirmingDelete(null);
+      await refreshOutages();
+      onChanged?.();
+      flash('Outage record removed');
+    }
   };
 
   const computeSla = async () => {
@@ -1010,11 +1089,12 @@ function OutagesTab({ outages, run, busy, refreshOutages, flash }: {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Field label="Site" value={f.site} onChange={set('site')} placeholder="site id" />
         <Field label="Cause" value={f.cause} onChange={set('cause')} placeholder="e.g. power loss" />
         <Select label="Severity" value={f.severity} onChange={set('severity')} options={['critical', 'major', 'minor']} />
         <Field label="Affected subs" value={f.affectedSubscribers} onChange={set('affectedSubscribers')} type="number" />
+        <Field label="Started (hours ago)" value={f.startedHoursAgo} onChange={set('startedHoursAgo')} type="number" />
       </div>
       <button
         onClick={report}
@@ -1032,17 +1112,46 @@ function OutagesTab({ outages, run, busy, refreshOutages, flash }: {
             <span className="text-zinc-400 font-mono">
               {o.cause} · {o.severity} · {o.affectedSubscribers} subs · {o.status}
             </span>
-            {o.status === 'open' ? (
-              <button
-                onClick={() => resolve(o.id)}
-                disabled={!!busy}
-                className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/40 text-[10px]"
-              >
-                <Check className="w-3 h-3" /> Resolve
-              </button>
-            ) : (
-              <span className="px-2 py-0.5 rounded bg-zinc-700/40 text-zinc-400 text-[10px]">resolved</span>
-            )}
+            <span className="flex items-center gap-1">
+              {o.status === 'open' ? (
+                <button
+                  onClick={() => resolve(o.id)}
+                  disabled={!!busy}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/40 text-[10px]"
+                >
+                  <Check className="w-3 h-3" /> Resolve
+                </button>
+              ) : (
+                <span className="px-2 py-0.5 rounded bg-zinc-700/40 text-zinc-400 text-[10px]">resolved</span>
+              )}
+              {confirmingDelete === o.id ? (
+                <>
+                  <button
+                    onClick={() => del(o.id)}
+                    disabled={!!busy}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-600/30 text-red-200 hover:bg-red-600/50 text-[10px]"
+                  >
+                    <Trash2 className="w-3 h-3" /> Confirm delete
+                  </button>
+                  <button
+                    onClick={() => setConfirmingDelete(null)}
+                    disabled={!!busy}
+                    className="px-2 py-0.5 rounded bg-zinc-700/40 text-zinc-300 text-[10px]"
+                  >
+                    Keep
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setConfirmingDelete(o.id)}
+                  disabled={!!busy}
+                  className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
+                  aria-label="Delete outage record"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </span>
           </div>
         ))}
         {outages.length === 0 && (
@@ -1088,6 +1197,11 @@ function OutagesTab({ outages, run, busy, refreshOutages, flash }: {
                 ? `SLA met — ${sla.availabilityPercent}% ≥ ${sla.slaTargetPercent}% target.`
                 : `SLA breached — ${sla.breachBudgetHours}h over the downtime budget.`}
             </div>
+            {sla.openDowntimeHours > 0 && (
+              <p className="text-[11px] text-amber-300">
+                Of the {sla.downtimeHours} h downtime, {sla.openDowntimeHours} h comes from {sla.openIncidents} still-open incident{sla.openIncidents === 1 ? '' : 's'} — still accruing.
+              </p>
+            )}
             <ChartKit
               kind="bar"
               data={sla.bySeverity}
@@ -1109,30 +1223,80 @@ function OutagesTab({ outages, run, busy, refreshOutages, flash }: {
 function DriveTestTab({ towers, run, busy }: { towers: Tower[]; run: RunFn; busy: string | null }) {
   const [csv, setCsv] = useState('');
   const [result, setResult] = useState<DriveTestResult | null>(null);
-  const [imported, setImported] = useState<number | null>(null);
+  // F6: the import previously filtered malformed rows silently, cleared the
+  // box without a word, and printed no statistics for what landed. The tab
+  // now reports imported vs rejected lines by number, keeps the pasted text,
+  // and summarises the imported store.
+  const [importReport, setImportReport] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [storeStats, setStoreStats] = useState<{ count: number; min: number; max: number; mean: number } | null>(null);
 
   const parseCsv = (text: string) => {
     // accepts "lat,lon,rsrpDbm[,sinrDb,technology]" rows, one per line
-    return text.split(/\r?\n/).map((ln) => ln.trim()).filter(Boolean).map((ln) => {
-      const c = ln.split(',').map((x) => x.trim());
-      return {
+    const lines = text.split(/\r?\n/);
+    const rows: Array<{ lat: number; lon: number; rsrpDbm: number; sinrDb?: number; technology?: string }> = [];
+    const rejected: number[] = [];
+    lines.forEach((ln, i) => {
+      const t = ln.trim();
+      if (!t) return;
+      const c = t.split(',').map((x) => x.trim());
+      const m = {
         lat: parseFloat(c[0]),
         lon: parseFloat(c[1]),
         rsrpDbm: parseFloat(c[2]),
         sinrDb: c[3] != null && c[3] !== '' ? parseFloat(c[3]) : undefined,
         technology: c[4] || undefined,
       };
-    }).filter((m) => Number.isFinite(m.lat) && Number.isFinite(m.lon) && Number.isFinite(m.rsrpDbm));
+      if (Number.isFinite(m.lat) && Number.isFinite(m.lon) && Number.isFinite(m.rsrpDbm)) rows.push(m);
+      else rejected.push(i + 1);
+    });
+    return { rows, rejected };
   };
 
-  const importCsv = async () => {
-    const measurements = parseCsv(csv);
-    if (measurements.length === 0) return;
-    const r = await run<{ imported: number; total: number }>('driveTestImport', { measurements });
-    if (r) { setImported(r.imported); setCsv(''); }
+  const refreshStoreStats = useCallback(async () => {
+    const r = await run<{ measurements: Array<{ measuredRsrpDbm: number }> }>('driveTestList');
+    if (r && r.measurements.length) {
+      const vals = r.measurements.map((m) => m.measuredRsrpDbm);
+      setStoreStats({
+        count: vals.length,
+        min: Math.min(...vals),
+        max: Math.max(...vals),
+        mean: Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10,
+      });
+    } else if (r) {
+      setStoreStats(null);
+    }
+  }, [run]);
+
+  const importCsv = async (): Promise<boolean> => {
+    const { rows, rejected } = parseCsv(csv);
+    setImportError(null);
+    if (rows.length === 0) {
+      setImportReport(null);
+      setImportError(rejected.length
+        ? `Nothing imported — line${rejected.length === 1 ? '' : 's'} ${rejected.join(', ')} ${rejected.length === 1 ? "doesn't" : "don't"} parse as lat,lon,rsrpDbm.`
+        : 'Nothing to import — the box is empty.');
+      return false;
+    }
+    const r = await run<{ imported: number; skipped: number; total: number }>('driveTestImport', { measurements: rows });
+    if (r) {
+      setImportReport(
+        `Imported ${r.imported} measurement(s)${rejected.length ? `; ${rejected.length} line(s) skipped as unparseable (line${rejected.length === 1 ? '' : 's'} ${rejected.join(', ')})` : ''} — ${r.total} now in the store. The pasted text is kept above.`,
+      );
+      await refreshStoreStats();
+      return true;
+    }
+    return false;
   };
 
   const validate = async () => {
+    // Validate reads the imported store; rows still sitting in the box are
+    // imported first so the button validates what the user sees, not a
+    // stale earlier import.
+    if (csv.trim()) {
+      const okImport = await importCsv();
+      if (!okImport) return;
+    }
     const r = await run<DriveTestResult>('driveTestValidate');
     if (r) setResult(r);
   };
@@ -1176,8 +1340,16 @@ function DriveTestTab({ towers, run, busy }: { towers: Tower[]; run: RunFn; busy
           Validate vs predicted
         </button>
       </div>
-      {imported != null && (
-        <p className="text-[11px] text-emerald-400">Imported {imported} measurement(s).</p>
+      {importReport && (
+        <p className="text-[11px] text-emerald-400">{importReport}</p>
+      )}
+      {importError && (
+        <p className="text-[11px] text-red-300">{importError}</p>
+      )}
+      {storeStats && (
+        <p className="text-[11px] text-zinc-400">
+          Imported store: {storeStats.count} point(s) · RSRP {storeStats.min}…{storeStats.max} dBm · mean {storeStats.mean} dBm. Validate checks the imported store against predicted coverage (rows still in the box are imported first).
+        </p>
       )}
       {towers.length === 0 && (
         <p className="text-[11px] text-zinc-400">Add sites in the Sites tab to validate against.</p>

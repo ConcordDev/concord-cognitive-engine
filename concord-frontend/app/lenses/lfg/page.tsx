@@ -17,6 +17,21 @@ import { Users2, Filter, RefreshCcw, Send, Plus, Check, AlertCircle, Loader2, X 
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
+import { useAuth } from '@/hooks/useAuth';
+
+/** Server refusal codes → the words the surface answers with. */
+const ERROR_COPY: Record<string, string> = {
+  cannot_invite_self: "That's your own request — you can't invite yourself.",
+  not_open: 'That request is no longer open.',
+  no_lfg: 'That request no longer exists.',
+  not_open_or_unauthorized: "That request is no longer open, or it isn't yours to cancel.",
+  missing_inputs: 'Something was missing from that request.',
+};
+
+function refusalText(j: { error?: string; reason?: string } | null | undefined, fallback: string): string {
+  const code = j?.error || j?.reason || '';
+  return ERROR_COPY[code] || code || fallback;
+}
 
 type Role = 'tank' | 'healer' | 'dps' | 'support' | 'any';
 type LoadState = 'loading' | 'error' | 'ready';
@@ -24,6 +39,7 @@ type LoadState = 'loading' | 'error' | 'ready';
 interface LfgRow {
   id: string;
   userId: string;
+  posterName?: string | null;
   worldId: string;
   role: Role;
   partyType: 'normal' | 'raid';
@@ -38,6 +54,8 @@ const ROLES: Role[] = ['tank', 'healer', 'dps', 'support', 'any'];
 const WORLDS = ['concordia-hub', 'tunya', 'sovereign-ruins', 'crime', 'cyber', 'superhero', 'fantasy', 'lattice-crucible'];
 
 export default function LfgLensPage() {
+  const { user } = useAuth();
+  const myId = user?.id || null;
   const [reloadKey, setReloadKey] = useState(0);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const hasRows = useRef(false);
@@ -49,9 +67,11 @@ export default function LfgLensPage() {
   const [postForm, setPostForm] = useState({ worldId: 'concordia-hub', role: 'any' as Role, partyType: 'normal' as 'normal' | 'raid', note: '' });
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
-  // Track which posts belong to this session so the owner can cancel them
-  // (the open list is anonymous — userIds are opaque, so we remember ids
-  // we just created rather than guessing identity).
+  // Ownership is read off the row itself: every listing carries its
+  // poster's account id, and the signed-in account's id is the durable
+  // key — a returning poster's own rows read as theirs after any reload.
+  // The session set of just-posted ids stays as a belt-and-braces union
+  // for the instant before the account record resolves.
   const [ownPosts, setOwnPosts] = useState<ReadonlySet<string>>(() => new Set());
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
@@ -112,7 +132,7 @@ export default function LfgLensPage() {
         showFlash('ok', 'Request posted.');
         refresh();
         setPostForm({ ...postForm, note: '' });
-      } else showFlash('err', j.error || j.reason || 'post failed');
+      } else showFlash('err', refusalText(j, 'post failed'));
     } catch {
       showFlash('err', 'network error');
     } finally { setBusy(null); }
@@ -124,7 +144,7 @@ export default function LfgLensPage() {
       const r = await fetch(`/api/lfg/${lfgId}/invite`, { method: 'POST', credentials: 'include' });
       const j = await r.json();
       if (j.ok) showFlash('ok', 'Invite sent.');
-      else showFlash('err', j.error || j.reason || 'invite failed');
+      else showFlash('err', refusalText(j, 'invite failed'));
       refresh();
     } catch {
       showFlash('err', 'network error');
@@ -137,7 +157,7 @@ export default function LfgLensPage() {
       const r = await fetch(`/api/lfg/${lfgId}/cancel`, { method: 'POST', credentials: 'include' });
       const j = await r.json();
       if (j.ok) { setOwnPosts((prev) => { const n = new Set(prev); n.delete(lfgId); return n; }); showFlash('ok', 'Request cancelled.'); }
-      else showFlash('err', j.error || j.reason || 'cancel failed');
+      else showFlash('err', refusalText(j, 'cancel failed'));
       refresh();
     } catch {
       showFlash('err', 'network error');
@@ -212,7 +232,7 @@ export default function LfgLensPage() {
             {loadState === 'ready' && requests.length > 0 && (
               <ul className="space-y-2" aria-label="Open group requests">
                 {requests.map((r) => {
-                  const mine = ownPosts.has(r.id);
+                  const mine = ownPosts.has(r.id) || (myId !== null && r.userId === myId);
                   return (
                     <li key={r.id} className="flex items-center justify-between gap-2 rounded-md border border-cyan-500/20 bg-cyan-500/5 p-2">
                       <div className="min-w-0">
@@ -223,7 +243,7 @@ export default function LfgLensPage() {
                           <span className="rounded bg-slate-700/50 px-1 text-slate-300">{r.currentSize}/{r.partyMaxSize}</span>
                           {mine && <span className="rounded bg-fuchsia-500/20 px-1 text-fuchsia-200">you</span>}
                         </div>
-                        <div className="mt-0.5 truncate font-mono text-[11px] text-cyan-100">{r.userId.slice(0, 14)}</div>
+                        <div className="mt-0.5 truncate text-[11px] text-cyan-100">{r.posterName || 'Member'}</div>
                         {r.note && <p className="mt-0.5 text-[11px] text-cyan-200/80">{r.note}</p>}
                       </div>
                       {mine ? (

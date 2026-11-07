@@ -82,6 +82,12 @@ export default function CollabLensPage() {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editNote, setEditNote] = useState('');
+  const [confirmClose, setConfirmClose] = useState(false);
+  const [receipt, setReceipt] = useState('');
 
   const pull = useCallback(async () => readRooms(), []);
 
@@ -160,13 +166,83 @@ export default function CollabLensPage() {
     { lensId: 'collab' },
   );
 
-  const selected = rooms.find((room) => room.note) || null;
+  // The selected room is the one the user picked (default: the first);
+  // the note pane follows the selection. (At the pass the pane showed
+  // the first room carrying a note — there was no selection to follow.)
+  const selected = rooms.find((room) => room.id === selectedId) || rooms[0] || null;
+
+  const startEdit = useCallback(() => {
+    if (!selected || busy) return;
+    setEditTitle(selected.title);
+    setEditNote(selected.note);
+    setActionError('');
+    setConfirmClose(false);
+    setEditing(true);
+  }, [busy, selected]);
+
+  const saveEdit = useCallback(async () => {
+    if (!selected || busy) return;
+    const trimmed = editTitle.trim();
+    const nextNote = editNote.trim();
+    if (!trimmed) { setActionError('A title is required.'); return; }
+    if (!nextNote) { setActionError('A note is required.'); return; }
+    setBusy(true);
+    setActionError('');
+    try {
+      await runCollab<{ room?: unknown }>(
+        'room-update',
+        { id: selected.id, title: trimmed, note: nextNote },
+        'Could not save that room.',
+      );
+      // The page's read-back discipline, kept: the edit shows only
+      // after the list + detail read the new values back.
+      const rows = await readRooms();
+      const row = rows.find((item) => item.id === selected.id);
+      if (!row || row.title !== trimmed || row.note !== nextNote) {
+        throw new Error('Saved, but the room did not read it back.');
+      }
+      setRooms(rows);
+      setEditing(false);
+      setReceipt(`Saved “${trimmed}”.`);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not save that room.');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, editNote, editTitle, selected]);
+
+  const closeRoom = useCallback(async () => {
+    if (!selected || busy) return;
+    // Two-step, fleet form: first click arms, only the armed click closes.
+    if (!confirmClose) { setConfirmClose(true); return; }
+    setBusy(true);
+    setActionError('');
+    try {
+      await runCollab<{ closed?: string }>('room-close', { id: selected.id }, 'Could not close that room.');
+      const rows = await readRooms();
+      if (rows.some((item) => item.id === selected.id)) {
+        throw new Error('Closed, but the room still reads back.');
+      }
+      setRooms(rows);
+      setSelectedId(null);
+      setConfirmClose(false);
+      setReceipt(`Closed “${selected.title}”.`);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not close that room.');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, confirmClose, selected]);
   const empty = phase === 'ready' && rooms.length === 0 && !composing;
 
   return (
     <LensShell lensId="collab" asMain={false}>
       <div data-lens-theme="collab" className="relative min-h-full bg-black px-8 pb-28 pt-6">
         <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Collab</h1>
+
+        <p data-testid="cb-room-about" className="mb-5 max-w-xl text-[14px] text-zinc-400">
+          A room is a title and a note, saved to your account and listed here when you return.
+        </p>
 
         <section
           aria-label="Room"
@@ -191,12 +267,19 @@ export default function CollabLensPage() {
               <p data-testid="cb-empty-note" className="px-6 py-5 text-[14px] text-zinc-400">Nothing selected.</p>
             </>
           )}
-          {phase === 'ready' && rooms.length > 0 && !composing && (
+          {phase === 'ready' && rooms.length > 0 && !composing && !editing && (
             <>
               <ul data-testid="cb-rooms" className="space-y-4 border-white/10 px-6 py-5 md:border-r">
                 {rooms.map((room) => (
                   <li key={room.id}>
-                    <h2 className="font-vault text-[1.35rem] leading-7 text-zinc-100">{room.title}</h2>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedId(room.id); setConfirmClose(false); }}
+                      aria-pressed={selected?.id === room.id}
+                      className={`text-left font-vault text-[1.35rem] leading-7 ${selected?.id === room.id ? 'text-zinc-100 underline' : 'text-zinc-400 hover:text-zinc-200'}`}
+                    >
+                      {room.title}
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -206,8 +289,62 @@ export default function CollabLensPage() {
                 ) : (
                   <p className="text-[14px] text-zinc-400">Nothing selected.</p>
                 )}
+                {selected && (
+                  <div className="mt-5 flex gap-4 text-[14px]">
+                    <button type="button" onClick={startEdit} disabled={busy} className="text-zinc-100 underline disabled:opacity-60">
+                      Edit room
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { void closeRoom(); }}
+                      disabled={busy}
+                      className={confirmClose ? 'font-medium text-red-300 underline' : 'text-zinc-400 underline hover:text-zinc-200'}
+                    >
+                      {confirmClose ? `Close “${selected.title}”? This deletes the room.` : 'Close room'}
+                    </button>
+                    {confirmClose && (
+                      <button type="button" onClick={() => setConfirmClose(false)} className="text-zinc-400 underline hover:text-zinc-200">
+                        Keep it
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </>
+          )}
+          {phase === 'ready' && editing && selected && (
+            <div className="col-span-full space-y-4 px-6 py-5">
+              <label className="block text-[14px] text-zinc-400">
+                Title
+                <input
+                  data-testid="cb-edit-title"
+                  value={editTitle}
+                  onChange={(event) => setEditTitle(event.target.value)}
+                  className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
+                  autoFocus
+                />
+              </label>
+              <label className="block text-[14px] text-zinc-400">
+                Note
+                <input
+                  data-testid="cb-edit-note"
+                  value={editNote}
+                  onChange={(event) => setEditNote(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') { event.preventDefault(); void saveEdit(); }
+                  }}
+                  className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
+                />
+              </label>
+              <div className="flex gap-4 text-[14px]">
+                <button type="button" onClick={() => { void saveEdit(); }} disabled={busy} className="text-zinc-100 underline disabled:opacity-60">
+                  Save changes
+                </button>
+                <button type="button" onClick={() => setEditing(false)} disabled={busy} className="text-zinc-400 underline hover:text-zinc-200">
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
           {phase === 'ready' && composing && (
             <div className="col-span-full space-y-4 px-6 py-5">
@@ -239,6 +376,10 @@ export default function CollabLensPage() {
 
         {actionError ? (
           <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p>
+        ) : null}
+
+        {receipt && !actionError ? (
+          <p role="status" className="mt-4 text-[14px] text-zinc-400">{receipt}</p>
         ) : null}
 
         <button

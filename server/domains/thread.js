@@ -350,6 +350,22 @@ export default function registerThreadActions(registerLensAction) {
     return { ok: true, result: { draft } };
   });
 
+  // The schedule lifecycle's other half: a scheduled draft returns to a
+  // plain draft, its scheduledAt cleared, so the queue and the Calendar
+  // stop carrying it. Refuses in words when the draft is not scheduled —
+  // the caller should hear that there was nothing to undo.
+  registerLensAction("thread", "draft-unschedule", (ctx, _a, params = {}) => {
+    const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const draft = trList(s, trActor(ctx)).find((d) => d.id === params.id);
+    if (!draft) return { ok: false, error: "draft not found" };
+    if (draft.status !== "scheduled") return { ok: false, error: "draft is not scheduled" };
+    draft.status = "draft";
+    draft.scheduledAt = null;
+    draft.updatedAt = trNow();
+    saveThread();
+    return { ok: true, result: { draft } };
+  });
+
   // Marks a draft as posted by you elsewhere (it publishes nothing itself);
   // publish-to-account is the path that actually posts.
   registerLensAction("thread", "draft-publish", (ctx, _a, params = {}) => {
@@ -720,12 +736,15 @@ export default function registerThreadActions(registerLensAction) {
     }
     const origChars = content.length;
     const newChars = rewritten.length;
+    const changed = rewritten !== content;
     return {
       ok: true,
       result: {
         mode,
         original: content,
         rewritten,
+        changed,
+        note: changed ? null : `No change — the ${mode} pass left this text as it stands; there was nothing for it to cut or reshape.`,
         charDelta: newChars - origChars,
         deltaPct: origChars > 0 ? Math.round(((newChars - origChars) / origChars) * 100) : 0,
       },

@@ -93,9 +93,14 @@ export function GalleryPanel({ mode }: { mode: GalleryMode }) {
       return;
     }
     await refresh();
+    // B15: bridged rows (world-creator drafts · worlds-table worlds)
+    // travel by their enterId — the worlds-table id the travel system
+    // resolves — never by the discovery row's own key. Store rows
+    // carry enterId === world_id, so their path is unchanged.
+    const destId = (w as any).enterId || w.world_id;
     setTravelingWorldId(w.world_id);
     try {
-      await travelHook.travel(w.world_id);
+      await travelHook.travel(destId);
       router.push('/lenses/world');
     } catch (e: any) {
       flash(`Could not enter "${w.name}": ${e?.message || 'travel failed'}.`);

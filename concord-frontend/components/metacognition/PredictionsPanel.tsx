@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import {
   Crosshair, Send, CheckCircle2, XCircle, Clock, Brain, Play, Loader2, ChevronDown, ChevronUp,
-  Target, BarChart3,
+  Target, BarChart3, Trash2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useMetacognitionDesk } from '@/components/metacognition/useMetacognitionDesk';
@@ -15,9 +15,10 @@ import { ErrorState } from '@/components/common/EmptyState';
 
 export function PredictionsPanel() {
   const {
-    predictions, predictionStats, cal, makePrediction, resolvePrediction,
+    predictions, predictionStats, cal, makePrediction, resolvePrediction, deletePrediction,
     isLoading, isError, errorMessage, refetchAll,
   } = useMetacognitionDesk();
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [predictionClaim, setPredictionClaim] = useState('');
   const [predictionConfidence, setPredictionConfidence] = useState(0.7);
   const [predictionDomain, setPredictionDomain] = useState('');
@@ -261,7 +262,7 @@ export function PredictionsPanel() {
                     <div key={id} className="lens-card">
                       <div
                         className="flex items-center gap-3 cursor-pointer"
-                        onClick={() => setExpandedPrediction(expanded ? null : id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                        onClick={() => { setConfirmDeleteId(null); setExpandedPrediction(expanded ? null : id); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         {isResolved ? (
                           isCorrect ? (
                             <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
@@ -311,6 +312,29 @@ export function PredictionsPanel() {
                             </button>
                           </div>
                         )}
+                        <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          {confirmDeleteId === id ? (
+                            <button
+                              onClick={() => {
+                                deletePrediction.mutate(id, { onSuccess: () => setConfirmDeleteId(null) });
+                              }}
+                              disabled={deletePrediction.isPending}
+                              className="px-2 py-1 rounded bg-red-500/25 hover:bg-red-500/35 text-red-300 text-xs transition-colors"
+                              title="Confirm delete — calibration recomputes from the surviving record"
+                            >
+                              Delete?
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDeleteId(id)}
+                              className="p-1 rounded text-gray-500 hover:text-red-400 transition-colors"
+                              title="Delete prediction"
+                              aria-label={`Delete prediction ${String(p.statement || '')}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                         {expanded ? (
                           <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
                         ) : (
@@ -377,16 +401,44 @@ export function PredictionsPanel() {
               <div className="space-y-2">
                 <div className="flex flex-wrap gap-4 text-xs">
                   <span className="text-gray-400">Brier Score: <span className="text-neon-cyan font-bold">{String(actionResult.brierScore)}</span></span>
-                  <span className="text-gray-400">Skill Score: <span className="text-neon-green">{String(actionResult.brierSkillScore)}</span></span>
+                  <span className="text-gray-400">Brier Skill Score: <span className="text-neon-green">{String(actionResult.brierSkillScore)}</span>{typeof actionResult.brierSkillScore === 'number' && actionResult.brierSkillScore < 0 ? <span className="text-gray-500"> (below the base-rate baseline)</span> : null}</span>
                   <span className="text-gray-400">Log Loss: <span className="text-yellow-400">{String(actionResult.logLoss)}</span></span>
                 </div>
-                {'calibration' in actionResult && actionResult.calibration !== null && typeof actionResult.calibration === 'object' && (
-                  <div className="flex flex-wrap gap-3 text-xs">
-                    {Object.entries(actionResult.calibration as Record<string, unknown>).map(([k, v]) => (
-                      <span key={k} className="text-gray-400">{k}: <span className="text-neon-cyan">{String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
+                {'calibration' in actionResult && actionResult.calibration !== null && typeof actionResult.calibration === 'object' && (() => {
+                  const calObj = actionResult.calibration as Record<string, unknown>;
+                  const bins = Array.isArray(calObj.bins) ? (calObj.bins as Record<string, unknown>[]) : [];
+                  const usedBins = bins.filter((b) => typeof b.count === 'number' && (b.count as number) > 0);
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-3 text-xs">
+                        {typeof calObj.ece === 'number' && <span className="text-gray-400">ECE: <span className="text-neon-cyan">{calObj.ece.toFixed(3)}</span></span>}
+                        {typeof calObj.mce === 'number' && <span className="text-gray-400">MCE: <span className="text-neon-cyan">{calObj.mce.toFixed(3)}</span></span>}
+                        {!!calObj.quality && (
+                          <span className="text-gray-400">
+                            Calibration quality: <span className="text-neon-cyan capitalize">{String(calObj.quality)}</span>
+                            <span className="text-gray-500"> (ECE scale: excellent &lt; 0.05 · good &lt; 0.10 · moderate &lt; 0.20 · poor ≥ 0.20 — the whole lens uses this one scale)</span>
+                          </span>
+                        )}
+                      </div>
+                      {usedBins.length > 0 && (
+                        <div className="space-y-0.5">
+                          {usedBins.map((b, bi) => {
+                            const range = Array.isArray(b.binRange) ? (b.binRange as number[]) : [];
+                            return (
+                              <p key={bi} className="text-xs text-gray-400 font-mono">
+                                {range.length === 2 ? `${(range[0] * 100).toFixed(0)}–${(range[1] * 100).toFixed(0)}%` : 'bin'}
+                                {' · '}n={String(b.count)}
+                                {typeof b.avgPredicted === 'number' ? ` · predicted ${(b.avgPredicted * 100).toFixed(0)}%` : ''}
+                                {typeof b.avgActual === 'number' ? ` · actual ${(b.avgActual * 100).toFixed(0)}%` : ''}
+                                {typeof b.gap === 'number' ? ` · gap ${b.gap > 0 ? '+' : ''}${(b.gap * 100).toFixed(0)} pts` : ''}
+                              </p>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
             {'currentPerformance' in actionResult && (
@@ -396,22 +448,33 @@ export function PredictionsPanel() {
                   <span className="text-gray-400">Mastered: <span className={actionResult.mastered ? 'text-neon-green' : 'text-yellow-400'}>{String(actionResult.mastered)}</span></span>
                   <span className="text-gray-400">Best Model: <span className="text-neon-purple">{String(actionResult.bestModel)}</span></span>
                 </div>
-                {'learningRate' in actionResult && actionResult.learningRate !== null && typeof actionResult.learningRate === 'object' && (
-                  <div className="flex flex-wrap gap-3 text-xs">
-                    {Object.entries(actionResult.learningRate as Record<string, unknown>).map(([k, v]) => (
-                      <span key={k} className="text-gray-400">{k}: <span className="text-neon-cyan">{String(v)}</span></span>
-                    ))}
-                  </div>
-                )}
+                {'learningRate' in actionResult && actionResult.learningRate !== null && typeof actionResult.learningRate === 'object' && (() => {
+                  const lr = actionResult.learningRate as Record<string, unknown>;
+                  const phaseLabel = lr.phase === 'plateau' ? 'Plateau' : lr.phase === 'active_learning' ? 'Active learning' : lr.phase === 'diminishing_returns' ? 'Diminishing returns' : String(lr.phase ?? '');
+                  return (
+                    <div className="flex flex-wrap gap-3 text-xs">
+                      {typeof lr.avgImprovement === 'number' && <span className="text-gray-400">Avg improvement / trial: <span className="text-neon-cyan">{lr.avgImprovement.toFixed(3)}</span></span>}
+                      {typeof lr.recentImprovement === 'number' && <span className="text-gray-400">Recent improvement / trial: <span className="text-neon-cyan">{lr.recentImprovement.toFixed(3)}</span></span>}
+                      {!!lr.phase && <span className="text-gray-400">Phase: <span className="text-neon-cyan">{phaseLabel}</span></span>}
+                    </div>
+                  );
+                })()}
                 {(() => {
-                  const fit = actionResult.bestModel === 'power_law' ? actionResult.powerLawFit
-                    : actionResult.bestModel === 'exponential' ? actionResult.exponentialFit : null;
-                  const fitObj = fit && typeof fit === 'object' ? (fit as Record<string, unknown>) : null;
-                  return fitObj?.predictedMasteryTrial != null ? (
-                    <p className="text-xs text-neon-green">
-                      Forecast: 90% calibration accuracy around trial #{String(fitObj.predictedMasteryTrial)} ({String(fitObj.equation)}, R²={typeof fitObj.rSquared === 'number' ? fitObj.rSquared.toFixed(3) : fitObj.rSquared as string})
-                    </p>
-                  ) : null;
+                  const fc = actionResult.forecast && typeof actionResult.forecast === 'object'
+                    ? (actionResult.forecast as Record<string, unknown>) : null;
+                  if (fc?.masteryTrial != null) {
+                    const fit = fc.model === 'power_law' ? actionResult.powerLawFit
+                      : fc.model === 'exponential' ? actionResult.exponentialFit : null;
+                    const fitObj = fit && typeof fit === 'object' ? (fit as Record<string, unknown>) : null;
+                    return (
+                      <p className="text-xs text-neon-green">
+                        Forecast: 90% accuracy around trial #{String(fc.masteryTrial)}
+                        {fitObj ? ` (${String(fitObj.equation)}, R²=${typeof fitObj.rSquared === 'number' ? fitObj.rSquared.toFixed(3) : String(fitObj.rSquared)})` : ''}
+                      </p>
+                    );
+                  }
+                  if (fc?.note) return <p className="text-xs text-yellow-400/90">{String(fc.note)}</p>;
+                  return null;
                 })()}
               </div>
             )}

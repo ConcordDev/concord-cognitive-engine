@@ -74,7 +74,7 @@ export function ProgressAnalyticsPanel() {
             </div>
             <div className="bg-lattice-deep rounded-lg p-3 border border-white/5">
               <p className="text-xl font-bold text-neon-purple">{data.studySessions}</p>
-              <p className="text-[10px] text-gray-400">Study sessions</p>
+              <p className="text-[10px] text-gray-400">Journal sessions</p>
             </div>
           </div>
 
@@ -103,6 +103,7 @@ export function ProgressAnalyticsPanel() {
           {data.timeToMastery.length > 0 && (
             <div>
               <p className="text-xs text-gray-400 mb-1">Time-to-mastery per topic</p>
+              <p className="text-[10px] text-gray-500 mb-1">A card counts as mastered at 3+ repetitions with ease ≥ 2.3.</p>
               <div className="space-y-1">
                 {data.timeToMastery.map((m) => (
                   <div key={m.topic} className="bg-lattice-surface rounded p-2 border border-white/5">

@@ -143,11 +143,16 @@ export function useLensDTUs(options: LensDTUOptions) {
   });
 
   // ---- Domain-specific DTUs query ----
+  // The list endpoint's domain narrowing reads the `domain` param
+  // (dtu.list's domain filter). It used to send the lens name as
+  // `scope`, which dtu.list reads as the VISIBILITY scope
+  // ("local"/"global") — a lens name is not a scope level, so the
+  // filter was skipped and this list was never domain-narrowed.
   const domainQuery = useQuery<DomainListResponse>({
     queryKey: ['lensDTUs', 'domain', domain ?? lens],
     queryFn: async () => {
       const { data } = await api.get('/api/dtus', {
-        params: { scope: domain ?? lens, limit },
+        params: { domain: domain ?? lens, limit },
       });
       return data as DomainListResponse;
     },

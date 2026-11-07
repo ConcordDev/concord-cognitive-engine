@@ -11,7 +11,16 @@ export default function registerMlActions(registerLensAction) {
     const predictions = artifact.data?.predictions || [];
     const actuals = artifact.data?.actuals || artifact.data?.labels || [];
     if (predictions.length === 0 || actuals.length === 0) return { ok: true, result: { message: "Provide predictions and actuals arrays to evaluate." } };
-    const n = Math.min(predictions.length, actuals.length);
+    // S-ML-3 (F4 + the review's D1): NEVER silently truncate. A length
+    // mismatch is a refusal with BOTH counts named — evaluation errors on
+    // mismatch (the sklearn/Kaggle class norm); a silent zip manufactures
+    // a perfect score from truncated pairs. And every result carries
+    // counts: { predictions, actuals } beside its figures (D1), so a
+    // mismatch cannot hide even where a check is missed elsewhere.
+    if (predictions.length !== actuals.length) {
+      return { ok: false, error: `length_mismatch: predictions has ${predictions.length} values but actuals has ${actuals.length} — evaluation needs one prediction per actual, so nothing was scored` };
+    }
+    const n = predictions.length;
     const classes = [...new Set(actuals.slice(0, n))];
     const isClassification = classes.length <= 20 && classes.every(c => typeof c === "string" || Number.isInteger(c));
     if (isClassification) {
@@ -33,7 +42,7 @@ export default function registerMlActions(registerLensAction) {
         return { class: cls, precision, recall, f1, support: tp + fn };
       });
       const avgF1 = Math.round((perClass.reduce((s, c) => s + c.f1, 0) / perClass.length) * 10) / 10;
-      return { ok: true, result: { type: "classification", samples: n, accuracy, avgF1, perClass, confusionMatrix: matrix } };
+      return { ok: true, result: { type: "classification", samples: n, counts: { predictions: predictions.length, actuals: actuals.length }, accuracy, avgF1, perClass, confusionMatrix: matrix } };
     }
     const preds = predictions.slice(0, n).map(Number);
     const acts = actuals.slice(0, n).map(Number);
@@ -50,7 +59,7 @@ export default function registerMlActions(registerLensAction) {
     const ssTot = acts.reduce((s, a) => s + Math.pow(a - actMean, 2), 0);
     const ssRes = preds.reduce((s, p, i) => s + Math.pow(acts[i] - p, 2), 0);
     const r2 = ssTot > 0 ? Math.round((1 - ssRes / ssTot) * 1000) / 1000 : 0;
-    return { ok: true, result: { type: "regression", samples: n, mse: Math.round(mse * 1000) / 1000, rmse: Math.round(Math.sqrt(mse) * 1000) / 1000, mae: Math.round(mae * 1000) / 1000, r2 } };
+    return { ok: true, result: { type: "regression", samples: n, counts: { predictions: predictions.length, actuals: actuals.length }, mse: Math.round(mse * 1000) / 1000, rmse: Math.round(Math.sqrt(mse) * 1000) / 1000, mae: Math.round(mae * 1000) / 1000, r2 } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -208,7 +217,10 @@ export default function registerMlActions(registerLensAction) {
     const modelId = mlClean(params.modelId || params.id || "", 200);
     if (!modelId) return { ok: false, error: "modelId required" };
     try {
-      const m = await cachedFetchJson(`https://huggingface.co/api/models/${encodeURIComponent(modelId)}`, { ttlMs: 600000 });
+      // S-ML-5 (F9): the id goes in RAW — encodeURIComponent turned the
+      // org/name slash into %2F and the Hub answered HTTP 400, so the
+      // detail view never opened for any real (namespaced) model.
+      const m = await cachedFetchJson(`https://huggingface.co/api/models/${modelId}`, { ttlMs: 600000 });
       const card = {
         id: m.id || m.modelId,
         name: (m.id || m.modelId || "").split("/").pop(),
@@ -226,7 +238,11 @@ export default function registerMlActions(registerLensAction) {
       };
       return { ok: true, result: { card, source: "huggingface-hub" } };
     } catch (e) {
-      return { ok: false, error: `model not found or hub unreachable: ${e instanceof Error ? e.message : String(e)}` };
+      // Name the failure class honestly: a missing model is not an
+      // unreachable hub.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/404|not found/i.test(msg)) return { ok: false, error: `model not found: "${modelId}" is not a model on the Hugging Face Hub` };
+      return { ok: false, error: `huggingface hub unreachable: ${msg}` };
     }
   });
 
@@ -234,32 +250,68 @@ export default function registerMlActions(registerLensAction) {
   // Hosted inference goes through Hugging Face's Inference Providers router
   // (the old api-inference.huggingface.co host no longer resolves) and needs
   // the server's HF token. Without one, inference is reported unavailable.
+  //
+  // S-ML-1 (F1/F2): inference is ROUTED, not single-pathed. The old code
+  // pinned the hf-inference provider, so a model that provider won't serve
+  // failed identically on every surface. Now: (1) a pre-run servability
+  // check reads the model's inferenceProviderMapping from the Hub — a
+  // model no provider serves is refused BEFORE the run, in plain language,
+  // and a model that doesn't exist is named as such; (2) the run tries
+  // the serving providers in order (hf-inference first, as the historical
+  // default) until one serves; (3) every result carries a RECEIPT —
+  // servedBy names the provider that actually served, and attempts
+  // records every provider tried with its outcome, so a failure shows
+  // its work instead of surfacing one provider's jargon.
   async function hfInfer(ctx, modelId, input) {
     const doFetch = typeof ctx?.mlFetch === "function" ? ctx.mlFetch : fetch;
     const token = typeof ctx?.hfToken === "string" ? ctx.hfToken : await readHfToken();
-    if (!token) return { ok: false, error: "inference_unavailable: no Hugging Face token configured on this server (HF_TOKEN)" };
+    if (!token) return { ok: false, error: "inference_unavailable: hosted inference is not available on this server (no Hugging Face token configured)" };
     const started = Date.now();
+    // (1) Pre-run servability: which providers serve this model?
+    let providers = null;
     try {
+      const cr = await doFetch(`https://huggingface.co/api/models/${modelId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (cr.status === 404) {
+        return { ok: false, error: `model not found: "${modelId}" is not a model on the Hugging Face Hub — check the model id and try again` };
+      }
+      if (cr.ok) {
+        const card = await cr.json().catch(() => null);
+        const map = card?.inferenceProviderMapping;
+        if (map && typeof map === "object") providers = Object.keys(map);
+      }
+    } catch { /* metadata unreachable — fall through and try the default provider */ }
+    if (providers && providers.length === 0) {
+      return { ok: false, error: `not servable: no hosted-inference provider serves "${modelId}" right now — pick a model with hosted inference available, or run one of your own deployments` };
+    }
+    const order = providers
+      ? [...providers].sort((a, b) => (a === "hf-inference" ? 0 : 1) - (b === "hf-inference" ? 0 : 1))
+      : ["hf-inference"];
+    // (2) Routed attempts, (3) receipted outcome.
+    const attempts = [];
+    for (const provider of order) {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 20000);
-      let body;
       try {
-        const r = await doFetch(`https://router.huggingface.co/hf-inference/models/${modelId}`, {
+        const r = await doFetch(`https://router.huggingface.co/${provider}/models/${modelId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ inputs: input }),
           signal: ctrl.signal,
         });
-        body = await r.json().catch(() => null);
-        if (!r.ok) {
-          const msg = body?.error || `HTTP ${r.status}`;
-          return { ok: false, error: `inference failed: ${msg}` };
+        const body = await r.json().catch(() => null);
+        if (r.ok) {
+          attempts.push({ provider, ok: true });
+          return { ok: true, result: { modelId, input, output: body, latencyMs: Date.now() - started, servedBy: provider, attempts, source: "huggingface-inference-providers" } };
         }
+        attempts.push({ provider, ok: false, error: body?.error || `HTTP ${r.status}` });
+      } catch (e) {
+        attempts.push({ provider, ok: false, error: e instanceof Error ? e.message : String(e) });
       } finally { clearTimeout(t); }
-      return { ok: true, result: { modelId, input, output: body, latencyMs: Date.now() - started, source: "huggingface-inference-providers" } };
-    } catch (e) {
-      return { ok: false, error: `inference api unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+    const last = attempts[attempts.length - 1];
+    return { ok: false, error: `inference failed: no provider could serve "${modelId}" (tried ${order.join(", ")}). Last error: ${last?.error || "unknown"}`, attempts };
   }
 
   registerLensAction("ml", "playground-infer", async (ctx, _a, params = {}) => {
@@ -309,6 +361,20 @@ export default function registerMlActions(registerLensAction) {
     const list = mlList(m.experiments, userId);
     const exp = list.find(e => e.id === expId);
     if (!exp) return { ok: false, error: "experiment not found" };
+    // S-ML-3 (F6): numeric validation where the numbers are the product.
+    // Accuracy is a fraction in [0, 1] (the UI renders it ×100 — an
+    // entered 2 displayed as "Accuracy 200.0%"); losses are non-negative.
+    // Out-of-range values are refused with the range named, never stored.
+    const accRaw = Number(params.accuracy);
+    if (params.accuracy !== undefined && params.accuracy !== null && params.accuracy !== "" && (!Number.isFinite(accRaw) || accRaw < 0 || accRaw > 1)) {
+      return { ok: false, error: `accuracy out of range: ${params.accuracy} — accuracy is a fraction between 0 and 1 (0.87 means 87%)` };
+    }
+    for (const k of ["trainLoss", "valLoss"]) {
+      const v = Number(params[k]);
+      if (params[k] !== undefined && params[k] !== null && params[k] !== "" && (!Number.isFinite(v) || v < 0)) {
+        return { ok: false, error: `${k} out of range: ${params[k]} — a loss is a non-negative number` };
+      }
+    }
     const point = {
       epoch: mlNum(params.epoch, exp.metrics.length + 1),
       trainLoss: mlNum(params.trainLoss, 0),
@@ -483,15 +549,32 @@ export default function registerMlActions(registerLensAction) {
     if (!name) return { ok: false, error: "dataset name required" };
     const list = mlList(m.datasets, userId);
     const existing = list.find(d => d.name === name);
+    // S-ML-3 (F6): splits are validated declarations, not free numbers —
+    // each a fraction in [0, 1] and the three summing to 1 (±0.02). The
+    // pass entered 0.9/0.9/0.9 and the card silently kept 70/15/15: the
+    // entered values were neither validated nor (on re-register) stored.
+    const splitsGiven = params.train !== undefined || params.val !== undefined || params.test !== undefined;
     const train = mlNum(params.train, 0.7), val = mlNum(params.val, 0.15), test = mlNum(params.test, 0.15);
+    if (splitsGiven) {
+      const sum = train + val + test;
+      if ([train, val, test].some(v => v < 0 || v > 1) || Math.abs(sum - 1) > 0.02) {
+        return { ok: false, error: `splits must sum to 1: train ${train} + val ${val} + test ${test} = ${Math.round(sum * 100) / 100} — adjust them so the three shares make a whole dataset` };
+      }
+    }
     const version = existing ? (existing.versions.length + 1) : 1;
+    // A re-register that leaves samples/features blank keeps the previous
+    // version's values — blank must not silently overwrite real counts to 0.
+    const prev = existing?.versions?.[0];
     const versionRow = {
-      version, samples: mlNum(params.samples, 0), features: mlNum(params.features, 0),
+      version,
+      samples: params.samples === undefined || params.samples === "" ? (prev?.samples ?? 0) : mlNum(params.samples, 0),
+      features: params.features === undefined || params.features === "" ? (prev?.features ?? 0) : mlNum(params.features, 0),
       sizeMb: mlNum(params.sizeMb, 0), note: mlClean(params.note, 200), createdAt: new Date().toISOString(),
     };
     if (existing) {
       existing.versions.unshift(versionRow);
       existing.latestVersion = version;
+      if (splitsGiven) existing.splits = { train, val, test };
       saveMl();
       return { ok: true, result: { dataset: existing, newVersion: version } };
     }
@@ -508,6 +591,34 @@ export default function registerMlActions(registerLensAction) {
     const m = getMlState(); if (!m) return { ok: false, error: "STATE unavailable" };
     const list = mlList(m.datasets, mlActor(ctx));
     return { ok: true, result: { count: list.length, datasets: list } };
+  });
+
+  // S-ML-4 (F7): every object type carries a full lifecycle from the
+  // surface that creates it — datasets and deployments previously had
+  // NO delete at all (the pass's test objects were permanently
+  // resident). Owner-scoped like every other mutation here.
+  registerLensAction("ml", "dataset-delete", (ctx, _a, params = {}) => {
+    const m = getMlState(); if (!m) return { ok: false, error: "STATE unavailable" };
+    const userId = mlActor(ctx);
+    const list = mlList(m.datasets, userId);
+    const id = mlClean(params.datasetId || params.id, 80);
+    const idx = list.findIndex(d => d.id === id);
+    if (idx < 0) return { ok: false, error: "dataset not found" };
+    const [removed] = list.splice(idx, 1);
+    saveMl();
+    return { ok: true, result: { deleted: removed.id, name: removed.name } };
+  });
+
+  registerLensAction("ml", "deploy-delete", (ctx, _a, params = {}) => {
+    const m = getMlState(); if (!m) return { ok: false, error: "STATE unavailable" };
+    const userId = mlActor(ctx);
+    const list = mlList(m.deployments, userId);
+    const id = mlClean(params.deploymentId || params.id, 80);
+    const idx = list.findIndex(d => d.id === id);
+    if (idx < 0) return { ok: false, error: "deployment not found" };
+    const [removed] = list.splice(idx, 1);
+    saveMl();
+    return { ok: true, result: { deleted: removed.id, modelId: removed.modelId } };
   });
 
   // ─── Model comparison — leaderboard / side-by-side eval ──────────────
@@ -556,6 +667,10 @@ export default function registerMlActions(registerLensAction) {
         description: "Predict a categorical label from structured/tabular features.",
         steps: ["Profile dataset & handle nulls", "Encode categoricals + scale numerics", "Train/val/test split (70/15/15)", "Baseline: gradient-boosted trees", "Tune hyperparameters via CV", "Evaluate accuracy / F1 / confusion matrix"],
         recommendedModels: ["xgboost", "lightgbm", "random-forest"], estimatedTime: "10-30 min",
+        // S-ML-9: this template is WIRED — ml.automl-run executes its
+        // configuration run end-to-end. Every other template is
+        // guidance until wired, and says so (the F2 principle).
+        wired: true,
       },
       {
         id: "tabular-regression", task: "regression", title: "Tabular Regression",
@@ -583,7 +698,68 @@ export default function registerMlActions(registerLensAction) {
       },
     ];
     const filtered = task ? TEMPLATES.filter(t => t.task === task || t.id.includes(task)) : TEMPLATES;
-    return { ok: true, result: { count: filtered.length, task: task || "all", templates: filtered } };
+    return { ok: true, result: { count: filtered.length, task: task || "all", templates: filtered.map(t => ({ wired: false, ...t })) } };
+  });
+
+  // S-ML-9 (F16): the Tabular Classification template RUNS — a
+  // configuration run over one of the caller's registered datasets,
+  // built from the bench's working parts: the dataset's real registry
+  // profile (samples/features/splits), the hyperparameter suggestion
+  // (the bench verb's tree-branch formulas, mirrored here), and a
+  // tracked experiment created + completed carrying the configuration.
+  // Concord does not train in-browser, and the receipt says so: this
+  // run configures and tracks; the experiment is where a training
+  // script logs real metrics. No score is fabricated.
+  registerLensAction("ml", "automl-run", (ctx, _a, params = {}) => {
+    const m = getMlState(); if (!m) return { ok: false, error: "STATE unavailable" };
+    const userId = mlActor(ctx);
+    const templateId = mlClean(params.templateId || "tabular-classification", 60);
+    if (templateId !== "tabular-classification") {
+      return { ok: false, error: `template not wired: "${templateId}" is guidance only for now — Tabular Classification is the wired template` };
+    }
+    const dsId = mlClean(params.datasetId || params.id, 80);
+    const ds = mlList(m.datasets, userId).find(d => d.id === dsId);
+    if (!ds) return { ok: false, error: "dataset not found — register a dataset first, then run the template over it" };
+    const latest = ds.versions?.[0] || { samples: 0, features: 0 };
+    const samples = latest.samples || 0, features = latest.features || 0;
+    if (!(samples > 0) || !(features > 0)) {
+      return { ok: false, error: `dataset has no recorded shape: "${ds.name}" latest version records ${samples} samples · ${features} features — register a version with its samples and features counts first` };
+    }
+    // The bench's tree-branch suggestion formulas (hyperparameterSuggest).
+    const suggestion = {
+      nEstimators: samples > 10000 ? 500 : 200,
+      maxDepth: Math.min(20, Math.max(3, Math.round(Math.log2(samples)))),
+      minSamplesSplit: Math.max(2, Math.round(samples * 0.01)),
+      learningRate: 0.1,
+      subsample: 0.8,
+      crossValidation: samples < 1000 ? 10 : 5,
+    };
+    const ratio = Math.round(samples / features);
+    const exp = {
+      id: mlId("exp"),
+      name: `AutoML · Tabular Classification · ${ds.name}`,
+      modelId: "xgboost",
+      datasetId: ds.id,
+      status: "completed",
+      hyperparams: { learningRate: suggestion.learningRate, batchSize: 32, epochs: suggestion.nEstimators, optimizer: "xgboost" },
+      metrics: [],
+      tags: ["automl", "tabular-classification"],
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+    };
+    mlList(m.experiments, userId).unshift(exp);
+    saveMl();
+    return { ok: true, result: { run: {
+      templateId, datasetId: ds.id, datasetName: ds.name, experimentId: exp.id,
+      profile: { samples, features, splits: ds.splits, versions: ds.versions.length },
+      suggestion,
+      steps: [
+        { step: "Profile dataset", detail: `${samples.toLocaleString()} samples · ${features} features · splits ${Math.round(ds.splits.train * 100)}/${Math.round(ds.splits.val * 100)}/${Math.round(ds.splits.test * 100)} (from the registry record)`, done: true },
+        { step: "Suggest configuration", detail: `xgboost baseline — ${suggestion.nEstimators} trees, depth ${suggestion.maxDepth}, ${suggestion.crossValidation}-fold CV · ${ratio}:1 samples per feature`, done: true },
+        { step: "Track the run", detail: `Experiment ${exp.id} created and completed with this configuration`, done: true },
+      ],
+      note: "Configuration run: Concord does not train in-browser. Run your training with this configuration and log its real metrics into the tracked experiment — no score is claimed here.",
+    } } };
   });
 
   // ─── Deployments — a named, versioned handle on a hosted model ───────

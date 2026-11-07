@@ -22,19 +22,38 @@ before(() => { registerMeditationActions(register); });
 beforeEach(() => { globalThis._concordSTATE = {}; });
 
 const COURSE = "course-basics-7";
+// S-MED-1: completing a course day credits NOTHING itself — the session has to have been practised
+// (sessionLog) and the completion names that entry. These pins keep the Q22 guarantee (a repeat never
+// inflates the ledger) on the performed-session flow.
+const DAY_SESSION = { 1: "g-morn-7", 2: "g-focus-10" };
+function perform(day) {
+  const r = call("sessionLog", { trackId: DAY_SESSION[day], title: `Day ${day}`, minutes: 7 });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  return r.result.entry.id;
+}
 
-describe("meditation course-day completion (Q22)", () => {
-  it("first completion logs one session; repeats log none and say so", () => {
-    const first = call("completeCourseDay", { courseId: COURSE, day: 1 });
-    assert.equal(first.ok, true, JSON.stringify(first));
-    assert.equal(first.result.alreadyCompleted, false);
-    assert.equal(first.result.completedCount, 1);
+describe("meditation course-day completion (Q22 / S-MED-1)", () => {
+  it("an unperformed day is refused and writes nothing", () => {
+    const refused = call("completeCourseDay", { courseId: COURSE, day: 1 });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.error, "session_not_run");
+    assert.equal(call("history", {}).result.count, 0);
+  });
+
+  it("first completion of a performed day adds no session of its own; repeats say so", () => {
+    const entryId = perform(1);
     assert.equal(call("history", {}).result.count, 1);
     const before = call("streak", {}).result;
     assert.equal(before.totalSessions, 1);
 
+    const first = call("completeCourseDay", { courseId: COURSE, day: 1, sessionEntryId: entryId });
+    assert.equal(first.ok, true, JSON.stringify(first));
+    assert.equal(first.result.alreadyCompleted, false);
+    assert.equal(first.result.completedCount, 1);
+    assert.equal(call("history", {}).result.count, 1, "completing writes nothing to the ledger");
+
     for (let i = 0; i < 3; i++) {
-      const again = call("completeCourseDay", { courseId: COURSE, day: 1 });
+      const again = call("completeCourseDay", { courseId: COURSE, day: 1, sessionEntryId: entryId });
       assert.equal(again.ok, true);
       assert.equal(again.result.alreadyCompleted, true, "a repeat names itself");
       assert.equal(again.result.completedCount, 1, "course progress unchanged");
@@ -45,9 +64,10 @@ describe("meditation course-day completion (Q22)", () => {
     assert.equal(after.totalMinutes, before.totalMinutes, "minutes not inflated");
   });
 
-  it("a different day still logs, and course progress advances", () => {
-    call("completeCourseDay", { courseId: COURSE, day: 1 });
-    const second = call("completeCourseDay", { courseId: COURSE, day: 2 });
+  it("a different performed day completes too, and course progress advances", () => {
+    call("completeCourseDay", { courseId: COURSE, day: 1, sessionEntryId: perform(1) });
+    const second = call("completeCourseDay", { courseId: COURSE, day: 2, sessionEntryId: perform(2) });
+    assert.equal(second.ok, true, JSON.stringify(second));
     assert.equal(second.result.alreadyCompleted, false);
     assert.equal(second.result.completedCount, 2);
     assert.equal(call("history", {}).result.count, 2);

@@ -222,3 +222,103 @@ describe("metalearning study journal", () => {
     assert.equal(r.ok, false);
   });
 });
+
+describe("metalearning lifecycle deletes (S-META-4)", () => {
+  it("deletes a plan, a goal, an experiment, and a journal entry", () => {
+    const plan = call("planCreate", ctxA, {}, { title: "P", topics: [{ name: "t1" }] });
+    assert.equal(plan.ok, true);
+    const delPlan = call("planDelete", ctxA, {}, { planId: plan.result.plan.id });
+    assert.equal(delPlan.ok, true);
+    assert.equal(delPlan.result.remaining, 0);
+    assert.equal(call("planDelete", ctxA, {}, { planId: plan.result.plan.id }).ok, false);
+
+    const goal = call("goalCreate", ctxA, {}, { title: "G", metric: "completion", targetValue: 3 });
+    assert.equal(call("goalDelete", ctxA, {}, { goalId: goal.result.goal.id }).result.remaining, 0);
+
+    const exp = call("experimentCreate", ctxA, {}, { title: "E", strategyA: "a", strategyB: "b" });
+    assert.equal(call("experimentDelete", ctxA, {}, { experimentId: exp.result.experiment.id }).result.remaining, 0);
+
+    const entry = call("journalAdd", ctxA, {}, { topic: "x", reflection: "r", minutesStudied: 10 });
+    assert.equal(call("journalDelete", ctxA, {}, { entryId: entry.result.entry.id }).result.remaining, 0);
+  });
+});
+
+describe("metalearning computed goals (S-META-6/F9)", () => {
+  it("a journal_sessions goal computes from the journal and refuses a typed value", () => {
+    const g = call("goalCreate", ctxA, {}, { title: "Sessions", metric: "journal_sessions", targetValue: 2 });
+    assert.equal(g.ok, true);
+    assert.equal(g.result.goal.metricKind, "computed");
+    assert.equal(g.result.goal.currentValue, 0);
+
+    call("journalAdd", ctxA, {}, { topic: "a", reflection: "r1", minutesStudied: 15 });
+    call("journalAdd", ctxA, {}, { topic: "b", reflection: "r2", minutesStudied: 20 });
+
+    const list = call("goalList", ctxA, {}, {});
+    const shown = list.result.goals.find((x) => x.id === g.result.goal.id);
+    assert.equal(shown.currentValue, 2);
+    assert.equal(shown.status, "achieved");
+
+    const check = call("goalCheckIn", ctxA, {}, { goalId: g.result.goal.id, value: 99 });
+    assert.equal(check.ok, true);
+    assert.equal(check.result.computed, true);
+    assert.equal(check.result.goal.currentValue, 2);
+  });
+
+  it("a self-reported goal still takes typed check-ins and is labelled", () => {
+    const g = call("goalCreate", ctxA, {}, { title: "Free", metric: "pages read", targetValue: 10 });
+    assert.equal(g.result.goal.metricKind, "self_reported");
+    const check = call("goalCheckIn", ctxA, {}, { goalId: g.result.goal.id, value: 10 });
+    assert.equal(check.result.goal.status, "achieved");
+    const list = call("goalList", ctxA, {}, {});
+    assert.equal(list.result.goals.find((x) => x.id === g.result.goal.id).metricKind, "self_reported");
+  });
+
+  it("journal_minutes sums the log; cards_mastered counts mastered cards", () => {
+    call("journalAdd", ctxA, {}, { topic: "a", reflection: "r", minutesStudied: 30 });
+    const gm = call("goalCreate", ctxA, {}, { title: "Minutes", metric: "journal_minutes", targetValue: 60 });
+    assert.equal(call("goalList", ctxA, {}, {}).result.goals.find((x) => x.id === gm.result.goal.id).currentValue, 30);
+
+    const card = call("srsAddCard", ctxA, {}, { front: "f", back: "b", topic: "t" });
+    for (let i = 0; i < 3; i++) call("srsReview", ctxA, {}, { cardId: card.result.card.id, grade: 5 });
+    const gc = call("goalCreate", ctxA, {}, { title: "Mastered", metric: "cards_mastered", targetValue: 1 });
+    const shown = call("goalList", ctxA, {}, {}).result.goals.find((x) => x.id === gc.result.goal.id);
+    assert.equal(shown.currentValue, 1);
+    assert.equal(shown.status, "achieved");
+  });
+});
+
+describe("metalearning heuristic confidence (S-META-5)", () => {
+  it("the heuristic branch returns a confidence with its basis named", () => {
+    const r = call("strategySelection", ctxA, { data: { taskFeatures: { complexity: 0.5, dimensionality: 0.5, noise: 0.5, sampleSize: 0.5, nonlinearity: 0.5 } } }, {});
+    assert.equal(r.result.method, "heuristic");
+    assert.equal(typeof r.result.confidence, "number");
+    assert.ok(r.result.confidenceBasis.includes("margin"));
+  });
+});
+
+describe("metalearning export provider (S-META-7/F16)", () => {
+  it("exports the caller's own stores, and only the caller's", async () => {
+    const { collectLensExport, _clearLensExportProvidersForTests } = await import("../lib/lens-export.js");
+    call("planCreate", ctxA, {}, { title: "Exportable plan", topics: [{ name: "t" }] });
+    call("journalAdd", ctxA, {}, { topic: "exp", reflection: "r", minutesStudied: 5 });
+    const out = await collectLensExport({
+      runMacro: async () => ({ ok: true, artifacts: [] }),
+      domain: "metalearning",
+      ctx: ctxA,
+      limit: 100,
+    });
+    assert.equal(out.ok, true);
+    const titles = (out.artifacts || []).map((a) => a.title);
+    assert.ok(titles.includes("Exportable plan"));
+
+    const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
+    const outB = await collectLensExport({
+      runMacro: async () => ({ ok: true, artifacts: [] }),
+      domain: "metalearning",
+      ctx: ctxB,
+      limit: 100,
+    });
+    assert.ok(!(outB.artifacts || []).some((a) => a.title === "Exportable plan"));
+    _clearLensExportProvidersForTests();
+  });
+});

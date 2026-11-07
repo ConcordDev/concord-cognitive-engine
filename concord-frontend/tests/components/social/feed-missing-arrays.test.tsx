@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render as rtlRender, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 vi.mock('@/lib/api/client', () => ({
   api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
@@ -31,6 +32,11 @@ import { FeedView } from '@/components/social/feed/FeedView';
 import { PostCard } from '@/components/social/feed/PostCard';
 import { normalizePost } from '@/components/social/feed/normalizePost';
 import type { SocialPost } from '@/components/social/feed/types';
+
+// PostCard mounts BookmarkButton, which reads the QueryClient (feed build) — give every render one.
+const render = (ui: React.ReactElement) => rtlRender(
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>,
+);
 
 describe('social feed missing arrays', () => {
   it('normalizes a server post that omitted media, hashtags, comments, and reactions', () => {

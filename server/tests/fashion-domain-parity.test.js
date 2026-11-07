@@ -65,6 +65,30 @@ describe("fashion.item-* wardrobe", () => {
     assert.equal(call("item-delete", ctxA, { id: item.id }).ok, true);
     assert.equal(call("item-list", ctxA, {}).result.count, 0);
   });
+
+  it("a brand and cost correction keeps the wear history", () => {
+    const item = newItem(ctxA, { name: "Shoes", brand: "Old", cost: 80 });
+    call("item-wear", ctxA, { id: item.id });
+    const worn = call("item-list", ctxA, {}).result.items[0];
+    assert.equal(worn.timesWorn, 1);
+    assert.equal(worn.costPerWear, 80);
+    const logBefore = globalThis._concordSTATE.fashionLens.wearLog.get("user_a");
+    assert.equal(logBefore.length, 1);
+    const r = call("item-update", ctxA, { id: item.id, name: "Corrected shoes", brand: "New", cost: 40 });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.item.name, "Corrected shoes");
+    assert.equal(r.result.item.brand, "New");
+    assert.equal(r.result.item.cost, 40);
+    assert.equal(r.result.item.timesWorn, 1);
+    assert.equal(r.result.item.lastWorn, worn.lastWorn);
+    assert.equal(r.result.item.costPerWear, 40);
+    const logAfter = globalThis._concordSTATE.fashionLens.wearLog.get("user_a");
+    assert.equal(logAfter.length, 1);
+    assert.equal(logAfter[0].itemId, item.id);
+    assert.equal(call("item-update", ctxB, { id: item.id, cost: 1 }).ok, false);
+    assert.equal(call("item-list", ctxA, {}).result.items[0].cost, 40);
+    assert.equal(call("item-list", ctxA, {}).result.items[0].timesWorn, 1);
+  });
 });
 
 // Stylebook capability-map #20 — laundry/availability status.

@@ -138,21 +138,21 @@ describe("forum — categories / topics / posts (shared ctx)", () => {
   });
 
   it("topic-create: missing title rejected; an unknown categoryId is refused (never nulled), stores nothing", async () => {
-    const bad = await lensRun("forum", "topic-create", { params: { title: "" } }, ctx);
+    const bad = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "" } }, ctx);
     assert.equal(bad.result.ok, false);
     assert.ok(bad.result.error.includes("title required"));
 
     // wave 7 parent ids: a topic can no longer point at a category that does not exist (it used to be silently
     // nulled, which hid a typo and filed the topic under no category).
     const before = (await lensRun("forum", "topic-list", {}, ctx)).result.count;
-    const t = await lensRun("forum", "topic-create", { params: { title: "Orphan", categoryId: "does-not-exist" } }, ctx);
+    const t = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "Orphan", categoryId: "does-not-exist" } }, ctx);
     assert.equal(t.result.ok, false);
     assert.equal(t.result.error, "category not found");
     assert.equal((await lensRun("forum", "topic-list", {}, ctx)).result.count, before);
   });
 
   it("post-reply builds a nested tree; replyCount reflects all posts", async () => {
-    const t = await lensRun("forum", "topic-create", { params: { title: "Tree topic" } }, ctx);
+    const t = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "Tree topic" } }, ctx);
     const tid = t.result.topic.id;
     const root = await lensRun("forum", "post-reply", { params: { topicId: tid, body: "root reply" } }, ctx);
     const child = await lensRun("forum", "post-reply", { params: { topicId: tid, body: "child reply", parentId: root.result.post.id } }, ctx);
@@ -170,7 +170,7 @@ describe("forum — categories / topics / posts (shared ctx)", () => {
   });
 
   it("post-reply: missing body rejected; locked topic refuses replies", async () => {
-    const t = await lensRun("forum", "topic-create", { params: { title: "Lockme" } }, ctx);
+    const t = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "Lockme" } }, ctx);
     const tid = t.result.topic.id;
     const noBody = await lensRun("forum", "post-reply", { params: { topicId: tid, body: "" } }, ctx);
     assert.equal(noBody.result.ok, false);
@@ -184,8 +184,8 @@ describe("forum — categories / topics / posts (shared ctx)", () => {
   });
 
   it("topic-pin then topic-list sorts pinned first", async () => {
-    const a = await lensRun("forum", "topic-create", { params: { title: "Plain A" } }, ctx);
-    const b = await lensRun("forum", "topic-create", { params: { title: "Pinned B" } }, ctx);
+    const a = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "Plain A" } }, ctx);
+    const b = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "Pinned B" } }, ctx);
     await lensRun("forum", "topic-pin", { params: { id: b.result.topic.id } }, ctx);
     const list = await lensRun("forum", "topic-list", {}, ctx);
     const idxA = list.result.topics.findIndex((x) => x.id === a.result.topic.id);
@@ -195,7 +195,7 @@ describe("forum — categories / topics / posts (shared ctx)", () => {
   });
 
   it("topic-delete removes the topic and its posts", async () => {
-    const t = await lensRun("forum", "topic-create", { params: { title: "Doomed" } }, ctx);
+    const t = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "Doomed" } }, ctx);
     const tid = t.result.topic.id;
     await lensRun("forum", "post-reply", { params: { topicId: tid, body: "ephemeral" } }, ctx);
     const del = await lensRun("forum", "topic-delete", { params: { id: tid } }, ctx);
@@ -206,7 +206,7 @@ describe("forum — categories / topics / posts (shared ctx)", () => {
   });
 
   it("post-delete: missing id rejected, real post removed", async () => {
-    const t = await lensRun("forum", "topic-create", { params: { title: "PostDel" } }, ctx);
+    const t = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "PostDel" } }, ctx);
     const p = await lensRun("forum", "post-reply", { params: { topicId: t.result.topic.id, body: "kill me" } }, ctx);
     const bad = await lensRun("forum", "post-delete", { params: { id: "nope" } }, ctx);
     assert.equal(bad.result.ok, false);
@@ -223,13 +223,14 @@ describe("forum — voting / tags / reputation (shared ctx)", () => {
   before(async () => { ctx = await depthCtx("forum-vote"); });
 
   it("vote: up then clearing the vote returns score to 0", async () => {
-    const t = await lensRun("forum", "topic-create", { params: { title: "Votable", tags: ["poll"] } }, ctx);
+    const t = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "Votable", tags: ["poll"] } }, ctx);
     const id = t.result.topic.id;
-    const up = await lensRun("forum", "vote", { params: { targetType: "topic", targetId: id, direction: 1 } }, ctx);
+    const voter = await depthCtx("forum-vote-other");   // D5/F5: an author cannot vote on their own topic
+    const up = await lensRun("forum", "vote", { params: { targetType: "topic", targetId: id, direction: 1 } }, voter);
     assert.equal(up.result.score, 1);
-    const down = await lensRun("forum", "vote", { params: { targetType: "topic", targetId: id, direction: -1 } }, ctx);
+    const down = await lensRun("forum", "vote", { params: { targetType: "topic", targetId: id, direction: -1 } }, voter);
     assert.equal(down.result.score, -1);   // same user flips their vote
-    const clear = await lensRun("forum", "vote", { params: { targetType: "topic", targetId: id, direction: 0 } }, ctx);
+    const clear = await lensRun("forum", "vote", { params: { targetType: "topic", targetId: id, direction: 0 } }, voter);
     assert.equal(clear.result.score, 0);
   });
 
@@ -240,8 +241,8 @@ describe("forum — voting / tags / reputation (shared ctx)", () => {
   });
 
   it("tag-list aggregates tag counts across topics", async () => {
-    await lensRun("forum", "topic-create", { params: { title: "T1", tags: ["alpha", "beta"] } }, ctx);
-    await lensRun("forum", "topic-create", { params: { title: "T2", tags: ["alpha"] } }, ctx);
+    await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "T1", tags: ["alpha", "beta"] } }, ctx);
+    await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "T2", tags: ["alpha"] } }, ctx);
     const list = await lensRun("forum", "tag-list", {}, ctx);
     const alpha = list.result.tags.find((x) => x.tag === "alpha");
     assert.ok(alpha.count >= 2);
@@ -359,7 +360,7 @@ describe("forum — subforums (shared ctx)", () => {
   it("subforum-list reports topicCount per subforum", async () => {
     const sf = await lensRun("forum", "subforum-create", { params: { name: "Gaming Den" } }, ctx);
     const sfid = sf.result.subforum.id;
-    await lensRun("forum", "topic-create", { params: { title: "GG", subforumId: sfid } }, ctx);
+    await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "GG", subforumId: sfid } }, ctx);
     const list = await lensRun("forum", "subforum-list", {}, ctx);
     const found = list.result.subforums.find((x) => x.id === sfid);
     assert.equal(found.topicCount, 1);
@@ -378,7 +379,7 @@ describe("forum — subforums (shared ctx)", () => {
   it("subforum-add-mod: missing name rejected; subforum-delete unlinks topics", async () => {
     const sf = await lensRun("forum", "subforum-create", { params: { name: "Delete Me Sf" } }, ctx);
     const id = sf.result.subforum.id;
-    const t = await lensRun("forum", "topic-create", { params: { title: "linked", subforumId: id } }, ctx);
+    const t = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "linked", subforumId: id } }, ctx);
     const badMod = await lensRun("forum", "subforum-add-mod", { params: { id, moderator: "" } }, ctx);
     assert.equal(badMod.result.ok, false);
     const del = await lensRun("forum", "subforum-delete", { params: { id } }, ctx);
@@ -396,7 +397,7 @@ describe("forum — subscriptions + notifications (shared ctx)", () => {
   before(async () => { ctx = await depthCtx("forum-subs"); });
 
   it("thread-subscribe toggles, generates a reply notification, then unsubscribe", async () => {
-    const t = await lensRun("forum", "topic-create", { params: { title: "Subbed" } }, ctx);
+    const t = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "Subbed" } }, ctx);
     const tid = t.result.topic.id;
     const sub = await lensRun("forum", "thread-subscribe", { params: { topicId: tid } }, ctx);
     assert.equal(sub.result.subscribed, true);
@@ -428,7 +429,7 @@ describe("forum — subscriptions + notifications (shared ctx)", () => {
   });
 
   it("notification-read with no id marks all read", async () => {
-    const t = await lensRun("forum", "topic-create", { params: { title: "MassRead" } }, ctx);
+    const t = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "MassRead" } }, ctx);
     await lensRun("forum", "thread-subscribe", { params: { topicId: t.result.topic.id } }, ctx);
     await lensRun("forum", "post-reply", { params: { topicId: t.result.topic.id, body: "x" } }, ctx);
     const all = await lensRun("forum", "notification-read", {}, ctx);
@@ -450,7 +451,7 @@ describe("forum — awards / saves / history / profile (shared ctx)", () => {
   });
 
   it("award-give attaches an award; unknown kind rejected", async () => {
-    const t = await lensRun("forum", "topic-create", { params: { title: "Awardable", author: "Me" } }, ctx);
+    const t = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "Awardable", author: "Me" } }, ctx);
     const id = t.result.topic.id;
     const give = await lensRun("forum", "award-give", { params: { targetType: "topic", targetId: id, kind: "gold" } }, ctx);
     assert.equal(give.result.awards.length, 1);
@@ -482,7 +483,7 @@ describe("forum — awards / saves / history / profile (shared ctx)", () => {
   });
 
   it("post-history lists topics + replies authored, newest first", async () => {
-    const t = await lensRun("forum", "topic-create", { params: { title: "HistTopic", author: "Me" } }, ctx);
+    const t = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "HistTopic", author: "Me" } }, ctx);
     await lensRun("forum", "post-reply", { params: { topicId: t.result.topic.id, body: "a reply", author: "Me" } }, ctx);
     const h = await lensRun("forum", "post-history", { params: { author: "Me" } }, ctx);
     assert.ok(h.result.count >= 2);
@@ -508,8 +509,8 @@ describe("forum — trending (shared ctx)", () => {
   before(async () => { ctx = await depthCtx("forum-trending"); });
 
   it("trending: a high-score topic outranks a zero-score one of the same age", async () => {
-    const hi = await lensRun("forum", "topic-create", { params: { title: "Hot one", tags: ["t"] } }, ctx);
-    const lo = await lensRun("forum", "topic-create", { params: { title: "Cold one", tags: ["t"] } }, ctx);
+    const hi = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "Hot one", tags: ["t"] } }, ctx);
+    const lo = await lensRun("forum", "topic-create", { params: { body: "Discussion body", title: "Cold one", tags: ["t"] } }, ctx);
     // give the hot topic upvotes (single voter caps at +1 here, but score > 0 lifts the hot order term)
     await lensRun("forum", "vote", { params: { targetType: "topic", targetId: hi.result.topic.id, direction: 1 } }, ctx);
     const tr = await lensRun("forum", "trending", { params: { personalize: false } }, ctx);
@@ -527,7 +528,7 @@ describe("forum — trending (shared ctx)", () => {
       params: { name: "Sealed", visibility: "private" },
     }, owner);
     const hidden = await lensRun("forum", "topic-create", {
-      params: { title: "Members only", categoryId: cat.result.category.id },
+      params: { body: "Discussion body", title: "Members only", categoryId: cat.result.category.id },
     }, owner);
     const tr = await lensRun("forum", "trending", {}, outsider);
     assert.equal(tr.ok, true);

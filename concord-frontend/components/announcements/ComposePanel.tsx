@@ -5,8 +5,12 @@
  *
  * Surfaces the one macro (`announcements.post`, mirrored 1:1 by
  * `POST /api/announcements`) that had NO frontend caller anywhere in the
- * app before this rebuild — admin-only, so it only renders when
- * `useAuth()` reports `role === 'admin'`. POSTs directly to the REST route
+ * app before this rebuild — publishing is admin-only AT THE SERVER (the
+ * gate is enforced on the route and in the macro handler); the panel is
+ * offered to every account, with the admin-only nature of publishing
+ * stated at its top, before any writing is invited (F3's disclosure
+ * form — the refusal at submit stays as the backstop, never the first
+ * notice). POSTs directly to the REST route
  * (same contract the macro wraps: `{ kind, title, body, expiresAt?,
  * dtuAttachmentId? }`), and surfaces the backend's REAL rejection reasons
  * (`admin_only`, `invalid_kind`, `missing_inputs`, `empty`) instead of a
@@ -115,6 +119,11 @@ export function ComposePanel({ onClose, onPublished }: ComposePanelProps) {
         </div>
 
         <div className="space-y-3">
+          <p className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-zinc-400">
+            Publishing is admin-only. Only admin accounts can publish announcements — a member’s
+            publish is refused at submit, with the draft kept here.
+          </p>
+
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Announcement kind">
             {VALID_KINDS.map((k) => {
               const meta = KIND_META[k];

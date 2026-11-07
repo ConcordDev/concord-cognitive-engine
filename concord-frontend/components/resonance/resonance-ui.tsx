@@ -50,6 +50,14 @@ export interface BoundaryScan {
     topResonance: number;
     avgResonance: number;
     topPairs: ResonancePair[];
+    pairsOffset?: number;
+    pairsLimit?: number;
+    pairsPage?: ResonancePair[];
+    scoreDistribution?: {
+      buckets: { min: number; max: number; count: number }[];
+      p50: number;
+      p90: number;
+    };
   };
 }
 
@@ -769,6 +777,11 @@ export function PairCard({ pair, rank, thresholds }: { pair: ResonancePair; rank
               <div className="flex gap-4 text-[11px]">
                 <span className="text-gray-400">
                   Invariant overlap: <span className="text-white font-mono">{(pair.invOverlap * 100).toFixed(1)}%</span>
+                </span>
+                <span className="text-gray-400">
+                  Members: <span className="text-white font-mono">{pair.a.id}</span>
+                  {' ⇔ '}
+                  <span className="text-white font-mono">{pair.b.id}</span>
                 </span>
                 <span className="text-gray-400">
                   Semantic distance: <span className="text-white font-mono">{((1 - pair.tokOverlap) * 100).toFixed(1)}%</span>

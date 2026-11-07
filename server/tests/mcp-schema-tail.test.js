@@ -126,7 +126,8 @@ describe("56-schema tail", () => {
   });
 
   // embedding_search joined the real-auth set in #1785 (FIX-ALL Q34), moving one tool anonymous -> real (99/25 -> 100/24).
-  it("boundaries: tier census (100 real / 3 local / 24 anonymous of 127)", () => {
+  // walk_guide joined anonymous-by-design with the Walk → Registry Merge Pilot (2026-11-06), moving the census 100/24 of 127 -> 100/25 of 128; CONCORD_WALK_OVERLAY=off unregisters it (back to 127).
+  it("boundaries: tier census (100 real / 3 local / 25 anonymous of 128)", () => {
     const start = SERVER_SRC.indexOf("const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set([");
     assert.ok(start >= 0);
     const block = SERVER_SRC.slice(start, SERVER_SRC.indexOf("]);", start));
@@ -135,8 +136,8 @@ describe("56-schema tail", () => {
     for (const t of MCP_TOOLS) {
       counts[realSet.has(t.name) ? "real" : MCP_TOOLS_LOCAL_OR_REAL_AUTH.has(t.name) ? "local" : "anonymous"]++;
     }
-    assert.equal(MCP_TOOLS.length, 127);
-    assert.deepEqual(counts, { real: 100, local: 3, anonymous: 24 });
+    assert.equal(MCP_TOOLS.length, 128);
+    assert.deepEqual(counts, { real: 100, local: 3, anonymous: 25 });
   });
 
   it("boundaries: validation still fires where it did before the tail pass", async () => {

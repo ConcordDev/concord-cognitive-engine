@@ -34,6 +34,7 @@ interface GridBlock {
 }
 interface PublicChannel {
   id: string; title: string; description: string; ownerId: string;
+  ownerName?: string | null;
   blockCount: number; collaboratorCount: number; publishedAt: string;
 }
 interface PublicDetailBlock {
@@ -90,7 +91,12 @@ export function PhilosophyCuration() {
     const r = await lensRun('philosophy', 'channel-list', {});
     if (r.data.ok) setChannels((r.data.result as { channels: ChannelMeta[] })?.channels || []);
   }, []);
-  useEffect(() => { void loadChannels(); }, [loadChannels]);
+  // Refetch on every tab selection, not only at mount: the sub-tab
+  // gates read this list, and a channel created in the Channels
+  // section (a sibling surface) after this component mounted used to
+  // leave Image Grid / Collaborators / Embeds gated on a stale
+  // snapshot until a full reload (F6).
+  useEffect(() => { void loadChannels(); }, [loadChannels, tab]);
 
   // Deep-link from a search result into the Image Grid tab, focused on
   // its owning channel. `token` forces the target effect to re-fire even
@@ -148,6 +154,8 @@ function ImageGridTab({ channels, onMutate, focus }: { channels: ChannelMeta[]; 
   const [imgUrl, setImgUrl] = useState('');
   const [caption, setCaption] = useState('');
   const [busy, setBusy] = useState(false);
+  const [imgError, setImgError] = useState<string | null>(null);
+  const [confirmTileId, setConfirmTileId] = useState<string | null>(null);
 
   const load = useCallback(async (id: string) => {
     if (!id) { setBlocks([]); return; }
@@ -176,13 +184,18 @@ function ImageGridTab({ channels, onMutate, focus }: { channels: ChannelMeta[]; 
     });
     setBusy(false);
     if (r.data.ok) {
+      setImgError(null);
       setImgUrl(''); setCaption('');
       await load(channelId);
       onMutate();
+    } else {
+      // A refusal (e.g. a non-URL image URL) speaks — it used to vanish.
+      setImgError(r.data.error || 'Image could not be added.');
     }
   }
   async function del(id: string) {
     await lensRun('philosophy', 'block-delete', { id });
+    setConfirmTileId(null);
     await load(channelId);
     onMutate();
   }
@@ -220,6 +233,7 @@ function ImageGridTab({ channels, onMutate, focus }: { channels: ChannelMeta[]; 
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}Add image
         </button>
       </div>
+      {imgError && <p className="text-[11px] text-rose-300" role="alert">{imgError}</p>}
 
       {loading ? (
         <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
@@ -239,11 +253,16 @@ function ImageGridTab({ channels, onMutate, focus }: { channels: ChannelMeta[]; 
               <div className="p-2">
                 <div className="flex items-start gap-1">
                   <p className="flex-1 text-[11px] text-zinc-300 line-clamp-2">{b.content}</p>
-                  {b.canDelete !== false && (
-                    <button aria-label="Delete" onClick={() => del(b.id)} className="opacity-0 group-hover:opacity-100 text-rose-400 shrink-0">
+                  {b.canDelete !== false && (confirmTileId === b.id ? (
+                    <span className="flex items-center gap-1 shrink-0">
+                      <button aria-label="Confirm delete" onClick={() => del(b.id)} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-600 text-white font-semibold">Delete?</button>
+                      <button aria-label="Cancel delete" onClick={() => setConfirmTileId(null)} className="px-1.5 py-0.5 text-[10px] rounded bg-zinc-800 text-zinc-300">Keep</button>
+                    </span>
+                  ) : (
+                    <button aria-label="Delete" onClick={() => setConfirmTileId(b.id)} className="opacity-0 group-hover:opacity-100 text-rose-400 shrink-0">
                       <Trash2 className="w-3 h-3" />
                     </button>
-                  )}
+                  ))}
                 </div>
                 {b.channelCount > 1 && (
                   <p className="text-[9px] text-amber-400 mt-1">in {b.channelCount} channels</p>
@@ -399,7 +418,7 @@ function DiscoverTab() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<PublicChannel[]>([]);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState<{ channel: ChannelMeta; ownerId: string; blocks: PublicDetailBlock[] } | null>(null);
+  const [open, setOpen] = useState<{ channel: ChannelMeta; ownerId: string; ownerName?: string | null; blocks: PublicDetailBlock[] } | null>(null);
 
   const search = useCallback(async (q: string) => {
     setLoading(true);
@@ -412,8 +431,8 @@ function DiscoverTab() {
   async function openChannel(id: string) {
     const r = await lensRun('philosophy', 'public-channel-detail', { id });
     if (r.data.ok) {
-      const res = r.data.result as { channel: ChannelMeta; ownerId: string; blocks: PublicDetailBlock[] };
-      setOpen({ channel: res.channel, ownerId: res.ownerId, blocks: res.blocks });
+      const res = r.data.result as { channel: ChannelMeta; ownerId: string; ownerName?: string | null; blocks: PublicDetailBlock[] };
+      setOpen({ channel: res.channel, ownerId: res.ownerId, ownerName: res.ownerName, blocks: res.blocks });
     }
   }
 
@@ -451,7 +470,7 @@ function DiscoverTab() {
                 <span>{c.blockCount} blocks</span>
                 <span>·</span>
                 <span>{c.collaboratorCount} collaborators</span>
-                <span className="ml-auto text-zinc-600">by {c.ownerId}</span>
+                <span className="ml-auto text-zinc-600">by {c.ownerName || 'a Concord member'}</span>
               </div>
             </button>
           ))}
@@ -463,7 +482,7 @@ function DiscoverTab() {
           <div className="flex items-center gap-2 mb-2">
             <Globe className="w-3.5 h-3.5 text-amber-400" />
             <h4 className="text-sm font-bold text-zinc-100">{open.channel.title}</h4>
-            <span className="text-[10px] text-zinc-400">by {open.ownerId}</span>
+            <span className="text-[10px] text-zinc-400">by {open.ownerName || 'a Concord member'}</span>
             <button aria-label="Open" onClick={() => setOpen(null)} className="ml-auto text-zinc-400 hover:text-zinc-200">
               <X className="w-3.5 h-3.5" />
             </button>

@@ -7,10 +7,11 @@
  * health records, reminders and expenses on the server).
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pencil, Trash2, Loader2, Syringe, Pill, Stethoscope, Scale, BellRing } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { latestWeighInLabel, profileWeightLabel } from './pet-card-labels';
 
 interface Detail {
   pet: {
@@ -21,26 +22,30 @@ interface Detail {
   counts: { vaccines: number; medications: number; vetVisits: number; weightLogs: number };
   overdueVaccines: number;
   openReminders: number;
+  latestWeighIn?: { weightKg: number; date?: string | null } | null;
 }
 
 const input = 'bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 focus:border-teal-500/60 focus:outline-none';
 
-export function PetProfileCard({ petId, onChange }: { petId: string; onChange: () => Promise<void> | void }) {
+export function PetProfileCard({ petId, recordTick = 0, onChange }: { petId: string; recordTick?: number; onChange: () => Promise<void> | void }) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ name: '', breed: '', weightKg: '', birthdate: '', microchipId: '', neutered: false });
+  const requestId = useRef(0);
 
   const load = useCallback(async () => {
+    const ticket = ++requestId.current;
     const r = await lensRun<Detail>('pets', 'pet-detail', { id: petId });
+    if (ticket !== requestId.current) return;
     if (!r.data.ok || !r.data.result) { setError(r.data.error || 'Could not load this pet.'); return; }
     setError(null);
     setDetail(r.data.result);
   }, [petId]);
 
-  useEffect(() => { void Promise.resolve().then(load); }, [load]);
+  useEffect(() => { void Promise.resolve().then(load); }, [load, recordTick]);
 
   const startEdit = () => {
     if (!detail) return;
@@ -82,6 +87,8 @@ export function PetProfileCard({ petId, onChange }: { petId: string; onChange: (
 
   const p = detail.pet;
   const age = p.age ? (p.age.years > 0 ? `${p.age.years}y ${p.age.months}m` : `${p.age.months} months`) : null;
+  const profileWeight = profileWeightLabel(p.weightKg);
+  const weighIn = latestWeighInLabel(detail.latestWeighIn);
   const chips: Array<{ icon: typeof Syringe; label: string; alert?: boolean }> = [
     { icon: Syringe, label: `${detail.counts.vaccines} vaccines${detail.overdueVaccines ? ` · ${detail.overdueVaccines} overdue` : ''}`, alert: detail.overdueVaccines > 0 },
     { icon: Pill, label: `${detail.counts.medications} active meds` },
@@ -96,8 +103,9 @@ export function PetProfileCard({ petId, onChange }: { petId: string; onChange: (
         <div className="min-w-0">
           <p className="text-sm font-semibold text-zinc-100">{p.name}</p>
           <p className="text-[11px] capitalize text-zinc-400">
-            {[p.species, p.breed, age, p.weightKg ? `${p.weightKg} kg` : null, p.neutered ? 'neutered' : null].filter(Boolean).join(' · ')}
+            {[p.species, p.breed, age, profileWeight, p.neutered ? 'neutered' : null].filter(Boolean).join(' · ')}
           </p>
+          <p className="text-[11px] text-zinc-500">{weighIn}</p>
           {p.microchipId && <p className="font-mono text-[10px] text-zinc-500">Chip {p.microchipId}</p>}
         </div>
         <div className="flex items-center gap-2">

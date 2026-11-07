@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { motion } from 'framer-motion';
-import { Notebook, RotateCcw, Trash2, Share2, Loader2 } from 'lucide-react';
+import { Notebook, RotateCcw, Trash2, Share2, Loader2, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 export interface SavedComputation {
@@ -42,6 +42,9 @@ export const ComputationNotebook = forwardRef<NotebookHandle, Props>(function Co
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftLabel, setDraftLabel] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -75,11 +78,27 @@ export const ComputationNotebook = forwardRef<NotebookHandle, Props>(function Co
     } else setNotice(r.data?.error || 'Reload failed');
   }, [onReload]);
 
-  const remove = useCallback(async (id: string) => {
-    const r = await lensRun('root', 'deleteComputation', { id });
-    if (r.data?.ok) { setItems((prev) => prev.filter((c) => c.id !== id)); }
+  // Two-step delete (F10, the fleet pattern): the first click arms the
+  // button with the entry's name; only the armed click deletes.
+  const remove = useCallback(async (c: SavedComputation) => {
+    if (confirmId !== c.id) { setConfirmId(c.id); setNotice(''); return; }
+    setConfirmId(null); setNotice('');
+    const r = await lensRun('root', 'deleteComputation', { id: c.id });
+    if (r.data?.ok) { setItems((prev) => prev.filter((x) => x.id !== c.id)); }
     else setNotice(r.data?.error || 'Delete failed');
-  }, []);
+  }, [confirmId]);
+
+  const rename = useCallback(async (c: SavedComputation) => {
+    const label = draftLabel.trim();
+    if (!label) { setNotice('A label cannot be empty'); return; }
+    setNotice('');
+    const r = await lensRun('root', 'renameComputation', { id: c.id, label });
+    if (r.data?.ok) {
+      setItems((prev) => prev.map((x) => (x.id === c.id ? { ...x, label } : x)));
+      setEditingId(null);
+      setNotice('Renamed');
+    } else setNotice(r.data?.error || 'Rename failed');
+  }, [draftLabel]);
 
   const share = useCallback(async (c: SavedComputation) => {
     setNotice('');
@@ -147,8 +166,33 @@ export const ComputationNotebook = forwardRef<NotebookHandle, Props>(function Co
             <motion.li key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-3 py-2 border border-gray-800">
               <span className="text-[10px] uppercase tracking-wide text-violet-400 w-16 shrink-0">{c.kind}</span>
-              <span className="text-xs text-gray-300 font-mono truncate flex-1">{c.label}</span>
+              {editingId === c.id ? (
+                <span className="flex flex-1 items-center gap-1.5">
+                  <input
+                    className="min-w-0 flex-1 rounded bg-gray-900 border border-gray-700 px-2 py-1 text-xs text-gray-100 focus:outline-none focus:border-violet-500"
+                    value={draftLabel}
+                    onChange={(e) => setDraftLabel(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') void rename(c); if (e.key === 'Escape') setEditingId(null); }}
+                    aria-label="Entry label"
+                  />
+                  <button onClick={() => void rename(c)} className="p-1 text-emerald-400 hover:text-emerald-300" aria-label="Save label">
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => setEditingId(null)} className="p-1 text-gray-400 hover:text-gray-200" aria-label="Cancel rename">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              ) : (
+                <span className="flex-1 min-w-0">
+                  <span className="block text-xs text-gray-300 font-mono truncate">{c.label}</span>
+                  <span className="block text-[10px] text-gray-500">{new Date(c.createdAt).toLocaleString()}</span>
+                </span>
+              )}
               {c.resultGlyph && <span className="text-sm text-violet-300 shrink-0">{c.resultGlyph}</span>}
+              <button onClick={() => { setEditingId(c.id); setDraftLabel(c.label); setConfirmId(null); }} title="Rename entry"
+                className="p-1 text-gray-400 hover:text-violet-400" aria-label="Rename computation">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
               <button onClick={() => void reload(c.id)} title="Reload into playground"
                 className="p-1 text-gray-400 hover:text-violet-400" aria-label="Reload computation">
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -157,10 +201,18 @@ export const ComputationNotebook = forwardRef<NotebookHandle, Props>(function Co
                 className="p-1 text-gray-400 hover:text-emerald-400" aria-label="Share computation">
                 <Share2 className="w-3.5 h-3.5" />
               </button>
-              <button onClick={() => void remove(c.id)} title="Delete"
-                className="p-1 text-gray-400 hover:text-red-400" aria-label="Delete computation">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {confirmId === c.id ? (
+                <button onClick={() => void remove(c)}
+                  className="px-2 py-1 text-[11px] rounded bg-red-900/40 border border-red-800 text-red-200 shrink-0"
+                  aria-label="Delete computation">
+                  Delete “{c.label}”?
+                </button>
+              ) : (
+                <button onClick={() => void remove(c)} title="Delete"
+                  className="p-1 text-gray-400 hover:text-red-400" aria-label="Delete computation">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </motion.li>
           ))}
         </ul>

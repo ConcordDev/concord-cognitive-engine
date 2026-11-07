@@ -53,6 +53,9 @@ beforeEach(() => { globalThis._concordSTATE = { db: testDb() }; });
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };
 const ctxB = { actor: { userId: "user_b" }, userId: "user_b" };
 
+// forestry's stand-reference refusal wording (build: names the reference and the remedy).
+const noStand = (ref) => `no stand matches "${ref}" — use the stand's name or the ID shown in the stand list`;
+
 function refuse(domain, name, ctx, params, error, countFn) {
   const before = countFn();
   const r = call(domain, name, ctx, params);
@@ -64,14 +67,14 @@ function refuse(domain, name, ctx, params, error, countFn) {
 
 describe("wave 7 parent ids", () => {
   it("forum topic-create refuses an unknown category and subforum", () => {
-    refuse("forum", "topic-create", ctxA, { title: "Hello", categoryId: "cat_missing" }, "category not found",
+    refuse("forum", "topic-create", ctxA, { title: "Hello", categoryId: "cat_missing", body: "Something to discuss." }, "category not found",
       () => call("forum", "topic-list", ctxA, {}).result.count);
-    refuse("forum", "topic-create", ctxA, { title: "Hello", subforumId: "sf_missing" }, "subforum not found",
+    refuse("forum", "topic-create", ctxA, { title: "Hello", subforumId: "sf_missing", body: "Something to discuss." }, "subforum not found",
       () => call("forum", "topic-list", ctxA, {}).result.count);
     const cat = call("forum", "category-create", ctxA, { name: "Sealed", visibility: "private" }).result.category;
-    refuse("forum", "topic-create", ctxB, { title: "Sneak", categoryId: cat.id }, "category not found",
+    refuse("forum", "topic-create", ctxB, { title: "Sneak", categoryId: cat.id, body: "Something to discuss." }, "category not found",
       () => call("forum", "topic-list", ctxB, {}).result.count);
-    const open = call("forum", "topic-create", ctxA, { title: "Loose" });
+    const open = call("forum", "topic-create", ctxA, { title: "Loose", body: "Something to discuss." });
     assert.equal(open.ok, true);
     assert.equal(open.result.topic.categoryId, null);
     assert.equal(open.result.topic.subforumId, null);
@@ -153,9 +156,9 @@ describe("wave 7 parent ids", () => {
     const replants = () => call("forestry", "replant-list", ctxA, {}).result.count;
     const credits = () => call("forestry", "carbon-credit-list", ctxA, {}).result.count;
     const stand = call("forestry", "stand-add", ctxB, { name: "North" }).result.stand;
-    refuse("forestry", "replant-project-create", ctxA, { name: "Plant", acres: 2, standId: "std_missing" }, "stand not found", replants);
-    refuse("forestry", "replant-project-create", ctxA, { name: "Plant", acres: 2, standId: stand.id }, "stand not found", replants);
-    refuse("forestry", "carbon-credit-issue", ctxA, { projectName: "Sink", tonsCO2: 4, standId: stand.id }, "stand not found", credits);
+    refuse("forestry", "replant-project-create", ctxA, { name: "Plant", acres: 2, standId: "std_missing" }, noStand("std_missing"), replants);
+    refuse("forestry", "replant-project-create", ctxA, { name: "Plant", acres: 2, standId: stand.id }, noStand(stand.id), replants);
+    refuse("forestry", "carbon-credit-issue", ctxA, { projectName: "Sink", tonsCO2: 4, standId: stand.id }, noStand(stand.id), credits);
     const ok = call("forestry", "replant-project-create", ctxA, { name: "Plant", acres: 2 });
     assert.equal(ok.ok, true);
     assert.equal(ok.result.project.standId, null);

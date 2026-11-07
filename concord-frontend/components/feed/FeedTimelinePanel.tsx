@@ -9,7 +9,6 @@ import { useFeedPosts, type FeedTab } from '@/components/feed/useFeedPosts';
 import { Virtuoso } from 'react-virtuoso';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
-import { loadFeedTopics } from '@/lib/dtu/list-pages';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart,
@@ -59,7 +58,8 @@ import { PresenceIndicator } from '@/components/social/PresenceIndicator';
 import { SocialCommerceTag } from '@/components/social/SocialCommerceTag';
 import { CrossPostExternal } from '@/components/social/CrossPostExternal';
 import { Discovery } from '@/components/social/Discovery';
-import { PostScheduler } from '@/components/social/PostScheduler';
+import { FeedSchedulerPanel } from '@/components/feed/FeedSchedulerPanel';
+import { FeedSearchResults } from '@/components/feed/FeedSearchResults';
 import { TrendingTopics } from '@/components/social/TrendingTopics';
 import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
 import { FeedBanner } from '@/components/lens/FeedBanner';
@@ -521,26 +521,29 @@ export function FeedTimelinePanel({
     error: error3,
     refetch: refetch3,
   } = useQuery<TrendingTopic[]>({
-    queryKey: ['trending-topics'],
+    // Own cache key: the shared TrendingTopics component reads the same
+    // endpoint under 'trending-topics' but caches the raw envelope topics
+    // ({tag, count}) — one cache entry serving two shapes meant mount
+    // order decided which panel saw which, and the two Trending panels
+    // contradicted each other in one settled view (R4 Feed F6). This
+    // panel maps the endpoint's rows directly under its own key and
+    // never falls back to tag counts over the DTU corpus, a different
+    // store (D6: one trending store for both panels).
+    queryKey: ['feed-trending-topics'],
     queryFn: async () => {
       try {
         const r = await api
           .get('/api/social/topics/trending', { params: { limit: 10 } })
           .catch(() => null);
-        const topics = r?.data?.topics || r?.data || [];
-        if (Array.isArray(topics) && topics.length > 0) {
-          return topics.map((t: Record<string, unknown>, i: number) => ({
-            id: `t-${i}`,
-            tag: `#${(t.tag as string) || (t.topic as string) || ''}`,
-            category:
-              (t.category as string) || ['News', 'Tech', 'Community', 'Creative', 'Science'][i % 5],
-            posts: (t.count as number) || (t.posts as number) || 0,
-          }));
-        }
-        // Fallback: rank tags across every DTU page, not the newest 50.
-        return await loadFeedTopics((params) =>
-          apiHelpers.dtus.list(params).then((r) => r.data),
-        ).catch(() => []);
+        const topics = r?.data?.topics || [];
+        if (!Array.isArray(topics)) return [];
+        return topics.map((t: Record<string, unknown>, i: number) => ({
+          id: `t-${i}`,
+          tag: `#${(t.tag as string) || (t.topic as string) || ''}`,
+          category:
+            (t.category as string) || ['News', 'Tech', 'Community', 'Creative', 'Science'][i % 5],
+          posts: (t.count as number) ?? (t.posts as number) ?? 0,
+        }));
       } catch {
         return [];
       }
@@ -619,11 +622,44 @@ export function FeedTimelinePanel({
     },
   });
 
+  // Shelve a plain bookmark into the caller's default "Saved" folder in
+  // the same act (R4 Feed F4 / D4's one store-write). The affinity signal
+  // already fired on every bookmark, but a folder-less bookmark landed
+  // nowhere shelved, so the Saved view read "0 saved" while Tools
+  // counted the bookmark. Best-effort: a shelving failure never blocks
+  // or reports over the bookmark itself.
+  const shelveBookmark = useCallback(async (postId: string, bookmarked: boolean) => {
+    try {
+      const listed = await lensRun<{ folders: Array<{ id: string; name: string }> }>('feed', 'folder-list', {});
+      let folders = listed.data?.result?.folders || [];
+      let saved = folders.find((f) => f.name === 'Saved');
+      if (!saved && bookmarked) {
+        const created = await lensRun<{ folder: { id: string; name: string } }>('feed', 'folder-create', { name: 'Saved' });
+        saved = created.data?.result?.folder;
+        if (!saved) return;
+        folders = [...folders, saved];
+      }
+      if (!saved) return;
+      await lensRun('feed', 'folder-add-item', {
+        folderId: saved.id,
+        postId,
+        op: bookmarked ? 'add' : 'remove',
+      });
+    } catch {
+      /* best-effort — the bookmark itself already landed */
+    }
+  }, []);
+
   const bookmarkMutation = useMutation({
     mutationFn: ({ postId }: { postId: string; authorId?: string }) => api.post('/api/social/bookmark', { postId }),
-    onSuccess: (_data, vars) => {
+    onSuccess: (res, vars) => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['feed-my-bookmarks'] });
       recordFeedInteraction(vars.authorId, 'bookmark');
+      const body = (res?.data || {}) as { bookmarked?: boolean };
+      if (typeof body.bookmarked === 'boolean') {
+        void shelveBookmark(vars.postId, body.bookmarked);
+      }
     },
     onError: () => {
       useUIStore
@@ -1087,6 +1123,8 @@ export function FeedTimelinePanel({
                 </div>
               ))}
             </div>
+          ) : searchQuery.trim().length >= 2 ? (
+            <FeedSearchResults query={searchQuery} onNavigateToUser={(handle) => setSearchQuery(handle)} />
           ) : filteredPosts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-400">
               <MessageCircle className="w-16 h-16 mb-4 opacity-40" />
@@ -1591,9 +1629,12 @@ export function FeedTimelinePanel({
           <SuggestedFollows currentUserId="current-user" />
         </div>
 
-        {/* Post Scheduler */}
+        {/* Post Scheduler — feed-local working panel (F2 fix). The shared
+            PostScheduler's Schedule button fired an onSchedulePost prop no
+            parent ever passed and read its queue from the wrong shape;
+            this panel talks to the real schedule endpoints directly. */}
         <div className="bg-lattice-surface rounded-xl border border-lattice-border overflow-hidden p-4">
-          <PostScheduler userId="current-user" />
+          <FeedSchedulerPanel />
         </div>
 
         {/* Notifications */}

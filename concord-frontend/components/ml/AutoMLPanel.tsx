@@ -12,6 +12,14 @@ import { Wand2, Loader2, Clock, CheckCircle2, ChevronRight } from 'lucide-react'
 interface Template {
   id: string; task: string; title: string; description: string;
   steps: string[]; recommendedModels: string[]; estimatedTime: string;
+  wired?: boolean;
+}
+
+interface AutomlRunReceipt {
+  templateId: string; datasetName: string; experimentId: string;
+  profile: { samples: number; features: number };
+  steps: Array<{ step: string; detail: string; done: boolean }>;
+  note: string;
 }
 
 const TASKS = ['', 'classification', 'regression', 'clustering'];
@@ -22,6 +30,31 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
   const [selected, setSelected] = useState<Template | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // S-ML-9: the wired template runs over one of the caller's
+  // registered datasets (ml.automl-run).
+  const [datasets, setDatasets] = useState<Array<{ id: string; name: string }>>([]);
+  const [runDatasetId, setRunDatasetId] = useState('');
+  const [running, setRunning] = useState(false);
+  const [receipt, setReceipt] = useState<AutomlRunReceipt | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
+  useEffect(() => {
+    void (async () => {
+      const r = await lensRun('ml', 'dataset-list', {});
+      if (r.data?.ok && r.data.result) {
+        const list = (r.data.result as { datasets: Array<{ id: string; name: string }> }).datasets || [];
+        setDatasets(list);
+      }
+    })();
+  }, []);
+  const runTemplate = async () => {
+    if (!selected || !runDatasetId) return;
+    setRunning(true); setRunError(null); setReceipt(null);
+    const r = await lensRun('ml', 'automl-run', { templateId: selected.id, datasetId: runDatasetId });
+    if (r.data?.ok && r.data.result) setReceipt((r.data.result as { run: AutomlRunReceipt }).run);
+    else setRunError(r.data?.error || 'Run failed');
+    setRunning(false);
+  };
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -61,6 +94,9 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
             <p className="text-xs text-gray-400 line-clamp-2">{t.description}</p>
             <div className="flex items-center gap-1 text-xs text-neon-cyan mt-1.5">
               <Clock className="w-3 h-3" />{t.estimatedTime}
+              {t.wired
+                ? <span className="ml-2 text-emerald-400">Runnable</span>
+                : <span className="ml-2 text-zinc-500">Guidance only — not yet wired</span>}
             </div>
           </button>
         ))}
@@ -103,6 +139,41 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
                 ))}
               </div>
             </div>
+            {selected.wired ? (
+              <div className="border-t border-lattice-border pt-4 space-y-3">
+                <p className="text-xs text-gray-400 uppercase tracking-wider">Run this template</p>
+                <div className="flex flex-wrap gap-2">
+                  <select value={runDatasetId} onChange={(e) => setRunDatasetId(e.target.value)}
+                    className="flex-1 min-w-[200px] px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none">
+                    <option value="">Choose one of your registered datasets…</option>
+                    {datasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                  <button onClick={runTemplate} disabled={!runDatasetId || running} className="btn-neon purple small disabled:opacity-50">
+                    {running ? <Loader2 className="w-3 h-3 animate-spin inline" /> : 'Run configuration'}
+                  </button>
+                </div>
+                {datasets.length === 0 && (
+                  <p className="text-xs text-zinc-500">No registered datasets yet — register one in the Datasets tab first.</p>
+                )}
+                {runError && <p role="alert" className="text-sm text-red-400">{runError}</p>}
+                {receipt && (
+                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+                    <p className="text-sm font-medium text-emerald-300">Run complete — {receipt.datasetName}</p>
+                    <ol className="space-y-1">
+                      {receipt.steps.map((s, i) => (
+                        <li key={i} className="text-xs text-zinc-300"><span className="text-emerald-400">✓</span> <span className="font-medium">{s.step}:</span> {s.detail}</li>
+                      ))}
+                    </ol>
+                    <p className="text-xs text-zinc-400">{receipt.note}</p>
+                    <p className="text-xs text-zinc-500">Tracked experiment: <span className="font-mono">{receipt.experimentId}</span> (Experiments tab)</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="border-t border-lattice-border pt-4 text-xs text-zinc-500">
+                Guidance only for now — this template describes the pipeline but is not yet wired to a run. Tabular Classification is the wired template.
+              </p>
+            )}
           </div>
         ) : (
           <div className="panel p-12 text-center text-gray-400">

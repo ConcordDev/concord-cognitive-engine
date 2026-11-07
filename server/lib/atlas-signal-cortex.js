@@ -162,7 +162,7 @@ const CATEGORY_PATTERNS = Object.freeze({
     modulationTypes: ["AM", "FSK"],
   },
   COMMUNICATION: {
-    frequencies: [[700, 2700], [5000, 6000]], // Cellular + WiFi
+    frequencies: [[433, 434], [700, 2700], [5000, 6000]], // 433 MHz ISM + Cellular + WiFi
     keywords: ["cellular", "wifi", "bluetooth", "radio", "broadcast", "satellite", "modem", "mesh"],
     modulationTypes: ["OFDM", "QAM", "GFSK", "LoRa"],
   },
@@ -283,6 +283,10 @@ export function classifySignal(signal) {
     adjustability,
     frequency: Number(signal.frequency) || 0,
     modulation: signal.modulation || "unknown",
+    // F6(c): the submitter's description is part of the record — before,
+    // it was read transiently by identifyCategory and dropped, so the
+    // taxonomy could never show what the signal was described as.
+    description: signal.description ? String(signal.description) : null,
     bandwidth: Number(signal.bandwidth) || 0,
     power_level: Number(signal.power_level) || Number(signal.power) || 0,
     classified_at: now,
@@ -345,8 +349,10 @@ function identifyCategory(signal) {
       }
     }
 
-    // Modulation type matching
-    if (patterns.modulationTypes && patterns.modulationTypes.includes(modulation)) {
+    // Modulation type matching — case-insensitive on BOTH sides: the
+    // pattern table's 'LoRa' entry never matched the uppercased input
+    // before, so this leg scored nothing for a LoRa submission (F6).
+    if (patterns.modulationTypes && patterns.modulationTypes.some((t) => t.toUpperCase() === modulation)) {
       score += 2;
     }
 
@@ -455,10 +461,14 @@ export function getSpectralOccupancy() {
   const bands = {};
   for (const signal of _cortexState.taxonomy.values()) {
     const freq = signal.frequency;
-    const band = freq < 30 ? "ELF/SLF" :
-                 freq < 300 ? "ULF/VLF" :
-                 freq < 3000 ? "LF/MF" :
-                 freq < 30000 ? "HF/VHF" : "UHF+";
+    // Frequencies are MHz here (the classifier's unit). The ladder is
+    // the standard MHz ladder; the previous thresholds were kHz-shaped,
+    // so everything under 3000 MHz — including the 433.92 MHz ISM band —
+    // bucketed as 'LF/MF' (F6: the walk's signal wore exactly that label).
+    const band = freq < 0.03 ? "ELF/SLF" :
+                 freq < 0.3 ? "ULF/VLF" :
+                 freq < 3 ? "LF/MF" :
+                 freq < 300 ? "HF/VHF" : "UHF+";
     bands[band] = (bands[band] || 0) + 1;
   }
   return {

@@ -1,9 +1,10 @@
 // server/domains/forestry.js
 //
 // Pure-compute forestry helpers (timber volume, growth rate, carbon
-// sequestration) plus real iTree Species + USFS Wildfire Risk to
-// Communities + InciWeb wildfire incident reports. All free public
-// sources; no API key required.
+// sequestration) plus live external wildfire data — InciWeb incident
+// reports and NIFC WFIGS fire perimeters — and a per-user stand
+// registry (stands, cruises, pests, replanting, carbon credits,
+// polygons) persisted on STATE. All free public sources; no API key.
 
 const INCIWEB_BASE = "https://inciweb.wildfire.gov/api/v1";
 const NIFC_FIRE_API = "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services";
@@ -289,6 +290,39 @@ export default function registerForestryActions(registerLensAction) {
   const frClean = (v, max = 300) => String(v == null ? "" : v).trim().slice(0, max);
   const frNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
   const frStands = (s, userId) => { if (!s.stands.has(userId)) s.stands.set(userId, []); return s.stands.get(userId); };
+
+  // ─── Stand identity — the definition of record ──────────────────────
+  // A stand is identified by its stand ID: the `id` assigned by stand-add
+  // (format `std_<base36 timestamp>_<random suffix>`), unique per user.
+  // The stand NAME is a display label, not an identifier — two stands may
+  // share a name. Every action that takes a stand reference (`standId`)
+  // accepts EITHER the stand ID or the stand's exact name, and resolves
+  // the reference to the canonical stand ID before the reference is
+  // stored or matched, so stored records carry the ID. Actions that
+  // require an existing stand (activity-log, replant-project-create,
+  // carbon-credit-issue) refuse an unresolvable reference with a single
+  // product-worded error. Actions that merely record a reference
+  // (pest-report, cruise-plot-add, stand-polygon-save) canonicalize it
+  // when it matches one of the user's stands and otherwise keep it as
+  // given, so records about unregistered stands stay possible. Read
+  // filters (cruise-plot-list, cruise-summary) match records stored
+  // under either the canonical ID or the literal reference supplied.
+  // Surfaces display both the name and the ID (the Stand Manager's stand
+  // rows), so the identifier a form asks for is visible where stands are
+  // listed.
+  function frResolveStand(s, userId, ref) {
+    const clean = frClean(ref, 80);
+    if (!clean) return null;
+    const stands = frStands(s, userId);
+    return stands.find((st) => st.id === clean) || stands.find((st) => st.name === clean) || null;
+  }
+  function frResolveStandId(s, userId, ref) {
+    const stand = frResolveStand(s, userId, ref);
+    return stand ? stand.id : null;
+  }
+  function frStandRefError(ref) {
+    return `no stand matches "${frClean(ref, 80)}" — use the stand's name or the ID shown in the stand list`;
+  }
   const SPECIES = ["douglas_fir", "ponderosa_pine", "loblolly_pine", "oak", "maple", "spruce", "mixed", "other"];
 
   registerLensAction("forestry", "stand-add", (ctx, _a, params = {}) => {
@@ -334,8 +368,8 @@ export default function registerForestryActions(registerLensAction) {
 
   registerLensAction("forestry", "activity-log", (ctx, _a, params = {}) => {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const stand = frStands(s, frActor(ctx)).find((st) => st.id === params.standId);
-    if (!stand) return { ok: false, error: "stand not found" };
+    const stand = frResolveStand(s, frActor(ctx), params.standId);
+    if (!stand) return { ok: false, error: frStandRefError(params.standId) };
     const kind = ["planting", "thinning", "harvest", "prescribed_burn", "survey", "treatment"].includes(params.kind) ? params.kind : "survey";
     const activity = {
       id: frId("act"), kind,
@@ -470,7 +504,7 @@ export default function registerForestryActions(registerLensAction) {
     const acres = Math.round(polygonAcres(verts) * 100) / 100;
     const poly = {
       id: frId("poly"), name,
-      standId: frClean(params.standId, 80) || null,
+      standId: params.standId ? (frResolveStandId(s, frActor(ctx), params.standId) || frClean(params.standId, 80)) : null,
       vertices: verts,
       acres,
       perimeterM: Math.round((() => {
@@ -517,8 +551,9 @@ export default function registerForestryActions(registerLensAction) {
   try {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.cruises instanceof Map)) s.cruises = new Map();
-    const standId = frClean(params.standId, 80);
-    if (!standId) return { ok: false, error: "standId required" };
+    const standRef = frClean(params.standId, 80);
+    if (!standRef) return { ok: false, error: "standId required" };
+    const standId = frResolveStandId(s, frActor(ctx), standRef) || standRef;
     const bafOrRadius = frNum(params.expansionFactor);
     const plotMethod = params.method === "fixed_radius" ? "fixed_radius" : "prism_baf";
     const trees = Array.isArray(params.trees) ? params.trees : [];
@@ -557,7 +592,10 @@ export default function registerForestryActions(registerLensAction) {
     if (!(s.cruises instanceof Map)) s.cruises = new Map();
     let plots = frCruises(s, frActor(ctx));
     const standId = frClean(params.standId, 80);
-    if (standId) plots = plots.filter((p) => p.standId === standId);
+    if (standId) {
+      const resolvedStandId = frResolveStandId(s, frActor(ctx), standId);
+      plots = plots.filter((p) => p.standId === standId || (resolvedStandId !== null && p.standId === resolvedStandId));
+    }
     return { ok: true, result: { plots, count: plots.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -579,7 +617,10 @@ export default function registerForestryActions(registerLensAction) {
     if (!(s.cruises instanceof Map)) s.cruises = new Map();
     let plots = frCruises(s, frActor(ctx));
     const standId = frClean(params.standId, 80);
-    if (standId) plots = plots.filter((p) => p.standId === standId);
+    if (standId) {
+      const resolvedStandId = frResolveStandId(s, frActor(ctx), standId);
+      plots = plots.filter((p) => p.standId === standId || (resolvedStandId !== null && p.standId === resolvedStandId));
+    }
     if (plots.length === 0) return { ok: true, result: { plots: 0, message: "No cruise plots yet. Add sample plots to compute a statistical summary." } };
     // Per-plot per-acre estimates via expansion factor.
     const perPlot = plots.map((p) => {
@@ -630,7 +671,7 @@ export default function registerForestryActions(registerLensAction) {
     const report = {
       id: frId("pst"), agent,
       kind: params.kind === "disease" ? "disease" : "pest",
-      standId: frClean(params.standId, 80) || null,
+      standId: params.standId ? (frResolveStandId(s, frActor(ctx), params.standId) || frClean(params.standId, 80)) : null,
       severity: PEST_SEVERITY.includes(params.severity) ? params.severity : "low",
       affectedAcres: Math.max(0, frNum(params.affectedAcres)),
       detectedDate: frClean(params.detectedDate, 30) || new Date().toISOString().slice(0, 10),
@@ -704,9 +745,11 @@ export default function registerForestryActions(registerLensAction) {
     if (!name) return { ok: false, error: "project name required" };
     const acres = Math.max(0, frNum(params.acres));
     if (acres <= 0) return { ok: false, error: "acres must be > 0" };
-    const standId = frClean(params.standId, 80) || null;
-    if (standId && !frStands(s, frActor(ctx)).some((st) => st.id === standId)) {
-      return { ok: false, error: "stand not found" };
+    let standId = frClean(params.standId, 80) || null;
+    if (standId) {
+      const resolvedStandId = frResolveStandId(s, frActor(ctx), standId);
+      if (!resolvedStandId) return { ok: false, error: frStandRefError(standId) };
+      standId = resolvedStandId;
     }
     const seedlingsPerAcre = Math.max(1, Math.round(frNum(params.seedlingsPerAcre) || 435));
     const project = {
@@ -798,9 +841,11 @@ export default function registerForestryActions(registerLensAction) {
     if (tons <= 0) return { ok: false, error: "tonsCO2 must be > 0" };
     const vintage = Math.round(frNum(params.vintageYear)) || new Date().getFullYear();
     if (vintage < 1990 || vintage > new Date().getFullYear() + 1) return { ok: false, error: "vintageYear out of range" };
-    const standId = frClean(params.standId, 80) || null;
-    if (standId && !frStands(s, frActor(ctx)).some((st) => st.id === standId)) {
-      return { ok: false, error: "stand not found" };
+    let standId = frClean(params.standId, 80) || null;
+    if (standId) {
+      const resolvedStandId = frResolveStandId(s, frActor(ctx), standId);
+      if (!resolvedStandId) return { ok: false, error: frStandRefError(standId) };
+      standId = resolvedStandId;
     }
     const credit = {
       id: frId("crd"), projectName,
@@ -878,7 +923,7 @@ export default function registerForestryActions(registerLensAction) {
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
     try {
       const r = await fetch(`${INCIWEB_BASE}/incidents`);
-      if (!r.ok) return { ok: false, error: `inciweb ${r.status}` };
+      if (!r.ok) return { ok: false, error: `inciweb unreachable: inciweb ${r.status}` };
       const data = await r.json();
       const incidents = (Array.isArray(data) ? data : data.data || data.incidents || []).slice(0, limit);
       let ingested = 0, skipped = 0;

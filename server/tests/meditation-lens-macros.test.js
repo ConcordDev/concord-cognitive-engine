@@ -48,6 +48,9 @@ describe("meditation — registration", () => {
       "soundscapeConfig", "courses", "enrollCourse", "courseProgress",
       "completeCourseDay", "setReminder", "reminders", "toggleReminder",
       "deleteReminder", "sleepTimerConfig", "recommendations", "milestones",
+      // build(meditation): the lifecycle + intent verbs of S-MED-1/3.
+      "intents", "sessionDelete", "sessionSetDtu", "moodDelete",
+      "uncompleteCourseDay", "unenrollCourse", "updateReminder",
     ]) {
       assert.equal(typeof ACTIONS.get(m), "function", `missing meditation.${m}`);
     }
@@ -108,18 +111,32 @@ describe("meditation — library filtering", () => {
   });
 });
 
-describe("meditation — play → history → streak round-trip (STATE-backed)", () => {
-  it("playing a real library track lands in history with accurate minutes", () => {
+describe("meditation — play (intent) → sessionLog (performed) → streak round-trip (STATE-backed)", () => {
+  // build(meditation) S-MED-1 rewired this block: play used to credit
+  // the full catalog duration on a bare call (F1). It now saves an
+  // INTENT outside the practice totals; the totals accrue only from
+  // performed sessionLog writes.
+  it("play saves an intent and lands NOTHING in history", () => {
     const played = call("play", ctxA, { sessionId: "g-focus-10", mood: 4 });
     assert.equal(played.ok, true);
-    assert.equal(played.result.session.sessionId, "g-focus-10");
-    assert.equal(played.result.session.durationMin, 10);
-    assert.equal(played.result.session.moodAfter, 4);
+    assert.equal(played.result.credited, false);
+    assert.equal(played.result.intent.sessionId, "g-focus-10");
+    assert.equal(played.result.intent.durationMin, 10);
+    assert.equal(played.result.intent.mood, 4);
 
     const hist = call("history", ctxA, {});
     assert.equal(hist.ok, true);
+    assert.equal(hist.result.count, 0);
+    assert.equal(call("intents", ctxA, {}).result.count, 1);
+  });
+
+  it("a performed sessionLog lands in history with accurate minutes", () => {
+    const sat = call("sessionLog", ctxA, { trackId: "g-focus-10", title: "Single-Pointed Focus", category: "guided", minutes: 10 });
+    assert.equal(sat.ok, true);
+    const hist = call("history", ctxA, {});
     assert.equal(hist.result.count, 1);
     assert.equal(hist.result.sessions[0].sessionId, "g-focus-10");
+    assert.equal(hist.result.sessions[0].durationMin, 10);
   });
 
   it("play rejects a sessionId that is not in the library", () => {
@@ -128,9 +145,9 @@ describe("meditation — play → history → streak round-trip (STATE-backed)",
     assert.match(r.error, /not found/i);
   });
 
-  it("streak + dashboard accrue REAL totals across multiple plays", () => {
-    call("play", ctxA, { sessionId: "g-focus-10" });   // 10 min, guided
-    call("play", ctxA, { sessionId: "b-box-5" });        // 5 min, breathwork
+  it("streak + dashboard accrue REAL totals across performed logs", () => {
+    call("sessionLog", ctxA, { trackId: "g-focus-10", category: "guided", minutes: 10 });
+    call("sessionLog", ctxA, { trackId: "b-box-5", category: "breathwork", performedSeconds: 300 });
     const s = call("streak", ctxA, {});
     assert.equal(s.ok, true);
     assert.equal(s.result.totalSessions, 2);
@@ -146,16 +163,16 @@ describe("meditation — play → history → streak round-trip (STATE-backed)",
   });
 
   it("history/streak are per-user isolated", () => {
-    call("play", ctxA, { sessionId: "g-focus-10" });
+    call("sessionLog", ctxA, { trackId: "g-focus-10", minutes: 10 });
     assert.equal(call("history", ctxA, {}).result.count, 1);
     assert.equal(call("history", ctxB, {}).result.count, 0);
     assert.equal(call("streak", ctxB, {}).result.totalMinutes, 0);
   });
 
-  it("play clamps a poisoned mood into [1,5] (null when non-finite)", () => {
-    assert.equal(call("play", ctxA, { sessionId: "g-focus-10", mood: 99 }).result.session.moodAfter, 5);
-    assert.equal(call("play", ctxA, { sessionId: "g-focus-10", mood: -3 }).result.session.moodAfter, 1);
-    assert.equal(call("play", ctxA, { sessionId: "g-focus-10", mood: "abc" }).result.session.moodAfter, null);
+  it("play clamps a poisoned mood into [1,5] on the intent (null when non-finite)", () => {
+    assert.equal(call("play", ctxA, { sessionId: "g-focus-10", mood: 99 }).result.intent.mood, 5);
+    assert.equal(call("play", ctxA, { sessionId: "g-focus-10", mood: -3 }).result.intent.mood, 1);
+    assert.equal(call("play", ctxA, { sessionId: "g-focus-10", mood: "abc" }).result.intent.mood, null);
   });
 });
 
@@ -222,6 +239,13 @@ describe("meditation — mood check-in ledger", () => {
     assert.equal(call("mood-checkin", ctxA, { mood: 99 }).result.checkin.mood, 5);
     assert.equal(call("mood-history", ctxB, {}).result.count, 0);
   });
+
+  it("refuses a check-in with no chosen mood (F5 — no default feeling)", () => {
+    const r = call("mood-checkin", ctxA, { note: "clicked with nothing selected" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "mood_required");
+    assert.equal(call("mood-history", ctxA, {}).result.count, 0);
+  });
 });
 
 describe("meditation — courses: enroll → complete day → progress", () => {
@@ -239,9 +263,18 @@ describe("meditation — courses: enroll → complete day → progress", () => {
     assert.equal(after.result.courses.find((c) => c.id === "course-basics-7").enrolled, true);
   });
 
-  it("completing a day advances progress AND logs the underlying session", () => {
+  it("completing a day requires the day's session to have been practised (S-MED-1)", () => {
     call("enrollCourse", ctxA, { courseId: "course-basics-7" });
-    const done = call("completeCourseDay", ctxA, { courseId: "course-basics-7", day: 1 });
+    // No performed entry: the one-click completion is refused and
+    // writes nothing (the old body pushed the full catalog duration).
+    const refused = call("completeCourseDay", ctxA, { courseId: "course-basics-7", day: 1 });
+    assert.equal(refused.ok, false);
+    assert.equal(refused.error, "session_not_run");
+    assert.equal(call("history", ctxA, {}).result.count, 0);
+
+    // Practise day 1's session (g-morn-7), then complete against it.
+    const sat = call("sessionLog", ctxA, { trackId: "g-morn-7", title: "Morning Intention", category: "guided", minutes: 7 });
+    const done = call("completeCourseDay", ctxA, { courseId: "course-basics-7", day: 1, sessionEntryId: sat.result.entry.id });
     assert.equal(done.ok, true);
     assert.equal(done.result.completedCount, 1);
     assert.equal(done.result.finished, false);
@@ -252,7 +285,8 @@ describe("meditation — courses: enroll → complete day → progress", () => {
     assert.equal(prog.result.nextDay, 2);
     assert.equal(prog.result.days[0].completed, true);
 
-    // The day-1 session (g-morn-7) cascaded into the practice ledger.
+    // The ledger holds exactly the performed entry, stamped with its
+    // course provenance — no cascade entry was written by completion.
     const hist = call("history", ctxA, {});
     assert.equal(hist.result.count, 1);
     assert.equal(hist.result.sessions[0].courseId, "course-basics-7");
@@ -261,7 +295,12 @@ describe("meditation — courses: enroll → complete day → progress", () => {
 
   it("completing every day flips finished=true", () => {
     call("enrollCourse", ctxA, { courseId: "course-sleep-5" });
-    for (let d = 1; d <= 5; d++) call("completeCourseDay", ctxA, { courseId: "course-sleep-5", day: d });
+    const dayTracks = { 1: "b-478-4", 2: "s-rain-30", 3: "s-nidra-20", 4: "s-train-45", 5: "sos-night-3" };
+    for (let d = 1; d <= 5; d++) {
+      const sat = call("sessionLog", ctxA, { trackId: dayTracks[d], minutes: 5 });
+      const done = call("completeCourseDay", ctxA, { courseId: "course-sleep-5", day: d, sessionEntryId: sat.result.entry.id });
+      assert.equal(done.ok, true);
+    }
     const prog = call("courseProgress", ctxA, { courseId: "course-sleep-5" });
     assert.equal(prog.result.finished, true);
     assert.equal(prog.result.nextDay, null);
@@ -326,8 +365,9 @@ describe("meditation — recommendations + milestones (history-adaptive)", () =>
     assert.equal(empty.result.unlockedCount, 0);
     assert.equal(empty.result.badges.find((b) => b.id === "first-sit").unlocked, false);
 
-    // One sit → first-sit unlocks.
-    call("play", ctxA, { sessionId: "g-focus-10" });
+    // One performed sit → first-sit unlocks. (build(meditation):
+    // seeded via sessionLog — play now saves intent only.)
+    call("sessionLog", ctxA, { trackId: "g-focus-10", category: "guided", minutes: 10 });
     const one = call("milestones", ctxA, {});
     assert.equal(one.result.badges.find((b) => b.id === "first-sit").unlocked, true);
     assert.ok(one.result.unlockedCount >= 1);

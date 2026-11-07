@@ -9,6 +9,7 @@
 // survives across macro calls (and is checkpointed by the state debouncer).
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { fetchPublicUrl } from "../lib/public-fetch.js";
 import crypto from "node:crypto";
 
 // ── Persistent per-user pipeline state ────────────────────────────────
@@ -412,16 +413,73 @@ export default function registerIngestActions(registerLensAction) {
     return crypto.createHash("sha256").update(norm).digest("hex").slice(0, 16);
   }
 
-  registerLensAction("ingest", "runSync", (ctx, artifact, params) => {
+  // Fetch the records a REST API connection's configuration names — the
+  // endpoint its operator configured (baseUrl + path), through the SSRF
+  // guard every public fetch in this codebase rides (lib/public-fetch.js:
+  // scheme allowlist, private/loopback refusal, DNS pinning). Returns the
+  // records array or a named failure — never a fabricated payload.
+  async function fetchConnectionRecords(connection) {
+    const cfg = connection.config || {};
+    const baseUrl = String(cfg.baseUrl || "").trim();
+    if (!baseUrl) return { ok: false, error: "connection has no baseUrl configured" };
+    const path = String(cfg.path || "").trim();
+    let url;
     try {
-      const p = { ...artifact.data, ...params };
-      const connectionId = String(p.connectionId || "").trim();
-      const s = getIngestState();
-      const conns = userMap(s.connections, uid(ctx));
-      const connection = conns.get(connectionId);
-      if (!connection) return { ok: false, error: "Connection not found" };
-      const records = Array.isArray(p.records) ? p.records : [];
-      if (!records.length) return { ok: false, error: "Provide records[] to sync" };
+      url = new URL(path ? `${baseUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}` : baseUrl);
+    } catch {
+      return { ok: false, error: "connection baseUrl/path is not a valid URL" };
+    }
+    if (connection.incremental && cfg.cursorParam && connection.cursor != null) {
+      url.searchParams.set(String(cfg.cursorParam), String(connection.cursor));
+    }
+    const headers = { Accept: "application/json" };
+    if (cfg.authHeader) headers.Authorization = String(cfg.authHeader);
+    const method = String(cfg.method || "GET").toUpperCase() === "POST" ? "POST" : "GET";
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    let text;
+    try {
+      const resp = await fetchPublicUrl(url.toString(), {
+        method,
+        headers: method === "POST" ? { ...headers, "Content-Type": "application/json" } : headers,
+        body: method === "POST" ? "{}" : undefined,
+        signal: controller.signal,
+      });
+      if (!resp.ok) return { ok: false, error: `endpoint returned HTTP ${resp.status}` };
+      text = await resp.text();
+    } catch (e) {
+      if (e?.code === "SSRF_BLOCKED" || /target blocked/i.test(String(e?.message || ""))) {
+        return { ok: false, error: "endpoint URL not allowed" };
+      }
+      if (e?.name === "AbortError") return { ok: false, error: "endpoint fetch timed out after 10s" };
+      return { ok: false, error: `endpoint fetch failed: ${String(e?.message || e).slice(0, 120)}` };
+    } finally {
+      clearTimeout(timer);
+    }
+    if (text.length > 2_000_000) return { ok: false, error: "endpoint response too large (over 2 MB)" };
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { return { ok: false, error: "endpoint did not return JSON" }; }
+    let node = parsed;
+    if (cfg.recordsPath) {
+      for (const key of String(cfg.recordsPath).split(".").filter(Boolean)) {
+        node = node && typeof node === "object" ? node[key] : undefined;
+      }
+    } else if (node && typeof node === "object" && !Array.isArray(node)) {
+      // No recordsPath configured: accept the common envelope shapes.
+      for (const key of ["records", "data", "results", "items"]) {
+        if (Array.isArray(node[key])) { node = node[key]; break; }
+      }
+    }
+    if (!Array.isArray(node)) return { ok: false, error: "endpoint did not return a records array" };
+    return { ok: true, records: node };
+  }
+
+  // The sync engine itself is synchronous (records in → delta out); only
+  // the endpoint fetch is async, so runSync returns a plain result for
+  // payload runs and a promise only when it actually fetches.
+  function executeSync(ctx, s, connection, records, source, p) {
+    const connectionId = connection.id;
+    {
       const mode = p.mode === "full" ? "full" : (connection.incremental ? "incremental" : "full");
       const cursorField = String(p.cursorField || connection.config?.cursorField || "updated_at");
 
@@ -467,7 +525,7 @@ export default function registerIngestActions(registerLensAction) {
       const failures = records.length - delta.length === 0 && delta.length === 0 ? 0 : 0;
       const run = {
         id: newId("run"), connectionId, connectorName: connection.connectorName,
-        mode, startedAt: now(), finishedAt: now(),
+        mode, source, startedAt: now(), finishedAt: now(),
         recordsScanned: records.length,
         recordsExtracted: delta.length,
         recordsLoaded: deduped.length,
@@ -489,7 +547,7 @@ export default function registerIngestActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          runId: run.id, connectionId, mode,
+          runId: run.id, connectionId, mode, source,
           recordsScanned: run.recordsScanned,
           recordsExtracted: run.recordsExtracted,
           recordsLoaded: run.recordsLoaded,
@@ -498,6 +556,48 @@ export default function registerIngestActions(registerLensAction) {
           records: deduped,
         },
       };
+    }
+  }
+
+  registerLensAction("ingest", "runSync", (ctx, artifact, params) => {
+    try {
+      const p = { ...artifact.data, ...params };
+      const connectionId = String(p.connectionId || "").trim();
+      const s = getIngestState();
+      const conns = userMap(s.connections, uid(ctx));
+      const connection = conns.get(connectionId);
+      if (!connection) return { ok: false, error: "Connection not found" };
+      const records = Array.isArray(p.records) ? p.records : [];
+      // Source honesty: a caller-supplied records[] is a PAYLOAD run and is
+      // labelled as one; with no payload, a REST API connection syncs the
+      // endpoint its configuration names. Other connector kinds have no
+      // pull path here (their scheduled pulls ride the drain cycle), so a
+      // payload is still required for them — and still labelled.
+      if (records.length) return executeSync(ctx, s, connection, records, "payload", p);
+      if (connection.connectorId !== "rest-api") return { ok: false, error: "Provide records[] to sync" };
+      return fetchConnectionRecords(connection).then((fetched) => {
+        if (!fetched.ok) {
+          // A failed sync is a run too: it lands in the log as itself,
+          // with the error named, instead of vanishing.
+          const failedRun = {
+            id: newId("run"), connectionId, connectorName: connection.connectorName,
+            mode: p.mode === "full" ? "full" : (connection.incremental ? "incremental" : "full"),
+            source: "endpoint", startedAt: now(), finishedAt: now(),
+            recordsScanned: 0, recordsExtracted: 0, recordsLoaded: 0,
+            duplicatesRemoved: 0, byteVolume: 0, failures: 1,
+            error: fetched.error,
+            priorCursor: connection.cursor, newCursor: connection.cursor,
+            cursorField: String(p.cursorField || connection.config?.cursorField || "updated_at"),
+            status: "failed",
+          };
+          const runs = userArr(s.syncRuns, uid(ctx));
+          runs.unshift({ ...failedRun, sampleRecords: [] });
+          if (runs.length > 100) runs.length = 100;
+          saveIngestState();
+          return { ok: false, error: fetched.error, runId: failedRun.id };
+        }
+        return executeSync(ctx, s, connection, fetched.records, "endpoint", p);
+      }).catch((e) => ({ ok: false, error: String(e?.message || e) }));
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -510,7 +610,11 @@ export default function registerIngestActions(registerLensAction) {
       if (p.connectionId) runs = runs.filter((r) => r.connectionId === p.connectionId);
       const limit = clamp(Number(p.limit) || 50, 1, 100);
       const sliced = runs.slice(0, limit);
+      // Cumulative volume counts each real sync once: a replay row restates
+      // its original run's counts for the log, so it is excluded from the
+      // totals — replaying a run must not double the volume it reports.
       const totals = runs.reduce((a, r) => {
+        if (r.replayOf) return a;
         a.records += r.recordsLoaded || 0;
         a.bytes += r.byteVolume || 0;
         a.failures += r.failures || 0;
@@ -724,12 +828,18 @@ export default function registerIngestActions(registerLensAction) {
       const hooks = userMap(s.webhooks, uid(ctx));
       let endpoint = [...hooks.values()][0];
       if (!endpoint || p.rotate) {
+        // Rotation replaces the TOKEN, not the history: the received
+        // records belong to the user, so their counters carry across —
+        // a fresh token must not zero the count the records list still
+        // shows.
+        const carriedReceived = endpoint ? (endpoint.recordsReceived || 0) : 0;
+        const carriedLast = endpoint ? (endpoint.lastReceivedAt ?? null) : null;
         if (endpoint) hooks.delete(endpoint.token);
         const token = crypto.randomBytes(16).toString("hex");
         endpoint = {
           token, createdAt: now(), userId: uid(ctx),
           url: `/api/ingest/webhook/${token}`,
-          recordsReceived: 0, lastReceivedAt: null,
+          recordsReceived: carriedReceived, lastReceivedAt: carriedLast,
         };
         hooks.set(token, endpoint);
         saveIngestState();
@@ -791,6 +901,152 @@ export default function registerIngestActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  // ── Workbench ingest + retrieval ─────────────────────────────────
+  // The way IN existed (POST /api/dtus from the browser, batch-ingest);
+  // the way OUT did not — no verb could read an ingested DTU back, so the
+  // workbench's own ingests were unretrievable inside the lens. These
+  // three verbs close the loop over the canonical store (STATE.dtus, the
+  // same map the /api/dtus routes serve): ingestText creates chunk DTUs
+  // server-side with ingest attribution + content-hash dedup, and
+  // listIngested / getIngested read the caller's own ingested DTUs back.
+  function dtuOwnerOf(d) {
+    return d?.author || d?.ownerId || d?.userId || d?.createdBy || d?.authorId || null;
+  }
+  function dtuTextOf(d) {
+    if (typeof d?.content === "string") return d.content;
+    if (typeof d?.body === "string") return d.body;
+    return null;
+  }
+  function isIngestedDtu(d) {
+    return (Array.isArray(d?.tags) && d.tags.includes("ingested")) || d?.domain === "ingest";
+  }
+  function callerIngestedDtus(userId) {
+    const store = globalThis._concordSTATE?.dtus;
+    const all = store instanceof Map ? [...store.values()] : (store && typeof store === "object" ? Object.values(store) : []);
+    return all.filter((d) => d && String(dtuOwnerOf(d) ?? "") === String(userId) && isIngestedDtu(d));
+  }
+  const contentHash = (text) => crypto.createHash("sha256").update(text).digest("hex");
+
+  registerLensAction("ingest", "ingestText", async (ctx, artifact, params) => {
+    try {
+      const p = { ...artifact.data, ...params };
+      const text = typeof p.text === "string" ? p.text : (typeof p.content === "string" ? p.content : "");
+      if (!text.trim()) return { ok: false, error: "Provide text to ingest" };
+      if (typeof ctx?.macro?.run !== "function") return { ok: false, error: "DTU creation unavailable" };
+      const chunkSize = clamp(Number(p.chunkSize) || 500, 100, 4000);
+      const overlap = clamp(Number(p.chunkOverlap) || 50, 0, chunkSize - 50);
+      const chunks = [];
+      for (let i = 0; i < text.length; i += chunkSize - overlap) {
+        chunks.push(text.slice(i, i + chunkSize));
+      }
+      // Dedup by content hash against the caller's existing ingested DTUs
+      // (and against chunks created earlier in this same call): a repeat
+      // ingest reports its chunks as already present instead of silently
+      // stacking duplicates.
+      const seen = new Map();
+      for (const d of callerIngestedDtus(uid(ctx))) {
+        const t = dtuTextOf(d);
+        if (t != null && !seen.has(contentHash(t))) seen.set(contentHash(t), d.id);
+      }
+      const baseTitle = String(p.title || "").trim();
+      const created = [], deduped = [];
+      let failures = 0;
+      for (let ci = 0; ci < chunks.length; ci++) {
+        const hash = contentHash(chunks[ci]);
+        if (seen.has(hash)) { deduped.push({ chunkIndex: ci, dtuId: seen.get(hash) }); continue; }
+        const title = baseTitle
+          ? (chunks.length > 1 ? `${baseTitle} (chunk ${ci + 1} of ${chunks.length})` : baseTitle)
+          : `Ingested chunk ${ci + 1}`;
+        try {
+          const out = await ctx.macro.run("dtu", "create", {
+            title,
+            content: chunks[ci],
+            domain: p.domain ? String(p.domain) : "ingest",
+            tags: ["ingested"],
+          });
+          const dtuId = out?.result?.id || out?.id || out?.dtu?.id || null;
+          if (!dtuId) { failures++; continue; }
+          seen.set(hash, dtuId);
+          created.push({ chunkIndex: ci, dtuId });
+        } catch { failures++; }
+      }
+      if (created.length === 0 && deduped.length === 0) {
+        return { ok: false, error: "Ingest failed — no DTUs could be created" };
+      }
+      return {
+        ok: true,
+        result: {
+          title: baseTitle || null,
+          totalChunks: chunks.length,
+          created, createdCount: created.length,
+          deduped, dedupedCount: deduped.length,
+          failures,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("ingest", "listIngested", (ctx, artifact, params) => {
+    try {
+      const p = { ...artifact.data, ...params };
+      const q = String(p.q || p.search || "").trim().toLowerCase();
+      const limit = clamp(Number(p.limit) || 50, 1, 200);
+      let rows = callerIngestedDtus(uid(ctx));
+      if (q) {
+        rows = rows.filter((d) => {
+          const t = dtuTextOf(d) || "";
+          return String(d.title || "").toLowerCase().includes(q) || t.toLowerCase().includes(q);
+        });
+      }
+      const total = rows.length;
+      rows.sort((a, b) => {
+        const ta = a.createdAt ?? a.created_at ?? 0;
+        const tb = b.createdAt ?? b.created_at ?? 0;
+        return (typeof tb === "number" && typeof ta === "number") ? tb - ta : String(tb).localeCompare(String(ta));
+      });
+      return {
+        ok: true,
+        result: {
+          dtus: rows.slice(0, limit).map((d) => ({
+            id: d.id,
+            title: d.title || d.id,
+            domain: d.domain || null,
+            tags: Array.isArray(d.tags) ? d.tags : [],
+            createdAt: d.createdAt ?? d.created_at ?? null,
+            preview: (dtuTextOf(d) || "").slice(0, 160),
+          })),
+          total,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("ingest", "getIngested", (ctx, artifact, params) => {
+    try {
+      const p = { ...artifact.data, ...params };
+      const id = String(p.dtuId || p.id || "").trim();
+      if (!id) return { ok: false, error: "Provide dtuId" };
+      const store = globalThis._concordSTATE?.dtus;
+      const d = store instanceof Map ? store.get(id) : store?.[id];
+      // Owner-scoped and attribution-scoped; anything else is the same
+      // not-found (no existence leak for other users' DTUs).
+      if (!d || String(dtuOwnerOf(d) ?? "") !== String(uid(ctx)) || !isIngestedDtu(d)) {
+        return { ok: false, error: "Ingested DTU not found" };
+      }
+      return {
+        ok: true,
+        result: {
+          id: d.id,
+          title: d.title || d.id,
+          content: dtuTextOf(d) || "",
+          domain: d.domain || null,
+          tags: Array.isArray(d.tags) ? d.tags : [],
+          createdAt: d.createdAt ?? d.created_at ?? null,
+        },
+      };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   // ─────────────────────────────────────────────────────────────────
   //  Original document-ingestion workbench macros (unchanged)
   // ─────────────────────────────────────────────────────────────────
@@ -798,14 +1054,20 @@ export default function registerIngestActions(registerLensAction) {
     const text = artifact.data?.text || artifact.data?.content || "";
     if (!text) return { ok: true, result: { message: "Provide text or content to parse." } };
     const paragraphs = text.split(/\n\s*\n/).filter(Boolean);
-    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    // Sentence boundaries are [.!?] — but a decimal point inside a number
+    // ("3.14159", "2.50") is not a boundary. Mask digit.digit first.
+    const masked = text.replace(/(\d)\.(\d)/g, "$1$2");
+    const sentences = masked.split(/[.!?]+/).filter(s => s.trim().length > 0);
     const words = text.split(/\s+/).filter(Boolean);
     const lines = text.split("\n");
     const sections = lines.filter(l => /^#{1,6}\s/.test(l) || /^[A-Z][A-Z\s]{3,}$/.test(l.trim()));
     const hasMarkdown = /[#*_`[\]]/.test(text);
     const hasHtml = /<\/?[a-z][\s\S]*>/i.test(text);
     const format = hasHtml ? "html" : hasMarkdown ? "markdown" : "plaintext";
-    return { ok: true, result: { format, lineCount: lines.length, paragraphCount: paragraphs.length, sentenceCount: sentences.length, wordCount: words.length, sectionCount: sections.length, sections: sections.slice(0, 20), avgWordsPerSentence: sentences.length > 0 ? Math.round(words.length / sentences.length) : 0, avgWordsPerParagraph: paragraphs.length > 0 ? Math.round(words.length / paragraphs.length) : 0 } };
+    // Averages are real quotients (the UI renders one decimal), not
+    // integer-rounded values wearing a decimal point.
+    const avg2 = (n, d) => (d > 0 ? Math.round((n / d) * 100) / 100 : 0);
+    return { ok: true, result: { format, lineCount: lines.length, paragraphCount: paragraphs.length, sentenceCount: sentences.length, wordCount: words.length, sectionCount: sections.length, sections: sections.slice(0, 20), avgWordsPerSentence: avg2(words.length, sentences.length), avgWordsPerParagraph: avg2(words.length, paragraphs.length) } };
   });
 
   registerLensAction("ingest", "extractEntities", (ctx, artifact, _params) => {
@@ -814,14 +1076,18 @@ export default function registerIngestActions(registerLensAction) {
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
     const urlRegex = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
     const dateRegex = /\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}\b/gi;
-    const numberRegex = /\$[\d,.]+|\b\d{1,3}(?:,\d{3})*(?:\.\d+)?%?\b/g;
+    // Plain integers of any length are numbers too: the old \d{1,3} shape
+    // silently missed every unseparated 4+ digit numeral (2024, 1030),
+    // and the length>1 filter dropped single digits ("5").
+    const numberRegex = /\$[\d,]+(?:\.\d+)?|\b\d+(?:,\d{3})*(?:\.\d+)?%?\b/g;
     const phoneRegex = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g;
     const emails = [...new Set(text.match(emailRegex) || [])];
     const urls = [...new Set(text.match(urlRegex) || [])];
     const dates = [...new Set(text.match(dateRegex) || [])];
-    const numbers = [...new Set((text.match(numberRegex) || []).filter(n => n.length > 1))].slice(0, 50);
+    const numbers = [...new Set(text.match(numberRegex) || [])].slice(0, 30);
     const phones = [...new Set(text.match(phoneRegex) || [])];
-    return { ok: true, result: { emails, urls, dates, phones, numbers: numbers.slice(0, 30), summary: { emailCount: emails.length, urlCount: urls.length, dateCount: dates.length, phoneCount: phones.length, numberCount: numbers.length } } };
+    // The count IS the returned list's length — the two never disagree.
+    return { ok: true, result: { emails, urls, dates, phones, numbers, summary: { emailCount: emails.length, urlCount: urls.length, dateCount: dates.length, phoneCount: phones.length, numberCount: numbers.length } } };
   });
 
   registerLensAction("ingest", "validateSchema", (ctx, artifact, _params) => {
@@ -962,10 +1228,10 @@ export default function registerIngestActions(registerLensAction) {
       statusCounts[status] = (statusCounts[status] || 0) + 1;
       if (status === "error" || status === "failed") errors.push({ index: i, id: item.id || `item-${i}`, error: item.error || item.message || "Unknown error" });
     });
-    const completed = (statusCounts.completed || 0) + (statusCounts.done || 0) + (statusCounts.success || 0);
+    const completed = (statusCounts.completed || 0) + (statusCounts.complete || 0) + (statusCounts.done || 0) + (statusCounts.success || 0) + (statusCounts.succeeded || 0);
     const pending = (statusCounts.pending || 0) + (statusCounts.queued || 0) + (statusCounts.waiting || 0);
-    const failed = (statusCounts.error || 0) + (statusCounts.failed || 0);
-    const inProgress = (statusCounts.processing || 0) + (statusCounts["in-progress"] || 0) + (statusCounts.running || 0);
+    const failed = (statusCounts.error || 0) + (statusCounts.failed || 0) + (statusCounts.failure || 0);
+    const inProgress = (statusCounts.processing || 0) + (statusCounts["in-progress"] || 0) + (statusCounts.running || 0) + (statusCounts.active || 0);
     return { ok: true, result: { totalItems: items.length, completed, pending, inProgress, failed, completionRate: Math.round((completed / items.length) * 100), statusBreakdown: statusCounts, recentErrors: errors.slice(0, 10), estimatedRemaining: pending + inProgress } };
   });
 

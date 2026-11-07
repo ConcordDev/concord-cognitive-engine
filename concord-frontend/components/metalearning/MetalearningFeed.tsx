@@ -14,6 +14,7 @@ const QUERIES = [
 
 export function MetalearningFeed() {
   const [q, setQ] = useState(QUERIES[0].id);
+  const activeQuery = QUERIES.find((qq) => qq.id === q) || QUERIES[0];
 
   const papers = useArxivFeed({ query: q.replace(/\+/g, ' '), field: 'all', anyCategory: true });
 
@@ -22,13 +23,16 @@ export function MetalearningFeed() {
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
-        <div className="flex items-center gap-2"><Brain className="h-5 w-5 text-fuchsia-400" /><h2 className="text-sm font-semibold text-white">Meta-learning research</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">arxiv · {q}</span></div>
+        <div className="flex items-center gap-2"><Brain className="h-5 w-5 text-fuchsia-400" /><h2 className="text-sm font-semibold text-white">Meta-learning research</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">arxiv · {activeQuery.label}</span></div>
         <div className="flex items-center gap-2">
           <select value={q} onChange={(e) => setQ(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{QUERIES.map((qq) => <option key={qq.id} value={qq.id}>{qq.label}</option>)}</select>
-          {list.length > 0 && <SaveAsDtuButton compact apiSource="arxiv-metalearn" apiUrl={`https://export.arxiv.org/api/query?search_query=all:${q}`} title={`arXiv metalearning — ${q} (${list.length})`} content={list.slice(0, 15).map((p, i) => `${i + 1}. ${p.title}\n   ${p.authors.slice(0, 3).join(', ')} · ${p.published.slice(0, 10)}\n   ${p.link}`).join('\n\n')} extraTags={['metalearning', 'arxiv', q]} rawData={{ query: q, papers: list }} />}
+          {list.length > 0 && <SaveAsDtuButton compact apiSource="arxiv-metalearn" apiUrl={`https://export.arxiv.org/api/query?search_query=all:${q}`} title={`arXiv metalearning — ${activeQuery.label} (${list.length})`} content={list.slice(0, 15).map((p, i) => `${i + 1}. ${p.title}\n   ${p.authors.slice(0, 3).join(', ')} · ${p.published.slice(0, 10)}\n   ${p.link}`).join('\n\n')} extraTags={['metalearning', 'arxiv', q]} rawData={{ query: q, papers: list }} />}
         </div>
       </header>
       {papers.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">arXiv unreachable.</div>}
+      <p className="text-[11px] text-zinc-500">
+        Showing arXiv papers matching all of: {activeQuery.label.split(' ').join(' · ')} — ranked by relevance. The list below is that search's result, nothing else.
+      </p>
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Papers</div><div className="mt-0.5 font-mono text-lg text-fuchsia-300">{list.length}</div></div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Newest</div><div className="mt-0.5 font-mono text-lg text-fuchsia-300">{list[0]?.published?.slice(0, 10) || '—'}</div></div>

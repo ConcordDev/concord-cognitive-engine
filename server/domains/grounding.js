@@ -641,11 +641,55 @@ export default function registerGroundingActions(registerLensAction) {
   // thing regardless of which macro produced the evidence.
   const EVIDENCE_SUPPORT_WORDS = ["confirmed", "verified", "proven", "true", "correct", "accurate", "supports", "demonstrates", "shows", "found that"];
   const EVIDENCE_CONTRADICT_WORDS = ["false", "incorrect", "wrong", "disproven", "debunked", "myth", "inaccurate", "misleading", "no evidence", "contrary"];
-  function inferStance(text) {
+  const STANCE_STOPWORDS = new Set([
+    "the", "a", "an", "is", "are", "was", "were", "be", "been", "have",
+    "has", "had", "do", "does", "did", "will", "would", "to", "of", "in",
+    "for", "on", "with", "at", "by", "from", "as", "and", "but", "or",
+    "not", "so", "if", "that", "this", "it", "its", "i", "we", "you",
+    "they", "he", "she", "what", "which", "who", "how", "where", "why", "when",
+  ]);
+  const STANCE_NEGATIONS = ["not", "no", "never", "neither", "nor", "cannot"];
+  function stanceTokens(text) {
+    return String(text || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !STANCE_STOPWORDS.has(w));
+  }
+  function stanceOverlap(a, b) {
+    const ta = stanceTokens(a);
+    const tb = stanceTokens(b);
+    if (!ta.length || !tb.length) return 0;
+    const fa = {};
+    const fb = {};
+    for (const t of ta) fa[t] = (fa[t] || 0) + 1;
+    for (const t of tb) fb[t] = (fb[t] || 0) + 1;
+    let dot = 0, ma = 0, mb = 0;
+    for (const t of new Set([...Object.keys(fa), ...Object.keys(fb)])) {
+      const x = fa[t] || 0;
+      const y = fb[t] || 0;
+      dot += x * y;
+      ma += x * x;
+      mb += y * y;
+    }
+    const denom = Math.sqrt(ma) * Math.sqrt(mb);
+    return denom > 0 ? dot / denom : 0;
+  }
+  function inferStance(text, claimText) {
     const lc = String(text || "").toLowerCase();
     const sup = EVIDENCE_SUPPORT_WORDS.filter((w) => lc.includes(w)).length;
     const con = EVIDENCE_CONTRADICT_WORDS.filter((w) => lc.includes(w)).length;
-    return sup > con ? "supports" : con > sup ? "contradicts" : "neutral";
+    if (sup > con) return "supports";
+    if (con > sup) return "contradicts";
+    // Entailment fallback: when the verdict-word signals are absent or tied,
+    // judge the excerpt against the CLAIM's own content (the factCheck
+    // macro's method): a passage that restates the claim's substance
+    // supports it; the same restatement under negation contradicts it;
+    // anything else stays neutral. Claim-less callers (discoverCoverage
+    // titles) keep the keyword-only behaviour above.
+    if (claimText) {
+      if (stanceOverlap(text, claimText) >= 0.4) {
+        const negated = lc.split(/\s+/).some((w) => STANCE_NEGATIONS.includes(w) || w.endsWith("n't"));
+        return negated ? "contradicts" : "supports";
+      }
+    }
+    return "neutral";
   }
 
   // Generic English stopwords stripped when turning a free-text claim into
@@ -688,7 +732,7 @@ export default function registerGroundingActions(registerLensAction) {
         const text = gClean(ev.text, 1000);
         const bias = biasFor(ev.sourceUrl);
         let stance = ev.stance && ["supports", "contradicts", "neutral"].includes(ev.stance) ? ev.stance : null;
-        if (!stance) stance = inferStance(text);
+        if (!stance) stance = inferStance(text, claim);
         // Source weight: factuality (0-1) blended with reliability tier.
         const relTier = { "very-high": 1.0, high: 0.85, medium: 0.6, low: 0.35, unrated: 0.5 };
         const fact = bias && bias.factuality != null ? bias.factuality / 100 : 0.5;
@@ -743,9 +787,10 @@ export default function registerGroundingActions(registerLensAction) {
           leanSpread,
           spectrumCoverage: leanSpread >= 4 ? "broad" : leanSpread >= 2 ? "moderate" : "narrow",
           citations,
-          notes: knownSources < citations.length
-            ? `${citations.length - knownSources} source(s) have no published bias rating — verdict weighted at neutral reliability for those.`
-            : "All sources have published reliability ratings.",
+          notes: (knownSources < citations.length
+            ? `${citations.length - knownSources} source(s) have no published bias rating — verdict weighted at neutral reliability for those. `
+            : "All sources have published reliability ratings. ")
+            + "probabilityTrue is the source-weighted share of decisive evidence (supporting vs contradicting; neutral evidence excluded) — an evidence measure, not a measured probability that the claim is true.",
         },
       };
     } catch (e) {

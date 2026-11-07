@@ -30,6 +30,7 @@ export function ChartKit({
   stacked = false,
   showLegend = true,
   showGrid = true,
+  yDomain,
 }: {
   kind?: ChartKind;
   data: Array<Record<string, unknown>>;
@@ -39,6 +40,14 @@ export function ChartKit({
   stacked?: boolean;
   showLegend?: boolean;
   showGrid?: boolean;
+  /**
+   * Fixed y-axis domain for charts drawn on a FIXED scale (e.g. mood
+   * averages on a 1–5 scale). Without it recharts rescales the axis to
+   * the data maximum, so a middling week pictures as a ceiling week —
+   * data varies, rulers don't (Affect F19). Omitted = recharts' default
+   * auto domain, unchanged for every existing caller.
+   */
+  yDomain?: [number, number];
 }) {
   if (!data || data.length === 0) {
     return (
@@ -58,7 +67,7 @@ export function ChartKit({
     <>
       {grid}
       <XAxis dataKey={xKey} {...axis} />
-      <YAxis {...axis} />
+      <YAxis {...axis} {...(yDomain ? { domain: yDomain } : {})} />
       <Tooltip
         contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 12 }}
         labelStyle={{ color: '#e4e4e7' }}

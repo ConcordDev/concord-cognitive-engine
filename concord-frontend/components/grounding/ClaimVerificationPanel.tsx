@@ -31,7 +31,7 @@ import { useState } from 'react';
 import {
   ShieldCheck, CheckCircle, FileBadge, ListTree,
   Sparkles, Send, Globe, Wand2, Plus, Trash2,
-  Loader2, Check, AlertTriangle,
+  Loader2, Check, AlertTriangle, Copy,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
@@ -103,7 +103,19 @@ export function ClaimVerificationPanel() {
       if (!r.data.ok) { err(r.data.error ?? 'fact check failed'); return; }
       const res = r.data.result;
       setFactResult(res);
-      if (res?.verdict) ok(`Verdict: ${res.verdict}${res.confidence != null ? ` (${Math.round(res.confidence * 100)}%)` : ''}.`);
+      if (res?.verdict) {
+        ok(`Verdict: ${res.verdict}${res.confidence != null ? ` · evidence score ${Math.round(res.confidence * 100)}%` : ''}.`);
+        // Record the completed check in the verification audit trail (the
+        // store the workbench's audit tab totals). Background courtesy copy:
+        // a record failure never fails the check itself.
+        void lensRun('grounding', 'recordCheck', {
+          claim: claim.trim(),
+          verdict: res.verdict,
+          confidence: res.confidence ?? null,
+          sourceCount: evidenceRows.length,
+          sources: evidenceRows.map((e) => e.source.trim()).filter(Boolean),
+        }).catch(() => { /* the audit copy is best-effort; the check stands */ });
+      }
       else ok(res?.message || 'No verdict — add evidence to score this claim.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -169,7 +181,7 @@ export function ClaimVerificationPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Verification DTU ${id.slice(0, 8)}…`); }
+      if (id) { setMintedDtuId(id); ok(`Verification DTU ${id}`); }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -183,7 +195,7 @@ export function ClaimVerificationPanel() {
       `🔍 Claim verification`,
       ``,
       `Claim: ${claim.trim()}`,
-      factResult?.verdict ? `Verdict: ${factResult.verdict} (${factResult.confidence != null ? Math.round(factResult.confidence * 100) + '%' : '—'})` : '',
+      factResult?.verdict ? `Verdict: ${factResult.verdict} (evidence score ${factResult.confidence != null ? Math.round(factResult.confidence * 100) + '%' : '—'})` : '',
       credibilityResult?.sources?.[0] ? `Source: ${credibilityResult.sources[0].credibilityLabel} (${credibilityResult.sources[0].credibilityScore}/100)` : '',
       decomposeResult?.atomicClaimCount ? `Atomic claims: ${decomposeResult.atomicClaimCount}` : '',
       mintedDtuId ? `\n[Verification DTU ${mintedDtuId}]` : '',
@@ -219,7 +231,7 @@ export function ClaimVerificationPanel() {
       const id = dtu?.id ?? dtu?.dtuId;
       if (!id) { err('No DTU id returned.'); return; }
       const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
-      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Reviewed claim published ${id.slice(0, 8)}…`); }
+      if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`Reviewed claim published ${id}`); }
       else err(pub.data?.error ?? 'publish flag failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -248,12 +260,12 @@ export function ClaimVerificationPanel() {
   }
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
-    { id: 'factcheck',   label: 'Fact check',     desc: 'Verdict + confidence vs. evidence',        icon: CheckCircle, accent: '#22c55e', handler: actFact,        disabled: !ready },
+    { id: 'factcheck',   label: 'Fact check',     desc: 'Verdict + evidence score',                 icon: CheckCircle, accent: '#22c55e', handler: actFact,        disabled: !ready },
     { id: 'credibility', label: 'Source tier',    desc: 'Score the source below',                   icon: FileBadge,   accent: '#06b6d4', handler: actCredibility, disabled: !srcUrl.trim() && !srcName.trim() },
     { id: 'decompose',   label: 'Decompose',      desc: 'Break claim into atomic, verifiable parts', icon: ListTree,   accent: '#8b5cf6', handler: actDecompose,   disabled: !ready },
-    { id: 'mint',        label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private verification DTU',                  icon: Sparkles,    accent: '#3b82f6', handler: actMint,        disabled: !ready || !!mintedDtuId },
+    { id: 'mint',        label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? 'Saved — full DTU ID below'          : 'Private verification DTU',                  icon: Sparkles,    accent: '#3b82f6', handler: actMint,        disabled: !ready || !!mintedDtuId },
     { id: 'dm',          label: 'DM',             desc: 'Send verdict + sources to another user',   icon: Send,        accent: '#ec4899', handler: actDm,          disabled: !ready },
-    { id: 'publish',     label: publishedDtuId ? 'Published' : 'Publish',        desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public reviewed-claim DTU + federation',    icon: Globe,       accent: '#15803d', handler: actPublish,     disabled: !ready || !!publishedDtuId },
+    { id: 'publish',     label: publishedDtuId ? 'Published' : 'Publish',        desc: publishedDtuId ? 'Published — full DTU ID below'      : 'Public reviewed-claim DTU + federation',    icon: Globe,       accent: '#15803d', handler: actPublish,     disabled: !ready || !!publishedDtuId },
     { id: 'agent',       label: 'Counter (agent)', desc: 'Strongest counter-evidence + biases',     icon: Wand2,       accent: '#eab308', handler: actAgent,       disabled: !ready },
   ];
 
@@ -330,11 +342,35 @@ export function ClaimVerificationPanel() {
         })}
       </div>
 
+      {(mintedDtuId || publishedDtuId) && (
+        <div className="space-y-1 rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-2">
+          {mintedDtuId && (
+            <p className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
+              <span className="text-zinc-500">Verification DTU:</span>
+              <code className="font-mono text-zinc-100 break-all">{mintedDtuId}</code>
+              <button type="button" onClick={() => { void navigator.clipboard?.writeText(mintedDtuId).catch(() => {}); }} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-700">
+                <Copy className="h-3 w-3" /> Copy
+              </button>
+            </p>
+          )}
+          {publishedDtuId && (
+            <p className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
+              <span className="text-zinc-500">Published DTU:</span>
+              <code className="font-mono text-zinc-100 break-all">{publishedDtuId}</code>
+              <button type="button" onClick={() => { void navigator.clipboard?.writeText(publishedDtuId).catch(() => {}); }} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-700">
+                <Copy className="h-3 w-3" /> Copy
+              </button>
+            </p>
+          )}
+          <p className="text-[10px] text-zinc-500">The whole ID — paste it into Ground-a-DTU or search the Library by exact ID.</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {factResult && (
           <div className={cn('rounded-md border p-2.5 space-y-0.5', factResult.verdict === 'likely true' ? 'border-emerald-500/40 bg-emerald-500/5' : factResult.verdict === 'likely false' ? 'border-rose-500/40 bg-rose-500/5' : 'border-amber-500/40 bg-amber-500/5')}>
             <div className="text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5 capitalize">
-              <CheckCircle className="w-3 h-3" /> {factResult.verdict ?? factResult.message ?? '—'}{factResult.confidence != null && ` · ${Math.round(factResult.confidence * 100)}%`}
+              <CheckCircle className="w-3 h-3" /> {factResult.verdict ?? factResult.message ?? '—'}{factResult.confidence != null && ` · evidence ${Math.round(factResult.confidence * 100)}%`}
             </div>
             {factResult.breakdown && (
               <div className="text-[10px] text-zinc-300">

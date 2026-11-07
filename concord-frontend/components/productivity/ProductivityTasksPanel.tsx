@@ -16,6 +16,7 @@ interface Project { id: string; name: string; color: string; taskCount: number }
 
 export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
   const [tasks, setTasks] = useState<ProdTask[]>([]);
+  const [completed, setCompleted] = useState<ProdTask[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,13 +24,16 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
   const [projectFilter, setProjectFilter] = useState('');
   const [form, setForm] = useState({ content: '', priority: '4', dueDate: '', projectId: '', labels: '', recurring: '' });
   const [showAdd, setShowAdd] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const [projName, setProjName] = useState('');
+  const [confirmingProjectDelete, setConfirmingProjectDelete] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [t, p] = await Promise.all([
+    const [t, p, all] = await Promise.all([
       lensRun('productivity', 'task-list', projectFilter ? { projectId: projectFilter } : {}),
       lensRun('productivity', 'project-list', {}),
+      lensRun('productivity', 'task-list', { includeDone: true, ...(projectFilter ? { projectId: projectFilter } : {}) }),
     ]);
     if (t.data?.ok === false || p.data?.ok === false) {
       setLoadError(t.data?.error || p.data?.error || 'Could not load tasks or projects.');
@@ -38,6 +42,9 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
     }
     setLoadError(null);
     setTasks(t.data?.result?.tasks || []);
+    // F3: completed tasks have a lifecycle surface — they are listed
+    // here (reopenable, deletable) instead of vanishing on completion.
+    setCompleted(((all.data?.result?.tasks as ProdTask[] | undefined) || []).filter((x) => x.done));
     setProjects(p.data?.result?.projects || []);
     setLoading(false);
     onChange();
@@ -66,7 +73,16 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
   };
   const delProject = async (id: string) => {
     await lensRun('productivity', 'project-delete', { id });
+    setConfirmingProjectDelete(null);
     if (projectFilter === id) setProjectFilter('');
+    await refresh();
+  };
+  const reopenTask = async (id: string) => {
+    await lensRun('productivity', 'task-complete', { id, reopen: true });
+    await refresh();
+  };
+  const deleteTask = async (id: string) => {
+    await lensRun('productivity', 'task-delete', { id });
     await refresh();
   };
 
@@ -96,11 +112,30 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
                   projectFilter === p.id ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-zinc-700 text-zinc-400')}>
                 {p.name} ({p.taskCount})
               </button>
-              <button type="button" onClick={() => delProject(p.id)}
-                className={cn('text-[11px] px-1 py-0.5 rounded-r-full border-y border-r text-zinc-400 hover:text-rose-400',
-                  projectFilter === p.id ? 'border-red-700/50 bg-red-950/40' : 'border-zinc-700')}>
-                ✕
-              </button>
+              {/* F7: a project delete cascades (its shares go with it) —
+                  it confirms before it fires, it is not a one-click ✕. */}
+              {confirmingProjectDelete === p.id ? (
+                <span className="inline-flex items-center">
+                  <button type="button" onClick={() => delProject(p.id)}
+                    aria-label={`Confirm delete ${p.name}`}
+                    className="text-[11px] px-1.5 py-0.5 border-y bg-rose-950/60 text-rose-300 hover:bg-rose-900/60">
+                    Delete?
+                  </button>
+                  <button type="button" onClick={() => setConfirmingProjectDelete(null)}
+                    aria-label="Cancel delete"
+                    className={cn('text-[11px] px-1 py-0.5 rounded-r-full border-y border-r text-zinc-400',
+                      projectFilter === p.id ? 'border-red-700/50 bg-red-950/40' : 'border-zinc-700')}>
+                    ✕
+                  </button>
+                </span>
+              ) : (
+                <button type="button" onClick={() => setConfirmingProjectDelete(p.id)}
+                  aria-label={`Delete ${p.name}`}
+                  className={cn('text-[11px] px-1 py-0.5 rounded-r-full border-y border-r text-zinc-400 hover:text-rose-400',
+                    projectFilter === p.id ? 'border-red-700/50 bg-red-950/40' : 'border-zinc-700')}>
+                  ✕
+                </button>
+              )}
             </span>
           ))}
         </div>
@@ -161,6 +196,35 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
         <ul className="space-y-1">
           {tasks.map((t) => <ProductivityTaskRow key={t.id} task={t} onChange={refresh} />)}
         </ul>
+      )}
+
+      {/* Completed — the lifecycle surface for finished tasks (F3) */}
+      {completed.length > 0 && (
+        <div className="space-y-1">
+          <button type="button" onClick={() => setShowCompleted((v) => !v)}
+            aria-expanded={showCompleted}
+            className="text-[11px] text-zinc-400 hover:text-zinc-200">
+            Completed ({completed.length}) {showCompleted ? '▾' : '▸'}
+          </button>
+          {showCompleted && (
+            <ul className="space-y-1">
+              {completed.map((t) => (
+                <li key={t.id} className="flex items-center gap-2 bg-zinc-900/40 border border-zinc-800/70 rounded-lg px-3 py-2">
+                  <span className="flex-1 min-w-0 text-xs text-zinc-500 line-through truncate">{t.content}</span>
+                  {t.dueDate && <span className="text-[10px] text-zinc-600">{t.dueDate}</span>}
+                  <button type="button" onClick={() => reopenTask(t.id)}
+                    className="px-2 py-0.5 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shrink-0">
+                    Reopen
+                  </button>
+                  <button type="button" onClick={() => deleteTask(t.id)} aria-label={`Delete ${t.content}`}
+                    className="px-2 py-0.5 text-[11px] rounded bg-zinc-800 hover:bg-rose-950 text-zinc-300 hover:text-rose-300 shrink-0">
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   );

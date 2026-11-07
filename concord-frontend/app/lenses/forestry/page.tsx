@@ -30,7 +30,7 @@ type ForestryTab = 'stands' | 'calculators' | 'fire' | 'growth' | 'pests' | 'car
 const TABS: {key: ForestryTab; label: string; keys: string; hint: string; icon: typeof TreePine }[] = [
   { key: 'stands', label: 'Stands', keys: 's', hint: 'Stand registry, activities, dashboard', icon: TreePine },
   { key: 'calculators', label: 'Calculators', keys: 'c', hint: 'Board feet, volume, site index, harvest planning', icon: Calculator },
-  { key: 'fire', label: 'Fire Watch', keys: 'f', hint: 'Live wildfire incidents', icon: Flame },
+  { key: 'fire', label: 'Fire Watch', keys: 'f', hint: 'Wildfire incidents from InciWeb + NIFC', icon: Flame },
   { key: 'growth', label: 'Growth & Inventory', keys: 'g', hint: 'Growth and yield projection, timber cruise', icon: Ruler },
   { key: 'pests', label: 'Pests & Replanting', keys: 'p', hint: 'Pest and disease tracking, replanting plans', icon: Bug },
   { key: 'carbon', label: 'Carbon Credits', keys: 'b', hint: 'Carbon stock and credit estimates', icon: Coins },

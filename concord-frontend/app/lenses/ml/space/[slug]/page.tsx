@@ -44,9 +44,9 @@ export default function MlSpacePage() {
     setBusy(true);
     setOutput(null);
     try {
-      const r = await lensRun<{ output: unknown; latencyMs: number }>('ml', 'playground-infer', { modelId: space.modelId, input: input.trim() });
+      const r = await lensRun<{ output: unknown; latencyMs: number; servedBy?: string }>('ml', 'playground-infer', { modelId: space.modelId, input: input.trim() });
       setOutput(r.data?.ok && r.data.result
-        ? { ok: true, text: JSON.stringify(r.data.result.output, null, 2), latencyMs: r.data.result.latencyMs }
+        ? { ok: true, text: JSON.stringify(r.data.result.output, null, 2) + (r.data.result.servedBy ? `\n\nReceipt: served by ${r.data.result.servedBy}` : ''), latencyMs: r.data.result.latencyMs }
         : { ok: false, text: r.data?.error || 'Inference failed' });
     } catch {
       setOutput({ ok: false, text: 'Inference request failed' });
@@ -73,7 +73,7 @@ export default function MlSpacePage() {
             <p className="flex items-center gap-3 text-xs text-zinc-500">
               <span className="inline-flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> {space.views} views</span>
               <span>{space.visibility}</span>
-              <span>Runs on the hosted Hugging Face inference API</span>
+              <span>Runs on Hugging Face hosted inference, routed across serving providers — the receipt names the one that served</span>
             </p>
             <label className="block text-xs text-zinc-400" htmlFor="space-input">Input</label>
             <textarea

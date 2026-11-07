@@ -11,23 +11,47 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import {
   Plus, TrendingUp, Award, ArrowRight, BarChart3, Zap, BookOpen,
   Brain, Target, Lightbulb, Puzzle, Sparkles, Waypoints, History, Wand2,
-  ThumbsUp, ThumbsDown, Loader2,
+  ThumbsUp, ThumbsDown, Loader2, Trash2,
 } from 'lucide-react';
 
 interface Strategy {
   id: string;
   name: string;
   domain: string;
-  avgPerformance?: number;
+  // S-META-1: the success rate (successes / uses) — null until the
+  // first outcome, when the card reads "no outcomes yet".
+  avgPerformance?: number | null;
   uses?: number;
+  successes?: number;
+  failures?: number;
+  parameters?: {
+    learningRate: number;
+    explorationRate: number;
+    batchSize: number;
+    abstractionLevel?: number;
+    consolidationThreshold?: number;
+  };
 }
 
 interface Adaptation {
   strategyId: string;
   strategyName: string;
   adaptations: string[];
+  changes?: { parameter: string; from: number; to: number }[];
   triggerPerformance: number;
+  triggerSuccessRate?: number;
+  outcomesCounted?: number;
   adaptedAt: string;
+}
+
+interface CurriculumStep { order: number; title: string; rationale: string }
+interface Curriculum {
+  id: string;
+  topic: string;
+  provenance?: string;
+  estimatedEffort?: number;
+  steps: CurriculumStep[];
+  createdAt?: string;
 }
 
 export function StrategiesDeskPanel() {
@@ -40,6 +64,7 @@ export function StrategiesDeskPanel() {
   const [strategySearch, setStrategySearch] = useState('');
   const [strategyTypeFilter, setStrategyTypeFilter] = useState<string>('all');
   const [outcomeBusyId, setOutcomeBusyId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const newNameInputRef = useRef<HTMLInputElement>(null);
   const curriculumInputRef = useRef<HTMLInputElement>(null);
   const strategySearchInputRef = useRef<HTMLInputElement>(null);
@@ -58,7 +83,17 @@ export function StrategiesDeskPanel() {
   const { data: best, isError: isError3, error: error3, refetch: refetch3 } = useQuery({
     queryKey: ['metalearning-best'],
     queryFn: () => apiHelpers.metalearning.bestStrategy().then((r) => r.data),
+    refetchInterval: 20000,
   });
+
+  const { data: curriculaData } = useQuery({
+    queryKey: ['metalearning-curricula'],
+    queryFn: () => apiHelpers.metalearning.curricula().then((r) => r.data),
+  });
+  const savedCurricula: Curriculum[] = useMemo(
+    () => (curriculaData as { curricula?: Curriculum[] } | undefined)?.curricula || [],
+    [curriculaData],
+  );
 
   const createStrategy = useMutation({
     mutationFn: () => apiHelpers.metalearning.createStrategy({ name: newName, domain: newDomain || 'general' }),
@@ -72,30 +107,49 @@ export function StrategiesDeskPanel() {
   const runCurriculum = useMutation({
     mutationFn: () => apiHelpers.metalearning.curriculum({ topic: curriculumTopic }),
     onSuccess: (res) => {
-      setResults(res.data);
+      setResults((res.data as { curriculum?: Curriculum })?.curriculum || res.data);
       setCurriculumTopic('');
+      queryClient.invalidateQueries({ queryKey: ['metalearning-status'] });
+      queryClient.invalidateQueries({ queryKey: ['metalearning-curricula'] });
     },
     onError: (err) => console.error('runCurriculum failed:', err instanceof Error ? err.message : err),
   });
 
   const recordOutcome = useMutation({
     mutationFn: ({ strategyId, success }: { strategyId: string; success: boolean }) =>
-      apiHelpers.metalearning.recordOutcome(strategyId, { success, performance: success ? 0.85 : 0.25 }),
+      apiHelpers.metalearning.recordOutcome(strategyId, { success }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['metalearning-strategies'] });
       queryClient.invalidateQueries({ queryKey: ['metalearning-adaptations'] });
       queryClient.invalidateQueries({ queryKey: ['metalearning-status'] });
+      queryClient.invalidateQueries({ queryKey: ['metalearning-best'] });
     },
     onSettled: () => setOutcomeBusyId(null),
   });
 
   const adaptStrategyMut = useMutation({
     mutationFn: (strategyId: string) => apiHelpers.metalearning.adaptStrategy(strategyId),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      // The pass's receipt — changes made, or the reason none were —
+      // renders in the Results panel instead of vanishing (S-META-3).
+      setResults(res.data);
       queryClient.invalidateQueries({ queryKey: ['metalearning-strategies'] });
       queryClient.invalidateQueries({ queryKey: ['metalearning-adaptations'] });
+      queryClient.invalidateQueries({ queryKey: ['metalearning-best'] });
     },
     onSettled: () => setOutcomeBusyId(null),
+  });
+
+  const deleteStrategyMut = useMutation({
+    mutationFn: (strategyId: string) => apiHelpers.metalearning.deleteStrategy(strategyId),
+    onSuccess: () => {
+      setConfirmDeleteId(null);
+      queryClient.invalidateQueries({ queryKey: ['metalearning-strategies'] });
+      queryClient.invalidateQueries({ queryKey: ['metalearning-status'] });
+      queryClient.invalidateQueries({ queryKey: ['metalearning-best'] });
+      queryClient.invalidateQueries({ queryKey: ['metalearning-adaptations'] });
+    },
+    onError: (err) => console.error('deleteStrategy failed:', err instanceof Error ? err.message : err),
   });
 
   const { data: adaptationsData } = useQuery({
@@ -162,8 +216,8 @@ export function StrategiesDeskPanel() {
         </div>
         <div className="lens-card">
           <Waypoints className="w-5 h-5 text-neon-cyan mb-2" />
-          <p className="text-2xl font-bold">{strategyList.length > 0 ? (strategyList.reduce((s, st) => s + (st.avgPerformance || 0), 0) / strategyList.length * 100).toFixed(0) : 0}%</p>
-          <p className="text-sm text-gray-400">Avg Performance</p>
+          <p className="text-2xl font-bold">{(() => { const rated = strategyList.filter((st) => st.avgPerformance != null); return rated.length > 0 ? `${(rated.reduce((sum, st) => sum + (st.avgPerformance as number), 0) / rated.length * 100).toFixed(0)}%` : '—'; })()}</p>
+          <p className="text-sm text-gray-400">Avg Success Rate</p>
         </div>
         <div className="lens-card">
           <Brain className="w-5 h-5 text-neon-green mb-2" />
@@ -187,7 +241,7 @@ export function StrategiesDeskPanel() {
         </div>
         <div className="lens-card">
           <BookOpen className="w-5 h-5 text-neon-cyan mb-2" />
-          <p className="text-2xl font-bold">{statusInfo.curricula || 0}</p>
+          <p className="text-2xl font-bold">{statusInfo.curriculums || 0}</p>
           <p className="text-sm text-gray-400">Curricula Generated</p>
         </div>
         <div className="lens-card">
@@ -310,13 +364,22 @@ export function StrategiesDeskPanel() {
                   <span className="font-medium text-sm">{s.name}</span>
                   <span className="text-xs px-2 py-0.5 rounded bg-lattice-surface text-gray-400">{s.domain}</span>
                 </div>
-                {s.avgPerformance != null && (
+                {s.avgPerformance != null ? (
                   <div className="mt-2">
                     <div className="h-1.5 bg-lattice-deep rounded-full overflow-hidden">
                       <div className="h-full bg-neon-green" style={{ width: `${Math.round(s.avgPerformance * 100)}%` }} />
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">{(s.avgPerformance * 100).toFixed(0)}% avg performance · {s.uses || 0} outcomes</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {(s.avgPerformance * 100).toFixed(0)}% success rate · {s.successes ?? 0} of {s.uses || 0} outcomes
+                    </p>
                   </div>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-2">No outcomes yet — record a success or failure and this card will show its success rate.</p>
+                )}
+                {s.parameters && (
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Learning rate {s.parameters.learningRate.toFixed(2)} · Exploration {s.parameters.explorationRate.toFixed(2)} · Batch {s.parameters.batchSize}
+                  </p>
                 )}
                 <div className="mt-2 flex items-center gap-1.5">
                   <button
@@ -343,6 +406,25 @@ export function StrategiesDeskPanel() {
                   >
                     {outcomeBusyId === s.id && adaptStrategyMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Adapt
                   </button>
+                  {confirmDeleteId === s.id ? (
+                    <button
+                      onClick={() => deleteStrategyMut.mutate(s.id)}
+                      disabled={deleteStrategyMut.isPending}
+                      className="px-2 py-1 rounded text-[11px] bg-red-500/25 hover:bg-red-500/35 text-red-300 transition-colors"
+                      title="Confirm delete — the strategy and its outcome history are removed"
+                    >
+                      Delete?
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(s.id)}
+                      className="p-1 rounded text-gray-500 hover:text-red-400 transition-colors"
+                      title="Delete strategy"
+                      aria-label={`Delete strategy ${s.name}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -359,14 +441,75 @@ export function StrategiesDeskPanel() {
           <h2 className="font-semibold mb-3 flex items-center gap-2">
             <ArrowRight className="w-4 h-4 text-neon-green" /> Results
           </h2>
-          {results ? (
-            <pre className="bg-lattice-surface p-3 rounded-lg whitespace-pre-wrap text-xs text-gray-300 font-mono max-h-96 overflow-y-auto">
-              {JSON.stringify(results, null, 2)}
-            </pre>
-          ) : (
+          {results == null ? (
             <p className="text-center py-12 text-gray-400 text-sm">
               Generate a curriculum or adapt a strategy to see results
             </p>
+          ) : (() => {
+            const r = results as Record<string, unknown>;
+            if (Array.isArray(r.steps)) {
+              const c = r as unknown as Curriculum;
+              return (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-200">Curriculum — {c.topic}</p>
+                  {!!c.provenance && <p className="text-xs text-gray-400">{c.provenance}</p>}
+                  {c.steps.length === 0 ? (
+                    <p className="text-xs text-yellow-400/90">No corpus material matched this topic yet — the curriculum is empty rather than filled with unrelated steps.</p>
+                  ) : (
+                    <ol className="space-y-1.5">
+                      {c.steps.map((step) => (
+                        <li key={step.order} className="text-xs text-gray-300">
+                          <span className="text-neon-cyan font-mono mr-1.5">{step.order}.</span>
+                          <span className="text-gray-100">{step.title}</span>
+                          <span className="text-gray-500"> — {step.rationale}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  {typeof c.estimatedEffort === 'number' && c.steps.length > 0 && (
+                    <p className="text-[11px] text-gray-500">Estimated effort: {c.estimatedEffort.toFixed(1)}h across {c.steps.length} steps</p>
+                  )}
+                </div>
+              );
+            }
+            if (typeof r.message === 'string' || Array.isArray(r.changes)) {
+              const changes = (r.changes as { parameter: string; from: number; to: number }[] | undefined) || [];
+              return (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-200">
+                    {r.adapted ? 'Adaptation applied' : 'Adaptation pass — no change'}
+                    {typeof r.outcomesCounted === 'number' ? <span className="text-gray-400 font-normal"> · read over {String(r.outcomesCounted)} recent outcomes</span> : null}
+                  </p>
+                  {changes.length > 0 && (
+                    <ul className="space-y-0.5">
+                      {changes.map((ch, i) => (
+                        <li key={i} className="text-xs text-gray-300">
+                          <span className="capitalize">{ch.parameter.replace(/([A-Z])/g, ' $1').toLowerCase()}</span>: {String(ch.from)} → {String(ch.to)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {typeof r.message === 'string' && <p className="text-xs text-gray-400">{r.message}</p>}
+                </div>
+              );
+            }
+            return <p className="text-xs text-gray-400">{typeof r.error === 'string' ? r.error : 'Done.'}</p>;
+          })()}
+          {savedCurricula.length > 0 && (
+            <div className="mt-4 border-t border-white/5 pt-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Saved curricula</p>
+              <div className="space-y-1">
+                {savedCurricula.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setResults(c)}
+                    className="w-full text-left text-xs text-gray-300 hover:text-white px-2 py-1 rounded hover:bg-white/5 transition-colors"
+                  >
+                    {c.topic} <span className="text-gray-500">· {c.steps.length} steps{c.createdAt ? ` · ${new Date(c.createdAt).toLocaleDateString()}` : ''}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
@@ -388,7 +531,7 @@ export function StrategiesDeskPanel() {
         </h2>
         {adaptationLog.length === 0 ? (
           <p className="text-center py-6 text-gray-400 text-sm">
-            No adaptations yet — record a few outcomes on a strategy (5+ triggers auto-adaptation), or click Adapt.
+            No adaptations yet. Adaptation is checked once a strategy has 5+ outcomes, and fires when recent performance leaves the healthy band — below 0.40 average, or above 0.70 with a success rate over 80%. Click Adapt on a strategy to run a pass now and see its receipt.
           </p>
         ) : (
           <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -400,6 +543,8 @@ export function StrategiesDeskPanel() {
                 </div>
                 <p className="text-[11px] text-gray-400 mt-0.5">
                   Trigger performance: {(a.triggerPerformance * 100).toFixed(0)}%
+                  {typeof a.triggerSuccessRate === 'number' ? ` · success rate ${(a.triggerSuccessRate * 100).toFixed(0)}%` : ''}
+                  {typeof a.outcomesCounted === 'number' ? ` · over ${a.outcomesCounted} outcomes` : ''}
                 </p>
                 <ul className="mt-1.5 space-y-0.5">
                   {a.adaptations.map((change, j) => (
@@ -429,14 +574,14 @@ export function StrategiesDeskPanel() {
               {bestStrategy?.name || 'None Selected'}
             </p>
             <p className="text-xs text-gray-400 mt-1">
-              {bestStrategy?.domain || 'No strategy active'} domain
+              {bestStrategy ? `${bestStrategy.domain} domain` : 'No strategy active — Best needs a strategy with 3+ outcomes'}
             </p>
             {bestStrategy?.avgPerformance != null && (
               <div className="mt-2">
                 <div className="h-1.5 bg-lattice-void rounded-full overflow-hidden">
                   <div className="h-full bg-neon-green rounded-full" style={{ width: `${(bestStrategy.avgPerformance as number) * 100}%` }} />
                 </div>
-                <p className="text-[10px] text-gray-400 mt-1">{((bestStrategy.avgPerformance as number) * 100).toFixed(0)}% avg performance</p>
+                <p className="text-[10px] text-gray-400 mt-1">{((bestStrategy.avgPerformance as number) * 100).toFixed(0)}% success rate</p>
               </div>
             )}
           </div>
@@ -462,7 +607,7 @@ export function StrategiesDeskPanel() {
               <h3 className="text-sm font-semibold">Insight Generation</h3>
             </div>
             <p className="text-lg font-bold text-neon-cyan">
-              {statusInfo.curricula || 0}
+              {statusInfo.curriculums || 0}
             </p>
             <p className="text-xs text-gray-400 mt-1">curricula generated</p>
             <div className="mt-2 flex items-center gap-1 text-xs text-neon-purple">

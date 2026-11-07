@@ -9,15 +9,14 @@
 import { useState, useCallback, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, lensRun } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { motion } from 'framer-motion';
-import { Upload, Settings2, CheckCircle2, AlertTriangle, Loader2, Clock, Database, FileUp, FileJson, FileText, Image as ImageIcon, Gauge, ArrowDownToLine, Activity, BarChart3, Search, List, Table2, KeyRound } from 'lucide-react';
+import { Upload, Settings2, CheckCircle2, AlertTriangle, Loader2, Clock, Database, FileUp, FileJson, FileText, Image as ImageIcon, Gauge, ArrowDownToLine, Activity, BarChart3, Search, List, Table2, KeyRound, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { showToast } from '@/components/common/Toasts';
-import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 import {
   TEXT_BATCH_EXT,
   TEXT_ANALYSIS_ACTIONS,
@@ -27,7 +26,9 @@ import {
   type ValidateSchemaResult,
   type DetectSchemaResult,
   type BatchStatusResult,
-  type IngestJob,
+  type IngestedDtuRow,
+  type IngestReceipt,
+  type IngestedDtuDetail,
 } from './ingest-shared';
 
 export function WorkbenchPanel() {
@@ -83,39 +84,57 @@ export function WorkbenchPanel() {
     }
   }, [textInput, expectedFields]);
 
-  // Fetch past ingestions
-  const { data: historyData, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['ingest-history'],
-    queryFn: () => api.get('/api/dtus?limit=50').then(r => r.data).catch(() => ({ dtus: [] })),
+  // ── My ingested DTUs — the lens's own retrieval path (ingest.listIngested
+  // reads back the caller's ingested DTUs from the canonical store). The
+  // history, the counters and the Recent list all read THIS, so they can
+  // only ever describe this lens's own ingests.
+  const [receipt, setReceipt] = useState<IngestReceipt | null>(null);
+  const [searchQ, setSearchQ] = useState('');
+  const [selectedDtu, setSelectedDtu] = useState<IngestedDtuDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const { data: mineData, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['ingest-mine', searchQ],
+    queryFn: async () => {
+      const r = await lensRun('ingest', 'listIngested', { limit: 100, q: searchQ || undefined });
+      if (r.data.ok && r.data.result) return r.data.result as { dtus: IngestedDtuRow[]; total: number };
+      return { dtus: [] as IngestedDtuRow[], total: 0 };
+    },
     refetchInterval: 10000,
   });
 
-  const history: IngestJob[] = (historyData?.ingestions || []);
-  const recentDtus = historyData?.dtus || [];
+  const ingestedDtus: IngestedDtuRow[] = mineData?.dtus || [];
+  const totalIngested = mineData?.total ?? ingestedDtus.length;
 
-  // Ingest text as DTU
+  const openDtu = useCallback(async (id: string) => {
+    setDetailLoading(true);
+    try {
+      const r = await lensRun('ingest', 'getIngested', { dtuId: id });
+      if (r.data.ok && r.data.result) setSelectedDtu(r.data.result as IngestedDtuDetail);
+      else showToast('error', r.data.error || 'Could not open that DTU');
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  // Ingest text as DTUs — the server verb chunks, stamps the ingest
+  // attribution, and dedups by content hash; its result IS the receipt
+  // the banner freezes on (never the live form).
   const ingestText = useMutation({
     mutationFn: async () => {
-      const chunks = [];
-      // Simple chunking by character count
-      for (let i = 0; i < textInput.length; i += chunkSize - chunkOverlap) {
-        chunks.push(textInput.slice(i, i + chunkSize));
-      }
-
-      const results: Record<string, unknown>[] = [];
-      for (let ci = 0; ci < chunks.length; ci++) {
-        const res = await api.post('/api/dtus', withContentLicense({
-          title: title || `Ingested chunk ${ci + 1}`,
-          content: chunks[ci],
-          domain: domain || undefined,
-          tags: ['ingested'],
-        }, 'knowledge', ['private']));
-        results.push(res.data);
-      }
-      return results;
+      const r = await lensRun('ingest', 'ingestText', {
+        text: textInput,
+        title: title || undefined,
+        domain: domain || undefined,
+        chunkSize,
+        chunkOverlap,
+      });
+      if (!r.data.ok) throw new Error(r.data.error || 'Ingest failed');
+      return r.data.result as IngestReceipt;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ingest-history'] });
+    onSuccess: (result) => {
+      setReceipt(result);
+      queryClient.invalidateQueries({ queryKey: ['ingest-mine'] });
       setTextInput('');
       setTitle('');
     },
@@ -172,7 +191,7 @@ export function WorkbenchPanel() {
         const ingested = r?.ingested ?? 0;
         const skipped = r?.skipped ?? 0;
         showToast('success', `Ingested ${ingested} file(s)${skipped ? `, skipped ${skipped}` : ''}`);
-        queryClient.invalidateQueries({ queryKey: ['ingest-history'] });
+        queryClient.invalidateQueries({ queryKey: ['ingest-mine'] });
       } catch {
         showToast('error', 'Batch ingest failed');
       }
@@ -231,10 +250,10 @@ export function WorkbenchPanel() {
       {/* Stat Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: Upload, color: 'text-neon-cyan', value: history.length || recentDtus.length, label: 'Total Ingested' },
-          { icon: Database, color: 'text-neon-purple', value: recentDtus.length, label: 'Recent DTUs' },
-          { icon: Activity, color: 'text-neon-green', value: history.filter((j: IngestJob) => j.status === 'completed').length, label: 'Completed' },
-          { icon: AlertTriangle, color: 'text-amber-400', value: history.filter((j: IngestJob) => j.status === 'failed').length, label: 'Failed' },
+          { icon: Upload, color: 'text-neon-cyan', value: totalIngested, label: 'Total Ingested' },
+          { icon: Database, color: 'text-neon-purple', value: ingestedDtus.length, label: 'Recent DTUs' },
+          { icon: Activity, color: 'text-neon-green', value: receipt?.createdCount ?? 0, label: 'Created · last ingest' },
+          { icon: AlertTriangle, color: 'text-amber-400', value: receipt?.dedupedCount ?? 0, label: 'Deduped · last ingest' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -265,8 +284,8 @@ export function WorkbenchPanel() {
           {[
             { stage: 'Queued', count: 0, color: 'bg-gray-500', textColor: 'text-gray-400' },
             { stage: 'Processing', count: ingestText.isPending ? 1 : 0, color: 'bg-neon-cyan', textColor: 'text-neon-cyan' },
-            { stage: 'Complete', count: history.filter((j: IngestJob) => j.status === 'completed').length || (ingestText.isSuccess ? 1 : 0), color: 'bg-neon-green', textColor: 'text-neon-green' },
-            { stage: 'Failed', count: history.filter((j: IngestJob) => j.status === 'failed').length, color: 'bg-red-500', textColor: 'text-red-400' },
+            { stage: 'Complete', count: totalIngested, color: 'bg-neon-green', textColor: 'text-neon-green' },
+            { stage: 'Failed', count: receipt?.failures ?? 0, color: 'text-red-500', textColor: 'text-red-400' },
           ].map((stage, i) => (
             <div key={stage.stage} className="flex items-center gap-2 flex-1">
               <div className="flex-1 bg-lattice-deep rounded-lg p-3 text-center border border-white/5">
@@ -367,10 +386,18 @@ export function WorkbenchPanel() {
             </button>
           </div>
 
-          {ingestText.isSuccess && (
+          {receipt && (
             <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-sm text-green-400">
-              <CheckCircle2 className="w-4 h-4" />
-              Successfully ingested {chunkCount} chunk{chunkCount !== 1 ? 's' : ''} as DTUs
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+              <span className="flex-1">
+                Ingested {receipt.createdCount} chunk{receipt.createdCount !== 1 ? 's' : ''} as DTUs
+                {receipt.created[0] ? <> — first: <span className="font-mono text-xs">{receipt.created[0].dtuId}</span></> : null}
+                {receipt.dedupedCount > 0 ? <> · {receipt.dedupedCount} chunk{receipt.dedupedCount !== 1 ? 's' : ''} already present, not duplicated</> : null}
+                {receipt.failures > 0 ? <> · {receipt.failures} failed</> : null}
+              </span>
+              <button onClick={() => setReceipt(null)} className="text-green-400/70 hover:text-green-300" aria-label="Dismiss receipt">
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
 
@@ -411,20 +438,18 @@ export function WorkbenchPanel() {
               <div className="space-y-2">
                 {[1, 2, 3].map(i => <div key={i} className="h-12 bg-lattice-deep animate-pulse rounded" />)}
               </div>
-            ) : history.length > 0 ? (
+            ) : ingestedDtus.length > 0 ? (
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {history.map(job => (
-                  <div key={job.id} className="p-2 rounded bg-lattice-deep text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-white truncate">{job.filename || job.id.slice(0, 8)}</span>
-                      <span className={cn(
-                        job.status === 'completed' ? 'text-green-400' :
-                        job.status === 'failed' ? 'text-red-400' : 'text-yellow-400'
-                      )}>{job.status}</span>
+                {ingestedDtus.map(d => (
+                  <div key={d.id} className="p-2 rounded bg-lattice-deep text-xs">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-white truncate">{d.title}</span>
+                      <span className="text-green-400 flex-shrink-0">stored</span>
                     </div>
-                    {job.dtusCreated != null && (
-                      <span className="text-gray-400">{job.dtusCreated} DTUs created</span>
-                    )}
+                    <span className="text-gray-400">
+                      {d.createdAt ? new Date(d.createdAt).toLocaleString() : ''}
+                      {d.domain ? ` · ${d.domain}` : ''}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -437,17 +462,50 @@ export function WorkbenchPanel() {
             <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
               <Database className="w-4 h-4 text-gray-400" /> Recent DTUs
             </h2>
+            <input
+              type="text"
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              placeholder="Search your ingested DTUs…"
+              className="w-full px-3 py-1.5 mb-3 bg-lattice-surface border border-lattice-border rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan"
+            />
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {recentDtus.slice(0, 10).map((d: Record<string, unknown>) => (
-                <div key={d.id as string} className="p-2 rounded bg-lattice-deep text-xs">
-                  <p className="text-white truncate">{(d.title as string) || (d.summary as string)?.slice(0, 40) || (d.id as string).slice(0, 8)}</p>
-                  <p className="text-gray-400">{d.tier as string || 'regular'}</p>
-                </div>
+              {ingestedDtus.slice(0, 10).map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => void openDtu(d.id)}
+                  className="w-full text-left p-2 rounded bg-lattice-deep text-xs hover:border-neon-cyan/40 border border-transparent transition-colors"
+                >
+                  <p className="text-white truncate">{d.title}</p>
+                  <p className="text-gray-400">{d.domain || 'ingest'} · click to open</p>
+                </button>
               ))}
-              {recentDtus.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-4">No DTUs yet</p>
+              {ingestedDtus.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-4">{searchQ ? 'No DTUs matched that search.' : 'No DTUs yet'}</p>
               )}
             </div>
+            {(detailLoading || selectedDtu) && (
+              <div className="mt-3 pt-3 border-t border-lattice-border">
+                {detailLoading ? (
+                  <p className="text-xs text-gray-400 flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Opening…</p>
+                ) : selectedDtu && (
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs font-semibold text-white">{selectedDtu.title}</p>
+                      <button onClick={() => setSelectedDtu(null)} className="text-gray-400 hover:text-white" aria-label="Close DTU">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-gray-400">
+                      {selectedDtu.id}
+                      {selectedDtu.createdAt ? ` · ${new Date(selectedDtu.createdAt).toLocaleString()}` : ''}
+                      {selectedDtu.tags.length ? ` · ${selectedDtu.tags.join(', ')}` : ''}
+                    </p>
+                    <pre className="text-[11px] text-gray-300 whitespace-pre-wrap break-words max-h-48 overflow-y-auto bg-black/30 rounded p-2">{selectedDtu.content}</pre>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -625,6 +683,12 @@ export function WorkbenchPanel() {
                     {d.dates.slice(0, 4).map((dt, i) => <span key={i} className="text-xs px-2 py-0.5 bg-neon-green/10 text-neon-green rounded">{dt}</span>)}
                   </div>
                 )}
+                {(d.numbers || []).length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    <span className="text-xs text-gray-400 mr-1">Numbers:</span>
+                    {d.numbers.slice(0, 8).map((n, i) => <span key={i} className="text-xs px-2 py-0.5 bg-gray-400/10 text-gray-200 rounded">{n}</span>)}
+                  </div>
+                )}
               </div>
             );
           }
@@ -748,10 +812,10 @@ export function WorkbenchPanel() {
                 <div>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-gray-400">Completion</span>
-                    <span className="text-neon-green">{((d.completionRate || 0) * 100).toFixed(1)}%</span>
+                    <span className="text-neon-green">{(d.completionRate || 0).toFixed(1)}%</span>
                   </div>
                   <div className="h-2 bg-lattice-deep rounded-full overflow-hidden">
-                    <div className="h-full bg-neon-green rounded-full" style={{ width: `${(d.completionRate || 0) * 100}%` }} />
+                    <div className="h-full bg-neon-green rounded-full" style={{ width: `${d.completionRate || 0}%` }} />
                   </div>
                 </div>
                 {d.estimatedRemaining && (

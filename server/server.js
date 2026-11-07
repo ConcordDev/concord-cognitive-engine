@@ -112,6 +112,7 @@ import cors from "cors";
 import crypto from "crypto";
 import v8 from "node:v8";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { censusAccess } from "./lib/macro-access.js";
 import { buildAnalyticsGroundingBlock, groundingUserId } from "./lib/lens-grounding.js";
 import { createSqliteBridgeService } from "./lib/dtu-bridge/service.js";
 import { privateDtuHiddenFrom, ctxMayReadDtu, viewerIdFromCtx } from "./lib/dtu-read-access.js";
@@ -122,11 +123,12 @@ import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit }
 import { handleArchaeology, handleSubstrateDiff, handleTimeCrystalDetect } from "./lib/knowledge-archaeology.js";
 import { artifactDtuForViewer, publicArtifactRef } from "./lib/artifact-access.js";
 import { publishableDtuForCaller } from "./lib/public-lattice-access.js";
-import { lookupUserIdentity } from "./lib/user-identity.js";
+import { lookupUserIdentity, enrichActorIdentity } from "./lib/user-identity.js";
 import {
   addSpoFact as _inferenceAddSpoFact,
   querySpoFacts as _inferenceQuerySpoFacts,
   getDeskStatus as _inferenceGetDeskStatus,
+  noteDeskOperation as _inferenceNoteDeskOperation,
   actorIdFromCtx as _inferenceActorId,
 } from "./lib/inference-lens-kb.js";
 import { validateMimeType } from "./lib/upload-mime.js";
@@ -2479,7 +2481,7 @@ import {
 } from "./embeddings.js";
 import { consolidatedVisibility, applyConsolidatedVisibility, absorbVisibility, backfillConsolidatedVisibility } from "./lib/consolidated-visibility.js";
 import { isPublicFeedSource, backfillPublicFeedItems, asPublicFeedMember } from "./lib/public-feed-sources.js";
-import { wrapFeedIngestHandler, currentFeedIngest, stripFeedIngestMarker, feedIngestMarkerFor, isQuarantined, isOpenVisibility, quarantineVisibility, revertUnprovenPublicFeedItems, hideQuarantinedRows, privatizeUserSourcedRows, recloseConsolidatedNodes } from "./lib/feed-ingest-provenance.js";
+import { wrapFeedIngestHandler, currentFeedIngest, stripFeedIngestMarker, feedIngestMarkerFor, feedIngestScope, isQuarantined, isOpenVisibility, quarantineVisibility, revertUnprovenPublicFeedItems, hideQuarantinedRows, privatizeUserSourcedRows, recloseConsolidatedNodes } from "./lib/feed-ingest-provenance.js";
 import { searchArchiveByVector, loadArchivedDtu, tierBoost as _dtuTierBoost, orderConsolidatedFirst, memberCount as _dtuMemberCount, strongDtuMatch } from "./lib/archive-retrieval.js";
 
 // One backfill at a time. Started at boot, when the CPU embedder is
@@ -17987,7 +17989,75 @@ register("grounding", "link_calendar", (ctx, input = {}) => {
 
 register("grounding", "propose_action", (ctx, input = {}) => {
   enforceEthosInvariant("grounding_propose");
-  return proposeAction(input);
+  const _proposer = lensRequireActor(ctx);
+  // A11: an action whose proposer cannot be stamped is not created.
+  // The unstamped (legacy) shape is withdrawable under the legacy
+  // rule alone; minting new ones would keep that population growing.
+  if (!_proposer.ok) return { ok: false, error: "auth_required" };
+  return proposeAction({ ...input, proposedBy: _proposer.actorId });
+}, { public: false });
+
+register("grounding", "remove_sensor", (ctx, input = {}) => {
+  enforceEthosInvariant("grounding_sensor_remove");
+  const sensorId = String(input.sensorId || "");
+  if (!sensorId) return { ok: false, error: "sensorId required" };
+  ensureGroundingEngine();
+  // Removal is the owner's exit: another account's sensor reads as
+  // "not found", the same discipline record_reading applies.
+  const _sn = STATE.grounding?.sensors?.get?.(sensorId);
+  if (!_sn) return { ok: false, error: "Sensor not found" };
+  if (_sn.ownerId) {
+    if (!lensRequireOwner(ctx, _sn.ownerId).ok) return { ok: false, error: "Sensor not found" };
+  } else if (!["owner", "admin", "founder"].includes(ctx.actor?.role)) {
+    // A11 (legacy unstamped): a pre-stamping sensor carries no owner;
+    // it is NOT public — removal is role-held, mirroring the approve gate.
+    return { ok: false, error: "Sensor not found" };
+  }
+  return removeSensor(sensorId);
+}, { public: false });
+
+register("grounding", "remove_reading", (ctx, input = {}) => {
+  enforceEthosInvariant("grounding_reading_remove");
+  const readingId = String(input.readingId || "");
+  if (!readingId) return { ok: false, error: "readingId required" };
+  ensureGroundingEngine();
+  // Ownership derives via the parent sensor, as record_reading checks it.
+  const _rd = STATE.grounding?.readings?.find?.(r => r.id === readingId);
+  if (!_rd) return { ok: false, error: "Reading not found" };
+  const _sn = STATE.grounding?.sensors?.get?.(_rd.sensorId);
+  if (_sn?.ownerId) {
+    if (!lensRequireOwner(ctx, _sn.ownerId).ok) return { ok: false, error: "Reading not found" };
+  } else if (!["owner", "admin", "founder"].includes(ctx.actor?.role)) {
+    // A11 (legacy unstamped): the parent sensor carries no owner —
+    // the reading's removal is role-held, as the sensor's is.
+    return { ok: false, error: "Reading not found" };
+  }
+  return removeReading(readingId);
+}, { public: false });
+
+register("grounding", "withdraw_action", (ctx, input = {}) => {
+  enforceEthosInvariant("grounding_withdraw");
+  const actionId = String(input.actionId || "");
+  if (!actionId) return { ok: false, error: "actionId required" };
+  ensureGroundingEngine();
+  const _act = STATE.grounding?.pendingActions?.find?.(a => a.id === actionId);
+  if (!_act) return { ok: false, error: "Action not found" };
+  // The proposer's own exit, taken before any consent decision. Actions
+  // proposed since proposer-stamping are owner-scoped (an owner/admin/
+  // founder may also withdraw, mirroring the approve gate).
+  if (_act.proposedBy) {
+    const _own = lensRequireOwner(ctx, _act.proposedBy).ok;
+    const _role = ["owner", "admin", "founder"].includes(ctx.actor?.role);
+    if (!_own && !_role) return { ok: false, error: "Only the proposer can withdraw this action" };
+  } else if (!["owner", "admin", "founder"].includes(ctx.actor?.role)) {
+    // A11 (legacy unstamped withdrawal): an action proposed before
+    // stamping carries no proposer. It is NOT withdrawable by any
+    // signed-in account — only the roles the approve gate trusts may
+    // withdraw it, so a legacy item keeps a role-held exit and loses
+    // its public one.
+    return { ok: false, error: "Only the proposer can withdraw this action" };
+  }
+  return withdrawAction(actionId);
 }, { public: false });
 
 register("grounding", "approve_action", (ctx, input = {}) => {
@@ -18130,8 +18200,15 @@ register("inference", "syllogism", (ctx, input = {}) => {
 register("inference", "forward_chain", (ctx, input = {}) => {
   enforceEthosInvariant("inference_forward_chain");
   const derivations = forwardChain(input.maxIterations);
+  if (derivations.length > 0) _inferenceNoteDeskOperation(_inferenceActorId(ctx), "derivation", derivations.length);
   return {
     ok: true,
+    // S-INF-3 (F5): the persistence contract, stated in the result —
+    // derivations are kept in the engine's derived store (the count is
+    // its size); the desk Facts list shows asserted facts, and the
+    // derived facts answer queries alongside them.
+    derivedTotal: STATE.reasoning?.knowledgeBase?.derived?.size ?? 0,
+    persistence: "Derivations are kept in the engine's derived store and count toward the Derived total; the Facts list shows asserted facts only.",
     derivations: derivations.map(d => ({
       subject: d.subject,
       predicate: d.predicate,
@@ -18238,6 +18315,7 @@ async function _hypothesisEngineCall(method, args) {
 }
 register("hypothesis", "metrics", () => _hypothesisEngineCall("getHypothesisMetrics", []), { public: true });
 register("hypothesis", "add_test", (_ctx, input = {}) => _hypothesisEngineCall("addTest", [input.hypothesisId, input.description]), { public: false });
+register("hypothesis", "delete", (_ctx, input = {}) => _hypothesisEngineCall("deleteHypothesis", [input.id]), { public: false });
 register("hypothesis", "add_evidence", (_ctx, input = {}) => _hypothesisEngineCall("addEvidence", [
   input.hypothesisId, input.side, input.dtuId, input.weight, input.summary,
 ]), { public: false });
@@ -18263,9 +18341,14 @@ register("metacognition", "status", (ctx, _input = {}) => {
 
 register("metacognition", "assess", (ctx, input = {}) => {
   enforceEthosInvariant("metacognition_assess");
-  const topic = String(input.topic || "");
+  const topic = String(input.topic || input.domain || "");
   if (!topic) return { ok: false, error: "topic required" };
-  return assessKnowledge(topic);
+  // S-MC-1: an assessment of the USER's competence in a domain is
+  // computed from the user's own prediction record in that domain
+  // (assessDomainFromRecord). It no longer returns assessKnowledge's
+  // DTU-coverage score, which measures the platform's corpus on a
+  // topic — identical for every user — and presented it as skill.
+  return assessDomainFromRecord(topic);
 }, { public: true });
 
 register("metacognition", "predict", (ctx, input = {}) => {
@@ -18279,6 +18362,13 @@ register("metacognition", "resolve_prediction", (ctx, input = {}) => {
   if (!predictionId) return { ok: false, error: "predictionId required" };
   const wasCorrect = input.correct === true || input.wasCorrect === true;
   return resolvePrediction(predictionId, wasCorrect);
+}, { public: false });
+
+register("metacognition", "prediction_delete", (ctx, input = {}) => {
+  enforceEthosInvariant("metacognition_prediction_delete");
+  const predictionId = String(input.predictionId || input.id || "");
+  if (!predictionId) return { ok: false, error: "predictionId required" };
+  return deletePrediction(predictionId);
 }, { public: false });
 
 register("metacognition", "calibration", (ctx, _input = {}) => {
@@ -18300,16 +18390,20 @@ register("metacognition", "select_strategy", (ctx, input = {}) => {
 register("metacognition", "blind_spots", (ctx, _input = {}) => {
   try {
   enforceEthosInvariant("metacognition_blindspots");
-  ensureMetacognitionSystem();
-  const spots = ctx.state.metacognition.blindSpots.slice(-20);
-  return { ok: true, blindSpots: spots };
+  // S-MC-1/F2: blind spots derive from the prediction record
+  // (computeRecordBlindSpots) — no longer the stored complements of
+  // the coverage score (1 - knowledgeScore over the platform corpus).
+  return { ok: true, blindSpots: computeRecordBlindSpots() };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
 // Introspection macros
-register("metacognition", "introspect", (ctx, _input = {}) => {
+register("metacognition", "introspect", (ctx, input = {}) => {
   enforceEthosInvariant("metacognition_introspect");
-  return introspectOnFailures();
+  // S-MC-3: the focus the panel collects actually scopes the run
+  // (this macro used to discard its input entirely).
+  const focus = String(input?.focus || "").trim();
+  return introspectOnFailures(focus);
 }, { public: true });
 
 register("metacognition", "analyze_failure", (ctx, input = {}) => {
@@ -18366,6 +18460,16 @@ register("metacognition", "assessments_list", (ctx, _input = {}) => {
   ensureMetacognitionSystem();
   const assessments = ctx.state.metacognition.assessments.slice(-100).slice().reverse();
   return { ok: true, assessments, total: assessments.length };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: true });
+
+// Per-domain competence from the record (S-MC-1): the Knowledge
+// Confidence Map and the Skill Timeline read THIS, never the
+// coverage assessments.
+register("metacognition", "domain_record", (ctx, _input = {}) => {
+  try {
+  enforceEthosInvariant("metacognition_domain_record");
+  return { ok: true, domains: computeDomainRecord() };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
@@ -18470,8 +18574,44 @@ register("metalearning", "list_strategies", (ctx, _input = {}) => {
   enforceEthosInvariant("metalearning_list");
   ensureMetaLearningSystem();
   const strategies = Array.from(ctx.state.metaLearning.strategies.values())
-    .map(s => ({ id: s.id, name: s.name, domain: s.domain, uses: s.uses, avgPerformance: s.avgPerformance }));
+    .map(s => ({
+      id: s.id, name: s.name, domain: s.domain,
+      uses: s.uses, successes: s.successes, failures: s.failures,
+      // Derived from the counts at read time, so a strategy recorded
+      // under the old rule also reads true; null until the first
+      // outcome — the surface renders "no outcomes yet", not a figure.
+      avgPerformance: s.uses ? Math.round((s.successes / s.uses) * 10000) / 10000 : null,
+      parameters: s.parameters,
+      createdAt: s.createdAt,
+    }));
   return { ok: true, strategies };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: true });
+
+register("metalearning", "delete_strategy", (ctx, input = {}) => {
+  try {
+  enforceEthosInvariant("metalearning_strategy_delete");
+  ensureMetaLearningSystem();
+  const strategyId = String(input.strategyId || "");
+  const strategy = ctx.state.metaLearning.strategies.get(strategyId);
+  if (!strategy) return { ok: false, error: "Strategy not found" };
+  ctx.state.metaLearning.strategies.delete(strategyId);
+  // Its outcome history goes with it — orphaned rows would keep
+  // feeding adaptation windows for a strategy that no longer exists.
+  // The adaptation log keeps its name-snapshot entries as history.
+  const before = ctx.state.metaLearning.performance.length;
+  ctx.state.metaLearning.performance = ctx.state.metaLearning.performance.filter(p => p.strategyId !== strategyId);
+  saveStateDebounced();
+  return { ok: true, deleted: strategyId, name: strategy.name, outcomesRemoved: before - ctx.state.metaLearning.performance.length };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: false });
+
+register("metalearning", "list_curricula", (ctx, _input = {}) => {
+  try {
+  enforceEthosInvariant("metalearning_curricula_list");
+  ensureMetaLearningSystem();
+  const curricula = ctx.state.metaLearning.curriculum.slice(-50).slice().reverse();
+  return { ok: true, curricula, total: curricula.length };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
@@ -21982,7 +22122,7 @@ async function initGhostFleet() {
     // registrations at ~9709/9735/9745 with the full implementation
     // from ./emergent/hypothesis-engine.js. Marked with note so the
     // duplicate-registration warning in register() stays quiet.
-    register("hypothesis", "propose", (_ctx, input = {}) => hypo.proposeHypothesis(input.statement, input.domain, input.priority), { note: "ghost_fleet_shadow_ok" });
+    register("hypothesis", "propose", (_ctx, input = {}) => hypo.proposeHypothesis(input.statement, input.domain, input.priority, { force: input.force === true }), { note: "ghost_fleet_shadow_ok" });
     register("hypothesis", "get", (_ctx, input = {}) => {
       // Always return an envelope, never raw null — getHypothesis(undefined) and
       // unknown ids return null, which violates the macro contract (a macro must
@@ -22000,6 +22140,7 @@ async function initGhostFleet() {
     register("hypothesis", "reject", (_ctx, input = {}) => hypo.rejectHypothesis(input.id, input.reason));
     register("hypothesis", "refine", (_ctx, input = {}) => hypo.refineHypothesis(input.id, input.newStatement));
     register("hypothesis", "archive", (_ctx, input = {}) => hypo.archiveHypothesis(input.id));
+    register("hypothesis", "delete", (_ctx, input = {}) => hypo.deleteHypothesis(input.id));
     register("hypothesis", "metrics", () => hypo.getHypothesisMetrics(), { note: "intentional_shadow_ok" });
 
     structuredLog("info", "ghost_fleet_module_loaded", { name: "hypothesis-engine", macros: 13 });
@@ -22675,6 +22816,24 @@ if (process.env.CONCORD_DISABLE_GHOST_FLEET !== "true") {
           } else {
             structuredLog("info", "macro_registry_validated", { domains: rep.domains, macros: rep.macros });
           }
+        // Cohesive R-2 phase 1 — declared-access census (report-only).
+        // Declarations ride spec.access on Gate D's chassis; nothing
+        // here enforces or infers — the census is the baseline every
+        // later declaration moves, and an invalid declaration is named
+        // loudly because it looks like evidence and is not.
+        try {
+          const ac = censusAccess(MACROS);
+          structuredLog("info", "macro_access_census", {
+            total: ac.total, declared: ac.declared, invalid: ac.invalid, undeclared: ac.undeclared,
+          });
+          if (ac.invalid > 0) {
+            logger.error("macro-access", "invalid access declarations", {
+              count: ac.invalid, violations: ac.violations.slice(0, 20),
+            });
+          }
+        } catch (e) {
+          logger.error("macro-access", "access census failed", { error: e?.message });
+        }
         } catch (e) {
           logger.error("macro-contract", "registry validation failed", { error: e?.message });
         }
@@ -27017,6 +27176,17 @@ register("dtu", "create", async (ctx, input) => {
   if (_federationTier === "regional" && !_dtuLocationRegional) _federationTier = "local";
   if (_federationTier === "national" && !_dtuLocationNational) _federationTier = "local";
 
+  // A13 (feed admission): a create stamped with the server-only feedIngest
+  // marker is a wrapped lens feed action ingesting in the open. It takes
+  // the feed-manager's own form — global scope, attributed to its lens via
+  // publishedFromLens — so selectGlobalFeed can admit it. The marker is
+  // stamped only by the wrapper and stripped from request bodies, so an
+  // ordinary create asking for global scope still lands local below.
+  const _fiScope = feedIngestScope(meta.feedIngest, _defaultVisibility);
+  if (_fiScope === "global" && meta.feedIngest?.domain) {
+    meta.publishedFromLens = String(meta.feedIngest.domain).toLowerCase();
+  }
+
   const dtu = {
     id: uid("dtu"),
     title,
@@ -27051,7 +27221,7 @@ register("dtu", "create", async (ctx, input) => {
     },
     machine: { ...machineIn },
     cretiHuman: "",
-    scope: (input.scope === "personal" || input.scope === "local") ? input.scope : "local",  // Scope Separation: default Local; personal locker may opt in
+    scope: _fiScope === "global" ? "global" : (input.scope === "personal" || input.scope === "local") ? input.scope : "local",  // Scope Separation: default Local; personal locker may opt in; provenanced feed ingest (A13) takes global
     createdAt: nowISO(),
     updatedAt: nowISO(),
     authority: { model: "council", score: 0, votes: {} },
@@ -38959,6 +39129,24 @@ register("resonance", "boundary", (ctx, input = {}) => {
     timestamp: nowISO(),
   });
 
+  // Pairs surfacing: the full crossPairs set used to leave this macro only
+  // as a 10-pair slice, so the Pairs view's headline count (pairsFound)
+  // could not be audited. Callers may now page the whole set, and the score
+  // distribution ships with every reading so uniformity is visible as
+  // uniformity.
+  const pairsOffset = clamp(Math.floor(Number(input.pairsOffset ?? 0)) || 0, 0, crossPairs.length);
+  const pairsLimit = clamp(Math.floor(Number(input.pairsLimit ?? 10)) || 10, 1, 500);
+  const scoreBuckets = [[0, 0.03], [0.03, 0.1], [0.1, 0.3], [0.3, 0.5], [0.5, 0.7], [0.7, 0.9], [0.9, 1.01]]
+    .map(([min, max]) => ({
+      min,
+      max: Math.min(max, 1),
+      count: crossPairs.filter((x) => x.resonance >= min && x.resonance < max).length,
+    }));
+  const sortedScores = crossPairs.map((x) => x.resonance).sort((a, b) => a - b);
+  const scorePct = (q) => (sortedScores.length
+    ? Math.round(sortedScores[Math.min(sortedScores.length - 1, Math.floor(q * sortedScores.length))] * 1000) / 1000
+    : 0);
+
   return {
     ok: true,
     signal: Math.round(signal * 1000) / 1000,
@@ -38981,6 +39169,10 @@ register("resonance", "boundary", (ctx, input = {}) => {
       topResonance: Math.round(topResonance * 1000) / 1000,
       avgResonance: Math.round(avgResonance * 1000) / 1000,
       topPairs: crossPairs.slice(0, 10),
+      pairsOffset,
+      pairsLimit,
+      pairsPage: crossPairs.slice(pairsOffset, pairsOffset + pairsLimit),
+      scoreDistribution: { buckets: scoreBuckets, p50: scorePct(0.5), p90: scorePct(0.9) },
     },
   };
 }, { summary: "Resonance boundary detection: measures cross-domain constraint alignment at the frontier of the knowledge graph. Positive signal = x=0 showing coherence when probed by x=1." });
@@ -39842,6 +40034,17 @@ function _llmReadyForReq(req) {
 
 function deterministicFallbackReply(req) {
   const mode = String(req?.body?.mode || "chat");
+  // Close-out A3 (Genus 1): this fallback fires when the pipeline produced
+  // NO reply. If the request carried a substantive question, answering with
+  // the cold-start greeting pretends no question was asked — the canned
+  // Assistant defect at its 60th–74th lens. Say plainly that no answer was
+  // produced. The greeting remains for genuine cold starts (nothing asked).
+  const asked = String(
+    req?.body?.prompt || req?.body?.message || req?.body?.query || req?.body?.content || "",
+  ).trim();
+  if (asked) {
+    return "I don't have an answer for that right now — nothing came back from the part of Concord that answers questions. Please try again, or rephrase the question.";
+  }
   // Cold-start clarity invariant: keep it helpful and short.
   return (
     mode === "chat"
@@ -40180,6 +40383,11 @@ app.use((req, res, next) => {
       if (!a.ok) return res.status(401).json({ ok:false, error: a.error });
       req.actor = a.actor;
     }
+    // Close-out A12 — the bridge-actor guarantee: an actor constructed for a
+    // real account carries that account's resolved identity (displayName +
+    // username, from the users table), so domain stamps never trust a
+    // client-passed name or fall back to the raw user id (Message F1).
+    try { req.actor = enrichActorIdentity(STATE?.db || globalThis._concordDB, req.actor); } catch { /* identity stays as constructed */ }
   } catch (e) {
     return res.status(500).json({ ok:false, error: String(e?.message || e) });
   }
@@ -49666,11 +49874,26 @@ function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
     // INC-SWEEP agents F1 — shadow exhaust of a private fleet artifact must
     // carry owner + private visibility so anon/acct2 cannot read the id.
     const ownerId = artifact?.ownerId || ctx?.actor?.userId || null;
+    // Close-out A3 (Genus 3): the exhaust DTU is the artifact's only
+    // presence in the DTU store, so it must carry the record it points
+    // at. The artifact-titled summary belongs in human.summary — the
+    // field the inverted index and the search fallback actually read —
+    // not only in the top-level summary no search path consults; and
+    // the artifact's own text rides creti, the scanned body field.
+    // Without both, a capture is unretrievable by construction.
+    const titledSummary = `${action} ${artifactType} "${artifact.title || artifact.id}" in ${domain} lens`;
+    const artifactText = [
+      artifact?.title,
+      artifact?.data?.content,
+      artifact?.data?.text,
+      artifact?.data?.body,
+    ].filter((t) => typeof t === "string" && t.trim()).join("\n").slice(0, 4000);
     const dtu = {
       id: dtuId,
       title: `Lens:${domain} ${action} ${artifactType}`,
       tier: "regular",
-      summary: `${action} ${artifactType} "${artifact.title || artifact.id}" in ${domain} lens`,
+      summary: titledSummary,
+      creti: artifactText || undefined,
       content: JSON.stringify({ domain, action, artifactType, artifactId: artifact.id, ...extra }),
       tags: [`lens:${domain}`, `artifact:${artifactType}`, `action:${action}`],
       createdAt: nowISO(),
@@ -49678,7 +49901,7 @@ function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
       ownerId: ownerId || undefined,
       visibility: "private",
       machine: { kind: "lens_exhaust", domain, action, artifactType, artifactId: artifact.id },
-      human: { summary: `${action} ${artifactType} in ${domain}` },
+      human: { summary: titledSummary },
       claims: extra.claims || [],
     };
     STATE.dtus.set(dtuId, dtu);
@@ -49803,6 +50026,10 @@ register("lens", "create", async (ctx, input={}) => {
   if ((domain === "lab" || domain === "agents") && !trimmedTitle) {
     return { ok: false, error: "title required" };
   }
+  // Education's classroom dialog must not store a blank record as "New artifact".
+  if (domain === "education" && !trimmedTitle) {
+    return { ok: false, error: "Title is required." };
+  }
 
   // v5.5: Scope enforcement via capability bridge
   //
@@ -49829,6 +50056,11 @@ register("lens", "create", async (ctx, input={}) => {
   // Domain-specific validation
   const validation = validateArtifact(domain, type, data, meta);
   if (!validation.ok) {
+    // Education's dialog used to toast the bare token. The rule error
+    // already names the field (type or status). Other domains keep the token.
+    if (domain === "education" && validation.errors?.length) {
+      return { ok: false, error: String(validation.errors[0]), errors: validation.errors, warnings: validation.warnings };
+    }
     return { ok: false, error: "validation_failed", errors: validation.errors, warnings: validation.warnings };
   }
 
@@ -51208,6 +51440,11 @@ try {
           if (row?.role) actor = { ...actor, role: String(row.role) };
         } catch { /* role stays unset → treated as non-operator */ }
       }
+      // A12: the same bridge-actor guarantee on the MCP path — the token's
+      // actor gains the account's resolved identity beside its role.
+      if (actor?.userId && _mcpDb) {
+        try { actor = enrichActorIdentity(_mcpDb, actor); } catch { /* identity stays as constructed */ }
+      }
       return { db: _mcpDb, actor, state: STATE };
     },
   });
@@ -51560,7 +51797,11 @@ app.get("/api/lens/:domain/:id", async (req, res) => {
 app.post("/api/lens/:domain", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    _respondMacroResult(res, await runMacro("lens", "create", { domain: req.params.domain, ...req.body }, ctx));
+    const _createResult = await runMacro("lens", "create", { domain: req.params.domain, ...req.body }, ctx);
+    // Close-out A1: artifact-layer writes record Activity like lens/run
+    // dispatches do — this route family was the recorder's blind spot.
+    if (_createResult?.ok !== false) _recordLensActivity(req.params.domain, "create", ctx, { ...(req.body || {}) }, _createResult);
+    _respondMacroResult(res, _createResult);
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -51570,7 +51811,12 @@ app.post("/api/lens/:domain", async (req, res) => {
 app.put("/api/lens/:domain/:id", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    _respondMacroResult(res, await runMacro("lens", "update", { id: req.params.id, ...req.body }, ctx));
+    const _updateResult = await runMacro("lens", "update", { id: req.params.id, ...req.body }, ctx);
+    if (_updateResult?.ok !== false) {
+      const _art = STATE.lensArtifacts.get(req.params.id);
+      _recordLensActivity(req.params.domain, "update", ctx, { ...(req.body || {}), title: (req.body && req.body.title) || _art?.title || "" }, _updateResult);
+    }
+    _respondMacroResult(res, _updateResult);
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -51580,7 +51826,10 @@ app.put("/api/lens/:domain/:id", async (req, res) => {
 app.delete("/api/lens/:domain/:id", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    _respondMacroResult(res, await runMacro("lens", "delete", { id: req.params.id }, ctx));
+    const _artBefore = STATE.lensArtifacts.get(req.params.id);
+    const _deleteResult = await runMacro("lens", "delete", { id: req.params.id }, ctx);
+    if (_deleteResult?.ok !== false) _recordLensActivity(req.params.domain, "delete", ctx, { title: _artBefore?.title || "" }, _deleteResult);
+    _respondMacroResult(res, _deleteResult);
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -51618,6 +51867,8 @@ app.post("/api/lens/:domain/:id/publish", async (req, res) => {
     artifact.meta.publishedAt = new Date().toISOString();
     artifact.updatedAt = new Date().toISOString();
     saveStateDebounced();
+    // Close-out A1: the publish mutation records like any other write.
+    _recordLensActivity(req.params.domain, "publish", ctx, { title: artifact.title || "" }, { artifact });
     res.json({ ok: true, artifact: _presentLensArtifact(artifact, ctx) });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -51631,6 +51882,12 @@ app.post("/api/lens/:domain/:id/run", async (req, res) => {
     // nested handler refusal is not HTTP 200 { ok:true, result:{ ok:false } }.
     const raw = await runMacro("lens", "run", { id: req.params.id, ...req.body }, ctx);
     const shaped = _shapeLensRunHttp(raw);
+    // Close-out A1: an artifact-scoped run is a lens dispatch — record it
+    // under the action it ran, exactly as /api/lens/run does.
+    if (shaped.body.ok !== false) {
+      const _runAction = typeof req.body?.action === "string" && req.body.action ? req.body.action : "run";
+      _recordLensActivity(req.params.domain, _runAction, ctx, { ...(req.body || {}) }, shaped.body.ok ? shaped.body.result : shaped.body);
+    }
     return res.status(shaped.status).json(shaped.body);
   } catch (e) {
     const msg = String(e?.message || e);
@@ -51660,7 +51917,11 @@ app.get("/api/lens/:domain/schema", (req, res) => {
 app.post("/api/lens/:domain/bulk", async (req, res) => {
   try {
     const ctx = makeCtx(req);
-    res.json(await runMacro("lens", "bulkCreate", { domain: req.params.domain, ...req.body }, ctx));
+    const _bulkResult = await runMacro("lens", "bulkCreate", { domain: req.params.domain, ...req.body }, ctx);
+    // Close-out A1: one row for the bulk act itself — never one per item,
+    // so a large import cannot flood the capped activity log.
+    if (_bulkResult?.ok !== false) _recordLensActivity(req.params.domain, "bulk-create", ctx, {}, _bulkResult);
+    res.json(_bulkResult);
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -68106,6 +68367,62 @@ app.get("/api/notifications/count", (req, res) => {
   res.json({ ok: true, count: userNotifs.length, unread: unread.length });
 });
 
+// Platform Chrome II (close-out B3) — the platform notification queue gains
+// the list + read surface the bell's panel reads. Until now the queue was
+// write-and-count only: enqueueNotification fed it and /count tallied it,
+// but no route ever listed it, so the bell could only ever read the separate
+// social store (F16's split). Items are the caller's (targetUserId match) or
+// global (no targetUserId), newest first — the /count route's own filter.
+app.get("/api/notifications", (req, res) => {
+  ensureQueues();
+  const userId = req.user?.id;
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const all = STATE.queues?.notifications || [];
+  const mine = userId ? all.filter(n => !n.targetUserId || n.targetUserId === userId) : all;
+  const notifications = [...mine]
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+    .slice(0, limit);
+  res.json({ ok: true, notifications });
+});
+
+app.post("/api/notifications/read-all", (req, res) => {
+  ensureQueues();
+  const userId = req.user?.id;
+  const all = STATE.queues?.notifications || [];
+  let marked = 0;
+  for (const n of all) {
+    if ((!userId || !n.targetUserId || n.targetUserId === userId) && !n.readAt) {
+      n.readAt = new Date().toISOString();
+      marked++;
+    }
+  }
+  if (marked) saveStateDebounced();
+  res.json({ ok: true, marked });
+});
+
+app.post("/api/notifications/:id/read", (req, res) => {
+  ensureQueues();
+  const userId = req.user?.id;
+  const item = (STATE.queues?.notifications || []).find(n => n.id === req.params.id);
+  if (!item) return res.status(404).json({ ok: false, error: "Notification not found" });
+  if (userId && item.targetUserId && item.targetUserId !== userId) {
+    return res.status(404).json({ ok: false, error: "Notification not found" });
+  }
+  if (!item.readAt) { item.readAt = new Date().toISOString(); saveStateDebounced(); }
+  res.json({ ok: true });
+});
+
+app.delete("/api/notifications/:id", (req, res) => {
+  ensureQueues();
+  const userId = req.user?.id;
+  const all = STATE.queues?.notifications || [];
+  const idx = all.findIndex(n => n.id === req.params.id && (!userId || !n.targetUserId || n.targetUserId === userId));
+  if (idx < 0) return res.status(404).json({ ok: false, error: "Notification not found" });
+  all.splice(idx, 1);
+  saveStateDebounced();
+  res.json({ ok: true });
+});
+
 // Links
 app.get("/api/links", (req, res) => {
   const links = [];
@@ -69308,7 +69625,7 @@ app.get("/api/affect/state", (req, res) => {
 // POST /api/affect/event — apply an affect event
 app.post("/api/affect/event", (req, res) => {
   if (!ATS) return res.status(501).json({ ok: false, error: "ATS not loaded" });
-  const sessionId = req.body?.source?.sessionId || req._atsSessionId || "default";
+  const sessionId = req.body?.source?.sessionId || req.body?.sessionId || req._atsSessionId || "default";
   const result = ATS.emitAffectEvent(sessionId, req.body);
   if (!result.ok) return res.status(400).json(result);
   res.json(result);
@@ -69320,7 +69637,7 @@ app.get("/api/affect/policy", (req, res) => {
   const sessionId = req.query.sessionId || req._atsSessionId || "default";
   const policy = ATS.getSessionPolicy(sessionId);
   if (!policy) return res.status(404).json({ ok: false, error: "Session not found" });
-  res.json({ ok: true, policy });
+  res.json({ ok: true, policy, derivations: ATS.POLICY_DERIVATIONS || null });
 });
 
 // POST /api/affect/reset — reset to baseline or cooldown
@@ -72242,17 +72559,36 @@ app.get("/api/dream/convergences", requireAuth(), requireRole("owner"), asyncHan
 }));
 
 // App Maker
-app.get("/api/apps", requireAuth(), asyncHandler(async (_req, res) => {
+app.get("/api/apps", requireAuth(), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
-  res.json(m.listApps());
+  const base = m.listApps();
+  // F9 — one app object: the caller's Studio projects ride the same list as
+  // app objects, projected from the appmaker domain's own store. The stores
+  // are not merged; the union is at this read and writes route to the owner.
+  const mine = m.collectCallerProjects(globalThis._concordSTATE?.appMakerLens, req.user);
+  const seen = new Set(base.apps.map((a) => a.id));
+  const projected = mine
+    .filter(({ project }) => project?.id && !seen.has(project.id))
+    .map(({ project, ownerKey }) => m.projectAsApp(project, ownerKey));
+  res.json({ ok: true, apps: [...base.apps, ...projected] });
 }));
 app.get("/api/apps/:id", requireAuth(), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
-  res.json(m.getApp(req.params.id));
+  const found = m.getApp(req.params.id);
+  if (found.ok) return res.json(found);
+  const mine = m.collectCallerProjects(globalThis._concordSTATE?.appMakerLens, req.user);
+  const hit = mine.find(({ project }) => project?.id === req.params.id);
+  if (hit) return res.json({ ok: true, app: m.projectAsApp(hit.project, hit.ownerKey) });
+  return res.json(found);
 }));
 app.post("/api/apps", requireAuth(), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
-  res.json(m.createApp(req.body));
+  // The author of record is the AUTHENTICATED CALLER, never the request
+  // body: the promote verb's ownership check stands on this stamp, so a
+  // client-supplied author is ignored (the integrity leg of the B7 ruling).
+  const author = m.appCallerKey(req.user);
+  if (!author) return res.status(401).json({ ok: false, error: "Authentication required" });
+  res.json(m.createApp({ ...(req.body || {}), author }));
 }));
 app.post("/api/apps/:id/validate", requireAuth(), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
@@ -72260,9 +72596,63 @@ app.post("/api/apps/:id/validate", requireAuth(), asyncHandler(async (req, res) 
   if (!app.ok) return res.json(app);
   res.json(m.validateApp(app.app));
 }));
-app.post("/api/apps/:id/promote", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
+app.post("/api/apps/:id/promote", requireAuth(), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
-  res.json(m.promoteApp(req.params.id));
+  // Founder ruling (decision walk #1, Decision 11): promote is an owner
+  // action checked against OWNERSHIP. The platform 'owner' ROLE gate that
+  // stood on this route made the verb unusable by the app's own creator;
+  // only this route's gate changes — the admin promotion pipeline below
+  // keeps its role gate entire.
+  const callerKey = m.appCallerKey(req.user);
+  const found = m.getApp(req.params.id);
+  if (found.ok) {
+    if (!m.isAppOwner(found.app, callerKey)) {
+      return res.status(403).json({ ok: false, error: "Insufficient permissions: only the app's owner can promote it" });
+    }
+    return res.json(m.promoteApp(req.params.id));
+  }
+  const mine = m.collectCallerProjects(globalThis._concordSTATE?.appMakerLens, req.user);
+  const hit = mine.find(({ project }) => project?.id === req.params.id);
+  if (hit) {
+    // The projection only ever surfaces the caller's own shelf, so holding
+    // the project here IS the ownership check — by construction.
+    const r = m.promoteProject(hit.project);
+    if (r.ok && typeof globalThis._concordSaveStateDebounced === "function") {
+      try { globalThis._concordSaveStateDebounced(); } catch (_e) { /* best effort */ }
+    }
+    return res.json(r);
+  }
+  return res.json(found);
+}));
+app.put("/api/apps/:id", requireAuth(), asyncHandler(async (req, res) => {
+  const m = await import("./emergent/app-maker.js");
+  const found = m.getApp(req.params.id);
+  if (!found.ok) {
+    const mine = m.collectCallerProjects(globalThis._concordSTATE?.appMakerLens, req.user);
+    if (mine.some(({ project }) => project?.id === req.params.id)) {
+      return res.json({ ok: false, error: "Studio projects are edited in Studio" });
+    }
+    return res.json(found);
+  }
+  if (!m.isAppOwner(found.app, m.appCallerKey(req.user))) {
+    return res.status(403).json({ ok: false, error: "Insufficient permissions: only the app's owner can edit it" });
+  }
+  res.json(m.updateApp(req.params.id, req.body || {}));
+}));
+app.delete("/api/apps/:id", requireAuth(), asyncHandler(async (req, res) => {
+  const m = await import("./emergent/app-maker.js");
+  const found = m.getApp(req.params.id);
+  if (!found.ok) {
+    const mine = m.collectCallerProjects(globalThis._concordSTATE?.appMakerLens, req.user);
+    if (mine.some(({ project }) => project?.id === req.params.id)) {
+      return res.json({ ok: false, error: "Studio projects are deleted in Studio" });
+    }
+    return res.json(found);
+  }
+  if (!m.isAppOwner(found.app, m.appCallerKey(req.user))) {
+    return res.status(403).json({ ok: false, error: "Insufficient permissions: only the app's owner can delete it" });
+  }
+  res.json(m.deleteApp(req.params.id));
 }));
 
 // Reality Explorer
@@ -82873,6 +83263,7 @@ function proposeAction(input) {
     description: String(input.description || "").slice(0, 500),
     payload: input.payload || {},
     goalId,
+    proposedBy: input.proposedBy || null,
     status: STATE.grounding.config.requireActionConsent ? "pending_consent" : "approved",
     proposedAt: nowISO(),
     executedAt: null,
@@ -82932,6 +83323,65 @@ function approveAction(actionId) {
   saveStateDebounced();
 
   return { ok: true, action, result };
+}
+
+// Remove a sensor and its readings (the exit for registerSensor)
+function removeSensor(sensorId) {
+  ensureGroundingEngine();
+
+  const sensor = STATE.grounding.sensors.get(sensorId);
+  if (!sensor) return { ok: false, error: "Sensor not found" };
+
+  STATE.grounding.sensors.delete(sensorId);
+  const before = STATE.grounding.readings.length;
+  STATE.grounding.readings = STATE.grounding.readings.filter(r => r.sensorId !== sensorId);
+  const readingsRemoved = before - STATE.grounding.readings.length;
+
+  saveStateDebounced();
+  return { ok: true, removed: { sensorId, readingsRemoved } };
+}
+
+// Remove a single reading (the exit for recordSensorReading)
+function removeReading(readingId) {
+  ensureGroundingEngine();
+
+  const idx = STATE.grounding.readings.findIndex(r => r.id === readingId);
+  if (idx === -1) return { ok: false, error: "Reading not found" };
+
+  const [reading] = STATE.grounding.readings.splice(idx, 1);
+  // Keep the sensor's lastReading honest: if the removed reading was its
+  // latest, fall back to the newest remaining one (or none).
+  const sensor = STATE.grounding.sensors.get(reading.sensorId);
+  if (sensor && sensor.lastReading && sensor.lastReading.id === reading.id) {
+    const remaining = STATE.grounding.readings.filter(r => r.sensorId === reading.sensorId);
+    sensor.lastReading = remaining.length ? remaining[remaining.length - 1] : null;
+  }
+
+  saveStateDebounced();
+  return { ok: true, removed: { readingId } };
+}
+
+// Withdraw a pending action (the exit for proposeAction — the proposer's
+// retraction, taken before any consent decision; the withdrawal itself is
+// kept in the action history so the exit stays auditable)
+function withdrawAction(actionId) {
+  ensureGroundingEngine();
+
+  const actionIndex = STATE.grounding.pendingActions.findIndex(a => a.id === actionId);
+  if (actionIndex === -1) return { ok: false, error: "Action not found" };
+
+  const [action] = STATE.grounding.pendingActions.splice(actionIndex, 1);
+  action.status = "withdrawn";
+  action.withdrawnAt = nowISO();
+  STATE.grounding.actionHistory.push(action);
+
+  // Cap history
+  if (STATE.grounding.actionHistory.length > STATE.grounding.config.maxActionHistory) {
+    STATE.grounding.actionHistory = STATE.grounding.actionHistory.slice(-STATE.grounding.config.maxActionHistory);
+  }
+
+  saveStateDebounced();
+  return { ok: true, action };
 }
 
 function executeNotificationAction(action) {
@@ -83340,7 +83790,29 @@ function addInferenceFact(input = {}, userId = "anon") {
   saveStateDebounced();
 
   const derived = forwardChain();
-  return { ok: true, fact: desk.fact, newDerivations: derived.length };
+  // S-INF-2 (F4): the receipt counts only the derivations THIS fact
+  // caused — the transitive closure over derivedFrom.factId starting at
+  // the new fact. The raw chain delta also fires standing rules over old
+  // facts, which is how an unmatched fact once reported "4".
+  const caused = new Set([desk.fact.id]);
+  let attributable = 0;
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const d of derived) {
+      if (d.derivedFrom?.factId && caused.has(d.derivedFrom.factId) && !caused.has(d.id)) {
+        caused.add(d.id);
+        attributable++;
+        grew = true;
+      }
+    }
+  }
+  return {
+    ok: true,
+    fact: desk.fact,
+    newDerivations: attributable,
+    ...(desk.contradiction ? { contradiction: desk.contradiction } : {}),
+  };
 }
 
 // Add an inference rule
@@ -83632,24 +84104,108 @@ function syllogisticReason(input = {}, userId = "anon") {
   const category = _singularizeCategory(majorMatch[1].toLowerCase());
   const property = majorMatch[2].toLowerCase();
 
-  // Parse minor premise (Z is X)
+  // S-INF-2 (F2): category matching is morphology-tolerant — the major's
+  // category and the minor's are compared on a stem (singularized, with
+  // the ie/y variation folded), so razzy / razzies / razzie are one
+  // category to the user, as they should be.
+  const stem = (w) => _singularizeCategory(String(w).toLowerCase()).replace(/ie$/, "y");
+
+  // Parse minor premise — two supported shapes, stated up front in the
+  // view: singular ("Z is X") and the canonical universal Barbara
+  // ("All Z are X"), which the form once refused outright.
+  const minorUniversal = String(minorPremise || "").match(/^all\s+(\w+)\s+are\s+(.+)$/i);
   const minorMatch = String(minorPremise || "").match(/^(?:a\s+)?(\w+)\s+is\s+(?:a\s+)?(\w+)$/i);
-  if (!minorMatch) {
-    return { ok: false, error: "Minor premise must be in form 'X is Y'" };
+  if (!minorUniversal && !minorMatch) {
+    return { ok: false, step: "parse", error: "Minor premise must be in form 'X is Y' or 'All X are Y'" };
   }
+
+  if (minorUniversal) {
+    // Canonical Barbara: All Z are X + All X are Y ⊢ All Z are Y.
+    const minorCategoryTyped = minorUniversal[1];
+    const minorObject = minorUniversal[2].toLowerCase();
+    if (stem(minorObject) !== stem(category)) {
+      return {
+        ok: false,
+        step: "category",
+        error: `Category mismatch: "${minorObject}" does not match "${category}"`
+      };
+    }
+    const minorCategory = _singularizeCategory(minorCategoryTyped.toLowerCase());
+    addInferenceFact({
+      subject: category, predicate: "is", object: property, universal: true, source: "major_premise"
+    }, userId);
+    addInferenceFact({
+      subject: minorCategory, predicate: "is", object: category, universal: true, source: "minor_premise"
+    }, userId);
+    addInferenceRule({
+      name: `All ${category} are ${property}`,
+      type: "implication",
+      antecedent: { predicate: "is", object: category },
+      consequent: { predicate: "is", object: property },
+      confidence: 1.0
+    });
+    _inferenceNoteDeskOperation(userId, "inference");
+    // The universal conclusion is entailed directly (transitivity of the
+    // two universals); it is recorded in the derived store so re-runs
+    // find it standing — the same determinism contract as the singular
+    // path (S-INF-1).
+    const kbU = STATE.reasoning.knowledgeBase;
+    const standingU = [...kbU.facts.values(), ...kbU.derived.values()].find(d =>
+      d.subject === minorCategory && d.predicate === "is" && d.object === property && d.universal
+    );
+    if (!standingU) {
+      const derivedFact = {
+        id: uid("derived"),
+        subject: minorCategory,
+        predicate: "is",
+        object: property,
+        universal: true,
+        negated: false,
+        confidence: 1.0,
+        createdAt: nowISO(),
+        derivedFrom: { rule: "syllogism-barbara", factId: null }
+      };
+      kbU.derived.set(derivedFact.id, derivedFact);
+      kbU.stats.factsDeduced++;
+      _inferenceNoteDeskOperation(userId, "derivation");
+      saveStateDebounced();
+    }
+    return {
+      ok: true,
+      conclusion: `All ${minorCategoryTyped.toLowerCase()} are ${property}`,
+      derivation: {
+        majorPremise,
+        minorPremise,
+        conclusion: `all ${minorCategory} are ${property}`,
+        rule: "Syllogistic reasoning (Barbara): transitivity of universal premises",
+        confidence: 1.0,
+        derivedThisRun: !standingU,
+        alreadyDerived: Boolean(standingU)
+      },
+      kbWrites: {
+        premisesStored: [`all ${category} are ${property}`, `all ${minorCategory} are ${category}`],
+        ruleAdded: `All ${category} are ${property}`,
+        conclusionStored: true
+      }
+    };
+  }
+
   const subject = minorMatch[1].toLowerCase();
   const subjectCategory = minorMatch[2].toLowerCase();
 
   // Check if minor premise's category matches major premise's subject
-  if (subjectCategory !== category) {
+  if (stem(subjectCategory) !== stem(category)) {
     return {
       ok: false,
+      step: "category",
       error: `Category mismatch: "${subjectCategory}" does not match "${category}"`
     };
   }
 
-  // Add facts and rule to knowledge base (desk store + legacy engine)
-  addInferenceFact({
+  // Add facts and rule to knowledge base (desk store + legacy engine).
+  // S-INF-3 (F5): the writes are DISCLOSED in the result (kbWrites) —
+  // the syllogism view states what a run stores, where it happens.
+  const majorAdd = addInferenceFact({
     subject: category,
     predicate: "is",
     object: property,
@@ -83657,7 +84213,7 @@ function syllogisticReason(input = {}, userId = "anon") {
     source: "major_premise"
   }, userId);
 
-  addInferenceFact({
+  const minorAdd = addInferenceFact({
     subject,
     predicate: "is",
     object: category,
@@ -83671,32 +84227,78 @@ function syllogisticReason(input = {}, userId = "anon") {
     consequent: { predicate: "is", object: property },
     confidence: 1.0
   });
+  _inferenceNoteDeskOperation(userId, "inference");
 
   // Perform inference
   const derivations = forwardChain();
 
-  // Look for the conclusion
-  const conclusion = derivations.find(d =>
+  // S-INF-1 (F1): the conclusion is looked up in the STANDING knowledge
+  // base (facts + derived), not only in this run's delta. forwardChain
+  // returns only NEW derivations — its seen-set is seeded with every
+  // previously derived fact — so a delta-only search derived correctly
+  // exactly once and then refused every identical re-run for the rest of
+  // the session, across reloads (the persisted derived set was the
+  // poison). Determinism is definitional here: the same premises derive
+  // the same conclusion on the 1st, 2nd and 10th run.
+  const kb = STATE.reasoning.knowledgeBase;
+  const inDelta = derivations.find(d =>
     d.subject === subject && d.predicate === "is" && d.object === property
   );
+  const standing = [...kb.facts.values(), ...kb.derived.values()].find(d =>
+    d.subject === subject && d.predicate === "is" && d.object === property
+  );
+  const conclusion = inDelta || standing;
 
   if (conclusion) {
+    // S-INF-2 (F2): conclusions render in the minor's number — a singular
+    // subject does not take a plural property ("bloop is lazzies").
+    const renderedProperty = /^\w+$/.test(property) ? _singularizeCategory(property) : property;
+    // Desk counters: derivations this run caused (closure over the two
+    // premise facts through the delta's derivedFrom chain).
+    const causedByRun = new Set([majorAdd?.fact?.id, minorAdd?.fact?.id].filter(Boolean));
+    let runDerived = 0;
+    let grewRun = true;
+    while (grewRun) {
+      grewRun = false;
+      for (const d of derivations) {
+        if (d.derivedFrom?.factId && causedByRun.has(d.derivedFrom.factId) && !causedByRun.has(d.id)) {
+          causedByRun.add(d.id);
+          runDerived++;
+          grewRun = true;
+        }
+      }
+    }
+    if (runDerived > 0) _inferenceNoteDeskOperation(userId, "derivation", runDerived);
     return {
       ok: true,
-      conclusion: `${subject.charAt(0).toUpperCase() + subject.slice(1)} is ${property}`,
+      conclusion: `${subject.charAt(0).toUpperCase() + subject.slice(1)} is ${renderedProperty}`,
+      kbWrites: {
+        premisesStored: [`all ${category} are ${property}`, `${subject} is ${category}`],
+        ruleAdded: `All ${category} are ${property}`,
+        conclusionStored: true
+      },
       derivation: {
         majorPremise,
         minorPremise,
         conclusion: `${subject} is ${property}`,
         rule: "Syllogistic reasoning via universal instantiation and modus ponens",
-        confidence: conclusion.confidence
+        confidence: conclusion.confidence,
+        // D3: determinism made visible — whether this run derived the
+        // conclusion fresh or it already stood derived from the same
+        // premises (the answer is the same either way, and says so).
+        derivedThisRun: Boolean(inDelta),
+        alreadyDerived: !inDelta
       }
     };
   }
 
+  // D1: a failure names its step — the parse and category steps returned
+  // above; this is the derive step, and it says what the chain held and
+  // what it was looking for.
   return {
     ok: false,
-    error: "Could not derive conclusion",
+    step: "derive",
+    error: `Derivation step: the chain ran over ${kb.facts.size} facts and ${kb.rules.size} rules and no path derives "${subject} is ${property}" — the middle term "${category}" connects "${subject}" to the rule, but the rule's consequent does not reach "${property}" from the standing facts.`,
     derivations: derivations.map(d => `${d.subject} ${d.predicate} ${d.object}`)
   };
 }
@@ -84054,6 +84656,78 @@ function ensureMetacognitionSystem() {
 }
 
 // Assess current state of knowledge on a topic
+// ── Record-derived competence (S-MC-1) ─────────────────────────────
+// A domain figure in this lens is a statistic of the user's own
+// prediction record in that domain: resolved count, accuracy, Brier,
+// mean confidence. assessKnowledge (below) measures something else
+// entirely — the platform's DTU coverage on a topic — and its score
+// must never again be presented as the user's skill.
+function domainRecordStats(domain) {
+  ensureMetacognitionSystem();
+  const want = String(domain || "general").toLowerCase();
+  const all = Array.from(STATE.metacognition.predictions.values());
+  const inDomain = all.filter(p => String(p.domain || "general").toLowerCase() === want);
+  const resolved = inDomain.filter(p => p.outcome !== null);
+  const correct = resolved.filter(p => p.outcome === "correct").length;
+  const r4 = (v) => Math.round(v * 10000) / 10000;
+  return {
+    domain: String(domain || "general"),
+    predictions: inDomain.length,
+    resolved: resolved.length,
+    correct,
+    accuracy: resolved.length > 0 ? r4(correct / resolved.length) : null,
+    brierScore: resolved.length > 0
+      ? r4(resolved.reduce((sum, p) => sum + Math.pow(p.confidence - (p.outcome === "correct" ? 1 : 0), 2), 0) / resolved.length)
+      : null,
+    meanConfidence: resolved.length > 0
+      ? r4(resolved.reduce((sum, p) => sum + p.confidence, 0) / resolved.length)
+      : null,
+    lastResolvedAt: resolved.length > 0
+      ? resolved.map(p => p.resolvedAt || p.createdAt).sort().slice(-1)[0] : null,
+  };
+}
+
+function assessDomainFromRecord(topic) {
+  const stats = domainRecordStats(topic);
+  if (stats.resolved === 0) {
+    return { ok: true, assessment: { ...stats, skill: null,
+      note: `No resolved predictions in "${stats.domain}" yet \u2014 there is no record to assess competence from. Log and resolve predictions in this domain and the assessment will be computed from them.` } };
+  }
+  return { ok: true, assessment: { ...stats, skill: stats.accuracy,
+    note: `Computed from your record: ${stats.correct} of ${stats.resolved} resolved predictions correct in "${stats.domain}" (Brier ${stats.brierScore}).` } };
+}
+
+function computeDomainRecord() {
+  ensureMetacognitionSystem();
+  const domains = new Set(Array.from(STATE.metacognition.predictions.values()).map(p => String(p.domain || "general")));
+  return Array.from(domains)
+    .map(d => { const st = domainRecordStats(d); return { ...st, skill: st.accuracy }; })
+    .sort((a, b) => b.resolved - a.resolved || a.domain.localeCompare(b.domain));
+}
+
+// Blind spots from the record (S-MC-1/F2): a domain is a blind spot
+// when the user's own resolved predictions there fail at least half
+// the time on a real sample. Severity IS the observed failure rate
+// and the gaps name the counts — never a complement of a corpus
+// statistic.
+function computeRecordBlindSpots() {
+  const spots = [];
+  for (const st of computeDomainRecord()) {
+    if (st.resolved >= 2 && st.accuracy != null && st.accuracy <= 0.5) {
+      const failed = st.resolved - st.correct;
+      spots.push({
+        topic: st.domain,
+        severity: Math.round((1 - st.accuracy) * 10000) / 10000,
+        gaps: [`${failed} of ${st.resolved} resolved predictions in "${st.domain}" were incorrect`],
+        recommendation: `Your record in "${st.domain}" is ${st.correct}/${st.resolved} \u2014 consider lowering confidence there until it improves.`,
+        identifiedAt: st.lastResolvedAt,
+        resolvedCount: st.resolved,
+      });
+    }
+  }
+  return spots.sort((a, b) => b.severity - a.severity).slice(0, 20);
+}
+
 function assessKnowledge(topic) {
   ensureMetacognitionSystem();
   ensureSemanticEngine();
@@ -84183,6 +84857,33 @@ function resolvePrediction(predictionId, wasCorrect) {
   return { ok: true, prediction };
 }
 
+// Delete a prediction (F15). The calibration counters are decremented
+// in step, so the report stays a function of the surviving record —
+// the same recompute-on-delete the Decision Journal already proves.
+function deletePrediction(predictionId) {
+  ensureMetacognitionSystem();
+  const prediction = STATE.metacognition.predictions.get(predictionId);
+  if (!prediction) return { ok: false, error: "Prediction not found" };
+  STATE.metacognition.predictions.delete(predictionId);
+  const cal = STATE.metacognition.calibration;
+  cal.totalPredictions = Math.max(0, cal.totalPredictions - 1);
+  if (prediction.outcome !== null) {
+    const bucket = Math.ceil(prediction.confidence * 10) / 10;
+    if (cal.buckets[bucket]) {
+      cal.buckets[bucket].total = Math.max(0, cal.buckets[bucket].total - 1);
+      if (prediction.outcome === "correct") {
+        cal.buckets[bucket].correct = Math.max(0, cal.buckets[bucket].correct - 1);
+        cal.correctPredictions = Math.max(0, cal.correctPredictions - 1);
+      }
+      if (cal.buckets[bucket].total === 0) delete cal.buckets[bucket];
+    } else if (prediction.outcome === "correct") {
+      cal.correctPredictions = Math.max(0, cal.correctPredictions - 1);
+    }
+  }
+  saveStateDebounced();
+  return { ok: true, removed: predictionId };
+}
+
 // Get calibration report
 function getCalibrationReport() {
   ensureMetacognitionSystem();
@@ -84210,6 +84911,22 @@ function getCalibrationReport() {
     .reduce((sum, b) => sum + b.calibrationError, 0) /
     Math.max(Object.values(bucketStats).filter(b => b.calibrationError !== null).length, 1);
 
+  // One label scale for the whole lens (F12): ECE over the resolved
+  // record, labelled on the shared thresholds of lib/calibration-
+  // math.js's calibrationQualityLabel (<0.05 excellent \u00b7 <0.10 good \u00b7
+  // <0.20 moderate \u00b7 else poor) \u2014 the same scale the journal and
+  // predictions-analysis surfaces use. `interpretation` derives FROM
+  // that quality, so the two fields can never tell different stories.
+  const resolvedTotal = Object.values(bucketStats).reduce((sum, b) => sum + b.total, 0);
+  const ece = resolvedTotal > 0
+    ? Object.values(bucketStats).reduce((sum, b) => sum + (b.calibrationError != null ? b.calibrationError * b.total : 0), 0) / resolvedTotal
+    : null;
+  const quality = ece == null ? null
+    : ece < 0.05 ? "excellent" : ece < 0.1 ? "good" : ece < 0.2 ? "moderate" : "poor";
+  const interpretation = quality === "excellent" || quality === "good" ? "well-calibrated"
+    : quality === "moderate" ? "moderately calibrated"
+    : quality === "poor" ? "poorly calibrated" : null;
+
   return {
     ok: true,
     report: {
@@ -84218,8 +84935,9 @@ function getCalibrationReport() {
       overallAccuracy,
       buckets: bucketStats,
       avgCalibrationError,
-      interpretation: avgCalibrationError < 0.1 ? "well-calibrated" :
-                      avgCalibrationError < 0.2 ? "moderately calibrated" : "poorly calibrated"
+      ece: ece != null ? Math.round(ece * 10000) / 10000 : null,
+      quality,
+      interpretation
     }
   };
 }
@@ -84230,23 +84948,38 @@ function selectStrategy(problemDescription) {
 
   const lower = problemDescription.toLowerCase();
 
+  // S-MC-2: the advisor selects from the lens's own Thinking-Strategy
+  // Library \u2014 the same twelve strategies strategyLibrary serves
+  // (names and guidance mirror THINKING_STRATEGIES in
+  // server/domains/metacognition.js), each with the problem shapes it
+  // answers. Before this, the advisor matched a private seven-item
+  // list that shared no entries with the library, an estimation
+  // problem could never reach Fermi estimation, and two different
+  // problems whose text happened to share an early keyword received
+  // the identical answer.
   const strategies = [
-    { name: "deductive", trigger: /prove|must|necessarily|follows|therefore/i, description: "Apply logical rules to derive certain conclusions" },
-    { name: "inductive", trigger: /pattern|trend|usually|often|generally/i, description: "Generalize from specific observations" },
-    { name: "abductive", trigger: /explain|why|cause|reason|because/i, description: "Find the best explanation for observations" },
-    { name: "analogical", trigger: /similar|like|compare|analogy|same as/i, description: "Map from known to unknown via similarity" },
-    { name: "decomposition", trigger: /break down|parts|components|step by step/i, description: "Divide problem into smaller parts" },
-    { name: "simulation", trigger: /what if|scenario|imagine|suppose/i, description: "Run mental simulation of possibilities" },
-    { name: "empirical", trigger: /test|measure|observe|experiment|data/i, description: "Gather evidence through observation" }
+    { id: "fermi", name: "Fermi estimation", trigger: /how many|how much|estimate|roughly|order of magnitude|number of .{0,40} in |population of/i, description: "When you need a rough number fast. Decompose into factors you can estimate, multiply, sanity-check the order of magnitude." },
+    { id: "premortem", name: "Pre-mortem", trigger: /plan|launch|commit|rollout|release|project/i, description: "Before committing to a plan, imagine it has failed and explain why. Assume failure 6 months out; list every plausible cause; harden against the top ones." },
+    { id: "inversion", name: "Inversion", trigger: /stuck|unclear|how (can|do) (i|we) (achieve|succeed|get)/i, description: "When the path forward is unclear. Instead of asking how to succeed, ask what would guarantee failure \u2014 then avoid it." },
+    { id: "base_rates", name: "Base-rate reasoning", trigger: /odds|chance|likely|probability|forecast|predict|will it/i, description: "When estimating the odds of an outcome. Start from how often this class of event happens, then adjust for specifics." },
+    { id: "second_order", name: "Second-order thinking", trigger: /consequence|downstream|long[- ]term|side effect/i, description: "When a choice has downstream consequences. Ask 'and then what?' at least twice for each option." },
+    { id: "steelman", name: "Steelmanning", trigger: /opposing|disagree|counterargument|other side|critic/i, description: "When evaluating an opposing view. State the strongest version of the other side before critiquing it." },
+    { id: "occam", name: "Occam's razor", trigger: /explain|explanation|why did|cause of|reason for/i, description: "When choosing between explanations. Prefer the explanation requiring the fewest unsupported assumptions." },
+    { id: "red_team", name: "Red teaming", trigger: /risk|review (the|our|my) plan|high[- ]stakes|vulnerab/i, description: "Before a high-stakes commitment. Assign someone (or yourself) to actively attack the plan." },
+    { id: "five_whys", name: "Five whys", trigger: /root cause|keeps happening|recurring|why does/i, description: "When diagnosing a root cause. Ask 'why' repeatedly until you reach a cause you can act on." },
+    { id: "outside_view", name: "Outside view", trigger: /my (project|startup|plan|app)|timeline|how long will|similar (projects|efforts)/i, description: "When your plan feels uniquely promising. Compare against a reference class of similar past efforts." },
+    { id: "decision_tree", name: "Decision tree", trigger: /choose between|decide between|which (one|option)|uncertain outcome/i, description: "When outcomes branch on uncertain events. Map options, chance nodes and payoffs; compute expected value per branch." },
+    { id: "rubber_duck", name: "Rubber-duck explanation", trigger: /confused|don\u2019t understand|how does .{0,30} work/i, description: "When stuck on a problem. Explain the problem step-by-step out loud as if to a novice." },
   ];
 
-  const matches = strategies.filter(s => s.trigger.test(lower));
-  const selected = matches.length > 0 ? matches[0] : { name: "mixed", description: "Combine multiple reasoning approaches" };
+  const matches = strategies.filter(st => st.trigger.test(lower));
+  const selected = matches.length > 0 ? matches[0]
+    : { id: "base_rates", name: "Base-rate reasoning", description: "No library strategy matched this problem's shape directly \u2014 start from the base rate: how often does this class of thing happen? Then adjust for the specifics of your case." };
 
   STATE.metacognition.strategies.push({
     problem: problemDescription.slice(0, 200),
-    selected: selected.name,
-    alternatives: matches.slice(1).map(s => s.name),
+    selected: selected.id,
+    alternatives: matches.slice(1).map(st => st.id),
     selectedAt: nowISO()
   });
   STATE.metacognition.stats.strategiesUsed++;
@@ -84256,7 +84989,11 @@ function selectStrategy(problemDescription) {
     STATE.metacognition.strategies = STATE.metacognition.strategies.slice(-200);
   }
 
-  return { ok: true, strategy: selected, alternatives: matches.slice(1) };
+  return {
+    ok: true,
+    strategy: { id: selected.id, name: selected.name, description: selected.description },
+    alternatives: matches.slice(1).map(st => ({ id: st.id, name: st.name, description: st.description }))
+  };
 }
 
 // ===== METACOGNITION INTROSPECTION =====
@@ -84275,18 +85012,34 @@ function ensureIntrospectionState() {
   }
 }
 
-// Introspect on past predictions to understand failure patterns
-function introspectOnFailures() {
+// Introspect on past predictions to understand failure patterns.
+// `focus` (S-MC-3) scopes the run to predictions whose statement or
+// domain mentions a focus term, and the result names its scope \u2014 a
+// run that ignores its focus is a finding, not a feature.
+function introspectOnFailures(focus = "") {
   ensureMetacognitionSystem();
   ensureIntrospectionState();
 
-  const predictions = Array.from(STATE.metacognition.predictions.values())
+  const allResolved = Array.from(STATE.metacognition.predictions.values())
     .filter(p => p.outcome !== null);
+  const focusTerms = String(focus || "").toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 3);
+  let predictions = allResolved;
+  if (focusTerms.length > 0) {
+    predictions = allResolved.filter(p => {
+      const hay = `${p.statement || ""} ${p.domain || ""}`.toLowerCase();
+      return focusTerms.some(t => hay.includes(t));
+    });
+  }
 
   if (predictions.length < 3) {
     return {
       ok: true,
-      message: "Insufficient data for introspection (need at least 3 resolved predictions)",
+      message: focusTerms.length > 0
+        ? `Insufficient data for introspection on "${focus}" (need at least 3 resolved predictions in scope; ${predictions.length} found of ${allResolved.length} resolved)`
+        : "Insufficient data for introspection (need at least 3 resolved predictions)",
+      focus: focus || null,
+      scopedCount: predictions.length,
+      totalResolved: allResolved.length,
       failurePatterns: [],
       recommendations: []
     };
@@ -84353,7 +85106,11 @@ function introspectOnFailures() {
     });
   }
 
-  // Pattern 4: Consistent failure on certain question types
+  // Pattern 4: Consistent failure on certain question types.
+  // S-MC-3: a topic word is a PATTERN only if it discriminates \u2014
+  // over-represented in failures relative to successes. Words counted
+  // in failures alone (the old mechanism) surface whatever the user
+  // habitually types, successes included, and call it a weakness.
   const failureKeywords = {};
   for (const f of failures) {
     const words = String(f.statement || "").toLowerCase().split(/\s+/);
@@ -84363,9 +85120,19 @@ function introspectOnFailures() {
       }
     }
   }
+  const successKeywords = {};
+  for (const f of successes) {
+    const words = String(f.statement || "").toLowerCase().split(/\s+/);
+    for (const word of words) {
+      if (word.length > 4) {
+        successKeywords[word] = (successKeywords[word] || 0) + 1;
+      }
+    }
+  }
 
   const commonFailureWords = Object.entries(failureKeywords)
-    .filter(([_word, count]) => count >= 2)
+    .filter(([word, count]) => count >= 2
+      && (count / Math.max(failures.length, 1)) > ((successKeywords[word] || 0) / Math.max(successes.length, 1)))
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3);
 
@@ -84405,6 +85172,9 @@ function introspectOnFailures() {
   const introspectionResult = {
     id: uid("intro"),
     timestamp: nowISO(),
+    focus: focus || null,
+    scopedCount: predictions.length,
+    totalResolved: allResolved.length,
     totalPredictions: predictions.length,
     failures: failures.length,
     successes: successes.length,
@@ -84414,15 +85184,25 @@ function introspectOnFailures() {
     confidenceAdjustments: { ...STATE.metacognition.introspection.confidenceAdjustments }
   };
 
-  STATE.metacognition.introspection.failurePatterns.push({
+  // F14: re-running an unchanged analysis updates its record instead
+  // of appending a duplicate \u2014 the history versions by change, not
+  // by click.
+  const historyEntry = {
     ...introspectionResult,
     patterns: failurePatterns.map(p => p.type)
-  });
+  };
+  const history = STATE.metacognition.introspection.failurePatterns;
+  const lastEntry = history[history.length - 1];
+  const entrySignature = (e) => `${e.focus || ""}|${e.totalPredictions}|${e.failures}|${(e.patterns || []).join(",")}`;
+  if (lastEntry && entrySignature(lastEntry) === entrySignature(historyEntry)) {
+    history[history.length - 1] = historyEntry;
+  } else {
+    history.push(historyEntry);
+  }
 
   // Cap history
-  if (STATE.metacognition.introspection.failurePatterns.length > 50) {
-    STATE.metacognition.introspection.failurePatterns =
-      STATE.metacognition.introspection.failurePatterns.slice(-50);
+  if (history.length > 50) {
+    STATE.metacognition.introspection.failurePatterns = history.slice(-50);
   }
 
   STATE.metacognition.introspection.lastIntrospection = nowISO();
@@ -84660,6 +85440,11 @@ function getIntrospectionStatus() {
     ok: true,
     lastIntrospection: STATE.metacognition.introspection.lastIntrospection,
     failurePatternCount: STATE.metacognition.introspection.failurePatterns.length,
+    // F13: patterns FOUND (summed over runs) vs RUNS stored \u2014 the
+    // panel's "N failure pattern(s)" label reads patternsFound; the
+    // run count is reported separately under its own name.
+    runsCount: STATE.metacognition.introspection.failurePatterns.length,
+    patternsFound: STATE.metacognition.introspection.failurePatterns.reduce((sum, e) => sum + (Array.isArray(e.patterns) ? e.patterns.length : 0), 0),
     strategyModificationCount: STATE.metacognition.introspection.strategyModifications.length,
     learningEventCount: STATE.metacognition.introspection.learningEvents.length,
     confidenceAdjustments: STATE.metacognition.introspection.confidenceAdjustments,
@@ -84672,20 +85457,46 @@ function adjustConfidenceFromLearning(domain, baseConfidence) {
   ensureMetacognitionSystem();
   ensureIntrospectionState();
 
-  const adjustment = STATE.metacognition.introspection.confidenceAdjustments[domain] || 1.0;
-  const adjustedConfidence = clamp(baseConfidence * adjustment, 0.1, 0.95);
-
+  // S-MC-2: the adjustment derives from the recorded performance in
+  // the domain \u2014 the calibration gap between stated confidence and
+  // observed accuracy across resolved predictions \u2014 applied to the
+  // estimate. (Before this, the adjuster read only the adjustments
+  // map introspection writes, so on any record introspection had not
+  // mined it returned \u00d71.00 under a claim of "given historical
+  // performance in a domain".) Below the sample threshold it states
+  // the volume of history it needs instead of silently returning
+  // \u00d71.00.
+  const stats = domainRecordStats(domain);
+  const MIN_RESOLVED = 3;
+  if (stats.resolved < MIN_RESOLVED) {
+    return {
+      ok: true,
+      original: baseConfidence,
+      adjusted: baseConfidence,
+      factor: 1.0,
+      domain,
+      resolvedCount: stats.resolved,
+      requiredCount: MIN_RESOLVED,
+      explanation: `Only ${stats.resolved} resolved prediction${stats.resolved === 1 ? "" : "s"} in "${domain}" \u2014 the adjuster needs at least ${MIN_RESOLVED} to move an estimate. No adjustment applied.`
+    };
+  }
+  const gap = stats.meanConfidence - stats.accuracy;
+  const adjustedConfidence = clamp(baseConfidence - gap, 0.05, 0.95);
+  const r4 = (v) => Math.round(v * 10000) / 10000;
   return {
     ok: true,
     original: baseConfidence,
-    adjusted: adjustedConfidence,
-    factor: adjustment,
+    adjusted: r4(adjustedConfidence),
+    factor: baseConfidence > 0 ? r4(adjustedConfidence / baseConfidence) : 1.0,
     domain,
-    explanation: adjustment < 1.0
-      ? `Confidence reduced due to historical weakness in "${domain}"`
-      : adjustment > 1.0
-        ? `Confidence boosted due to historical strength in "${domain}"`
-        : "No adjustment applied"
+    resolvedCount: stats.resolved,
+    accuracy: stats.accuracy,
+    meanConfidence: stats.meanConfidence,
+    explanation: gap > 0.02
+      ? `In "${domain}": ${stats.resolved} resolved predictions, ${(stats.accuracy * 100).toFixed(0)}% accurate at ${(stats.meanConfidence * 100).toFixed(0)}% average confidence \u2014 an overconfidence gap of ${(gap * 100).toFixed(0)} points, applied to this estimate.`
+      : gap < -0.02
+        ? `In "${domain}": ${stats.resolved} resolved predictions, ${(stats.accuracy * 100).toFixed(0)}% accurate at ${(stats.meanConfidence * 100).toFixed(0)}% average confidence \u2014 an underconfidence gap of ${(-gap * 100).toFixed(0)} points, applied to this estimate.`
+        : `In "${domain}": ${stats.resolved} resolved predictions, ${(stats.accuracy * 100).toFixed(0)}% accurate at ${(stats.meanConfidence * 100).toFixed(0)}% average confidence \u2014 well calibrated, no adjustment needed.`
   };
 }
 
@@ -84997,11 +85808,18 @@ function defineLearningStrategy(input = {}) {
       consolidationThreshold: clamp(Number(input.consolidationThreshold || 0.7), 0.1, 1)
     },
 
-    // Performance tracking
+    // Performance tracking. S-META-1: there is no performance figure
+    // before the first outcome — avgPerformance stays null until
+    // recordStrategyOutcome derives it as the success rate
+    // (successes / uses) from the counts below. (It was seeded 0.5
+    // and then averaged per-outcome scores the surface sent —
+    // 0.85 per success, 0.25 per failure — so the card displayed a
+    // mean of undisclosed constants wearing the label "avg
+    // performance", at 0 outcomes a bare seed.)
     uses: 0,
     successes: 0,
     failures: 0,
-    avgPerformance: 0.5,
+    avgPerformance: null,
 
     createdAt: nowISO(),
     updatedAt: nowISO()
@@ -85025,8 +85843,12 @@ function recordStrategyOutcome(strategyId, outcome) {
   if (success) strategy.successes++;
   else strategy.failures++;
 
-  // Update running average
-  strategy.avgPerformance = (strategy.avgPerformance * (strategy.uses - 1) + performance) / strategy.uses;
+  // S-META-1: the displayed figure is the success rate, recomputed
+  // from the counts on every outcome so it can always be
+  // hand-checked against them. The per-outcome performance score
+  // still lands in the history below, where adaptStrategy uses it
+  // as an internal tuning signal — it no longer feeds the figure.
+  strategy.avgPerformance = strategy.successes / strategy.uses;
   strategy.updatedAt = nowISO();
 
   // Record in performance history
@@ -85049,7 +85871,7 @@ function recordStrategyOutcome(strategyId, outcome) {
   }
 
   saveStateDebounced();
-  return { ok: true, strategy, newAvgPerformance: strategy.avgPerformance };
+  return { ok: true, strategy, newAvgPerformance: strategy.avgPerformance, successRate: strategy.avgPerformance };
 }
 
 // Adapt strategy parameters based on performance
@@ -85067,51 +85889,86 @@ function adaptStrategy(strategyId) {
     .filter(p => p.strategyId === strategyId)
     .slice(-cfg.performanceWindow);
 
+  // S-META-3: an adaptation pass always answers with its working —
+  // what it counted, what rule it applied, and either the changes it
+  // made (before → after, every tuned parameter) or the reason it
+  // made none. (Before this, a below-threshold pass returned a
+  // message the surface never rendered — a silent no-op — and the
+  // firing condition was nowhere stated.)
   if (recent.length < cfg.minSamples) {
-    return { ok: true, message: "Insufficient data for adaptation" };
+    return {
+      ok: true,
+      adapted: false,
+      reason: "needs_data",
+      outcomesCounted: recent.length,
+      requiredCount: cfg.minSamples,
+      message: `Adaptation needs at least ${cfg.minSamples} recorded outcomes to read a trend — this strategy has ${recent.length}. No parameters changed.`,
+    };
   }
 
   const recentAvg = recent.reduce((sum, p) => sum + p.performance, 0) / recent.length;
   const successRate = recent.filter(p => p.success).length / recent.length;
+  const changes = [];
+  const tune = (parameter, to, describe) => {
+    const from = strategy.parameters[parameter];
+    if (from === to) return;
+    strategy.parameters[parameter] = to;
+    changes.push({ parameter, from, to });
+    adaptations.push(describe(from, to));
+  };
 
-  // Adapt based on performance
+  // Adapt based on performance. All three parameters the surface
+  // names are tuned here — learning rate included (it never was).
   if (recentAvg < 0.4) {
-    // Poor performance: increase exploration, decrease batch size
-    const oldExploration = strategy.parameters.explorationRate;
-    strategy.parameters.explorationRate = clamp(oldExploration + cfg.adaptationRate, 0, 0.5);
-    adaptations.push(`Increased exploration from ${oldExploration.toFixed(2)} to ${strategy.parameters.explorationRate.toFixed(2)}`);
-
-    const oldBatch = strategy.parameters.batchSize;
-    strategy.parameters.batchSize = Math.max(1, oldBatch - 1);
-    adaptations.push(`Decreased batch size from ${oldBatch} to ${strategy.parameters.batchSize}`);
+    // Poor performance: explore more, smaller batches, faster updates
+    tune("explorationRate", clamp(strategy.parameters.explorationRate + cfg.adaptationRate, 0, 0.5),
+      (f, t) => `Increased exploration from ${f.toFixed(2)} to ${t.toFixed(2)}`);
+    tune("batchSize", Math.max(1, strategy.parameters.batchSize - 1),
+      (f, t) => `Decreased batch size from ${f} to ${t}`);
+    tune("learningRate", clamp(strategy.parameters.learningRate + cfg.adaptationRate / 2, 0.01, 1),
+      (f, t) => `Increased learning rate from ${f.toFixed(2)} to ${t.toFixed(2)}`);
   } else if (recentAvg > 0.7 && successRate > 0.8) {
-    // Good performance: decrease exploration, can increase batch
-    const oldExploration = strategy.parameters.explorationRate;
-    strategy.parameters.explorationRate = clamp(oldExploration - cfg.adaptationRate, 0.05, 1);
-    adaptations.push(`Decreased exploration from ${oldExploration.toFixed(2)} to ${strategy.parameters.explorationRate.toFixed(2)}`);
+    // Good performance: exploit what works, steadier updates
+    tune("explorationRate", clamp(strategy.parameters.explorationRate - cfg.adaptationRate, 0.05, 1),
+      (f, t) => `Decreased exploration from ${f.toFixed(2)} to ${t.toFixed(2)}`);
+    tune("learningRate", clamp(strategy.parameters.learningRate - cfg.adaptationRate / 2, 0.01, 1),
+      (f, t) => `Decreased learning rate from ${f.toFixed(2)} to ${t.toFixed(2)}`);
 
     STATE.metaLearning.stats.performanceImprovements++;
   }
 
-  if (adaptations.length > 0) {
-    STATE.metaLearning.adaptations.push({
-      strategyId,
-      strategyName: strategy.name,
-      adaptations,
-      triggerPerformance: recentAvg,
-      adaptedAt: nowISO()
-    });
-    STATE.metaLearning.stats.strategiesAdapted++;
-    strategy.updatedAt = nowISO();
+  if (changes.length === 0) {
+    return {
+      ok: true,
+      adapted: false,
+      reason: "in_band",
+      outcomesCounted: recent.length,
+      recentAvg: Math.round(recentAvg * 10000) / 10000,
+      successRate: Math.round(successRate * 10000) / 10000,
+      message: `No adaptation: recent performance (${recentAvg.toFixed(2)} average, ${(successRate * 100).toFixed(0)}% success over the last ${recent.length} outcomes) is inside the healthy band. Adaptation fires below 0.40 average, or above 0.70 with a success rate over 80%.`,
+    };
+  }
 
-    // Cap adaptations
-    if (STATE.metaLearning.adaptations.length > 200) {
-      STATE.metaLearning.adaptations = STATE.metaLearning.adaptations.slice(-200);
-    }
+  STATE.metaLearning.adaptations.push({
+    strategyId,
+    strategyName: strategy.name,
+    adaptations,
+    changes,
+    triggerPerformance: recentAvg,
+    triggerSuccessRate: Math.round(successRate * 10000) / 10000,
+    outcomesCounted: recent.length,
+    adaptedAt: nowISO()
+  });
+  STATE.metaLearning.stats.strategiesAdapted++;
+  strategy.updatedAt = nowISO();
+
+  // Cap adaptations
+  if (STATE.metaLearning.adaptations.length > 200) {
+    STATE.metaLearning.adaptations = STATE.metaLearning.adaptations.slice(-200);
   }
 
   saveStateDebounced();
-  return { ok: true, adaptations, newParameters: strategy.parameters };
+  return { ok: true, adapted: true, adaptations, changes, newParameters: strategy.parameters, outcomesCounted: recent.length };
 }
 
 // Generate a curriculum (learning sequence) for a topic
@@ -85132,21 +85989,33 @@ function generateCurriculum(topic, input = {}) {
     return aScore - bScore;  // Start with simpler, more relevant
   });
 
-  // Build curriculum
-  const steps = sorted.slice(0, maxSteps).map((dtu, i) => ({
+  // Build curriculum. Steps are existing corpus DTUs — deduped by
+  // id (the same material appeared twice in one curriculum) — and
+  // the object says what it is: assembled from the corpus, ordered
+  // foundational → advanced. The surface renders the steps as a
+  // readable plan with this provenance attached (S-META-2).
+  const seen = new Set();
+  const deduped = sorted.filter((dtu) => {
+    if (!dtu.dtuId || seen.has(dtu.dtuId)) return false;
+    seen.add(dtu.dtuId);
+    return true;
+  });
+  const steps = deduped.slice(0, maxSteps).map((dtu, i, arr) => ({
     order: i + 1,
     dtuId: dtu.dtuId,
     title: dtu.title,
-    difficulty: i / maxSteps,  // Increases through curriculum
+    difficulty: i / Math.max(1, arr.length),  // Increases through curriculum
     rationale: i === 0 ? "Start with fundamentals" :
-               i < maxSteps / 3 ? "Build foundational understanding" :
-               i < 2 * maxSteps / 3 ? "Develop intermediate knowledge" :
+               i < arr.length / 3 ? "Build foundational understanding" :
+               i < 2 * arr.length / 3 ? "Develop intermediate knowledge" :
                "Advanced integration"
   }));
 
   const curriculum = {
     id: uid("curr"),
     topic,
+    source: "corpus",
+    provenance: `Assembled from ${steps.length} DTU${steps.length === 1 ? "" : "s"} in the platform corpus matching "${topic}", ordered from foundational to advanced. Steps are existing material, not newly written lessons.`,
     steps,
     estimatedEffort: steps.length * 0.5,  // Rough estimate in hours
     prerequisites: [],
@@ -85169,16 +86038,25 @@ function generateCurriculum(topic, input = {}) {
 function getBestStrategy(domain) {
   ensureMetaLearningSystem();
 
+  const rate = (s) => (s.uses ? s.successes / s.uses : 0);
   const strategies = Array.from(STATE.metaLearning.strategies.values())
     .filter(s => s.domain === domain || s.domain === "general")
     .filter(s => s.uses >= 3)  // Enough data
-    .sort((a, b) => b.avgPerformance - a.avgPerformance);
+    // Ranked by the success rate (S-META-1's figure); ties go to the
+    // earliest created — the rule is stated in the result's basis.
+    .sort((a, b) => (rate(b) - rate(a)) || String(a.createdAt).localeCompare(String(b.createdAt)));
 
   if (strategies.length === 0) {
     return { ok: true, strategy: null, message: "No strategies with sufficient data for this domain" };
   }
 
-  return { ok: true, strategy: strategies[0], alternatives: strategies.slice(1, 3) };
+  const best = strategies[0];
+  return {
+    ok: true,
+    strategy: { ...best, avgPerformance: Math.round(rate(best) * 10000) / 10000 },
+    alternatives: strategies.slice(1, 3),
+    basis: "Highest success rate among strategies with 3+ outcomes; ties go to the earliest created.",
+  };
 }
 
 // ===== END META-LEARNING SYSTEM =====

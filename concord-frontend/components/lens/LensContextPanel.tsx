@@ -23,6 +23,7 @@ import { ChevronDown, ChevronRight, Zap, Layers, FileText, ExternalLink } from '
 import type { DTU } from '@/lib/api/generated-types';
 import type { TierDistribution } from '@/hooks/useLensDTUs';
 import { FreshnessIndicator } from '@/components/common/FreshnessIndicator';
+import { useAuth } from '@/hooks/useAuth';
 
 // ---- Types ----------------------------------------------------------------
 
@@ -45,6 +46,26 @@ interface LensContextPanelProps {
   toolbar?: ReactNode;
   /** Additional class names. */
   className?: string;
+}
+
+// ---- Provenance (A4 Leg D: Creative S4/F6) ---------------------------------
+// The panel mixes the viewer's own saves, other users' published DTUs,
+// and corpus objects into one list. Every row looked identical and the
+// Publish action was offered over all of them — including objects the
+// viewer does not own. Provenance is derived from the row's ownerId
+// against the signed-in viewer: 'yours' (owner match), 'published'
+// (someone else's, present because it is published/global), 'corpus'
+// (no owner recorded — the undetermined case takes the safe direction:
+// labelled corpus, never publishable from here).
+export type DtuProvenance = 'yours' | 'published' | 'corpus';
+
+export function dtuProvenance(
+  dtu: { ownerId?: string },
+  viewerId?: string | null,
+): DtuProvenance {
+  if (!dtu?.ownerId) return 'corpus';
+  if (viewerId && dtu.ownerId === viewerId) return 'yours';
+  return 'published';
 }
 
 // ---- Sub-components -------------------------------------------------------
@@ -128,6 +149,7 @@ function TierSection({
   defaultOpen = false,
   onSelectDTU,
   onPublish,
+  viewerId,
 }: {
   label: string;
   icon: ReactNode;
@@ -136,6 +158,7 @@ function TierSection({
   defaultOpen?: boolean;
   onSelectDTU?: (dtu: DTU) => void;
   onPublish?: (dtu: DTU) => void;
+  viewerId?: string | null;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -166,6 +189,7 @@ function TierSection({
               color={color}
               onSelect={onSelectDTU}
               onPublish={onPublish}
+              viewerId={viewerId}
             />
           ))}
         </div>
@@ -197,12 +221,15 @@ function DTURow({
   color,
   onSelect,
   onPublish,
+  viewerId,
 }: {
   dtu: DTU;
   color: string;
   onSelect?: (dtu: DTU) => void;
   onPublish?: (dtu: DTU) => void;
+  viewerId?: string | null;
 }) {
+  const provenance = dtuProvenance(dtu, viewerId);
   return (
     <div
       className={cn(
@@ -240,8 +267,26 @@ function DTURow({
         </span>
       )}
 
-      {/* Publish action */}
-      {onPublish && (
+      {/* Provenance — whose work this row is */}
+      <span
+        className={
+          provenance === 'yours'
+            ? 'shrink-0 text-[10px] font-medium text-neon-cyan'
+            : 'shrink-0 text-[10px] text-gray-400'
+        }
+        title={
+          provenance === 'yours'
+            ? 'Your saved work'
+            : provenance === 'published'
+              ? 'Published by another creator'
+              : 'Platform corpus'
+        }
+      >
+        {provenance === 'yours' ? 'Yours' : provenance === 'published' ? 'Published' : 'Corpus'}
+      </span>
+
+      {/* Publish action — the viewer's own rows only */}
+      {onPublish && provenance === 'yours' && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -270,6 +315,8 @@ export function LensContextPanel({
   toolbar,
   className,
 }: LensContextPanelProps) {
+  const { user } = useAuth();
+  const viewerId = user?.id ?? null;
   const isEmpty =
     hyperDTUs.length === 0 && megaDTUs.length === 0 && regularDTUs.length === 0;
 
@@ -301,6 +348,7 @@ export function LensContextPanel({
           defaultOpen
           onSelectDTU={onSelectDTU}
           onPublish={onPublish}
+          viewerId={viewerId}
         />
 
         <TierSection
@@ -311,6 +359,7 @@ export function LensContextPanel({
           defaultOpen={hyperDTUs.length === 0}
           onSelectDTU={onSelectDTU}
           onPublish={onPublish}
+          viewerId={viewerId}
         />
 
         <TierSection
@@ -321,6 +370,7 @@ export function LensContextPanel({
           defaultOpen={hyperDTUs.length === 0 && megaDTUs.length === 0}
           onSelectDTU={onSelectDTU}
           onPublish={onPublish}
+          viewerId={viewerId}
         />
       </div>
     </div>

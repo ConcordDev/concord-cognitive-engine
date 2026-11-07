@@ -91,14 +91,51 @@ export async function collectLensExport({ runMacro, domain, ctx, limit = 1000 })
     }
   }
 
-  const rows = [...artifacts, ...providerRows];
+  // ── A4 Leg A: the caller's own canonical DTUs in this domain ──────
+  // Work a user saves inside a lens (SaveAsDtuButton / recordKeep →
+  // dtu.create) is a canonical DTU: it is neither a lens artifact nor a
+  // provider row, so a two-source export told the user "this lens has
+  // no saved data" over their own saved work (Transfer F9 + its ↓.dtu
+  // recurrences). The canonical list macro already owns the visibility
+  // rules (mine = the caller's own, any scope; domain via
+  // dtuMatchesDomain) — reuse them, never duplicate them. A failing
+  // dtu leg degrades to the two-source behaviour and is REPORTED in
+  // sources, never silently swallowed.
+  let dtuRows = [];
+  let dtuError = null;
+  try {
+    const mine = await runMacro("dtu", "list", { domain, mine: true, limit }, ctx);
+    const list = Array.isArray(mine?.dtus) ? mine.dtus : (Array.isArray(mine?.items) ? mine.items : []);
+    const seen = new Set([...artifacts, ...providerRows].map((r) => r?.id).filter(Boolean));
+    dtuRows = list
+      .filter((d) => d && d.id && !seen.has(d.id))
+      .map((d) => normalizeRow({
+        id: d.id,
+        type: "dtu",
+        title: typeof d.title === "string" ? d.title : "",
+        createdAt: d.createdAt ?? null,
+        data: {
+          title: typeof d.title === "string" ? d.title : "",
+          tags: Array.isArray(d.tags) ? d.tags : [],
+          summary: (typeof d.human?.summary === "string" && d.human.summary)
+            || (typeof d.cretiHuman === "string" ? d.cretiHuman : ""),
+          content: typeof d.content === "string" ? d.content : "",
+        },
+      }, domain))
+      .filter(Boolean);
+  } catch (err) {
+    dtuError = err?.message || "dtu_list_failed";
+  }
+
+  const rows = [...artifacts, ...providerRows, ...dtuRows];
   return {
     ok: true,
     domain,
     artifacts: rows,
     total: rows.length,
-    sources: { artifacts: artifacts.length, stateRecords: providerRows.length },
+    sources: { artifacts: artifacts.length, stateRecords: providerRows.length, ownDtus: dtuRows.length },
     stateBacked: Boolean(provider),
     ...(providerError ? { providerError } : {}),
+    ...(dtuError ? { dtuError } : {}),
   };
 }

@@ -19,8 +19,9 @@ import { lensRun } from '@/lib/api/client';
 import { TreeDiagram, type TreeNode } from '@/components/viz';
 import {
   Database, Plus, Trash2, Play, RefreshCw, Wifi, X, Edit3, Check,
-  Table2, Columns, FileSpreadsheet, FileJson, GitBranch, Move, Loader2, Pencil,
+  Table2, Columns, FileSpreadsheet, FileJson, GitBranch, Move, Loader2, Pencil, KeyRound,
 } from 'lucide-react';
+import { connectionTestMessage, isRemotePostgresConnection, type ConnectionTestResultShape } from './db-utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -29,8 +30,10 @@ interface Connection {
   name: string;
   engine: string;
   host: string;
+  port: number | null;
   database: string;
   username: string;
+  hasPassword: boolean;
   readOnly: boolean;
   color: string;
   datasetCount: number;
@@ -71,6 +74,8 @@ interface QueryRunResult {
   destructive?: string;
   truncated?: boolean;
   cap?: number;
+  scope?: string;
+  remoteContacted?: boolean;
 }
 
 interface ExplainNode {
@@ -195,16 +200,29 @@ export function LiveDbClient() {
 
   // ── connection manager ────────────────────────────────────────────────
   const [showConnForm, setShowConnForm] = useState(false);
-  const [connForm, setConnForm] = useState({ name: '', engine: 'in-memory', host: 'local', database: '', username: '', readOnly: false });
+  const [connForm, setConnForm] = useState({ name: '', engine: 'in-memory', host: 'local', database: '', username: '', readOnly: false, port: '', password: '' });
 
   const createConn = useCallback(async () => {
     if (!connForm.name.trim()) return;
+    // DBX-5: port is validated here so a typo is a form error, not a
+    // failed save; the password rides only when one was typed (the
+    // server stores it encrypted and never returns it).
+    const payload: Record<string, unknown> = {
+      name: connForm.name, engine: connForm.engine, host: connForm.host,
+      database: connForm.database, username: connForm.username, readOnly: connForm.readOnly,
+    };
+    if (connForm.port.trim()) {
+      const p = Number(connForm.port);
+      if (!Number.isInteger(p) || p < 1 || p > 65535) { flash('err', 'Port must be a whole number between 1 and 65535'); return; }
+      payload.port = p;
+    }
+    if (connForm.password) payload.password = connForm.password;
     setBusy(true);
-    const r = await lensRun('database', 'connection-create', { ...connForm });
+    const r = await lensRun('database', 'connection-create', payload);
     setBusy(false);
     if (r.data.ok) {
       setShowConnForm(false);
-      setConnForm({ name: '', engine: 'in-memory', host: 'local', database: '', username: '', readOnly: false });
+      setConnForm({ name: '', engine: 'in-memory', host: 'local', database: '', username: '', readOnly: false, port: '', password: '' });
       flash('ok', 'Connection saved');
       loadConns();
     } else flash('err', r.data.error || 'Failed to create connection');
@@ -224,11 +242,31 @@ export function LiveDbClient() {
 
   const testConn = useCallback(async (id: string) => {
     setBusy(true);
-    const r = await lensRun<{ connected: boolean; datasets: number; remoteContacted?: boolean }>('database', 'connection-test', { id });
+    const r = await lensRun<ConnectionTestResultShape>('database', 'connection-test', { id });
     setBusy(false);
-    if (r.data.ok && r.data.result) flash('ok', `Workspace copy readable — ${r.data.result.datasets} dataset(s). No remote server was contacted.`);
+    // DBX-5: the sentence follows what the test actually did (remote
+    // stages included) — the mapping lives in db-utils, unit-tested.
+    if (r.data.ok && r.data.result) { const m = connectionTestMessage(r.data.result); flash(m.kind, m.msg); }
     else flash('err', r.data.error || 'Test failed');
   }, [flash]);
+
+  // DBX-5: the stored password can be replaced or removed from the
+  // card — the value itself is never shown (the server never returns
+  // it), so this editor starts empty every time it opens.
+  const [pwEditId, setPwEditId] = useState<string | null>(null);
+  const [pwValue, setPwValue] = useState('');
+  const savePassword = useCallback(async (c: Connection, clear: boolean) => {
+    if (!clear && !pwValue) return;
+    setBusy(true);
+    const r = await lensRun('database', 'connection-update', clear ? { id: c.id, clearPassword: true } : { id: c.id, password: pwValue });
+    setBusy(false);
+    if (r.data.ok) {
+      setPwEditId(null);
+      setPwValue('');
+      flash('ok', clear ? 'Stored password removed' : 'Password saved — stored encrypted, never shown again');
+      loadConns();
+    } else flash('err', r.data.error || 'Password update failed');
+  }, [pwValue, flash, loadConns]);
 
   const toggleReadOnly = useCallback(async (c: Connection) => {
     const r = await lensRun('database', 'connection-update', { id: c.id, readOnly: !c.readOnly });
@@ -684,6 +722,28 @@ export function LiveDbClient() {
                 placeholder="Username"
                 className="input-lattice w-full text-xs"
               />
+              {(connForm.engine === 'postgresql' || connForm.engine === 'mysql') && (
+                <>
+                  <input
+                    value={connForm.port}
+                    onChange={(e) => setConnForm((f) => ({ ...f, port: e.target.value }))}
+                    placeholder={connForm.engine === 'postgresql' ? 'Port (default 5432)' : 'Port (default 3306)'}
+                    inputMode="numeric"
+                    className="input-lattice w-full text-xs"
+                    aria-label="Port"
+                  />
+                  <input
+                    type="password"
+                    value={connForm.password}
+                    onChange={(e) => setConnForm((f) => ({ ...f, password: e.target.value }))}
+                    placeholder="Password"
+                    autoComplete="new-password"
+                    className="input-lattice w-full text-xs"
+                    aria-label="Password"
+                  />
+                  <p className="text-[10px] text-gray-500">The password is stored encrypted and never shown again. With a real host, a {connForm.engine === 'postgresql' ? 'PostgreSQL' : 'MySQL'} connection can be tested against the server{connForm.engine === 'postgresql' ? ' and queried read-only' : ''}.</p>
+                </>
+              )}
               <label className="flex items-center gap-2 text-xs text-gray-400">
                 <input
                   type="checkbox"
@@ -704,7 +764,7 @@ export function LiveDbClient() {
 
           <div className="space-y-1 max-h-[280px] overflow-y-auto">
             {conns.length === 0 && (
-              <p className="text-xs text-gray-400 py-4 text-center">No connections yet — add one to begin. Connections are workspace copies held by Concord; no remote server is contacted.</p>
+              <p className="text-xs text-gray-400 py-4 text-center">No connections yet — add one to begin. Connections start as workspace copies held by Concord; a PostgreSQL connection with a real host can also be tested and queried read-only against its server.</p>
             )}
             {conns.map((c) => (
               <div
@@ -726,6 +786,15 @@ export function LiveDbClient() {
                     >
                       <Wifi className="w-3 h-3" />
                     </button>
+                    {(c.engine === 'postgresql' || c.engine === 'mysql') && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPwEditId((v) => (v === c.id ? null : c.id)); setPwValue(''); }}
+                        className="p-0.5 text-gray-400 hover:text-neon-cyan"
+                        aria-label={c.hasPassword ? `Replace stored password for ${c.name}` : `Set a password for ${c.name}`}
+                      >
+                        <KeyRound className="w-3 h-3" />
+                      </button>
+                    )}
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteConn(c.id); }}
                       onBlur={() => setArmedConnDelete((a) => (a === c.id ? null : a))}
@@ -738,10 +807,17 @@ export function LiveDbClient() {
                 </div>
                 <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
                   <span>{c.engine}</span>
+                  {isRemotePostgresConnection(c) && (
+                    <>
+                      <span>·</span>
+                      <span>{c.host}{c.port ? `:${c.port}` : ''}</span>
+                    </>
+                  )}
                   <span>·</span>
                   <span>{c.datasetCount} tables</span>
                   <span>·</span>
                   <span>{c.rowTotal} rows</span>
+                  {c.hasPassword && <span className="px-1 rounded bg-lattice-surface text-gray-300">password stored</span>}
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleReadOnly(c); }}
                     className={`ml-auto px-1 rounded ${c.readOnly ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'}`}
@@ -750,8 +826,42 @@ export function LiveDbClient() {
                   </button>
                 </div>
                 {/* F14: the honesty sentence is the card's permanent state
-                    line, not a transient toast from the test button. */}
-                <p className="mt-1 text-[10px] text-gray-500">Workspace copy — no remote server is contacted.</p>
+                    line, not a transient toast from the test button. DBX-5:
+                    it follows the connection's real shape — a remote
+                    PostgreSQL connection's tests and read-only queries
+                    DO contact the server, and the card must say so. */}
+                {isRemotePostgresConnection(c)
+                  ? <p className="mt-1 text-[10px] text-gray-500">Remote PostgreSQL — tests and read-only queries contact {c.host}{c.port ? `:${c.port}` : ''}; the workspace copy below stays local.</p>
+                  : <p className="mt-1 text-[10px] text-gray-500">Workspace copy — no remote server is contacted.</p>}
+                {pwEditId === c.id && (
+                  <div className="mt-2 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="password"
+                      value={pwValue}
+                      onChange={(e) => setPwValue(e.target.value)}
+                      placeholder={c.hasPassword ? 'New password (replaces the stored one)' : 'Password'}
+                      autoComplete="new-password"
+                      className="input-lattice flex-1 text-xs"
+                      aria-label="Connection password"
+                    />
+                    <button
+                      onClick={() => savePassword(c, false)}
+                      disabled={busy || !pwValue}
+                      className="btn-neon px-2 py-1 text-[10px] disabled:opacity-40"
+                    >
+                      Save
+                    </button>
+                    {c.hasPassword && (
+                      <button
+                        onClick={() => savePassword(c, true)}
+                        disabled={busy}
+                        className="px-2 py-1 text-[10px] rounded bg-rose-500/20 text-rose-300 disabled:opacity-40"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1002,7 +1112,7 @@ export function LiveDbClient() {
                       </button>
                       {result && (
                         <span className="text-[11px] text-gray-400 ml-auto">
-                          {result.op} · {result.affected ?? result.rowCount} row(s) · {result.durationMs}ms{result.truncated ? ` · showing first ${result.rows.length} (result capped at ${result.cap ?? 1000})` : ''}
+                          {result.op} · {result.affected ?? result.rowCount} row(s) · {result.durationMs}ms{result.scope === 'remote' ? ' · answered by the remote server' : ''}{result.truncated ? ` · showing first ${result.rows.length} (result capped at ${result.cap ?? 1000})` : ''}
                         </span>
                       )}
                     </div>

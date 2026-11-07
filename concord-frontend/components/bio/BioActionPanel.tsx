@@ -27,7 +27,7 @@ type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'analyze' | 'primer' | 'align' | 'restrict' | 'mint' | 'dm' | 'publish' | 'agent';
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
-interface SeqResult { length: number; kind: string; gcPercent?: number; tm?: number; orfs?: { start: number; end: number; length: number }[] }
+interface SeqResult { length: number; kind: string; gcPercent?: number; tm?: number; tmModel?: string; orfs?: { start: number; end: number; length: number }[] }
 interface PrimerInfo { sequence: string; length: number; tm: number; gcPercent: number }
 interface PrimerResult { forward: PrimerInfo; reverse: PrimerInfo; productSize: number; notes?: string }
 interface AlignResult { score: number; alignA: string; alignB: string; alignBars: string; matches: number; identity: number; alignmentLength: number }
@@ -104,7 +104,9 @@ export function BioActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `${seqKind.toUpperCase()} — ${seqResult?.length ?? sequence.length} ${seqKind === 'protein' ? 'aa' : 'bp'}`, tags: ['bio', seqKind, 'sequence'], source: 'bio:seq:mint', meta: { visibility: 'private', consent: { allowCitations: false }, bio: { sequence: sequence.slice(0, 1000), kind: seqKind, analyze: seqResult, primers: primerResult, align: alignResult, restrict: restrictResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('bio.mintedDtuId', id, { label: `Seq DTU ${id.slice(0, 8)}…` }); ok(`Seq DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      // The FULL id renders — a truncated "dtu_6f2f…" is not a usable
+      // receipt (the Grounding F2 shape); the id is the artefact's address.
+      if (id) { setMintedDtuId(id); pipe.publish('bio.mintedDtuId', id, { label: `Seq DTU ${id}` }); ok(`Seq DTU ${id}`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
@@ -141,14 +143,20 @@ export function BioActionPanel() {
       if (id) { setPublishedDtuId(id); pipe.publish('bio.publishedDtuId', id, { label: `Public bio ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+  // The brief runs on its OWN busy state: the agent call can take ~90 s,
+  // and the shared bench lock disabled all eight actions behind its
+  // spinner for the whole call. The bench stays usable while a brief is
+  // in flight; an empty return is reported as the platform agent's empty
+  // return, scoped to the brief — not as a bench failure.
+  const [agentBusy, setAgentBusy] = useState(false);
   async function actAgent() {
-    setBusy('agent'); setFeedback(null); setAgentReply(null);
+    setAgentBusy(true); setFeedback(null); setAgentReply(null);
     try {
       const task = `Molecular bio bench. ${seqResult ? `${seqResult.length} ${seqKind === 'protein' ? 'aa' : 'bp'} ${seqKind.toUpperCase()}, GC ${seqResult.gcPercent ?? '-'}%, Tm ${seqResult.tm ?? '-'}°C${(seqResult.orfs?.length ?? 0) > 0 ? `, ${seqResult.orfs?.length} ORFs` : ''}.` : ''} ${primerResult ? `Primer Tm: F=${primerResult.forward.tm}°C / R=${primerResult.reverse.tm}°C.` : ''} ${alignResult ? `Alignment identity ${alignResult.identity}%.` : ''} Identify the most likely experimental purpose + one optimization. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Bench brief ready.'); } else err('Agent returned empty.');
-    } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
+      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Bench brief ready.'); } else err('The platform agent returned no brief for this bench. The bench itself is unaffected — every other action still runs.');
+    } catch (e) { err(pickMessage(e)); } finally { setAgentBusy(false); }
   }
 
   const actions = [
@@ -156,9 +164,9 @@ export function BioActionPanel() {
     { id: 'primer' as ActionId, label: 'Primers', desc: 'F+R 18-28 bp', icon: GitMerge, accent: '#06b6d4', handler: actPrimer },
     { id: 'align' as ActionId, label: 'Align', desc: 'Needleman-Wunsch', icon: Dna, accent: '#a855f7', handler: actAlign },
     { id: 'restrict' as ActionId, label: 'Restrict', desc: `restriction-map ${enzyme}`, icon: Scissors, accent: '#f59e0b', handler: actRestrict },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private seq DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private seq DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send bench results', icon: Send, accent: '#ec4899', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public seq profile', icon: Globe, accent: '#15803d', handler: actPublish },
+    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : 'Public seq profile', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Brief', desc: 'Agent: purpose + opt', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
@@ -196,9 +204,10 @@ export function BioActionPanel() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(a => {
-          const Icon = a.icon; const isBusy = busy === a.id;
+          const Icon = a.icon; const isBusy = a.id === 'agent' ? agentBusy : busy === a.id;
+          const isDisabled = a.id === 'agent' ? agentBusy : !!busy;
           return (
-            <button key={a.id} type="button" disabled={!!busy} onClick={a.handler}
+            <button key={a.id} type="button" disabled={isDisabled} onClick={a.handler}
               className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: a.accent + '20', color: a.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
@@ -210,13 +219,17 @@ export function BioActionPanel() {
         })}
       </div>
 
+      {mintedDtuId && (
+        <p className="text-[11px] text-zinc-400">Minted private DTU: <span className="font-mono text-blue-300 select-all">{mintedDtuId}</span></p>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {seqResult && (
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">{seqResult.kind.toUpperCase()} · {seqResult.length} {seqResult.kind === 'protein' ? 'aa' : 'bp'}</div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
               {seqResult.gcPercent != null && <div className="text-[11px] text-zinc-300">GC <span className="text-green-200 font-mono">{seqResult.gcPercent}%</span></div>}
-              {seqResult.tm != null && <div className="text-[11px] text-zinc-300">Tm <span className="text-green-200 font-mono">{seqResult.tm}°C</span></div>}
+              {seqResult.tm != null && <div className="text-[11px] text-zinc-300">Tm <span className="text-green-200 font-mono">{seqResult.tm}°C</span>{seqResult.tmModel && <span className="block text-[9px] text-zinc-500">{seqResult.tmModel}</span>}</div>}
               {seqResult.orfs && <div className="text-[11px] text-zinc-300 col-span-2">ORFs <span className="text-green-200 font-mono">{seqResult.orfs.length}</span> {seqResult.orfs.slice(0, 3).map((o, i) => <span key={i} className="text-[10px] text-zinc-400 ml-1">{o.start}-{o.end} ({o.length})</span>)}</div>}
             </div>
           </div>
