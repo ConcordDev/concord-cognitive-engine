@@ -165,6 +165,7 @@ function getParamStep(key: string): number {
 }
 
 function formatParamValue(key: string, value: number): string {
+  if (value == null || !Number.isFinite(value)) return '—';
   if (key.includes('freq') || key.includes('Freq')) {
     return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : `${Math.round(value)}`;
   }

@@ -195,6 +195,7 @@ export default function IndicatorChart({ data, isLive, className = '' }: Indicat
 }
 
 function formatValue(v: number, code: string): string {
+  if (v == null || !Number.isFinite(v)) return '—';
   if (code?.includes('GDP')) return `$${(v / 1e12).toFixed(2)}T`;
   if (code?.includes('CPI') || code?.includes('UEM')) return `${v.toFixed(2)}%`;
   if (Math.abs(v) >= 1e9) return `${(v / 1e9).toFixed(2)}B`;
@@ -204,6 +205,7 @@ function formatValue(v: number, code: string): string {
 }
 
 function formatValueShort(v: number): string {
+  if (v == null || !Number.isFinite(v)) return '—';
   if (Math.abs(v) >= 1e12) return `${(v / 1e12).toFixed(1)}T`;
   if (Math.abs(v) >= 1e9)  return `${(v / 1e9).toFixed(1)}B`;
   if (Math.abs(v) >= 1e6)  return `${(v / 1e6).toFixed(1)}M`;
