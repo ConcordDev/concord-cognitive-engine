@@ -68,6 +68,16 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Your own live shop records: technicians, jobs, invoices, parts and inspections are your account\'s real data, saved as you work.',
   },
+  /**
+   * Translation runs on this server's own local model — the generic
+   * REAL_LIVE caption ("polled from an external source") would be
+   * exactly backwards for the lens whose pitch is that text never
+   * leaves the server.
+   */
+  translation: {
+    label: 'Live',
+    caption: 'Live: translation runs on this server\'s local model — your text never leaves your server. Saved translations and glossaries are your own records.',
+  },
   game: {
     label: 'Lab & arcade sim',
     caption: 'Simulated: Design Lab forecasts and mini-game practice XP. Profile XP, quests, and achievements are your real activity.',

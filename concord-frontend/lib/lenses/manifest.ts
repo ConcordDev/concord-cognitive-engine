@@ -176,7 +176,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // minting would contradict "text never leaves your server") and `pipeline`
   // (text→LLM→output engine isn't in the productization-roadmap registry). No
   // bit is faked.
-  { domain: 'translation', label: 'Translation', artifacts: ['translation'], macros: { list: 'translation.languages', get: 'translation.languages', run: 'translation.translate' }, exports: ['json'], actions: ['translate', 'detect', 'languages'], category: 'productivity' },
+  { domain: 'translation', label: 'Translation', dataTier: 'REAL_LIVE', artifacts: ['translation'], macros: { list: 'translation.languages', get: 'translation.languages', run: 'translation.translate' }, exports: ['json'], actions: ['translate', 'detect', 'languages'], category: 'productivity' },
   // Repair Telemetry is a read-only operator DASHBOARD over the REAL `repair`
   // domain (server/domains/repair.js — registerRepairMacros, registered at
   // server.js:25305 — register("repair", "health_log"|"escalations"|"memory"|
