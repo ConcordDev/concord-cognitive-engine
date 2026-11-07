@@ -17,6 +17,9 @@ export interface KeptProject {
   key?: string;
   status?: string;
   health?: string;
+  /** F17: the DTU this project was last saved as, carried on the record. */
+  savedDtuId?: string;
+  savedDtuAt?: string;
 }
 
 function str(v: unknown, max = 160): string {
