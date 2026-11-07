@@ -74,7 +74,7 @@ export function GbifPanel({ domain, className }: GbifPanelProps) {
       setTaxon(null);
       setOccurrences([]);
       setTotal(0);
-      setLastQuery('');
+      setSearchedQuery('');
       return;
     }
     setLoading(true);
