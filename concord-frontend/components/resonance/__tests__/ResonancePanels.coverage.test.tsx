@@ -70,7 +70,7 @@ describe('resonance ui', () => {
       <SignalClassificationLegend isOpen onToggle={onToggle} />
       <ThresholdConfigPanel thresholds={DEFAULT_THRESHOLDS} onChange={onChange} isOpen onToggle={onToggle} />
       <ResonanceFieldCanvas signal={0.7} gradient={0.3} coherence={0.5} classification="strong_resonance" scanning />
-      <ResonanceSpectrumCanvas signal={0.7} gradient={0.3} coherence={0.5} classification="moderate_resonance" topResonance={0.9} pairsFound={40} />
+      <ResonanceSpectrumCanvas signal={0.7} gradient={0.3} coherence={0.5} classification="moderate_resonance" topResonance={0.9} pairsFound={40} scanning={false} />
       <SignalMeter value={0.6} label="Signal" />
       <PairCard pair={SCAN.crossDomainAlignment.topPairs[0]} rank={1} thresholds={DEFAULT_THRESHOLDS} />
       <HistorySparkline readings={HIST} />

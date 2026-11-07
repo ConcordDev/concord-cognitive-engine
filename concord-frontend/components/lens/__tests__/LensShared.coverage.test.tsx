@@ -247,7 +247,7 @@ describe('LensContextPanel', () => {
   it('renders tier sections with provenance, selects and publishes a row, and shows the empty state', async () => {
     const onSelect = vi.fn(); const onPublish = vi.fn();
     const props = { hyperDTUs: [DTU('h1', 'u1')], megaDTUs: [DTU('m1', 'u2'), DTU('m2')], regularDTUs: [DTU('r1', 'u1')], tierDistribution: { hyper: 1, mega: 2, regular: 1, total: 4 }, onSelectDTU: onSelect, onPublish, toolbar: <div>toolbar-slot</div>, title: 'Context' };
-    const view = render(<LensContextPanel {...(props as never)} />);
+    const view = render(<LensContextPanel {...(props as unknown as React.ComponentProps<typeof LensContextPanel>)} />);
     await settle();
     expect(view.container.textContent).toMatch(/Context|HYPER|toolbar-slot/);
     for (const row of Array.from(view.container.querySelectorAll('[role="button"]'))) await act(async () => { fireEvent.click(row); });
@@ -257,7 +257,7 @@ describe('LensContextPanel', () => {
     await press(/Publish/i);
     expect(onSelect).toHaveBeenCalled();
     cleanup();
-    const empty = render(<LensContextPanel {...({ ...props, hyperDTUs: [], megaDTUs: [], regularDTUs: [], tierDistribution: { hyper: 0, mega: 0, regular: 0, total: 0 } } as never)} />);
+    const empty = render(<LensContextPanel {...({ ...props, hyperDTUs: [], megaDTUs: [], regularDTUs: [], tierDistribution: { hyper: 0, mega: 0, regular: 0, total: 0 } } as unknown as React.ComponentProps<typeof LensContextPanel>)} />);
     expect(empty.container.textContent).toMatch(/No DTUs in context/);
   });
 });
