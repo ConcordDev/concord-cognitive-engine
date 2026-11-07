@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import registerPhotographyActions from "../domains/photography.js";
 import { up, down } from "../migrations/459_photography_rolls.js";
-import { up as upMedia, down as downMedia } from "../migrations/496_photography_roll_frame_media.js";
+import { up as upMedia, down as downMedia } from "../migrations/500_photography_roll_frame_media.js";
 import { createMediaDTU } from "../lib/media-dtu.js";
 
 const ACTIONS = new Map();

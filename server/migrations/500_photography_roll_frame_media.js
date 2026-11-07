@@ -1,4 +1,4 @@
-// server/migrations/496_photography_roll_frame_media.js
+// server/migrations/500_photography_roll_frame_media.js
 //
 // photography_roll_frames previously stored only a typed filename — no
 // binary ever transferred (lens-reviews/photography.md F2). This adds the
