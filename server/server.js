@@ -2481,7 +2481,7 @@ import {
 } from "./embeddings.js";
 import { consolidatedVisibility, applyConsolidatedVisibility, absorbVisibility, backfillConsolidatedVisibility } from "./lib/consolidated-visibility.js";
 import { isPublicFeedSource, backfillPublicFeedItems, asPublicFeedMember } from "./lib/public-feed-sources.js";
-import { wrapFeedIngestHandler, currentFeedIngest, stripFeedIngestMarker, feedIngestMarkerFor, isQuarantined, isOpenVisibility, quarantineVisibility, revertUnprovenPublicFeedItems, hideQuarantinedRows, privatizeUserSourcedRows, recloseConsolidatedNodes } from "./lib/feed-ingest-provenance.js";
+import { wrapFeedIngestHandler, currentFeedIngest, stripFeedIngestMarker, feedIngestMarkerFor, feedIngestScope, isQuarantined, isOpenVisibility, quarantineVisibility, revertUnprovenPublicFeedItems, hideQuarantinedRows, privatizeUserSourcedRows, recloseConsolidatedNodes } from "./lib/feed-ingest-provenance.js";
 import { searchArchiveByVector, loadArchivedDtu, tierBoost as _dtuTierBoost, orderConsolidatedFirst, memberCount as _dtuMemberCount, strongDtuMatch } from "./lib/archive-retrieval.js";
 
 // One backfill at a time. Started at boot, when the CPU embedder is
@@ -27176,6 +27176,17 @@ register("dtu", "create", async (ctx, input) => {
   if (_federationTier === "regional" && !_dtuLocationRegional) _federationTier = "local";
   if (_federationTier === "national" && !_dtuLocationNational) _federationTier = "local";
 
+  // A13 (feed admission): a create stamped with the server-only feedIngest
+  // marker is a wrapped lens feed action ingesting in the open. It takes
+  // the feed-manager's own form — global scope, attributed to its lens via
+  // publishedFromLens — so selectGlobalFeed can admit it. The marker is
+  // stamped only by the wrapper and stripped from request bodies, so an
+  // ordinary create asking for global scope still lands local below.
+  const _fiScope = feedIngestScope(meta.feedIngest, _defaultVisibility);
+  if (_fiScope === "global" && meta.feedIngest?.domain) {
+    meta.publishedFromLens = String(meta.feedIngest.domain).toLowerCase();
+  }
+
   const dtu = {
     id: uid("dtu"),
     title,
@@ -27210,7 +27221,7 @@ register("dtu", "create", async (ctx, input) => {
     },
     machine: { ...machineIn },
     cretiHuman: "",
-    scope: (input.scope === "personal" || input.scope === "local") ? input.scope : "local",  // Scope Separation: default Local; personal locker may opt in
+    scope: _fiScope === "global" ? "global" : (input.scope === "personal" || input.scope === "local") ? input.scope : "local",  // Scope Separation: default Local; personal locker may opt in; provenanced feed ingest (A13) takes global
     createdAt: nowISO(),
     updatedAt: nowISO(),
     authority: { model: "council", score: 0, votes: {} },
