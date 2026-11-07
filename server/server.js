@@ -122,7 +122,7 @@ import { filterVisibleSearchHits, materializeIndexedHits, searchCandidateLimit }
 import { handleArchaeology, handleSubstrateDiff, handleTimeCrystalDetect } from "./lib/knowledge-archaeology.js";
 import { artifactDtuForViewer, publicArtifactRef } from "./lib/artifact-access.js";
 import { publishableDtuForCaller } from "./lib/public-lattice-access.js";
-import { lookupUserIdentity } from "./lib/user-identity.js";
+import { lookupUserIdentity, enrichActorIdentity } from "./lib/user-identity.js";
 import {
   addSpoFact as _inferenceAddSpoFact,
   querySpoFacts as _inferenceQuerySpoFacts,
@@ -40180,6 +40180,11 @@ app.use((req, res, next) => {
       if (!a.ok) return res.status(401).json({ ok:false, error: a.error });
       req.actor = a.actor;
     }
+    // Close-out A12 — the bridge-actor guarantee: an actor constructed for a
+    // real account carries that account's resolved identity (displayName +
+    // username, from the users table), so domain stamps never trust a
+    // client-passed name or fall back to the raw user id (Message F1).
+    try { req.actor = enrichActorIdentity(STATE?.db || globalThis._concordDB, req.actor); } catch { /* identity stays as constructed */ }
   } catch (e) {
     return res.status(500).json({ ok:false, error: String(e?.message || e) });
   }
@@ -51207,6 +51212,11 @@ try {
           const row = _mcpDb.prepare("SELECT role FROM users WHERE id = ?").get(actor.userId);
           if (row?.role) actor = { ...actor, role: String(row.role) };
         } catch { /* role stays unset → treated as non-operator */ }
+      }
+      // A12: the same bridge-actor guarantee on the MCP path — the token's
+      // actor gains the account's resolved identity beside its role.
+      if (actor?.userId && _mcpDb) {
+        try { actor = enrichActorIdentity(_mcpDb, actor); } catch { /* identity stays as constructed */ }
       }
       return { db: _mcpDb, actor, state: STATE };
     },
@@ -68104,6 +68114,62 @@ app.get("/api/notifications/count", (req, res) => {
   const userNotifs = userId ? all.filter(n => !n.targetUserId || n.targetUserId === userId) : all;
   const unread = userNotifs.filter(n => !n.readAt);
   res.json({ ok: true, count: userNotifs.length, unread: unread.length });
+});
+
+// Platform Chrome II (close-out B3) — the platform notification queue gains
+// the list + read surface the bell's panel reads. Until now the queue was
+// write-and-count only: enqueueNotification fed it and /count tallied it,
+// but no route ever listed it, so the bell could only ever read the separate
+// social store (F16's split). Items are the caller's (targetUserId match) or
+// global (no targetUserId), newest first — the /count route's own filter.
+app.get("/api/notifications", (req, res) => {
+  ensureQueues();
+  const userId = req.user?.id;
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const all = STATE.queues?.notifications || [];
+  const mine = userId ? all.filter(n => !n.targetUserId || n.targetUserId === userId) : all;
+  const notifications = [...mine]
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+    .slice(0, limit);
+  res.json({ ok: true, notifications });
+});
+
+app.post("/api/notifications/read-all", (req, res) => {
+  ensureQueues();
+  const userId = req.user?.id;
+  const all = STATE.queues?.notifications || [];
+  let marked = 0;
+  for (const n of all) {
+    if ((!userId || !n.targetUserId || n.targetUserId === userId) && !n.readAt) {
+      n.readAt = new Date().toISOString();
+      marked++;
+    }
+  }
+  if (marked) saveStateDebounced();
+  res.json({ ok: true, marked });
+});
+
+app.post("/api/notifications/:id/read", (req, res) => {
+  ensureQueues();
+  const userId = req.user?.id;
+  const item = (STATE.queues?.notifications || []).find(n => n.id === req.params.id);
+  if (!item) return res.status(404).json({ ok: false, error: "Notification not found" });
+  if (userId && item.targetUserId && item.targetUserId !== userId) {
+    return res.status(404).json({ ok: false, error: "Notification not found" });
+  }
+  if (!item.readAt) { item.readAt = new Date().toISOString(); saveStateDebounced(); }
+  res.json({ ok: true });
+});
+
+app.delete("/api/notifications/:id", (req, res) => {
+  ensureQueues();
+  const userId = req.user?.id;
+  const all = STATE.queues?.notifications || [];
+  const idx = all.findIndex(n => n.id === req.params.id && (!userId || !n.targetUserId || n.targetUserId === userId));
+  if (idx < 0) return res.status(404).json({ ok: false, error: "Notification not found" });
+  all.splice(idx, 1);
+  saveStateDebounced();
+  res.json({ ok: true });
 });
 
 // Links
@@ -93503,6 +93569,66 @@ register("bounty", "resolve", (_ctx, input = {}) => {
     return { ok: true, autofixId, winningChoice, paid: totalPaid, winnerCount: winners.length, currency: "CC" };
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Resolve a bounty after maintainer merge. Pays winners proportionally; 5% platform cut on losing pool." });
+
+// Generation hop (Group B B9 — the Bounties pair; founder-ruled
+// 2026-11-05: BUILD the hop, generation proposes ONLY). A registered
+// repair-cortex fix + a detector finding become a STAGED bounty: an
+// autofix_proposals row in 'pending_review', surfaced by bounty.list_open
+// and the Autofix staking view like any reflex-born proposal. The hop
+// never applies the fix (application stays behind the repair doctrine's
+// approval gates) and moves no money. Kill-switch mirrors reflex.*:
+// CONCORD_AUTOFIX_LOOP=true must be set or the macro short-circuits.
+register("bounty", "propose_from_fix", async (_ctx, input = {}) => {
+  if (process.env.CONCORD_AUTOFIX_LOOP !== "true") {
+    return { ok: false, reason: "autofix_loop_disabled" };
+  }
+  if (!db) return { ok: false, reason: "no_db" };
+  const { fixId, finding } = input || {};
+  if (!fixId || !finding) return { ok: false, reason: "missing_inputs" };
+  try {
+    const { getFix } = await import("./lib/autofix/index.js");
+    const { shapeBountyProposal } = await import("./lib/autofix/bounty-proposal.js");
+    const shaped = shapeBountyProposal(getFix(fixId), finding);
+    if (!shaped.ok) return shaped;
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS autofix_proposals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        proposal_id INTEGER NOT NULL,
+        proposal_kind TEXT NOT NULL,
+        forge_output_json TEXT NOT NULL,
+        pr_url TEXT,
+        status TEXT NOT NULL DEFAULT 'pending_review',
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    // Dedupe: an open staged proposal for the same fix + file is
+    // returned, never duplicated.
+    const open = db.prepare(`
+      SELECT id, forge_output_json FROM autofix_proposals
+      WHERE proposal_kind = ? AND status = 'pending_review'
+    `).all(shaped.proposalKind);
+    for (const row of open) {
+      try {
+        const prior = JSON.parse(row.forge_output_json);
+        if (prior && prior.dedupeKey === shaped.dedupeKey) {
+          return { ok: true, autofixId: row.id, fixId, deduped: true, next: "Human reviews via /lenses/autofix-queue, then triggers .github/workflows/autofix.yml" };
+        }
+      } catch { /* unparseable legacy row — not a dedupe match */ }
+    }
+    const r = db.prepare(`
+      INSERT INTO autofix_proposals (proposal_id, proposal_kind, forge_output_json)
+      VALUES (?, ?, ?)
+    `).run(0, shaped.proposalKind, JSON.stringify(shaped.payload));
+    return {
+      ok: true,
+      autofixId: r.lastInsertRowid,
+      fixId,
+      deduped: false,
+      next: "Human reviews via /lenses/autofix-queue, then triggers .github/workflows/autofix.yml",
+    };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Generation hop: stage a bounty proposal from a registered autofix fix + a detector finding. Proposes only — never applies the fix. Gated by CONCORD_AUTOFIX_LOOP=true." });
+
 
 // #22 NPC psyops detector — flag NPCs whose skill_revisions diverge
 // suspiciously fast from cohort baseline.
