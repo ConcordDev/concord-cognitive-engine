@@ -89,7 +89,11 @@ describe("astronomy — fixed-date ephemeris (deterministic alt/az + moon phase)
     });
     assert.equal(r.ok, true);
     assert.equal(r.result.moon.phase, "Waning Crescent");
-    assert.equal(r.result.moon.illumination, 0.081);
+    // F3 convergence: illumination is quoted per DATE (canonical, 12:00 UTC)
+    // — the same 0.104 the ephemeris-calendar leg below pins for 2026-01-15.
+    // The prior 0.081 was the instantaneous 22:00Z evaluation, one of the
+    // three divergent readings (61% / 65% / 79%) the finding was filed on.
+    assert.equal(r.result.moon.illumination, 0.104);
     assert.equal(r.result.sun.isDaytime, false); // sun alt -1.94 < -0.833
     assert.equal(r.result.siderealTimeDeg, 11.36);
   });
@@ -708,5 +712,39 @@ describe("astronomy — network macros: pre-fetch validation branches (no egress
     const r = await lensRun("astronomy", "observing-forecast", { params: { latitude: 40.7 } });
     assert.equal(r.result.ok, false);
     assert.ok(r.result.error.includes("latitude and longitude required"));
+  });
+});
+
+describe("astronomy — F3 moon convergence + S5 session lifecycle", () => {
+  it("sky-chart quotes ONE illumination per date, at any instant", async () => {
+    const eph = await lensRun("astronomy", "ephemeris-calendar", {
+      params: { latitude: 40.7, longitude: -74.0, startDate: "2026-10-31", days: 1 },
+    });
+    const morning = await lensRun("astronomy", "sky-chart", {
+      params: { latitude: 40.7, longitude: -74.0, when: "2026-10-31T03:00:00Z" },
+    });
+    const evening = await lensRun("astronomy", "sky-chart", {
+      params: { latitude: 40.7, longitude: -74.0, when: "2026-10-31T21:20:00Z" },
+    });
+    // The walked case: 2026-10-31 once read 61% (chart) / 65% (ephemeris) /
+    // 79% (planner). All date-quoting surfaces now state the canonical value.
+    assert.equal(morning.result.moon.illumination, eph.result.calendar[0].moonIllumination);
+    assert.equal(evening.result.moon.illumination, eph.result.calendar[0].moonIllumination);
+  });
+
+  it("sessions: title on create, update + delete exits, owner-scoped", async () => {
+    const ctx = await depthCtx("astronomy-s5");
+    const created = await lensRun("astronomy", "session-create", { params: { title: "Depth Night", date: "2026-11-03", location: "Hill" } }, ctx);
+    assert.equal(created.result.session.title, "Depth Night");
+    const id = created.result.session.id;
+    const upd = await lensRun("astronomy", "session-update", { params: { id, title: "Depth Night II" } }, ctx);
+    assert.equal(upd.result.session.title, "Depth Night II");
+    const stranger = await depthCtx("astronomy-s5-stranger");
+    const hijack = await lensRun("astronomy", "session-update", { params: { id, title: "X" } }, stranger);
+    assert.equal(hijack.result.ok, false);
+    const del = await lensRun("astronomy", "session-delete", { params: { id } }, ctx);
+    assert.equal(del.result.deleted, id);
+    const list = await lensRun("astronomy", "session-list", { params: {} }, ctx);
+    assert.ok(!list.result.sessions.some((s) => s.id === id), "deleted session gone");
   });
 });

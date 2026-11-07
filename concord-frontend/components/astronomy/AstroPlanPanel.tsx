@@ -21,6 +21,7 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
   const [events, setEvents] = useState<AstroEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [wishForm, setWishForm] = useState({ name: '', type: 'galaxy', priority: 'medium' });
   const [eventForm, setEventForm] = useState({ name: '', kind: 'meteor_shower', date: '' });
 
@@ -50,6 +51,7 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
       name: wishForm.name.trim(), type: wishForm.type, priority: wishForm.priority,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    setNotice(`Wishlist item added — ${wishForm.name.trim()}`);
     setWishForm({ name: '', type: 'galaxy', priority: 'medium' }); setError(null);
     await refresh();
   };
@@ -60,6 +62,7 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
       name: eventForm.name.trim(), kind: eventForm.kind, date: eventForm.date,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    setNotice(`Event added — ${eventForm.name.trim()}`);
     setEventForm({ name: '', kind: 'meteor_shower', date: '' }); setError(null);
     await refresh();
   };
@@ -72,6 +75,7 @@ export function AstroPlanPanel({ onChange }: { onChange: () => void }) {
   return (
     <div className="space-y-4">
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
+      {notice && <div className="text-xs text-emerald-300 bg-emerald-950/40 border border-emerald-900/50 rounded-lg px-3 py-2">{notice}</div>}
 
       {/* Wishlist */}
       <section>

@@ -139,6 +139,18 @@ const MOON_PHASE_NAMES = [
   "New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous",
   "Full Moon", "Waning Gibbous", "Last Quarter", "Waning Crescent",
 ];
+// Canonical moon illumination for a DATE, as an integer percent:
+// moonState evaluated at 12:00 UTC on that date. Every surface that quotes
+// an illumination for a date (Sky Chart header, Ephemeris rows, Session
+// Planner) reads THIS value, so the lens states one number per date —
+// the F3 convergence (three surfaces once read 61% / 65% / 79% for one
+// date: instantaneous evaluation, noon evaluation, and a separate crude
+// |cos| approximation in the planner).
+function moonIlluminationPct(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  const noonUtc = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0));
+  return Math.round(moonState(noonUtc).illumination * 100);
+}
 function moonPhaseName(ageDays) {
   const idx = Math.floor(((ageDays / 29.530588853) * 8 + 0.5)) % 8;
   return MOON_PHASE_NAMES[idx];
@@ -354,8 +366,10 @@ export default function registerAstronomyActions(registerLensAction) {
     const data = artifact.data || {};
     const targets = data.targets || [];
     if (targets.length === 0) return { ok: true, result: { message: "Add observation targets with RA/Dec coordinates." } };
-    const moonPhase = ((new Date().getTime() / 86400000 - 10) % 29.53) / 29.53; // approximate
-    const moonIllumination = Math.round(Math.abs(Math.cos(moonPhase * 2 * Math.PI)) * 100);
+    // Canonical date-quoted illumination (tonight) — the same value the
+    // Sky Chart header and today's Ephemeris row state. The planner's old
+    // private |cos| approximation (F3's 79%) is retired.
+    const moonIllumination = moonIlluminationPct(new Date());
     const darknessFactor = moonIllumination < 25 ? "excellent" : moonIllumination < 50 ? "good" : moonIllumination < 75 ? "fair" : "poor";
     const planned = targets.map(t => ({ name: t.name, type: t.type || "star", magnitude: parseFloat(t.magnitude) || 0, difficulty: parseFloat(t.magnitude) > 6 ? "telescope-only" : parseFloat(t.magnitude) > 4 ? "binoculars" : "naked-eye", priority: parseFloat(t.magnitude) <= 2 ? "high" : "medium" }));
     return { ok: true, result: { moonIllumination: `${moonIllumination}%`, darknessFactor, targets: planned, bestTargets: planned.filter(t => t.difficulty === "naked-eye"), equipmentNeeded: planned.some(t => t.difficulty === "telescope-only") ? "Telescope recommended" : "Binoculars sufficient" } };
@@ -481,11 +495,19 @@ export default function registerAstronomyActions(registerLensAction) {
       const r = await fetch(url);
       if (!r.ok) throw new Error(`neows ${r.status}`);
       const data = await r.json();
-      const objects = [];
+      // NeoWs keys the feed by date and an object approaching on several
+      // days appears once per day-bucket; consumers count OBJECTS, so the
+      // list is deduplicated by object id, keeping each object's closest
+      // approach inside the window (F4: the header once counted rows —
+      // 22 rows over 20 unique objects, with duplicates).
+      const byId = new Map();
       for (const [date, list] of Object.entries(data.near_earth_objects || {})) {
         for (const obj of list) {
-          const approach = obj.close_approach_data?.[0];
-          objects.push({
+          // Prefer the approach that belongs to this bucket's date; fall
+          // back to the object's first listed approach.
+          const approach = obj.close_approach_data?.find((a) => a.close_approach_date === date)
+            || obj.close_approach_data?.[0];
+          const candidate = {
             id: obj.id,
             name: obj.name,
             absoluteMagnitude: obj.absolute_magnitude_h,
@@ -503,9 +525,14 @@ export default function registerAstronomyActions(registerLensAction) {
               orbitingBody: approach.orbiting_body,
             } : null,
             nasaJplUrl: obj.nasa_jpl_url,
-          });
+          };
+          const prev = byId.get(obj.id);
+          if (!prev || (candidate.approach?.missDistanceKm ?? Infinity) < (prev.approach?.missDistanceKm ?? Infinity)) {
+            byId.set(obj.id, candidate);
+          }
         }
       }
+      const objects = [...byId.values()];
       objects.sort((a, b) => (a.approach?.missDistanceKm || Infinity) - (b.approach?.missDistanceKm || Infinity));
       return {
         ok: true,
@@ -689,6 +716,9 @@ export default function registerAstronomyActions(registerLensAction) {
     const s = getAstroState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const session = {
       id: asId("ses"),
+      // The form gains a real name field (F7: a session's name previously
+      // had to be typed into its Location field to exist at all).
+      title: asClean(params.title, 120) || null,
       date: asDay(params.date) || asDay(asNow()),
       location: asClean(params.location, 120) || null,
       bortle: Math.max(1, Math.min(9, Math.round(asNum(params.bortle, 5)))),
@@ -702,6 +732,37 @@ export default function registerAstronomyActions(registerLensAction) {
     asListB(s.sessions, asAid(ctx)).push(session);
     saveAstroState();
     return { ok: true, result: { session } };
+  });
+
+  // session-update / session-delete — the session lifecycle exits that
+  // were absent at registry level (cross-check #31; S5 builds them on the
+  // target-update / observation-delete shapes: owner-scoped, same errors).
+  registerLensAction("astronomy", "session-update", (ctx, _a, params = {}) => {
+    const s = getAstroState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const session = (s.sessions.get(asAid(ctx)) || []).find((x) => x.id === params.id);
+    if (!session) return { ok: false, error: "session not found" };
+    if (params.title != null) session.title = asClean(params.title, 120) || null;
+    if (params.date != null) session.date = asDay(params.date) || session.date;
+    if (params.location != null) session.location = asClean(params.location, 120) || null;
+    if (params.bortle != null) session.bortle = Math.max(1, Math.min(9, Math.round(asNum(params.bortle, session.bortle))));
+    if (params.seeing != null && ["excellent", "good", "average", "poor"].includes(String(params.seeing).toLowerCase())) session.seeing = String(params.seeing).toLowerCase();
+    if (params.transparency != null && ["excellent", "good", "average", "poor"].includes(String(params.transparency).toLowerCase())) session.transparency = String(params.transparency).toLowerCase();
+    if (params.notes != null) session.notes = asClean(params.notes, 500) || null;
+    saveAstroState();
+    return { ok: true, result: { session } };
+  });
+
+  registerLensAction("astronomy", "session-delete", (ctx, _a, params = {}) => {
+    const s = getAstroState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = asAid(ctx);
+    const arr = s.sessions.get(userId) || [];
+    const i = arr.findIndex((x) => x.id === params.id);
+    if (i < 0) return { ok: false, error: "session not found" };
+    arr.splice(i, 1);
+    // Observations keep existing standalone; only the link is released.
+    for (const o of s.observations.get(userId) || []) if (o.sessionId === params.id) o.sessionId = null;
+    saveAstroState();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   registerLensAction("astronomy", "session-list", (ctx, _a, _params = {}) => {
@@ -1249,7 +1310,10 @@ export default function registerAstronomyActions(registerLensAction) {
         moon: {
           altitude: Math.round(moonH.altitude * 100) / 100,
           azimuth: Math.round(moonH.azimuth * 100) / 100,
-          illumination: Math.round(moon.illumination * 1000) / 1000,
+          // Illumination is quoted per DATE (canonical, 12:00 UTC) so the
+          // header agrees with the Ephemeris row and the Session Planner
+          // for the same date; position (alt/az) stays instantaneous.
+          illumination: moonIlluminationPct(when) / 100,
           phase: moonPhaseName(moon.ageDays),
           visible: moonH.altitude > 0,
         },

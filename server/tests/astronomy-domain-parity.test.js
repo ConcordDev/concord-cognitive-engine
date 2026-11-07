@@ -216,6 +216,32 @@ describe("astronomy.near-earth-objects (NASA NeoWs)", () => {
     assert.match(capturedUrl, new RegExp(`start_date=${today}`));
   });
 
+  it("deduplicates an object appearing in two day-buckets (F4)", async () => {
+    const obj = (miss) => ({
+      id: "999", name: "(2026 ZZ)", nasa_jpl_url: "https://ssd.jpl.nasa.gov/...",
+      absolute_magnitude_h: 22,
+      estimated_diameter: { meters: { estimated_diameter_min: 10, estimated_diameter_max: 20 } },
+      is_potentially_hazardous_asteroid: false, is_sentry_object: false,
+      close_approach_data: [{
+        close_approach_date: "2026-05-16",
+        relative_velocity: { kilometers_per_hour: "1000" },
+        miss_distance: { kilometers: String(miss), lunar: "1" },
+        orbiting_body: "Earth",
+      }],
+    });
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ near_earth_objects: {
+        "2026-05-16": [obj(900000)],
+        "2026-05-17": [obj(400000)],
+      } }),
+    });
+    const r = await call("near-earth-objects", ctxA, { startDate: "2026-05-16", endDate: "2026-05-17" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.count, 1);              // objects, not rows
+    assert.equal(r.result.objects[0].approach.missDistanceKm, 400000); // closest kept
+  });
+
   it("surfaces NeoWs failures verbatim", async () => {
     globalThis.fetch = async () => ({ ok: false, status: 429, json: async () => ({}) });
     const r = await call("near-earth-objects", ctxA, { startDate: "2026-05-16" });
