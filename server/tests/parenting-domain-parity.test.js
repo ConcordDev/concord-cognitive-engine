@@ -628,7 +628,13 @@ describe("parenting.expert-content (age-targeted)", () => {
 });
 
 describe("parenting.trends-insights", () => {
-  it("summarizes weekly feeds/sleep/diapers", () => {
+  it("summarizes weekly feeds/sleep/diapers", (t) => {
+    // Pin the clock to midday UTC so the feed, the 92-minute-old nap and the
+    // diaper all land on one UTC calendar day whenever the suite runs (a run
+    // within 92 minutes after 00:00 UTC otherwise puts the nap on yesterday).
+    const noon = new Date();
+    noon.setUTCHours(12, 0, 0, 0);
+    t.mock.timers.enable({ apis: ["Date"], now: noon.getTime() });
     const id = newChild(ctxA, 6);
     call("feed-log", ctxA, { childId: id, kind: "bottle", amountMl: 120 });
     call("sleep-log", ctxA, { childId: id, type: "nap", durationMin: 90, startAt: completedStart(90) });
@@ -664,7 +670,12 @@ describe("parenting.trends-insights", () => {
     assert.ok(dates.includes(createdDay));
   });
 
-  it("names a sleep trend only after four logged days", () => {
+  it("names a sleep trend only after four logged days", (t) => {
+    // Pin the clock to late evening UTC: each nap is logged at 12:00 UTC of its
+    // day, and today's must already have ended whenever the suite runs.
+    const late = new Date();
+    late.setUTCHours(23, 0, 0, 0);
+    t.mock.timers.enable({ apis: ["Date"], now: late.getTime() });
     const id = newChild(ctxA, 6);
     for (let i = 0; i < 4; i++) {
       const day = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
