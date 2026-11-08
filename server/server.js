@@ -94382,6 +94382,66 @@ register("bounty", "resolve", (_ctx, input = {}) => {
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Resolve a bounty after maintainer merge. Pays winners proportionally; 5% platform cut on losing pool." });
 
+// Generation hop (Group B B9 — the Bounties pair; founder-ruled
+// 2026-11-05: BUILD the hop, generation proposes ONLY). A registered
+// repair-cortex fix + a detector finding become a STAGED bounty: an
+// autofix_proposals row in 'pending_review', surfaced by bounty.list_open
+// and the Autofix staking view like any reflex-born proposal. The hop
+// never applies the fix (application stays behind the repair doctrine's
+// approval gates) and moves no money. Kill-switch mirrors reflex.*:
+// CONCORD_AUTOFIX_LOOP=true must be set or the macro short-circuits.
+register("bounty", "propose_from_fix", async (_ctx, input = {}) => {
+  if (process.env.CONCORD_AUTOFIX_LOOP !== "true") {
+    return { ok: false, reason: "autofix_loop_disabled" };
+  }
+  if (!db) return { ok: false, reason: "no_db" };
+  const { fixId, finding } = input || {};
+  if (!fixId || !finding) return { ok: false, reason: "missing_inputs" };
+  try {
+    const { getFix } = await import("./lib/autofix/index.js");
+    const { shapeBountyProposal } = await import("./lib/autofix/bounty-proposal.js");
+    const shaped = shapeBountyProposal(getFix(fixId), finding);
+    if (!shaped.ok) return shaped;
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS autofix_proposals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        proposal_id INTEGER NOT NULL,
+        proposal_kind TEXT NOT NULL,
+        forge_output_json TEXT NOT NULL,
+        pr_url TEXT,
+        status TEXT NOT NULL DEFAULT 'pending_review',
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    // Dedupe: an open staged proposal for the same fix + file is
+    // returned, never duplicated.
+    const open = db.prepare(`
+      SELECT id, forge_output_json FROM autofix_proposals
+      WHERE proposal_kind = ? AND status = 'pending_review'
+    `).all(shaped.proposalKind);
+    for (const row of open) {
+      try {
+        const prior = JSON.parse(row.forge_output_json);
+        if (prior && prior.dedupeKey === shaped.dedupeKey) {
+          return { ok: true, autofixId: row.id, fixId, deduped: true, next: "Human reviews via /lenses/autofix-queue, then triggers .github/workflows/autofix.yml" };
+        }
+      } catch { /* unparseable legacy row — not a dedupe match */ }
+    }
+    const r = db.prepare(`
+      INSERT INTO autofix_proposals (proposal_id, proposal_kind, forge_output_json)
+      VALUES (?, ?, ?)
+    `).run(0, shaped.proposalKind, JSON.stringify(shaped.payload));
+    return {
+      ok: true,
+      autofixId: r.lastInsertRowid,
+      fixId,
+      deduped: false,
+      next: "Human reviews via /lenses/autofix-queue, then triggers .github/workflows/autofix.yml",
+    };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Generation hop: stage a bounty proposal from a registered autofix fix + a detector finding. Proposes only — never applies the fix. Gated by CONCORD_AUTOFIX_LOOP=true." });
+
+
 // #22 NPC psyops detector — flag NPCs whose skill_revisions diverge
 // suspiciously fast from cohort baseline.
 //

@@ -78,11 +78,19 @@ export default function registerBountiesActions(registerLensAction) {
   }
 
   // Recompute a bounty's denormalized rollups (pool, status hints).
+  // POOL DEFINITION (founder-ruled 2026-11-05, superseding the §8 Q2
+  // semantics): the pool counts the UNPAID REMAINDER ONLY — a milestone
+  // bounty pools the sum of its UNPAID milestone rewards; a plain bounty
+  // pools its reward while live and 0 once paid/resolved/cancelled. A
+  // disputed bounty's unpaid remainder stays in the pool: the held CC is
+  // the unpaid CC. (review's whole-accept reads poolFor BEFORE its status
+  // flip, so a whole-accept still pays the full pool — pinned by test.)
   function poolFor(b) {
+    if (b.status === "cancelled") return 0;
     if (Array.isArray(b.milestones) && b.milestones.length) {
-      return b.milestones.reduce((sum, m) => sum + num(m.rewardCc, 0), 0);
+      return b.milestones.reduce((sum, m) => sum + (m.status === "paid" ? 0 : num(m.rewardCc, 0)), 0);
     }
-    return num(b.rewardCc, 0);
+    return b.status === "paid" || b.status === "resolved" ? 0 : num(b.rewardCc, 0);
   }
   function paidFor(b) {
     if (Array.isArray(b.milestones) && b.milestones.length) {
