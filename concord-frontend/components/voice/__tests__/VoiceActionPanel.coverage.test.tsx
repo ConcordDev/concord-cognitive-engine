@@ -141,4 +141,15 @@ describe('VoiceActionPanel', () => {
     expect((screen.getAllByRole('textbox')[0] as HTMLTextAreaElement).value).toBe('saved words');
     expect(view.container.textContent).toMatch(/Saved|Published|earlier tip/);
   });
+
+  it('encodes a tampered published id so the report link can never leave /dtu/', async () => {
+    sessionStorage.setItem('concord.voice.bench.v1', JSON.stringify({ publishedDtuId: '"><img src=x>/../../evil?x=<' }));
+    const view = await mount();
+    const link = Array.from(view.container.querySelectorAll('a')).find((a) => (a.getAttribute('href') || '').startsWith('/dtu/'));
+    expect(link).toBeTruthy();
+    const href = link!.getAttribute('href')!;
+    expect(href).toBe(`/dtu/${encodeURIComponent('"><img src=x>/../../evil?x=<')}`);
+    expect(href).not.toMatch(/[<>"]/);
+    expect(href.slice(5)).not.toContain('/');
+  });
 });

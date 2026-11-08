@@ -259,7 +259,7 @@ export function VoiceActionPanel() {
       </div>
 
       {publishedDtuId && (
-        <p className="text-[11px] text-zinc-400">Public speech report — lives at <a href={`/dtu/${publishedDtuId}`} className="font-mono text-emerald-300 underline decoration-emerald-500/40 underline-offset-2">/dtu/{publishedDtuId}</a></p>
+        <p className="text-[11px] text-zinc-400">Public speech report — lives at <a href={`/dtu/${encodeURIComponent(publishedDtuId)}`} className="font-mono text-emerald-300 underline decoration-emerald-500/40 underline-offset-2">/dtu/{publishedDtuId}</a></p>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

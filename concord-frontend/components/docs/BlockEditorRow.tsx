@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import type { Block, BlockData, Cursor } from './types';
 import { highlightCode } from './syntax';
 import { ConfirmDeleteButton } from './DeleteSafety';
+import { safeLinkUrl } from '@/lib/safe-url';
 
 /** The name a block's delete confirmation carries: its own text,
  *  trimmed, or its type for text-less blocks (divider, table…). */
@@ -140,8 +141,11 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
   }
 
   if (block.type === 'embed') {
-    const url = urlDraft;
     const kind = block.data?.kind || 'link';
+    // Only http(s) and relative URLs reach an href/src (see lib/safe-url.ts);
+    // React 19 blocks javascript: but passes data:/vbscript: through.
+    const url = safeLinkUrl(urlDraft);
+    const blockedUrl = urlDraft.trim() !== '' && url === null;
     return (
       <div className="group relative rounded border border-zinc-800 bg-zinc-950/40 p-2">
         {presenceRail}
@@ -158,6 +162,11 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200 px-1.5 py-0.5" />
           <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} deleteItemLabel={deleteLabel} inline />
         </div>
+        {blockedUrl && (
+          <p role="status" className="text-[11px] text-amber-300">
+            Only http(s) or relative links can be embedded — this one is not shown.
+          </p>
+        )}
         {url && kind === 'image' && (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img src={url} alt={text || 'embed'} className="max-h-48 rounded" />

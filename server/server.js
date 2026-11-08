@@ -72581,7 +72581,7 @@ app.get("/api/apps/:id", requireAuth(), asyncHandler(async (req, res) => {
   if (hit) return res.json({ ok: true, app: m.projectAsApp(hit.project, hit.ownerKey) });
   return res.json(found);
 }));
-app.post("/api/apps", requireAuth(), asyncHandler(async (req, res) => {
+app.post("/api/apps", requireAuth(), perEndpointRateLimit("write.apps"), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
   // The author of record is the AUTHENTICATED CALLER, never the request
   // body: the promote verb's ownership check stands on this stamp, so a
@@ -72596,7 +72596,7 @@ app.post("/api/apps/:id/validate", requireAuth(), asyncHandler(async (req, res) 
   if (!app.ok) return res.json(app);
   res.json(m.validateApp(app.app));
 }));
-app.post("/api/apps/:id/promote", requireAuth(), asyncHandler(async (req, res) => {
+app.post("/api/apps/:id/promote", requireAuth(), perEndpointRateLimit("write.apps"), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
   // Founder ruling (decision walk #1, Decision 11): promote is an owner
   // action checked against OWNERSHIP. The platform 'owner' ROLE gate that
@@ -72624,7 +72624,7 @@ app.post("/api/apps/:id/promote", requireAuth(), asyncHandler(async (req, res) =
   }
   return res.json(found);
 }));
-app.put("/api/apps/:id", requireAuth(), asyncHandler(async (req, res) => {
+app.put("/api/apps/:id", requireAuth(), perEndpointRateLimit("write.apps"), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
   const found = m.getApp(req.params.id);
   if (!found.ok) {
@@ -72639,7 +72639,7 @@ app.put("/api/apps/:id", requireAuth(), asyncHandler(async (req, res) => {
   }
   res.json(m.updateApp(req.params.id, req.body || {}));
 }));
-app.delete("/api/apps/:id", requireAuth(), asyncHandler(async (req, res) => {
+app.delete("/api/apps/:id", requireAuth(), perEndpointRateLimit("write.apps"), asyncHandler(async (req, res) => {
   const m = await import("./emergent/app-maker.js");
   const found = m.getApp(req.params.id);
   if (!found.ok) {

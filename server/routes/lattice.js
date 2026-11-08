@@ -16,6 +16,7 @@
 
 import { Router } from "express";
 import crypto from "node:crypto";
+import { rateLimitMiddleware } from "../rateLimit.js";
 import {
   setDtuTrainConsent,
   setAllDtusTrainConsent,
@@ -87,7 +88,7 @@ export default function createLatticeRouter({ db, requireAuth }) {
 
   // POST /api/lattice/dtus/consent-all — bulk flip every DTU owned by caller.
   // Body: { consented: boolean }
-  router.post("/dtus/consent-all", auth, (req, res) => {
+  router.post("/dtus/consent-all", auth, rateLimitMiddleware("write.consent-bulk"), (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
     const consented = req.body?.consented !== false; // default true unless explicit false
