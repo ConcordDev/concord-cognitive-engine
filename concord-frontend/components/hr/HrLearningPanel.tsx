@@ -16,7 +16,7 @@ interface Course {
   durationHours: number; mandatory: boolean; assignedCount: number; completedCount: number;
 }
 interface Assignment {
-  id: string; employeeId: string; employeeName: string; courseId: string;
+  id: string; employeeId: string; employeeName: string; employeeStatus?: string; courseId: string;
   courseTitle: string; dueDate: string | null; progress: number; status: string;
 }
 
@@ -179,7 +179,7 @@ export function HrLearningPanel() {
             {visibleAssignments.map((a) => (
               <li key={a.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-zinc-200">{a.employeeName} · {a.courseTitle}</p>
+                  <p className="text-xs text-zinc-200">{a.employeeName}{a.employeeStatus === "terminated" ? " (Former)" : ""} · {a.courseTitle}</p>
                   <span className={cn('text-[10px] capitalize',
                     a.status === 'completed' ? 'text-emerald-300' : a.status === 'in_progress' ? 'text-amber-300' : 'text-zinc-400')}>
                     {a.status.replace(/_/g, ' ')}
