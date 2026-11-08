@@ -135,7 +135,8 @@ test.describe('DTU browser create and delete', () => {
     await expect(page.getByText('Not mine')).toBeVisible();
     await page.getByRole('button', { name: 'More options' }).click();
     await page.getByText('Delete', { exact: true }).click();
-    await expect(page.getByRole('alert')).toContainText(/only delete your own/i);
+    // Next's route announcer is also role=alert (empty); pick the alert that carries the message.
+    await expect(page.getByRole('alert').filter({ hasText: /only delete your own/i })).toBeVisible();
     await expect(page.getByText('Not mine')).toBeVisible();
   });
 });
