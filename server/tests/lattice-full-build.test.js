@@ -23,7 +23,7 @@ async function callRoute(handlers, method, path, { params = {}, query = {}, body
   if (!chain) throw new Error(`No route: ${method.toUpperCase()} ${path}`);
   const req = { params, query, body, user, app: { locals: {} } };
   let statusCode = 200; let payload;
-  const res = { status(s) { statusCode = s; return res; }, json(b) { payload = b; return res; } };
+  const res = { status(s) { statusCode = s; return res; }, json(b) { payload = b; return res; }, setHeader() { return res; } /* rate limiter headers */ };
   for (const handler of chain) {
     let stop = false;
     await handler(req, res, () => { stop = true; });

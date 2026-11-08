@@ -38,6 +38,7 @@ async function callRoute(handlers, method, path, { params = {}, query = {}, body
   const res = {
     status(s) { statusCode = s; return res; },
     json(b) { payload = b; return res; },
+    setHeader() { return res; }, // the route's rate limiter sets X-RateLimit-* headers
   };
   for (const handler of chain) {
     let stop = false;

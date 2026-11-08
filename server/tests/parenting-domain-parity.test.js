@@ -694,7 +694,10 @@ describe("parenting.trends-insights", () => {
 });
 
 describe("parenting.event-list when label", () => {
-  it("labels a timed event and keeps the stored ISO", () => {
+  it("labels a timed event and keeps the stored ISO", (t) => {
+    // nextUp is the first event that has not ended; pin "now" before the
+    // fixture's date so the test does not expire once that day has passed.
+    t.mock.timers.enable({ apis: ["Date"], now: Date.UTC(2026, 10, 1, 12) });
     const add = call("event-add", ctxA, { title: "Soccer practice", startAt: "2026-11-08T10:00", endAt: "2026-11-08T11:30", category: "activity" });
     assert.equal(add.ok, true);
     assert.equal(add.result.event.startAt, "2026-11-08T10:00");
