@@ -705,6 +705,16 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Player mail is real: messages, items and Concord Coin move between accounts on this instance and persist on Concord’s backend. The Gmail side is your own Google account, connected by you and revocable; until you connect it, that side shows its connect wall and holds nothing.',
   },
+  /**
+   * Manufacturing is the user's own shop-floor workspace — machines, work
+   * orders, lots and readings they enter, persisted per account (Review 5
+   * re-pass 2026-11-05, S1 remainder) — so the generic REAL_FREE line
+   * ("static / open-access dataset") is false for this lens.
+   */
+  manufacturing: {
+    label: 'Real',
+    caption: 'Your shop-floor workspace: machines, work orders and readings you enter, saved to your account.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
