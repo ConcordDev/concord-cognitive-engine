@@ -112,6 +112,12 @@ const PAPER_SECTIONS = [
 ];
 
 const HYPOTHESIS_STATUSES: HypothesisData['status'][] = ['proposed', 'testing', 'supported', 'refuted'];
+// F13: tab singulars spelled whole — the naive slice(0, -1) produced
+// "New Hypothese", "New Evidenc", "New Synthesi" in an academic lens.
+const TAB_SINGULAR: Record<ModeTab, string> = {
+  papers: 'Paper', hypotheses: 'Hypothesis', evidence: 'Evidence',
+  experiments: 'Experiment', synthesis: 'Synthesis', bibliography: 'Citation',
+};
 const EVIDENCE_STRENGTHS: EvidenceData['strength'][] = ['weak', 'moderate', 'strong'];
 const EVIDENCE_TYPES: EvidenceData['type'][] = ['empirical', 'theoretical', 'anecdotal'];
 const EXPERIMENT_STATUSES: ExperimentData['status'][] = ['planned', 'running', 'completed', 'failed'];
@@ -149,7 +155,7 @@ function formatAPA(c: CitationData & { title?: string }): string {
 }
 
 function formatMLA(c: CitationData & { title?: string }): string {
-  const authors = c.authors || 'Unknown';
+  const authors = (c.authors || 'Unknown').replace(/\.$/, '');
   const title = c.title || 'Untitled';
   const journal = c.journal || '';
   const vol = c.volume ? ` ${c.volume}` : '';
@@ -159,7 +165,7 @@ function formatMLA(c: CitationData & { title?: string }): string {
 }
 
 function formatChicago(c: CitationData & { title?: string }): string {
-  const authors = c.authors || 'Unknown';
+  const authors = (c.authors || 'Unknown').replace(/\.$/, '');
   const title = c.title || 'Untitled';
   const journal = c.journal ? ` ${c.journal}` : '';
   const vol = c.volume ? ` ${c.volume}` : '';
@@ -179,6 +185,16 @@ function formatCitation(c: CitationData & { title?: string }, style: CitationDat
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
+
+// ── S1 bridge: a Library paper seeds a Manuscript. PaperLibrary calls
+// requestManuscriptSeed, the page switches the view, and this panel —
+// freshly mounted — consumes the pending seed once, the same pattern
+// as PaperLibrary's own requestAddPaper.
+export interface ManuscriptSeed { title: string; abstract?: string; authors?: string[]; year?: number | null; doi?: string | null }
+let manuscriptSeedPending: ManuscriptSeed | null = null;
+export function requestManuscriptSeed(seed: ManuscriptSeed) {
+  manuscriptSeedPending = seed;
+}
 
 export function EditorPanel() {
   // ---- State ----
@@ -226,6 +242,11 @@ export function EditorPanel() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorContent, setEditorContent] = useState('');
+  // S4 (F7 iii): sections hold DISTINCT bodies. The composer edits the
+  // ACTIVE section's body; saving persists every section plus the
+  // joined content (downstream word count / readability read the join).
+  const [editorSections, setEditorSections] = useState<PaperSection[]>([]);
+  const [activeSection, setActiveSection] = useState<string>('');
   const [editorTitle, setEditorTitle] = useState('');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['Abstract']));
   const [sortField, setSortField] = useState<'updatedAt' | 'title'>('updatedAt');
@@ -292,6 +313,31 @@ export function EditorPanel() {
 
   // Fetch all types for dashboard stats
   const { items: allPapers } = useLensData('paper', 'project', { noSeed: true });
+  // Consume a Library seed once: create the manuscript project from it
+  // (the abstract lands in the Abstract section) and open it.
+  const { create: createProject } = useLensData('paper', 'project', { noSeed: true });
+  useEffect(() => {
+    const seed = manuscriptSeedPending;
+    if (!seed) return;
+    manuscriptSeedPending = null;
+    void (async () => {
+      const created = await createProject({
+        title: seed.title,
+        data: {
+          wordCount: 0,
+          excerpt: (seed.abstract || '').slice(0, 200),
+          content: seed.abstract || '',
+          sections: PAPER_SECTIONS.map(h => ({ heading: h, body: h === 'Abstract' ? (seed.abstract || '') : '' })),
+          seededFromLibrary: { authors: seed.authors || [], year: seed.year ?? null, doi: seed.doi ?? null },
+        },
+        meta: { tags: [] },
+      });
+      const id = (created as { id?: string } | null)?.id;
+      if (id) setSelectedItemId(id);
+      showToast('success', 'Seeded a manuscript from your library paper.');
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { items: allHypotheses } = useLensData('paper', 'hypothesis', { noSeed: true });
   const { items: allEvidence } = useLensData('paper', 'evidence', { noSeed: true });
   const { items: allExperiments } = useLensData('paper', 'experiment', { noSeed: true });
@@ -365,13 +411,29 @@ export function EditorPanel() {
     });
   }, []);
 
-  const wordCount = useMemo(() => editorContent.split(/\s+/).filter(Boolean).length, [editorContent]);
+  // Word count spans every section, with the active section's live
+  // edit applied — not just the section on screen.
+  const wordCount = useMemo(() => {
+    const joined = editorSections.length
+      ? editorSections.map(sec => sec.heading === activeSection ? editorContent : (sec.body || '')).join('\n')
+      : editorContent;
+    return joined.split(/\s+/).filter(Boolean).length;
+  }, [editorContent, editorSections, activeSection]);
   const readingTime = useMemo(() => Math.max(1, Math.ceil(wordCount / 250)), [wordCount]);
 
   const openEditor = useCallback((item: LensItem) => {
     const d = getData<PaperData>(item);
     setEditorTitle(item.title);
-    setEditorContent(d.content || d.excerpt || '');
+    const storedSections = (d.sections && d.sections.length > 0)
+      ? d.sections
+      : PAPER_SECTIONS.map(h => ({ heading: h, body: '' }));
+    const sections = storedSections.map(sec => ({ ...sec }));
+    if (!sections.some(sec => (sec.body || '').trim()) && (d.content || d.excerpt)) {
+      sections[0] = { ...sections[0], body: d.content || d.excerpt || '' };
+    }
+    setEditorSections(sections);
+    setActiveSection(sections[0]?.heading || '');
+    setEditorContent(sections[0]?.body || '');
     setSelectedItemId(item.id);
     setEditorOpen(true);
     setReadability(null);
@@ -379,21 +441,50 @@ export function EditorPanel() {
 
   const saveEditor = useCallback(async () => {
     if (!selectedItemId) return;
+    const sections = editorSections.map(sec =>
+      sec.heading === activeSection ? { ...sec, body: editorContent } : sec,
+    );
+    const joined = sections.map(sec => sec.body || '').filter(Boolean).join('\n\n');
     await updateArtifact(selectedItemId, {
       title: editorTitle,
       data: {
-        content: editorContent,
-        excerpt: editorContent.slice(0, 200),
-        wordCount,
+        ...(selectedItem?.data as Record<string, unknown> || {}),
+        content: joined,
+        sections,
+        excerpt: joined.slice(0, 200),
+        wordCount: joined.split(/\s+/).filter(Boolean).length,
       },
     });
     setEditorOpen(false);
-  }, [selectedItemId, editorTitle, editorContent, wordCount, updateArtifact]);
+  }, [selectedItemId, editorTitle, editorContent, updateArtifact, editorSections, activeSection, selectedItem]);
 
   const openDetail = useCallback((item: LensItem) => {
     setSelectedItemId(item.id);
     setDetailOpen(true);
   }, []);
+
+  // ── S4 (F7): the argument model becomes operable — hypothesis status
+  // transitions and evidence↔hypothesis links, written to BOTH sides.
+  // Links cross artifact kinds, so they go through the generic lens
+  // update path for each side's own kind.
+  const { update: updateHypothesisItem } = useLensData('paper', 'hypothesis', { noSeed: true });
+  const { update: updateEvidenceItem } = useLensData('paper', 'evidence', { noSeed: true });
+  const handleHypothesisStatus = useCallback(async (item: LensItem, status: HypothesisData['status']) => {
+    const d = getData<HypothesisData>(item);
+    await updateHypothesisItem(item.id, { data: { ...d, status } });
+    refetch();
+  }, [updateHypothesisItem, refetch]);
+  const handleLinkChange = useCallback(async (hypothesis: LensItem, evidence: LensItem, linked: boolean) => {
+    const hd = getData<HypothesisData>(hypothesis);
+    const ed = getData<EvidenceData>(evidence);
+    const hLinks = new Set(hd.linkedEvidence || []);
+    const eLinks = new Set(ed.linkedHypotheses || []);
+    if (linked) { hLinks.add(evidence.id); eLinks.add(hypothesis.id); }
+    else { hLinks.delete(evidence.id); eLinks.delete(hypothesis.id); }
+    await updateHypothesisItem(hypothesis.id, { data: { ...hd, linkedEvidence: [...hLinks] } });
+    await updateEvidenceItem(evidence.id, { data: { ...ed, linkedHypotheses: [...eLinks] } });
+    refetch();
+  }, [updateHypothesisItem, updateEvidenceItem, refetch]);
 
   const handleCreate = useCallback(async () => {
     try {
@@ -454,6 +545,26 @@ export function EditorPanel() {
     }
   }, []);
 
+  // handleDomainActionFor: the same domain-action runner, addressed to
+  // an explicit item (the Synthesis selector's paper) instead of
+  // whichever item the detail selection happens to hold.
+  const handleDomainActionFor = useCallback(async (item: LensItem, action: string) => {
+    setSelectedItemId(item.id);
+    const response = await runArtifact.mutateAsync({ id: item.id, action });
+    const inner = (response?.result ?? null) as Record<string, unknown> | null;
+    const failed = response?.ok === false || (inner && typeof inner === 'object' && inner.ok === false);
+    if (failed) {
+      const msg = String((response as Record<string, unknown>)?.error || inner?.error || inner?.message || 'Unknown error');
+      setSynthesisResult(`Action failed: ${msg}`);
+      showToast('error', `${action} failed: ${msg}`);
+      return;
+    }
+    if (action === 'synthesize') {
+      const synthesis = inner?.synthesis as { narrative?: string } | undefined;
+      setSynthesisResult(synthesis?.narrative ? synthesis.narrative : (typeof inner === 'string' ? inner : JSON.stringify(inner, null, 2)));
+    }
+  }, [runArtifact]);
+
   const handleDomainAction = useCallback(async (action: string) => {
     if (!selectedItemId || !selectedItem) return;
     try {
@@ -485,7 +596,7 @@ export function EditorPanel() {
       if (action === 'validate') {
         const emp = inner?.empirical as { passRate?: number; issueCount?: number; claimsChecked?: number } | null | undefined;
         const validated = Number(inner?.validated ?? 0);
-        if (emp) {
+        if (emp && (emp.claimsChecked ?? 0) > 0) {
           setValidationResults(prev => ({ ...prev, [selectedItemId]: { passRate: emp.passRate ?? 1, issueCount: emp.issueCount ?? 0, claimsChecked: emp.claimsChecked ?? 0 } }));
           showToast(emp.issueCount ? 'warning' : 'success', `Validated ${validated} claim${validated === 1 ? '' : 's'} — ${Math.round((emp.passRate ?? 1) * 100)}% pass, ${emp.issueCount ?? 0} issue${(emp.issueCount ?? 0) === 1 ? '' : 's'}.`);
         } else {
@@ -642,7 +753,7 @@ export function EditorPanel() {
             className={ds.btnPrimary}
           >
             <Plus className="w-4 h-4" />
-            New {activeTab === 'bibliography' ? 'Citation' : activeTab.slice(0, -1).replace(/^./, c => c.toUpperCase())}
+            New {TAB_SINGULAR[activeTab]}
           </button>
         </div>
       </header>
@@ -809,19 +920,25 @@ export function EditorPanel() {
                   </div>
                 </div>
                 {/* Section navigation */}
-                <div className="flex flex-wrap gap-1">
-                  {PAPER_SECTIONS.map(s => (
+                <div className="flex flex-wrap items-center gap-1">
+                  {editorSections.map(sec => (
                     <button
-                      key={s}
-                      onClick={() => toggleSection(s)}
+                      key={sec.heading}
+                      onClick={() => {
+                        // Bank the outgoing section's edit before switching.
+                        setEditorSections(prev => prev.map(x => x.heading === activeSection ? { ...x, body: editorContent } : x));
+                        setActiveSection(sec.heading);
+                        setEditorContent(sec.body || '');
+                      }}
                       className={cn(
                         'text-xs px-2 py-0.5 rounded-full transition-colors',
-                        expandedSections.has(s) ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400 hover:text-gray-300'
+                        activeSection === sec.heading ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400 hover:text-gray-300'
                       )}
                     >
-                      {s}
+                      {sec.heading}
                     </button>
                   ))}
+                  <span className="ml-1 text-[10px] text-zinc-500">Editing: {activeSection} — each section keeps its own text</span>
                 </div>
                 <PaperComposer
                   content={editorContent}
@@ -884,14 +1001,14 @@ export function EditorPanel() {
           {activeTab === 'hypotheses' && <HypothesesList items={sortedItems} onSelect={openDetail} allEvidence={allEvidence} />}
           {activeTab === 'evidence' && <EvidenceBoard items={sortedItems} onSelect={openDetail} />}
           {activeTab === 'experiments' && <ExperimentLog items={sortedItems} onSelect={openDetail} />}
-          {activeTab === 'synthesis' && <SynthesisEngine items={sortedItems} allHypotheses={allHypotheses} allEvidence={allEvidence} allExperiments={allExperiments} synthesisResult={synthesisResult} onRunSynthesize={() => { if (sortedItems[0]) { setSelectedItemId(sortedItems[0].id); handleDomainAction('synthesize'); } }} isPending={runArtifact.isPending} />}
+          {activeTab === 'synthesis' && <SynthesisEngine items={sortedItems} allHypotheses={allHypotheses} allEvidence={allEvidence} allExperiments={allExperiments} synthesisResult={synthesisResult} onRunSynthesize={(paperId: string) => { const it = allPapers.find(p => p.id === paperId); if (it) { setSelectedItemId(it.id); void handleDomainActionFor(it, 'synthesize'); } }} isPending={runArtifact.isPending} />}
           {activeTab === 'bibliography' && <BibliographyManager items={sortedItems} onSelect={openDetail} citationStyle={citationStyle} onStyleChange={setCitationStyle} />}
 
           {sortedItems.length === 0 && !editorOpen && (
             <div className={cn(ds.panel, 'text-center py-16')}>
               <BookOpen className="w-12 h-12 text-gray-600 mx-auto mb-4" />
               <p className={ds.heading3}>No {activeTab} found</p>
-              <p className={cn(ds.textMuted, 'mt-2')}>Create your first {activeTab === 'bibliography' ? 'citation' : activeTab.slice(0, -1)} to get started.</p>
+              <p className={cn(ds.textMuted, 'mt-2')}>Create your first {TAB_SINGULAR[activeTab].toLowerCase()} to get started.</p>
               <button onClick={() => { resetCreateForm(); setCreateModalOpen(true); }} className={cn(ds.btnPrimary, 'mt-4')}>
                 <Plus className="w-4 h-4" /> Create
               </button>
@@ -946,8 +1063,8 @@ export function EditorPanel() {
 
               {/* Tab-specific detail fields */}
               {activeTab === 'papers' && <PaperDetailFields item={selectedItem} />}
-              {activeTab === 'hypotheses' && <HypothesisDetailFields item={selectedItem} allEvidence={allEvidence} />}
-              {activeTab === 'evidence' && <EvidenceDetailFields item={selectedItem} />}
+              {activeTab === 'hypotheses' && <HypothesisDetailFields item={selectedItem} allEvidence={allEvidence} allHypotheses={allHypotheses} onLink={handleLinkChange} onStatus={handleHypothesisStatus} />}
+              {activeTab === 'evidence' && <EvidenceDetailFields item={selectedItem} allHypotheses={allHypotheses} onLink={handleLinkChange} />}
               {activeTab === 'experiments' && <ExperimentDetailFields item={selectedItem} />}
               {activeTab === 'bibliography' && <CitationDetailFields item={selectedItem} citationStyle={citationStyle} />}
 
@@ -1010,7 +1127,7 @@ export function EditorPanel() {
             <div className={cn(ds.modalPanel, 'max-w-lg p-6 space-y-4')}>
               <div className="flex items-center justify-between">
                 <h2 className={ds.heading2}>
-                  New {activeTab === 'bibliography' ? 'Citation' : activeTab.slice(0, -1).replace(/^./, c => c.toUpperCase())}
+                  New {TAB_SINGULAR[activeTab]}
                 </h2>
                 <button onClick={() => setCreateModalOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
               </div>
@@ -1709,14 +1826,16 @@ function ExperimentLog({ items, onSelect }: { items: LensItem[]; onSelect: (item
 
 // ---- Synthesis Engine ----
 function SynthesisEngine({ items, allHypotheses, allEvidence, allExperiments, synthesisResult, onRunSynthesize, isPending }: {
+  onRunSynthesize: (paperId: string) => void;
   items: LensItem[];
   allHypotheses: LensItem[];
   allEvidence: LensItem[];
   allExperiments: LensItem[];
   synthesisResult: string | null;
-  onRunSynthesize: () => void;
   isPending: boolean;
 }) {
+  const [synthPaperId, setSynthPaperId] = useState<string>('');
+  useEffect(() => { if (!synthPaperId && items.length > 0) setSynthPaperId(items[0].id); }, [items, synthPaperId]);
   // Cross-reference analysis
   const supportedHypotheses = allHypotheses.filter(h => getData<HypothesisData>(h).status === 'supported');
   const refutedHypotheses = allHypotheses.filter(h => getData<HypothesisData>(h).status === 'refuted');
@@ -1792,11 +1911,22 @@ function SynthesisEngine({ items, allHypotheses, allEvidence, allExperiments, sy
 
       {/* Generate Synthesis */}
       <div className={cn(ds.panel, 'space-y-3')}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <h3 className={cn(ds.heading3, 'text-sm flex items-center gap-2')}>
             <Brain className="w-4 h-4 text-neon-purple" /> AI Synthesis
           </h3>
-          <button onClick={onRunSynthesize} className={cn(ds.btnPrimary, ds.btnSmall)} disabled={isPending || items.length === 0}>
+          {/* F8: the selector the copy always promised — Generate runs
+              against the paper chosen here, not the first item sorted. */}
+          <select
+            value={synthPaperId}
+            onChange={(e) => setSynthPaperId(e.target.value)}
+            className={cn(ds.select, 'w-auto min-w-[180px]')}
+            aria-label="Paper to synthesize"
+          >
+            {items.length === 0 && <option value="">No papers yet</option>}
+            {items.map((it) => <option key={it.id} value={it.id}>{it.title}</option>)}
+          </select>
+          <button onClick={() => synthPaperId && onRunSynthesize(synthPaperId)} className={cn(ds.btnPrimary, ds.btnSmall)} disabled={isPending || !synthPaperId}>
             {isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             Generate Synthesis
           </button>
@@ -1806,7 +1936,7 @@ function SynthesisEngine({ items, allHypotheses, allEvidence, allExperiments, sy
             <pre className={cn(ds.textMono, 'whitespace-pre-wrap text-gray-300')}>{synthesisResult}</pre>
           </div>
         ) : (
-          <p className={ds.textMuted}>Select a paper and click &quot;Generate Synthesis&quot; to cross-reference all findings.</p>
+          <p className={ds.textMuted}>Choose a paper above and click &quot;Generate Synthesis&quot; to cross-reference its findings.</p>
         )}
       </div>
     </div>
@@ -2006,7 +2136,11 @@ function PaperDetailFields({ item }: { item: LensItem }) {
   );
 }
 
-function HypothesisDetailFields({ item, allEvidence }: { item: LensItem; allEvidence: LensItem[] }) {
+function HypothesisDetailFields({ item, allEvidence, onLink, onStatus }: {
+  item: LensItem; allEvidence: LensItem[]; allHypotheses?: LensItem[];
+  onLink?: (hypothesis: LensItem, evidence: LensItem, linked: boolean) => void;
+  onStatus?: (item: LensItem, status: HypothesisData['status']) => void;
+}) {
   const d = getData<HypothesisData>(item);
   const confidence = d.confidence ?? 50;
   const statusColor = STATUS_COLORS[d.status || 'proposed'];
@@ -2043,24 +2177,57 @@ function HypothesisDetailFields({ item, allEvidence }: { item: LensItem; allEvid
         </div>
       )}
       <div>
+        <span className={ds.label}>Status</span>
+        {onStatus ? (
+          <select
+            value={d.status || 'proposed'}
+            onChange={(e) => onStatus(item, e.target.value as HypothesisData['status'])}
+            className={cn(ds.select, 'mt-1 w-auto')}
+            aria-label="Hypothesis status"
+          >
+            {HYPOTHESIS_STATUSES.map((st) => <option key={st} value={st}>{st}</option>)}
+          </select>
+        ) : (
+          <p className="text-sm text-gray-300 capitalize">{d.status || 'proposed'}</p>
+        )}
+      </div>
+      <div>
         <span className={ds.label}>Linked Evidence ({(d.linkedEvidence || []).length})</span>
         <div className="space-y-1 mt-1">
           {(d.linkedEvidence || []).map(eid => {
             const ev = allEvidence.find(e => e.id === eid);
             return (
               <div key={eid} className="text-xs text-gray-400 flex items-center gap-1">
-                <Link2 className="w-3 h-3" /> {ev ? ev.title : eid}
+                <Link2 className="w-3 h-3" /> <span className="flex-1">{ev ? ev.title : eid}</span>
+                {onLink && ev && (
+                  <button onClick={() => onLink(item, ev, false)} className="text-rose-300 underline">Unlink</button>
+                )}
               </div>
             );
           })}
           {(d.linkedEvidence || []).length === 0 && <p className={cn(ds.textMuted, 'text-xs')}>No linked evidence</p>}
+          {onLink && allEvidence.filter(e => !(d.linkedEvidence || []).includes(e.id)).length > 0 && (
+            <div className="pt-1">
+              <span className={ds.label}>Link evidence</span>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {allEvidence.filter(e => !(d.linkedEvidence || []).includes(e.id)).map(e => (
+                  <button key={e.id} onClick={() => onLink(item, e, true)} className="rounded border border-lattice-border px-2 py-0.5 text-[10px] text-gray-300 hover:border-neon-purple/50">
+                    + {e.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>
   );
 }
 
-function EvidenceDetailFields({ item }: { item: LensItem }) {
+function EvidenceDetailFields({ item, allHypotheses, onLink }: {
+  item: LensItem; allHypotheses?: LensItem[];
+  onLink?: (hypothesis: LensItem, evidence: LensItem, linked: boolean) => void;
+}) {
   const d = getData<EvidenceData>(item);
   const strengthColor = STATUS_COLORS[d.strength || 'moderate'];
   const typeColor = STATUS_COLORS[d.type || 'empirical'];
@@ -2094,7 +2261,30 @@ function EvidenceDetailFields({ item }: { item: LensItem }) {
       )}
       <div>
         <span className={ds.label}>Linked Hypotheses ({(d.linkedHypotheses || []).length})</span>
-        {(d.linkedHypotheses || []).length === 0 && <p className={cn(ds.textMuted, 'text-xs')}>No linked hypotheses</p>}
+        <div className="space-y-1 mt-1">
+          {(d.linkedHypotheses || []).map(hid => {
+            const h = (allHypotheses || []).find(x => x.id === hid);
+            return (
+              <div key={hid} className="flex items-center gap-1 text-xs text-gray-400">
+                <Link2 className="w-3 h-3" /> <span className="flex-1">{h ? h.title : hid}</span>
+                {onLink && h && <button onClick={() => onLink(h, item, false)} className="text-rose-300 underline">Unlink</button>}
+              </div>
+            );
+          })}
+          {(d.linkedHypotheses || []).length === 0 && <p className={cn(ds.textMuted, 'text-xs')}>No linked hypotheses</p>}
+          {onLink && (allHypotheses || []).filter(h => !(d.linkedHypotheses || []).includes(h.id)).length > 0 && (
+            <div className="pt-1">
+              <span className={ds.label}>Link hypothesis</span>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {(allHypotheses || []).filter(h => !(d.linkedHypotheses || []).includes(h.id)).map(h => (
+                  <button key={h.id} onClick={() => onLink(h, item, true)} className="rounded border border-lattice-border px-2 py-0.5 text-[10px] text-gray-300 hover:border-neon-purple/50">
+                    + {h.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </>
   );

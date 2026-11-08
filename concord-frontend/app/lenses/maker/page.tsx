@@ -76,6 +76,28 @@ async function readBench(): Promise<Make[]> {
   return makesFrom(list.data.result?.makes);
 }
 
+interface Reclaimable {
+  id: string;
+  name: string;
+}
+
+// F5 fix return: before the Bench kept its own records, makes were
+// created inside App Maker's project store and still sit there,
+// invisible here. They carry no marker telling a make from an app,
+// so nothing is moved automatically — the bench names them with
+// their origin and the owner imports the ones that are theirs.
+async function readReclaimables(): Promise<Reclaimable[]> {
+  const res = await lensRun<{ projects?: unknown }>('maker', 'reclaimables', {});
+  if (!res.data?.ok || !Array.isArray(res.data.result?.projects)) return [];
+  const out: Reclaimable[] = [];
+  for (const row of res.data.result.projects as Array<{ id?: unknown; name?: unknown }>) {
+    if (typeof row?.id === 'string' && row.id && typeof row?.name === 'string' && row.name.trim()) {
+      out.push({ id: row.id, name: row.name.trim() });
+    }
+  }
+  return out;
+}
+
 function isDuplicateName(name: string, makes: Make[], excludeId?: string): boolean {
   const wanted = name.trim().toLowerCase();
   if (!wanted) return false;
@@ -100,6 +122,8 @@ export default function MakerPage() {
   const [editSpec, setEditSpec] = useState('');
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reclaimables, setReclaimables] = useState<Reclaimable[]>([]);
+  const [reclaimingId, setReclaimingId] = useState<string | null>(null);
 
   const pull = useCallback(async () => readBench(), []);
 
@@ -114,8 +138,28 @@ export default function MakerPage() {
       setPhase('error');
       setLoadError(err instanceof Error ? err.message : 'Could not load the bench.');
     });
+    readReclaimables().then((rows) => {
+      if (!cancelled) setReclaimables(rows);
+    }).catch(() => { /* the strip simply stays hidden */ });
     return () => { cancelled = true; };
   }, [pull]);
+
+  const reclaim = useCallback(async (item: Reclaimable) => {
+    if (reclaimingId) return;
+    setReclaimingId(item.id);
+    setActionError('');
+    try {
+      const res = await lensRun<{ make?: { id?: string } }>('maker', 'reclaim', { projectId: item.id });
+      if (!res.data?.ok) throw new Error(errorFrom(res, 'That record could not be imported.'));
+      const rows = await readBench();
+      setMakes(rows);
+      setReclaimables((prev) => prev.filter((p) => p.id !== item.id));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'That record could not be imported. It is still in App Maker.');
+    } finally {
+      setReclaimingId(null);
+    }
+  }, [reclaimingId]);
 
   const load = useCallback(() => {
     setPhase('loading');
@@ -296,6 +340,32 @@ export default function MakerPage() {
                 </li>
               ))}
             </ul>
+          )}
+          {phase === 'ready' && reclaimables.length > 0 && (
+            <div data-testid="maker-reclaim" className="mt-8 w-full max-w-xl self-stretch border-t border-white/10 pt-5">
+              <h3 className="text-[13px] uppercase tracking-wider text-zinc-400">From before the bench had its own store</h3>
+              <p className="mt-1 text-[13px] text-zinc-500">
+                These sit in App Maker, where makes lived before the bench kept its own records.
+                Import one to put it on the bench — it stays in App Maker too.
+              </p>
+              <ul className="mt-3 space-y-3">
+                {reclaimables.map((item) => (
+                  <li key={item.id} className="flex items-baseline justify-between gap-4">
+                    <span className="text-[14px] text-zinc-200">
+                      {item.name} <span className="text-zinc-500">· App Maker</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void reclaim(item)}
+                      disabled={reclaimingId === item.id}
+                      className="shrink-0 text-[13px] text-zinc-100 underline disabled:opacity-60"
+                    >
+                      Import as make
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {phase === 'ready' && open && (
             <form

@@ -147,6 +147,9 @@ export function balanceReaction({ equation }) {
   const reactants = parseCompounds(parts[0]);
   const products  = parseCompounds(parts[1]);
   const compounds = [...reactants, ...products];
+  if (reactants.length === 0 || products.length === 0) {
+    return { ok: false, error: 'Need at least one reactant and one product.' };
+  }
 
   // Collect all elements
   const allElements = new Set();
@@ -155,6 +158,24 @@ export function balanceReaction({ equation }) {
     for (const el of Object.keys(els)) allElements.add(el);
     return els;
   });
+
+  // Validation: every compound must parse to at least one REAL element.
+  // A side that parses to nothing ("banana -> split") used to sail through:
+  // the element set was empty, so the conservation check below iterated
+  // zero elements and vacuously passed, receipting "0banana → split" as a
+  // balanced reaction. An unparseable or unknown-element formula is refused
+  // here, by name, before any solving happens.
+  for (let i = 0; i < compounds.length; i++) {
+    const els = Object.keys(parsed[i]);
+    if (els.length === 0) {
+      return { ok: false, error: `could not parse "${compounds[i]}" as a chemical formula (no element symbols found)` };
+    }
+    for (const el of els) {
+      if (!(el in ATOMIC_MASS)) {
+        return { ok: false, error: `unknown element symbol "${el}" in "${compounds[i]}"` };
+      }
+    }
+  }
 
   const elements = [...allElements];
   const nComp = compounds.length;
@@ -230,10 +251,15 @@ export function balanceReaction({ equation }) {
   const finalCoeffs = intCoeffs.map(c => Math.round(c / g));
 
   // Never return an equation that does not conserve atoms (a singular system,
-  // or a reaction that cannot be balanced, lands here).
+  // or a reaction that cannot be balanced, lands here). The positivity check
+  // stands OUTSIDE the per-element loop: with it inside, an equation whose
+  // element set was empty never executed the check at all.
+  if (finalCoeffs.some(c => !(c > 0))) {
+    return { ok: false, error: 'could not balance this equation (it may be impossible as written, or underdetermined)' };
+  }
   for (const el of elements) {
     const net = compounds.reduce((sum, _, ci) => sum + (ci < reactants.length ? 1 : -1) * finalCoeffs[ci] * (parsed[ci][el] || 0), 0);
-    if (net !== 0 || finalCoeffs.some(c => !(c > 0))) {
+    if (net !== 0) {
       return { ok: false, error: 'could not balance this equation (it may be impossible as written, or underdetermined)' };
     }
   }

@@ -118,7 +118,7 @@ describe("sports.scoreboard (ESPN public API)", () => {
           events: [{
             id: "401547651", name: "Lakers @ Warriors",
             shortName: "LAL @ GSW", date: "2026-05-16T03:00Z",
-            status: { type: { description: "Final", completed: true }, period: 4, displayClock: "0.0" },
+            status: { type: { description: "Final", completed: true, state: "post" }, period: 4, displayClock: "0.0" },
             competitions: [{
               competitors: [
                 { team: { displayName: "Golden State Warriors", abbreviation: "GSW" }, score: "115", homeAway: "home", winner: true, records: [{ summary: "44-37" }] },
@@ -136,6 +136,10 @@ describe("sports.scoreboard (ESPN public API)", () => {
     assert.equal(r.result.events[0].teams[0].team, "Golden State Warriors");
     assert.equal(r.result.events[0].teams[0].score, 115);
     assert.equal(r.result.events[0].status, "Final");
+    assert.equal(r.result.events[0].state, "post");
+    assert.equal(r.result.events[0].completed, true);
+    assert.equal(r.result.events[0].clock, "0.0");
+    assert.equal(r.result.events[0].date, "2026-05-16T03:00Z");
     assert.equal(r.result.source, "espn-scoreboard");
   });
 

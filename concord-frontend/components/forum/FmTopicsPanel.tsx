@@ -25,8 +25,17 @@ interface Topic {
   id: string; categoryId: string | null; subforumId: string | null; title: string;
   body: string; format?: string; images?: string[]; tags: string[];
   author: string; authorId?: string; pinned: boolean; locked: boolean; score: number; replyCount?: number;
+  editedAt?: string;
   awards?: { id: string; icon: string; name: string }[];
 }
+
+const FLAG_REASONS = [
+  { id: 'spam', label: 'Spam' },
+  { id: 'off_topic', label: 'Off-topic' },
+  { id: 'inappropriate', label: 'Inappropriate' },
+  { id: 'harassment', label: 'Harassment' },
+  { id: 'other', label: 'Other' },
+] as const;
 
 const EMPTY_DRAFT: RichDraft = { body: '', format: 'plain', images: [] };
 
@@ -70,6 +79,14 @@ export function FmTopicsPanel({
   const [rootReply, setRootReply] = useState<RichDraft>(EMPTY_DRAFT);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [awardTarget, setAwardTarget] = useState<{ type: 'topic' | 'post'; id: string } | null>(null);
+  const [armDeleteTopic, setArmDeleteTopic] = useState(false);
+  const [editingTopic, setEditingTopic] = useState(false);
+  const [editDraft, setEditDraft] = useState<RichDraft>(EMPTY_DRAFT);
+  const [flagOpen, setFlagOpen] = useState(false);
+  const [flagReason, setFlagReason] = useState<string>('spam');
+  const [flagNote, setFlagNote] = useState('');
+  const [flagReceipt, setFlagReceipt] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
 
   const loadSaved = useCallback(async () => {
     const r = await lensRun('forum', 'saved-list', {});
@@ -199,14 +216,68 @@ export function FmTopicsPanel({
   };
   const delTopic = async () => {
     if (!openTopic) return;
+    // D2/F2: two-step — the first click arms, the second deletes.
+    if (!armDeleteTopic) { setArmDeleteTopic(true); return; }
     await lensRun('forum', 'topic-delete', { id: openTopic.id });
+    setArmDeleteTopic(false);
     setOpenTopic(null);
     await refresh();
   };
   const flagTopic = async () => {
     if (!openTopic) return;
-    await lensRun('forum', 'flag-create', { targetType: 'topic', targetId: openTopic.id, reason: 'other' });
-    await refresh();
+    // D3/F3: a typed flag with a receipt — the flag lands in the
+    // moderators' queue (the Moderation tab), and the surface says so.
+    const r = await lensRun('forum', 'flag-create', {
+      targetType: 'topic', targetId: openTopic.id,
+      reason: flagReason, note: flagNote.trim() || undefined,
+    });
+    if (r.data?.ok === false) { setActionMsg(r.data?.error || 'Flag failed'); return; }
+    setFlagOpen(false);
+    setFlagNote('');
+    setFlagReceipt('Flagged for review — moderators see it in the Moderation queue.');
+  };
+  const saveTopicEdit = async () => {
+    if (!openTopic || !editDraft.body.trim()) return;
+    const r = await lensRun('forum', 'topic-edit', {
+      id: openTopic.id, body: editDraft.body.trim(), format: editDraft.format,
+    });
+    if (r.data?.ok === false) { setActionMsg(r.data?.error || 'Edit failed'); return; }
+    setEditingTopic(false);
+    await reloadThread(openTopic.id);
+  };
+  const editPost = async (postId: string, d: RichDraft) => {
+    if (!openTopic) return;
+    const r = await lensRun('forum', 'post-edit', { id: postId, body: d.body.trim(), format: d.format });
+    if (r.data?.ok === false) { setActionMsg(r.data?.error || 'Edit failed'); return; }
+    await reloadThread(openTopic.id);
+  };
+  const deletePost = async (postId: string) => {
+    if (!openTopic) return;
+    const r = await lensRun('forum', 'post-delete', { id: postId });
+    if (r.data?.ok === false) { setActionMsg(r.data?.error || 'Delete failed'); return; }
+    await reloadThread(openTopic.id);
+  };
+  const exportMyRecords = async () => {
+    // D4/F4: the export is the caller's OWN forum records — my topics,
+    // my replies, my saves — read from the board's own store, never the
+    // generic corpus export the header button serves.
+    const [h, s] = await Promise.all([
+      lensRun('forum', 'post-history', {}),
+      lensRun('forum', 'saved-list', {}),
+    ]);
+    const payload = {
+      kind: 'forum-my-records',
+      exportedAt: new Date().toISOString(),
+      history: h.data?.result?.history || [],
+      saved: s.data?.result?.saved || [],
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'my-forum-records.json';
+    a.click();
+    URL.revokeObjectURL(url);
   };
   const toggleSubscribe = async () => {
     if (!openTopic) return;
@@ -272,8 +343,24 @@ export function FmTopicsPanel({
                 <span key={a.id} title={a.name} className="text-sm">{a.icon}</span>
               ))}
             </div>
-            {openTopic.body && (
+            {openTopic.body && !editingTopic && (
               <div className="mt-1.5"><FmMarkdown text={openTopic.body} format={openTopic.format} /></div>
+            )}
+            <p className="mt-1 text-[10px] text-zinc-500">
+              by {openTopic.author}{openTopic.editedAt ? ' · edited' : ''}
+            </p>
+            {editingTopic && (
+              <div className="mt-2 space-y-2">
+                <FmRichEditor value={editDraft} onChange={setEditDraft} rows={4} placeholder="Edit your topic…" />
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setEditingTopic(false)}
+                    className="px-2.5 py-1 text-[11px] text-zinc-400 hover:text-zinc-200">Cancel edit</button>
+                  <button type="button" onClick={saveTopicEdit} disabled={!editDraft.body.trim()}
+                    className="px-3 py-1 text-[11px] font-medium bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white rounded-lg">
+                    Save changes
+                  </button>
+                </div>
+              </div>
             )}
             {(openTopic.images || []).length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
@@ -310,15 +397,55 @@ export function FmTopicsPanel({
                   </button>
                 </>
               )}
-              <button type="button" onClick={flagTopic} className="flex items-center gap-0.5 text-[10px] text-zinc-400 hover:text-rose-300">
+              <button type="button" onClick={() => { setFlagOpen((o) => !o); setFlagReceipt(null); }} className="flex items-center gap-0.5 text-[10px] text-zinc-400 hover:text-rose-300">
                 <Flag className="w-3 h-3" /> Flag
               </button>
-              {viewerId && openTopic.authorId === viewerId && (
-                <button type="button" onClick={delTopic} className="text-zinc-600 hover:text-rose-400" aria-label="Delete topic">
-                  <Trash2 className="w-3.5 h-3.5" />
+              {viewerId && openTopic.authorId === viewerId && !editingTopic && (
+                <button type="button" onClick={() => { setEditDraft({ body: openTopic.body, format: (openTopic.format as 'plain' | 'markdown') || 'plain', images: openTopic.images || [] }); setEditingTopic(true); }}
+                  className="text-[10px] text-zinc-400 hover:text-orange-300">
+                  Edit
                 </button>
               )}
+              {viewerId && openTopic.authorId === viewerId && (
+                armDeleteTopic ? (
+                  <span className="flex items-center gap-1.5">
+                    <button type="button" onClick={delTopic} className="text-[10px] font-medium text-rose-300 hover:text-rose-200">
+                      Delete this topic and its replies? Click again to confirm
+                    </button>
+                    <button type="button" onClick={() => setArmDeleteTopic(false)} className="text-[10px] text-zinc-400 hover:text-zinc-200">
+                      Keep
+                    </button>
+                  </span>
+                ) : (
+                  <button type="button" onClick={delTopic} className="text-zinc-600 hover:text-rose-400" aria-label="Delete topic">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )
+              )}
             </div>
+            {flagOpen && (
+              <div className="mt-2 space-y-2 bg-zinc-950/60 border border-zinc-800 rounded-lg p-2.5">
+                <div className="flex flex-wrap gap-1.5">
+                  {FLAG_REASONS.map((r) => (
+                    <button key={r.id} type="button" onClick={() => setFlagReason(r.id)}
+                      className={cn('text-[10px] px-2 py-1 rounded-lg', flagReason === r.id ? 'bg-rose-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+                <input value={flagNote} onChange={(e) => setFlagNote(e.target.value)} placeholder="Note for the moderators (optional)"
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-[11px] text-zinc-100" />
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setFlagOpen(false)} className="px-2.5 py-1 text-[11px] text-zinc-400 hover:text-zinc-200">Cancel</button>
+                  <button type="button" onClick={flagTopic}
+                    className="px-3 py-1 text-[11px] font-medium bg-rose-700 hover:bg-rose-600 text-white rounded-lg">
+                    Send flag
+                  </button>
+                </div>
+              </div>
+            )}
+            {flagReceipt && <p className="mt-2 text-[11px] text-emerald-300">{flagReceipt}</p>}
+            {actionMsg && <p role="alert" className="mt-2 text-[11px] text-rose-300">{actionMsg}</p>}
           </div>
         </div>
 
@@ -340,10 +467,13 @@ export function FmTopicsPanel({
         )}
 
         <FmCommentTree nodes={tree} locked={openTopic.locked} savedIds={savedIds}
+          viewerId={viewerId}
           onVote={voteOnPost}
           onReply={(parentId, d) => submitReply(parentId, d)}
           onAward={(postId) => setAwardTarget({ type: 'post', id: postId })}
-          onSave={(postId) => toggleSave('post', postId)} />
+          onSave={(postId) => toggleSave('post', postId)}
+          onEdit={editPost}
+          onDelete={deletePost} />
       </div>
     );
   }
@@ -393,6 +523,10 @@ export function FmTopicsPanel({
           {subforums.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <div className="flex-1" />
+        <button type="button" onClick={exportMyRecords}
+          className="text-[11px] px-2 py-1 rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700">
+          Export my forum records
+        </button>
         {['latest', 'top', 'new'].map((sx) => (
           <button key={sx} type="button" onClick={() => setSort(sx)}
             className={cn('text-[11px] px-2 py-1 rounded-lg capitalize',
@@ -417,7 +551,7 @@ export function FmTopicsPanel({
                   {(t.awards || []).map((a) => <span key={a.id} className="text-[11px]">{a.icon}</span>)}
                 </p>
                 <p className="text-[10px] text-zinc-400">
-                  {t.replyCount || 0} replies
+                  {t.replyCount || 0} replies · by {t.author}{t.editedAt ? ' · edited' : ''}
                   {t.subforumId && subforumName[t.subforumId] && (
                     <span className="text-orange-400/70"> · {subforumName[t.subforumId]}</span>
                   )}

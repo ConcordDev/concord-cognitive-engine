@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Swords, Loader2, Trophy } from 'lucide-react';
+import { actionError, hasMatchScores, winnerTeamId } from '@/components/sports/league-wire';
 
 interface Team {
   id: string;
@@ -21,26 +22,44 @@ interface MatchResult {
   mvpMemberId?: string;
 }
 
-export function MatchSimulator({ leagueId }: { leagueId: string }) {
+export function MatchSimulator({
+  leagueId,
+  reloadToken = 0,
+  onPlayed,
+}: {
+  leagueId: string;
+  reloadToken?: number;
+  onPlayed?: () => void;
+}) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [homeId, setHomeId] = useState<string | null>(null);
   const [awayId, setAwayId] = useState<string | null>(null);
   const [matchId, setMatchId] = useState<string | null>(null);
   const [result, setResult] = useState<MatchResult | null>(null);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const j = await fetch(`/api/sports/league/${leagueId}/teams`, { credentials: 'include' }).then(r => r.json());
-      if (j?.ok) setTeams(j.teams || []);
-    } catch { /* swallow */ }
+      const r = await fetch(`/api/sports/league/${leagueId}/teams`, { credentials: 'include' });
+      const j = await r.json().catch(() => null);
+      const err = actionError(j, r.status, 'Teams are unavailable');
+      if (err) {
+        setError(err);
+        return;
+      }
+      setTeams(j.teams || []);
+    } catch {
+      setError('Teams are unavailable.');
+    }
   }, [leagueId]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { refresh(); }, [refresh, reloadToken]);
 
   const schedule = useCallback(async () => {
     if (!homeId || !awayId) return;
     setPending(true);
+    setError(null);
     try {
       const r = await fetch('/api/sports/match/schedule', {
         method: 'POST', credentials: 'include',
@@ -52,32 +71,56 @@ export function MatchSimulator({ leagueId }: { leagueId: string }) {
           scheduledAt: Math.floor(Date.now() / 1000),
         }),
       });
-      const j = await r.json();
-      if (j?.ok && j.matchId) {
-        setMatchId(j.matchId);
-        setResult(null);
+      const j = await r.json().catch(() => null);
+      const err = actionError(j, r.status, 'Match was not scheduled');
+      if (err || !j?.matchId) {
+        setError(err || 'Match was not scheduled.');
+        return;
       }
+      setMatchId(j.matchId);
+      setResult(null);
+    } catch {
+      setError('Match was not scheduled.');
     } finally { setPending(false); }
   }, [homeId, awayId, leagueId]);
 
   const play = useCallback(async () => {
-    if (!matchId) return;
+    if (!matchId || !homeId || !awayId) return;
     setPending(true);
+    setError(null);
     try {
       const r = await fetch(`/api/sports/match/${matchId}/play`, {
         method: 'POST', credentials: 'include',
         headers: { 'content-type': 'application/json' }, body: '{}',
       });
-      const j = await r.json();
-      if (j?.ok) setResult({ matchId, ...j });
+      const j = await r.json().catch(() => null);
+      const err = actionError(j, r.status, 'Match was not played');
+      if (err) {
+        setError(err);
+        return;
+      }
+      if (!hasMatchScores(j?.homeScore, j?.awayScore)) {
+        setError('Match was not played (no score).');
+        return;
+      }
+      setResult({
+        matchId,
+        homeScore: j.homeScore,
+        awayScore: j.awayScore,
+        winnerTeamId: winnerTeamId(homeId, awayId, j.homeScore, j.awayScore),
+      });
+      onPlayed?.();
+    } catch {
+      setError('Match was not played.');
     } finally { setPending(false); }
-  }, [matchId]);
+  }, [matchId, homeId, awayId, onPlayed]);
 
   return (
     <div className="rounded-lg border border-amber-500/30 bg-zinc-900/50 p-4">
       <header className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-200">
         <Swords size={14} /> Match simulator
       </header>
+      {error && <p role="alert" className="mb-2 text-xs text-red-300">{error}</p>}
 
       {!matchId ? (
         <div className="space-y-2">

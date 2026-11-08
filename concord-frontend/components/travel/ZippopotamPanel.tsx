@@ -11,19 +11,12 @@ import { useState, useCallback } from 'react';
 import { MapPin, RefreshCw, AlertTriangle, Search } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { postalView, type PostalEnvelope } from './reference-panels';
 
-interface Place {
-  placeName: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  state: string | null;
-  stateAbbrev: string | null;
-}
-
-async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
+async function runMacro(domain: string, name: string, input: Record<string, unknown>): Promise<PostalEnvelope | null> {
   try {
     const r = await lensRun({ domain, name, input });
-    return r?.data as T;
+    return (r?.data ?? null) as PostalEnvelope | null;
   } catch {
     return null;
   }
@@ -50,27 +43,14 @@ export interface ZippopotamPanelProps {
 export function ZippopotamPanel({ domain, className }: ZippopotamPanelProps) {
   const [country, setCountry] = useState('us');
   const [postalCode, setPostalCode] = useState('');
-  const [places, setPlaces] = useState<Place[]>([]);
-  const [resolvedPostal, setResolvedPostal] = useState<string | null>(null);
-  const [resolvedCountry, setResolvedCountry] = useState<string | null>(null);
+  const [view, setView] = useState<ReturnType<typeof postalView> | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const lookup = useCallback(async () => {
     if (!postalCode.trim()) return;
     setLoading(true);
-    setError(null);
-    const r = await runMacro<{ ok: boolean; places?: Place[]; postalCode?: string; country?: string; reason?: string }>(
-      domain, 'live_zippopotam', { country, postalCode: postalCode.trim() },
-    );
-    if (r?.ok) {
-      setPlaces(r.places || []);
-      setResolvedPostal(r.postalCode || postalCode);
-      setResolvedCountry(r.country || country);
-    } else {
-      setPlaces([]);
-      setError(r?.reason || 'fetch_failed');
-    }
+    const r = await runMacro(domain, 'live_zippopotam', { country, postalCode: postalCode.trim() });
+    setView(postalView(r, postalCode.trim(), country));
     setLoading(false);
   }, [country, postalCode, domain]);
 
@@ -112,19 +92,23 @@ export function ZippopotamPanel({ domain, className }: ZippopotamPanelProps) {
         </button>
       </form>
 
-      {error && (
+      {view && view.kind === 'error' && (
         <div className="px-3 py-3 text-xs text-rose-300/80">
-          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" /> {error === 'fetch_failed' ? 'No match (postal code not found)' : `Zippopotam unreachable (${error})`}
+          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" /> {view.message}
         </div>
       )}
 
-      {!error && places.length > 0 && (
+      {view && view.kind === 'none' && (
+        <div className="px-3 py-3 text-xs text-zinc-400">No places for that postal code.</div>
+      )}
+
+      {view && view.kind === 'places' && (
         <div>
           <div className="px-3 py-2 bg-zinc-900/30 text-[11px] text-zinc-400 font-mono border-b border-zinc-800/40">
-            {resolvedCountry} · {resolvedPostal} → {places.length} place{places.length === 1 ? '' : 's'}
+            {view.country} · {view.postalCode} → {view.places.length} place{view.places.length === 1 ? '' : 's'}
           </div>
           <ul className="divide-y divide-zinc-800/40 max-h-[400px] overflow-y-auto">
-            {places.map((p, i) => (
+            {view.places.map((p, i) => (
               <li key={i} className="px-3 py-2 text-xs">
                 <div className="text-zinc-200 font-medium">{p.placeName || '—'}</div>
                 <div className="text-[10px] text-zinc-400 font-mono mt-0.5">

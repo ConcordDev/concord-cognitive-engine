@@ -16,7 +16,7 @@ describe("ux-suite — catalog + search (manifest-derived exact values)", () => 
     const r = await lensRun("ux-suite", "catalog", {});
     assert.equal(r.result.total, 19);
     assert.equal(r.result.components.length, 19);
-    assert.ok(r.result.source.includes("code-derived"));
+    assert.ok(r.result.source.includes("component catalog"));   // honest source label (no "code-derived" jargon)
     // GROUPS counts derived from the manifest: settings 5, progress 5, world 4, ops 3, shell 2.
     const byId = Object.fromEntries(r.result.groups.map((g) => [g.id, g.count]));
     assert.equal(byId.settings, 5);
@@ -28,7 +28,7 @@ describe("ux-suite — catalog + search (manifest-derived exact values)", () => 
     const ap = r.result.components.find((c) => c.name === "AccessibilityPanel");
     assert.equal(ap.group, "settings");
     assert.equal(ap.propCount, 3);
-    assert.equal(ap.importPath, "@/components/settings/AccessibilityPanel");
+    assert.equal(ap.importPath, "@/components/world-lens/AccessibilityPanel");   // the import path is the component's real file location
   });
 
   it("search: a query matches by name and the group filter narrows the result set", async () => {
@@ -89,7 +89,7 @@ describe("ux-suite — preview / props-schema / usage-snippet (defaults from man
 
   it("usage-snippet: emits an import line + JSX with default props + a typed props interface", async () => {
     const r = await lensRun("ux-suite", "usage-snippet", { params: { component: "AnalyticsDashboard" } });
-    assert.equal(r.result.importStatement, "import { AnalyticsDashboard } from '@/components/ops/AnalyticsDashboard';");
+    assert.equal(r.result.importStatement, "import { AnalyticsDashboard } from '@/components/world-lens/AnalyticsDashboard';");
     // enum default 'range' = '7d' is rendered as a string prop in the JSX.
     assert.ok(r.result.usage.includes('range="7d"'));
     // The TS interface maps the enum options to a union type.
@@ -99,27 +99,29 @@ describe("ux-suite — preview / props-schema / usage-snippet (defaults from man
 });
 
 describe("ux-suite — a11y-check + variant-gallery (deterministic rule output)", () => {
-  it("a11y-check: a fully-conformant interactive component scores 100 with 4 passes", async () => {
+  // The audit is honest: with no props supplied there is nothing measured, so there is NO
+  // score — catalog declarations are listed separately and never scored.
+  it("a11y-check: an interactive component with no configuration is unscored but lists its 4 catalog declarations", async () => {
     const r = await lensRun("ux-suite", "a11y-check", { params: { component: "AccessibilityPanel" } });
     assert.equal(r.result.component, "AccessibilityPanel");
-    assert.equal(r.result.score, 100);
-    assert.equal(r.result.summary.passes, 4); // keyboard + aria + landmark + tap-target
-    assert.equal(r.result.summary.errors, 0);
-    assert.equal(r.result.summary.warnings, 0);
-    const kb = r.result.findings.find((f) => f.rule === "keyboard-operable");
+    assert.equal(r.result.score, null);
+    assert.equal(r.result.basis, "catalog-declarations-only");
+    assert.equal(r.result.summary.total, 0);
+    assert.equal(r.result.declarations.length, 4); // keyboard + aria + landmark + tap-target
+    const kb = r.result.declarations.find((f) => f.rule === "keyboard-operable");
     assert.equal(kb.severity, "pass");
-    // Responsive audit covers all three breakpoints, all fitting for a fluid component.
+    assert.equal(kb.basis, "catalog-declaration");
+    // Responsive audit covers all three breakpoints.
     assert.equal(r.result.responsive.length, 3);
-    assert.ok(r.result.responsive.every((bp) => bp.fits === true));
   });
 
-  it("a11y-check: a non-interactive component skips the keyboard + tap-target rules", async () => {
+  it("a11y-check: a non-interactive component declares only aria (info) + landmark (pass)", async () => {
     const r = await lensRun("ux-suite", "a11y-check", { params: { component: "ProgressionPanel" } });
-    // Non-interactive → only aria (info) + landmark (pass) findings remain.
-    assert.equal(r.result.summary.total, 2);
-    assert.ok(!r.result.findings.some((f) => f.rule === "keyboard-operable"));
-    assert.ok(!r.result.findings.some((f) => f.rule === "tap-target-size"));
-    const landmark = r.result.findings.find((f) => f.rule === "landmark-role");
+    assert.equal(r.result.score, null);
+    assert.equal(r.result.declarations.length, 2);
+    assert.ok(!r.result.declarations.some((f) => f.rule === "keyboard-operable"));
+    assert.ok(!r.result.declarations.some((f) => f.rule === "tap-target-size"));
+    const landmark = r.result.declarations.find((f) => f.rule === "landmark-role");
     assert.equal(landmark.severity, "pass");
   });
 

@@ -52,7 +52,9 @@ describe("mail.* domain macros (real migrated DB)", () => {
   afterEach(() => { try { db.close(); } catch { /* noop */ } });
 
   it("registers the full mail macro surface", () => {
-    assert.deepEqual(reg.names.sort(), ["claim", "get", "list", "read", "send", "sent"]);
+    // "delete" joins the surface with the mail full build (S4): the
+    // sender-side removal of their own sent copy.
+    assert.deepEqual(reg.names.sort(), ["claim", "delete", "get", "list", "read", "send", "sent"]);
   });
 
   it("send → list → claim full envelope upholds the contract invariants", async () => {

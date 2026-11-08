@@ -825,6 +825,18 @@ export default function registerDomainRoutes(app, {
     const out = await runMacro("grounding", "pending_actions", {}, makeCtx(req));
     return res.json(out);
   }));
+  app.post("/api/grounding/sensors/:sensorId/remove", asyncHandler(async (req, res) => {
+    const out = await runMacro("grounding", "remove_sensor", { sensorId: req.params.sensorId }, makeCtx(req));
+    return res.json(out);
+  }));
+  app.post("/api/grounding/readings/:readingId/remove", asyncHandler(async (req, res) => {
+    const out = await runMacro("grounding", "remove_reading", { readingId: req.params.readingId }, makeCtx(req));
+    return res.json(out);
+  }));
+  app.post("/api/grounding/actions/:actionId/withdraw", asyncHandler(async (req, res) => {
+    const out = await runMacro("grounding", "withdraw_action", { actionId: req.params.actionId }, makeCtx(req));
+    return res.json(out);
+  }));
   app.post("/api/grounding/actions/:actionId/approve", asyncHandler(async (req, res) => {
     const out = await runMacro("grounding", "approve_action", { actionId: req.params.actionId }, makeCtx(req));
     return res.json(out);
@@ -1025,6 +1037,11 @@ export default function registerDomainRoutes(app, {
     return res.json(out);
   }));
 
+  app.get("/api/metacognition/domain-record", asyncHandler(async (req, res) => {
+    const out = await runMacro("metacognition", "domain_record", {}, makeCtx(req));
+    return res.json(out);
+  }));
+
   // ---- Explanation Engine ----
   app.get("/api/explanation/status", asyncHandler(async (req, res) => {
     const out = await runMacro("explanation", "status", {}, makeCtx(req));
@@ -1070,6 +1087,14 @@ export default function registerDomainRoutes(app, {
   }));
   app.post("/api/metalearning/curriculum", asyncHandler(async (req, res) => {
     const out = await runMacro("metalearning", "curriculum", req.body, makeCtx(req));
+    return res.json(out);
+  }));
+  app.get("/api/metalearning/curricula", asyncHandler(async (req, res) => {
+    const out = await runMacro("metalearning", "list_curricula", {}, makeCtx(req));
+    return res.json(out);
+  }));
+  app.delete("/api/metalearning/strategies/:strategyId", asyncHandler(async (req, res) => {
+    const out = await runMacro("metalearning", "delete_strategy", { strategyId: req.params.strategyId }, makeCtx(req));
     return res.json(out);
   }));
   app.get("/api/metalearning/adaptations", asyncHandler(async (req, res) => {

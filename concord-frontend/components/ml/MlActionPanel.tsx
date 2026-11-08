@@ -28,7 +28,7 @@ type ActionId = 'eval' | 'feat' | 'profile' | 'hyper' | 'mint' | 'dm' | 'publish
 function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
 
 interface PerClass { class: string | number; precision: number; recall: number; f1: number; support: number }
-interface EvalResult { type?: string; samples?: number; accuracy?: number; avgF1?: number; perClass?: PerClass[]; mse?: number; rmse?: number; mae?: number; r2?: number }
+interface EvalResult { type?: string; samples?: number; counts?: { predictions: number; actuals: number }; accuracy?: number; avgF1?: number; perClass?: PerClass[]; mse?: number; rmse?: number; mae?: number; r2?: number }
 interface Ranking { feature: string; variance: number; stdDev: number; correlation: number; importance: number }
 interface FeatResult { totalFeatures?: number; numericFeatures?: number; targetField?: string; rankings?: Ranking[]; topFeatures?: string[] }
 interface ProfileStat { min: number; max: number; mean: number; median: number; q1: number; q3: number; outliers: number }
@@ -55,6 +55,7 @@ export function MlActionPanel() {
   const [hyperResult, setHyperResult] = useState<HyperResult | null>(null);
   const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
   const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
+  const [publishArm, setPublishArm] = useState(false);
   const [agentReply, setAgentReply] = useState<string | null>(null);
 
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
@@ -134,6 +135,14 @@ export function MlActionPanel() {
   }
   async function actPublish() {
     if (!evalResult && !profileResult) { err('Run eval/profile first.'); return; }
+    // F21: publishing is a public, outward act — it never fires on a
+    // single click. First click arms the confirmation; second confirms.
+    if (!publishArm) {
+      setPublishArm(true);
+      setFeedback({ kind: 'ok', text: 'This publishes a public model card anyone can cite. Click Publish again to confirm.' });
+      return;
+    }
+    setPublishArm(false);
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
@@ -141,7 +150,10 @@ export function MlActionPanel() {
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
-        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
+        // F21: a refusal must carry its reason — surface whatever the
+        // server named (error, or the decision's reason field), never a
+        // bare "rejected".
+        if (pub.data?.ok === false) throw new Error(pub.data?.error ?? pub.data?.result?.reason ?? pub.data?.reason ?? 'publish refused — the server gave no reason');
         return newId as string;
       });
       if (id) { setPublishedDtuId(id); pipe.publish('ml.publishedDtuId', id, { label: `Public model card ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
@@ -151,20 +163,26 @@ export function MlActionPanel() {
     setBusy('agent'); setFeedback(null); setAgentReply(null);
     try {
       const task = `ML bench review. ${evalResult ? (evalResult.type === 'classification' ? `Classifier accuracy ${evalResult.accuracy}%, F1 ${evalResult.avgF1}.` : `Regressor R² ${evalResult.r2}, RMSE ${evalResult.rmse}.`) : ''} ${featResult ? `Top features: ${featResult.topFeatures?.join(', ')}.` : ''} ${profileResult ? `Data quality ${profileResult.qualityScore}%.` : ''} ${hyperResult ? `Model: ${hyperResult.modelType}.` : ''} Identify the single biggest leverage for performance improvement. Plain text, 3 sentences max.`;
-      const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
+      // F12: the Lever is BOUNDED — an agent that never answers must not
+      // wedge the bench. 45s without a reply releases the bench with a
+      // named refusal instead of an endless spinner.
+      const r = await Promise.race([
+        api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } }),
+        new Promise<never>((_resolve, reject) => setTimeout(() => reject(new Error('The leverage agent did not answer within 45 seconds — the bench is free again. Try Lever once more, or continue with the bench results above.')), 45000)),
+      ]);
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Leverage ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
   const actions = [
-    { id: 'eval' as ActionId, label: 'Evaluate', desc: 'modelEvaluate', icon: Target, accent: '#22c55e', handler: actEval },
-    { id: 'feat' as ActionId, label: 'Features', desc: 'featureImportance', icon: BarChart3, accent: '#06b6d4', handler: actFeat },
-    { id: 'profile' as ActionId, label: 'Profile', desc: 'datasetProfile EDA', icon: Brain, accent: '#a855f7', handler: actProfile },
-    { id: 'hyper' as ActionId, label: 'Hyper', desc: 'hyperparameterSuggest', icon: Sliders, accent: '#f59e0b', handler: actHyper },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private ML run DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
+    { id: 'eval' as ActionId, label: 'Evaluate', desc: 'Score predictions vs actuals', icon: Target, accent: '#22c55e', handler: actEval },
+    { id: 'feat' as ActionId, label: 'Features', desc: 'Rank feature importance', icon: BarChart3, accent: '#06b6d4', handler: actFeat },
+    { id: 'profile' as ActionId, label: 'Profile', desc: 'Profile the dataset', icon: Brain, accent: '#a855f7', handler: actProfile },
+    { id: 'hyper' as ActionId, label: 'Hyper', desc: 'Suggest hyperparameters', icon: Sliders, accent: '#f59e0b', handler: actHyper },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private ML run DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send model brief', icon: Send, accent: '#ec4899', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public model card', icon: Globe, accent: '#15803d', handler: actPublish },
+    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : publishArm ? 'Click again to confirm' : 'Public model card', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Lever', desc: 'Agent: top leverage', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
@@ -230,7 +248,7 @@ export function MlActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {evalResult && (
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">{evalResult.type ?? '-'} · n={evalResult.samples}</div>
+            <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">{evalResult.type ?? '-'} · n={evalResult.samples}{evalResult.counts ? ` · predictions ${evalResult.counts.predictions} / actuals ${evalResult.counts.actuals}` : ''}</div>
             {evalResult.type === 'classification' ? (
               <>
                 <div className="text-2xl font-bold text-emerald-300">{evalResult.accuracy}%</div>

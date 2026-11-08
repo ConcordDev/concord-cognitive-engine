@@ -8,7 +8,7 @@
  * is a panel that owns its hooks. Page is a thin shell.
  */
 
-import { useCallback, useMemo, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { BookMarked, FileText, Highlighter, Plus, Search } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
@@ -71,6 +71,17 @@ export default function PaperLensPage() {
     ],
     { lensId: 'paper' },
   );
+
+  // S1 bridges: panels ask the page to switch views (a Library paper
+  // opening in the Manuscript dispatches 'paper:view').
+  useEffect(() => {
+    const onView = (e: Event) => {
+      const v = (e as CustomEvent<string>).detail;
+      if (v === 'library' || v === 'editor' || v === 'workbench' || v === 'discover') setActive(v);
+    };
+    window.addEventListener('paper:view', onView);
+    return () => window.removeEventListener('paper:view', onView);
+  }, []);
 
   const Panel = PANELS[active];
   const motionProps = useMemo(

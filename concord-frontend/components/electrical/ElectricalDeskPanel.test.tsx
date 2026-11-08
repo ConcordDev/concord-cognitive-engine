@@ -196,4 +196,31 @@ describe('ElectricalDeskPanel', () => {
     fireEvent.click(screen.getByText(/Try again/i));
     await waitFor(() => expect(refetch).toHaveBeenCalled());
   });
+
+  // F5 (full build): the header stats must count the panel's own items —
+  // a job at the lens's own 'active' status counts as an Active Job, and
+  // the completion ratio carries its true name with no vacuous value.
+  it('F5: an Active-status job counts in Active Jobs; Completion Rate is honest at empty and populated', () => {
+    const activeJob = {
+      ...JOB,
+      id: 'art_active',
+      data: { ...JOB.data, status: 'active' },
+      meta: { ...JOB.meta, status: 'active' },
+    };
+    lensDataState.items = [activeJob];
+    const { unmount } = render(<ElectricalDeskPanel mode="dashboard" />);
+    // Both stat blocks (dashboard tiles + header cards) read 1, not 0.
+    const ones = screen.getAllByText('1');
+    expect(ones.length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText('Safety Score')).not.toBeInTheDocument();
+    expect(screen.getByText('Completion Rate')).toBeInTheDocument();
+    expect(screen.getByText('0%')).toBeInTheDocument();
+    unmount();
+
+    lensDataState.items = [];
+    render(<ElectricalDeskPanel mode="dashboard" />);
+    expect(screen.getByText('Completion Rate')).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.queryByText('100%')).not.toBeInTheDocument();
+  });
 });

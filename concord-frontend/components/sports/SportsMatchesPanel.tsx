@@ -15,9 +15,17 @@ import {
   X,
 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { calendarDateKey } from '@/lib/calendar-date';
 import { EmptyState, ErrorState, StatTile } from '@/components/ui';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import {
+  badgeForStored,
+  resultFromDate,
+  resultFromScores,
+  scorePair,
+  type FixtureResult,
+} from '@/components/sports/fixture-result';
 
 export interface GameData {
   title: string;
@@ -27,7 +35,7 @@ export interface GameData {
   date: string;
   time: string;
   location: string;
-  result: 'win' | 'loss' | 'draw' | 'upcoming';
+  result: FixtureResult;
   scoreHome: number;
   scoreAway: number;
   notes: string;
@@ -38,6 +46,7 @@ const RESULT_COLORS: Record<string, string> = {
   loss: 'text-red-400 bg-red-400/10',
   draw: 'text-yellow-400 bg-yellow-400/10',
   upcoming: 'text-cyan-400 bg-cyan-400/10',
+  unscored: 'text-zinc-300 bg-zinc-700/40',
 };
 
 const EMPTY_GAME = {
@@ -47,6 +56,8 @@ const EMPTY_GAME = {
   opponent: '',
   date: '',
   location: '',
+  scoreHome: '',
+  scoreAway: '',
 };
 
 export function SportsMatchesPanel() {
@@ -54,18 +65,27 @@ export function SportsMatchesPanel() {
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [newGame, setNewGame] = useState(EMPTY_GAME);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftHome, setDraftHome] = useState('');
+  const [draftAway, setDraftAway] = useState('');
+  const today = calendarDateKey();
 
-  const { items, isLoading, isError, error, refetch, create, createMut, remove, deleteMut } =
+  const { items, isLoading, isError, error, refetch, create, createMut, update, updateMut, remove, deleteMut } =
     useLensData<GameData>('sports', 'game', { seed: [] });
 
   const games = useMemo(
     () =>
       items
-        .map((item) => ({
-          id: item.id,
-          ...item.data,
-          title: item.title || item.data?.title || 'Untitled Game',
-        }))
+        .map((item) => {
+          const data = item.data;
+          return {
+            id: item.id,
+            ...data,
+            title: item.title || data?.title || 'Untitled Game',
+            result: badgeForStored(data || {}, today),
+          };
+        })
         .filter(
           (g) =>
             !search ||
@@ -73,7 +93,7 @@ export function SportsMatchesPanel() {
             g.sport?.toLowerCase().includes(search.toLowerCase()) ||
             g.team?.toLowerCase().includes(search.toLowerCase()),
         ),
-    [items, search],
+    [items, search, today],
   );
 
   const stats = useMemo(() => {
@@ -115,25 +135,66 @@ export function SportsMatchesPanel() {
 
   const handleCreate = useCallback(async () => {
     if (!newGame.title.trim()) return;
-    await create({
-      title: newGame.title,
-      data: {
+    const pair = scorePair(newGame.scoreHome, newGame.scoreAway);
+    if (pair.kind === 'partial') {
+      setFormError('Enter both scores, or leave both blank.');
+      return;
+    }
+    const recorded = pair.kind === 'pair';
+    setFormError(null);
+    try {
+      const saved = await create({
         title: newGame.title,
-        sport: newGame.sport,
-        team: newGame.team,
-        opponent: newGame.opponent,
-        date: newGame.date,
-        time: '',
-        location: newGame.location,
-        result: 'upcoming',
-        scoreHome: 0,
-        scoreAway: 0,
-        notes: '',
-      },
-    });
-    setNewGame(EMPTY_GAME);
-    setShowCreate(false);
-  }, [newGame, create]);
+        data: {
+          title: newGame.title,
+          sport: newGame.sport,
+          team: newGame.team,
+          opponent: newGame.opponent,
+          date: newGame.date,
+          time: '',
+          location: newGame.location,
+          result: recorded ? resultFromScores(pair.home, pair.away) : resultFromDate(newGame.date, today),
+          scoreHome: recorded ? pair.home : 0,
+          scoreAway: recorded ? pair.away : 0,
+          notes: '',
+        },
+      });
+      if (saved && (saved as { ok?: boolean }).ok === false) {
+        setFormError((saved as { error?: string }).error || 'Match was not saved.');
+        return;
+      }
+      setNewGame(EMPTY_GAME);
+      setShowCreate(false);
+    } catch {
+      setFormError('Match was not saved.');
+    }
+  }, [newGame, create, today]);
+
+  const saveScore = useCallback(async (id: string, date: string) => {
+    const pair = scorePair(draftHome, draftAway);
+    if (pair.kind === 'partial') {
+      setFormError('Enter both scores, or leave both blank.');
+      return;
+    }
+    const recorded = pair.kind === 'pair';
+    setFormError(null);
+    try {
+      const saved = await update(id, {
+        data: {
+          result: recorded ? resultFromScores(pair.home, pair.away) : resultFromDate(date, today),
+          scoreHome: recorded ? pair.home : 0,
+          scoreAway: recorded ? pair.away : 0,
+        },
+      });
+      if (saved && (saved as { ok?: boolean }).ok === false) {
+        setFormError((saved as { error?: string }).error || 'Score was not saved.');
+        return;
+      }
+      setEditingId(null);
+    } catch {
+      setFormError('Score was not saved.');
+    }
+  }, [draftHome, draftAway, today, update]);
 
   if (isError) {
     return (
@@ -279,7 +340,24 @@ export function SportsMatchesPanel() {
                   placeholder="Venue"
                   className={ds.input}
                 />
+                <input
+                  inputMode="numeric"
+                  value={newGame.scoreHome}
+                  onChange={(e) => setNewGame((p) => ({ ...p, scoreHome: e.target.value }))}
+                  placeholder="Your score"
+                  aria-label="Your score"
+                  className={ds.input}
+                />
+                <input
+                  inputMode="numeric"
+                  value={newGame.scoreAway}
+                  onChange={(e) => setNewGame((p) => ({ ...p, scoreAway: e.target.value }))}
+                  placeholder="Opponent score"
+                  aria-label="Opponent score"
+                  className={ds.input}
+                />
               </div>
+              {formError && <p role="alert" className="text-xs text-red-300">{formError}</p>}
               <button
                 type="button"
                 onClick={handleCreate}
@@ -360,7 +438,7 @@ export function SportsMatchesPanel() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  {g.result !== 'upcoming' && (
+                  {(g.result === 'win' || g.result === 'loss' || g.result === 'draw') && (
                     <p
                       className={cn(
                         'text-xl font-bold font-mono',
@@ -376,6 +454,23 @@ export function SportsMatchesPanel() {
                   )}
                   <button
                     type="button"
+                    onClick={() => {
+                      setFormError(null);
+                      if (editingId === g.id) {
+                        setEditingId(null);
+                        return;
+                      }
+                      const recorded = g.result === 'win' || g.result === 'loss' || g.result === 'draw';
+                      setDraftHome(recorded ? String(g.scoreHome ?? '') : '');
+                      setDraftAway(recorded ? String(g.scoreAway ?? '') : '');
+                      setEditingId(g.id);
+                    }}
+                    className="text-[10px] uppercase tracking-wide text-zinc-300 hover:text-white"
+                  >
+                    {editingId === g.id ? 'Close' : 'Score'}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => remove(g.id)}
                     disabled={deleteMut.isPending}
                     className="text-gray-500 hover:text-red-400 p-1"
@@ -389,6 +484,35 @@ export function SportsMatchesPanel() {
                   </button>
                 </div>
               </div>
+              {editingId === g.id && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <input
+                    inputMode="numeric"
+                    value={draftHome}
+                    onChange={(e) => setDraftHome(e.target.value)}
+                    placeholder="Your score"
+                    aria-label={`Your score for ${g.title}`}
+                    className={cn(ds.input, 'w-28')}
+                  />
+                  <input
+                    inputMode="numeric"
+                    value={draftAway}
+                    onChange={(e) => setDraftAway(e.target.value)}
+                    placeholder="Opponent score"
+                    aria-label={`Opponent score for ${g.title}`}
+                    className={cn(ds.input, 'w-28')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => saveScore(g.id, g.date || '')}
+                    disabled={updateMut.isPending}
+                    className={ds.btnPrimary}
+                  >
+                    {updateMut.isPending ? 'Saving…' : 'Save score'}
+                  </button>
+                  {formError && <p role="alert" className="text-xs text-red-300">{formError}</p>}
+                </div>
+              )}
             </motion.div>
           ))}
         </div>

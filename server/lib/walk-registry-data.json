@@ -1,0 +1,730 @@
+{
+ "version": 1,
+ "source": "walk-registry-merge-pilot-distillation-record-2026-11-06.md",
+ "overlay": {
+  "neuro": {
+   "statisticalTest": {
+    "text": "Two-sample Welch t-test on raw samples, hand-verified in the lens walk: A [1.2,0.9,1.5,1.1] / B [0.4,0.6,0.3,0.5] gives t = 5.1534, df 4.49, p = 0.004882, d = 3.644.",
+    "args": "two sample arrays"
+   },
+   "importSignal": {
+    "text": "Imports a pasted-CSV signal (walk fixture: Fz/Cz/Pz channels, 100 Hz x 50 samples, 10 Hz sine).",
+    "args": "CSV text + channel/sampling description"
+   },
+   "listRecordings": {
+    "text": "Lists imported EEG recordings.",
+    "args": "no arguments"
+   },
+   "deleteRecording": {
+    "text": "Deletes a recording; the walk verified the receipt 'Recording deleted.' and the removal (re-pass CP5).",
+    "args": "the recording id"
+   },
+   "waveformWindow": {
+    "text": "Waveform window over an imported recording.",
+    "args": "recording + window"
+   },
+   "topographicMap": {
+    "text": "Scalp topographic RMS map; exact on the walk fixture (Fz 0.707148, Cz 0.353843, Pz 0).",
+    "args": "recording"
+   },
+   "preprocess": {
+    "text": "Signal preprocessing; the walk verified ICA after CAR (component shares Fz 50% / Pz 50% / Cz 0%).",
+    "args": "recording + method"
+   },
+   "epochData": {
+    "text": "Epochs a recording (walk-verified: 30 samples = 300 ms at 100 Hz).",
+    "args": "recording + epoch length"
+   },
+   "timeFrequency": {
+    "text": "Time-frequency analysis; refuses honestly on too-short recordings.",
+    "args": "recording"
+   },
+   "sourceLocalization": {
+    "text": "Source localisation over a recording.",
+    "args": "recording"
+   },
+   "frequencyAnalysis": {
+    "text": "Frequency-band analysis; bench FFT verified exact (pure 10 Hz signal reads Alpha 99.96%).",
+    "args": "recording or signal"
+   },
+   "connectivityAnalysis": {
+    "text": "Connectivity analysis; refuses on a single channel and reports an honest '0 connections' on uncoupled channels.",
+    "args": "recording"
+   },
+   "erpAnalysis": {
+    "text": "ERP analysis; declines to fabricate a match when none is supported.",
+    "args": "recording"
+   },
+   "train": {
+    "text": "Trains a model on recordings; the walk verified a real run (loss ~0.7 to 0.0366, accuracy 100.0%, stamped 'Trained (real)'); projection mode is self-disclosed.",
+    "args": "training selection"
+   },
+   "live_pubmed_neuro": {
+    "text": "Literature search as exercised in the lens's panel (walk: 'brain plasticity' returned 3,361 total, 12 listed). Note: the panel presents arXiv content under this PubMed-named registration.",
+    "args": "query"
+   }
+  },
+  "robotics": {
+   "fleetRegister": {
+    "text": "Registers a robot (walk fixture: name 'PR2ROBO-UNLOCK-1104', type arm); persists server-side and unlocks the Telemetry/Teleop/Sensor Logs surfaces in-session.",
+    "args": "name + type"
+   },
+   "fleetList": {
+    "text": "Lists registered robots.",
+    "args": "no arguments"
+   },
+   "forwardKinematics": {
+    "text": "Forward kinematics for a joint chain; walk-verified: links 120mm/45deg, 100mm/-30deg, 70mm/20deg give end effector (238.79, 150.89).",
+    "args": "link lengths + joint angles"
+   },
+   "inverseKinematics": {
+    "text": "CCD inverse kinematics; walk-verified target (120,120) reached (119.77, 119.77), residual 0.32mm in 4 iterations.",
+    "args": "chain + target x/y"
+   },
+   "gridPlan": {
+    "text": "A* grid planner (walk: 20x14 grid, wall leg 33 path cells, cost 32, 204 expansions).",
+    "args": "grid + start/goal"
+   },
+   "pathPlan": {
+    "text": "Waypoint path planning; walk-verified [[0,0],[100,0],[100,100]] totals 200 mm.",
+    "args": "waypoints"
+   },
+   "sensorFusion": {
+    "text": "Weighted sensor fusion; walk-verified (10*1 + 20*3)/4 = 17.5.",
+    "args": "values + weights"
+   },
+   "batteryLife": {
+    "text": "Battery life estimate; walk-verified 50 W draw gives 120 min, safe budget exactly 80%.",
+    "args": "power draw / capacity"
+   },
+   "missionCreate": {
+    "text": "Creates a robot mission (exercised in the walk's mission lifecycle).",
+    "args": "mission definition"
+   },
+   "missionAdvance": {
+    "text": "Advances a mission; walk-verified QUEUED to RUNNING with steps checking off.",
+    "args": "the mission"
+   },
+   "missionList": {
+    "text": "Lists missions.",
+    "args": "no arguments"
+   },
+   "sensorLog": {
+    "text": "Logs a sensor reading (walk fixture: channel 'imu_roll', value 0.42; Min/Max/Mean read back 0.42).",
+    "args": "channel + value"
+   },
+   "sensorPlayback": {
+    "text": "Plays back logged sensor readings (walk-verified trace point at 0.42).",
+    "args": "channel or log"
+   },
+   "telemetry": {
+    "text": "Telemetry read; channels logged this session surface under 'LOGGED CHANNELS'.",
+    "args": "channel (optional)"
+   }
+  },
+  "bridge": {
+   "peerRegister": {
+    "text": "Registers a bridge peer by name ('PR5BR Peer A' in the walk); the Add Peer control stays disabled until a name is given.",
+    "args": "peer name"
+   },
+   "peerList": {
+    "text": "Lists bridge peers.",
+    "args": "no arguments"
+   },
+   "peerRemove": {
+    "text": "Removes a peer after a two-step confirm that names the cascade; the peer's flows are removed with it (re-pass verified).",
+    "args": "the peer"
+   },
+   "recordFlow": {
+    "text": "Records a sync flow; walk-verified 1000 records at 1000 rps succeeded and 500 records at 250 rps returned 'sync error'.",
+    "args": "peer + records + rate"
+   },
+   "flowList": {
+    "text": "Lists flows with exact counters (walk read '1 ok / 1 failed'); the failed filter isolates failures.",
+    "args": "filter (optional)"
+   },
+   "flowReplay": {
+    "text": "Replays a failed flow; the walk verified it re-runs to success with a 'x2' marker, no duplicate row, and its rate joins the throughput samples.",
+    "args": "the flow"
+   },
+   "flowRemove": {
+    "text": "Removes a flow and its throughput samples; flow counters move at once (added by PR #2211; re-pass verified).",
+    "args": "the flow"
+   },
+   "mappingUpsert": {
+    "text": "Creates/updates a field mapping; walk-verified 'first_name to firstName [trim] string' and 'age to age [to-number] number'.",
+    "args": "source field + target field + transform + type"
+   },
+   "mappingList": {
+    "text": "Lists field mappings.",
+    "args": "no arguments"
+   },
+   "mappingRemove": {
+    "text": "Removes a field mapping.",
+    "args": "the mapping"
+   },
+   "mappingPreview": {
+    "text": "Previews a mapping on a sample; walk-verified {first_name: ' ada ', age: '37'} becomes {firstName: 'ada', age: 37 as a number}.",
+    "args": "sample record"
+   },
+   "alertRuleUpsert": {
+    "text": "Creates/updates an alert rule (walk fixture: error-rate >= 25, all peers).",
+    "args": "metric + threshold + scope"
+   },
+   "alertRuleList": {
+    "text": "Lists alert rules.",
+    "args": "no arguments"
+   },
+   "alertRuleRemove": {
+    "text": "Removes an alert rule.",
+    "args": "the rule"
+   },
+   "alertEvaluate": {
+    "text": "Evaluates alert rules against recorded state; walk-verified 'Evaluated 1 rule - 1 firing' at 50% error vs a 25 threshold, and at the exact 25% boundary on re-pass.",
+    "args": "no arguments"
+   },
+   "syncTopology": {
+    "text": "Sync topology summary; walk read 'Peers 1 / Edges 1 / Unhealthy 1' with the edge annotated '2 flows, 50% err'.",
+    "args": "no arguments"
+   },
+   "scheduleSet": {
+    "text": "Sets a sync schedule (walk fixture: interval 60 min, enabled).",
+    "args": "interval + enabled"
+   },
+   "scheduleList": {
+    "text": "Lists sync schedules.",
+    "args": "no arguments"
+   },
+   "connectionHealth": {
+    "text": "Bridge connection health read (one of the four Actions verbs; re-pass verified it derives from the peer's real recorded state).",
+    "args": "the peer/connection"
+   },
+   "dataMapping": {
+    "text": "Data-mapping read (Actions verb; re-pass verified against real recorded state).",
+    "args": "the peer"
+   },
+   "syncStatus": {
+    "text": "Sync status read (Actions verb; re-pass verified against real recorded state).",
+    "args": "the peer"
+   },
+   "throughputAnalysis": {
+    "text": "Throughput analysis; the average is the mean of the per-flow rates (walk: (1000+250)/2 = 625), a basis the panel declares in its own copy.",
+    "args": "the peer"
+   }
+  },
+  "hr": {
+   "employee-update": {
+    "text": "Edits an employee record; the walk verified the correction 'PR5HR2 Title' to 'PR5HR2 Title Edited' performs and persists on the directory row and detail. The form collects Name, Title, Department, Salary, Manager - no SSN/DOB/bank/address fields exist.",
+    "args": "the employee + revised fields"
+   }
+  },
+  "physics": {
+   "constants": {
+    "text": "The physical constants table; heading, render and footer agree at 15 entries (re-pass CP1).",
+    "args": "no arguments"
+   },
+   "convert-units": {
+    "text": "Unit conversion; walk-verified 1 m = 3.28084 ft.",
+    "args": "value + from/to units"
+   },
+   "pendulum-period": {
+    "text": "Pendulum period; walk-verified T 2.5375 s small-angle, 2.5484 s corrected, f = 0.3924 Hz (re-pass CP2).",
+    "args": "length (+ amplitude for the corrected form)"
+   },
+   "thermodynamics": {
+    "text": "Thermodynamics calculations; walk case verified V 0.025 m3, Q = 83,680.0 J, Carnot efficiency 50.0%.",
+    "args": "the thermodynamic inputs"
+   },
+   "scene-save": {
+    "text": "Saves a physics scene (the persistence family the walk exercised end to end).",
+    "args": "scene definition"
+   },
+   "scene-list": {
+    "text": "Lists saved scenes.",
+    "args": "no arguments"
+   },
+   "scene-get": {
+    "text": "Loads a saved scene, restoring exactly: name, body/constraint counts, wall-bounce state, rod rest length.",
+    "args": "the scene"
+   },
+   "scene-delete": {
+    "text": "Deletes a saved scene; guarded (re-pass CP5).",
+    "args": "the scene"
+   },
+   "scene-share": {
+    "text": "Shares a scene by code; the walk's code stayed durable across sessions.",
+    "args": "the scene"
+   },
+   "scene-load-shared": {
+    "text": "Imports a shared scene as a copy ('Imported shared scene.').",
+    "args": "share code"
+   }
+  },
+  "quantum": {
+   "stepCircuit": {
+    "text": "Steps a circuit one gate at a time; Bell steps verified exact (after H: |00>/|10> 50%, amplitudes 0.707+0.000i; after CNOT: |00>/|11> 50%). Parametric gates verified through it: RX(pi) and RY(pi) both reach |10> but are correctly distinguished by phase.",
+    "args": "circuit + step"
+   },
+   "errorAnalysis": {
+    "text": "Error-budget analysis; walk-verified on the IBM Eagle preset (components 0.830 + 0.111 + 2.977 = 3.918 vs 3.89 expected).",
+    "args": "preset or circuit"
+   },
+   "noisePresets": {
+    "text": "Noise model presets; Eagle reads T1 120 us, T2 90 us, gate error 3e-4, readout error 0.015.",
+    "args": "preset name"
+   },
+   "algorithmTemplate": {
+    "text": "Algorithm templates (7); the Bell template is exactly H + CNOT.",
+    "args": "template name"
+   },
+   "exportQASM": {
+    "text": "Exports a circuit as OpenQASM 2.0; round-trips exactly through importQASM.",
+    "args": "the circuit"
+   },
+   "importQASM": {
+    "text": "Imports OpenQASM 2.0; round-trips exactly with exportQASM.",
+    "args": "QASM text"
+   },
+   "saveCircuit": {
+    "text": "Saves a circuit; the walk's fixture circuit stood through reload (re-pass CP4).",
+    "args": "circuit definition"
+   },
+   "listCircuits": {
+    "text": "Lists saved circuits.",
+    "args": "no arguments"
+   },
+   "loadCircuit": {
+    "text": "Loads a saved circuit.",
+    "args": "the circuit"
+   }
+  },
+  "science": {
+   "stats-descriptive": {
+    "text": "Descriptive statistics; walk-verified on [2,4,4,4,5,5,7,9]: mean 5, median 4.5, variance 4.5714, sum 40; sample SD labelled 'SD (SAMPLE) 2.1381'.",
+    "args": "value list"
+   },
+   "stats-ttest": {
+    "text": "t-test; walk fixture verified t = 6.6144, df 7, p = 0.0003.",
+    "args": "samples"
+   },
+   "stats-correlation": {
+    "text": "Correlation/regression; a series against itself verifies r = 1, slope 1, intercept 0.",
+    "args": "two series"
+   },
+   "validateProtocol": {
+    "text": "Validates a protocol; the walk's four-phase protocol with an empty safety section returned 'NEEDS_REVISION - 4 step(s) - 0/0 safety check(s) verified', verdict and receipt in agreement.",
+    "args": "protocol"
+   },
+   "sampleAudit": {
+    "text": "Audits a sample record; a buffer stored 21 degrees over was flagged 'temperature_deviation'.",
+    "args": "sample record"
+   },
+   "calibrationCheck": {
+    "text": "Calibration currency check; the walk fixture read 'current (334d)'.",
+    "args": "instrument or record"
+   },
+   "chainOfCustody": {
+    "text": "Chain-of-custody read; walk fixture 'INTACT - 2 transfer(s) - No issues found'.",
+    "args": "item or record"
+   },
+   "spatialCluster": {
+    "text": "Spatial clustering; two points ~1.39 km apart at a 1 km radius correctly form TWO clusters.",
+    "args": "points + radius"
+   },
+   "dataset-save": {
+    "text": "Saves a grid dataset; the walk's fixture (3 cols x 1 row) persisted across reload.",
+    "args": "dataset"
+   },
+   "chart-render": {
+    "text": "Renders a chart from dataset values (exercised on the Workbench entry path).",
+    "args": "dataset/values"
+   },
+   "notebook-add": {
+    "text": "Adds a notebook entry (exercised on the Workbench entry path).",
+    "args": "entry content"
+   }
+  },
+  "observe": {
+   "metricIngest": {
+    "text": "Ingests metric points (walk fixture: metric 'app.latency_ms', points 250/350; re-pass 260/180).",
+    "args": "metric name + points"
+   },
+   "metricList": {
+    "text": "Lists ingested metrics.",
+    "args": "no arguments"
+   },
+   "metricQuery": {
+    "text": "Queries a metric; walk-verified avg 300 over 250+350 with count/min/max/last all correct (re-pass: count 2, min 180, max 260, avg 220).",
+    "args": "metric + range"
+   },
+   "logIngest": {
+    "text": "Ingests log lines; walk receipt 'Ingested 2 log line(s)'.",
+    "args": "log lines"
+   },
+   "logSearch": {
+    "text": "Searches logs with level and service facets; level:error returned the walk's hit.",
+    "args": "query/facets"
+   },
+   "traceIngest": {
+    "text": "Ingests a trace (span waterfall exercised end to end).",
+    "args": "trace spans"
+   },
+   "traceList": {
+    "text": "Lists traces.",
+    "args": "no arguments"
+   },
+   "traceDetail": {
+    "text": "Trace detail; the walk's span waterfall sums to the whole (gateway 240; orders 160, payments 90, inventory 30).",
+    "args": "the trace"
+   },
+   "serviceMap": {
+    "text": "Service map over ingested telemetry.",
+    "args": "no arguments"
+   },
+   "monitorSave": {
+    "text": "Saves a monitor (walk fixture: metric + condition > 200 + sev3).",
+    "args": "metric + condition + severity"
+   },
+   "monitorList": {
+    "text": "Lists monitors; rows render their basis ('300 > 200').",
+    "args": "no arguments"
+   },
+   "monitorEvaluate": {
+    "text": "Evaluates monitors; walk read '1 alerting / 1 evaluated'.",
+    "args": "no arguments"
+   },
+   "syntheticSave": {
+    "text": "Saves a synthetic check (walk fixture: name, GET, every 5m, target URL).",
+    "args": "name + method + interval + URL"
+   },
+   "syntheticList": {
+    "text": "Lists synthetic checks.",
+    "args": "no arguments"
+   },
+   "syntheticRun": {
+    "text": "Runs a synthetic check; walk-verified honest result 'last: down - HTTP 404 - 375ms', '0% up'. The check works; the schedule's own firing was NOT verified.",
+    "args": "the check"
+   },
+   "dashboardSave": {
+    "text": "Saves a dashboard; persists across reload.",
+    "args": "dashboard definition"
+   },
+   "oncallSetup": {
+    "text": "Sets up on-call; the person and routes are defined inside this call - no standalone route verb exists.",
+    "args": "person + routes"
+   },
+   "oncallStatus": {
+    "text": "On-call status read.",
+    "args": "no arguments"
+   },
+   "pageOnCall": {
+    "text": "Pages the on-call engineer (OBSERVE's meaning of this name; ops.pageOnCall instead RETURNS who is on call). Walk receipt: 'Paged PR2 OnCall - 0 of 1 routes delivered (webhooks only...)'.",
+    "args": "the incident/context"
+   },
+   "incidentTrack": {
+    "text": "Tracks an incident; the walk's bench open produced INC-1793497877894.",
+    "args": "incident details"
+   },
+   "alertSummary": {
+    "text": "Alert summary; walk-verified MTTR 15m from a 10:00 to 10:15 resolution, 1 firing, 1 resolved.",
+    "args": "no arguments"
+   },
+   "sloCheck": {
+    "text": "SLO burn check; walk-verified burn 1.5x = (100-98.5)/(100-99) exactly.",
+    "args": "SLO definition"
+   },
+   "serviceLog": {
+    "text": "Summarises log lines handed to it in the bench's own box, scope declared on its face (it does NOT read the Telemetry store); an empty box refuses with 'Add log lines...'.",
+    "args": "log lines"
+   }
+  },
+  "hypothesis": {
+   "tTest": {
+    "text": "Computes a t-test on raw sample data; exercised as a two-sample Welch t-test and hand-verified (t = 20.475, df 7.71).",
+    "args": "raw sample data (two samples as exercised)"
+   },
+   "runTestOnDataset": {
+    "text": "Runs a statistical test against named columns of an imported dataset; exercised CSV to ANOVA, hand-verified (F = 210.18, eta2 = 0.98132).",
+    "args": "an imported dataset + named columns"
+   },
+   "datasetImport": {
+    "text": "Imports a CSV dataset into the Statistics store with correct column typing and automatic selector configuration.",
+    "args": "a CSV dataset"
+   },
+   "recordOutcome": {
+    "text": "Records a pre-registration's outcome: predicted direction + observed direction + H0 outcome resolve to 'prediction confirmed yes' on agreement; the outcome then locks.",
+    "args": "predicted direction + observed direction + H0-rejected state"
+   },
+   "analysisHistory": {
+    "text": "Lists the Statistics battery's run history; every exercised battery run was logged there.",
+    "args": "no arguments"
+   },
+   "apaReport": {
+    "text": "Generates an APA-formatted report paragraph from a stored battery result.",
+    "args": "a stored analysis result"
+   }
+  },
+  "linguistics": {
+   "deck-import": {
+    "text": "Imports a word into a deck, auto-fetching its dictionary definition; exercised on 'fox', returning a correct, specific definition.",
+    "args": "the word to import"
+   }
+  },
+  "atlas": {
+   "offline-areas-delete": {
+    "text": "Deletes an offline area; the lens's one working delete, exercised at the end of the estimate - DOWNLOADING - READY lifecycle.",
+    "args": "the offline area"
+   }
+  },
+  "ingest": {
+   "validateSchema": {
+    "text": "Validates a pasted JSON array of records: correct totals, per-field typing, nullability and uniqueness, behind an honest input gate.",
+    "args": "a JSON array of records pasted as text"
+   },
+   "detectSchema": {
+    "text": "Detects the schema of a pasted JSON array of records - totals, typing, nullability and uniqueness all verified correct in the walk.",
+    "args": "a JSON array of records pasted as text"
+   },
+   "ocrIngest": {
+    "text": "Structures pasted text via OCR into preserved paragraphs with an exact word count (25 words hand-verified, fixture marker intact). The file-load leg was NOT RUN.",
+    "args": "pasted text"
+   }
+  },
+  "answers": {
+   "question-ask": {
+    "text": "Posts a question to the workspace; a short or empty title is refused inline ('title must be at least 8 characters').",
+    "args": "title (at least 8 characters) + body"
+   },
+   "answer-post": {
+    "text": "Posts an answer to a question; exercised on the walk's fixture question with the checkable answer 408 (17 x 24).",
+    "args": "the question + answer body"
+   },
+   "answer-accept": {
+    "text": "Accepts an answer on a question, with highlight and an un-accept affordance.",
+    "args": "the answer on the question"
+   },
+   "question-edit": {
+    "text": "Edits a question's text; the edit persists across a full reload.",
+    "args": "the question + revised text"
+   },
+   "answer-edit": {
+    "text": "Edits an answer's text; the edit persists, with real revision counts and timestamps.",
+    "args": "the answer + revised text"
+   },
+   "comment-add": {
+    "text": "Adds a comment to a post; exercised on the walk fixture's accepted answer.",
+    "args": "the post + comment text"
+   },
+   "search": {
+    "text": "Searches the workspace; marker queries find the fixture and nonsense queries return honest results.",
+    "args": "a query string"
+   },
+   "question-list": {
+    "text": "Lists workspace questions under verified filters (Unanswered/Accepted/Bountied) and orderings (Newest/Votes/Answers/Active).",
+    "args": "filter + sort selections"
+   },
+   "question-detail": {
+    "text": "Opens a question's detail; the view counter actually counts (8 to 9 on open; workspace 15 to 16).",
+    "args": "the question"
+   },
+   "find-duplicates": {
+    "text": "Finds duplicate question pairs; scored the walk fixture's exact-title duplicate at 79% similar.",
+    "args": "the workspace's questions"
+   },
+   "link-duplicate": {
+    "text": "Links a duplicate pair surfaced by the Duplicates panel, with a banner receipt.",
+    "args": "the duplicate pair"
+   },
+   "tag-watch": {
+    "text": "Watches a tag; the watch persists across a full reload and Browse-tags counts update.",
+    "args": "a tag (exercised: 'math')"
+   },
+   "user-reputation": {
+    "text": "Reports the account's reputation; accounting verified coherent in the walk (0 to 30 across legitimate events, -2 downvote cost applied, 28 rep after reload).",
+    "args": "the account"
+   },
+   "close-vote": {
+    "text": "Casts a close vote; reputation-gated - at 30 rep the walk attempt was refused verbatim 'need 500 reputation to cast close votes' (success path not exercised).",
+    "args": "the question"
+   },
+   "mod-queue": {
+    "text": "Opens the moderation queue; reputation-gated - at 30 rep refused verbatim 'need 1000 reputation to access the moderation queue' (contents not exercised).",
+    "args": "no arguments beyond the account"
+   }
+  },
+  "invariant": {
+   "registerMonitor": {
+    "text": "Registers an invariant monitor from a name + an expression (walk fixture: 'PR3 arm-check monitor' / 'balance >= 0').",
+    "args": "name + expression"
+   }
+  },
+  "meditation": {
+   "sessionLog": {
+    "text": "Logs a meditation session by goal + length; walk-verified '3 minutes for 3 minutes, reconciled exactly'.",
+    "args": "goal + length"
+   }
+  }
+ },
+ "guide": {
+  "neuro": {
+   "core": "A working EEG/neuroanalysis bench: the full 15-macro domain is exercised with hand-verified numbers - Welch statistics exact (t = 5.1534, df 4.49, p = 0.004882), scalp RMS exact, ICA proportions exact, bench FFT exact (pure 10 Hz reads Alpha 99.96%) - and honest refusals where data cannot support a claim (time-frequency on too-short recordings, connectivity on one channel, ERP declining to fabricate).",
+   "provenance": {
+    "source": "lens-reviews/neuro.md",
+    "walk": "2026-10-30 walk + November re-pass checkpoints CP1-CP5",
+    "currency": "RP"
+   }
+  },
+  "robotics": {
+   "core": "Fleet registration persists server-side and unlocks the telemetry surfaces; kinematics exact in both directions (FK (238.79, 150.89); IK residual 0.32mm); A* planning, sensor fusion (17.5), battery arithmetic (120 min at 50 W, 80% safe budget), mission lifecycle and sensor logging/playback all hand-verified. The safety-envelope family is registered with NO surface in the lens - an office surface-or-scope call.",
+   "provenance": {
+    "source": "lens-reviews/robotics.md",
+    "walk": "2026-10-30 walk + re-pass CP1/CP2",
+    "currency": "RP"
+   }
+  },
+  "bridge": {
+   "core": "A peer/flow/mapping bridge whose whole exercised surface works and persists: peer lifecycle with cascade-honest removes, flow recording with exact counters, replay of a failed flow to success, mapping transforms exact both directions (preview {first_name:' ada ', age:'37'} -> {firstName:'ada', age:37}), alert rules evaluating against real recorded state including at the exact threshold boundary, throughput computed as the declared mean of per-flow rates.",
+   "provenance": {
+    "source": "lens-reviews/bridge.md",
+    "walk": "2026-10-31 walk + 2026-11-05 re-pass (PASS - the fleet's first fully completed lens)",
+    "currency": "RP"
+   }
+  },
+  "hr": {
+   "core": "The time-off loop is exact (request, approve, balance 15 to 13); payroll is exact ($50,000 / 26 = $1,923.08 gross, deductions $294.04, net $1,629.04; an unsupplied state-tax component is named, never zeroed); benefits split exact (EE $80 / ER $320 on $400 at 80%); statistics carry denominators at every state including empty; offboarding's retention promise is kept (rehire restores counts entire); the Labor Data panel is genuine BLS Public API data (U-3 4.2%, Sep 2026). I-9 Verify was never clicked in either pass - no verified behaviour exists for it.",
+   "provenance": {
+    "source": "lens-reviews/hr.md",
+    "walk": "first pass + re-pass (F2 cleared)",
+    "currency": "RP"
+   }
+  },
+  "physics": {
+   "core": "The solver suite is verified at guide level (the overlay takes no solver entries - several registered verbs compete for each panel): Orbital F = 8.1341e+3 N, v = 7545.78 m/s; Hohmann total delta-v 3892.47 m/s; Waves lambda = 0.7795 m, f' = 453.21 Hz; projectiles with drag 95.57 m vs no-drag 154.82 m; bench/panel agreement ~0.1%. The Sandbox is the client-side Verlet lab (Solar System preset coherent; saved-sim restore via row-load, re-pass CP7), not a macro surface.",
+   "provenance": {
+    "source": "lens-reviews/physics.md",
+    "walk": "first pass + re-pass CP1/CP2/CP5/CP7",
+    "currency": "RP"
+   }
+  },
+  "quantum": {
+   "core": "Circuit stepping is exact including phase discrimination of parametric gates; error budgets and noise presets verified on the IBM Eagle figures; QASM round-trips exactly; circuit persistence stands through reload. The QEC family is registered with no surface (office call). simulateCircuit/analyzeCircuit result values are NOT verified - their panels rendered non-data in both passes.",
+   "provenance": {
+    "source": "lens-reviews/quantum.md",
+    "walk": "first pass + re-pass CP1-CP4",
+    "currency": "RP"
+   }
+  },
+  "science": {
+   "core": "Descriptive statistics and the test battery are hand-verified; protocol validation's verdict and receipt agree; sample audit, calibration, chain-of-custody and spatial clustering are exact on fixtures; datasets persist across reload. The six list creates (Experiment, Sample, Equipment, Analysis, Publication, Protocols) work through the GENERIC ARTIFACT LAYER (POST /api/lens/science), NOT through the registry verbs - do not key a create call to a macro.science verb for those forms.",
+   "provenance": {
+    "source": "lens-reviews/science.md",
+    "walk": "first pass + re-pass checkpoint 1",
+    "currency": "RP"
+   }
+  },
+  "cooking": {
+   "core": "Scaling is exact in both surfaces (4 to 8 servings: 2 to 4 cups; 6 to 12 = 4 cups / 2 tbsp); the recipe lifecycle persists exactly; shopping derivation is exact including pantry subtraction (7 x 2 cups - 2 pantry = 12 cups); Convert is exact (1 cup = 236.588 ml; 350 F = 176.667 C; 1 tbsp = 3 tsp); the URL importer is honest (real fetch, accurate errors, fabricates nothing). The bench Load-recipe path is NOT verified: at re-pass it loaded a different record than the one selected (S-CK2-6 stands).",
+   "provenance": {
+    "source": "lens-reviews/cooking.md",
+    "walk": "first pass + 2026-11-05 re-pass (PARTIAL PASS, PR #2185; tier Solid)",
+    "currency": "RP"
+   }
+  },
+  "observe": {
+   "core": "The fleet's persistence reference case: every create works and everything persists across reload (4/4 named surfaces); 9 of the 12 surfaced creates are registered creates in observe itself. Metrics, logs, traces, monitors, synthetics, dashboards, on-call, incidents and SLO arithmetic all exercised exactly (SLO burn 1.5x verified by hand). The Composer mints citable report DTUs; its observation arm could not be exercised (all sources at zero rows under MAC mode - an environment bound).",
+   "provenance": {
+    "source": "lens-reviews/observe.md",
+    "walk": "first pass + re-pass",
+    "currency": "RP"
+   }
+  },
+  "hypothesis": {
+   "core": "A formal hypothesis tracker with an event-sourced Lab lifecycle - propose, evidence (auto-transition to testing), tests, predictions, refine-as-fork, two-step Reject with a recorded reason - every step in a visible Lifecycle timeline, with full reload persistence. The Lab lifecycle is backed by NO macro in macro.hypothesis.* (guide-only knowledge). The confidence model is deterministic: 50 + 100x(sum for - sum against) + 20 per passed test + 5 per verified prediction, clamped. The statistics battery is hand-verified (Welch t = 20.475; ANOVA F = 210.18); datasets feed tests; pre-registration outcome logic is real. Tier at walk: Redesign, the strongest first pass at the seat (5e PASS 5 / FAIL 4).",
+   "provenance": {
+    "source": "lens-reviews/hypothesis.md",
+    "walk": "2026-10-30 (Product Review 2, gate PASS - Live); build PR #2281, 2026-11-05",
+    "currency": "BLD"
+   }
+  },
+  "paper": {
+   "core": "A four-view research workspace whose Library/Workbench core is strong. The DOI capture battery passes in full: real DOI 10.1038/nature16961 fetched real CrossRef metadata into the Library; a duplicate DOI is properly refused; a bogus DOI honestly fails (HTTP 404, nothing added). Highlights sync appends a real Highlights section to the Library note and persists across reload; saves carry ID receipts; the Summarizer faithfully reflects its input; Alerts return real Semantic Scholar data; Discover's arXiv and Open Library legs return real data (its CrossRef leg failed). Enrich is unverified (upstream 429); PDF attach/render was NOT RUN. Tier at walk: Redesign (5e PASS 6 / FAIL 6).",
+   "provenance": {
+    "source": "lens-reviews/paper.md",
+    "walk": "2026-10-30 (Product Review 2, gate PASS - Live); builds PR #2276 + #2282, 2026-11-05",
+    "currency": "BLD"
+   }
+  },
+  "linguistics": {
+   "core": "One text-statistics engine gives identical hand-verified figures on three surfaces (record detail, Quick Analysis, Workbench Text stats); IPA phoneme breakdown is exact (9 phonemes, stress mark correctly excluded); sentiment is genuinely lexicon-driven. Word lookup works via the Workbench routes and deck import - the Lookup view's own panels failed. The Vocabulary Learning loop is internally consistent end to end (review +5 pts; quiz honestly shrinking 8 configured questions to the 1 available word; +10 on a correct answer; full reload persistence). Tier at walk: Redesign (5e PASS 3 / FAIL 5); gate NOT Live, declared 'Real' tier honestly.",
+   "provenance": {
+    "source": "lens-reviews/linguistics.md",
+    "walk": "2026-10-30 (Product Review 2); build PR #2284, 2026-11-05",
+    "currency": "BLD"
+   }
+  },
+  "atlas": {
+   "core": "A maps lens on real infrastructure (OpenStreetMap tiles, real Nominatim geocoding, real OSRM routing). Navigation is verified for routable pairs only (Poughkeepsie to NYC 137.3 km with real steps); the route optimizer (109.96 km) and distance matrix (7,443.5 km) are hand-verified; region statistics arithmetic verifies. Place Edit works; offline areas work end to end; Public Publish carries a working 30-second recall window; out-of-range coordinates are refused. Tier at walk: Redesign (5e PASS 3 / FAIL 5).",
+   "provenance": {
+    "source": "lens-reviews/atlas.md",
+    "walk": "2026-10-30 (Product Review 2, gate PASS - Live); build PR #2289, 2026-11-06",
+    "currency": "BLD"
+   }
+  },
+  "ingest": {
+   "core": "Local machinery genuinely computes: chunking by formula at three sizes, OCR structuring exact on pasted text (25 words hand-verified; file load NOT RUN), Parse Document's word count exact (44), schema Validate/Detect fully verified with honest input gates. The Lattice Seed pipeline fetches real pages and promotes extracted hypotheses EXPERIMENTAL to TRUSTED with substrate DTU IDs. Incremental cursor semantics are genuinely correct over payload runs. The workbench ingest's product is UNRETRIEVABLE and no retrieval macro exists under macro.ingest.* - do not promise a read-back. Tier at walk: Redesign (5e PASS 4 / FAIL 5).",
+   "provenance": {
+    "source": "lens-reviews/ingest.md",
+    "walk": "2026-10-30 (Product Review 2, gate PASS - Live); build PR #2286, 2026-11-05",
+    "currency": "BLD"
+   }
+  },
+  "answers": {
+   "core": "A Q&A workspace whose ordinary machinery works live: ask/answer/accept/edit/comment/search/filter/sort/tag machinery all exercised on a checkable fixture (17 x 24 = 408). Ask carries a real guard ('title must be at least 8 characters'); view counting actually counts; reputation ACCOUNTING is coherent (0 to 30 across legitimate events, 28 after reload) while vote ENFORCEMENT failed at the low rungs and is not verified behaviour. The honest gates are verified: close votes refused verbatim at 30 rep ('need 500 reputation'), moderation likewise ('need 1000 reputation'). Deletes are registered but inert. Tier at walk: Redesign (5e PASS 4 / FAIL 5).",
+   "provenance": {
+    "source": "lens-reviews/answers.md",
+    "walk": "2026-10-30 (Product Review 2, gate PASS - Live); build PR #2278, 2026-11-05",
+    "currency": "BLD"
+   }
+  },
+  "understanding": {
+   "core": "The verified substrate: notes with bidirectional [[wiki-links]] and tags, nested Outline, the complete spaced-repetition loop ('Good' gives +1 day, ease 2.50), Graph counts agreeing with KPIs, honest exports ('Nothing to export yet'), working Quick Capture, and honest answers on unknown IDs. Compose/Parse is NOT verified (fails deterministically; the machinery is lib-resident, no macro exists for it). Note Delete was inert at walk; its fix (PR #2293) has no re-pass yet, so no verified delete behaviour is served.",
+   "provenance": {
+    "source": "lens-reviews/understanding.md",
+    "walk": "first pass + 2026-11-01 re-check",
+    "currency": "RP+BLD"
+   }
+  },
+  "reflection": {
+   "core": "A complete journal: the entry lifecycle works, insights are hand-verified (mood average 3.5 = (4+3)/2), analytics are real document-frequency computation, Studio weather is real, an encryption round-trip is verified, reminders and Year in Review work. NOT verified: Summarize (fabricates), Ask follow-ups, the Self-Critique Log's claimed loop, Attach.",
+   "provenance": {
+    "source": "lens-reviews/reflection.md",
+    "walk": "first pass (November build in B8's F-E build-out, fleet record)",
+    "currency": "RP+BLD"
+   }
+  },
+  "inference": {
+   "core": "The Rule Engine is genuine Prolog: SLD resolution with proof trees and a Why/How explainer; Forward Chain to a fixed point hand-verified (16 facts); Robinson unification WITH occurs check. Derivations are report-only - no persistence is verified. NOT verified: the desk Syllogism path (non-deterministic refusal), negation, the .dtu export, the underived 95% figure.",
+   "provenance": {
+    "source": "lens-reviews/inference.md",
+    "walk": "first pass + 2026-11-01 Activity re-verification (F10 discharged); build PR #2258, 2026-11-05",
+    "currency": "RP+BLD"
+   }
+  },
+  "invariant": {
+   "core": "Four engines are real and verified correct in every case tried: the monitor lifecycle; a violating state read exactly ('0 passed / 1 violations' on balance -5); counterexamples naming records and fields; temporal operators including strong-until; quantified checks with indices. NOT verified: Overview tiles, the Action Tester, the Analysis view, Violation Resolve, the template Library, the Lock banner.",
+   "provenance": {
+    "source": "lens-reviews/invariant.md",
+    "walk": "first pass + 2026-11-01 Activity re-verification (F12 stands); build PR #2268",
+    "currency": "RP+BLD"
+   }
+  },
+  "meditation": {
+   "core": "A real measured timer (3 minutes runs exactly 03:00 and the Log reconciles exactly); Breathe pattern arithmetic hand-verified (16x6=96, 19x6=114, 11x6=66/44/132 - pattern arithmetic only; the Breathe log itself is broken and not served); real synthesized soundscapes; the reminders lifecycle; deliberate-selection mood math ((3+4)/2 = 3.5). NOT verified: the four click-credit paths, guided narration, the unselected mood default, History rating/journal display, the Explorer milestone rule.",
+   "provenance": {
+    "source": "lens-reviews/meditation.md",
+    "walk": "first pass + 2026-11-01 Activity re-verification (F10 discharged); build PR #2271",
+    "currency": "RP+BLD"
+   }
+  }
+ }
+}

@@ -13,7 +13,7 @@
  */
 
 import { applyEvent, tick } from "./engine.js";
-import { getAffectPolicy } from "./policy.js";
+import { getAffectPolicy, POLICY_DERIVATIONS } from "./policy.js";
 import { projectLabel, projectToneTags, projectSummary } from "./projection.js";
 import { validateEvent, validateSessionId } from "./schema.js";
 import { getSession, logEvent, getEvents, resetSession, deleteSession, listSessions, sessionCount, serializeAll, restoreAll } from "./store.js";
@@ -115,6 +115,7 @@ export function getAffectEvents(sessionId, limit = 50) {
 // Re-export for direct access
 export {
   getAffectPolicy,
+  POLICY_DERIVATIONS,
   projectLabel,
   projectToneTags,
   projectSummary,

@@ -4,9 +4,13 @@
  * DreamReader — full-text reader for one dream record.
  *
  * Wraps `dreams.detail` (composed prose + fragments + summary) and
- * `dreams.interpret` (deterministic reflection linking fragments to
- * recent activity). Also surfaces tag editing and publish controls
- * (publish / reprice / unpublish) at a custom CC price.
+ * `dreams.interpret` (a fixed-template substrate summary: the event
+ * kinds the dream replayed and their totals — it does not read the
+ * dream's prose; the "deterministic reflection" claim was withdrawn by
+ * the Lead disposition of 2026-11-01). Also surfaces tag editing: the
+ * tags are the reader's own annotations on the engine's dream. There
+ * are no marketplace controls — listing a dream is ruled out on
+ * provenance grounds (a member cannot list what they did not author).
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -32,6 +36,7 @@ interface DreamDetail {
   scope?: string;
   priceCc?: number | null;
   tags?: string[];
+  tagsAuthor?: string | null;
 }
 interface Interpretation {
   composer?: string;
@@ -76,7 +81,6 @@ export function DreamReader({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tagDraft, setTagDraft] = useState('');
-  const [priceDraft, setPriceDraft] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,7 +89,6 @@ export function DreamReader({
     if (r.data.ok && r.data.result?.dream) {
       setDream(r.data.result.dream);
       setTagDraft((r.data.result.dream.tags || []).join(', '));
-      setPriceDraft(String(r.data.result.dream.priceCc ?? ''));
     } else {
       setError(r.data.error || 'Dream not found.');
     }
@@ -113,35 +116,18 @@ export function DreamReader({
     setBusy(false);
   };
 
-  const doPublish = async () => {
-    const priceCc = Math.round(Number(priceDraft));
-    if (!Number.isFinite(priceCc) || priceCc < 1) { setError('Enter a price of at least 1 CC.'); return; }
-    setBusy(true);
-    setError(null);
-    const r = await lensRun('dreams', 'publish', { dreamId, priceCc });
-    if (r.data.ok) { await load(); onChanged?.(); } else { setError(r.data.error || 'Publish failed.'); }
-    setBusy(false);
-  };
-
-  const doReprice = async () => {
-    const priceCc = Math.round(Number(priceDraft));
-    if (!Number.isFinite(priceCc) || priceCc < 1) { setError('Enter a price of at least 1 CC.'); return; }
-    setBusy(true);
-    setError(null);
-    const r = await lensRun('dreams', 'reprice', { dreamId, priceCc });
-    if (r.data.ok) { await load(); onChanged?.(); } else { setError(r.data.error || 'Reprice failed.'); }
-    setBusy(false);
-  };
-
+  // Withdrawal only: dreams.publish / dreams.reprice are refused at the
+  // verb (provenance ruling), but a dream listed before the ruling must
+  // stay withdrawable from the surface — unpublish is the remedy
+  // direction, never a listing path.
   const doUnpublish = async () => {
     setBusy(true);
     setError(null);
     const r = await lensRun('dreams', 'unpublish', { dreamId });
-    if (r.data.ok) { await load(); onChanged?.(); } else { setError(r.data.error || 'Unpublish failed.'); }
+    if (r.data.ok) { await load(); onChanged?.(); } else { setError(r.data.error || 'Withdraw failed.'); }
     setBusy(false);
   };
 
-  const isPublished = dream?.scope === 'public';
   const summary = dream?.summary || {};
   const summaryRows = Object.entries(SUMMARY_LABELS)
     .map(([key, label]) => ({ key, label, value: Number((summary as Record<string, number>)[key] || 0) }))
@@ -174,7 +160,7 @@ export function DreamReader({
           {dream && !loading && (
             <>
               <p className="text-[11px] font-mono text-zinc-400">
-                {dream.fragmentCount ?? 0} fragments · {dream.composer} ·{' '}
+                {dream.fragmentCount ?? 0} substrate events · {dream.composer} ·{' '}
                 {dream.composedAt ? new Date(dream.composedAt * 1000).toLocaleString() : '—'}
                 {dream.worldId ? ` · ${dream.worldId}` : ''}
               </p>
@@ -203,11 +189,12 @@ export function DreamReader({
                 </section>
               )}
 
-              {/* Interpretation */}
+              {/* Substrate summary (the withdrawn "interpretation" claim,
+                  scoped to what the template actually computes) */}
               <section>
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                    Interpretation
+                    Substrate summary
                   </h3>
                   <button
                     type="button"
@@ -215,7 +202,7 @@ export function DreamReader({
                     disabled={interpreting}
                     className="rounded bg-indigo-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-600 disabled:opacity-50"
                   >
-                    {interpreting ? 'Reflecting…' : interpretation ? 'Re-interpret' : 'Interpret this dream'}
+                    {interpreting ? 'Summarising…' : interpretation ? 'Re-summarise' : 'Summarise the substrate'}
                   </button>
                 </div>
                 {interpretation ? (
@@ -233,20 +220,24 @@ export function DreamReader({
                     <p className="text-sm leading-relaxed">{interpretation.reflection}</p>
                     {interpretation.dominantFragment && (
                       <p className="mt-2 text-[11px] opacity-80">
-                        Dominant fragment: {interpretation.dominantFragment.kind} (×{interpretation.dominantFragment.count})
+                        Most replayed event kind: {interpretation.dominantFragment.kind} (×{interpretation.dominantFragment.count})
                       </p>
                     )}
                   </div>
                 ) : (
                   <p className="text-xs text-zinc-400">
-                    A deterministic reflection links this dream&apos;s fragments to your recent activity.
+                    A fixed-template summary of the night&apos;s substrate counts — the kinds of events the dream replayed and their totals, in set sentences. It does not read the dream&apos;s prose.
                   </p>
                 )}
               </section>
 
-              {/* Tags */}
+              {/* Tags — the reader's own annotation layer on the engine's
+                  dream, attributed to its author (S-DRM-5) */}
               <section>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">Tags</h3>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">Your tags</h3>
+                <p className="mb-2 text-[11px] text-zinc-500">
+                  Your annotations on the engine&apos;s dream — saved under your account and shown only to you.
+                </p>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -266,57 +257,28 @@ export function DreamReader({
                 </div>
               </section>
 
-              {/* Publish controls */}
-              <section className="rounded-xl border border-purple-900/40 bg-purple-950/20 px-4 py-3">
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-purple-300">
-                  Marketplace {isPublished && <span className="text-emerald-400">· published</span>}
-                </h3>
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="text-xs text-zinc-400" htmlFor="dream-price">Price</label>
-                  <input
-                    id="dream-price"
-                    type="number"
-                    min={1}
-                    value={priceDraft}
-                    onChange={(e) => setPriceDraft(e.target.value)}
-                    placeholder="CC"
-                    className="w-24 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600"
-                  />
-                  <span className="text-xs text-zinc-400">CC</span>
-                  {isPublished ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={doReprice}
-                        disabled={busy}
-                        className="rounded-lg bg-purple-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-600 disabled:opacity-50"
-                      >
-                        Reprice
-                      </button>
-                      <button
-                        type="button"
-                        onClick={doUnpublish}
-                        disabled={busy}
-                        className="rounded-lg bg-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-100 hover:bg-zinc-600 disabled:opacity-50"
-                      >
-                        Unpublish
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={doPublish}
-                      disabled={busy}
-                      className="rounded-lg bg-purple-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-600 disabled:opacity-50"
-                    >
-                      Publish
-                    </button>
-                  )}
-                </div>
-                <p className="mt-1.5 text-[11px] text-zinc-400">
-                  Royalty cascade pays you on every purchase. Currency: CC.
-                </p>
-              </section>
+              {/* Withdrawal — rendered only for a dream already listed
+                  (listed before the provenance ruling, or by any legacy
+                  path). Listing itself is ruled out; this control can
+                  only narrow a dream's exposure, never widen it. */}
+              {dream.scope === 'public' && (
+                <section className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
+                  <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                    Listed on the marketplace
+                  </h3>
+                  <p className="mb-2 text-[11px] text-zinc-500">
+                    This dream is currently public{dream.priceCc != null ? ` at ${dream.priceCc} CC` : ''}. Dreams are engine-authored and can no longer be listed — but a listing that already exists can be withdrawn.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={doUnpublish}
+                    disabled={busy}
+                    className="rounded-lg bg-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-100 hover:bg-zinc-600 disabled:opacity-50"
+                  >
+                    Withdraw from marketplace
+                  </button>
+                </section>
+              )}
             </>
           )}
         </div>

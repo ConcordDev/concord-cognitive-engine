@@ -10,7 +10,7 @@ import { ErrorState } from '@/components/common/EmptyState';
 
 export function LearningPanel() {
   const {
-    knowledgeDomains, learningInsights, patterns, runAssessment,
+    knowledgeDomains, learningInsights, patterns, runAssessment, latestAssessment,
     isLoading, isError, errorMessage, refetchAll,
   } = useMetacognitionDesk();
 
@@ -32,7 +32,7 @@ export function LearningPanel() {
               Domain Assessment
             </h2>
             <p className="text-sm text-gray-400 mb-3">
-              Run an assessment on a specific knowledge domain to evaluate competence.
+              Assess a domain from your own prediction record — the figure is your resolved accuracy there, shown with its counts. A domain with no resolved predictions has nothing to assess from, and says so.
             </p>
             <div className="flex gap-3">
               <input
@@ -67,11 +67,34 @@ export function LearningPanel() {
             </div>
           </div>
 
-          {/* Recent Learning Insights */}
+          {latestAssessment && (
+            <div className="panel p-4">
+              <h2 className="font-semibold mb-2 flex items-center gap-2">
+                <Target className="w-4 h-4 text-neon-green" />
+                Assessment — {String(latestAssessment.domain || '')}
+              </h2>
+              {typeof latestAssessment.skill === 'number' ? (
+                <div className="space-y-1 text-sm">
+                  <p className="text-2xl font-bold font-mono text-neon-green">
+                    {(latestAssessment.skill * 100).toFixed(0)}%
+                    <span className="text-xs text-gray-400 font-sans font-normal ml-2">
+                      {String(latestAssessment.correct)} of {String(latestAssessment.resolved)} resolved predictions correct
+                      {typeof latestAssessment.brierScore === 'number' ? ` · Brier ${Number(latestAssessment.brierScore).toFixed(2)}` : ''}
+                    </span>
+                  </p>
+                  {!!latestAssessment.note && <p className="text-xs text-gray-400">{String(latestAssessment.note)}</p>}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">{String(latestAssessment.note || 'No record to assess from yet.')}</p>
+              )}
+            </div>
+          )}
+
+          {/* Recent Record Events */}
           <div className="panel p-4">
             <h2 className="font-semibold mb-4 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-neon-yellow" />
-              Recent Knowledge Acquisitions
+              Recent Resolutions
             </h2>
             {learningInsights.length > 0 ? (
               <div className="space-y-2 max-h-72 overflow-y-auto">
@@ -106,7 +129,7 @@ export function LearningPanel() {
               </div>
             ) : (
               <p className="text-center py-6 text-gray-400 text-sm">
-                Learning insights will appear as the system processes new information.
+                Resolved predictions will appear here as you close them out.
               </p>
             )}
           </div>
@@ -165,50 +188,39 @@ export function LearningPanel() {
             )}
           </div>
 
-          {/* Skill Improvement Timeline */}
+          {/* Competence by domain — from the record (S-MC-1/D2: a map
+              of evidence, not of percentages; thin records read thin) */}
           <div className="panel p-4">
             <h2 className="font-semibold mb-4 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-neon-green" />
-              Skill Improvement Timeline
+              Competence by Domain — from your record
             </h2>
             {knowledgeDomains.length > 0 ? (
               <div className="space-y-4">
                 {knowledgeDomains.map((domain: Record<string, unknown>, i: number) => {
                   const name = String(domain.domain || domain.name || domain.label || `Skill ${i + 1}`);
                   const current = typeof domain.confidence === 'number' ? domain.confidence : null;
-                  const previous = typeof domain.previous_confidence === 'number' ? domain.previous_confidence : null;
-                  const improvement =
-                    current != null && previous != null ? current - previous : null;
+                  const resolved = typeof domain.resolved === 'number' ? domain.resolved : 0;
+                  const correct = typeof domain.correct === 'number' ? domain.correct : 0;
 
                   return (
                     <div key={i} className="flex items-center gap-4">
                       <div className="w-28 text-sm text-gray-300 truncate shrink-0">{name}</div>
                       <div className="flex-1 relative">
                         <div className="h-3 bg-lattice-deep rounded-full overflow-hidden">
-                          {previous != null && (
-                            <div
-                              className="absolute h-3 rounded-full bg-gray-600/50 top-0"
-                              style={{ width: `${pct(previous)}%` }}
-                            />
-                          )}
                           <div
                             className="relative h-full rounded-full bg-neon-green transition-all duration-500"
                             style={{ width: `${pct(current ?? 0)}%` }}
                           />
                         </div>
                       </div>
-                      <div className="w-20 text-right shrink-0">
+                      <div className="w-32 text-right shrink-0">
                         <span className="text-sm font-mono text-gray-300">
-                          {current != null ? `${pct(current).toFixed(0)}%` : '--'}
+                          {current != null ? `${pct(current).toFixed(0)}%` : 'no record yet'}
                         </span>
-                        {improvement != null && improvement !== 0 && (
-                          <span
-                            className={`text-xs ml-1 ${
-                              improvement > 0 ? 'text-green-400' : 'text-red-400'
-                            }`}
-                          >
-                            {improvement > 0 ? '+' : ''}
-                            {(improvement * 100).toFixed(1)}
+                        {resolved > 0 && (
+                          <span className="text-xs text-gray-500 ml-1">
+                            ({correct}/{resolved})
                           </span>
                         )}
                       </div>
@@ -218,7 +230,7 @@ export function LearningPanel() {
               </div>
             ) : (
               <p className="text-center py-6 text-gray-400 text-sm">
-                Skill improvements will be tracked as the system operates across different domains.
+                No domains yet — log predictions with a domain, resolve them, and each domain's row will be computed from that record.
               </p>
             )}
           </div>

@@ -1,10 +1,13 @@
 /**
- * /lenses/cognitive-replay — one moment.
+ * /lenses/cognitive-replay — Moments, the member's moment journal.
  *
- * Choose a moment calls cognitive-replay.moment-choose and shows the
- * title only after moment-list contains that id and the same title, and
- * the line only after moment-detail returns it. Role and brain stay off
- * the card.
+ * (Renamed per the Lead's 2026-11-01 ruling: the surface presents as
+ * the journal it is.) Add a moment calls cognitive-replay.moment-choose
+ * and shows the title only after moment-list contains that id and the
+ * same title, and shows the line only after moment-detail returns it.
+ * Cards carry the date the moment was added, and offer edit
+ * (moment-update) and two-step delete (moment-delete). Role and brain
+ * stay off the card.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -32,7 +35,7 @@ vi.mock('@/lib/api/client', () => ({
 import CognitiveReplayPage from '@/app/lenses/cognitive-replay/page';
 import { StatsBar } from '@/components/cognitive-replay/StatsBar';
 
-function listed(rows: { id: string; title: string }[]) {
+function listed(rows: { id: string; title: string; createdAt?: string }[]) {
   return { data: { ok: true, result: { moments: rows, count: rows.length }, error: null } };
 }
 
@@ -50,15 +53,17 @@ beforeEach(() => {
 });
 
 describe('cognitive replay card', () => {
-  it('EMPTY: says no moment chosen and offers Choose a moment', async () => {
+  it('EMPTY: says no moments yet and offers Add a moment', async () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitiveReplayPage />);
-    expect(await view.findByText('No moment chosen.')).toBeInTheDocument();
-    expect(view.getByRole('heading', { name: 'Cognitive Replay' })).toBeInTheDocument();
-    expect(view.getByRole('button', { name: 'Choose a moment' })).toBeEnabled();
+    expect(await view.findByText('No moments yet.')).toBeInTheDocument();
+    expect(view.getByRole('heading', { name: 'Moments' })).toBeInTheDocument();
+    expect(view.getByRole('button', { name: 'Add a moment' })).toBeEnabled();
     expect(view.container.querySelector('input')).toBeNull();
     expect(view.queryByText('Wrapped')).toBeNull();
     expect(view.queryByText('Heatmap')).toBeNull();
+    expect(view.queryByText('Cognitive Replay')).toBeNull();
+    expect(view.queryByText('Choose a moment')).toBeNull();
   });
 
   it('WARMING: a shed moment-list retries and then shows the empty card', async () => {
@@ -66,7 +71,7 @@ describe('cognitive replay card', () => {
       .mockResolvedValueOnce({ data: { ok: false, result: null, error: 'service_overloaded' } })
       .mockResolvedValue(listed([]));
     const view = render(<CognitiveReplayPage />);
-    expect(await view.findByText('No moment chosen.', {}, { timeout: 8000 })).toBeInTheDocument();
+    expect(await view.findByText('No moments yet.', {}, { timeout: 8000 })).toBeInTheDocument();
     expect(view.queryByRole('alert')).toBeNull();
     expect(lensRun).toHaveBeenCalledTimes(2);
   });
@@ -77,14 +82,14 @@ describe('cognitive replay card', () => {
     expect(await view.findByRole('alert')).toHaveTextContent(/state_unavailable/);
     lensRun.mockResolvedValue(listed([]));
     fireEvent.click(view.getByRole('button', { name: 'Retry' }));
-    expect(await view.findByText('No moment chosen.')).toBeInTheDocument();
+    expect(await view.findByText('No moments yet.')).toBeInTheDocument();
   });
 
   it('does not send a blank title', async () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitiveReplayPage />);
-    fireEvent.click(await view.findByRole('button', { name: 'Choose a moment' }));
-    fireEvent.click(view.getByRole('button', { name: 'Choose a moment' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Add a moment' }));
+    fireEvent.click(view.getByRole('button', { name: 'Save moment' }));
     expect(view.getByText('A title is required.')).toBeInTheDocument();
     expect(lensRun).toHaveBeenCalledTimes(1);
   });
@@ -92,9 +97,9 @@ describe('cognitive replay card', () => {
   it('does not send a blank line', async () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitiveReplayPage />);
-    fireEvent.click(await view.findByRole('button', { name: 'Choose a moment' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Add a moment' }));
     fireEvent.change(view.getByTestId('cr-title'), { target: { value: 'Door moment' } });
-    fireEvent.click(view.getByRole('button', { name: 'Choose a moment' }));
+    fireEvent.click(view.getByRole('button', { name: 'Save moment' }));
     expect(view.getByText('A line is required.')).toBeInTheDocument();
     expect(lensRun.mock.calls.some((call) => call[1] === 'moment-choose')).toBe(false);
   });
@@ -102,7 +107,7 @@ describe('cognitive replay card', () => {
   it('shows the title and the line only after list and detail match', async () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitiveReplayPage />);
-    fireEvent.click(await view.findByRole('button', { name: 'Choose a moment' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Add a moment' }));
     fireEvent.change(view.getByTestId('cr-title'), { target: { value: 'Door moment' } });
     fireEvent.change(view.getByTestId('cr-line-input'), { target: { value: 'the hinge question' } });
     lensRun.mockImplementation((domain: string, name: string) => {
@@ -113,7 +118,7 @@ describe('cognitive replay card', () => {
       if (name === 'moment-detail') return Promise.resolve(opened('cr_door', 'the hinge question'));
       return Promise.resolve({ data: { ok: false, result: null, error: `unexpected ${domain}.${name}` } });
     });
-    fireEvent.click(view.getByRole('button', { name: 'Choose a moment' }));
+    fireEvent.click(view.getByRole('button', { name: 'Save moment' }));
     expect(await view.findByRole('heading', { name: 'Door moment' })).toBeInTheDocument();
     expect(view.getByTestId('cr-line')).toHaveTextContent('the hinge question');
     const choose = lensRun.mock.calls.find((call) => call[1] === 'moment-choose');
@@ -124,7 +129,7 @@ describe('cognitive replay card', () => {
   it('stays on the composer when the list does not contain the new id', async () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitiveReplayPage />);
-    fireEvent.click(await view.findByRole('button', { name: 'Choose a moment' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Add a moment' }));
     fireEvent.change(view.getByTestId('cr-title'), { target: { value: 'Door moment' } });
     fireEvent.change(view.getByTestId('cr-line-input'), { target: { value: 'the hinge question' } });
     lensRun.mockImplementation((_domain: string, name: string) => {
@@ -134,7 +139,7 @@ describe('cognitive replay card', () => {
       if (name === 'moment-list') return Promise.resolve(listed([]));
       return Promise.resolve(opened('cr_door', 'the hinge question'));
     });
-    fireEvent.click(view.getByRole('button', { name: 'Choose a moment' }));
+    fireEvent.click(view.getByRole('button', { name: 'Save moment' }));
     expect(await view.findByRole('alert')).toHaveTextContent(/did not read it back/);
     expect(view.getByTestId('cr-title')).toBeInTheDocument();
   });
@@ -143,7 +148,7 @@ describe('cognitive replay card', () => {
     authUser.current = { username: 'ramaj' };
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitiveReplayPage />);
-    expect(await view.findByRole('heading', { name: 'Cognitive Replay' })).toBeInTheDocument();
+    expect(await view.findByRole('heading', { name: 'Moments' })).toBeInTheDocument();
   });
 
   it('loads a stored moment and does not render a brain', async () => {
@@ -155,18 +160,65 @@ describe('cognitive replay card', () => {
     const view = render(<CognitiveReplayPage />);
     expect(await view.findByRole('heading', { name: 'Door moment' })).toBeInTheDocument();
     expect(view.getByTestId('cr-line')).toHaveTextContent('the hinge question');
-    expect(view.queryByText('No moment chosen.')).toBeNull();
+    expect(view.queryByText('No moments yet.')).toBeNull();
     expect(view.queryByText('conscious')).toBeNull();
+  });
+
+  it('renders the date the moment was added', async () => {
+    lensRun.mockImplementation((_domain: string, name: string) => {
+      if (name === 'moment-list') return Promise.resolve(listed([{ id: 'cr_door', title: 'Door moment', createdAt: '2026-11-01T06:26:00.000Z' }]));
+      if (name === 'moment-detail') return Promise.resolve(opened('cr_door', 'the hinge question'));
+      return Promise.resolve(listed([]));
+    });
+    const view = render(<CognitiveReplayPage />);
+    expect(await view.findByRole('heading', { name: 'Door moment' })).toBeInTheDocument();
+    expect(view.getByTestId('cr-date')).toHaveTextContent(/Nov 1, 2026/);
+  });
+
+  it('edits a moment through moment-update and reads the edit back', async () => {
+    let title = 'Door moment';
+    let line = 'the hinge question';
+    lensRun.mockImplementation((_domain: string, name: string, input?: { title?: string; line?: string }) => {
+      if (name === 'moment-list') return Promise.resolve(listed([{ id: 'cr_door', title, createdAt: '2026-11-01T06:26:00.000Z' }]));
+      if (name === 'moment-detail') return Promise.resolve({ data: { ok: true, result: { moment: { id: 'cr_door', title, line } }, error: null } });
+      if (name === 'moment-update') { title = input?.title || title; line = input?.line || line; return Promise.resolve({ data: { ok: true, result: { momentId: 'cr_door' }, error: null } }); }
+      return Promise.resolve(listed([]));
+    });
+    const view = render(<CognitiveReplayPage />);
+    expect(await view.findByRole('heading', { name: 'Door moment' })).toBeInTheDocument();
+    fireEvent.click(view.getByTestId('cr-edit'));
+    fireEvent.change(view.getByTestId('cr-title'), { target: { value: 'Door moment, kept' } });
+    fireEvent.click(view.getByRole('button', { name: 'Save moment' }));
+    expect(await view.findByRole('heading', { name: 'Door moment, kept' })).toBeInTheDocument();
+    const update = lensRun.mock.calls.find((call) => call[1] === 'moment-update');
+    expect(update?.[2]).toEqual({ id: 'cr_door', title: 'Door moment, kept', line: 'the hinge question' });
+  });
+
+  it('deletes a moment only after the naming confirm', async () => {
+    let gone = false;
+    lensRun.mockImplementation((_domain: string, name: string) => {
+      if (name === 'moment-list') return Promise.resolve(listed(gone ? [] : [{ id: 'cr_door', title: 'Door moment' }]));
+      if (name === 'moment-detail') return Promise.resolve(opened('cr_door', 'the hinge question'));
+      if (name === 'moment-delete') { gone = true; return Promise.resolve({ data: { ok: true, result: { deleted: 'cr_door' }, error: null } }); }
+      return Promise.resolve(listed([]));
+    });
+    const view = render(<CognitiveReplayPage />);
+    expect(await view.findByRole('heading', { name: 'Door moment' })).toBeInTheDocument();
+    fireEvent.click(view.getByTestId('cr-delete'));
+    expect(lensRun.mock.calls.some((call) => call[1] === 'moment-delete')).toBe(false);
+    fireEvent.click(view.getByTestId('cr-delete-confirm'));
+    expect(await view.findByText('No moments yet.')).toBeInTheDocument();
+    expect(lensRun.mock.calls.some((call) => call[1] === 'moment-delete')).toBe(true);
   });
 
   it('stays on the composer when choose is refused', async () => {
     lensRun.mockResolvedValue(listed([]));
     const view = render(<CognitiveReplayPage />);
-    fireEvent.click(await view.findByRole('button', { name: 'Choose a moment' }));
+    fireEvent.click(await view.findByRole('button', { name: 'Add a moment' }));
     fireEvent.change(view.getByTestId('cr-title'), { target: { value: 'Door moment' } });
     fireEvent.change(view.getByTestId('cr-line-input'), { target: { value: 'the hinge question' } });
     lensRun.mockResolvedValue({ data: { ok: false, result: null, error: 'moment_not_saved' } });
-    fireEvent.click(view.getByRole('button', { name: 'Choose a moment' }));
+    fireEvent.click(view.getByRole('button', { name: 'Save moment' }));
     expect(await view.findByRole('alert')).toHaveTextContent(/moment_not_saved/);
     expect(view.getByTestId('cr-title')).toBeInTheDocument();
   });

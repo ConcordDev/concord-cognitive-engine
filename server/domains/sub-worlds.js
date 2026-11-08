@@ -166,6 +166,138 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
       can_edit: canEdit(w, viewerId),
     };
   }
+  // ── B15 seam bridge — the discovery union ─────────────────────────
+  // Register B15 (Lead pricing, world-creator.md addendum 2026-11-06):
+  // three populations hold worlds and, before this bridge, no reader
+  // saw beyond its own — (1) this lens's STATE store (canonical here),
+  // (2) world-creator's drafts in STATE.worldCreatorLens (publish sets
+  // visibility inside the home store only), (3) the `worlds` table
+  // (migration 042), written by the playtest mint (POST /api/worlds)
+  // and by this lens's spawn mirror. The bridge's shape is DISCOVERY
+  // UNIONING: no write path changes; discover/list union the three
+  // populations AT THE READ, visibility enforced at the read, deduped
+  // by world identity. A store world's mirrored table row renders
+  // once, as the store object; a minted draft renders once, keyed by
+  // its publishedWorldId; a draft and its unlinked mint are two
+  // objects and render as two, honestly.
+  function bridgeVisits(s) {
+    if (!(s.bridgeVisits instanceof Map)) s.bridgeVisits = new Map(); // worldKey -> { count, visitors: [] }
+    return s.bridgeVisits;
+  }
+  function bridgeCount(s, key) {
+    const e = bridgeVisits(s).get(key);
+    return { visits: e?.count || 0, unique_visitors: Array.isArray(e?.visitors) ? e.visitors.length : 0 };
+  }
+  function bridgeRecordVisit(s, key, userId) {
+    const m = bridgeVisits(s);
+    if (!m.has(key)) m.set(key, { count: 0, visitors: [] });
+    const e = m.get(key);
+    e.count += 1;
+    if (!e.visitors.includes(userId)) e.visitors.push(userId);
+    return e;
+  }
+  // Worlds-table rows (active only — loadWorld's own predicate), read
+  // best-effort: a missing/minimal table (unit tests, early boot)
+  // degrades to "the table population is empty", never a failed read.
+  function tableWorldRows(ctx) {
+    const db = ctx?.db;
+    if (!db) return [];
+    try {
+      return db.prepare(
+        `SELECT id, name, universe_type, description, created_by, created_at
+           FROM worlds WHERE status = 'active'`
+      ).all();
+    } catch (_e) { return []; }
+  }
+  function tableWorldRow(ctx, id) {
+    const db = ctx?.db;
+    if (!db || !id) return null;
+    try {
+      return db.prepare(
+        `SELECT id, name, universe_type, description, created_by, created_at
+           FROM worlds WHERE id = ? AND status = 'active'`
+      ).get(id) || null;
+    } catch (_e) { return null; }
+  }
+  function creatorDrafts() {
+    const wc = globalThis._concordSTATE?.worldCreatorLens;
+    if (!wc || !(wc.drafts instanceof Map)) return [];
+    const out = [];
+    for (const [creatorId, drafts] of wc.drafts.entries()) {
+      for (const d of drafts || []) out.push({ creatorId, draft: d });
+    }
+    return out;
+  }
+  function findDraftAnywhere(draftId) {
+    return creatorDrafts().find(({ draft }) => draft.id === draftId) || null;
+  }
+  // Bridged rows ride publicView's shape (GalleryPanel renders them
+  // unmodified) plus the bridge fields: source · enterId · enterable ·
+  // enterNote. can_edit/is_owner stay false — the store-scoped verbs
+  // (settings/editor/analytics/favorite) never act on a bridged row.
+  function favCount(s, id) {
+    let n = 0;
+    if (s.favorites instanceof Map) for (const set of s.favorites.values()) if (set.has(id)) n += 1;
+    return n;
+  }
+  function draftView(s, creatorId, d, viewerId) {
+    const enterId = d.publishedWorldId || null;
+    const counts = bridgeCount(s, `draft:${d.id}`);
+    return {
+      world_id: d.id,
+      forge_app_dtu_id: null,
+      name: d.name,
+      description: d.description || "",
+      thumbnail: "",
+      kind: d.universeType || "concordia-hub",
+      privacy: d.visibility || "private",
+      status: "active",
+      capacity: 16,
+      spawned_by_user_id: creatorId,
+      spawned_at: Date.parse(d.createdAt) || 0,
+      updated_at: Date.parse(d.updatedAt) || 0,
+      visits: counts.visits,
+      unique_visitors: counts.unique_visitors,
+      favorites: favCount(s, d.id),
+      editors: [],
+      popularity: Math.round(10 * Math.max(0, 30 - (now() - (Date.parse(d.createdAt) || now())) / 86_400_000) / 30),
+      is_owner: false,
+      can_edit: false,
+      source: "world_creator",
+      enterId,
+      enterable: !!enterId,
+      enterNote: enterId ? null : "Not yet playtested into a world — playtest this draft in World Creator to enter it.",
+    };
+  }
+  function tableView(s, row, viewerId) {
+    const counts = bridgeCount(s, `world:${row.id}`);
+    return {
+      world_id: row.id,
+      forge_app_dtu_id: null,
+      name: row.name,
+      description: row.description || "",
+      thumbnail: "",
+      kind: row.universe_type || "concordia-hub",
+      privacy: "public",
+      status: "active",
+      capacity: 16,
+      spawned_by_user_id: row.created_by || "",
+      spawned_at: (Number(row.created_at) || 0) * 1000,
+      updated_at: (Number(row.created_at) || 0) * 1000,
+      visits: counts.visits,
+      unique_visitors: counts.unique_visitors,
+      favorites: favCount(s, row.id),
+      editors: [],
+      popularity: Math.round(10 * Math.max(0, 30 - (now() / 1000 - (Number(row.created_at) || now() / 1000)) / 86400) / 30),
+      is_owner: false,
+      can_edit: false,
+      source: "worlds_table",
+      enterId: row.id,
+      enterable: true,
+      enterNote: null,
+    };
+  }
+
   // Popularity = visits + 3×favorites + recency bonus (decays over 30 days).
   function popularityScore(w) {
     const ageDays = (now() - (w.spawned_at || now())) / 86_400_000;
@@ -222,6 +354,11 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
 });
 
   // ── List own worlds ─────────────────────────────────────────────────
+  // B15: My Worlds is the caller's union across populations — their
+  // store worlds, their world-creator drafts at ANY visibility (their
+  // own records), and their worlds-table rows not backed by a store
+  // world or claimed as a draft's mint. Store rows come first in the
+  // shipped order; bridged rows follow, newest first.
   registerLensAction("sub_worlds", "list", (ctx, _a, params = {}) => {
   try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -229,7 +366,26 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     let list = [...userWorlds(s, me)];
     if (params.status && STATUS.has(params.status)) list = list.filter((w) => w.status === params.status);
     list.sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0));
-    return { ok: true, result: { worlds: list.map((w) => publicView(w, me)) } };
+    const out = list.map((w) => ({ ...publicView(w, me), source: "sub_worlds", enterId: w.world_id, enterable: true, enterNote: null }));
+    if (!params.status || params.status === "active") {
+      const storeIds = new Set();
+      for (const l of s.worlds.values()) for (const w of l) storeIds.add(w.world_id);
+      const claimedMints = new Set();
+      const bridged = [];
+      for (const { creatorId, draft } of creatorDrafts()) {
+        if (draft.publishedWorldId) claimedMints.add(draft.publishedWorldId);
+        if (creatorId !== me) continue;
+        bridged.push(draftView(s, creatorId, draft, me));
+      }
+      for (const row of tableWorldRows(ctx)) {
+        if (storeIds.has(row.id) || claimedMints.has(row.id)) continue;
+        if (row.created_by !== me) continue;
+        bridged.push(tableView(s, row, me));
+      }
+      bridged.sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0));
+      out.push(...bridged);
+    }
+    return { ok: true, result: { worlds: out } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -249,19 +405,37 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
         if (w.status === "archived") continue;
         // Discovery surfaces public always, unlisted/private only to owner/editors.
         if (w.privacy !== "public" && !canEdit(w, me)) continue;
-        all.push(w);
+        all.push({ ...publicView(w, me), source: "sub_worlds", enterId: w.world_id, enterable: true, enterNote: null });
       }
+    }
+    // B15 union — the other two populations, visibility at the read:
+    // world-creator drafts surface ONLY when public (private AND
+    // unlisted drafts stay invisible to every other account here;
+    // unlisted drafts surface to their owner through My Worlds), and
+    // worlds-table rows surface unless a store world or a surfaced
+    // draft already claims the identity.
+    const storeIds = new Set();
+    for (const l of s.worlds.values()) for (const w of l) storeIds.add(w.world_id);
+    const claimedMints = new Set();
+    for (const { creatorId, draft } of creatorDrafts()) {
+      if (draft.publishedWorldId) claimedMints.add(draft.publishedWorldId);
+      if (draft.visibility !== "public") continue;
+      all.push(draftView(s, creatorId, draft, me));
+    }
+    for (const row of tableWorldRows(ctx)) {
+      if (storeIds.has(row.id) || claimedMints.has(row.id)) continue;
+      all.push(tableView(s, row, me));
     }
     if (query) {all = all.filter((w) =>
       w.name.toLowerCase().includes(query) || (w.description || "").toLowerCase().includes(query));}
     if (kindFilter) all = all.filter((w) => w.kind === kindFilter);
     if (sort === "recent") all.sort((a, b) => (b.spawned_at || 0) - (a.spawned_at || 0));
-    else if (sort === "favorites") all.sort((a, b) => (b.favoriteCount || 0) - (a.favoriteCount || 0));
-    else all.sort((a, b) => popularityScore(b) - popularityScore(a));
+    else if (sort === "favorites") all.sort((a, b) => (b.favorites || 0) - (a.favorites || 0));
+    else all.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
     return {
       ok: true,
       result: {
-        worlds: all.slice(0, num(params.limit, 60)).map((w) => publicView(w, me)),
+        worlds: all.slice(0, num(params.limit, 60)),
         total: all.length,
       },
     };
@@ -347,8 +521,54 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
   try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
-    const hit = findWorld(s, clean(params.worldId, 80));
-    if (!hit) return { ok: false, error: "world not found" };
+    const wantedId = clean(params.worldId, 80);
+    const hit = findWorld(s, wantedId);
+    if (!hit) {
+      // B15 bridged resolution — Enter learns the other populations.
+      // A worlds-table id resolves through loadWorld's own predicate
+      // (an active row); a draft id resolves through its minted world.
+      // Private/unlisted drafts are enterable only by their creator,
+      // the A3 privacy shape. Enter never fabricates a destination:
+      // an unminted draft refuses in words.
+      const row = tableWorldRow(ctx, wantedId);
+      if (row) {
+        const minted = creatorDrafts().find(({ draft }) => draft.publishedWorldId === row.id);
+        if (minted && minted.draft.visibility === "private" && minted.creatorId !== me) {
+          return { ok: false, error: "world is private" };
+        }
+        const e = bridgeRecordVisit(s, `world:${row.id}`, me);
+        save();
+        return {
+          ok: true,
+          result: {
+            travel: { destination_world_id: row.id, name: row.name, kind: row.universe_type },
+            visits: e.count,
+            unique_visitors: e.visitors.length,
+          },
+        };
+      }
+      const found = findDraftAnywhere(wantedId);
+      if (found) {
+        const { creatorId, draft } = found;
+        if (draft.visibility === "private" && creatorId !== me) return { ok: false, error: "world is private" };
+        if (!draft.publishedWorldId) {
+          return { ok: false, error: "This draft has not been playtested into a world yet — playtest it in World Creator to enter it." };
+        }
+        const mintRow = tableWorldRow(ctx, draft.publishedWorldId);
+        if (!mintRow) return { ok: false, error: "world not found" };
+        const e = bridgeRecordVisit(s, `draft:${draft.id}`, me);
+        save();
+        return {
+          ok: true,
+          result: {
+            travel: { destination_world_id: mintRow.id, name: mintRow.name, kind: mintRow.universe_type },
+            visits: e.count,
+            unique_visitors: e.visitors.length,
+          },
+        };
+      }
+      return { ok: false, error: "world not found" };
+    }
     const w = hit.world;
     if (w.status === "archived") return { ok: false, error: "world is archived" };
     if (w.privacy === "private" && !canEdit(w, me)) return { ok: false, error: "world is private" };
@@ -375,8 +595,27 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
   registerLensAction("sub_worlds", "favorite", (ctx, _a, params = {}) => {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
-    const hit = findWorld(s, clean(params.worldId, 80));
-    if (!hit) return { ok: false, error: "world not found" };
+    const favId = clean(params.worldId, 80);
+    const hit = findWorld(s, favId);
+    if (!hit) {
+      // B15: favorites learn the bridged populations, keyed by the
+      // discovery row's identity (draft id · table id). The count is
+      // derived from the favorite sets themselves — no counter is
+      // stored on a row this lens does not own.
+      const isDraft = !!findDraftAnywhere(favId);
+      const isTable = !isDraft && !!tableWorldRow(ctx, favId);
+      if (!isDraft && !isTable) return { ok: false, error: "world not found" };
+      if (!s.favorites.has(me)) s.favorites.set(me, new Set());
+      const favs = s.favorites.get(me);
+      const wantFav = params.favorite !== false;
+      const had = favs.has(favId);
+      if (wantFav && !had) favs.add(favId);
+      else if (!wantFav && had) favs.delete(favId);
+      let count = 0;
+      for (const set of s.favorites.values()) if (set.has(favId)) count += 1;
+      save();
+      return { ok: true, result: { favorited: favs.has(favId), favorites: count } };
+    }
     const w = hit.world;
     if (!s.favorites.has(me)) s.favorites.set(me, new Set());
     const favs = s.favorites.get(me);
@@ -397,7 +636,16 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     const out = [];
     for (const wid of favs) {
       const hit = findWorld(s, wid);
-      if (hit && hit.world.status !== "archived") out.push(publicView(hit.world, me));
+      if (hit && hit.world.status !== "archived") {
+        out.push({ ...publicView(hit.world, me), source: "sub_worlds", enterId: hit.world.world_id, enterable: true, enterNote: null });
+        continue;
+      }
+      // B15: bridged favorites render from their own populations —
+      // a favorited draft renders as itself, a table world as itself.
+      const found = findDraftAnywhere(wid);
+      if (found) { out.push(draftView(s, found.creatorId, found.draft, me)); continue; }
+      const row = tableWorldRow(ctx, wid);
+      if (row) out.push(tableView(s, row, me));
     }
     out.sort((a, b) => b.popularity - a.popularity);
     return { ok: true, result: { worlds: out } };

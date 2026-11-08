@@ -119,6 +119,7 @@ export function npmSearchKey({ q } = {}) {
 }
 export const imgflipMemesKey = () => keyOf("imgflip-memes");
 export const onionooSummaryKey = () => keyOf("onionoo-summary");
+export const onionooDetailsKey = () => keyOf("onionoo-details");
 export const openRouterModelsKey = () => keyOf("openrouter-models");
 
 // ── fetchers: (key, { signal }) -> JSON ─────────────────────────────────────
@@ -173,6 +174,12 @@ async function fetchImgflip(key, { signal }) {
 async function fetchOnionoo(key, { signal }) {
   return rawJson("https://onionoo.torproject.org/summary?limit=2000", signal, "onionoo");
 }
+async function fetchOnionooDetails(key, { signal }) {
+  // The summary payload carries no flag data at all (its per-relay "f" is
+  // the fingerprint). Real relay flags live in the details document;
+  // fields= keeps the payload to what the Anon network panel reads.
+  return rawJson("https://onionoo.torproject.org/details?type=relay&limit=2000&fields=nickname,fingerprint,flags", signal, "onionoo");
+}
 async function fetchNpm(key, { signal }) {
   const [, q] = JSON.parse(key);
   return rawJson(`https://registry.npmjs.org/-/v1/search?text=${enc(q)}&size=20`, signal, "npm");
@@ -210,6 +217,7 @@ export function ensurePublicDataSources() {
     ["sunrise-sunset", base(DAY, 30 * DAY, 30, 5000), fetchSunriseSunset],
     ["imgflip", base(DAY, 30 * DAY, 30, 5000), fetchImgflip],
     ["onionoo", base(15 * MIN, DAY, 30, 5000), fetchOnionoo],
+    ["onionoo-details", base(15 * MIN, DAY, 30, 5000), fetchOnionooDetails],
     ["npm-registry", base(HOUR, 7 * DAY, 30, 5000), fetchNpm],
     ["openrouter", base(HOUR, 7 * DAY, 30, 5000), fetchOpenRouter],
   ];
@@ -247,6 +255,7 @@ export const getRestCountriesRegion = (o) => via("restcountries", restCountriesK
 export const getSunriseSunset = (o) => via("sunrise-sunset", sunriseSunsetKey(o || {}));
 export const getImgflipMemes = () => via("imgflip", imgflipMemesKey());
 export const getOnionooSummary = () => via("onionoo", onionooSummaryKey());
+export const getOnionooDetails = () => via("onionoo-details", onionooDetailsKey());
 export const getNpmSearch = (o) => via("npm-registry", npmSearchKey(o || {}));
 export const getOpenRouterModels = () => via("openrouter", openRouterModelsKey());
 

@@ -199,8 +199,9 @@ describe('commonsense thread', () => {
     fireEvent.change(view.getByTestId('cs-question'), { target: { value: 'Is the light on?' } });
     fireEvent.click(view.getByRole('button', { name: 'Ask this' }));
     expect(await view.findByRole('heading', { name: 'Is the light on?' })).toBeInTheDocument();
-    expect(view.getByRole('button', { name: 'Is the door shut?' })).toBeInTheDocument();
-    fireEvent.click(view.getByRole('button', { name: 'Is the door shut?' }));
+    // The earlier question is offered in the thread list and in the Questions rail now (two buttons, same target).
+    expect(view.getAllByRole('button', { name: 'Is the door shut?' }).length).toBeGreaterThan(0);
+    fireEvent.click(view.getAllByRole('button', { name: 'Is the door shut?' })[0]);
     expect(await view.findByTestId('cs-finding')).toHaveTextContent('The latch is down.');
     expect(view.getByTestId('cs-exception')).toHaveTextContent('Unless the wind has it.');
   });

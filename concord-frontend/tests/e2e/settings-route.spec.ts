@@ -68,5 +68,8 @@ test('settings route shows the saved volumes, not zeros', async ({ page }) => {
   await expect(page.getByText('0.70').first()).toBeVisible();
   await expect(page.getByText('0.60').first()).toBeVisible();
   await expect(page.getByText('0.80').first()).toBeVisible();
-  await expect(page.getByText('0.00')).toHaveCount(0);
+  // exact: the mouse-sensitivity help text ("0.0025 rad/px") contains "0.00" as a substring.
+  // Scoped to the settings section: the top-bar wallet badge legitimately paints "0.00"
+  // (mockAuthSuccess default balance 0), which is not a volume slider.
+  await expect(page.locator('section[aria-label="World and graphics"]').getByText('0.00', { exact: true })).toHaveCount(0);
 });

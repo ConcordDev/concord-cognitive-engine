@@ -1241,6 +1241,16 @@ export const MACRO_INPUT_HINTS = {
       "optional": true
     }
   ],
+  "mail.delete": [
+    {
+      "name": "id",
+      "optional": false
+    },
+    {
+      "name": "userId",
+      "optional": true
+    }
+  ],
   "mail.get": [
     {
       "name": "id",
@@ -1312,6 +1322,36 @@ export const MACRO_INPUT_HINTS = {
     },
     {
       "name": "limit",
+      "optional": true
+    }
+  ],
+  "maker.create": [
+    {
+      "name": "name",
+      "optional": false
+    },
+    {
+      "name": "spec",
+      "optional": true
+    }
+  ],
+  "maker.reclaim": [
+    {
+      "name": "projectId",
+      "optional": false
+    }
+  ],
+  "maker.update": [
+    {
+      "name": "id",
+      "optional": false
+    },
+    {
+      "name": "name",
+      "optional": true
+    },
+    {
+      "name": "spec",
       "optional": true
     }
   ],

@@ -88,8 +88,10 @@ describe('GarageLensPage — four UX states', () => {
   it('POPULATED: renders the real vehicle list', async () => {
     wireLensRun();
     render(React.createElement(GarageLensPage));
-    await screen.findByText('player:driver1');
-    expect(screen.getByText('none')).toBeInTheDocument();
+    // F3: the Owner column renders the resolved display identity, else the neutral
+    // 'Member' label — never the raw owner_kind/owner_id ('player:driver1' / 'none').
+    expect(await screen.findAllByText('Member')).toHaveLength(2);
+    expect(screen.queryByText('none')).not.toBeInTheDocument();
     // The row renders the live position from the persisted vehicle.
     expect(screen.getByText('(5, 3)')).toBeInTheDocument();
     // Two data rows for two vehicles (role="row" also includes the header row).
@@ -99,7 +101,7 @@ describe('GarageLensPage — four UX states', () => {
   it('F1: declares a real data tier — the manifest now carries dataTier for garage', async () => {
     wireLensRun();
     render(React.createElement(GarageLensPage));
-    await screen.findByText('player:driver1');
+    await screen.findAllByText('Member');
     // DepthBadge renders the honest garage-specific override caption, not
     // the generic "polled live from an external source" line (which would
     // be false — this is a persisted DB store, not an external feed).
@@ -139,7 +141,7 @@ describe('GarageLensPage — four UX states', () => {
     expect(alert).toHaveTextContent(/couldn.t load garage data/i);
     // Retry recovers into the populated state.
     fireEvent.click(screen.getByRole('button', { name: /retry/i }));
-    await waitFor(() => expect(screen.getByText('player:driver1')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText('Member').length).toBeGreaterThan(0));
   });
 
   it('SPAWN: only offers the real free-spawn archetypes (no fabricated kinds)', async () => {
@@ -169,7 +171,7 @@ describe('GarageLensPage — four UX states', () => {
       expect(lensRunMock).toHaveBeenCalledWith('garage', 'spawn', expect.objectContaining({ kind: 'cart', ownerKind: 'player' }), expect.anything()),
     );
     // Spawn success flips to the "My fleet" tab and refreshes both fleets.
-    await waitFor(() => expect(screen.getByText('player:driver1')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText('Member').length).toBeGreaterThan(0));
     expect(screen.getByRole('tab', { name: /my fleet/i })).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -177,7 +179,7 @@ describe('GarageLensPage — four UX states', () => {
     useAuthMock.mockReturnValue({ isAuthenticated: false, isLoading: false });
     wireLensRun();
     render(React.createElement(GarageLensPage));
-    await screen.findByText('player:driver1');
+    await screen.findAllByText('Member');
 
     fireEvent.click(screen.getByRole('tab', { name: /my fleet/i }));
     expect(await screen.findByText(/sign in to see your fleet/i)).toBeInTheDocument();

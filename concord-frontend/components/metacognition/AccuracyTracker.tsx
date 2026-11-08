@@ -50,6 +50,15 @@ export function AccuracyTracker() {
 
   useEffect(() => { load(); }, [load]);
 
+  // F8: journal mutations and reflection saves elsewhere in the lens
+  // change this panel's numbers — reload when the record changes
+  // instead of holding mount-time data until a view switch.
+  useEffect(() => {
+    const onRecordChanged = () => { void load(); };
+    window.addEventListener('metacognition:record-changed', onRecordChanged);
+    return () => window.removeEventListener('metacognition:record-changed', onRecordChanged);
+  }, [load]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12 text-gray-400 gap-2">

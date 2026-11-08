@@ -37,6 +37,151 @@ interface DistResult { platform?: string; checklist: { item: string; ready: bool
 
 // No seed data — every textarea starts empty. Paste real production data
 // or use the JSON sample syntax described in the lens manifest.
+
+// ── Bench input contract (F3/F4 fix return) ──────────────────────────
+// The bench macros read a KEYED object ({ scenes: [...] }, { lines: … }),
+// but these textareas invite a bare JSON list — and a pasted array used
+// to travel as { artifact: { data: [...] } }, which the route's input
+// peel refuses (it unwraps plain objects only), so the macros silently
+// returned their default templates as if computed from the paste. The
+// panel now normalizes a pasted array into the macro's shape — honouring
+// the entered values — and refuses a content-bearing paste it cannot
+// bind IN WORDS instead of templating over it. A content-free paste
+// ({} or a type-only object) still reaches the macro untouched: its
+// template-by-type behaviour is the macro's designed form.
+type BenchBind = { ok: true; data: Record<string, unknown> } | { ok: false; error: string };
+
+function benchList(parsed: unknown, key: string): unknown[] | null {
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === 'object') {
+    const v = (parsed as Record<string, unknown>)[key];
+    if (Array.isArray(v)) return v;
+  }
+  return null;
+}
+
+function bindScenes(parsed: unknown): BenchBind {
+  const list = benchList(parsed, 'scenes');
+  if (!list) {
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const obj = parsed as Record<string, unknown>;
+      if (Object.keys(obj).length === 0 || typeof obj.type === 'string') return { ok: true, data: obj };
+    }
+    return { ok: false, error: 'That JSON does not describe scenes. Paste a list of scenes ([{ "name": "…", "shots": [{ "name": "…" }] }]) or an object with a "scenes" list.' };
+  }
+  if (!list.length) return { ok: false, error: 'The scenes list is empty — add at least one scene.' };
+  const scenes: Record<string, unknown>[] = [];
+  for (const raw of list) {
+    if (typeof raw === 'string') { scenes.push({ name: raw }); continue; }
+    if (!raw || typeof raw !== 'object') return { ok: false, error: 'Every scene must be an object (or a name). Check the scenes JSON.' };
+    const scene = raw as Record<string, unknown>;
+    const nested = Array.isArray(scene.shots) ? scene.shots : null;
+    if (nested && nested.length) {
+      // A scene carrying its own shots[] flattens into the macro's
+      // one-shot-per-entry shape, values (names/types/durations) kept.
+      for (const sRaw of nested) {
+        if (typeof sRaw === 'string') { scenes.push({ name: sRaw }); continue; }
+        if (!sRaw || typeof sRaw !== 'object') return { ok: false, error: 'Every shot must be an object (or a name). Check the scenes JSON.' };
+        const shot = sRaw as Record<string, unknown>;
+        scenes.push({
+          name: shot.name ?? scene.name,
+          type: shot.type ?? scene.type,
+          durationSec: shot.durationSec ?? shot.duration,
+          description: shot.description ?? shot.name,
+        });
+      }
+    } else {
+      scenes.push(scene);
+    }
+  }
+  const base = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed as Record<string, unknown> : {};
+  return { ok: true, data: { ...base, scenes } };
+}
+
+function bindAssets(parsed: unknown): BenchBind {
+  const list = benchList(parsed, 'assets');
+  if (!list) {
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Object.keys(parsed as object).length === 0) {
+      return { ok: true, data: parsed as Record<string, unknown> };
+    }
+    return { ok: false, error: 'That JSON does not describe assets. Paste a list of assets ([{ "name": "…" }]) or an object with an "assets" list.' };
+  }
+  if (!list.length) return { ok: false, error: 'The assets list is empty — add at least one asset.' };
+  const assets: unknown[] = [];
+  for (const raw of list) {
+    if (typeof raw === 'string') { assets.push({ name: raw }); continue; }
+    if (!raw || typeof raw !== 'object') return { ok: false, error: 'Every asset must be an object (or a name). Check the assets JSON.' };
+    assets.push(raw);
+  }
+  const base = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed as Record<string, unknown> : {};
+  return { ok: true, data: { ...base, assets } };
+}
+
+function bindBudget(parsed: unknown): BenchBind {
+  const mapLine = (raw: unknown): Record<string, unknown> | null => {
+    if (typeof raw === 'string') return { category: raw };
+    if (!raw || typeof raw !== 'object') return null;
+    const line = raw as Record<string, unknown>;
+    return { ...line, category: line.category ?? line.name ?? line.label };
+  };
+  if (Array.isArray(parsed)) {
+    if (!parsed.length) return { ok: false, error: 'The budget list is empty — add at least one line.' };
+    const lines: Record<string, unknown>[] = [];
+    for (const raw of parsed) {
+      const line = mapLine(raw);
+      if (!line) return { ok: false, error: 'Every budget line must be an object (or a name). Check the budget JSON.' };
+      lines.push(line);
+    }
+    return { ok: true, data: { lines } };
+  }
+  if (parsed && typeof parsed === 'object') {
+    const obj = parsed as Record<string, unknown>;
+    if (Array.isArray(obj.lines)) {
+      if (!obj.lines.length) return { ok: false, error: 'The budget list is empty — add at least one line.' };
+      const lines: Record<string, unknown>[] = [];
+      for (const raw of obj.lines) {
+        const line = mapLine(raw);
+        if (!line) return { ok: false, error: 'Every budget line must be an object (or a name). Check the budget JSON.' };
+        lines.push(line);
+      }
+      return { ok: true, data: { ...obj, lines } };
+    }
+    // The macro's second shape ({ budget, expenses[] }) and the
+    // content-free form bind as authored.
+    if ('budget' in obj || Array.isArray(obj.expenses) || Object.keys(obj).length === 0) return { ok: true, data: obj };
+  }
+  return { ok: false, error: 'That JSON does not describe a budget. Paste a list of lines ([{ "name": "…", "amount": 0 }]) or an object with a "lines" list.' };
+}
+
+function bindDist(parsed: unknown): BenchBind {
+  const list = benchList(parsed, 'checklist') ?? benchList(parsed, 'items');
+  if (!list) {
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const obj = parsed as Record<string, unknown>;
+      // A type/platform-only object binds: the macro derives its
+      // checklist by type, its designed form.
+      if (Object.keys(obj).length === 0 || typeof obj.type === 'string' || typeof obj.platform === 'string') return { ok: true, data: obj };
+    }
+    return { ok: false, error: 'That JSON does not describe a delivery. Paste a list of entries ([{ "name": "…", "channel": "…" }]) or an object with a "checklist" list.' };
+  }
+  if (!list.length) return { ok: false, error: 'The delivery list is empty — add at least one entry.' };
+  const checklist: unknown[] = [];
+  for (const raw of list) {
+    if (typeof raw === 'string') { checklist.push({ name: raw }); continue; }
+    if (!raw || typeof raw !== 'object') return { ok: false, error: 'Every delivery entry must be an object (or a name). Check the delivery JSON.' };
+    checklist.push(raw);
+  }
+  const base = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed as Record<string, unknown> : {};
+  const data: Record<string, unknown> = { ...base, checklist };
+  if (Array.isArray(parsed)) {
+    const first = checklist.find((e) => e && typeof e === 'object') as Record<string, unknown> | undefined;
+    if (first && typeof first.channel === 'string' && first.channel) data.platform = first.channel;
+    const dated = checklist.find((e) => e && typeof e === 'object' && ((e as Record<string, unknown>).date || (e as Record<string, unknown>).deliveryDate)) as Record<string, unknown> | undefined;
+    if (dated) data.deliveryDate = dated.date ?? dated.deliveryDate;
+  }
+  return { ok: true, data };
+}
+
 export function CreativeActionPanel() {
   const [scenesText, setScenesText] = useState('');
   const [assetsText, setAssetsText] = useState('');
@@ -63,35 +208,55 @@ export function CreativeActionPanel() {
 
   async function actShots() {
     if (!scenesText.trim()) { err('Paste scenes JSON first.'); return; }
-    try { const parsed = JSON.parse(scenesText); setBusy('shots'); setFeedback(null);
-      const r = await callMacro<ShotsResult>('shotListGenerate', { artifact: { data: parsed } });
+    try { const parsed = JSON.parse(scenesText); const bound = bindScenes(parsed);
+      if (!bound.ok) { err(bound.error); return; }
+      setBusy('shots'); setFeedback(null);
+      const r = await callMacro<ShotsResult>('shotListGenerate', { artifact: { data: bound.data } });
       if (r.ok && r.result) { setShotsResult(r.result); pipe.publish('creative.shots', r.result, { label: `${r.result.totalShots} shots` }); ok(`${r.result.totalShots} shots · ${r.result.estimatedRuntime}min.`); } else err(r.error ?? 'shots failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid scenes JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAssets() {
     if (!assetsText.trim()) { err('Paste assets JSON first.'); return; }
-    try { const parsed = JSON.parse(assetsText); setBusy('assets'); setFeedback(null);
-      const r = await callMacro<AssetsResult>('assetOrganize', { artifact: { data: parsed } });
+    try { const parsed = JSON.parse(assetsText); const bound = bindAssets(parsed);
+      if (!bound.ok) { err(bound.error); return; }
+      setBusy('assets'); setFeedback(null);
+      const r = await callMacro<AssetsResult>('assetOrganize', { artifact: { data: bound.data } });
       if (r.ok && r.result) { setAssetsResult(r.result); pipe.publish('creative.assets', r.result, { label: `Assets ${r.result.ready ?? '-'}/${r.result.totalAssets}` }); ok(`${r.result.ready ?? '-'}/${r.result.totalAssets} ready.`); } else err(r.error ?? 'assets failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid assets JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actBudget() {
     if (!budgetText.trim()) { err('Paste budget JSON first.'); return; }
-    try { const parsed = JSON.parse(budgetText); setBusy('budget'); setFeedback(null);
-      const r = await callMacro<BudgetResult>('budgetTrack', { artifact: { data: parsed } });
+    try { const parsed = JSON.parse(budgetText); const bound = bindBudget(parsed);
+      if (!bound.ok) { err(bound.error); return; }
+      setBusy('budget'); setFeedback(null);
+      const r = await callMacro<BudgetResult>('budgetTrack', { artifact: { data: bound.data } });
       if (r.ok && r.result) { setBudgetResult(r.result); pipe.publish('creative.budget', r.result, { label: `Budget ${r.result.overBudget ? 'OVER' : 'OK'}` }); ok(`${r.result.overBudget ? '⚠' : '✓'} variance ${r.result.totalVariance >= 0 ? '+' : ''}${r.result.totalVariance.toLocaleString()}.`); } else err(r.error ?? 'budget failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid budget JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDist() {
     if (!distText.trim()) { err('Paste delivery JSON first.'); return; }
-    try { const parsed = JSON.parse(distText); setBusy('dist'); setFeedback(null);
-      const r = await callMacro<DistResult>('distributionChecklist', { artifact: { data: parsed } });
+    try { const parsed = JSON.parse(distText); const bound = bindDist(parsed);
+      if (!bound.ok) { err(bound.error); return; }
+      setBusy('dist'); setFeedback(null);
+      const r = await callMacro<DistResult>('distributionChecklist', { artifact: { data: bound.data } });
       if (r.ok && r.result) { setDistResult(r.result); pipe.publish('creative.dist', r.result, { label: `${r.result.platform}: ${r.result.percent}%` }); ok(`${r.result.readyCount}/${r.result.total} ready (${r.result.percent}%).`); } else err(r.error ?? 'dist failed');
     } catch (e) { err(e instanceof SyntaxError ? 'Invalid dist JSON.' : pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
+      // F5 (re-pass form): the mint's fixed title + non-user source make
+      // a repeat create a guaranteed duplicate_blocked refusal (the
+      // dedup gate matches the title platform-wide). Ask for the
+      // caller's standing package first and resolve to it honestly.
+      const st = await callMacro<{ minted: boolean; dtuId?: string }>('packageStatus', {});
+      if (st.ok && st.result?.minted && st.result.dtuId) {
+        const existingId = st.result.dtuId;
+        setMintedDtuId(existingId);
+        pipe.publish('creative.mintedDtuId', existingId, { label: `Pkg DTU ${existingId}` });
+        ok(`Already minted · DTU ${existingId}`);
+        return;
+      }
       // domain/lens stamped so the minted DTU scores the `primaryDomain`
       // boost in context.query and actually surfaces in this lens's own
       // Library panel (useLensDTUs({ lens: 'creative' })) — omitting it
@@ -99,7 +264,8 @@ export function CreativeActionPanel() {
       // DTUs competing for the same top-N slots.
       const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Production pkg`, domain: 'creative', lens: 'creative', tags: ['creative', 'production'], source: 'creative:pkg:mint', meta: { lens: 'creative', visibility: 'private', consent: { allowCitations: false }, prod: { shots: shotsResult, assets: assetsResult, budget: budgetResult, dist: distResult } } }, 'media', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('creative.mintedDtuId', id, { label: `Pkg DTU ${id.slice(0, 8)}…` }); ok(`Pkg DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) { setMintedDtuId(id); pipe.publish('creative.mintedDtuId', id, { label: `Pkg DTU ${id}` }); ok(`Pkg DTU ${id}`); }
+      else err((r.data as { error?: string } | undefined)?.error === 'duplicate_blocked' ? 'A package titled "Production pkg" already exists.' : 'No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
@@ -133,7 +299,7 @@ export function CreativeActionPanel() {
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
         return newId as string;
       });
-      if (id) { setPublishedDtuId(id); pipe.publish('creative.publishedDtuId', id, { label: `Public handoff ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
+      if (id) { setPublishedDtuId(id); pipe.publish('creative.publishedDtuId', id, { label: `Public handoff ${id}` }); ok(`Published ${id} · 30s to recall.`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -151,9 +317,9 @@ export function CreativeActionPanel() {
     { id: 'assets' as ActionId, label: 'Assets', desc: 'assetOrganize', icon: FolderOpen, accent: '#f59e0b', handler: actAssets },
     { id: 'budget' as ActionId, label: 'Budget', desc: 'budgetTrack', icon: DollarSign, accent: '#22c55e', handler: actBudget },
     { id: 'dist' as ActionId, label: 'Delivery', desc: 'distributionChecklist', icon: ListChecks, accent: '#3b82f6', handler: actDist },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private pkg DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private pkg DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send status', icon: Send, accent: '#ec4899', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public handoff', icon: Globe, accent: '#15803d', handler: actPublish },
+    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : 'Public handoff', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Risk', desc: 'Agent: risk + fix', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
@@ -168,19 +334,19 @@ export function CreativeActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Scenes JSON</label>
-          <textarea value={scenesText} onChange={(e) => setScenesText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea placeholder='[{ "name": "Scene", "shots": [{ "name": "Shot" }] }]' value={scenesText} onChange={(e) => setScenesText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Assets JSON</label>
-          <textarea value={assetsText} onChange={(e) => setAssetsText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea placeholder='[{ "name": "Asset" }]' value={assetsText} onChange={(e) => setAssetsText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Budget JSON</label>
-          <textarea value={budgetText} onChange={(e) => setBudgetText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea placeholder='[{ "name": "Line", "amount": 0 }]' value={budgetText} onChange={(e) => setBudgetText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Delivery JSON</label>
-          <textarea value={distText} onChange={(e) => setDistText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
+          <textarea placeholder='[{ "name": "Entry", "channel": "…" }]' value={distText} onChange={(e) => setDistText(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1" />
         </div>
         <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
           <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />

@@ -27,14 +27,20 @@ interface Tombstone {
 
 export function ForgettingPanel() {
   const [status, setStatus] = useState<ForgettingStatus | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [tombstones, setTombstones] = useState<Tombstone[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [running, setRunning] = useState(false);
 
-  useEffect(() => {
+  const loadStatus = () => {
     apiHelpers.forgetting.status().then((resp) => {
       setStatus(resp.data);
-    }).catch(err => { console.error('[Forgetting] Failed to load status:', err); showToast('error', 'Failed to load forgetting status'); });
+      setLoadFailed(false);
+    }).catch(err => { console.error('[Forgetting] Failed to load status:', err); setLoadFailed(true); showToast('error', 'Failed to load forgetting status'); });
+  };
+
+  useEffect(() => {
+    loadStatus();
   }, []);
 
   const loadHistory = async () => {
@@ -123,6 +129,13 @@ export function ForgettingPanel() {
             </div>
           )}
         </>
+      ) : loadFailed ? (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-400">The forgetting status could not be loaded.</p>
+          <button onClick={loadStatus} className="rounded border border-lattice-edge bg-lattice-deep px-2 py-1 text-xs text-gray-300 hover:bg-lattice-edge">
+            Try again
+          </button>
+        </div>
       ) : (
         <p className="text-xs text-gray-400">Loading...</p>
       )}

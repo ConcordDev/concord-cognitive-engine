@@ -2,22 +2,25 @@
 
 /**
  * ProjectTracker — honest project/permit-status tracking
- * (proposed → approved → under_construction → built, plus the honest
- * denied/cancelled terminals). Closes the "Genuinely missing" gap in
- * docs/lens-specs/urban-planning-capability-map.md: the prior "Projects"
- * tab faked this with a client-only artifact store with no backing macro
- * at all (and was removed rather than kept as a fake surface — see the
- * lens page header comment). This is the real build against
- * `urban-planning.project-*` (server/domains/urbanplanning.js) — no
- * client-invented fields.
+ * (proposed → approved → permit issued → under construction → built,
+ * plus the honest denied/cancelled terminals). Closes the "Genuinely
+ * missing" gap in docs/lens-specs/urban-planning-capability-map.md: the
+ * prior "Projects" tab faked this with a client-only artifact store with
+ * no backing macro at all (and was removed rather than kept as a fake
+ * surface — see the lens page header comment). This is the real build
+ * against `urban-planning.project-*` (server/domains/urbanplanning.js) —
+ * no client-invented fields.
  *
  * The parcel link is OPTIONAL and, when used, sourced live from
  * `parcel-list` (a real select, never free text) — same discipline as
  * ParcelManager / PublicCommentPanel elsewhere in this lens. The status
  * control is a designed button group of the valid NEXT stages for the
  * project's current status, not a raw enum dropdown — the backend
- * (`project-status-update`) HARD-rejects any status outside the six-stage
- * lifecycle, so the UI only ever offers legal next moves.
+ * (`project-status-update`) HARD-rejects any status outside the
+ * seven-stage lifecycle, so the UI only ever offers legal next moves.
+ * Projects are editable in place through `project-update` (name,
+ * description, budget, permit number, target date) — Review 5 F4 found
+ * the macro registered with no UI path to it.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -35,12 +38,13 @@ import {
   History,
   ArrowRight,
   Ban,
+  Pencil,
 } from 'lucide-react';
 
 type ProjectType =
   | 'residential_development' | 'commercial_development' | 'mixed_use'
   | 'infrastructure' | 'public_space' | 'transit' | 'rezoning' | 'other';
-type ProjectStatus = 'proposed' | 'approved' | 'under_construction' | 'built' | 'denied' | 'cancelled';
+type ProjectStatus = 'proposed' | 'approved' | 'permit_issued' | 'under_construction' | 'built' | 'denied' | 'cancelled';
 
 interface Parcel {
   id: string;
@@ -96,6 +100,7 @@ const PROJECT_TYPE_LABEL: Record<ProjectType, string> = PROJECT_TYPES.reduce(
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   proposed: 'Proposed',
   approved: 'Approved',
+  permit_issued: 'Permit Issued',
   under_construction: 'Under Construction',
   built: 'Built',
   denied: 'Denied',
@@ -108,6 +113,7 @@ const STATUS_LABEL: Record<ProjectStatus, string> = {
 const STATUS_BADGE: Record<ProjectStatus, string> = {
   proposed: 'bg-zinc-500/20 text-zinc-300 border border-zinc-500/30',
   approved: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
+  permit_issued: 'bg-sky-500/20 text-sky-300 border border-sky-500/30',
   under_construction: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30',
   built: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
   denied: 'bg-red-500/20 text-red-300 border border-red-500/30',
@@ -115,13 +121,15 @@ const STATUS_BADGE: Record<ProjectStatus, string> = {
 };
 
 // The designed forward-workflow the button group offers. The backend
-// itself accepts any of the six statuses on project-status-update (an
+// itself accepts any of the seven statuses on project-status-update (an
 // external system-of-record correction is a real need), but the UI only
 // ever surfaces legal *next* moves so the control reads as a workflow,
-// not a free-for-all enum.
+// not a free-for-all enum. Permit issuance is a real stage between
+// approval and construction (Review 5 F4) — the advance path offers it.
 const NEXT_STATUSES: Record<ProjectStatus, ProjectStatus[]> = {
   proposed: ['approved', 'denied', 'cancelled'],
-  approved: ['under_construction', 'cancelled'],
+  approved: ['permit_issued', 'cancelled'],
+  permit_issued: ['under_construction', 'cancelled'],
   under_construction: ['built', 'cancelled'],
   built: [],
   denied: [],
@@ -145,10 +153,12 @@ function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  // timeZoneName rides along (Review 5 F8): status-history timestamps
+  // rendered in the reader's zone with no label read as UTC wall time.
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
 }
 
-export function ProjectTracker() {
+export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void } = {}) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [byStatus, setByStatus] = useState<Record<string, number>>({});
   const [totalBudget, setTotalBudget] = useState(0);
@@ -159,6 +169,8 @@ export function ProjectTracker() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [expandedHistory, setExpandedHistory] = useState<Record<string, boolean>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', description: '', budget: '', permitNumber: '', targetCompletionDate: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -205,10 +217,11 @@ export function ProjectTracker() {
     if (r.data.ok) {
       setForm(EMPTY_FORM);
       await refresh();
+      onDataChanged?.();
     } else {
       setError(r.data.error || 'add failed');
     }
-  }, [form, refresh]);
+  }, [form, refresh, onDataChanged]);
 
   const remove = useCallback(
     async (id: string) => {
@@ -220,8 +233,9 @@ export function ProjectTracker() {
         return;
       }
       await refresh();
+      onDataChanged?.();
     },
-    [refresh],
+    [refresh, onDataChanged],
   );
 
   const transition = useCallback(
@@ -235,8 +249,48 @@ export function ProjectTracker() {
         return;
       }
       await refresh();
+      onDataChanged?.();
     },
-    [refresh],
+    [refresh, onDataChanged],
+  );
+
+  const startEdit = useCallback((p: Project) => {
+    setEditingId(p.id);
+    setEditForm({
+      name: p.name,
+      description: p.description || '',
+      budget: p.budget ? String(p.budget) : '',
+      permitNumber: p.permitNumber || '',
+      targetCompletionDate: p.targetCompletionDate || '',
+    });
+  }, []);
+
+  const saveEdit = useCallback(
+    async (id: string) => {
+      if (!editForm.name.trim()) {
+        setError('project name is required');
+        return;
+      }
+      setBusyId(id);
+      setError(null);
+      const r = await lensRun('urban-planning', 'project-update', {
+        id,
+        name: editForm.name,
+        description: editForm.description,
+        budget: editForm.budget ? Number(editForm.budget) : 0,
+        permitNumber: editForm.permitNumber,
+        targetCompletionDate: editForm.targetCompletionDate,
+      });
+      setBusyId(null);
+      if (!r.data.ok) {
+        setError(r.data.error || 'update failed');
+        return;
+      }
+      setEditingId(null);
+      await refresh();
+      onDataChanged?.();
+    },
+    [editForm, refresh, onDataChanged],
   );
 
   const toggleHistory = useCallback((id: string) => {
@@ -244,7 +298,7 @@ export function ProjectTracker() {
   }, []);
 
   const statusOrder: ProjectStatus[] = useMemo(
-    () => ['proposed', 'approved', 'under_construction', 'built', 'denied', 'cancelled'],
+    () => ['proposed', 'approved', 'permit_issued', 'under_construction', 'built', 'denied', 'cancelled'],
     [],
   );
 
@@ -358,7 +412,7 @@ export function ProjectTracker() {
         </div>
       ) : projects.length === 0 ? (
         <div className="rounded-lg border border-dashed border-zinc-800 p-8 text-center text-xs text-zinc-400">
-          No projects tracked yet. Add one above to open its proposed → approved → built record.
+          No projects tracked yet. Add one above to open its proposed → approved → permit issued → built record.
         </div>
       ) : (
         <div className="grid gap-2">
@@ -402,15 +456,81 @@ export function ProjectTracker() {
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => remove(p.id)}
-                    disabled={rowBusy}
-                    className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
-                    aria-label={`Delete project ${p.name}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => (editingId === p.id ? setEditingId(null) : startEdit(p))}
+                      disabled={rowBusy}
+                      className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-zinc-200"
+                      aria-label={`Edit project ${p.name}`}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => remove(p.id)}
+                      disabled={rowBusy}
+                      className="rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
+                      aria-label={`Delete project ${p.name}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
+
+                {editingId === p.id && (
+                  <div className="mt-2 space-y-2 rounded border border-zinc-800 bg-zinc-950/60 p-2">
+                    <input
+                      value={editForm.name}
+                      onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                      placeholder="Project name"
+                      aria-label="Edit project name"
+                      className={inputCls}
+                    />
+                    <textarea
+                      value={editForm.description}
+                      onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                      placeholder="Description (optional)"
+                      aria-label="Edit project description"
+                      rows={2}
+                      className={inputCls}
+                    />
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                      <input
+                        value={editForm.budget}
+                        onChange={(e) => setEditForm((f) => ({ ...f, budget: e.target.value }))}
+                        type="number"
+                        placeholder="Budget ($)"
+                        aria-label="Edit project budget"
+                        className={inputCls}
+                      />
+                      <input
+                        value={editForm.permitNumber}
+                        onChange={(e) => setEditForm((f) => ({ ...f, permitNumber: e.target.value }))}
+                        placeholder="Permit number"
+                        aria-label="Edit permit number"
+                        className={inputCls}
+                      />
+                      <input
+                        value={editForm.targetCompletionDate}
+                        onChange={(e) => setEditForm((f) => ({ ...f, targetCompletionDate: e.target.value }))}
+                        type="date"
+                        aria-label="Edit target completion date"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => saveEdit(p.id)} disabled={rowBusy} className={btnPrimary}>
+                        {rowBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                        Save changes
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="rounded-md border border-zinc-700 px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {nextOptions.length > 0 && (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">

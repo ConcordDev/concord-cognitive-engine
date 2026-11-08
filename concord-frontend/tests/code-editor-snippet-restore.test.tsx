@@ -436,16 +436,17 @@ describe('CodeEditorWorkspacePanel snippet restore', () => {
     expect(dtus.publish).toHaveBeenCalled();
 
     execPlan.push('ok', 'unsupported', 'throw');
-    expect(screen.getAllByRole('button', { name: /^Run$/ })).toHaveLength(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Run' }));
+    // Run is offered in BOTH workspaces now (toolbar + editor tab bar, #2042): two buttons, same action.
+    expect(screen.getAllByRole('button', { name: /^Run$/ })).toHaveLength(2);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Run' })[0]);
     await waitFor(() => expect(screen.getByText(/ran-ok/)).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: 'Console' }));
     expect(screen.getByText(/Script executed/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Output' }));
     fireEvent.click(screen.getByRole('button', { name: /Download Output/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Run' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Run' })[0]);
     await waitFor(() => expect(screen.getByText(/no python/)).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Run' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Run' })[0]);
     await waitFor(() => expect(screen.getByText(/Run failed: sandbox down/)).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: 'Close output panel' }));
 
@@ -453,7 +454,7 @@ describe('CodeEditorWorkspacePanel snippet restore', () => {
     // #1707: JS/TS runs in the browser, so a server-side "execution disabled" status must NOT block it —
     // the button stays a live Run and no server exec call is made. (The disabled label now applies only to
     // languages the local runner does not claim.)
-    const localRunBtn = await screen.findByRole('button', { name: /^Run$/ });
+    const localRunBtn = (await screen.findAllByRole('button', { name: /^Run$/ }))[0];
     expect(localRunBtn).toHaveProperty('disabled', false);
     expect(screen.queryByRole('button', { name: 'Execution disabled' })).toBeNull();
     const execs = calls.filter((c) => c.action === 'exec').length;

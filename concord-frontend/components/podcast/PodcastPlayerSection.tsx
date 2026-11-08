@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { PodcastListenPanel } from './PodcastListenPanel';
 import { PodcastBrowsePanel } from './PodcastBrowsePanel';
 import { PodcastLibraryPanel } from './PodcastLibraryPanel';
+import { onPodcastChanged } from './podcast-events';
 
 interface Dash {
   subscriptions: number; queueLength: number; downloads: number;
@@ -36,6 +37,11 @@ export function PodcastPlayerSection() {
   }, []);
 
   useEffect(() => { void refreshDash(); }, [refreshDash]);
+
+  // Mutations in sibling sections (Listening Hub ingest/subscribe, an
+  // iTunes add) change these counters too — settle in-session when they
+  // land instead of waiting for a reload.
+  useEffect(() => onPodcastChanged(() => { void refreshDash(); }), [refreshDash]);
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">

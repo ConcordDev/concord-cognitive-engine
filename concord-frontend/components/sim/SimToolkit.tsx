@@ -21,6 +21,7 @@
 import { useCallback, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { recordStudioRun } from '@/lib/sim/studio-activity';
+import { fmtClean, formatPValue } from '@/lib/sim/format';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -366,7 +367,7 @@ function CompareTool() {
             <CmpStat label="Mean Δ" value={res.meanDifference} />
             <CmpStat label="% Change" value={res.percentChange ?? 0} suffix="%" />
             <CmpStat label="t-statistic" value={res.tStatistic} />
-            <CmpStat label="p-value" value={res.pValue} />
+            <CmpStat label="p-value" value={res.pValue} format={formatPValue} />
             <CmpStat label="Cohen's d" value={res.cohensD} />
             <div className="bg-lattice-surface/50 rounded-lg p-3 text-center">
               <p className={ds.textMuted}>Effect Size</p>
@@ -379,12 +380,12 @@ function CompareTool() {
   );
 }
 
-function CmpStat({ label, value, suffix }: { label: string; value: number; suffix?: string }) {
+function CmpStat({ label, value, suffix, format }: { label: string; value: number; suffix?: string; format?: (v: number) => string }) {
   return (
     <div className="bg-lattice-surface/50 rounded-lg p-3 text-center">
       <p className={ds.textMuted}>{label}</p>
       <p className={cn(ds.textMono, 'text-lg text-white mt-1')}>
-        {value.toLocaleString()}{suffix || ''}
+        {format ? format(value) : value.toLocaleString()}{suffix || ''}
       </p>
     </div>
   );
@@ -597,11 +598,11 @@ function ScenarioRunTool() {
           {Object.entries(res.deltas).map(([key, delta]) => (
             <div key={key} className="flex items-center gap-2 text-xs bg-lattice-surface/50 rounded-lg p-2">
               <span className="text-gray-400 flex-1 font-mono">{key}</span>
-              <span className="text-gray-400 font-mono">{delta.start}</span>
+              <span className="text-gray-400 font-mono">{fmtClean(delta.start)}</span>
               <span className="text-gray-600">→</span>
-              <span className="text-white font-mono">{delta.end}</span>
+              <span className="text-white font-mono">{fmtClean(delta.end)}</span>
               <span className={cn('font-mono', delta.change > 0 ? 'text-green-400' : delta.change < 0 ? 'text-red-400' : 'text-gray-400')}>
-                ({delta.change > 0 ? '+' : ''}{delta.change})
+                ({delta.change > 0 ? '+' : ''}{fmtClean(delta.change)})
               </span>
             </div>
           ))}
@@ -769,7 +770,8 @@ function MonteCarloBackendTool() {
     <div className={cn(ds.panel, 'space-y-3')}>
       <p className={ds.textMuted}>
         Backend uniform/normal sampling engine with exact percentiles and a 90%
-        confidence interval — aggregates variables via the chosen formula.
+        percentile interval (P5–P95, not a parametric confidence interval) —
+        aggregates variables via the chosen formula.
       </p>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -835,14 +837,14 @@ function MonteCarloBackendTool() {
                   <div className="flex-1 h-2 bg-black/30 rounded-full overflow-hidden">
                     <div className="h-full rounded-full bg-orange-500/60" style={{ width: `${barWidth}%` }} />
                   </div>
-                  <span className="text-xs font-mono text-gray-300 w-16 text-right">{res.percentiles[key]}</span>
+                  <span className="text-xs font-mono text-gray-300 w-16 text-right">{fmtClean(res.percentiles[key])}</span>
                 </div>
               );
             })}
           </div>
           <div className="flex items-center gap-2 text-xs bg-black/20 rounded p-2">
-            <span className="text-gray-400">90% CI:</span>
-            <span className="font-mono text-orange-300">[{res.confidenceInterval90.lower} — {res.confidenceInterval90.upper}]</span>
+            <span className="text-gray-400">90% percentile interval:</span>
+            <span className="font-mono text-orange-300">[{fmtClean(res.confidenceInterval90.lower)} — {fmtClean(res.confidenceInterval90.upper)}]</span>
           </div>
         </div>
       ))}

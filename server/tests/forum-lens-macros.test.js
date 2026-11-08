@@ -245,7 +245,7 @@ describe("forum STATE substrate — round-trips + isolation", () => {
     const cat = callMacro("category-create", ctxA, { name: "Production", description: "DAW talk" });
     assert.equal(cat.ok, true);
     const catId = cat.result.category.id;
-    const top = callMacro("topic-create", ctxA, { title: "Sidechain tips", categoryId: catId });
+    const top = callMacro("topic-create", ctxA, { title: "Sidechain tips", categoryId: catId , body: "seed body"});
     assert.equal(top.result.topic.categoryId, catId);
     const list = callMacro("category-list", ctxA, {});
     assert.equal(list.result.count, 1);
@@ -258,13 +258,13 @@ describe("forum STATE substrate — round-trips + isolation", () => {
   });
 
   it("rejects an empty topic title", () => {
-    const r = callMacro("topic-create", ctxA, { title: "   " });
+    const r = callMacro("topic-create", ctxA, { title: "   " , body: "seed body"});
     assert.equal(r.ok, false);
     assert.match(r.error, /title required/);
   });
 
   it("topic → reply (nested tree) → vote → score is exact + lock blocks replies", () => {
-    const top = callMacro("topic-create", ctxA, { title: "Root" }).result.topic;
+    const top = callMacro("topic-create", ctxA, { title: "Root" , body: "seed body"}).result.topic;
     const r1 = callMacro("post-reply", ctxA, { topicId: top.id, body: "first" });
     assert.equal(r1.ok, true);
     const r2 = callMacro("post-reply", ctxA, { topicId: top.id, parentId: r1.result.post.id, body: "nested" });
@@ -274,8 +274,8 @@ describe("forum STATE substrate — round-trips + isolation", () => {
     assert.equal(got.result.tree.length, 1);                 // one root post
     assert.equal(got.result.tree[0].replies.length, 1);      // with one nested reply
     // vote on the topic: +1 then 0 (toggle off) is exact
-    assert.equal(callMacro("vote", ctxA, { targetType: "topic", targetId: top.id, direction: 1 }).result.score, 1);
-    assert.equal(callMacro("vote", ctxA, { targetType: "topic", targetId: top.id, direction: 0 }).result.score, 0);
+    assert.equal(callMacro("vote", ctxB, { targetType: "topic", targetId: top.id, direction: 1 }).result.score, 1);
+    assert.equal(callMacro("vote", ctxB, { targetType: "topic", targetId: top.id, direction: 0 }).result.score, 0);
     // lock the topic → further replies rejected
     assert.equal(callMacro("topic-lock", ctxA, { id: top.id, locked: true }).error, "moderator role required");
     callMacro("topic-lock", asMod(ctxA), { id: top.id, locked: true });
@@ -285,16 +285,16 @@ describe("forum STATE substrate — round-trips + isolation", () => {
   });
 
   it("fail-CLOSED: vote with non-finite direction never throws + stays integer", () => {
-    const top = callMacro("topic-create", ctxA, { title: "V" }).result.topic;
+    const top = callMacro("topic-create", ctxA, { title: "V" , body: "seed body"}).result.topic;
     for (const poison of [Infinity, NaN, "Infinity", "x"]) {
-      const r = callMacro("vote", ctxA, { targetType: "topic", targetId: top.id, direction: poison });
+      const r = callMacro("vote", ctxB, { targetType: "topic", targetId: top.id, direction: poison });
       assert.equal(r.ok, true);
       assert.ok(Number.isFinite(r.result.score), `score non-finite under ${String(poison)}`);
     }
   });
 
   it("flag create → queue → resolve removes it from pending", () => {
-    const top = callMacro("topic-create", ctxA, { title: "Reported" }).result.topic;
+    const top = callMacro("topic-create", ctxA, { title: "Reported" , body: "seed body"}).result.topic;
     const flag = callMacro("flag-create", ctxA, { targetType: "topic", targetId: top.id, reason: "spam" });
     assert.equal(flag.ok, true);
     assert.equal(callMacro("flag-queue", ctxA, {}).error, "moderator role required");
@@ -310,13 +310,13 @@ describe("forum STATE substrate — round-trips + isolation", () => {
   it("reputation tiers up with contributions + karma", () => {
     const base = callMacro("user-reputation", ctxA, {});
     assert.equal(base.result.tier, "new");
-    for (let i = 0; i < 5; i++) callMacro("topic-create", ctxA, { title: `T${i}` });
+    for (let i = 0; i < 5; i++) callMacro("topic-create", ctxA, { title: `T${i}`, body: "seed body" });
     assert.equal(callMacro("user-reputation", ctxA, {}).result.tier, "basic"); // >=5 contributions
   });
 
   it("search matches title / body / tag and surfaces reply hits", () => {
     callMacro("topic-create", ctxA, { title: "Reverb chain", body: "long tail plate", tags: ["mixing"] });
-    const t2 = callMacro("topic-create", ctxA, { title: "Other" }).result.topic;
+    const t2 = callMacro("topic-create", ctxA, { title: "Other" , body: "seed body"}).result.topic;
     callMacro("post-reply", ctxA, { topicId: t2.id, body: "use reverb sparingly" });
     const r = callMacro("forum-search", ctxA, { query: "reverb" });
     assert.equal(r.ok, true);
@@ -331,8 +331,8 @@ describe("forum STATE substrate — round-trips + isolation", () => {
   });
 
   it("trending returns a finite hotScore for every topic and never NaN", () => {
-    callMacro("topic-create", ctxA, { title: "Hot", tags: ["x"] });
-    callMacro("topic-create", ctxA, { title: "Cold", tags: ["y"] });
+    callMacro("topic-create", ctxA, { title: "Hot", tags: ["x"] , body: "seed body"});
+    callMacro("topic-create", ctxA, { title: "Cold", tags: ["y"] , body: "seed body"});
     const r = callMacro("trending", ctxA, { limit: 10 });
     assert.equal(r.ok, true);
     assert.equal(r.result.count, 2);
@@ -343,7 +343,7 @@ describe("forum STATE substrate — round-trips + isolation", () => {
   });
 
   it("fail-CLOSED: trending with a corrupt createdAt keeps hotScore FINITE", () => {
-    const top = callMacro("topic-create", ctxA, { title: "Corrupt" }).result.topic;
+    const top = callMacro("topic-create", ctxA, { title: "Corrupt" , body: "seed body"}).result.topic;
     // corrupt the stored timestamp the way a bad import could
     const shared = globalThis._concordSTATE.forumLens.topics.get("_shared");
     shared.find((t) => t.id === top.id).createdAt = "not-a-date";
@@ -356,7 +356,7 @@ describe("forum STATE substrate — round-trips + isolation", () => {
   it("award catalog + give attaches a real award to a topic", () => {
     const cat = callMacro("award-catalog", ctxA, {});
     assert.ok(cat.result.awards.length > 0);
-    const top = callMacro("topic-create", ctxA, { title: "Award me" }).result.topic;
+    const top = callMacro("topic-create", ctxA, { title: "Award me" , body: "seed body"}).result.topic;
     const g = callMacro("award-give", ctxA, { kind: "gold", targetType: "topic", targetId: top.id });
     assert.equal(g.ok, true);
     assert.equal(g.result.awards[0].kind, "gold");
@@ -365,7 +365,7 @@ describe("forum STATE substrate — round-trips + isolation", () => {
 
   it("dashboard reflects real counts", () => {
     callMacro("category-create", ctxA, { name: "C" });
-    const top = callMacro("topic-create", ctxA, { title: "D" }).result.topic;
+    const top = callMacro("topic-create", ctxA, { title: "D" , body: "seed body"}).result.topic;
     callMacro("post-reply", ctxA, { topicId: top.id, body: "r" });
     const d = callMacro("forum-dashboard", ctxA, {});
     assert.equal(d.result.categories, 1);
@@ -374,7 +374,7 @@ describe("forum STATE substrate — round-trips + isolation", () => {
   });
 
   it("user_b reads a topic user_a posted on the shared board", () => {
-    const top = callMacro("topic-create", ctxA, { title: "Open to the board" }).result.topic;
+    const top = callMacro("topic-create", ctxA, { title: "Open to the board" , body: "seed body"}).result.topic;
     assert.equal(top.authorId, "user_a");
     const listed = callMacro("topic-list", ctxB, {});
     assert.equal(listed.result.topics.some((t) => t.id === top.id), true);

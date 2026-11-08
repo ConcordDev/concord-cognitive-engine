@@ -27,12 +27,15 @@ interface OnThisDayResponse {
   selected?: Event[];
 }
 
+// Labels are the feed's own sections, named as sections — the pass
+// found the raw feed key 'selected' serving as its own label and the
+// heading/count stuck on "events" for every section.
 const CATEGORIES = [
-  { id: 'events', label: 'events' },
-  { id: 'selected', label: 'selected' },
-  { id: 'births', label: 'births' },
-  { id: 'deaths', label: 'deaths' },
-  { id: 'holidays', label: 'holidays' },
+  { id: 'events', label: 'Events' },
+  { id: 'selected', label: 'Selected' },
+  { id: 'births', label: 'Births' },
+  { id: 'deaths', label: 'Deaths' },
+  { id: 'holidays', label: 'Holidays' },
 ] as const;
 
 export function OnThisDay() {
@@ -40,6 +43,8 @@ export function OnThisDay() {
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [day, setDay] = useState(today.getDate());
   const [category, setCategory] = useState<typeof CATEGORIES[number]['id']>('events');
+  const [savedDtuId, setSavedDtuId] = useState<string | null>(null);
+  const categoryLabel = CATEGORIES.find((c) => c.id === category)?.label || 'Events';
 
   const data = useQuery({
     queryKey: ['on-this-day', month, day],
@@ -59,7 +64,7 @@ export function OnThisDay() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2">
           <History className="h-5 w-5 text-amber-400" />
-          <h2 className="text-sm font-semibold text-white">Historical events — on this day</h2>
+          <h2 className="text-sm font-semibold text-white">On this day — {categoryLabel}</h2>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">wikipedia · /feed/onthisday</span>
         </div>
         <div className="flex items-center gap-2">
@@ -77,15 +82,21 @@ export function OnThisDay() {
               content={list.slice(0, 20).map((e) => `${e.year}: ${e.text}`).join('\n')}
               extraTags={['event-timeline', 'wikipedia', 'history', category]}
               rawData={{ month, day, category, items: list }}
+              onSaved={setSavedDtuId}
             />
           )}
         </div>
       </header>
+      {savedDtuId && (
+        <p className="text-[11px] text-zinc-400" role="status">
+          Saved as DTU {savedDtuId} — find it in your DTUs.
+        </p>
+      )}
       <LookupNotice provider="wikipedia" data={data.data} />
       {data.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Wikipedia REST unreachable.</div>}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Events</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">{categoryLabel}</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">{list.length}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">

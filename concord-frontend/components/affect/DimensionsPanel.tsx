@@ -9,7 +9,7 @@ import { Eye, Send, BarChart3, TrendingUp, TrendingDown, Minus } from 'lucide-re
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useAffectAts } from '@/components/affect/useAffectAts';
-import { DIMS, EVENT_TYPES, dimBgColor, radarPoints, radarLabelPos } from '@/components/affect/affect-model';
+import { DIMS, EVENT_TYPES, dimBgColor, radarPoints, radarLabelPos, summarizeDelta } from '@/components/affect/affect-model';
 import { ErrorState } from '@/components/common/EmptyState';
 import { LiveAffectStream } from '@/components/affect/LiveAffectStream';
 
@@ -20,16 +20,30 @@ export function DimensionsPanel() {
   const [intensity, setIntensity] = useState(0.5);
   const [polarity, setPolarity] = useState(0.0);
 
+  const [emitNote, setEmitNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
   const emitEvent = useMutation({
     mutationFn: () => apiHelpers.affect.emit(sessionId, { type: eventType, intensity, polarity }),
-    onSuccess: () => {
+    onMutate: () => setEmitNote(null),
+    onSuccess: (res) => {
+      // The emit receipt: name what the event did to the state (the
+      // route returns the applied delta), never silence.
+      const delta = (res as { data?: { delta?: Record<string, unknown> } })?.data?.delta;
+      const summary = summarizeDelta(delta);
+      setEmitNote({
+        kind: 'ok',
+        text: summary ? `Event recorded — ${summary}` : 'Event recorded — the state did not move.',
+      });
       queryClient.invalidateQueries({ queryKey: ['affect-state', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['affect-policy', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['affect-events', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['affect-health'] });
     },
     onError: (err) => {
-      console.error('Failed to emit affect event:', err instanceof Error ? err.message : err);
+      setEmitNote({
+        kind: 'err',
+        text: `Emit failed — ${err instanceof Error ? err.message : 'the event was not recorded.'}`,
+      });
     },
   });
 
@@ -46,6 +60,14 @@ export function DimensionsPanel() {
 
   return (
         <div className="space-y-6">
+          {eventList.length === 0 && (
+            <div className="panel p-4 text-sm text-gray-300" role="note">
+              <span className="font-medium text-gray-100">Baseline state.</span>{' '}
+              No affect events have been recorded for this session yet, so the dimensions
+              below are the neutral starting shape — not a reading of anyone&apos;s state.
+              Emit an event or log a mood check-in and the state moves from here.
+            </div>
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Radar/Spider Chart */}
             <div className="panel p-4">
@@ -209,6 +231,14 @@ export function DimensionsPanel() {
                 <Send className="w-4 h-4" />
                 {emitEvent.isPending ? 'Emitting...' : 'Emit Event'}
               </button>
+              {emitNote && (
+                <p
+                  role={emitNote.kind === 'err' ? 'alert' : 'status'}
+                  className={`text-xs ${emitNote.kind === 'err' ? 'text-red-400' : 'text-green-400'}`}
+                >
+                  {emitNote.text}
+                </p>
+              )}
             </div>
           </div>
 

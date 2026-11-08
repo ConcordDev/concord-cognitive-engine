@@ -204,6 +204,17 @@ export function AgentBasedRunner() {
             </div>
           )}
 
+          {/* sim.md F7: the SIR run previously stopped at peak/total stats
+              and never printed the final numeric S/I/R counts the series
+              chart ends on. finalState carries them directly. */}
+          {kind === 'sir' && result.finalState && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Stat label="Final Susceptible" value={result.finalState.susceptible ?? 0} />
+              <Stat label="Final Infected" value={result.finalState.infected ?? 0} />
+              <Stat label="Final Recovered" value={result.finalState.recovered ?? 0} />
+            </div>
+          )}
+
           <div className={ds.panel}>
             <h4 className={cn(ds.heading3, 'text-base mb-3')}>Population Time Series</h4>
             <ChartKit

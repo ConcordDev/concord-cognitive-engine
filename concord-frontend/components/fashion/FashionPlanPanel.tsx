@@ -9,6 +9,7 @@ import { Loader2, Plus, Luggage, BookImage, TrendingUp, ChevronRight, Layers } f
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { notifyLookbookHeader } from './lookbook-header';
 
 interface Item { id: string; name: string }
 interface Outfit { id: string; name: string; itemIds: string[] }
@@ -20,7 +21,7 @@ interface Insights {
   neverWorn: { name: string; cost: number }[];
 }
 
-export function FashionPlanPanel() {
+export function FashionPlanPanel({ onChange }: { onChange?: () => void | Promise<void> } = {}) {
   const [packingLists, setPackingLists] = useState<PackingList[]>([]);
   const [lookbooks, setLookbooks] = useState<Lookbook[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -74,6 +75,7 @@ export function FashionPlanPanel() {
     const r = await lensRun('fashion', 'lookbook-create', { name: lbName.trim() });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setLbName(''); setError(null);
+    await notifyLookbookHeader(true, onChange);
     await refresh();
   };
   const openPacking = async (id: string) => {

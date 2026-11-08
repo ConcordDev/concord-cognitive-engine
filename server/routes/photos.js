@@ -56,7 +56,7 @@ export function createPhotosRouter({ db, requireAuth, STATE }) {
     }
   });
 
-  router.post("/:photoId/share", auth, (req, res) => {
+  router.post("/:photoId/share", auth, async (req, res) => {
     const userId = userIdOf(req);
     const photoId = req.params.photoId;
     let owner;
@@ -67,7 +67,7 @@ export function createPhotosRouter({ db, requireAuth, STATE }) {
     }
     if (!owner) return send(res, { ok: false, error: "no_photo" });
     if (owner.user_id !== userId) return send(res, { ok: false, error: "not_owner" });
-    send(res, sharePhoto(db, photoId, { STATE: STATE || globalThis.STATE || null }));
+    send(res, await sharePhoto(db, photoId, { STATE: STATE || globalThis.STATE || null }));
   });
 
   router.post("/:photoId/delete", auth, (req, res) => {

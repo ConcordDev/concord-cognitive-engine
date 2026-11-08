@@ -153,6 +153,7 @@ interface TakeoffRow { name: string; quantity: string; unit: string; unitCost: s
 interface TakeoffResult {
   projectName: string; materialSubtotal: number; materialWithWaste: number;
   laborCost: number; overhead: number; margin: number; total: number;
+  wastePct: number; overheadPct: number; marginPct: number;
   items: { name: string; quantity: number; unit: string; unitCost: number; lineTotal: number }[];
 }
 
@@ -162,6 +163,7 @@ function MaterialTakeoff({ onEstimate }: { onEstimate: (e: TakeoffResult) => voi
   const [laborHours, setLaborHours] = useState('');
   const [laborRate, setLaborRate] = useState('65');
   const [wastePct, setWastePct] = useState('10');
+  const [overheadPct, setOverheadPct] = useState('12');
   const [marginPct, setMarginPct] = useState('20');
   const [result, setResult] = useState<TakeoffResult | null>(null);
   const [err, setErr] = useState('');
@@ -174,6 +176,7 @@ function MaterialTakeoff({ onEstimate }: { onEstimate: (e: TakeoffResult) => voi
       laborHours: parseFloat(laborHours) || 0,
       laborRate: parseFloat(laborRate) || 0,
       wastePct: parseFloat(wastePct) || 0,
+      overheadPct: parseFloat(overheadPct) || 0,
       marginPct: parseFloat(marginPct) || 0,
       items: items.filter((it) => it.quantity).map((it) => ({
         name: it.name, quantity: parseFloat(it.quantity), unit: it.unit, unitCost: parseFloat(it.unitCost) || 0,
@@ -207,10 +210,11 @@ function MaterialTakeoff({ onEstimate }: { onEstimate: (e: TakeoffResult) => voi
           </div>
         ))}
         <button type="button" className={ghostBtn} onClick={() => setItems((xs) => [...xs, { name: '', quantity: '', unit: 'ea', unitCost: '' }])}><Plus className="h-3 w-3" />Add line item</button>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
           <label className="text-[10px] text-zinc-400">Labor hrs<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} /></label>
           <label className="text-[10px] text-zinc-400">$ / hr<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} /></label>
           <label className="text-[10px] text-zinc-400">Waste %<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={wastePct} onChange={(e) => setWastePct(e.target.value)} /></label>
+          <label className="text-[10px] text-zinc-400">Overhead %<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={overheadPct} onChange={(e) => setOverheadPct(e.target.value)} /></label>
           <label className="text-[10px] text-zinc-400">Margin %<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={marginPct} onChange={(e) => setMarginPct(e.target.value)} /></label>
         </div>
         <button type="button" className={`${btn} w-full justify-center`} disabled={busy || items.filter((it) => it.quantity).length === 0} onClick={compute}>
@@ -223,6 +227,17 @@ function MaterialTakeoff({ onEstimate }: { onEstimate: (e: TakeoffResult) => voi
               <div className="text-[10px] uppercase text-emerald-300">Estimate total</div>
               <div className="font-mono text-3xl text-emerald-100">${result.total.toLocaleString()}</div>
             </div>
+            {/* F3: the printed breakdown — every component numbered, so the
+                total reconciles from its inputs line by line. */}
+            <dl className="space-y-1 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-[11px]">
+              <div className="flex justify-between"><dt className="text-zinc-400">Materials</dt><dd className="font-mono text-zinc-200">${result.materialSubtotal.toFixed(2)}</dd></div>
+              <div className="flex justify-between"><dt className="text-zinc-400">Waste ({result.wastePct}%)</dt><dd className="font-mono text-zinc-200">+${(result.materialWithWaste - result.materialSubtotal).toFixed(2)}</dd></div>
+              <div className="flex justify-between border-t border-zinc-800 pt-1"><dt className="text-zinc-300">Materials with waste</dt><dd className="font-mono text-zinc-100">${result.materialWithWaste.toFixed(2)}</dd></div>
+              <div className="flex justify-between"><dt className="text-zinc-400">Labor</dt><dd className="font-mono text-zinc-200">+${result.laborCost.toFixed(2)}</dd></div>
+              <div className="flex justify-between"><dt className="text-zinc-400">Overhead ({result.overheadPct}%)</dt><dd className="font-mono text-zinc-200">+${result.overhead.toFixed(2)}</dd></div>
+              <div className="flex justify-between"><dt className="text-zinc-400">Margin ({result.marginPct}%)</dt><dd className="font-mono text-zinc-200">+${result.margin.toFixed(2)}</dd></div>
+              <div className="flex justify-between border-t border-zinc-800 pt-1"><dt className="text-zinc-200">Total</dt><dd className="font-mono font-semibold text-emerald-200">${result.total.toFixed(2)}</dd></div>
+            </dl>
             <ChartKit kind="bar" height={160} xKey="part" showLegend={false}
               data={[
                 { part: 'Material', amount: result.materialWithWaste },
@@ -294,6 +309,19 @@ function CrewSchedule() {
     setBusy(true); await run('scheduleUpdate', { id: e.id, status: next }); await reload(); setBusy(false);
   };
   const removeSchedule = async (id: string) => { setBusy(true); await run('scheduleDelete', { id }); await reload(); setBusy(false); };
+  // F5: scheduled jobs are field-editable, not just status-cyclable.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', address: '', date: '', startTime: '', endTime: '', notes: '' });
+  const startEdit = (e: ScheduleEntry) => {
+    setEditingId(e.id);
+    setEditForm({ title: e.title, address: e.address || '', date: e.date, startTime: e.startTime, endTime: e.endTime, notes: e.notes || '' });
+  };
+  const saveEdit = async (id: string) => {
+    setBusy(true);
+    await run('scheduleUpdate', { id, title: editForm.title, address: editForm.address, date: editForm.date, startTime: editForm.startTime, endTime: editForm.endTime, notes: editForm.notes });
+    setEditingId(null);
+    await reload(); setBusy(false);
+  };
 
   const timelineEvents: TimelineEvent[] = sched.map((e) => ({
     id: e.id, label: e.title, time: `${e.date}T${e.startTime}`,
@@ -361,18 +389,37 @@ function CrewSchedule() {
                 <TimelineView events={timelineEvents} height={110} />
                 <div className="space-y-1.5">
                   {sched.map((e) => (
-                    <div key={e.id} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-                      <div>
-                        <div className="text-[12px] text-white">{e.title}</div>
-                        <div className="text-[10px] text-zinc-400">{e.date} · {e.startTime}–{e.endTime}{e.address ? ` · ${e.address}` : ''}{e.crewNames.length ? ` · ${e.crewNames.join(', ')}` : ''}</div>
+                    <div key={e.id} className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-[12px] text-white">{e.title}</div>
+                          <div className="text-[10px] text-zinc-400">{e.date} · {e.startTime}–{e.endTime}{e.address ? ` · ${e.address}` : ''}{e.crewNames.length ? ` · ${e.crewNames.join(', ')}` : ''}</div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => cycleStatus(e)}
+                            className={`rounded px-2 py-0.5 text-[10px] font-semibold ${e.status === 'done' ? 'bg-emerald-500/20 text-emerald-200' : e.status === 'dispatched' ? 'bg-indigo-500/20 text-indigo-200' : 'bg-zinc-700 text-zinc-300'}`}>
+                            {e.status}
+                          </button>
+                          <button onClick={() => startEdit(e)} className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300 hover:text-white">Edit</button>
+                          <button onClick={() => removeSchedule(e.id)} className="text-zinc-600 hover:text-rose-300" aria-label="Delete schedule"><Trash2 className="h-3.5 w-3.5" /></button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => cycleStatus(e)}
-                          className={`rounded px-2 py-0.5 text-[10px] font-semibold ${e.status === 'done' ? 'bg-emerald-500/20 text-emerald-200' : e.status === 'dispatched' ? 'bg-indigo-500/20 text-indigo-200' : 'bg-zinc-700 text-zinc-300'}`}>
-                          {e.status}
-                        </button>
-                        <button onClick={() => removeSchedule(e.id)} className="text-zinc-600 hover:text-rose-300" aria-label="Delete schedule"><Trash2 className="h-3.5 w-3.5" /></button>
-                      </div>
+                      {editingId === e.id && (
+                        <div className="mt-2 space-y-1.5 border-t border-zinc-800 pt-2">
+                          <input className={`${inp} w-full`} placeholder="Job title" value={editForm.title} onChange={(ev) => setEditForm((f) => ({ ...f, title: ev.target.value }))} />
+                          <input className={`${inp} w-full`} placeholder="Address" value={editForm.address} onChange={(ev) => setEditForm((f) => ({ ...f, address: ev.target.value }))} />
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
+                            <input className={`${inp} font-mono`} type="date" value={editForm.date} onChange={(ev) => setEditForm((f) => ({ ...f, date: ev.target.value }))} />
+                            <input className={`${inp} font-mono`} type="time" value={editForm.startTime} onChange={(ev) => setEditForm((f) => ({ ...f, startTime: ev.target.value }))} />
+                            <input className={`${inp} font-mono`} type="time" value={editForm.endTime} onChange={(ev) => setEditForm((f) => ({ ...f, endTime: ev.target.value }))} />
+                          </div>
+                          <input className={`${inp} w-full`} placeholder="Notes" value={editForm.notes} onChange={(ev) => setEditForm((f) => ({ ...f, notes: ev.target.value }))} />
+                          <div className="flex gap-1.5">
+                            <button type="button" className={btn} disabled={busy || !editForm.title.trim()} onClick={() => saveEdit(e.id)}>Save changes</button>
+                            <button type="button" className={ghostBtn} onClick={() => setEditingId(null)}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -567,7 +614,7 @@ function PhotoJobLog() {
 
 /* ───────────────────────── 6. Invoicing + Client Portal ───────────────────────── */
 
-interface Invoice { id: string; invoiceNumber: string; estimateId: string; client: string; subtotal: number; tax: number; total: number; status: string; signature: { signedBy: string; decision: string } | null }
+interface Invoice { id: string; invoiceNumber: string; estimateId: string; client: string; subtotal: number; tax: number; total: number; depositPct: number; depositDue: number; status: string; signature: { signedBy: string; decision: string } | null }
 interface InvoiceListResult { invoices: Invoice[]; outstanding: number; collected: number }
 interface PortalShare { token: string; client: string; estimateId: string; estimateAmount: number; jobName: string; progressPct: number; status: string; expiresAt?: string; clientDecision: { decision: string; signedBy: string } | null; milestones: { label: string; done: boolean }[] }
 
@@ -625,6 +672,12 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
     await reload(); setBusy(false);
   };
   const markPaid = async (id: string) => { setBusy(true); await run('invoiceMarkPaid', { id }); await reload(); setBusy(false); };
+  // F7: exit paths — invoices and portal entries can be removed, each
+  // behind the family's two-step named confirm.
+  const [confirmingInvoiceId, setConfirmingInvoiceId] = useState<string | null>(null);
+  const deleteInvoice = async (id: string) => { setBusy(true); await run('invoiceDelete', { id }); setConfirmingInvoiceId(null); await reload(); setBusy(false); };
+  const [confirmingPortalToken, setConfirmingPortalToken] = useState<string | null>(null);
+  const deletePortal = async (token: string) => { setBusy(true); await run('portalDelete', { token }); setConfirmingPortalToken(null); await reload(); setBusy(false); };
   const createPortal = async () => {
     if (!pClient.trim()) return;
     setBusy(true);
@@ -679,13 +732,30 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                     <span className="text-[12px] text-white">{iv.invoiceNumber} · {iv.client}</span>
                     <span className="font-mono text-[12px] text-emerald-300">${iv.total.toLocaleString()}</span>
                   </div>
+                  {/* F4: the deposit the conversion collected, applied as a line. */}
+                  {iv.depositDue > 0 && (
+                    <div className="mt-0.5 text-[10px] text-zinc-400">
+                      Deposit ({iv.depositPct}%): <span className="font-mono text-zinc-200">${iv.depositDue.toFixed(2)}</span>
+                      {' · '}Balance due: <span className="font-mono text-zinc-200">${(iv.total - iv.depositDue).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="mt-0.5 flex items-center justify-between text-[10px]">
                     <span className="text-zinc-400">
                       {iv.signature ? <span className="text-emerald-400"><Check className="mr-0.5 inline h-2.5 w-2.5" />signed by {iv.signature.signedBy}</span> : 'unsigned'}
                     </span>
-                    {iv.status === 'paid'
-                      ? <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-200">paid</span>
-                      : <button onClick={() => markPaid(iv.id)} className="rounded bg-amber-600 px-1.5 py-0.5 text-white hover:bg-amber-500">Mark paid</button>}
+                    <span className="flex items-center gap-1.5">
+                      {confirmingInvoiceId === iv.id ? (
+                        <>
+                          <button onClick={() => deleteInvoice(iv.id)} disabled={busy} className="rounded bg-rose-600 px-1.5 py-0.5 text-white hover:bg-rose-500">Confirm delete</button>
+                          <button onClick={() => setConfirmingInvoiceId(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">Cancel</button>
+                        </>
+                      ) : (
+                        <button onClick={() => setConfirmingInvoiceId(iv.id)} className="text-zinc-500 underline hover:text-rose-300">Delete</button>
+                      )}
+                      {iv.status === 'paid'
+                        ? <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-200">paid</span>
+                        : <button onClick={() => markPaid(iv.id)} className="rounded bg-amber-600 px-1.5 py-0.5 text-white hover:bg-amber-500">Mark paid</button>}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -714,7 +784,17 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                 </div>
                 <div className="mt-1 flex items-center gap-2 text-[10px] text-zinc-400">
                   {p.status === 'revoked' ? (
-                    <span>Link revoked</span>
+                    <>
+                      <span>Link revoked</span>
+                      {confirmingPortalToken === p.token ? (
+                        <span className="ml-auto flex items-center gap-1.5">
+                          <button type="button" onClick={() => deletePortal(p.token)} disabled={busy} className="rounded bg-rose-600 px-1.5 py-0.5 text-white hover:bg-rose-500">Confirm remove</button>
+                          <button type="button" onClick={() => setConfirmingPortalToken(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">Cancel</button>
+                        </span>
+                      ) : (
+                        <button type="button" onClick={() => setConfirmingPortalToken(p.token)} className="ml-auto text-zinc-400 underline hover:text-rose-300">Remove entry</button>
+                      )}
+                    </>
                   ) : (
                     <>
                       <button
@@ -725,14 +805,24 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                         Copy client link
                       </button>
                       {p.expiresAt && <span>expires {new Date(p.expiresAt).toLocaleDateString()}</span>}
-                      <button
-                        type="button"
-                        onClick={async () => { setBusy(true); await run('portalRevoke', { token: p.token }); await reload(); setBusy(false); }}
-                        disabled={busy}
-                        className="ml-auto text-rose-300 underline"
-                      >
-                        Revoke
-                      </button>
+                      <span className="ml-auto flex items-center gap-2">
+                        {confirmingPortalToken === p.token ? (
+                          <>
+                            <button type="button" onClick={() => deletePortal(p.token)} disabled={busy} className="rounded bg-rose-600 px-1.5 py-0.5 text-white hover:bg-rose-500">Confirm remove</button>
+                            <button type="button" onClick={() => setConfirmingPortalToken(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">Cancel</button>
+                          </>
+                        ) : (
+                          <button type="button" onClick={() => setConfirmingPortalToken(p.token)} className="text-zinc-400 underline hover:text-rose-300">Remove entry</button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={async () => { setBusy(true); await run('portalRevoke', { token: p.token }); await reload(); setBusy(false); }}
+                          disabled={busy}
+                          className="text-rose-300 underline"
+                        >
+                          Revoke
+                        </button>
+                      </span>
                     </>
                   )}
                 </div>

@@ -45,8 +45,11 @@ export function AvatarComputeToggle() {
       <div className="mb-2 flex items-center gap-2">
         <Cpu className="h-4 w-4" />
         <h3 className="text-[12px] font-semibold uppercase tracking-wider">Avatar compute mode (Phase E)</h3>
-        <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${isWorkerActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
-          {isWorkerActive ? 'worker active' : (mode === 'main-thread' ? 'main-thread' : 'starting / fallback')}
+        {/* S-UX-4: the chip reports the SELECTED mode first — it read
+            "worker active" under every mode, including Main thread,
+            because it reported the worker's existence, not the choice. */}
+        <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium ${mode === 'main-thread' ? 'bg-sky-500/20 text-sky-300' : isWorkerActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+          {mode === 'main-thread' ? 'mode: main thread (your selection)' : mode === 'worker-only' ? (isWorkerActive ? 'mode: worker only — worker active' : 'mode: worker only — worker not ready') : (isWorkerActive ? 'mode: auto — worker active' : 'mode: auto — starting / fallback')}
         </span>
       </div>
       <p className="mb-3 text-[11px] text-cyan-200/80">
@@ -74,6 +77,13 @@ export function AvatarComputeToggle() {
           );
         })}
       </div>
+      {stats.samples === 0 && (
+        <p className="mb-3 rounded-md bg-cyan-500/10 px-2.5 py-2 text-[10px] text-cyan-200/80">
+          Dormant in this lens: no avatar is mounted here, so no compute has run and the counters below
+          stand at zero. They measure the avatar system where one is present (e.g. Concordia) when
+          gait/IK work actually executes.
+        </p>
+      )}
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="last compute" value={stats.lastMs ? `${stats.lastMs.toFixed(2)} ms` : '—'} />
         <Stat label="p50" value={stats.p50 ? `${stats.p50.toFixed(2)} ms` : '—'} />

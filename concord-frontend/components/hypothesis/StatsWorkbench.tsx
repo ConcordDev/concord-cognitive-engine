@@ -45,6 +45,7 @@ function parseNums(raw: string): number[] {
 }
 
 interface Dataset {
+  hypothesisId?: string | null;
   id: string;
   name: string;
   rowCount: number;
@@ -476,6 +477,9 @@ function ApaExport({ kind, result }: { kind: string; result: any }) {
 
 function DatasetPanel() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [hypotheses, setHypotheses] = useState<{ id: string; statement?: string; machine?: { hypothesis?: { statement?: string } } }[]>([]);
+  const [linkId, setLinkId] = useState('');
+  const [attached, setAttached] = useState<{ hypothesisId: string; verdict: string } | null>(null);
   const [name, setName] = useState('');
   const [csv, setCsv] = useState('');
   const [busy, setBusy] = useState(false);
@@ -492,6 +496,9 @@ function DatasetPanel() {
   const refresh = useCallback(async () => {
     const res = await lensRun('hypothesis', 'datasetList', {});
     if (res.data?.ok) setDatasets(res.data.result?.datasets || []);
+    const hyps = await lensRun('hypothesis', 'list', {});
+    const rows = (hyps.data as { result?: unknown[] })?.result;
+    if (Array.isArray(rows)) setHypotheses(rows as typeof hypotheses);
   }, []);
 
   useEffect(() => {
@@ -502,7 +509,7 @@ function DatasetPanel() {
   const importCsv = useCallback(async () => {
     setBusy(true);
     setError(null);
-    const res = await lensRun('hypothesis', 'datasetImport', { name: name || 'Untitled dataset', csv });
+    const res = await lensRun('hypothesis', 'datasetImport', { name: name || 'Untitled dataset', csv, hypothesisId: linkId || undefined });
     if (res.data.ok) {
       setName('');
       await refresh();
@@ -510,7 +517,7 @@ function DatasetPanel() {
       setError(res.data.error || 'Import failed');
     }
     setBusy(false);
-  }, [name, csv, refresh]);
+  }, [name, csv, refresh, linkId]);
 
   const onFile = useCallback((file: File) => {
     const reader = new FileReader();
@@ -561,6 +568,7 @@ function DatasetPanel() {
       // runTestOnDataset returns the wrapped { ok, result } of the inner test.
       const r: any = res.data.result;
       setRunResult(r?.result ?? r);
+      setAttached(r?.attachedToHypothesis ?? null);
     } else {
       setRunError(res.data.error || 'Run failed');
     }
@@ -590,6 +598,19 @@ function DatasetPanel() {
               rows={6}
               className="w-full rounded-md border border-zinc-800 bg-zinc-900 p-2 font-mono text-xs text-zinc-100"
             />
+          </label>
+          <label className="block space-y-1 text-[11px] text-zinc-400">
+            Link to a hypothesis (optional) — runs on this dataset record themselves on it as tests
+            <select
+              value={linkId}
+              onChange={(e) => setLinkId(e.target.value)}
+              className="w-full rounded-md border border-zinc-800 bg-zinc-900 p-1.5 text-xs text-zinc-100"
+            >
+              <option value="">No link</option>
+              {hypotheses.map((h) => (
+                <option key={h.id} value={h.id}>{(h.machine?.hypothesis?.statement || h.statement || h.id).slice(0, 80)}</option>
+              ))}
+            </select>
           </label>
           <div className="flex gap-2">
             <button
@@ -651,6 +672,24 @@ function DatasetPanel() {
           <h4 className="text-sm font-semibold text-indigo-300">
             Run a test on “{selected.name}”
           </h4>
+          <label className="block space-y-1 text-[11px] text-zinc-400">
+            Linked hypothesis
+            <select
+              value={selected.hypothesisId || ''}
+              onChange={async (e) => {
+                const v = e.target.value || null;
+                await lensRun('hypothesis', 'datasetSetHypothesis', { datasetId: selected.id, hypothesisId: v });
+                setSelected({ ...selected, hypothesisId: v });
+                await refresh();
+              }}
+              className="w-full rounded-md border border-zinc-800 bg-zinc-900 p-1.5 text-xs text-zinc-100"
+            >
+              <option value="">No link — runs stay in Statistics only</option>
+              {hypotheses.map((h) => (
+                <option key={h.id} value={h.id}>{(h.machine?.hypothesis?.statement || h.statement || h.id).slice(0, 80)}</option>
+              ))}
+            </select>
+          </label>
           <div className="flex flex-wrap gap-2 text-xs">
             {selected.columns.map((c) => (
               <span
@@ -700,6 +739,9 @@ function DatasetPanel() {
             </div>
           </div>
           {runError && <p className="rounded-md bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{runError}</p>}
+          {attached && (
+            <p className="text-[11px] text-emerald-300">Recorded as a test on the linked hypothesis (verdict: {attached.verdict}) — see it in the Lab.</p>
+          )}
           {runResult && (
             <TestResult kind={test as TestKind} result={runResult} />
           )}
@@ -1116,7 +1158,7 @@ function PreRegCard({
 }) {
   const [open, setOpen] = useState(false);
   const [pValue, setPValue] = useState('');
-  const [reject, setReject] = useState(true);
+  const [reject, setReject] = useState(false); // S4 rider: the outcome form pre-answers nothing — H₀ rejected starts UNCHECKED.
   const [effect, setEffect] = useState('');
   const [obsDir, setObsDir] = useState('two-sided');
   const [busy, setBusy] = useState(false);

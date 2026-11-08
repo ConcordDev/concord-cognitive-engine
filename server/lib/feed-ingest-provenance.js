@@ -68,6 +68,24 @@ export function hasFeedIngestProvenance(d) {
 }
 
 /**
+ * A13 (feed admission): the scope a dtu.create stamped with `marker` takes.
+ * Feed-manager writes its feed DTUs with scope "global" directly; a lens
+ * feed action creates through dtu.create, whose Scope Separation coercion
+ * would land its DTUs "local" — inadmissible to selectGlobalFeed on every
+ * surface, so provenanced public ingests appeared in no feed list anywhere.
+ * A create carrying the server-only marker (proof a wrapped lens feed
+ * action is running; never settable from a request body) whose resolved
+ * visibility is open takes "global" too. Anything else returns null and the
+ * caller's normal scope rules stand unchanged: asking for global scope
+ * without the marker changes nothing.
+ */
+export function feedIngestScope(marker, visibility) {
+  if (!marker || typeof marker !== "object") return null;
+  if (!isOpenVisibility(visibility)) return null;
+  return "global";
+}
+
+/**
  * True when the row is an auto-source citation (phase 9a): the server-only
  * marker stamped by dtu.create inside runAsFeedIngest({ action:
  * "auto-source" }) plus the citation kind the auto-source writer sets.

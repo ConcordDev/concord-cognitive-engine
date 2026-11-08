@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Mic, Loader2, Search, ExternalLink, LibraryBig, Check } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { showToast } from '@/components/common/Toasts';
+import { notifyPodcastChanged } from './podcast-events';
 
 interface Podcast { collectionId: number; trackId?: number; title: string; artist?: string; genre?: string; artwork?: string; feedUrl?: string; episodeCount?: number; collectionUrl?: string; contentAdvisory?: string }
 
@@ -26,6 +27,18 @@ export function ItunesSearch() {
   const [query, setQuery] = useState('');
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
   const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
+  // "Added" is the library store's fact, not this component's memory:
+  // the feed URLs already in the caller's library are re-read from
+  // show-list, so the state survives a round trip instead of
+  // evaporating with the component.
+  const [libraryFeedUrls, setLibraryFeedUrls] = useState<Set<string>>(new Set());
+  const loadLibrary = useCallback(async () => {
+    const r = await callMacro<{ shows: { feedUrl: string | null }[] }>('show-list', {});
+    if (r.ok && r.result) {
+      setLibraryFeedUrls(new Set(r.result.shows.map((s) => s.feedUrl).filter((u): u is string => !!u)));
+    }
+  }, []);
+  useEffect(() => { void loadLibrary(); }, [loadLibrary]);
   const search = useMutation({
     mutationFn: async () => callMacro<{ podcasts: Podcast[] }>('itunes-search', { query: query.trim(), limit: 30 }),
     onSuccess: (env) => { if (env.ok && env.result) setPodcasts(env.result.podcasts); else setPodcasts([]); },
@@ -45,10 +58,18 @@ export function ItunesSearch() {
         const refreshed = await callMacro<{ ingested: number }>('rss-refresh', { showId, feedUrl: p.feedUrl });
         if (!refreshed.ok) throw new Error(refreshed.error || 'feed unreachable');
       }
+      // The button promises "subscribe and pull episodes" — land the
+      // subscription too (show-subscribe toggles, so only call it when
+      // the store says the show is not yet subscribed).
+      const list = await callMacro<{ shows: { id: string; subscribed: boolean }[] }>('show-list', {});
+      const mine = list.result?.shows.find((s) => s.id === showId);
+      if (mine && !mine.subscribed) await callMacro('show-subscribe', { id: showId });
       return { showId, collectionId: p.collectionId };
     },
     onSuccess: ({ collectionId }) => {
       setAddedIds((prev) => new Set(prev).add(collectionId));
+      void loadLibrary();
+      notifyPodcastChanged();
       showToast('success', 'Added to your library');
     },
     onError: (e) => showToast('error', e instanceof Error ? e.message : 'Could not add to library'),
@@ -92,12 +113,12 @@ export function ItunesSearch() {
               <button
                 type="button"
                 onClick={() => addToLibrary.mutate(p)}
-                disabled={addedIds.has(p.collectionId) || (addToLibrary.isPending && addToLibrary.variables?.collectionId === p.collectionId)}
+                disabled={addedIds.has(p.collectionId) || (!!p.feedUrl && libraryFeedUrls.has(p.feedUrl)) || (addToLibrary.isPending && addToLibrary.variables?.collectionId === p.collectionId)}
                 title="Add to your library — subscribe and pull episodes into the Listening Hub"
                 className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-60"
               >
-                {addedIds.has(p.collectionId) ? <Check className="h-3 w-3" /> : addToLibrary.isPending && addToLibrary.variables?.collectionId === p.collectionId ? <Loader2 className="h-3 w-3 animate-spin" /> : <LibraryBig className="h-3 w-3" />}
-                {addedIds.has(p.collectionId) ? 'Added' : 'Add to Library'}
+                {addedIds.has(p.collectionId) || (!!p.feedUrl && libraryFeedUrls.has(p.feedUrl)) ? <Check className="h-3 w-3" /> : addToLibrary.isPending && addToLibrary.variables?.collectionId === p.collectionId ? <Loader2 className="h-3 w-3 animate-spin" /> : <LibraryBig className="h-3 w-3" />}
+                {addedIds.has(p.collectionId) || (!!p.feedUrl && libraryFeedUrls.has(p.feedUrl)) ? 'Added' : 'Add to Library'}
               </button>
               <SaveAsDtuButton
                 defaultContentClass="media"

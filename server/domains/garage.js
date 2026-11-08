@@ -74,7 +74,33 @@ export default function registerGarageMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const worldId = clampStr(input.worldId, 64, "concordia-hub");
     const kind = input.kind ? clampStr(input.kind, 32, null) : null;
-    return { ok: true, worldId, vehicles: listVehiclesInWorld(db, worldId, { kind }) };
+    const vehicles = listVehiclesInWorld(db, worldId, { kind });
+    // F3 completion — the World table is the third surface. `mine` and the
+    // inspector (`get`) already render the caller's own vehicles under the
+    // account's resolved display identity; this list's projection omits
+    // owner_id entirely, so an own vehicle read here fell back to the bare
+    // owner_kind ("player") and the three-forms disagreement survived on
+    // exactly this surface. Stamp ONLY the caller's own rows — the ids come
+    // from the same owner-scoped read `mine` performs — with isMine and the
+    // same ownerDisplay the other two surfaces print. Every other row is
+    // untouched: no owner_id is added anywhere, so the privacy projection
+    // the renderer relies on stands.
+    const userId = actorId(ctx);
+    if (userId && vehicles.length > 0) {
+      try {
+        const own = db.prepare(
+          `SELECT id FROM world_vehicles WHERE world_id = ? AND owner_kind = 'player' AND owner_id = ?`
+        ).all(worldId, userId);
+        if (own.length > 0) {
+          const ownIds = new Set(own.map((r) => r.id));
+          const displayName = resolveUserDisplay(db, [userId])[userId]?.displayName || userId.slice(0, 8);
+          for (const v of vehicles) {
+            if (ownIds.has(v.id)) { v.isMine = true; v.ownerDisplay = displayName; }
+          }
+        }
+      } catch { /* stamping is additive — the unstamped list still returns */ }
+    }
+    return { ok: true, worldId, vehicles };
   }, { note: "list vehicles in a world (kind-filterable)" });
 
   /**

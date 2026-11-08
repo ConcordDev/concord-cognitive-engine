@@ -289,6 +289,10 @@ export default function connectiveTissueRoutes({ db, requireAuth }) {
         sortBy: sortBy || "creti_score",
         limit: parseInt(limit) || 50,
         offset: parseInt(offset) || 0,
+        // A4 Leg B: an authenticated caller's own canonical DTUs join
+        // the results (owner-scoped inside searchDTUs); anonymous
+        // requests keep the published-only behaviour exactly.
+        callerId: req.user?.id || null,
       });
       res.json(result);
     } catch (err) {
@@ -310,6 +314,7 @@ export default function connectiveTissueRoutes({ db, requireAuth }) {
         sortBy: sortBy || "creti_score",
         limit: limit != null ? parseInt(limit) : 50,
         offset: offset != null ? parseInt(offset) : 0,
+        callerId: req.user?.id || null,
       });
       res.json(result);
     } catch (err) {

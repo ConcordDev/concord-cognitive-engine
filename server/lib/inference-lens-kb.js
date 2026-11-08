@@ -81,14 +81,28 @@ export function addSpoFact(userId, input = {}) {
   if (!kb) return { ok: false, error: "STATE unavailable" };
 
   const subject = String(input.subject || "").slice(0, 200);
-  const predicate = String(input.predicate || "").slice(0, 100);
+  let predicate = String(input.predicate || "").slice(0, 100);
   const object = String(input.object || "").slice(0, 200);
   if (!subject || !predicate || !object) {
     return { ok: false, error: "subject, predicate, and object are required" };
   }
 
+  // S-INF-2 (F3): negation is logic, not a string. "is not" / "isn't" in
+  // the predicate is parsed as a negated "is" (an explicit negated flag
+  // from the form's control wins), so the KB can hold P and ¬P as the
+  // contradiction they are instead of two unrelated predicates.
+  let negated = Boolean(input.negated);
+  if (/^is\s*(not|n't)$/i.test(predicate.trim()) || /^isnt$/i.test(predicate.trim())) {
+    predicate = "is";
+    negated = !negated;
+  }
+
   const key = spoKey(subject, predicate, object);
-  const existing = kb.facts.find((f) => factSpoKey(f) === key);
+  // Identity is triple + polarity: the same triple at the SAME polarity
+  // is a duplicate, but the OPPOSITE polarity is a different fact — the
+  // contradiction (S-INF-2/F3). Keying on the triple alone silently
+  // swallowed every negation of a standing fact as a "duplicate".
+  const existing = kb.facts.find((f) => factSpoKey(f) === key && Boolean(f.negated) === negated);
   if (existing) {
     return { ok: true, fact: spoView(existing), newDerivations: 0, duplicate: true };
   }
@@ -101,7 +115,7 @@ export function addSpoFact(userId, input = {}) {
     object,
     // Prolog kb-* engine reads predicate + args
     args: [subject, object],
-    negated: Boolean(input.negated),
+    negated,
     universal: Boolean(input.universal),
     confidence: clamp01(input.confidence == null ? 1 : input.confidence),
     source: String(input.source || "user").slice(0, 100),
@@ -109,8 +123,16 @@ export function addSpoFact(userId, input = {}) {
     addedAt: now,
   };
   kb.facts.push(fact);
+  // S-INF-2 (F3): a fact that contradicts a standing one is flagged at
+  // entry — same triple, opposite polarity.
+  const twin = kb.facts.find((f) => f.id !== fact.id && factSpoKey(f) === key && Boolean(f.negated) !== negated);
   saveInferenceLens();
-  return { ok: true, fact: spoView(fact), newDerivations: 0 };
+  return {
+    ok: true,
+    fact: spoView(fact),
+    newDerivations: 0,
+    ...(twin ? { contradiction: { withFactId: twin.id, statement: `${subject} ${predicate} ${object}`, negated } } : {}),
+  };
 }
 
 export function matchSpoFact(pattern, fact) {
@@ -135,15 +157,35 @@ export function querySpoFacts(userId, query = {}) {
   };
 
   const matches = kb.facts.filter((f) => matchSpoFact(pattern, f)).map(spoView);
+  deskCounters(kb).queries += 1;
+  saveInferenceLens();
 
   if (matches.length > 0) {
+    // S-INF-2 (F3): a matched fact whose opposite-polarity twin also
+    // stands is flagged in the result, not presented with equal calm.
+    const contradictions = [];
+    const seenContra = new Set();
+    for (const m of matches) {
+      const twin = kb.facts.find((f) => factSpoKey(f) === spoKey(m.subject, m.predicate, m.object) && Boolean(f.negated) !== Boolean(m.negated));
+      const ck = spoKey(m.subject, m.predicate, m.object);
+      if (twin && !seenContra.has(ck)) {
+        seenContra.add(ck);
+        contradictions.push({ subject: m.subject, predicate: m.predicate, object: m.object });
+      }
+    }
     return {
       ok: true,
       found: true,
       facts: matches,
-      explanation: matches.map((f) =>
-        `"${f.subject} ${f.predicate} ${f.object}" is a known fact`
-      ),
+      ...(contradictions.length > 0 ? { contradictions } : {}),
+      explanation: [
+        ...matches.map((f) =>
+          `"${f.subject} ${f.predicate} ${f.object}" is a known fact${f.negated ? " (negated)" : ""}`
+        ),
+        ...contradictions.map((c) =>
+          `Contradiction: the knowledge base holds both "${c.subject} ${c.predicate} ${c.object}" and its negation`
+        ),
+      ],
     };
   }
 
@@ -155,11 +197,28 @@ export function querySpoFacts(userId, query = {}) {
   };
 }
 
+/** Desk operation counters (F6): the tiles count what they name. */
+export function deskCounters(kb) {
+  if (!kb.counters) kb.counters = { queries: 0, inferences: 0, derivations: 0 };
+  return kb.counters;
+}
+
+export function noteDeskOperation(userId, kind, n = 1) {
+  const kb = userInferenceKb(userId);
+  if (!kb) return;
+  const c = deskCounters(kb);
+  if (kind === "query") c.queries += n;
+  else if (kind === "inference") c.inferences += n;
+  else if (kind === "derivation") c.derivations += n;
+  saveInferenceLens();
+}
+
 export function getDeskStatus(userId) {
   const kb = userInferenceKb(userId);
   if (!kb) return { ok: false, error: "STATE unavailable" };
   const factCount = kb.facts.length;
   const ruleCount = kb.rules.length;
+  const counters = deskCounters(kb);
   return {
     ok: true,
     // Desk tiles read factCount / ruleCount (InferenceDeskPanel).
@@ -168,11 +227,13 @@ export function getDeskStatus(userId) {
     // Back-compat aliases for older status consumers.
     facts: factCount,
     rules: ruleCount,
-    derived: 0,
+    derived: counters.derivations,
+    counters,
     stats: {
-      inferencesPerformed: 0,
-      factsDeduced: 0,
-      rulesApplied: 0,
+      inferencesPerformed: counters.inferences,
+      factsDeduced: counters.derivations,
+      rulesApplied: counters.inferences,
+      queriesRun: counters.queries,
     },
   };
 }

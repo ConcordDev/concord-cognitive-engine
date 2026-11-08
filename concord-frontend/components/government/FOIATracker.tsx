@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { FileText, Plus, Loader2, Clock, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { LocalRecordNotice } from './LocalRecordNotice';
 
 export interface FOIARequest {
   id: string;
@@ -110,6 +111,9 @@ export function FOIATracker() {
           <input value={draftAgency} onChange={e => setDraftAgency(e.target.value)} placeholder="Agency (e.g. FBI, GSA, Local PD)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={draftSubject} onChange={e => setDraftSubject(e.target.value)} placeholder="Subject" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <textarea value={draftBody} onChange={e => setDraftBody(e.target.value)} rows={8} placeholder="Request body..." className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono resize-y" />
+          <LocalRecordNotice channelLabel="FOIA.gov" channelHref="https://www.foia.gov">
+            Draft only — Concord saves this draft in your workspace and does not submit FOIA requests to any agency. There is deliberately no Submit here.
+          </LocalRecordNotice>
           <div className="flex items-center gap-2">
             <button onClick={save} disabled={!draftAgency.trim() || !draftSubject.trim() || !draftBody.trim()} className="px-3 py-1 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-50">Save draft</button>
             <button onClick={() => setCreating(false)} className="px-3 py-1 text-xs rounded border border-white/10 text-gray-400 hover:text-white">Cancel</button>

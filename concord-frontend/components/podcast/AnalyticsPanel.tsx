@@ -20,9 +20,22 @@ export function AnalyticsPanel() {
   const { episodes, subscriberCount } = useMyPodcastShow();
   const { insights: realtimeInsights } = useRealtimeLens('podcast');
   const {
-    contextDTUs, hyperDTUs, megaDTUs, regularDTUs,
+    domainDTUs,
     publishToMarketplace, isLoading: dtusLoading,
   } = useLensDTUs({ lens: 'podcast' });
+
+  // The DTU panel reads the account's podcast-scoped DTUs (the hook's
+  // domain query), never the platform context inventory: a capped
+  // context sample (limit 100) presented as account analytics is a
+  // display in search of a definition. What these count is printed on
+  // the surface with the panel, per the platform display rule.
+  const dtuTierCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const d of domainDTUs) counts.set(d.tier, (counts.get(d.tier) ?? 0) + 1);
+    return [...counts.entries()]
+      .map(([tier, count]) => ({ tier, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [domainDTUs]);
   const [publishingDtu, setPublishingDtu] = useState(false);
 
   const analytics = useMemo(() => {
@@ -33,7 +46,7 @@ export function AnalyticsPanel() {
     return { totalPlays, totalEpisodes, publishedEpisodes, totalDuration, subscriberCount };
   }, [episodes, subscriberCount]);
 
-  const publishableDtuId = regularDTUs[0]?.id ?? contextDTUs[0]?.id ?? null;
+  const publishableDtuId = domainDTUs.find((d) => d.tier === 'regular')?.id ?? domainDTUs[0]?.id ?? null;
   const handlePublishDtu = useCallback(async () => {
     if (!publishableDtuId) return;
     setPublishingDtu(true);
@@ -81,34 +94,19 @@ export function AnalyticsPanel() {
           ))}
       </div>
 
-      {!dtusLoading && (contextDTUs.length > 0 || regularDTUs.length > 0 || hyperDTUs.length > 0 || megaDTUs.length > 0) && (
+      {!dtusLoading && domainDTUs.length > 0 && (
         <div className="mt-6">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase mb-3">Data Transfer Units</h3>
+          <h3 className="text-sm font-semibold text-gray-400 uppercase mb-1">Data Transfer Units</h3>
+          <p className="text-xs text-gray-500 mb-3">
+            Your DTUs in the Podcast lens — episodes, transcripts and Studio outputs you have minted here, counted by tier.
+          </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {contextDTUs.length > 0 && (
-              <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                <p className="text-xs text-gray-400">Context DTUs</p>
-                <p className="text-xl font-bold text-neon-cyan">{contextDTUs.length}</p>
+            {dtuTierCounts.map(({ tier, count }) => (
+              <div key={tier} className="p-3 bg-white/5 rounded-xl border border-white/5">
+                <p className="text-xs text-gray-400 capitalize">{tier} DTUs</p>
+                <p className="text-xl font-bold">{count}</p>
               </div>
-            )}
-            {regularDTUs.length > 0 && (
-              <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                <p className="text-xs text-gray-400">Regular DTUs</p>
-                <p className="text-xl font-bold text-purple-400">{regularDTUs.length}</p>
-              </div>
-            )}
-            {hyperDTUs.length > 0 && (
-              <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                <p className="text-xs text-gray-400">Hyper DTUs</p>
-                <p className="text-xl font-bold text-neon-pink">{hyperDTUs.length}</p>
-              </div>
-            )}
-            {megaDTUs.length > 0 && (
-              <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                <p className="text-xs text-gray-400">Mega DTUs</p>
-                <p className="text-xl font-bold text-neon-green">{megaDTUs.length}</p>
-              </div>
-            )}
+            ))}
           </div>
           {publishableDtuId && (
             <button

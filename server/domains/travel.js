@@ -203,6 +203,16 @@ export default function registerTravelActions(registerLensAction) {
       const arr = await r.json();
       const c = Array.isArray(arr) ? arr[0] : arr;
       if (!c) return { ok: false, error: "country lookup returned no data" };
+      // v3.1 answers HTTP 200 with { success:false, errors:[...] } after
+      // deprecation. That object is not a country. A demo v5 key is not
+      // used here: it returns one fixed country for every query.
+      if (c.success === false) {
+        const msg = Array.isArray(c.errors) && c.errors[0] && c.errors[0].message
+          ? String(c.errors[0].message)
+          : "country lookup unavailable";
+        return { ok: false, error: msg };
+      }
+      if (!c.cca2) return { ok: false, error: "country lookup returned no country code" };
       return {
         ok: true,
         result: {
@@ -1741,8 +1751,18 @@ export default function registerTravelActions(registerLensAction) {
       const r = await fetch(`https://restcountries.com/v3.1/region/${region}?fields=name,capital,region,subregion,population,currencies,languages,timezones`, { signal: ctrl.signal });
       if (!r.ok) return { ok: false, error: `restcountries ${r.status}` };
       const data = await r.json();
-      const countries = (Array.isArray(data) ? data : [])
-        .sort(() => 0.5 - Math.random()).slice(0, limit);
+      // v3.1 answers HTTP 200 with { success:false } after deprecation.
+      // That is not an empty catalogue. v5 needs an operator bearer token;
+      // the published demo key returns one fixed country for every query
+      // and is not used here.
+      if (data && data.success === false) {
+        const msg = Array.isArray(data.errors) && data.errors[0] && data.errors[0].message
+          ? String(data.errors[0].message)
+          : "country feed unavailable";
+        return { ok: false, error: msg };
+      }
+      if (!Array.isArray(data)) return { ok: false, error: "country feed returned no country list" };
+      const countries = data.slice(0, limit);
       let ingested = 0, skipped = 0; const dtuIds = [];
       for (const c of countries) {
         const cname = c.name?.common || "?";

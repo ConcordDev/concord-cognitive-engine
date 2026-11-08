@@ -108,7 +108,8 @@ describe('collab room card', () => {
       return Promise.resolve({ data: { ok: false, result: null, error: `unexpected ${domain}.${name}` } });
     });
     fireEvent.click(view.getByRole('button', { name: 'Open a room' }));
-    expect(await view.findByRole('heading', { name: 'Design jam' })).toBeInTheDocument();
+    // Rooms are selectable list buttons now (aria-pressed), not headings.
+    expect(await view.findByRole('button', { name: 'Design jam' })).toBeInTheDocument();
     expect(view.getByTestId('cb-note')).toHaveTextContent('the hinge note');
     expect(view.queryByText('No room open.')).toBeNull();
     expect(view.queryByText('Nothing selected.')).toBeNull();

@@ -442,6 +442,27 @@ export default function registerProjectsActions(registerLensAction) {
     return { ok: true, result: { project } };
   });
 
+  // F17 companion (Platform Chrome II, lens-side half): record the DTU a
+  // project was saved as ON THE PROJECT RECORD, so the saved state is a
+  // fact of the record — readable by project-get after any navigation —
+  // not view-local state in the Keep menu. The FE calls this only after
+  // its own verified save (the DTU read-back in ProjectsKeepMenu); this
+  // action's guards are ownership + a well-formed id. The field name is
+  // deliberate: savedDtuId is one of the chrome extractor's LINK_FIELDS,
+  // so the record stands chrome-ready.
+  registerLensAction("projects", "project-note-dtu-save", (ctx, _a, params = {}) => {
+    const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const project = pjProject(s, pjAid(ctx), params.id);
+    if (!project) return { ok: false, error: "project not found" };
+    const dtuId = pjClean(params.dtuId, 80);
+    if (!dtuId) return { ok: false, error: "dtuId required" };
+    project.savedDtuId = dtuId;
+    project.savedDtuAt = pjNow();
+    project.updatedAt = pjNow();
+    savePjState();
+    return { ok: true, result: { id: project.id, savedDtuId: project.savedDtuId, savedDtuAt: project.savedDtuAt } };
+  });
+
   registerLensAction("projects", "project-archive", (ctx, _a, params = {}) => {
     const s = getPjState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const project = pjProject(s, pjAid(ctx), params.id);

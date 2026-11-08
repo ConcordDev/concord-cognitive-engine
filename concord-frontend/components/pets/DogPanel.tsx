@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { Dog, RefreshCw, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { discoverItems } from './discover-payload';
 
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
@@ -25,6 +26,13 @@ export interface DogPanelProps {
   className?: string;
 }
 
+function readImages(envelope: Parameters<typeof discoverItems>[0]) {
+  const got = discoverItems(envelope, 'images');
+  const images = (got.items as string[]).filter((src) => typeof src === 'string' && src.trim() !== '');
+  if (!got.error && images.length === 0) return { images: [] as string[], error: 'no_content' };
+  return { images: got.error ? [] as string[] : images, error: got.error };
+}
+
 export function DogPanel({ className }: DogPanelProps) {
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,23 +41,25 @@ export function DogPanel({ className }: DogPanelProps) {
   const fetchData = async () => {
     setLoading(true);
     setError(null);
-    const r = await runMacro<{ ok: boolean; images?: string[]; reason?: string }>(
+    const r = await runMacro<{ ok: boolean; result?: { images?: string[] }; error?: string | null; reason?: string }>(
       'pets', 'live_dog', { count: 8 },
     );
-    if (r?.ok) setImages(r.images || []);
-    else setError(r?.reason || 'fetch_failed');
+    const got = readImages(r);
+    setImages(got.images);
+    setError(got.error);
     setLoading(false);
   };
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const r = await runMacro<{ ok: boolean; images?: string[]; reason?: string }>(
+      const r = await runMacro<{ ok: boolean; result?: { images?: string[] }; error?: string | null; reason?: string }>(
         'pets', 'live_dog', { count: 8 },
       );
       if (cancelled) return;
-      if (r?.ok) setImages(r.images || []);
-      else setError(r?.reason || 'fetch_failed');
+      const got = readImages(r);
+      setImages(got.images);
+      setError(got.error);
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -72,9 +82,14 @@ export function DogPanel({ className }: DogPanelProps) {
         </button>
       </header>
 
+      {loading && images.length === 0 && !error && (
+        <p className="px-3 py-3 text-xs text-zinc-400">Loading Dog CEO…</p>
+      )}
+
       {error && (
         <div className="px-3 py-3 text-xs text-rose-300/80">
-          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" /> Dog CEO unreachable ({error})
+          <AlertTriangle className="inline w-3.5 h-3.5 mr-1" />
+          {error === 'no_content' ? 'Dog CEO returned no images.' : `Dog CEO unreachable (${error})`}
         </div>
       )}
 

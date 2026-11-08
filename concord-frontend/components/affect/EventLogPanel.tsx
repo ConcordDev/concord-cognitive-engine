@@ -25,11 +25,21 @@ export function EventLogPanel() {
     }
     if (eventDimFilter !== 'all') {
       filtered = filtered.filter((evt: Record<string, unknown>) => {
+        // Logged events carry their effect in `delta` — a per-dimension
+        // signed-change map (server/affect/store.js). The old filter
+        // never looked at delta, found nothing, and fell through to
+        // `return true`, so the dimension filter filtered nothing (F8).
+        // An event with no effect information fails the filter honestly.
+        const delta = evt.delta;
+        if (delta && typeof delta === 'object' && !Array.isArray(delta)) {
+          const v = (delta as Record<string, unknown>)[eventDimFilter];
+          return typeof v === 'number' && v !== 0;
+        }
         const dims = evt.dimensions || evt.affected_dimensions || evt.changes;
         if (Array.isArray(dims)) return dims.includes(eventDimFilter);
         if (dims && typeof dims === 'object')
           return eventDimFilter in (dims as Record<string, unknown>);
-        return true;
+        return false;
       });
     }
     return filtered;

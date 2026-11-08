@@ -37,6 +37,11 @@ describe("events.event CRUD", () => {
     assert.equal(call("event-create", ctxA, {}).ok, false);
     assert.equal(call("event-create", ctxA, { name: "X", type: "weird" }).result.event.type, "social");
   });
+  it("loads an event by eventId, the key the Host tabs send", () => {
+    const e = newEvent();
+    assert.equal(call("event-detail", ctxA, { eventId: e.id }).result.event.id, e.id);
+    assert.equal(call("event-detail", ctxA, { id: e.id }).result.event.id, e.id);
+  });
   it("updates and deletes an event", () => {
     const e = newEvent();
     call("event-update", ctxA, { id: e.id, status: "confirmed", budget: 12000 });

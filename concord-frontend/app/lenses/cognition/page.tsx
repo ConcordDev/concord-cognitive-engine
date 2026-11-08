@@ -1,42 +1,53 @@
 'use client';
 
 /**
- * Cognition — one trace.
+ * Cognition — a personal question log (branch (b), the Lead's ruling).
  *
- * listExports is the card. Open a trace calls exportTrace, then shows
- * the title only after listExports contains that id and the same title,
- * and shows the question only after getExport returns that same question
- * on the stored trace. A blank title is not sent. A call with no trace
- * is not sent. Title and trace live in cognition_traces, so a server
- * restart still lists them. Mode is not rendered. The row rules are
- * empty-card chrome. The inspector views are other macros. They are
- * not on this screen.
+ * A logged question is the user's own record: a title and a question,
+ * kept until they mark it answered. The surface says so plainly — this
+ * log does not answer, derive, or compute; it keeps questions. Create
+ * verifies by read-back (listExports contains the id + title, getExport
+ * returns the same question) before anything displays. Lifecycle is
+ * complete: edit (updateExport), delete (deleteExport, two-step), an
+ * answered state (answerExport), and an identical re-create returns the
+ * standing record (the server's duplicate flag) instead of a second
+ * copy. Title and trace live in cognition_traces, so a server restart
+ * still lists them. Below the log, a labelled window states this lens's
+ * relationship to the platform's emergent-entity store (D3).
  */
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
+import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface TraceRow {
   id: string;
   title: string;
   question: string;
+  answered: { note: string; at: string } | null;
 }
 
 type Phase = 'loading' | 'ready' | 'error';
 
-function rowsFrom(rows: unknown): { id: string; title: string }[] {
+function rowsFrom(rows: unknown): { id: string; title: string; answered: { note: string; at: string } | null }[] {
   if (!Array.isArray(rows)) return [];
-  const out: { id: string; title: string }[] = [];
+  const out: { id: string; title: string; answered: { note: string; at: string } | null }[] = [];
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue;
     const id = (row as { id?: string }).id;
     const title = (row as { title?: string }).title;
     if (typeof id !== 'string' || !id) continue;
     if (typeof title !== 'string' || !title.trim()) continue;
-    out.push({ id, title: title.trim() });
+    const ans = (row as { answered?: { note?: unknown; at?: unknown } | null }).answered;
+    out.push({
+      id,
+      title: title.trim(),
+      answered: ans && typeof ans.note === 'string' ? { note: ans.note, at: typeof ans.at === 'string' ? ans.at : '' } : null,
+    });
   }
   return out;
 }
@@ -65,16 +76,16 @@ async function runCognition<T>(name: string, input: Record<string, unknown>, fal
 }
 
 async function readTraces(): Promise<TraceRow[]> {
-  const listed = await runCognition<{ exports?: unknown }>('listExports', {}, 'Could not read the trace.');
+  const listed = await runCognition<{ exports?: unknown }>('listExports', {}, 'Could not read your question log.');
   const slim = rowsFrom(listed.exports);
   const out: TraceRow[] = [];
   for (const row of slim) {
     const detail = await runCognition<{ export?: { trace?: unknown } }>(
       'getExport',
       { exportId: row.id },
-      'Could not read the trace.',
+      'Could not read your question log.',
     );
-    out.push({ id: row.id, title: row.title, question: questionFrom(detail.export?.trace) });
+    out.push({ id: row.id, title: row.title, question: questionFrom(detail.export?.trace), answered: row.answered });
   }
   return out;
 }
@@ -89,6 +100,27 @@ export default function CognitionPage() {
   const [title, setTitle] = useState('');
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editQuestion, setEditQuestion] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [answeringId, setAnsweringId] = useState<string | null>(null);
+  const [answerText, setAnswerText] = useState('');
+  const [entities, setEntities] = useState<{ registered: number; label: string } | null>(null);
+
+  // The D3 window's count is fetched only after the log itself has
+  // loaded — one plain read, no retry loop; no count, no window.
+  const fetchSummary = useCallback(() => {
+    lensRun<{ registered?: number; label?: string }>('cognition', 'entityStoreSummary', {})
+      .then((r) => {
+        const res = r?.data?.result;
+        if (res && typeof res.registered === 'number') {
+          setEntities({ registered: res.registered, label: res.label || '' });
+        }
+      })
+      .catch(() => { /* no count, no window */ });
+  }, []);
 
   const pull = useCallback(async () => readTraces(), []);
 
@@ -98,13 +130,14 @@ export default function CognitionPage() {
       if (cancelled) return;
       setTraces(rows);
       setPhase('ready');
+      fetchSummary();
     }).catch((err) => {
       if (cancelled) return;
       setPhase('error');
-      setLoadError(err instanceof Error ? err.message : 'Could not load the trace.');
+      setLoadError(err instanceof Error ? err.message : 'Could not load your question log.');
     });
     return () => { cancelled = true; };
-  }, [pull]);
+  }, [pull, fetchSummary]);
 
   const load = useCallback(() => {
     setPhase('loading');
@@ -113,11 +146,12 @@ export default function CognitionPage() {
     pull().then((rows) => {
       setTraces(rows);
       setPhase('ready');
+      fetchSummary();
     }).catch((err) => {
       setPhase('error');
-      setLoadError(err instanceof Error ? err.message : 'Could not load the trace.');
+      setLoadError(err instanceof Error ? err.message : 'Could not load your question log.');
     });
-  }, [pull]);
+  }, [pull, fetchSummary]);
 
   const openTrace = useCallback(async () => {
     if (busy || phase !== 'ready') return;
@@ -139,31 +173,89 @@ export default function CognitionPage() {
     setBusy(true);
     setActionError('');
     try {
-      const created = await runCognition<{ exportId?: string }>(
+      const created = await runCognition<{ exportId?: string; duplicate?: boolean }>(
         'exportTrace',
         { title: trimmed, trace: { input: { question: asked } } },
-        'Could not open that trace.',
+        'Could not log that question.',
       );
       const id = created.exportId;
-      if (!id) throw new Error('Could not open that trace.');
+      if (!id) throw new Error('Could not log that question.');
       const rows = await readTraces();
       const row = rows.find((item) => item.id === id);
       if (!row || row.title !== trimmed || row.question !== asked) {
-        throw new Error('Opened, but the trace did not read it back.');
+        throw new Error('Logged, but the entry did not read it back.');
       }
       setTraces(rows);
       setTitle('');
       setQuestion('');
       setComposing(false);
+      // S-COG-2: an identical re-create offers the standing record.
+      setNotice(created.duplicate ? 'Already logged — that title and question stand above as one record.' : '');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not open that trace.');
+      setActionError(err instanceof Error ? err.message : 'Could not log that question.');
     } finally {
       setBusy(false);
     }
   }, [busy, composing, phase, question, title]);
 
+  const refresh = useCallback(async () => {
+    const rows = await readTraces();
+    setTraces(rows);
+  }, []);
+
+  const saveEdit = useCallback(async (id: string) => {
+    const t = editTitle.trim();
+    const q = editQuestion.trim();
+    if (!t || !q) { setActionError('A title and a question are both required.'); return; }
+    setBusy(true);
+    try {
+      await runCognition('updateExport', { exportId: id, title: t, question: q }, 'Could not save that edit.');
+      setEditingId(null);
+      await refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not save that edit.');
+    } finally { setBusy(false); }
+  }, [editTitle, editQuestion, refresh]);
+
+  const removeTrace = useCallback(async (id: string) => {
+    // S-COG-2: delete is two-step — the first click names the entry.
+    if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
+    setConfirmDeleteId(null);
+    setBusy(true);
+    try {
+      await runCognition('deleteExport', { exportId: id }, 'Could not delete that entry.');
+      await refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not delete that entry.');
+    } finally { setBusy(false); }
+  }, [confirmDeleteId, refresh]);
+
+  const saveAnswer = useCallback(async (id: string) => {
+    const note = answerText.trim();
+    if (!note) { setActionError('Write the answer you settled on first.'); return; }
+    setBusy(true);
+    try {
+      await runCognition('answerExport', { exportId: id, answer: note }, 'Could not mark that answered.');
+      setAnsweringId(null);
+      setAnswerText('');
+      await refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not mark that answered.');
+    } finally { setBusy(false); }
+  }, [answerText, refresh]);
+
+  const clearAnswer = useCallback(async (id: string) => {
+    setBusy(true);
+    try {
+      await runCognition('answerExport', { exportId: id, clear: true }, 'Could not clear that mark.');
+      await refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not clear that mark.');
+    } finally { setBusy(false); }
+  }, [refresh]);
+
   useLensCommand(
-    [{ id: 'cognition-open', keys: 'n', description: 'Open a trace', category: 'actions', action: () => { void openTrace(); } }],
+    [{ id: 'cognition-open', keys: 'n', description: 'Log a question', category: 'actions', action: () => { void openTrace(); } }],
     { lensId: 'cognition' },
   );
 
@@ -172,20 +264,21 @@ export default function CognitionPage() {
   return (
     <LensShell lensId="cognition" asMain={false}>
       <div data-lens-theme="cognition" className="relative min-h-full bg-black px-8 pb-28 pt-6">
-        <h1 className="mb-5 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Cognition</h1>
+        <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Cognition</h1>
+        <p className="mb-5 text-[15px] text-zinc-400">Questions you&apos;re carrying, kept in one place. This is your log — nothing here answers for you; you keep the question until you settle it.</p>
 
         <section
-          aria-label="Trace"
+          aria-label="Question log"
           className="min-h-[22rem] rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5"
         >
           {phase === 'loading' && (
             <p data-testid="cg-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
-              Opening the trace.
+              Opening your question log.
             </p>
           )}
           {phase === 'error' && (
             <div data-testid="cg-error" role="alert">
-              <p className="text-[14px] text-zinc-300">{loadError || 'Could not load the trace.'}</p>
+              <p className="text-[14px] text-zinc-300">{loadError || 'Could not load your question log.'}</p>
               <button type="button" onClick={load} className="mt-4 text-[14px] text-zinc-100 underline">
                 Retry
               </button>
@@ -193,7 +286,11 @@ export default function CognitionPage() {
           )}
           {empty && (
             <div data-testid="cg-empty">
-              <p className="text-[14px] text-zinc-400">No trace yet.</p>
+              <p className="text-[14px] text-zinc-400">No questions logged yet.</p>
+              <p className="mt-2 max-w-md text-[13px] leading-relaxed text-zinc-500">
+                Write down a question you&apos;re carrying — a decision you&apos;re circling, a thing you don&apos;t yet understand.
+                It stays here in your words. When you settle it, mark it answered and note what you concluded.
+              </p>
               <div aria-hidden="true" data-testid="cg-rule" className="mt-3 h-px bg-white/10" />
               <div aria-hidden="true" data-testid="cg-rule" className="mt-4 h-px bg-white/10" />
               <div aria-hidden="true" data-testid="cg-rule" className="mt-4 h-px bg-white/10" />
@@ -207,6 +304,53 @@ export default function CognitionPage() {
                   {trace.question ? (
                     <p data-testid="cg-question" className="mt-3 text-[15px] text-zinc-300">{trace.question}</p>
                   ) : null}
+                  {trace.answered ? (
+                    <p className="mt-2 text-[13px] text-teal-300">
+                      Answered{trace.answered.at ? ` · ${trace.answered.at.slice(0, 10)}` : ''} — {trace.answered.note}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-[12px] text-zinc-500">Still open.</p>
+                  )}
+                  {editingId === trace.id ? (
+                    <div className="mt-3 space-y-2">
+                      <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} aria-label="Edit title"
+                        className="w-full border-b border-white/15 bg-transparent pb-1 font-vault text-[1.1rem] text-zinc-100 outline-none" />
+                      <input value={editQuestion} onChange={(e) => setEditQuestion(e.target.value)} aria-label="Edit question"
+                        className="w-full border-b border-white/15 bg-transparent pb-1 text-[14px] text-zinc-100 outline-none" />
+                      <div className="flex gap-3 text-[13px]">
+                        <button type="button" onClick={() => { void saveEdit(trace.id); }} className="text-teal-300 underline">Save</button>
+                        <button type="button" onClick={() => setEditingId(null)} className="text-zinc-400 underline">Cancel</button>
+                      </div>
+                    </div>
+                  ) : answeringId === trace.id ? (
+                    <div className="mt-3 space-y-2">
+                      <input value={answerText} onChange={(e) => setAnswerText(e.target.value)} aria-label="Your answer"
+                        placeholder="What did you settle on?"
+                        className="w-full border-b border-white/15 bg-transparent pb-1 text-[14px] text-zinc-100 outline-none" />
+                      <div className="flex gap-3 text-[13px]">
+                        <button type="button" onClick={() => { void saveAnswer(trace.id); }} className="text-teal-300 underline">Mark answered</button>
+                        <button type="button" onClick={() => setAnsweringId(null)} className="text-zinc-400 underline">Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px] text-zinc-400">
+                      <button type="button" onClick={() => { setEditingId(trace.id); setEditTitle(trace.title); setEditQuestion(trace.question); }} className="underline hover:text-zinc-200">Edit</button>
+                      {trace.answered ? (
+                        <button type="button" onClick={() => { void clearAnswer(trace.id); }} className="underline hover:text-zinc-200">Reopen</button>
+                      ) : (
+                        <button type="button" onClick={() => { setAnsweringId(trace.id); setAnswerText(''); }} className="underline hover:text-zinc-200">Mark answered</button>
+                      )}
+                      <button type="button" onClick={() => { void removeTrace(trace.id); }}
+                        className={confirmDeleteId === trace.id ? 'text-rose-300 underline' : 'underline hover:text-zinc-200'}>
+                        {confirmDeleteId === trace.id ? `Delete “${trace.title}”? Click again` : 'Delete'}
+                      </button>
+                      <SaveAsDtuButton compact
+                        apiSource="cognition-question-log"
+                        title={trace.title}
+                        content={trace.answered ? `${trace.question}\n\nAnswered: ${trace.answered.note}` : trace.question}
+                        extraTags={['cognition', 'question-log']} />
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -218,7 +362,7 @@ export default function CognitionPage() {
                 <input
                   data-testid="cg-title"
                   value={title}
-                  onChange={(event) => setTitle(event.target.value)}
+                  onChange={(event) => { setTitle(event.target.value); if (actionError) setActionError(''); }}
                   className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
                   autoFocus
                 />
@@ -228,7 +372,7 @@ export default function CognitionPage() {
                 <input
                   data-testid="cg-question-input"
                   value={question}
-                  onChange={(event) => setQuestion(event.target.value)}
+                  onChange={(event) => { setQuestion(event.target.value); if (actionError) setActionError(''); }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') { event.preventDefault(); void openTrace(); }
                   }}
@@ -242,6 +386,23 @@ export default function CognitionPage() {
         {actionError ? (
           <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p>
         ) : null}
+        {notice ? (
+          <p className="mt-4 text-[14px] text-teal-300">{notice}</p>
+        ) : null}
+
+        {entities && (
+          <section aria-label="Emergent entities" className="mt-8 rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5">
+            <h2 className="text-[15px] font-medium text-zinc-200">The platform&apos;s emergent entities</h2>
+            <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-500">
+              Separate from your log: Concord also keeps a population of {entities.registered.toLocaleString()} registered emergent
+              entities — system content, spawned and run by the platform&apos;s own emergent layer, not questions of yours and not
+              activity counts. This lens is their named home; their working view lives in Attention.
+            </p>
+            <Link href="/lenses/attention" className="mt-3 inline-block text-[13px] text-teal-300 underline">
+              Browse the entities in Attention&apos;s Cognition view →
+            </Link>
+          </section>
+        )}
 
         <button
           type="button"
@@ -249,7 +410,7 @@ export default function CognitionPage() {
           disabled={phase !== 'ready' || busy}
           className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
         >
-          Open a trace
+          Log a question
         </button>
       </div>
     </LensShell>

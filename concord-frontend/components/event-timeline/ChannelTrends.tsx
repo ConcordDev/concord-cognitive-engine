@@ -51,6 +51,12 @@ export function ChannelTrends({
       windowSec,
       buckets: 32,
       worldId: worldId || null,
+      // The trends derive from the query's facets the macro can take:
+      // the selected channels join the world here (the pass found the
+      // panel answering beside the filtered rows because this was not
+      // sent). The search text and the custom range have no macro input
+      // and do not scope the trends — the scope line below says so.
+      channels: selectedChannels.length ? selectedChannels : null,
     });
     if (r.data?.result?.ok && Array.isArray(r.data.result.series)) {
       setSeries(r.data.result.series);
@@ -58,7 +64,7 @@ export function ChannelTrends({
       setSeries([]);
     }
     setLoading(false);
-  }, [windowSec, worldId]);
+  }, [windowSec, worldId, selectedChannels]);
 
   useEffect(() => {
     load();
@@ -88,6 +94,12 @@ export function ChannelTrends({
           ))}
         </div>
       </div>
+
+      <p className="mb-3 text-[11px] text-zinc-500">
+        Computed over {selectedChannels.length ? 'the selected channels' : 'all channels'}
+        {worldId ? ' in the current world' : ''} for the window above. The search text and
+        the custom time range do not narrow these trends.
+      </p>
 
       {loading && (
         <div className="flex items-center gap-2 py-4 text-xs text-zinc-400">

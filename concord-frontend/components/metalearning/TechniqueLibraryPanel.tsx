@@ -75,8 +75,9 @@ export function TechniqueLibraryPanel() {
                 <p className="text-xs text-gray-400 truncate">{t.summary}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-green/15 text-neon-green">
-                  {(t.strength * 100).toFixed(0)}% evidence
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-green/15 text-neon-green"
+                  title="Editorial strength rating assigned by the library's authors — not a measured effect size">
+                  strength {(t.strength * 100).toFixed(0)}% · editorial
                 </span>
                 <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${expanded === t.id ? 'rotate-90' : ''}`} />
               </div>
@@ -91,6 +92,9 @@ export function TechniqueLibraryPanel() {
                   </ol>
                 </div>
                 <p className="text-gray-400 italic">{t.evidence}</p>
+                <p className="text-[10px] text-gray-500">
+                  The strength figure above is an editorial rating, not a measured effect size; the evidence line is the library's summary of the research consensus.
+                </p>
               </div>
             )}
           </div>

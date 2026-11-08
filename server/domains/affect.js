@@ -2,6 +2,7 @@
 // Domain actions for emotional/sentiment analysis: sentiment scoring, emotion timelines, empathy mapping.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 export default function registerAffectActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -66,9 +67,45 @@ export default function registerAffectActions(registerLensAction) {
       guilty: { valence: 0.15, arousal: 0.5, dominance: 0.2 },
       lonely: { valence: 0.15, arousal: 0.25, dominance: 0.15 },
       contempt: { valence: 0.15, arousal: 0.5, dominance: 0.8 },
+      joyful: { valence: 0.9, arousal: 0.65, dominance: 0.65 },
+      delighted: { valence: 0.92, arousal: 0.6, dominance: 0.65 },
+      thrilled: { valence: 0.9, arousal: 0.85, dominance: 0.65 },
+      ecstatic: { valence: 0.95, arousal: 0.9, dominance: 0.7 },
+      happiness: { valence: 0.9, arousal: 0.6, dominance: 0.65 },
+      hope: { valence: 0.7, arousal: 0.45, dominance: 0.45 },
+      content: { valence: 0.75, arousal: 0.25, dominance: 0.55 },
+      relaxed: { valence: 0.75, arousal: 0.15, dominance: 0.55 },
+      energetic: { valence: 0.8, arousal: 0.85, dominance: 0.6 },
+      miserable: { valence: 0.08, arousal: 0.35, dominance: 0.15 },
+      exhausted: { valence: 0.25, arousal: 0.15, dominance: 0.2 },
+      hopeless: { valence: 0.08, arousal: 0.3, dominance: 0.05 },
+      tired: { valence: 0.3, arousal: 0.15, dominance: 0.25 },
+      gloomy: { valence: 0.2, arousal: 0.25, dominance: 0.25 },
+      stress: { valence: 0.2, arousal: 0.8, dominance: 0.25 },
+      stressed: { valence: 0.2, arousal: 0.8, dominance: 0.25 },
+      overwhelmed: { valence: 0.15, arousal: 0.8, dominance: 0.15 },
+      devastated: { valence: 0.05, arousal: 0.6, dominance: 0.1 },
+      uneasy: { valence: 0.25, arousal: 0.6, dominance: 0.2 },
     };
 
     const lexicon = { ...defaultLexicon, ...(artifact.data.lexicon || {}) };
+
+    // Derived-form lookup: ordinary word forms (joyful, sadness, happily)
+    // must match their base entry — whole-token-only matching scored
+    // Matched 0 on plainly emotional text (F3). Strip derivational
+    // suffixes progressively; first hit wins.
+    const DERIVED_SUFFIXES = ["fulness", "ness", "fully", "ful", "ingly", "edly", "ing", "ed", "ly", "es", "s"];
+    function lookupWord(token) {
+      if (lexicon[token]) return lexicon[token];
+      for (const suf of DERIVED_SUFFIXES) {
+        if (token.length > suf.length + 2 && token.endsWith(suf)) {
+          const stem = token.slice(0, -suf.length);
+          if (lexicon[stem]) return lexicon[stem];
+          if (lexicon[stem + "e"]) return lexicon[stem + "e"];
+        }
+      }
+      return null;
+    }
 
     // Tokenize and normalize
     const tokens = text.toLowerCase().replace(/[^a-z\s'-]/g, " ").split(/\s+/).filter(t => t.length > 1);
@@ -92,7 +129,7 @@ export default function registerAffectActions(registerLensAction) {
 
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
-      const entry = lexicon[token];
+      const entry = lookupWord(token);
       if (!entry) continue;
 
       let v = entry.valence;
@@ -122,6 +159,19 @@ export default function registerAffectActions(registerLensAction) {
       matchedCount++;
 
       emotionHits.push({ word: token, valence: v, arousal: a, dominance: d, negated });
+    }
+
+    // Zero-match honesty (F3): a text whose words the lexicon does not
+    // know gets NO verdict — never a constant neutral midpoint wearing
+    // one. The surface renders this message instead of scores.
+    if (matchedCount === 0) {
+      return { ok: true, result: {
+        message: "No recognised affect words in this text — the lexicon matched nothing, so no sentiment verdict is shown. Words that name a feeling directly (joyful, awful, calm, exhausted) will match.",
+        matchedTokens: 0,
+        coverage: 0,
+        noMatch: true,
+        tokenCount: tokens.length,
+      } };
     }
 
     // Compute averages
@@ -251,10 +301,24 @@ export default function registerAffectActions(registerLensAction) {
         if (negWords.has(token)) negCount++;
       }
       const total = posCount + negCount;
-      // Valence: -1 (very negative) to +1 (very positive)
-      const valence = total > 0 ? Math.round(((posCount - negCount) / total) * 1000) / 1000 : 0;
+      // Text valence: -1 (very negative) to +1 (very positive)
+      const textValence = total > 0 ? Math.round(((posCount - negCount) / total) * 1000) / 1000 : 0;
       // Intensity: how emotionally charged
-      const intensity = tokens.length > 0 ? Math.round((total / tokens.length) * 1000) / 1000 : 0;
+      const textIntensity = tokens.length > 0 ? Math.round((total / tokens.length) * 1000) / 1000 : 0;
+
+      // F4: the arc's primary signal is the mood value the lens itself
+      // collected. An entry carrying a caller-normalised mood valence
+      // (-1..1, from the check-in's scale value) is scored FROM THE MOOD;
+      // note text only layers intensity on top. Text-only entries keep
+      // the text score. (Before this, a Great→Awful check-in sequence
+      // read FLAT 0.000 because the notes matched no sentiment words.)
+      const moodValence = typeof entry.valence === "number" && entry.valence >= -1 && entry.valence <= 1
+        ? entry.valence
+        : null;
+      const valence = moodValence != null ? moodValence : textValence;
+      const intensity = moodValence != null
+        ? Math.max(Math.abs(moodValence), textIntensity)
+        : textIntensity;
 
       return {
         id: entry.id || idx,
@@ -262,6 +326,7 @@ export default function registerAffectActions(registerLensAction) {
         timestamp: entry.timestamp || null,
         valence,
         intensity,
+        source: moodValence != null ? "mood" : "text",
         positiveCount: posCount,
         negativeCount: negCount,
         tokenCount: tokens.length,
@@ -334,9 +399,11 @@ export default function registerAffectActions(registerLensAction) {
       volatility = Math.round((volatility / (smoothed.length - 1)) * 1000) / 1000;
     }
 
+    const moodSourced = timeline.filter((t) => t.source === "mood").length;
     const result = {
       analyzedAt: new Date().toISOString(),
       entryCount: entries.length,
+      basis: moodSourced === timeline.length ? "mood" : moodSourced > 0 ? "mixed" : "text",
       timeline,
       smoothedValence: smoothed,
       arcType,
@@ -471,6 +538,30 @@ export default function registerAffectActions(registerLensAction) {
         });
       }
 
+      // F4: the check-in's own mood value is evidence too. An entry at
+      // either end of the scale registers a pain/gain signal even when
+      // its note names no keyword — "None detected" over a bottom-scale
+      // check-in was the lens ignoring its own record.
+      const moodValence = typeof item.moodValence === "number" ? item.moodValence : null;
+      if (moodValence != null && moodValence <= -0.5 && painScore === 0) {
+        painPoints.push({
+          userId: item.userId,
+          text: text || "(check-in at the bottom of the mood scale, no note)",
+          painScore: 1,
+          keywords: [],
+          source: "mood",
+        });
+      }
+      if (moodValence != null && moodValence >= 0.5 && gainScore === 0) {
+        gains.push({
+          userId: item.userId,
+          text: text || "(check-in at the top of the mood scale, no note)",
+          gainScore: 1,
+          keywords: [],
+          source: "mood",
+        });
+      }
+
       // Theme extraction: most common 2-word phrases
       for (let i = 0; i < tokens.length - 1; i++) {
         const bigram = `${tokens[i]} ${tokens[i + 1]}`;
@@ -593,6 +684,26 @@ export default function registerAffectActions(registerLensAction) {
     return num / Math.sqrt(dx * dy);
   }
 
+  // F15 / Q79: register Affect's state-resident records with the shared
+  // export (lib/lens-export.js). Mood check-ins live in
+  // STATE.affectMood, not the generic artifact store, so an
+  // artifacts-only export contained none of the user's actual records
+  // and the export surface declared "no saved data" over standing
+  // check-ins. Scoped to the calling user, like every other mood read.
+  registerLensExportProvider("affect", (ctx) => {
+    const s = getMoodState();
+    if (!s) return [];
+    const userId = moodActId(ctx);
+    return moodList(s.checkins, userId).map((c) => ({
+      id: c.id,
+      type: "mood-checkin",
+      title: `${c.moodEmoji ? `${c.moodEmoji} ` : ""}${c.moodLabel || "Mood"} — ${c.day}`,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt || c.createdAt,
+      data: c,
+    }));
+  });
+
   /**
    * checkin
    * Daily mood check-in ritual. Records one real mood entry. Streak is computed
@@ -702,6 +813,71 @@ export default function registerAffectActions(registerLensAction) {
         daysLogged: days.length,
       },
     };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  /**
+   * updateCheckin
+   * Edit one of the caller's own check-ins in place (F12 — the mood
+   * lifecycle had create + read but no correction path, so a mistapped
+   * mood or a typo'd note was permanent). Only the fields present in
+   * params change; mood is re-validated against the user's scale and
+   * its label/emoji re-derived, exactly as checkin derives them.
+   * params: { id, mood?, note?, activities?, promptAnswer? }
+   */
+  registerLensAction("affect", "updateCheckin", (ctx, artifact, params) => {
+  try {
+    const s = getMoodState();
+    if (!s) return { ok: false, error: "state unavailable" };
+    const userId = moodActId(ctx);
+    const list = moodList(s.checkins, userId);
+    const entry = list.find((c) => c.id === params.id);
+    if (!entry) return { ok: false, error: "check-in not found" };
+    if (params.mood != null) {
+      const scale = getScale(s, userId);
+      const maxVal = Math.max(...scale.points.map((p) => p.value));
+      const minVal = Math.min(...scale.points.map((p) => p.value));
+      const mood = Number(params.mood);
+      if (!Number.isFinite(mood) || mood < minVal || mood > maxVal) {
+        return { ok: false, error: `mood must be between ${minVal} and ${maxVal}` };
+      }
+      entry.mood = Math.round(mood);
+      const point = scale.points.find((p) => p.value === entry.mood);
+      entry.moodLabel = point ? point.label : String(entry.mood);
+      entry.moodEmoji = point ? point.emoji : "";
+    }
+    if (typeof params.note === "string") entry.note = params.note.slice(0, 2000);
+    if (Array.isArray(params.activities)) {
+      entry.activities = params.activities
+        .map((a) => String(a).toLowerCase().trim())
+        .filter(Boolean)
+        .slice(0, 20);
+    }
+    if (typeof params.promptAnswer === "string") entry.promptAnswer = params.promptAnswer.slice(0, 4000);
+    entry.updatedAt = new Date().toISOString();
+    moodSave();
+    return { ok: true, result: { entry } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  /**
+   * deleteCheckin
+   * Remove one of the caller's own check-ins (F12). Derived views
+   * (trends, correlations, streaks) recompute from the list on every
+   * read, so a deletion is reflected everywhere at once.
+   * params: { id }
+   */
+  registerLensAction("affect", "deleteCheckin", (ctx, artifact, params) => {
+  try {
+    const s = getMoodState();
+    if (!s) return { ok: false, error: "state unavailable" };
+    const userId = moodActId(ctx);
+    const list = moodList(s.checkins, userId);
+    const idx = list.findIndex((c) => c.id === params.id);
+    if (idx === -1) return { ok: false, error: "check-in not found" };
+    const [removed] = list.splice(idx, 1);
+    moodSave();
+    return { ok: true, result: { deleted: removed.id, totalCheckins: list.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -929,7 +1105,13 @@ export default function registerAffectActions(registerLensAction) {
     const s = getMoodState();
     if (!s) return { ok: false, error: "state unavailable" };
     const userId = moodActId(ctx);
-    const reminders = moodList(s.reminders, userId).filter((r) => r.enabled);
+    // F13: result.reminders is the user's full reminder list — the
+    // surface renders its ON/OFF toggles from it. Returning only the
+    // enabled ones made a toggled-off reminder vanish as if deleted
+    // (and impossible to switch back on). Due evaluation below still
+    // considers enabled reminders only.
+    const allReminders = moodList(s.reminders, userId);
+    const reminders = allReminders.filter((r) => r.enabled);
     const checkins = moodList(s.checkins, userId);
     const todayKey = new Date().toISOString().slice(0, 10);
     const checkedToday = checkins.some((c) => c.day === todayKey);
@@ -955,7 +1137,7 @@ export default function registerAffectActions(registerLensAction) {
     }
     return {
       ok: true,
-      result: { reminders, due, checkedInToday: checkedToday, recentAvg: recentAvg != null ? Math.round(recentAvg * 100) / 100 : null },
+      result: { reminders: allReminders, due, checkedInToday: checkedToday, recentAvg: recentAvg != null ? Math.round(recentAvg * 100) / 100 : null },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });

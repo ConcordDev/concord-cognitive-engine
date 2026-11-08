@@ -16,6 +16,7 @@ import {
 import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { deleteOwnPost } from '../deleteOwnPost';
+import { BookmarkButton } from '../BookmarkButton';
 import type { SocialPost, PollOption } from './types';
 import { authorLabel } from './authorLabel';
 import { ReplyTree } from './ReplyTree';
@@ -176,9 +177,18 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
 
   const pin = useCallback(async () => {
     setShowMenu(false);
-    const res = await api.post(`/api/social/posts/${encodeURIComponent(post.id)}/pin`, {});
-    setNotice(res.data?.ok === false ? (res.data.error || 'Could not pin this post.') : 'Pinned.');
-  }, [post.id]);
+    // Pin is persisted state server-side (isPinned rides the post); the
+    // card toggles it — the route unpins on { pinned: false } — and the
+    // server's refusal (the 3-pin cap) surfaces in words.
+    const pinned = post.isPinned === true;
+    const res = await api.post(`/api/social/posts/${encodeURIComponent(post.id)}/pin`, pinned ? { pinned: false } : {});
+    if (res.data?.ok === false) {
+      setNotice(res.data.error || (pinned ? 'Could not unpin this post.' : 'Could not pin this post.'));
+      return;
+    }
+    setNotice(pinned ? 'Unpinned.' : 'Pinned.');
+    onChanged();
+  }, [post.id, post.isPinned, onChanged]);
 
   const removePost = useCallback(async () => {
     setDeleting(true);
@@ -217,7 +227,7 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
               )}
               {mine && (
                 <button type="button" onClick={() => void pin()} className="flex w-full items-center gap-2 px-3 py-1.5 text-zinc-300 hover:bg-zinc-900">
-                  Pin post
+                  {post.isPinned ? 'Unpin post' : 'Pin post'}
                 </button>
               )}
               {mine && (
@@ -262,6 +272,7 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
       </div>
 
       {post.editedAt && <p className="text-[10px] text-zinc-500">edited</p>}
+      {post.isPinned && <p className="text-[10px] text-amber-300/80">pinned</p>}
       {editing ? (
         <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); void saveEdit(); }}>
           <textarea aria-label="Edit post" value={editText} onChange={(e) => setEditText(e.target.value)} className="flex-1 rounded bg-zinc-900 p-2 text-sm text-zinc-100" rows={3} />
@@ -403,6 +414,9 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         >
           <Quote className="w-4 h-4" />
         </button>
+        {/* The bookmark control the Saved tab's empty state describes —
+            the standing platform button over /api/social/bookmarks. */}
+        <BookmarkButton postId={post.id} />
         <div className="relative ml-auto">
           <button
             type="button"

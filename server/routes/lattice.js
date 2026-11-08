@@ -16,6 +16,7 @@
 
 import { Router } from "express";
 import crypto from "node:crypto";
+import { rateLimitMiddleware } from "../rateLimit.js";
 import {
   setDtuTrainConsent,
   setAllDtusTrainConsent,
@@ -36,7 +37,9 @@ function logConsent(db, { userId, action, dtuId = null, oldValue = null, newValu
     ).run(
       `lcl_${crypto.randomBytes(8).toString("hex")}`,
       userId, action, dtuId,
-      oldValue == null ? null : (oldValue ? 1 : 0),
+      // Toggle rows store the prior as 0/1. Bulk rows store the prior
+      // CONSENTED COUNT (S3/F4) — the audit render branches on action.
+      oldValue == null ? null : (action === "bulk" ? Math.max(0, Math.round(Number(oldValue) || 0)) : (oldValue ? 1 : 0)),
       newValue ? 1 : 0,
       Number.isFinite(affected) ? affected : 1,
     );
@@ -85,18 +88,28 @@ export default function createLatticeRouter({ db, requireAuth }) {
 
   // POST /api/lattice/dtus/consent-all — bulk flip every DTU owned by caller.
   // Body: { consented: boolean }
-  router.post("/dtus/consent-all", auth, (req, res) => {
+  router.post("/dtus/consent-all", auth, rateLimitMiddleware("write.consent-bulk"), (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ ok: false, error: "auth required" });
     const consented = req.body?.consented !== false; // default true unless explicit false
+    // S3 (F4): record the TRUE prior — the retired call logged
+    // oldValue: null unconditionally, so every bulk row rendered "?"
+    // although the prior count was knowable at this line (the per-DTU
+    // routes above already read theirs before flipping).
+    let priorConsented = null;
+    try {
+      priorConsented = db?.prepare(
+        `SELECT COUNT(*) AS n FROM dtus WHERE creator_id = ? AND train_consented = 1`,
+      ).get(userId)?.n ?? null;
+    } catch (_e) { /* prior stays null only when it truly cannot be read */ }
     const result = setAllDtusTrainConsent(db, userId, consented);
     if (result.ok) {
       logConsent(db, {
         userId, action: "bulk", dtuId: null,
-        oldValue: null, newValue: consented, affected: result.updated || 0,
+        oldValue: priorConsented, newValue: consented, affected: result.updated || 0,
       });
     }
-    res.json(result);
+    res.json({ ...result, priorConsented });
   });
 
   // GET /api/lattice/consent-log — append-only audit of who toggled what,

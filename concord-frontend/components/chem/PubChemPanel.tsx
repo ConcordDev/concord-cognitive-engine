@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Beaker, RefreshCw, AlertTriangle, ExternalLink, Search } from 'lucide-react';
-import { api } from '@/lib/api/client';
+import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 interface PubChemCompound {
@@ -24,8 +24,15 @@ interface PubChemCompound {
 
 async function runMacro<T>(domain: string, name: string, input: Record<string, unknown>): Promise<T | null> {
   try {
-    const r = await api.post('/api/lens/run', { domain, name, input });
-    return r?.data as T;
+    // lensRun unwraps the { ok, result } envelope. This panel used to read
+    // the RAW body and look for `compounds` on it — the records live one
+    // level down, in result — so the list was empty whatever PubChem
+    // returned, and caffeine "had no records" while the same lens's 3D
+    // viewer resolved CID 2519 from the same source.
+    const r = await lensRun(domain, name, input);
+    const d = r?.data;
+    if (!d) return null;
+    return { ok: d.ok && (d.result as { ok?: boolean } | null)?.ok !== false, ...(d.result || {}), reason: d.ok ? undefined : (d.error || 'fetch_failed') } as T;
   } catch {
     return null;
   }

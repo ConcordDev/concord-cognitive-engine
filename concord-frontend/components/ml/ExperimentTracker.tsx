@@ -58,7 +58,11 @@ export function ExperimentTracker() {
 
   useEffect(() => { load(); }, [load]);
 
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const remove = async (id: string) => {
+    // F8: deletes confirm first (two-step, no native dialogs).
+    if (confirmRemoveId !== id) { setConfirmRemoveId(id); return; }
+    setConfirmRemoveId(null);
     setBusy(id);
     await lensRun('ml', 'experiment-delete', { experimentId: id });
     if (selected?.id === id) setSelected(null);
@@ -67,7 +71,11 @@ export function ExperimentTracker() {
   };
   const finish = async (id: string, failed: boolean) => {
     setBusy(id);
-    await lensRun('ml', 'experiment-finish', { experimentId: id, failed });
+    // F18: settle in place — the finish result is applied from the
+    // response itself (load() also re-syncs the selection), and a
+    // failed finish says so instead of silently leaving "running".
+    const r = await lensRun('ml', 'experiment-finish', { experimentId: id, failed });
+    if (!r.data?.ok) setError(r.data?.error || 'Failed to finish experiment');
     await load();
     setBusy(null);
   };
@@ -172,7 +180,7 @@ export function ExperimentTracker() {
                   )}
                   <button aria-label="Delete" className="btn-neon small pink" disabled={busy === selected.id}
                     onClick={() => remove(selected.id)}>
-                    <Trash2 className="w-3 h-3" />
+                    {confirmRemoveId === selected.id ? 'Confirm?' : <Trash2 className="w-3 h-3" />}
                   </button>
                 </div>
               </div>

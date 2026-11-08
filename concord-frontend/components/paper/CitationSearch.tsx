@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Loader2, FileText, ExternalLink } from 'lucide-react';
+import { Search, Loader2, FileText, ExternalLink, BookmarkPlus, Check } from 'lucide-react';
 import { api } from '@/lib/api/client';
 
 // Matches the actual shape returned by paper.search (server/domains/paper.js
@@ -21,6 +21,23 @@ export interface Paper {
 }
 
 export function CitationSearch() {
+  // S1 (F1): results were display-only — no save control existed, while
+  // the Library's empty state promises saving from arXiv search. Each
+  // result now files into the Library through paper-add (duplicate
+  // refusal intact).
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [dupIds, setDupIds] = useState<Set<string>>(new Set());
+  async function saveToLibrary(p: Paper) {
+    try {
+      const res = await api.post('/api/lens/run', { domain: 'paper', action: 'paper-add', input: {
+        title: p.title, authors: p.authors || [], year: p.published ? Number(p.published.slice(0, 4)) : undefined,
+        abstract: p.abstract || '', url: p.url || undefined, refId: `arxiv:${p.id}`,
+      } });
+      const result = res.data?.result as { ok?: boolean; error?: string } | undefined;
+      if (result?.ok) setSavedIds((prev) => new Set(prev).add(p.id));
+      else if ((result?.error || '').includes('already in your library')) setDupIds((prev) => new Set(prev).add(p.id));
+    } catch { /* button stays enabled on failure */ }
+  }
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(false);
@@ -79,6 +96,13 @@ export function CitationSearch() {
                       {p.primaryCategory && ` · ${p.primaryCategory}`}
                     </div>
                     {p.abstract && <p className="text-xs text-gray-400 mt-1 line-clamp-3">{p.abstract}</p>}
+                    <button
+                      onClick={() => void saveToLibrary(p)}
+                      disabled={savedIds.has(p.id) || dupIds.has(p.id)}
+                      className="mt-1.5 inline-flex items-center gap-1 rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 disabled:opacity-60"
+                    >
+                      {savedIds.has(p.id) ? <><Check className="h-3 w-3" /> In library</> : dupIds.has(p.id) ? 'Already in library' : <><BookmarkPlus className="h-3 w-3" /> Save to Library</>}
+                    </button>
                   </div>
                 </div>
               </li>

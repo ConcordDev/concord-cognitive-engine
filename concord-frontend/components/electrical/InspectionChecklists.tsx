@@ -13,6 +13,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ClipboardCheck, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { SafetyNote } from './SafetyNote';
 
 interface ChecklistItem { id: string; name: string; necCode: string; passed: boolean | null; critical: boolean; notes: string }
 interface Checklist { id: string; template: string; label: string; jobName: string; items: ChecklistItem[] }
@@ -85,6 +86,7 @@ export function InspectionChecklists() {
       </header>
 
       <div className="p-4 space-y-3">
+        <SafetyNote />
         {/* create from template */}
         <div className="flex flex-wrap items-end gap-2 rounded-lg border border-rose-500/15 bg-zinc-950/40 p-3">
           <label className="flex-1 min-w-[160px]"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Template</span>

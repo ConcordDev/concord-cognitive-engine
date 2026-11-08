@@ -45,6 +45,18 @@ export function DeploymentsPanel({ defaultModelId = '' }: { defaultModelId?: str
 
   const [tryInput, setTryInput] = useState<Record<string, string>>({});
   const [tryOut, setTryOut] = useState<Record<string, { ok: boolean; text: string }>>({});
+  // S-ML-4 (F7/F8): deployments can be deleted — two-step confirm, no
+  // native dialogs; the list settles in place on success.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const deleteDeployment = async (dep: Deployment) => {
+    if (confirmDeleteId !== dep.id) { setConfirmDeleteId(dep.id); return; }
+    setConfirmDeleteId(null);
+    setBusy(dep.id);
+    const r = await lensRun('ml', 'deploy-delete', { deploymentId: dep.id });
+    if (r.data?.ok) setDeployments(prev => prev.filter(d => d.id !== dep.id));
+    else setError(r.data?.error || 'Failed to delete deployment');
+    setBusy(null);
+  };
   const toggle = async (dep: Deployment) => {
     setBusy(dep.id);
     await lensRun('ml', 'deploy-stop', { deploymentId: dep.id, resume: dep.status === 'inactive' });
@@ -59,7 +71,10 @@ export function DeploymentsPanel({ defaultModelId = '' }: { defaultModelId?: str
     setTryOut(prev => ({
       ...prev,
       [id]: r.data?.ok
-        ? { ok: true, text: JSON.stringify((r.data.result as { output: unknown }).output, null, 2) }
+        ? { ok: true, text: JSON.stringify((r.data.result as { output: unknown }).output, null, 2)
+            + ((r.data.result as { servedBy?: string }).servedBy
+              ? `\n\nReceipt: served by ${(r.data.result as { servedBy?: string }).servedBy} · ${(r.data.result as { latencyMs?: number }).latencyMs ?? '?'}ms`
+              : '') }
         : { ok: false, text: r.data?.error || 'Invocation failed' },
     }));
     await load();
@@ -105,7 +120,7 @@ export function DeploymentsPanel({ defaultModelId = '' }: { defaultModelId?: str
                   <button onClick={() => navigator.clipboard.writeText(JSON.stringify({ domain: 'ml', name: 'deploy-invoke', input: { deploymentId: dep.id, input: '...' } }))}
                     title="Copy the POST /api/lens/run body for this deployment"
                     className="text-xs text-neon-cyan font-mono flex items-center gap-1 hover:text-neon-cyan/80">
-                    ml.deploy-invoke · {dep.id}<Copy className="w-3 h-3" />
+                    Copy invoke call<Copy className="w-3 h-3" />
                   </button>
                 </div>
                 <div>
@@ -138,6 +153,10 @@ export function DeploymentsPanel({ defaultModelId = '' }: { defaultModelId?: str
                   {dep.status === 'active'
                     ? <><Square className="w-3 h-3 mr-1 inline" /> Stop</>
                     : <><Play className="w-3 h-3 mr-1 inline" /> Resume</>}
+                </button>
+                <button className={`btn-neon small ${confirmDeleteId === dep.id ? 'pink' : ''}`} disabled={busy === dep.id}
+                  onClick={() => deleteDeployment(dep)}>
+                  {confirmDeleteId === dep.id ? 'Click again to confirm delete' : 'Delete'}
                 </button>
               </div>
             </div>

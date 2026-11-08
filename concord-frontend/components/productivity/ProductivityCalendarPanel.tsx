@@ -76,8 +76,12 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
   const importIcs = async () => {
     if (!icsText.trim() && !icsUrl.trim()) { setMsg({ kind: 'err', text: 'Paste ICS text or a feed URL.' }); return; }
     setBusy(true); setMsg(null);
+    // F5: zoned ICS times are instants — the server converts them into
+    // this viewer's timezone, so it needs the viewer's UTC offset
+    // (minutes EAST of UTC; getTimezoneOffset is minutes west).
+    const utcOffsetMinutes = -new Date().getTimezoneOffset();
     const r = await lensRun('productivity', 'calendar-import-ics',
-      icsText.trim() ? { ics: icsText } : { url: icsUrl.trim() });
+      icsText.trim() ? { ics: icsText, utcOffsetMinutes } : { url: icsUrl.trim(), utcOffsetMinutes });
     setBusy(false);
     if (r.data?.ok && r.data.result) {
       setMsg({ kind: 'ok', text: `Imported ${r.data.result.importedCount} of ${r.data.result.parsedEvents} event(s).` });

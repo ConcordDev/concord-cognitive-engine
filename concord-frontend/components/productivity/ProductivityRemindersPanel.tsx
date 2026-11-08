@@ -228,6 +228,11 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
                 <p className="text-xs text-zinc-200 truncate">
                   {r.task || r.note || (r.kind === 'location' ? r.location : 'Reminder')}
                 </p>
+                {/* O2: the note is part of the reminder — show it even
+                    when a task title takes the headline line. */}
+                {r.task && r.note && (
+                  <p className="text-[11px] text-zinc-300 truncate">{r.note}</p>
+                )}
                 <p className="text-[10px] text-zinc-400">
                   {r.remindAt}{r.location ? ` · ${r.location}` : ''}{r.fired ? ' · fired' : ''}
                 </p>

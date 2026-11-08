@@ -54,6 +54,11 @@ const GENRES = ['platformer', 'rpg', 'puzzle', 'strategy', 'simulation', 'advent
 export function GameDesignSection() {
   const [games, setGames] = useState<Game[]>([]);
   const [activeGame, setActiveGame] = useState<string>('');
+  // F5 (unconfirmed-destructive): the chip × used to fire game-delete
+  // on a single click. The family's two-step applies (cf. Gallery
+  // F6): the first click arms an in-place confirm; the delete call
+  // fires only from the confirm.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [dash, setDash] = useState<Dash | null>(null);
   const [tab, setTab] = useState<TabId>('gdd');
   const [loading, setLoading] = useState(true);
@@ -102,6 +107,7 @@ export function GameDesignSection() {
 
   const delGame = async (id: string) => {
     await lensRun('game-design', 'game-delete', { id });
+    setConfirmDeleteId(null);
     await refreshGames();
   };
 
@@ -175,8 +181,12 @@ export function GameDesignSection() {
                   ) : (
                     <span className="absolute inset-0 bg-zinc-800 rounded-lg -z-10" aria-hidden="true" />
                   )}
-                  <button type="button" onClick={() => setActiveGame(g.id)}>{g.title}</button>
-                  <button type="button" onClick={() => delGame(g.id)} className="text-zinc-300/70 hover:text-rose-200">×</button>
+                  <button type="button" onClick={() => { setActiveGame(g.id); setConfirmDeleteId(null); }}>{g.title}</button>
+                  {confirmDeleteId === g.id ? (
+                    <button type="button" onClick={() => delGame(g.id)} className="text-rose-200 font-semibold">Delete?</button>
+                  ) : (
+                    <button type="button" aria-label={`Delete ${g.title}`} onClick={() => setConfirmDeleteId(g.id)} className="text-zinc-300/70 hover:text-rose-200">×</button>
+                  )}
                 </span>
               ))}
             </div>

@@ -7,7 +7,9 @@
  * Open stores a name. The bearing and the mark are later steps on
  * that grid. link-list is id and name. The bearing and the mark show
  * only after link-detail returns them. The cross-world feed and the
- * royalty ledger stay unmounted.
+ * royalty ledger mount below the board (CrossWorldFeed) — the
+ * federation's news layer, mounted on the founder's ruling of
+ * 2026-11-06.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -15,6 +17,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
+import { CrossWorldFeed } from '@/components/concord-link-frontier/CrossWorldFeed';
 
 interface LinkRow {
   id: string;
@@ -372,6 +375,8 @@ export default function ConcordLinkFrontierPage() {
             </button>
           )}
         </section>
+
+        <CrossWorldFeed />
 
         {actionError ? <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p> : null}
 

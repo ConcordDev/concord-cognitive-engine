@@ -8,9 +8,20 @@
  * private DTU from that payload. Tip and Fork render only when the host
  * passes a concrete target. Search and bounty stay, and they report
  * failure instead of pretending the action landed.
+ *
+ * Search DTUs reads two sources (S3 / F5): the public cross-lens
+ * index (/api/ct/search — the SQL `dtus` table, published rows only)
+ * and, via the `dtu search` lens action, the store Publish itself
+ * writes (STATE.dtus). The index alone could never return the
+ * private DTU Publish just wrote — different store, published-only
+ * filter, no viewer identity. The lens action is viewer-scoped
+ * server-side (the caller's own DTUs at any visibility; others'
+ * published/public only), so merging its lens-scoped hits makes a
+ * just-published DTU findable by its title and content without
+ * widening anyone else's visibility.
  */
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Coins, Gift, Search, GitFork, Award, Upload,
   X, ExternalLink,
@@ -42,6 +53,50 @@ export interface ForkTarget {
   dtuId: string;
 }
 
+export interface DtuSearchHit {
+  id: string;
+  title?: string;
+  score?: number;
+}
+
+interface OwnDtuRecord {
+  id: string;
+  title?: string;
+  domain?: string;
+  lens?: string;
+  meta?: { lens?: string };
+  tags?: string[];
+}
+
+/** True when a DTU carries the lens stamp Publish writes for this lens. */
+export function dtuBelongsToLens(d: OwnDtuRecord | null | undefined, lensId: string): boolean {
+  if (!d) return false;
+  return (
+    d.domain === lensId ||
+    d.lens === lensId ||
+    d.meta?.lens === lensId ||
+    (Array.isArray(d.tags) && d.tags.includes(lensId))
+  );
+}
+
+/**
+ * Merge the public index results with the viewer's own-store hits,
+ * deduped by id (the index row wins — it carries the score).
+ */
+export function mergeDtuSearchResults(
+  indexResults: DtuSearchHit[] | undefined,
+  ownHits: DtuSearchHit[] | undefined,
+): DtuSearchHit[] {
+  const seen = new Set<string>();
+  const out: DtuSearchHit[] = [];
+  for (const r of [...(indexResults ?? []), ...(ownHits ?? [])]) {
+    if (!r?.id || seen.has(r.id)) continue;
+    seen.add(r.id);
+    out.push(r);
+  }
+  return out;
+}
+
 interface ConnectiveTissueBarProps {
   lensId: string;
   className?: string;
@@ -70,6 +125,40 @@ export function ConnectiveTissueBar({
   const postBountyMutation = usePostBounty();
   const forkMutation = useForkDTU();
   const { data: searchData } = useDTUSearch({ query: searchQuery, lensId });
+
+  // The viewer's own DTUs, from the same store Publish writes
+  // (S3 / F5). The public index above is published-only and reads a
+  // different store, so without this leg a just-published DTU could
+  // never be found here. The `dtu search` action enforces viewer
+  // visibility server-side.
+  const [ownHits, setOwnHits] = useState<DtuSearchHit[]>([]);
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) { setOwnHits([]); return; }
+    let alive = true;
+    const t = setTimeout(() => {
+      void (async () => {
+        try {
+          const r = await lensRun<{ dtus?: OwnDtuRecord[] }>('dtu', 'search', { query: q, limit: 50 });
+          if (!alive) return;
+          const dtus = r.data?.result?.dtus ?? [];
+          setOwnHits(
+            dtus
+              .filter((d) => dtuBelongsToLens(d, lensId))
+              .map((d) => ({ id: d.id, title: d.title })),
+          );
+        } catch {
+          if (alive) setOwnHits([]);
+        }
+      })();
+    }, 300);
+    return () => { alive = false; clearTimeout(t); };
+  }, [searchQuery, lensId]);
+
+  const mergedResults = useMemo(
+    () => mergeDtuSearchResults(searchData?.data?.results as DtuSearchHit[] | undefined, ownHits),
+    [searchData, ownHits],
+  );
   const { data: meritData } = useMeritCredit(user?.id || '');
 
   const showTip = isConcreteId(tipTarget?.creatorId) && isConcreteId(tipTarget?.contentId);
@@ -311,9 +400,9 @@ export function ConnectiveTissueBar({
               placeholder={`Search ${lensId} DTUs`}
             />
           </div>
-          {searchData?.data?.results && searchData.data.results.length > 0 ? (
+          {mergedResults.length > 0 ? (
             <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
-              {searchData.data.results.map((r: { id: string; title?: string; score?: number }) => (
+              {mergedResults.map((r) => (
                 <button
                   key={r.id}
                   type="button"

@@ -133,7 +133,8 @@ describe('Mail lens page — four UX states', () => {
     render(<ConcordMailbox />);
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/mail service down/i);
+    // The raw backend reason is no longer shown; the page says it in product words.
+    expect(alert).toHaveTextContent(/Could not reach your mail just now/i);
     const retry = within(alert).getByRole('button', { name: /retry/i });
 
     fireEvent.click(retry);

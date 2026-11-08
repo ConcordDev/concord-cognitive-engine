@@ -28,7 +28,7 @@ import { useCallback, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Antenna, Plus, Thermometer, Droplets, Globe, CalendarPlus, ShieldCheck,
-  Loader2, Check, AlertTriangle, Clock, Radio,
+  Loader2, Check, AlertTriangle, Clock, Radio, Trash2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiHelpers } from '@/lib/api/client';
@@ -41,6 +41,7 @@ interface Sensor {
   lastReading?: number; status?: string;
 }
 interface Reading {
+  id?: string;
   sensorId: string; sensorName?: string; sensor?: string; value: number | string;
   unit?: string; timestamp?: string;
 }
@@ -90,6 +91,7 @@ export function SensorGroundingPanel() {
       setSName(''); setSUnit('');
       qc.invalidateQueries({ queryKey: ['grounding-sensors'] });
       qc.invalidateQueries({ queryKey: ['grounding-status'] });
+      qc.invalidateQueries({ queryKey: ['grounding-context'] });
     },
     onError: (e) => note('err', pickMessage(e)),
   });
@@ -107,6 +109,7 @@ export function SensorGroundingPanel() {
       qc.invalidateQueries({ queryKey: ['grounding-readings'] });
       qc.invalidateQueries({ queryKey: ['grounding-sensors'] });
       qc.invalidateQueries({ queryKey: ['grounding-status'] });
+      qc.invalidateQueries({ queryKey: ['grounding-context'] });
     },
     onError: (e) => note('err', pickMessage(e)),
   });
@@ -120,9 +123,10 @@ export function SensorGroundingPanel() {
     onSuccess: (r) => {
       if (r.data?.ok === false) { note('err', r.data.error || 'grounding failed'); return; }
       setLastGrounding(r.data?.grounding ?? null);
-      note('ok', `DTU ${groundDtuId.slice(0, 8)}… grounded.`);
+      note('ok', `DTU ${groundDtuId} grounded.`);
       setGroundDtuId(''); setGroundContext('');
       qc.invalidateQueries({ queryKey: ['grounding-status'] });
+      qc.invalidateQueries({ queryKey: ['grounding-context'] });
     },
     onError: (e) => note('err', pickMessage(e)),
   });
@@ -131,17 +135,30 @@ export function SensorGroundingPanel() {
   const [calDtuId, setCalDtuId] = useState('');
   const [calTitle, setCalTitle] = useState('');
   const [calStart, setCalStart] = useState('');
-  const [lastEvent, setLastEvent] = useState<Record<string, unknown> | null>(null);
+  // The calendar form's OWN outcome line: its result is stated here, at the
+  // form, whether it succeeded or failed — not only in the panel-wide banner,
+  // where an error identical to another form's reads as no outcome at all.
+  const [calOutcome, setCalOutcome] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const linkCalendar = useMutation({
     mutationFn: () => apiHelpers.grounding.linkCalendar(calDtuId, { title: calTitle.trim() || undefined, startTime: calStart || undefined }),
     onSuccess: (r) => {
-      if (r.data?.ok === false) { note('err', r.data.error || 'calendar link failed'); return; }
-      setLastEvent(r.data?.event ?? null);
+      if (r.data?.ok === false) {
+        const msg = r.data.error || 'calendar link failed';
+        setCalOutcome({ kind: 'err', text: msg });
+        note('err', msg);
+        return;
+      }
+      const ev = r.data?.event ?? null;
+      setCalOutcome({ kind: 'ok', text: ev ? `Created “${String(ev.title)}” at ${String(ev.startTime)}.` : 'Calendar event linked.' });
       note('ok', 'Calendar event linked.');
       setCalDtuId(''); setCalTitle(''); setCalStart('');
       qc.invalidateQueries({ queryKey: ['grounding-status'] });
     },
-    onError: (e) => note('err', pickMessage(e)),
+    onError: (e) => {
+      const msg = pickMessage(e);
+      setCalOutcome({ kind: 'err', text: msg });
+      note('err', msg);
+    },
   });
 
   // ---- propose + approve actions (consent workflow) -----------------------
@@ -175,6 +192,50 @@ export function SensorGroundingPanel() {
     },
     onError: (e) => note('err', pickMessage(e)),
     onSettled: () => setApprovingId(null),
+  });
+
+  // ---- exits: remove sensor / remove reading / withdraw action ------------
+  // Every control is two-step in-page: the first click arms (naming the
+  // object), the second confirms; Keep disarms. A server refusal (another
+  // account's object reads as "not found") is surfaced in the banner.
+  const [removingSensorId, setRemovingSensorId] = useState<string | null>(null);
+  const removeSensor = useMutation({
+    mutationFn: (sensorId: string) => apiHelpers.grounding.removeSensor(sensorId),
+    onSuccess: (r) => {
+      setRemovingSensorId(null);
+      if (r.data?.ok === false) { note('err', r.data.error || 'sensor removal failed'); return; }
+      const n = r.data?.removed?.readingsRemoved;
+      note('ok', n ? `Sensor removed (with its ${n} reading${n === 1 ? '' : 's'}).` : 'Sensor removed.');
+      qc.invalidateQueries({ queryKey: ['grounding-sensors'] });
+      qc.invalidateQueries({ queryKey: ['grounding-readings'] });
+      qc.invalidateQueries({ queryKey: ['grounding-status'] });
+    },
+    onError: (e) => { setRemovingSensorId(null); note('err', pickMessage(e)); },
+  });
+  const [removingReadingId, setRemovingReadingId] = useState<string | null>(null);
+  const removeReading = useMutation({
+    mutationFn: (readingId: string) => apiHelpers.grounding.removeReading(readingId),
+    onSuccess: (r) => {
+      setRemovingReadingId(null);
+      if (r.data?.ok === false) { note('err', r.data.error || 'reading removal failed'); return; }
+      note('ok', 'Reading removed.');
+      qc.invalidateQueries({ queryKey: ['grounding-readings'] });
+      qc.invalidateQueries({ queryKey: ['grounding-sensors'] });
+      qc.invalidateQueries({ queryKey: ['grounding-status'] });
+    },
+    onError: (e) => { setRemovingReadingId(null); note('err', pickMessage(e)); },
+  });
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
+  const withdrawAction = useMutation({
+    mutationFn: (actionId: string) => apiHelpers.grounding.withdrawAction(actionId),
+    onSuccess: (r) => {
+      setWithdrawingId(null);
+      if (r.data?.ok === false) { note('err', r.data.error || 'withdrawal failed'); return; }
+      note('ok', 'Action withdrawn.');
+      qc.invalidateQueries({ queryKey: ['grounding-pending-actions'] });
+      qc.invalidateQueries({ queryKey: ['grounding-status'] });
+    },
+    onError: (e) => { setWithdrawingId(null); note('err', pickMessage(e)); },
   });
 
   const refreshAll = useCallback(() => {
@@ -279,9 +340,22 @@ export function SensorGroundingPanel() {
           ) : (
             <ul className="space-y-1 max-h-40 overflow-y-auto">
               {sensors.map((s) => (
-                <li key={s.id} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/40 px-2 py-1 text-[11px]">
+                <li key={s.id} className="flex items-center justify-between gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-2 py-1 text-[11px]">
                   <span className="text-zinc-200">{s.name}</span>
-                  <span className="text-zinc-400 font-mono">{s.type}{s.unit ? ` · ${s.unit}` : ''}{s.lastReading != null ? ` · ${s.lastReading}` : ''}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-zinc-400 font-mono">{s.type}{s.unit ? ` · ${s.unit}` : ''}{s.lastReading != null ? ` · ${s.lastReading}` : ''}</span>
+                    {removingSensorId === s.id ? (
+                      <>
+                        <span className="text-red-300">Remove “{s.name}” and its readings?</span>
+                        <button type="button" onClick={() => removeSensor.mutate(s.id)} disabled={removeSensor.isPending} className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-200 hover:bg-red-500/30 disabled:opacity-50">Remove</button>
+                        <button type="button" onClick={() => setRemovingSensorId(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-700">Keep</button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => setRemovingSensorId(s.id)} aria-label={`Remove sensor ${s.name}`} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-red-500/20 hover:text-red-200">
+                        <Trash2 className="w-3 h-3" /> Remove
+                      </button>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -309,11 +383,22 @@ export function SensorGroundingPanel() {
           <div className="space-y-1 max-h-48 overflow-y-auto">
             {readings.length === 0 ? (
               <p className="text-center py-4 text-zinc-500 text-[11px]">No readings yet.</p>
-            ) : readings.slice(-15).reverse().map((r, i) => (
-              <div key={i} className="flex items-center justify-between text-[11px] rounded bg-zinc-900/40 px-2 py-1">
+            ) : readings.slice(-15).reverse().map((r) => (
+              <div key={r.id ?? `${r.sensorId}-${r.timestamp ?? ''}`} className="flex items-center justify-between gap-2 text-[11px] rounded bg-zinc-900/40 px-2 py-1">
                 <span className="font-mono text-teal-300">{r.sensorName || r.sensorId}</span>
                 <span className="text-zinc-300">{String(r.value)} {r.unit}</span>
                 <span className="text-zinc-500">{r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : ''}</span>
+                {r.id && (removingReadingId === r.id ? (
+                  <span className="flex items-center gap-1">
+                    <span className="text-red-300">Remove?</span>
+                    <button type="button" onClick={() => removeReading.mutate(r.id!)} disabled={removeReading.isPending} className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-200 hover:bg-red-500/30 disabled:opacity-50">Remove</button>
+                    <button type="button" onClick={() => setRemovingReadingId(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-700">Keep</button>
+                  </span>
+                ) : (
+                  <button type="button" onClick={() => setRemovingReadingId(r.id!)} aria-label={`Remove reading ${String(r.value)} ${r.unit ?? ''}`} className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-red-500/20 hover:text-red-200">
+                    <Trash2 className="w-3 h-3" /> Remove
+                  </button>
+                ))}
               </div>
             ))}
           </div>
@@ -347,7 +432,9 @@ export function SensorGroundingPanel() {
                 {linkCalendar.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CalendarPlus className="w-3.5 h-3.5" />} Link calendar event
               </button>
             </form>
-            {lastEvent && <p className="text-[10px] text-zinc-400">Created &ldquo;{String(lastEvent.title)}&rdquo; at {String(lastEvent.startTime)}.</p>}
+            {calOutcome && (
+              <p className={cn('text-[10px]', calOutcome.kind === 'ok' ? 'text-emerald-300' : 'text-red-300')}>{calOutcome.text}</p>
+            )}
           </div>
 
           <div className="border-t border-zinc-800 pt-2">
@@ -402,14 +489,27 @@ export function SensorGroundingPanel() {
                   <span className="text-zinc-200">{a.description}</span>
                   <span className="ml-2 text-zinc-500">{new Date(a.proposedAt).toLocaleString()}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => approveAction.mutate(a.id)}
-                  disabled={approvingId === a.id}
-                  className="flex items-center gap-1 rounded bg-emerald-500/15 px-2 py-1 text-[10px] text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-50"
-                >
-                  {approvingId === a.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Approve &amp; execute
-                </button>
+                <span className="flex items-center gap-1.5">
+                  {withdrawingId === a.id ? (
+                    <>
+                      <span className="text-red-300">Withdraw this action?</span>
+                      <button type="button" onClick={() => withdrawAction.mutate(a.id)} disabled={withdrawAction.isPending} className="rounded bg-red-500/20 px-2 py-1 text-[10px] text-red-200 hover:bg-red-500/30 disabled:opacity-50">Withdraw</button>
+                      <button type="button" onClick={() => setWithdrawingId(null)} className="rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300 hover:bg-zinc-700">Keep</button>
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => setWithdrawingId(a.id)} className="flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300 hover:bg-red-500/20 hover:text-red-200">
+                      <Trash2 className="w-3 h-3" /> Withdraw
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => approveAction.mutate(a.id)}
+                    disabled={approvingId === a.id}
+                    className="flex items-center gap-1 rounded bg-emerald-500/15 px-2 py-1 text-[10px] text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-50"
+                  >
+                    {approvingId === a.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Approve &amp; execute
+                  </button>
+                </span>
               </li>
             ))}
           </ul>

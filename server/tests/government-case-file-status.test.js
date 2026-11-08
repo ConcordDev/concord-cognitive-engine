@@ -60,6 +60,22 @@ describe("government case-file status enum (F2)", () => {
   });
 });
 
+describe("government Quick Capture type admission (F5)", () => {
+  it("admits type 'capture' through the domain rule", () => {
+    // F5: Quick Capture failed "validation_failed" twice in the first
+    // pass — the genus's ninth failing domain. The rule's types now
+    // admit "capture" on the retail/environment precedent.
+    const r = validateArtifact("government", "capture", { title: "x" }, { status: "draft" });
+    assert.equal(r.ok, true, `capture should validate, got: ${JSON.stringify(r.errors)}`);
+  });
+
+  it("still rejects a type the domain does not admit", () => {
+    const r = validateArtifact("government", "not-a-civic-type", { title: "x" }, { status: "draft" });
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => /Invalid type/.test(e)));
+  });
+});
+
 describe("government case-file create + read-back + restart (F2)", () => {
   let runMacro;
   let STATE;

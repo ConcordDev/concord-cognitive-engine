@@ -10,9 +10,10 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Boxes, Plus, CheckCircle, ArrowUp, Layers, Rocket, Layout, ShoppingCart,
-  Briefcase, UserCircle, Star, TrendingUp, AlertTriangle,
+  Briefcase, UserCircle, Star, TrendingUp, AlertTriangle, Loader2,
 } from 'lucide-react';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
+import { useLensDraft } from '@/hooks/useLensDraft';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -55,7 +56,14 @@ export function AppsPanel() {
   const [selectedTemplate, setSelectedTemplate] = useState('crm');
   const [appSearch, setAppSearch] = useState('');
   const [appStatusFilter, setAppStatusFilter] = useState<string>('all');
-  const [appBuildName, setAppBuildName] = useState('');
+  // F8: this field used to live in plain useState and vanished silently when
+  // the lens switched views (this panel unmounts). Route it through the
+  // standing lens-draft substrate instead — the same idiom other lenses use
+  // for the same shape of bug — and `clear()` it once the name has graduated
+  // into a real deployed app (handleDeploy, below).
+  const appBuildNameDraft = useLensDraft<string>('app-maker', 'build-app-name', { initial: '' });
+  const appBuildName = appBuildNameDraft.value;
+  const setAppBuildName = appBuildNameDraft.setValue;
   const [deploying, setDeploying] = useState(false);
   const [deployStatus, setDeployStatus] = useState<'idle' | 'deploying' | 'deployed'>('idle');
 
@@ -122,13 +130,22 @@ export function AppsPanel() {
   };
 
   const validateApp = async (id: string) => {
+    // F11: the previous blocking window.alert() produced no on-page, inspectable
+    // feedback — a dead-feeling control. Route the same real validation result
+    // through the panel's own toast idiom (already used for the error branch
+    // just below) so every outcome — pass, violations, or request failure —
+    // leaves a visible, consistent trace.
     try {
       const resp = await apiHelpers.apps.validate(id);
       const data = resp.data;
       if (data.valid) {
-        alert('App is valid — all invariants pass.');
+        useUIStore.getState().addToast({ type: 'success', message: 'App is valid — all invariants pass.' });
       } else {
-        alert(`Violations:\n${(data.violations || []).join('\n')}`);
+        const violations = data.violations || [];
+        useUIStore.getState().addToast({
+          type: 'warning',
+          message: violations.length > 0 ? `Validation failed: ${violations.join('; ')}` : 'Validation failed.',
+        });
       }
     } catch (e) {
       console.error('[AppMaker] Failed to validate app:', e);
@@ -151,7 +168,7 @@ export function AppsPanel() {
         ui: { lens: 'custom', layout: 'dashboard', panels: [] },
       });
       setDeployStatus('deployed');
-      setAppBuildName('');
+      await appBuildNameDraft.clear();
       await loadApps();
     } catch {
       setDeployStatus('idle');
@@ -341,13 +358,24 @@ export function AppsPanel() {
 
         <div className="space-y-2">
           <label className="text-xs text-gray-400 uppercase tracking-wider">App Name</label>
-          <input
-            type="text"
-            value={appBuildName}
-            onChange={(e) => setAppBuildName(e.target.value)}
-            placeholder="Enter your app name..."
-            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={appBuildName}
+              onChange={(e) => setAppBuildName(e.target.value)}
+              placeholder="Enter your app name..."
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 pr-9 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30 transition-colors"
+              aria-describedby="app-maker-build-app-name-status"
+            />
+            <div
+              id="app-maker-build-app-name-status"
+              className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-1 pointer-events-none"
+              aria-live="polite"
+            >
+              {appBuildNameDraft.status === 'saving' && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" aria-hidden="true" />}
+              {appBuildNameDraft.status === 'saved' && <CheckCircle className="w-3 h-3 text-neon-green/70" aria-hidden="true" />}
+            </div>
+          </div>
         </div>
 
         <div className="space-y-2">

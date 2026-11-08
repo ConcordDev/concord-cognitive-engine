@@ -45,6 +45,14 @@ const LIMITS = {
   'read.conkay-demo':   { max: 120, windowMs: 60000 },   // no-login ConKay demo — anonymous FEA solves, compute only
   'read.receipt-keys':  { max: 120, windowMs: 60000 },   // public Ed25519 receipt public keys
   'write.receipt-verify': { max: 60, windowMs: 60000 },  // anonymous POST /api/receipts/verify — no write, abuse backstop
+  // Added with the CodeQL missing-rate-limiting review (#2344). consent-all is a synchronous
+  // full-table UPDATE over every DTU the caller owns plus an append-only audit row per call,
+  // so the global 6000/min cap would let one account hammer the event loop and grow
+  // lattice_consent_log; 20/min is far above any human toggling the switch.
+  'write.consent-bulk': { max: 20, windowMs: 60000 },
+  // App Maker mutations (create / edit / promote / delete): the in-memory app store has no
+  // per-author cap, so bound the write rate instead. 60/min covers any editing session.
+  'write.apps': { max: 60, windowMs: 60000 },
 };
 
 /**

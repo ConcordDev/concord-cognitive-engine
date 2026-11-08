@@ -1241,8 +1241,8 @@ function GanttTab() {
                     {b.duration}d
                   </div>
                 </div>
-                <span className="w-24 shrink-0 text-[10px] text-gray-400">
-                  {b.startDate}
+                <span className="w-36 shrink-0 text-[10px] text-gray-400">
+                  {b.startDate} → {b.endDate}
                 </span>
                 <span className="w-12 shrink-0 text-[10px] text-gray-400">
                   {b.slack > 0 ? `+${b.slack}d` : 'crit'}

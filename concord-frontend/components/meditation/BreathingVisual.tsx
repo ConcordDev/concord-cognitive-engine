@@ -2,8 +2,10 @@
 
 /**
  * BreathingVisual — animated expand/contract orb synced to a breathwork
- * pacer. Drives meditation.breathwork for phase timings + meditation.play
- * to log a completed breathwork session. The orb scales between phases
+ * pacer. Drives meditation.breathwork for phase timings, and logs a
+ * completed practice through meditation.sessionLog with the PERFORMED
+ * seconds the pacer measured (S-MED-1) — a 44-second practice records
+ * 44 seconds, never the catalog length. The orb scales between phases
  * (inhale → grow, exhale → shrink, hold → steady).
  */
 
@@ -87,10 +89,21 @@ export function BreathingVisual({ onPractice }: { onPractice?: () => void }) {
   }, [phaseIdx, spec]);
 
   const logSession = useCallback(async () => {
+    if (!spec) return;
     const sid = pattern === '478' ? 'b-478-4' : pattern === 'coherent' ? 'b-coh-6' : 'b-box-5';
-    const r = await lensRun('meditation', 'play', { sessionId: sid });
+    const title = pattern === '478' ? '4-7-8 Wind Down' : pattern === 'coherent' ? 'Coherent Breathing' : 'Box Breathing';
+    const r = await lensRun('meditation', 'sessionLog', {
+      trackId: sid,
+      title,
+      category: 'breathwork',
+      // The pacer ran every phase in real time: this is the practice
+      // that actually happened, in seconds (the server floors whole
+      // minutes for the totals and keeps the exact seconds).
+      performedSeconds: spec.totalSeconds,
+      logKey: `breath-${sid}-${spec.totalSeconds}-${new Date().toISOString().slice(0, 16)}`,
+    });
     if (r.data?.ok) { setLogged(true); onPractice?.(); }
-  }, [pattern, onPractice]);
+  }, [pattern, spec, onPractice]);
 
   if (loading || !spec) {
     return <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
@@ -169,7 +182,7 @@ export function BreathingVisual({ onPractice }: { onPractice?: () => void }) {
       {done && (
         <div className="mt-3 text-center">
           {logged
-            ? <span className="text-xs text-emerald-300">Breathwork session logged to your practice.</span>
+            ? <span className="text-xs text-emerald-300">Breathwork logged — {spec.totalSeconds}s of practice, exactly what you did.</span>
             : <button type="button" onClick={logSession}
                 className="px-3 py-1.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white">
                 Log this session

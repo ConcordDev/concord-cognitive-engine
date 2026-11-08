@@ -28,6 +28,7 @@ interface SearchDream {
   scope?: string;
   priceCc?: number | null;
   tags?: string[];
+  tagsAuthor?: string | null;
 }
 interface TagEntry { tag: string; count: number }
 interface TimelineDay {
@@ -102,7 +103,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
       label: dr.title || 'Dream',
       time: (dr.composedAt || 0) * 1000,
       tone: 'info' as const,
-      detail: `${dr.fragmentCount ?? 0} fragments`,
+      detail: `${dr.fragmentCount ?? 0} substrate events`,
     })),
   );
 
@@ -222,11 +223,14 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
                         </div>
                         <p className="mt-0.5 line-clamp-2 text-xs text-zinc-400">{d.prose}</p>
                         <p className="mt-1 font-mono text-[10px] text-zinc-400">
-                          {d.fragmentCount ?? 0} fragments ·{' '}
+                          {d.fragmentCount ?? 0} substrate events ·{' '}
                           {d.composedAt ? new Date(d.composedAt * 1000).toLocaleDateString() : '—'}
                         </p>
                         {d.tags && d.tags.length > 0 && (
-                          <div className="mt-1 flex flex-wrap gap-1">
+                          <div className="mt-1 flex flex-wrap items-center gap-1">
+                            {d.tagsAuthor && (
+                              <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-500">your tags:</span>
+                            )}
                             {d.tags.map((t) => (
                               <span key={t} className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-400">
                                 {t}
@@ -272,7 +276,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
                       onClick={() => onOpen(dr.id)}
                       className="rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1 text-[11px] text-zinc-300 hover:border-purple-700/60 hover:text-zinc-100"
                     >
-                      {dr.title || 'Dream'} · {dr.fragmentCount ?? 0}f
+                      {dr.title || 'Dream'} · {dr.fragmentCount ?? 0} events
                     </button>
                   ))}
                 </div>

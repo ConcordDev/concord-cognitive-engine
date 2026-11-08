@@ -103,7 +103,13 @@ export async function readUploadRequest(req) {
     return { ok: true, files: parsed.files, domain, title };
   }
   const mime = contentType.split(";")[0].trim().toLowerCase();
-  if (!mime || mime === "application/json" || mime === "application/x-www-form-urlencoded" || mime === "text/plain") {
+  // Only genuine non-file bodies are refused here: a JSON or
+  // form-encoded body is not an upload. text/plain is NOT refused —
+  // it is the Content-Type of a raw .txt file, and the artifact
+  // store's SUPPORTED_TYPES carries text/plain as a first-class
+  // (previewable) artifact type; refusing it made every raw text
+  // upload fail with an error that misdescribed what was sent.
+  if (!mime || mime === "application/json" || mime === "application/x-www-form-urlencoded") {
     return {
       ok: false,
       status: 400,

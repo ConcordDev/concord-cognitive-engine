@@ -79,6 +79,8 @@ vi.mock('@/lib/api/client', () => ({
       introspection: () => Promise.resolve({ data: { introspection: { recentPatterns: [] } } }),
       predictions: () => Promise.resolve({ data: { predictions: [] } }),
       assessments: () => Promise.resolve({ data: { assessments: [] } }),
+      // S-MC-1: the desk's domain list is the per-domain RECORD now.
+      domainRecord: () => Promise.resolve({ data: { domains: [] } }),
     },
     inference: {
       status: () => Promise.resolve({

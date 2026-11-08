@@ -78,6 +78,10 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
   const [formProjectType, setFormProjectType] = useState('Residential New');
   const [formLaborCost, setFormLaborCost] = useState('');
   const [formMaterialCost, setFormMaterialCost] = useState('');
+  const [formQuantity, setFormQuantity] = useState('');
+  const [formUnit, setFormUnit] = useState('cy');
+  const [formUnitCost, setFormUnitCost] = useState('');
+  const [formWastePercent, setFormWastePercent] = useState('10');
   const [formTrade, setFormTrade] = useState('General');
   const [formInspectionType, setFormInspectionType] = useState('Foundation');
   const [formForeman, setFormForeman] = useState('');
@@ -118,6 +122,24 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
     [filtered, runAction],
   );
 
+  // F6: the job card's Activate control performs the activation — a
+  // planned job moves to in_progress through the same update path the
+  // Edit modal uses (data.status and meta.status written together). It
+  // previously ran the generic 'analyze' action, which showed
+  // "AI processing…" and never touched the job's status.
+  const activateJob = useCallback(
+    async (item: LensItem<ConstructionArtifact>) => {
+      const d = item.data as unknown as ConstructionArtifact;
+      if (d.status !== 'planned') return;
+      await update(item.id, {
+        title: item.title,
+        data: { ...(d as unknown as Record<string, unknown>), status: 'in_progress' },
+        meta: { tags: [], status: 'in_progress', visibility: 'private' },
+      });
+    },
+    [update],
+  );
+
   const openCreate = () => {
     setEditingItem(null);
     setFormName('');
@@ -132,6 +154,10 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
     setFormProjectType('Residential New');
     setFormLaborCost('');
     setFormMaterialCost('');
+    setFormQuantity('');
+    setFormUnit('cy');
+    setFormUnitCost('');
+    setFormWastePercent('10');
     setFormTrade('General');
     setFormInspectionType('Foundation');
     setFormForeman('');
@@ -154,6 +180,10 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
     setFormProjectType(d.projectType || 'Residential New');
     setFormLaborCost(d.laborCost?.toString() || '');
     setFormMaterialCost(d.materialCost?.toString() || '');
+    setFormQuantity((d as { quantity?: number }).quantity?.toString() || '');
+    setFormUnit((d as { unit?: string }).unit || 'cy');
+    setFormUnitCost((d as { unitCost?: number }).unitCost?.toString() || '');
+    setFormWastePercent((d as { wastePercent?: number }).wastePercent?.toString() || '10');
     setFormTrade(d.trade || 'General');
     setFormInspectionType(d.inspectionType || 'Foundation');
     setFormForeman(d.foreman || '');
@@ -181,6 +211,22 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
       foreman: formForeman,
       crewSize: formCrewSize ? parseInt(formCrewSize) : undefined,
     };
+    if (activeArtifactType === 'Estimate') {
+      // F8: an estimate carries the takeoff's own line fields, and its
+      // total is computed with the takeoff's arithmetic — quantity ×
+      // unit cost, waste shown as its own percent — so the Estimates tab
+      // and the takeoff bench speak the same numbers.
+      const qty = formQuantity ? parseFloat(formQuantity) : undefined;
+      const unitCost = formUnitCost ? parseFloat(formUnitCost) : undefined;
+      const waste = formWastePercent ? parseFloat(formWastePercent) : 10;
+      data.quantity = qty;
+      data.unit = formUnit;
+      data.unitCost = unitCost;
+      data.wastePercent = waste;
+      data.lineTotal = qty != null && unitCost != null
+        ? Math.round(qty * (1 + waste / 100) * unitCost * 100) / 100
+        : undefined;
+    }
     if (editingItem)
       await update(editingItem.id, {
         title: formName,
@@ -350,6 +396,7 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
               </>
             )}
             {activeArtifactType === 'Estimate' && (
+              <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={ds.label}>Labor Cost</label>
@@ -370,6 +417,52 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div>
+                  <label className={ds.label}>Quantity</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className={ds.input}
+                    value={formQuantity}
+                    onChange={(e) => setFormQuantity(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={ds.label}>Unit</label>
+                  <select className={ds.select} value={formUnit} onChange={(e) => setFormUnit(e.target.value)}>
+                    {['each', 'lf', 'sf', 'cy', 'lb', 'bag'].map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={ds.label}>Unit Cost</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className={ds.input}
+                    value={formUnitCost}
+                    onChange={(e) => setFormUnitCost(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className={ds.label}>Waste %</label>
+                  <input
+                    type="number"
+                    className={ds.input}
+                    value={formWastePercent}
+                    onChange={(e) => setFormWastePercent(e.target.value)}
+                  />
+                </div>
+              </div>
+              {formQuantity && formUnitCost && (
+                <p className="text-xs text-gray-400">
+                  Line total (quantity × unit cost, waste shown): $
+                  {(Math.round(parseFloat(formQuantity) * (1 + (parseFloat(formWastePercent) || 0) / 100) * parseFloat(formUnitCost) * 100) / 100).toLocaleString()}
+                </p>
+              )}
+              </>
             )}
             {activeArtifactType === 'Inspection' && (
               <div>
@@ -474,7 +567,7 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
       ) : filtered.length === 0 ? (
         <div className={cn(ds.panel, 'text-center py-12')}>
           <HardHat className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className={ds.textMuted}>No {activeArtifactType} items yet</p>
+          <p className={ds.textMuted}>No {activeArtifactType.replace(/([a-z])([A-Z])/g, '$1 $2')} items yet</p>
           <button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}>
             <Plus className="w-4 h-4" /> Create First
           </button>
@@ -507,19 +600,36 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                   {d.contractValue && (
                     <span className="text-xs text-green-400">${d.contractValue.toLocaleString()}</span>
                   )}
+                  {activeArtifactType === 'Estimate' && (d as { lineTotal?: number }).lineTotal != null && (
+                    <span className="text-xs text-green-400">${(d as { lineTotal?: number }).lineTotal!.toLocaleString()}</span>
+                  )}
                   <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>
                     {sc.label}
                   </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAction('analyze', item.id);
-                    }}
-                    className={ds.btnGhost}
-                    aria-label="Activate"
-                  >
-                    <Zap className="w-4 h-4 text-neon-cyan" />
-                  </button>
+                  {activeArtifactType === 'Job' && d.status === 'planned' ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void activateJob(item);
+                      }}
+                      className={ds.btnGhost}
+                      aria-label="Activate job"
+                      title="Activate job"
+                    >
+                      <Zap className="w-4 h-4 text-neon-cyan" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAction('analyze', item.id);
+                      }}
+                      className={ds.btnGhost}
+                      aria-label="Analyze"
+                    >
+                      <Zap className="w-4 h-4 text-neon-cyan" />
+                    </button>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -558,6 +668,16 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
   const completedCount = allJobs.filter((j) => j.status === 'completed').length;
   const completionRate =
     allJobs.length > 0 ? ((completedCount / allJobs.length) * 100).toFixed(0) : '0';
+  // F8: in Estimates mode the header figures are computed from the
+  // estimate items' OWN costs (line total where the takeoff fields are
+  // filled, else labor + material) — they previously summed contractValue,
+  // a field estimate items never carry, so the headers never moved.
+  const isEstimates = mode === 'estimates';
+  const estimateTotal = allJobs.reduce((s, j) => {
+    const e = j as unknown as { lineTotal?: number; laborCost?: number; materialCost?: number };
+    return s + (e.lineTotal ?? ((e.laborCost || 0) + (e.materialCost || 0)));
+  }, 0);
+  const estimateAvg = allJobs.length > 0 ? estimateTotal / allJobs.length : 0;
 
   return (
     <div className="space-y-4">
@@ -569,22 +689,22 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
         <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
           <Hammer className="w-5 h-5 text-orange-400" />
           <div>
-            <p className="text-lg font-bold text-white">{activeCount}</p>
-            <p className="text-xs text-gray-400">Active Projects</p>
+            <p className="text-lg font-bold text-white">{isEstimates ? allJobs.length : activeCount}</p>
+            <p className="text-xs text-gray-400">{isEstimates ? 'Estimates' : 'Active Projects'}</p>
           </div>
         </div>
         <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
           <DollarSign className="w-5 h-5 text-green-400" />
           <div>
-            <p className="text-lg font-bold text-white">${budgetTotal.toLocaleString()}</p>
-            <p className="text-xs text-gray-400">Budget Total</p>
+            <p className="text-lg font-bold text-white">${(isEstimates ? estimateTotal : budgetTotal).toLocaleString()}</p>
+            <p className="text-xs text-gray-400">{isEstimates ? 'Total Estimated' : 'Budget Total'}</p>
           </div>
         </div>
         <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
           <Percent className="w-5 h-5 text-cyan-400" />
           <div>
-            <p className="text-lg font-bold text-white">{completionRate}%</p>
-            <p className="text-xs text-gray-400">Completion Rate</p>
+            <p className="text-lg font-bold text-white">{isEstimates ? `$${Math.round(estimateAvg).toLocaleString()}` : `${completionRate}%`}</p>
+            <p className="text-xs text-gray-400">{isEstimates ? 'Average Estimate' : 'Completion Rate'}</p>
           </div>
         </div>
       </div>

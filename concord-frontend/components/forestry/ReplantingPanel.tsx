@@ -13,6 +13,7 @@ import { lensRun } from '@/lib/api/client';
 interface Survey { id: string; date: string; survivalPercent: number; recommendation: string }
 interface Project {
   id: string;
+  standId: string | null;
   name: string;
   species: string;
   acres: number;
@@ -32,6 +33,7 @@ const STATUSES = ['planned', 'ordered', 'planted', 'established', 'failed'];
 
 export function ReplantingPanel() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [stands, setStands] = useState<{ id: string; name: string }[]>([]);
   const [totals, setTotals] = useState({ acres: 0, seedlings: 0 });
   const [name, setName] = useState('');
   const [species, setSpecies] = useState('douglas_fir');
@@ -51,6 +53,8 @@ export function ReplantingPanel() {
       setProjects(r.data.result.projects);
       setTotals({ acres: r.data.result.totalAcres, seedlings: r.data.result.totalSeedlings });
     }
+    const sl = await lensRun<{ stands: { id: string; name: string }[] }>('forestry', 'stand-list', {});
+    if (sl.data?.ok && sl.data.result) setStands(sl.data.result.stands);
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -120,8 +124,11 @@ export function ReplantingPanel() {
           </select>
           <input type="date" value={plannedDate} onChange={(e) => setPlannedDate(e.target.value)}
             className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
-          <input value={standId} onChange={(e) => setStandId(e.target.value)} placeholder="stand id"
-            className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
+          <select value={standId} onChange={(e) => setStandId(e.target.value)} aria-label="Stand (optional)"
+            className="flex-1 min-w-[120px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
+            <option value="">Stand (optional)</option>
+            {stands.map((st) => <option key={st.id} value={st.id}>{st.name}</option>)}
+          </select>
         </div>
       </div>
       <button onClick={create} disabled={busy}
@@ -137,6 +144,7 @@ export function ReplantingPanel() {
               <span className="text-xs font-semibold text-zinc-100">{p.name}</span>
               <span className="text-[10px] text-zinc-400">{p.species.replace(/_/g, ' ')}</span>
               <span className="text-[10px] text-zinc-400">{p.acres} ac · {p.seedlingsOrdered.toLocaleString()} seedlings</span>
+              {p.standId && <span className="text-[10px] text-zinc-400">stand: {stands.find((st) => st.id === p.standId)?.name || p.standId}</span>}
               {p.latestSurvival != null && (
                 <span className={`text-[10px] font-semibold ${p.latestSurvival < 60 ? 'text-rose-400' : p.latestSurvival < 80 ? 'text-yellow-400' : 'text-emerald-400'}`}>
                   {p.latestSurvival}% survival

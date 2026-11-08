@@ -44,6 +44,13 @@ interface SyllogismResult {
     conclusion: string;
     rule: string;
     confidence: number;
+    derivedThisRun?: boolean;
+    alreadyDerived?: boolean;
+  };
+  kbWrites?: {
+    premisesStored: string[];
+    ruleAdded: string;
+    conclusionStored: boolean;
   };
 }
 
@@ -99,6 +106,91 @@ const MODEL_OPTIONS = [
 
 export type DeskMode = 'facts' | 'query' | 'syllogism' | 'forward' | 'unify';
 
+interface DeskDerivation { subject: string; predicate: string; object: string; negated?: boolean; confidence?: number }
+
+/** F12: desk results read as sentences; the raw payload is one fold away. */
+function DeskSentences({ results, raw }: { results: Record<string, unknown>; raw: unknown }) {
+  const explanation = Array.isArray(results.explanation) ? (results.explanation as string[]) : null;
+  const facts = Array.isArray(results.facts) ? (results.facts as DeskFact[]) : null;
+  const derivations = Array.isArray(results.derivations) ? (results.derivations as DeskDerivation[]) : null;
+  const contradictions = Array.isArray(results.contradictions) ? (results.contradictions as Array<{ subject: string; predicate: string; object: string }>) : [];
+  const fact = (results.fact && typeof results.fact === 'object') ? (results.fact as DeskFact) : null;
+  const hasSentences = Boolean(explanation?.length || facts?.length || derivations?.length || fact);
+  if (!hasSentences) {
+    return (
+      <div className="bg-lattice-surface p-3 rounded-lg">
+        <pre className="whitespace-pre-wrap text-xs text-gray-300 font-mono max-h-96 overflow-y-auto">{JSON.stringify(raw, null, 2)}</pre>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2 text-sm text-gray-200">
+      {fact && (
+        <p>Added: <span className="text-white">{fact.subject} {fact.predicate} {fact.object}</span>{fact.negated ? ' (negated)' : ''}
+          {typeof results.newDerivations === 'number' ? <span className="text-gray-400"> — this fact caused {results.newDerivations} new derivation{results.newDerivations === 1 ? '' : 's'}</span> : null}
+        </p>
+      )}
+      {(results.contradiction as { statement?: string } | undefined)?.statement && (
+        <p className="text-red-300">⚠ Contradiction: the knowledge base already holds the opposite of “{(results.contradiction as { statement: string }).statement}” — both now stand, flagged.</p>
+      )}
+      {explanation?.map((line, i) => <p key={i} className={line.startsWith('Contradiction:') ? 'text-red-300' : undefined}>{line}</p>)}
+      {!explanation && facts?.map((f, i) => (
+        <p key={i}>{f.subject} {f.predicate} {f.object}{f.negated ? ' (negated)' : ''}{f.source ? <span className="text-gray-500"> · {f.source}</span> : null}</p>
+      ))}
+      {derivations && derivations.length > 0 && (
+        <>
+          <p className="text-xs uppercase tracking-wide text-gray-500">Derived</p>
+          {derivations.map((d, i) => (
+            <p key={i}>{d.subject} {d.predicate} {d.object}{d.negated ? ' (negated)' : ''}{typeof d.confidence === 'number' ? <span className="text-gray-500"> · {(d.confidence * 100).toFixed(0)}%</span> : null}</p>
+          ))}
+        </>
+      )}
+      {derivations && derivations.length === 0 && (
+        <p className="text-gray-400">No new derivations — the standing facts and rules derive nothing further.</p>
+      )}
+      {typeof results.persistence === 'string' && <p className="text-[11px] text-gray-500">{results.persistence} Derived total: {String(results.derivedTotal ?? 0)}.</p>}
+      {contradictions.map((c, i) => (
+        <p key={`c${i}`} className="text-red-300">⚠ Contradiction in the results: “{c.subject} {c.predicate} {c.object}” and its negation both stand.</p>
+      ))}
+      <details className="text-xs">
+        <summary className="cursor-pointer text-gray-500">Raw result</summary>
+        <pre className="whitespace-pre-wrap text-[10px] text-gray-400 font-mono mt-1 max-h-48 overflow-y-auto">{JSON.stringify(raw, null, 2)}</pre>
+      </details>
+    </div>
+  );
+}
+
+
+interface DeskFact { subject: string; predicate: string; object: string; negated?: boolean; source?: string }
+
+/** D2: the knowledge base as a visible, provenance-stamped place. */
+function KbFactList() {
+  const { data } = useQuery({
+    queryKey: ['inference-kb-list'],
+    queryFn: () => apiHelpers.inference.query({}).then((r) => r.data),
+  });
+  const facts = (data?.facts ?? []) as DeskFact[];
+  const contradictions = (data?.contradictions ?? []) as Array<{ subject: string; predicate: string; object: string }>;
+  const contraKeys = new Set(contradictions.map((c) => `${c.subject}|${c.predicate}|${c.object}`));
+  if (facts.length === 0) {
+    return <p className="text-[11px] text-gray-500">The knowledge base is empty — facts you add appear here with their source.</p>;
+  }
+  return (
+    <div className="space-y-1">
+      <p className="text-[11px] uppercase tracking-wide text-gray-500">Knowledge base ({facts.length})</p>
+      {facts.map((f, i) => (
+        <p key={i} className="text-xs text-gray-300">
+          {f.subject} {f.predicate} {f.object}
+          {f.negated ? <span className="text-amber-300"> (negated)</span> : null}
+          {f.source ? <span className="text-gray-500"> · {f.source}</span> : null}
+          {contraKeys.has(`${f.subject}|${f.predicate}|${f.object}`) ? <span className="text-red-300"> · ⚠ contradicted by its negation</span> : null}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+
 export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
 
 
@@ -106,6 +198,7 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
   const [factSubject, setFactSubject] = useState('');
   const [factPredicate, setFactPredicate] = useState('');
   const [factObject, setFactObject] = useState('');
+  const [factNegated, setFactNegated] = useState(false);
   const [querySubject, setQuerySubject] = useState('');
   const [queryPredicate, setQueryPredicate] = useState('');
   const [queryObject, setQueryObject] = useState('');
@@ -151,7 +244,7 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
   const addFacts = useMutation({
     mutationFn: () => {
       const startTime = Date.now();
-      return apiHelpers.inference.facts({ subject: factSubject.trim(), predicate: factPredicate.trim(), object: factObject.trim() }).then(res => {
+      return apiHelpers.inference.facts({ subject: factSubject.trim(), predicate: factPredicate.trim(), object: factObject.trim(), negated: factNegated }).then(res => {
         trackInference('add-fact', `${factSubject} ${factPredicate} ${factObject}`, res.data, startTime);
         return res;
       });
@@ -159,7 +252,8 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
     onSuccess: (res) => {
       setResults(res.data);
       queryClient.invalidateQueries({ queryKey: ['inference-status'] });
-      setFactSubject(''); setFactPredicate(''); setFactObject('');
+      queryClient.invalidateQueries({ queryKey: ['inference-kb-list'] });
+      setFactSubject(''); setFactPredicate(''); setFactObject(''); setFactNegated(false);
     },
     onError: (err) => console.error('addFacts failed:', err instanceof Error ? err.message : err),
   });
@@ -290,8 +384,8 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
         {[
           { icon: Database, color: 'text-neon-blue', value: statusInfo.factCount || 0, label: 'Facts' },
           { icon: GitMerge, color: 'text-neon-purple', value: statusInfo.ruleCount || 0, label: 'Rules' },
-          { icon: Zap, color: 'text-neon-green', value: statusInfo.inferences || 0, label: 'Inferences' },
-          { icon: Search, color: 'text-neon-cyan', value: statusInfo.queries || 0, label: 'Queries' },
+          { icon: Zap, color: 'text-neon-green', value: statusInfo.counters?.inferences ?? statusInfo.stats?.inferencesPerformed ?? 0, label: 'Inferences' },
+          { icon: Search, color: 'text-neon-cyan', value: statusInfo.counters?.queries ?? statusInfo.stats?.queriesRun ?? 0, label: 'Queries' },
           { icon: Timer, color: 'text-neon-yellow', value: avgLatency > 0 ? `${avgLatency.toFixed(0)}ms` : '--', label: 'Avg Latency' },
         ].map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }} className="lens-card">
@@ -340,6 +434,9 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
             </button>
           ))}
         </div>
+        <p className="text-[11px] text-gray-500 mt-2">
+          The desk engines — facts, query, syllogism, forward chain, unify — are deterministic and do not use a model; this selector does not change their answers. (The Rule Engine below runs its own Prolog; Frameworks reads live GitHub data.)
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -350,11 +447,15 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
               <h2 className="font-semibold flex items-center gap-2">
                 <Plus className="w-4 h-4 text-neon-purple" /> Add a Fact
               </h2>
-              <p className="text-xs text-gray-400">A fact is a subject-predicate-object triple, e.g. &quot;socrates — is — mortal&quot;.</p>
+              <p className="text-xs text-gray-400">A fact is a subject-predicate-object triple, e.g. &quot;socrates — is — mortal&quot;. Tick <span className="text-gray-200">Negated</span> (or use the predicate &quot;is not&quot;) to store the negation — if the opposite already stands, the contradiction is flagged.</p>
               <input type="text" value={factSubject} onChange={(e) => setFactSubject(e.target.value)} placeholder="Subject (e.g. socrates)" className="input-lattice w-full" />
               <input type="text" value={factPredicate} onChange={(e) => setFactPredicate(e.target.value)} placeholder="Predicate (e.g. is)" className="input-lattice w-full" />
               <input type="text" value={factObject} onChange={(e) => setFactObject(e.target.value)} placeholder="Object (e.g. mortal)" className="input-lattice w-full"
                 onKeyDown={(e) => { if (e.key === 'Enter' && factSubject && factPredicate && factObject && !addFacts.isPending) addFacts.mutate(); }} />
+              <label className="flex items-center gap-2 text-xs text-gray-300">
+                <input type="checkbox" checked={factNegated} onChange={(e) => setFactNegated(e.target.checked)} className="accent-purple-500" />
+                Negated — this fact states the triple does <span className="italic">not</span> hold
+              </label>
               <button
                 onClick={() => addFacts.mutate()}
                 disabled={!factSubject.trim() || !factPredicate.trim() || !factObject.trim() || addFacts.isPending}
@@ -362,6 +463,7 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
               >
                 {addFacts.isPending ? 'Adding...' : 'Add Fact'}
               </button>
+              <KbFactList />
             </>
           )}
 
@@ -375,12 +477,10 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
               <input type="text" value={queryPredicate} onChange={(e) => setQueryPredicate(e.target.value)} placeholder="Predicate (optional)" className="input-lattice w-full" />
               <input type="text" value={queryObject} onChange={(e) => setQueryObject(e.target.value)} placeholder="Object (optional)" className="input-lattice w-full"
                 onKeyDown={(e) => { if (e.key === 'Enter' && !runQuery.isPending) runQuery.mutate(); }} />
-              <p className="text-xs text-gray-400">
-                Using model: <span className="text-neon-cyan">{MODEL_OPTIONS.find(m => m.id === selectedModel)?.label}</span>
-              </p>
+              <p className="text-xs text-gray-400">All three blank lists the whole knowledge base.</p>
               <button
                 onClick={() => runQuery.mutate()}
-                disabled={(!querySubject.trim() && !queryPredicate.trim() && !queryObject.trim()) || runQuery.isPending}
+                disabled={runQuery.isPending}
                 className="btn-neon purple w-full"
               >
                 {runQuery.isPending ? 'Querying...' : 'Run Query'}
@@ -414,6 +514,7 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
               <h2 className="font-semibold flex items-center gap-2">
                 <GitMerge className="w-4 h-4 text-neon-purple" /> Syllogism
               </h2>
+              <p className="text-xs text-gray-400">Supported shapes: major &quot;All X are Y&quot; with a minor of &quot;Z is X&quot; (singular) or &quot;All Z are X&quot; (the canonical Barbara). Category spelling is morphology-tolerant — razzies, razzie and razzy count as one category. A run stores its premises and rule in the knowledge base (stated on the result) and the same premises always derive the same conclusion.</p>
               <input
                 type="text"
                 value={majorPremise}
@@ -529,8 +630,14 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
                     <p className="text-sm font-semibold text-neon-green">{d.derivation.conclusion}</p>
                   </div>
                   <p className="text-[10px] text-gray-400 pt-1">
-                    {d.derivation.rule} · confidence {(d.derivation.confidence * 100).toFixed(0)}%
+                    {d.derivation.rule} · confidence {(d.derivation.confidence * 100).toFixed(0)}% (the product of the premises&apos; and the rule&apos;s confidences)
+                    {d.derivation.alreadyDerived ? ' · derived from these premises before — same result, as it must be' : d.derivation.derivedThisRun ? ' · derived by this run' : ''}
                   </p>
+                  {d.kbWrites && (
+                    <p className="text-[10px] text-gray-500">
+                      Stored in the knowledge base by this run: premises “{d.kbWrites.premisesStored.join('” · “')}”, rule “{d.kbWrites.ruleAdded}”{d.kbWrites.conclusionStored ? ', and the conclusion (in the derived store)' : ''}.
+                    </p>
+                  )}
                 </div>
               );
             }
@@ -598,11 +705,7 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
               </div>
             );
           })() : results ? (
-            <div className="bg-lattice-surface p-3 rounded-lg">
-              <pre className="whitespace-pre-wrap text-xs text-gray-300 font-mono max-h-96 overflow-y-auto">
-                {JSON.stringify(results, null, 2)}
-              </pre>
-            </div>
+            <DeskSentences results={results as Record<string, unknown>} raw={results} />
           ) : (
             <p className="text-center py-12 text-gray-400">
               Run a query or operation to see results

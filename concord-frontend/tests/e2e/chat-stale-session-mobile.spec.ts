@@ -39,7 +39,8 @@ test('stale session from another account: new chat + answer, never "misconfigure
   await composer.fill('hi');
   await page.getByLabel('Send message').click();
 
-  await expect(page.getByText('Hello from the model')).toBeVisible();
+  // The sidebar conversation list previews the same reply; assert the message list itself.
+  await expect(page.getByTestId('virtuoso-item-list').getByText('Hello from the model')).toBeVisible();
   await expect(page.getByText(/misconfigured/i)).toHaveCount(0);
   // Mobile fit: the answer is inside the viewport, nothing scrolls sideways.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

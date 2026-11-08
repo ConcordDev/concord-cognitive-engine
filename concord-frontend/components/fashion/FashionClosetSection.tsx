@@ -111,7 +111,7 @@ export function FashionClosetSection({ activeTab, onTabChange }: FashionClosetSe
         {tab === 'ai' && <FashionAIStylistPanel onChange={refreshDash} />}
         {tab === 'style' && <FashionStyleQuizPanel />}
         {tab === 'calendar' && <FashionCalendarPanel onChange={refreshDash} />}
-        {tab === 'plan' && <FashionPlanPanel />}
+        {tab === 'plan' && <FashionPlanPanel onChange={refreshDash} />}
         {tab === 'capsule' && <FashionCapsulePanel />}
         {tab === 'social' && <FashionSocialPanel />}
         {tab === 'resale' && <FashionResalePanel onChange={refreshDash} />}

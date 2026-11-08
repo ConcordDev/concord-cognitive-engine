@@ -277,7 +277,12 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
       });
       await queryClient.invalidateQueries({ queryKey: ['dtus-browser'] });
     } catch (err) {
-      const status = (err as { response?: { status?: number }; status?: number })?.response?.status
+      // The api client rejects with a ConcordError (fromAxiosError), which
+      // carries the HTTP status as `statusCode`; raw axios errors keep it on
+      // `response.status`. Read all three so a 403 is never shown as a
+      // generic failure.
+      const status = (err as { response?: { status?: number }; statusCode?: number; status?: number })?.response?.status
+        ?? (err as { statusCode?: number })?.statusCode
         ?? (err as { status?: number })?.status;
       setDeleteError(status === 403
         ? 'You can only delete your own DTUs.'

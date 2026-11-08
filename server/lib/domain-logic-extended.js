@@ -1031,11 +1031,47 @@ EXTENDED_DOMAIN_RULES.set("all", {
 });
 
 // === Aviation ===
+// === Aviation (reconciled 2026-11-04, GB-1088 wave 1) ===
+// The rule below was authored in a vocabulary the lens never sends: its
+// types (flight-plan/inspection/logbook/checklist/incident) and statuses
+// match nothing the Aviation surfaces submit, so validateArtifact refused
+// EVERY create from the lens's records panels (the determination probe's
+// "validation failed" on the core aircraft create, R2 2026-11-01) and
+// Quick Capture beside them. The lens's own vocabulary — the seven
+// OpsRecordsPanel kinds and their status sets in
+// concord-frontend/components/aviation/aviation-ops.ts, plus the generic
+// layer's 'capture' — is reconciled in alongside the legacy vocabulary
+// (kept entire, so no legacy-shaped record strands), in the shape of the
+// science reconciliation in domain-logic.js. The FE statuses transition
+// freely among themselves (spread AFTER the legacy keys, so the one
+// shared status, "completed", takes the permissive list); the legacy
+// transition map is otherwise intact. The domain's own verb layer
+// (aircraft-add, logbook-add, plan-create, … in server/domains/aviation.js)
+// is a separate store and is not gated by this rule. Pinned by
+// server/tests/aviation-full-build.test.js.
+const AVIATION_FRONTEND_STATUSES = [
+  // Flight (aviation-ops FLIGHT_STATUSES; "completed" is shared with the
+  // legacy map and handled in transitions below)
+  "planned", "dispatched", "airborne", "cancelled", "diverted",
+  // Aircraft (AIRCRAFT_STATUSES)
+  "airworthy", "in-maintenance", "grounded", "stored",
+  // WorkOrder (MX_CATEGORIES ride the status field)
+  "scheduled", "unscheduled", "ad-compliance", "sb-compliance", "inspection", "overhaul",
+  // Charter (CHARTER_STATUSES; "completed"/"cancelled" shared above)
+  "inquiry", "quoted", "confirmed",
+  // Weather (FLIGHT_CATEGORIES ride the status field)
+  "VFR", "MVFR", "IFR", "LIFR",
+];
 EXTENDED_DOMAIN_RULES.set("aviation", {
-  types: ["flight-plan", "inspection", "logbook", "checklist", "incident"],
-  validStatuses: ["draft", "filed", "approved", "active", "completed", "archived"],
-  transitions: { draft: ["filed", "archived"], filed: ["approved", "draft"], approved: ["active"], active: ["completed"], completed: ["archived"], archived: [] },
-  requiredFields: { "flight-plan": ["title"] },
+  types: ["flight-plan", "inspection", "logbook", "checklist", "incident",
+    "Aircraft", "Charter", "Flight", "Pilot", "Weather", "WeightBalance", "WorkOrder", "capture"],
+  validStatuses: ["draft", "filed", "approved", "active", "completed", "archived",
+    ...AVIATION_FRONTEND_STATUSES],
+  transitions: { draft: ["filed", "archived"], filed: ["approved", "draft"], approved: ["active"], active: ["completed"], completed: ["archived"], archived: [],
+    ...Object.fromEntries([...AVIATION_FRONTEND_STATUSES, "completed"].map((s) => [s, [...AVIATION_FRONTEND_STATUSES, "completed"]])) },
+  requiredFields: { "flight-plan": ["title"],
+    Aircraft: ["title"], Charter: ["title"], Flight: ["title"], Pilot: ["title"],
+    Weather: ["title"], WeightBalance: ["title"], WorkOrder: ["title"], capture: ["title"] },
   computedFields: (type, data) => { data.checklistComplete = (data.items || []).filter(i => i.checked).length; return data; },
   scoring: (type, data) => Math.round(((data.items || []).length > 0 ? 0.5 : 0.2) * 100) / 100,
 });
@@ -1222,7 +1258,11 @@ EXTENDED_DOMAIN_RULES.set("game", {
 
 // === Government ===
 EXTENDED_DOMAIN_RULES.set("government", {
-  types: ["policy", "regulation", "permit", "report", "public-comment"],
+  // "capture" admitted on the retail/environment precedent: Quick Capture
+  // mints type "capture" through the shared capture path; without it this
+  // rule rejects every capture as validation_failed (Government F5 — the
+  // capture genus's ninth failing domain, closed at registry by #78(e)).
+  types: ["policy", "regulation", "permit", "report", "public-comment", "capture"],
   validStatuses: ["draft", "proposed", "public-comment", "enacted", "repealed", "archived"],
   transitions: { draft: ["proposed", "archived"], proposed: ["public-comment", "draft"], "public-comment": ["enacted", "proposed"], enacted: ["repealed", "archived"], repealed: ["archived"], archived: [] },
   requiredFields: { policy: ["title"] },

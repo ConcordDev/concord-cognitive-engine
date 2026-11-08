@@ -6,10 +6,10 @@
  * mint/DM/publish/agent.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Mic, Users, Smile, Search, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
@@ -35,22 +35,51 @@ interface SentimentResult { overallScore: number; overallLabel: string; segmentB
 interface KeywordHit { keyword: string; count: number; occurrences: { position: number; snippet: string }[] }
 interface KeywordResult { keywordsSearched: number; totalOccurrences: number; keywordDensity: string; wordCount: number; topKeywords: KeywordHit[]; notFound: string[] }
 
+// F3/D3: the bench's state survives view switches. The lens page unmounts
+// the active panel on navigation, so the bench snapshots itself into
+// sessionStorage and restores on mount — transcript, parameters, every
+// result panel and the mint/publish card states included.
+const BENCH_KEY = 'concord.voice.bench.v1';
+
+// Split a bench transcript into speaker segments on its [Speaker X]:
+// markers (the diarization convention). Returns null when the text carries
+// no markers — the workspace's recording-create then sentence-splits it.
+function parseBenchSegments(transcript: string): { speaker: string; text: string }[] | null {
+  const matches = [...transcript.matchAll(/\[([^\]]{1,60})\]:\s*/g)];
+  if (matches.length === 0) return null;
+  const segments: { speaker: string; text: string }[] = [];
+  for (let i = 0; i < matches.length; i++) {
+    const start = (matches[i].index ?? 0) + matches[i][0].length;
+    const end = i + 1 < matches.length ? (matches[i + 1].index ?? transcript.length) : transcript.length;
+    const text = transcript.slice(start, end).trim();
+    if (text) segments.push({ speaker: matches[i][1].trim(), text });
+  }
+  return segments.length > 0 ? segments : null;
+}
+
 // No seed transcript — paste a real transcript using "[Speaker X]:" markers.
 export function VoiceActionPanel() {
-  const [transcript, setTranscript] = useState('');
-  const [duration, setDuration] = useState('');
-  const [keywords, setKeywords] = useState('');
+  // F3/D3: the mount-time snapshot seeds the bench's initial state.
+  const [snapshot] = useState<Record<string, unknown> | null>(() => {
+    try {
+      const raw = sessionStorage.getItem(BENCH_KEY);
+      return raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+    } catch { return null; }
+  });
+  const [transcript, setTranscript] = useState(typeof snapshot?.transcript === 'string' ? snapshot.transcript : '');
+  const [duration, setDuration] = useState(typeof snapshot?.duration === 'string' ? snapshot.duration : '');
+  const [keywords, setKeywords] = useState(typeof snapshot?.keywords === 'string' ? snapshot.keywords : '');
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
-  const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResult | null>(null);
-  const [diarizeResult, setDiarizeResult] = useState<DiarizeResult | null>(null);
-  const [sentimentResult, setSentimentResult] = useState<SentimentResult | null>(null);
-  const [keywordResult, setKeywordResult] = useState<KeywordResult | null>(null);
-  const [mintedDtuId, setMintedDtuId] = useState<string | null>(null);
-  const [publishedDtuId, setPublishedDtuId] = useState<string | null>(null);
-  const [agentReply, setAgentReply] = useState<string | null>(null);
+  const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResult | null>((snapshot?.analyzeResult as AnalyzeResult) ?? null);
+  const [diarizeResult, setDiarizeResult] = useState<DiarizeResult | null>((snapshot?.diarizeResult as DiarizeResult) ?? null);
+  const [sentimentResult, setSentimentResult] = useState<SentimentResult | null>((snapshot?.sentimentResult as SentimentResult) ?? null);
+  const [keywordResult, setKeywordResult] = useState<KeywordResult | null>((snapshot?.keywordResult as KeywordResult) ?? null);
+  const [mintedDtuId, setMintedDtuId] = useState<string | null>(typeof snapshot?.mintedDtuId === 'string' ? snapshot.mintedDtuId : null);
+  const [publishedDtuId, setPublishedDtuId] = useState<string | null>(typeof snapshot?.publishedDtuId === 'string' ? snapshot.publishedDtuId : null);
+  const [agentReply, setAgentReply] = useState<string | null>(typeof snapshot?.agentReply === 'string' ? snapshot.agentReply : null);
 
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
@@ -58,6 +87,13 @@ export function VoiceActionPanel() {
   const pipe = usePipe();
   const dmRecall = useRecallableAction({ label: 'DM', windowMs: 60_000, onUndo: async (id) => { await api.delete(`/api/social/dm/${encodeURIComponent(id)}`); } });
   const publishRecall = useRecallableAction({ label: 'publish', windowMs: 30_000, onUndo: async (id) => { await api.delete(`/api/dtus/${encodeURIComponent(id)}/publish`); setPublishedDtuId(null); } });
+
+  // F3/D3: keep the bench snapshot current as the state moves.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(BENCH_KEY, JSON.stringify({ transcript, duration, keywords, analyzeResult, diarizeResult, sentimentResult, keywordResult, mintedDtuId, publishedDtuId, agentReply }));
+    } catch { /* storage full/blocked — the bench still works in-session */ }
+  }, [transcript, duration, keywords, analyzeResult, diarizeResult, sentimentResult, keywordResult, mintedDtuId, publishedDtuId, agentReply]);
 
   async function actAnalyze() {
     if (!transcript.trim()) { err('Transcript required.'); return; }
@@ -98,7 +134,19 @@ export function VoiceActionPanel() {
     try {
       const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Transcript analysis`, tags: ['voice', 'transcript', sentimentResult?.overallLabel].filter((t): t is string => !!t), source: 'voice:transcript:mint', meta: { visibility: 'private', consent: { allowCitations: false }, voice: { analyze: analyzeResult, diarize: diarizeResult, sentiment: sentimentResult, keyword: keywordResult } } }, 'media', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-      if (id) { setMintedDtuId(id); pipe.publish('voice.mintedDtuId', id, { label: `Transcript DTU ${id.slice(0, 8)}…` }); ok(`Transcript DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
+      if (id) {
+        setMintedDtuId(id); pipe.publish('voice.mintedDtuId', id, { label: `Transcript DTU ${id.slice(0, 8)}…` });
+        // F2/D2 — the seam: the bench's output also lands in the Transcripts
+        // workspace (a voice recording over the same transcript), where it
+        // is listed and searchable by its own text. The DTU stands either
+        // way; a seam failure is stated in words, never silent.
+        try {
+          const segments = parseBenchSegments(transcript);
+          const rec = await lensRun('voice', 'recording-create', segments ? { title: 'Transcript analysis', segments } : { title: 'Transcript analysis', transcript });
+          if (rec.data?.ok) ok(`Transcript DTU ${id.slice(0, 8)}… · also filed in Transcripts — find it there by its text.`);
+          else ok(`Transcript DTU ${id.slice(0, 8)}… · could not file it into Transcripts (${rec.data?.error ?? 'workspace refused'}) — the DTU stands.`);
+        } catch { ok(`Transcript DTU ${id.slice(0, 8)}… · filing into Transcripts failed — the DTU stands.`); }
+      } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDm() {
@@ -132,7 +180,7 @@ export function VoiceActionPanel() {
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
         return newId as string;
       });
-      if (id) { setPublishedDtuId(id); pipe.publish('voice.publishedDtuId', id, { label: `Public speech report ${id.slice(0, 8)}…` }); ok(`Published ${id.slice(0, 8)}… · 30s to recall.`); }
+      if (id) { setPublishedDtuId(id); pipe.publish('voice.publishedDtuId', id, { label: `Public speech report ${id.slice(0, 8)}…` }); ok(`Published · 30s to recall. The report lives at /dtu/${id}`); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actAgent() {
@@ -141,7 +189,19 @@ export function VoiceActionPanel() {
       const task = `Transcript review. ${analyzeResult ? `${analyzeResult.wordCount} words, ${analyzeResult.speakingRate}, ${analyzeResult.fillerRate} filler rate, ${analyzeResult.complexityRating} complexity.` : ''} ${diarizeResult ? `${diarizeResult.speakerCount} speakers, balance ${diarizeResult.balanceRatio}%.` : ''} ${sentimentResult ? `Sentiment: ${sentimentResult.overallLabel} (${sentimentResult.sentimentArc} arc).` : ''} Identify the single biggest coaching point for the dominant speaker + one positive note. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Coaching ready.'); } else err('Agent returned empty.');
+      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Coaching ready.'); }
+      else {
+        // F4/D6 — never the bare "Agent returned empty.": when the agent
+        // returns nothing, the bench coaches DETERMINISTICALLY from its own
+        // computed results, labelled as computed; with nothing computed yet
+        // the refusal says what to run first.
+        const bits: string[] = [];
+        if (analyzeResult) bits.push(`Speaking rate ${analyzeResult.speakingRate} with a ${analyzeResult.fillerRate} filler rate (${analyzeResult.wordCount} words, ${analyzeResult.complexityRating} complexity)`);
+        if (diarizeResult) bits.push(`${diarizeResult.dominantSpeaker} carried the conversation across ${diarizeResult.speakerCount} speakers (balance ${diarizeResult.balanceRatio}%) — invite the quieter voice in earlier`);
+        if (sentimentResult) bits.push(`sentiment read ${sentimentResult.overallLabel} (${sentimentResult.overallScore}) on a ${sentimentResult.sentimentArc} arc`);
+        if (bits.length > 0) { setAgentReply(`Computed from the bench's own numbers (the coaching agent returned empty): ${bits.join('; ')}.`); ok('Coaching ready — computed from the bench numbers.'); }
+        else err('Coach unavailable — run Analyze, Diarize or Sentiment first; the coach reads those results.');
+      }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -197,6 +257,10 @@ export function VoiceActionPanel() {
           );
         })}
       </div>
+
+      {publishedDtuId && (
+        <p className="text-[11px] text-zinc-400">Public speech report — lives at <a href={`/dtu/${encodeURIComponent(publishedDtuId)}`} className="font-mono text-emerald-300 underline decoration-emerald-500/40 underline-offset-2">/dtu/{publishedDtuId}</a></p>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {analyzeResult && (
