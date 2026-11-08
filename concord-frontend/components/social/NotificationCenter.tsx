@@ -396,7 +396,10 @@ function NotificationCenter({
         params.unreadOnly = true;
       }
       const res = await api.get('/api/social/notifications', { params });
-      return (res.data.notifications || res.data || []) as Notification[];
+      // A non-list body (an error envelope, an empty object) is an empty
+      // list, never a value the merge below would try to spread.
+      const body = res.data?.notifications ?? res.data;
+      return (Array.isArray(body) ? body : []) as Notification[];
     },
     refetchInterval: 30000,
   });
@@ -409,7 +412,8 @@ function NotificationCenter({
     queryKey: ['platform-notifications', userId],
     queryFn: async () => {
       const res = await api.get('/api/notifications', { params: { limit: 50 } });
-      const items = (res.data.notifications || []) as Array<Record<string, unknown>>;
+      const raw = res.data?.notifications;
+      const items = (Array.isArray(raw) ? raw : []) as Array<Record<string, unknown>>;
       return items.map((n): Notification => {
         const payload = (n.payload || {}) as Record<string, unknown>;
         return {
