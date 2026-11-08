@@ -48,3 +48,13 @@ describe('fetchOwnerDtu', () => {
     expect(empty.status).toBe(404);
   });
 });
+
+import { lookupOwnerDtu } from '@/lib/dtu/public-fetch';
+describe('lookupOwnerDtu reachability', () => {
+  it('marks a confirmed miss reachable and a failed ask unreachable', async () => {
+    const miss = await lookupOwnerDtu('x', null, (async () => new Response('{}', { status: 404 })) as typeof fetch);
+    expect(miss).toEqual({ status: 404, dtu: null, reachable: true });
+    const hung = await lookupOwnerDtu('x', null, (async () => { throw new Error('timeout'); }) as typeof fetch);
+    expect(hung).toEqual({ status: 404, dtu: null, reachable: false });
+  });
+});

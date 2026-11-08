@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { TAB_LABEL_REDIRECTS } from './lib/lens-tab-redirects';
+import { lookupOwnerDtu } from './lib/dtu/public-fetch';
 
 // Signed-out browsing of Music + Market (GB-0664). Kept literal here (not imported from lib/anon-browse.tsx,
 // a client module) because middleware runs on the edge runtime; tests pin the two copies equal.
@@ -335,7 +336,12 @@ const PUBLIC_PREFIXES = [
 const STATIC_ASSET_RE =
   /\.(svg|png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|mp3|ogg|wav|mp4|webm|glb|gltf|json|txt|xml|md|map)$/i;
 
-export function middleware(request: NextRequest) {
+// A single-segment /dtu/<id> page URL (not /dtu/<id>/anything).
+const DTU_PAGE_RE = /^\/dtu\/[^/]+\/?$/;
+// Not a route: rewriting here renders the app's not-found page.
+const DTU_NOT_FOUND_PATH = '/dtu-not-found';
+
+export function middleware(request: NextRequest): NextResponse | Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
   const ALIASES: Record<string, string> = {
@@ -428,6 +434,31 @@ export function middleware(request: NextRequest) {
   // Allow public paths through
   if (PUBLIC_PATHS.has(pathname)) {
     return withCspHeaders(NextResponse.next(passThroughOptions));
+  }
+
+  // Public DTU page: answer a missing/hidden DTU with a REAL 404 status.
+  // app/loading.tsx puts every page behind a Suspense boundary, so the
+  // response commits 200 before page.tsx's notFound() can run (Next streaming
+  // guide, "Status codes": a status cannot change once streaming starts, and
+  // the documented remedy is to decide before the boundary — here, in the
+  // proxy layer). Same lookup, same viewer cookies and same "no dtu => 404"
+  // rule as page.tsx, so nothing new is revealed: an owner still reaches the
+  // page; anyone else gets the same not-found page, now with status 404.
+  if (DTU_PAGE_RE.test(pathname)) {
+    const rawId = pathname.split('/')[2] || '';
+    let dtuId = rawId;
+    try { dtuId = decodeURIComponent(rawId); } catch { /* malformed escape: look up the raw segment */ }
+    return lookupOwnerDtu(dtuId, request.headers.get('cookie')).then(({ dtu, reachable }) => {
+      // Only a miss the backend confirmed is a 404; if it could not be asked
+      // (timeout, wrong host at the edge) leave the decision to the page.
+      if (!dtu && reachable) {
+        const missing = request.nextUrl.clone();
+        missing.pathname = DTU_NOT_FOUND_PATH;
+        missing.search = '';
+        return withCspHeaders(NextResponse.rewrite(missing, { status: 404, ...passThroughOptions }));
+      }
+      return withCspHeaders(NextResponse.next(passThroughOptions));
+    });
   }
 
   // Allow public prefixes through
