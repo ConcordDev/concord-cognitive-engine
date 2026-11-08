@@ -271,6 +271,7 @@ function formatDuration(ms: number): string {
 }
 
 function formatNumber(n: number): string {
+  if (n == null || !Number.isFinite(n)) return '—';
   if (Math.abs(n) >= 1000000) return `${(n / 1000000).toFixed(2)}M`;
   if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(2)}K`;
   if (Number.isInteger(n)) return n.toLocaleString();

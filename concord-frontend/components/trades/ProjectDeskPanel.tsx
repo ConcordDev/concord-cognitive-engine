@@ -718,7 +718,7 @@ export default function ProjectDeskPanel() {
     return <span className={ds.badge(cfg.color)}>{cfg.label}</span>;
   };
 
-  const fmtCurrency = (v: number) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmtCurrency = (v: number) => (v == null || !Number.isFinite(v) ? '—' : `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
   // ---------------------------------------------------------------------------
   // Sub-view: Job Timeline / Gantt

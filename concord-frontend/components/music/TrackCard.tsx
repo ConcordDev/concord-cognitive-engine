@@ -19,6 +19,7 @@ function formatTime(seconds: number): string {
 }
 
 function formatPrice(price: number): string {
+  if (price == null || !Number.isFinite(price)) return '—';
   return price === 0 ? 'Free' : `$${price.toFixed(2)}`;
 }
 
