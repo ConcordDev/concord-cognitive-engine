@@ -18,6 +18,14 @@ import { useEffect, useRef, useState } from 'react';
  *    a later false is a real disconnect, rendered OFF immediately;
  *  - isLive still false after BADGE_SETTLE_MS settles OFF: a genuinely
  *    unreachable socket is then a truth, not a transient.
+
+ *
+ * Vocabulary (close-out A6, fix return): the RENDERED words name the
+ * connection — "Connected" / "Connecting" / "Offline" / "Disconnected"
+ * — never "LIVE": the sign reports socket health only, and "LIVE" painted
+ * a data claim beside tier banners reading Simulated or static. The
+ * claim NAMES ('live' / 'pending' / 'off') are the settlement machine's
+ * internal vocabulary and do not change.
  */
 
 export const BADGE_SETTLE_MS = 3000;
@@ -79,7 +87,7 @@ export function LiveIndicator({ isLive, lastUpdated, compact }: LiveIndicatorPro
                 : 'bg-gray-400'
           }`}
         />
-        {claim === 'live' ? 'LIVE' : claim === 'pending' ? 'CONNECTING' : 'OFF'}
+        {claim === 'live' ? 'Connected' : claim === 'pending' ? 'CONNECTING' : 'Offline'}
       </span>
     );
   }
@@ -96,7 +104,7 @@ export function LiveIndicator({ isLive, lastUpdated, compact }: LiveIndicatorPro
         }`}
       />
       <span className={claim === 'live' ? 'text-green-400' : 'text-zinc-400'}>
-        {claim === 'live' ? 'LIVE' : claim === 'pending' ? 'Connecting' : 'Disconnected'}
+        {claim === 'live' ? 'Connected' : claim === 'pending' ? 'Connecting' : 'Disconnected'}
       </span>
       {timeAgo && (
         <span className="text-zinc-400">
