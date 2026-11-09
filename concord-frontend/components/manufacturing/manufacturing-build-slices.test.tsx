@@ -11,14 +11,18 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 type Body = { domain?: string; action?: string; input?: Record<string, unknown> };
 
 const post = vi.fn();
+const lensRun = vi.fn(async (..._args: unknown[]) => ({ data: { ok: true, result: {} as unknown } }));
 
 vi.mock('@/lib/api/client', () => ({
   api: { post: (...args: unknown[]) => post(...args) },
+  lensRun: (...args: unknown[]) => lensRun(...args),
 }));
 
 import { OEEDashboard } from './OEEDashboard';
 import { WorkOrderBoard } from './WorkOrderBoard';
 import { QualitySPC } from './QualitySPC';
+import ShopFloorSuite from './ShopFloorSuite';
+import { ShopFloorToolsPanel } from './ShopFloorToolsPanel';
 import {
   requestDelete, undoDelete, isDeletePending, resetDeleteSafetyForTests,
 } from './delete-safety-store';
@@ -29,6 +33,7 @@ function ok(result: unknown) {
 
 beforeEach(() => {
   post.mockReset();
+  lensRun.mockReset();
   resetDeleteSafetyForTests();
 });
 
@@ -118,6 +123,79 @@ describe('QualitySPC — spec honesty', () => {
     render(<QualitySPC />);
     fireEvent.change(screen.getByLabelText('Product'), { target: { value: 'PR5MF' } });
     expect(await screen.findByText(/Spec 5\.000–15\.000 — from the logged samples/)).toBeInTheDocument();
+  });
+});
+
+// NOTE (borrowed-env wall, same genus as the framer-motion tile-text
+// wall proven on lens-states): the suite's Field renders <label> and
+// <input> as siblings with no htmlFor/id association, so label-text
+// queries cannot resolve ANY of the suite's fields in this env (nor in
+// a browser, for that matter). The IoT cases therefore drive the form
+// by field ORDER inside the ingest card — fragile to layout, exact for
+// behaviour — and the panel-level label association the F10 case needs
+// is carried by the Traveler card's own aria-label.
+function iotInputs(container: HTMLElement): HTMLInputElement[] {
+  const card = Array.from(container.querySelectorAll('p')).find((p) => (p.textContent || '').includes('Log a machine reading'))?.parentElement;
+  if (!card) throw new Error('ingest card not found');
+  // The card subtree holds both the state <select> (0 inputs) and the
+  // fields: cycle count · spindle · temperature · downtime · run time ·
+  // good · defects. (The Machine ID field sits OUTSIDE the card.)
+  return Array.from(card.querySelectorAll('input')) as HTMLInputElement[];
+}
+
+describe('S3 remainder — the IoT ingest form collects run time and part counts', () => {
+  it('posts the new fields with the reading and clears them after ingest', async () => {
+    lensRun.mockResolvedValue({ data: { ok: true, result: {} } });
+
+    const { container } = render(<ShopFloorSuite />);
+    fireEvent.click(screen.getByRole('button', { name: /Machine \/ IoT/ }));
+    // Ingest card order: cycle count · spindle · temperature · downtime
+    // reason · run time · good parts · defects.
+    await waitFor(() => expect(iotInputs(container).length).toBe(7));
+    const inputs = iotInputs(container);
+    fireEvent.change(inputs[4], { target: { value: '50' } });
+    fireEvent.change(inputs[5], { target: { value: '95' } });
+    fireEvent.change(inputs[6], { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: /Ingest reading/ }));
+
+    await waitFor(() => {
+      const ingest = lensRun.mock.calls.find((c) => c[1] === 'iot-reading-ingest');
+      expect(ingest?.[2]).toMatchObject({ runTimeMinutes: 50, goodCount: 95, defectCount: 5 });
+    });
+    expect(iotInputs(container)[4].value).toBe('');
+  });
+
+  it('refuses to post when only one of the two counts is filled', async () => {
+    lensRun.mockResolvedValue({ data: { ok: true, result: {} } });
+
+    const { container } = render(<ShopFloorSuite />);
+    fireEvent.click(screen.getByRole('button', { name: /Machine \/ IoT/ }));
+    await waitFor(() => expect(iotInputs(container).length).toBe(7));
+    fireEvent.change(iotInputs(container)[5], { target: { value: '95' } });
+    fireEvent.click(screen.getByRole('button', { name: /Ingest reading/ }));
+
+    expect(await screen.findByText(/go together/)).toBeInTheDocument();
+    expect(lensRun.mock.calls.filter((c) => c[1] === 'iot-reading-ingest')).toHaveLength(0);
+  });
+});
+
+describe('F10 remainder — the Traveler card collects the work order', () => {
+  it('sends workOrderId with the generateTraveler call', async () => {
+    lensRun.mockResolvedValue({
+      data: { ok: true, result: { travelerId: 'TRV-1', workOrder: 'WO-MW3XOTNGKG2EC', partNumber: 'HA-400', quantity: 1, stepCount: 0, content: 'WO: WO-MW3XOTNGKG2EC' } },
+    });
+
+    render(<ShopFloorToolsPanel />);
+    fireEvent.change(screen.getByLabelText('Work order'), { target: { value: 'WO-MW3XOTNGKG2EC' } });
+    // The handler refuses without a part number; the part field is
+    // placeholder-identified (the panel's Field has no label association).
+    fireEvent.change(screen.getByPlaceholderText('HA-400'), { target: { value: 'HA-400' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generate/ }));
+
+    await waitFor(() => {
+      const call = lensRun.mock.calls.find((c) => c[1] === 'generateTraveler');
+      expect(call?.[2]).toMatchObject({ workOrderId: 'WO-MW3XOTNGKG2EC' });
+    });
   });
 });
 

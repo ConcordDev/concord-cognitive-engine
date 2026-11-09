@@ -238,8 +238,12 @@ export default function registerManufacturingActions(registerLensAction) {
     const availabilityRatio = runCount / readings.length;
     machine.availability = Math.round(availabilityRatio * 100);
 
-    // Performance needs a time span: at least two readings with elapsed
-    // run time. Until then it is NOT DERIVABLE — leave it null, the same
+    // Performance: the span path first — at least two readings with elapsed
+    // run time between their timestamps. A reading that carries its own
+    // runTimeMinutes (collected at ingest — the S3 re-pass remainder) is
+    // the fallback denominator: the cycles since the previous reading over
+    // that stated run time, so a single fresh reading can derive. Until
+    // one of the two exists it is NOT DERIVABLE — leave it null, the same
     // treatment quality gets below, rather than writing a measured-looking 0.
     let performanceRatio = null;
     const ideal = Number(machine.idealCycleTime);
@@ -253,12 +257,36 @@ export default function registerManufacturingActions(registerLensAction) {
         performanceRatio = (ideal * cycles) / runTimeMin;
       }
     }
+    if (performanceRatio == null && Number.isFinite(ideal) && ideal > 0) {
+      const rt = Number(latest.runTimeMinutes);
+      if (Number.isFinite(rt) && rt > 0) {
+        const prev = readings.length >= 2 ? Number(readings[readings.length - 2].cycleCount) : 0;
+        const cycles = Number(latest.cycleCount) - (Number.isFinite(prev) ? prev : 0);
+        if (Number.isFinite(cycles) && cycles >= 0) {
+          performanceRatio = (ideal * cycles) / rt;
+        }
+      }
+    }
     machine.performance = performanceRatio == null ? null : Math.round(performanceRatio * 100);
+    // Quality derives from the part counts collected at ingest (the S3
+    // re-pass remainder): good / (good + defect) over the readings that
+    // carry counts. No count-carrying reading → not derivable → null,
+    // never a measured-looking 0 or 100.
+    let good = 0;
+    let bad = 0;
+    let counted = false;
+    for (const r of readings) {
+      if (r.goodCount != null && r.defectCount != null) {
+        const g = Number(r.goodCount);
+        const d = Number(r.defectCount);
+        if (Number.isFinite(g) && Number.isFinite(d)) { good += g; bad += d; counted = true; }
+      }
+    }
+    machine.quality = counted && (good + bad) > 0 ? Math.round((good / (good + bad)) * 100) : null;
     const q = machine.quality;
     if (performanceRatio != null && typeof q === "number" && Number.isFinite(q)) {
       machine.oee = Math.round(availabilityRatio * performanceRatio * (q / 100) * 100);
     } else {
-      if (typeof q !== "number" || !Number.isFinite(q)) machine.quality = null;
       machine.oee = null;
     }
     machine.updatedAt = new Date().toISOString();
@@ -377,6 +405,16 @@ export default function registerManufacturingActions(registerLensAction) {
       if (!order) return { ok: false, error: "not found" };
       if (hasStatus) order.status = status;
       if (hasQty) order.quantityProduced = qty;
+      // S2 re-pass remainder: status follows production when the caller
+      // did not name a status in the same call. Full quantity completes
+      // the order; partial production starts it — unless it is on hold,
+      // an operator's act that recording production does not silently
+      // clear. An explicit status always wins; status-only calls and
+      // quantity-0 recordings leave status exactly as they found it.
+      if (hasQty && !hasStatus) {
+        if (qty >= order.quantity) order.status = "complete";
+        else if (qty > 0 && order.status !== "on_hold") order.status = "in_progress";
+      }
       order.updatedAt = new Date().toISOString();
       saveMfg();
       return { ok: true, result: { order } };
@@ -478,6 +516,27 @@ export default function registerManufacturingActions(registerLensAction) {
       const s = getExtState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const machineId = String(params.machineId || "").trim();
       if (!machineId) return { ok: false, error: "machineId required" };
+      // S3 re-pass remainder inputs: run time (performance's denominator)
+      // and the good/defect part counts (quality's numerator/denominator).
+      // All optional — a reading without them behaves exactly as before —
+      // but the counts travel as a pair or not at all.
+      let runTimeMinutes = null;
+      if (params.runTimeMinutes != null && params.runTimeMinutes !== "") {
+        runTimeMinutes = finiteInput(params.runTimeMinutes);
+        if (runTimeMinutes == null || runTimeMinutes < 0) return { ok: false, error: "runTimeMinutes must be a finite number >= 0" };
+      }
+      const hasGood = params.goodCount != null && params.goodCount !== "";
+      const hasDefect = params.defectCount != null && params.defectCount !== "";
+      if (hasGood !== hasDefect) return { ok: false, error: "goodCount and defectCount must be supplied together" };
+      let goodCount = null;
+      let defectCount = null;
+      if (hasGood) {
+        goodCount = finiteInput(params.goodCount);
+        defectCount = finiteInput(params.defectCount);
+        if (goodCount == null || goodCount < 0 || defectCount == null || defectCount < 0) {
+          return { ok: false, error: "goodCount and defectCount must be finite numbers >= 0" };
+        }
+      }
       const reading = {
         at: params.at || new Date().toISOString(),
         machineState: params.machineState || "running",
@@ -485,6 +544,9 @@ export default function registerManufacturingActions(registerLensAction) {
         spindleLoad: params.spindleLoad != null ? Number(params.spindleLoad) : null,
         temperature: params.temperature != null ? Number(params.temperature) : null,
         downtimeReason: params.downtimeReason || null,
+        runTimeMinutes,
+        goodCount,
+        defectCount,
       };
       const list = getList(s.iotReadings, `${uid(ctx)}::${machineId}`);
       list.push(reading);
@@ -1127,20 +1189,27 @@ export default function registerManufacturingActions(registerLensAction) {
       : Array.isArray(params.steps) ? params.steps : [];
     const partNumber = artifact.data?.partNumber || params.partNumber || "N/A";
     const qty = Number(artifact.data?.quantity ?? params.quantity ?? 1) || 1;
-    const travelerId = `TRV-${String(artifact.id || artifact.title || "wo").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+    // F10 re-pass remainder: the work order identity comes from the
+    // caller (the panel's Work order field, flat or artifact-wrapped).
+    // The production dispatch's virtual artifact carries no title, so
+    // reading artifact.title printed the literal placeholder "work order"
+    // for a real WO-MW3X… — name the caller's work order, never a stub.
+    const woRaw = String(params.workOrderId ?? artifact.data?.workOrderId ?? artifact.title ?? "").trim();
+    const workOrder = woRaw || "work order";
+    const travelerId = `TRV-${String(artifact.id || workOrder).replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
     const lines = [
       `ROUTING TRAVELER  ${travelerId}`,
-      `Part: ${partNumber}    Qty: ${qty}    WO: ${artifact.title || "work order"}`,
+      `Part: ${partNumber}    Qty: ${qty}    WO: ${workOrder}`,
       `${"-".repeat(48)}`,
       ...(steps.length
         ? steps.map((s, i) => `  ${String(i + 1).padStart(2, "0")}. ${s?.name || s}   [ op:____  insp:____  date:____ ]`)
-        : ["  (no routing steps defined on this work order)"]),
+        : ["  (no routing steps supplied — add steps in the form to print them here)"]),
       `${"-".repeat(48)}`,
       `Sign-off: __________________   QA: __________________`,
     ];
     return {
       ok: true,
-      result: { travelerId, partNumber, quantity: qty, stepCount: steps.length, content: lines.join("\n") },
+      result: { travelerId, workOrder, partNumber, quantity: qty, stepCount: steps.length, content: lines.join("\n") },
     };
   });
 

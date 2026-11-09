@@ -103,6 +103,7 @@ export function ShopFloorToolsPanel() {
   const [defectResult, setDefectResult] = useState<DefectAnalysisResult | null>(null);
 
   // Traveler
+  const [workOrderId, setWorkOrderId] = useState('');
   const [partNumber, setPartNumber] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [travelerSteps, setTravelerSteps] = useState('');
@@ -170,6 +171,7 @@ export function ShopFloorToolsPanel() {
       }
       const steps = splitSteps(travelerSteps);
       const res = await lensRun('manufacturing', 'generateTraveler', {
+        workOrderId: workOrderId.trim(),
         partNumber: partNumber.trim(),
         quantity: Number(quantity) || 1,
         steps,
@@ -309,6 +311,10 @@ export function ShopFloorToolsPanel() {
             <FileText className="h-4 w-4 text-neon-purple" />
             <span className="text-xs uppercase font-semibold text-zinc-300 tracking-wider">Generate routing traveler</span>
           </header>
+          <label className="block">
+            <span className={labelCls}>Work order</span>
+            <input aria-label="Work order" className={inputCls} value={workOrderId} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWorkOrderId(e.target.value)} placeholder="WO-MW3XOTNGKG2EC" />
+          </label>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Part number">
               <input className={inputCls} value={partNumber} onChange={(e) => setPartNumber(e.target.value)} placeholder="HA-400" />
