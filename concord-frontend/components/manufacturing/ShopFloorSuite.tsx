@@ -235,7 +235,7 @@ function IoTTab() {
   const [machineId, setMachineId] = useState('CNC-01');
   const [state, setState] = useState<any>(null);
   const [err, setErr] = useState('');
-  const [ingest, setIngest] = useState({ machineState: 'running', cycleCount: '', spindleLoad: '', temperature: '', downtimeReason: '' });
+  const [ingest, setIngest] = useState({ machineState: 'running', cycleCount: '', spindleLoad: '', temperature: '', downtimeReason: '', runTimeMinutes: '', goodCount: '', defectCount: '' });
 
   const fetchState = useCallback(async (id: string) => {
     setErr('');
@@ -248,6 +248,12 @@ function IoTTab() {
 
   const doIngest = async () => {
     setErr('');
+    // Run time and the good/defect counts are what the OEE board derives
+    // Performance and Quality from — both counts go together or neither.
+    if ((ingest.goodCount === '') !== (ingest.defectCount === '')) {
+      setErr('Good parts and Defects go together — enter both, or leave both blank.');
+      return;
+    }
     const d = await run('iot-reading-ingest', {
       machineId,
       machineState: ingest.machineState,
@@ -255,9 +261,12 @@ function IoTTab() {
       spindleLoad: ingest.spindleLoad ? Number(ingest.spindleLoad) : null,
       temperature: ingest.temperature ? Number(ingest.temperature) : null,
       downtimeReason: ingest.downtimeReason || null,
+      runTimeMinutes: ingest.runTimeMinutes ? Number(ingest.runTimeMinutes) : null,
+      goodCount: ingest.goodCount ? Number(ingest.goodCount) : null,
+      defectCount: ingest.defectCount ? Number(ingest.defectCount) : null,
     });
     if (!d.ok) { setErr(d.error || 'failed'); return; }
-    setIngest({ ...ingest, cycleCount: '', downtimeReason: '' });
+    setIngest({ ...ingest, cycleCount: '', downtimeReason: '', runTimeMinutes: '', goodCount: '', defectCount: '' });
     fetchState(machineId);
   };
 
@@ -291,10 +300,14 @@ function IoTTab() {
           <Field name="Spindle load %" type="number" value={ingest.spindleLoad} onChange={(v) => setIngest({ ...ingest, spindleLoad: v })} />
           <Field name="Temperature °C" type="number" value={ingest.temperature} onChange={(v) => setIngest({ ...ingest, temperature: v })} />
           <Field name="Downtime reason" value={ingest.downtimeReason} onChange={(v) => setIngest({ ...ingest, downtimeReason: v })} placeholder="tool change" />
+          <Field name="Run time (min)" type="number" value={ingest.runTimeMinutes} onChange={(v) => setIngest({ ...ingest, runTimeMinutes: v })} placeholder="feeds Performance" />
+          <Field name="Good parts" type="number" value={ingest.goodCount} onChange={(v) => setIngest({ ...ingest, goodCount: v })} placeholder="feeds Quality" />
+          <Field name="Defects" type="number" value={ingest.defectCount} onChange={(v) => setIngest({ ...ingest, defectCount: v })} placeholder="with Good parts" />
           <div className="flex items-end">
             <button className={btnPrimary} onClick={doIngest}><Plus className="h-4 w-4" /> Ingest reading</button>
           </div>
         </div>
+        <p className="mt-2 text-[11px] text-zinc-500">Run time and part counts are optional — without them the board shows Performance / Quality as — rather than inventing a number.</p>
       </div>
 
       {err && <p className="text-xs text-rose-400">{err}</p>}
