@@ -476,12 +476,28 @@ function* fixUnsyncedLensGen(STATE, unsynced, log, tick) {
 
     const dtu = dtus.get(dtuId);
     if (!dtu) continue;
+    // Hotfix 2026-11-09 export-leak: same rules as syncDTUToLensArtifacts —
+    // never re-mint private / lens_exhaust activity as public system artifacts.
+    if (dtu.machine?.kind === "lens_exhaust") continue;
+    const vis = String(dtu.meta?.visibility || dtu.visibility || "private");
+    if (
+      vis === "private" ||
+      vis === "internal" ||
+      dtu.privacy === "private" ||
+      dtu.privacy === "followers-only" ||
+      dtu.scope === "user" ||
+      (vis !== "public" && vis !== "published" && vis !== "marketplace")
+    ) {
+      continue;
+    }
+    const ownerId = dtu.ownerId || dtu.createdBy || dtu.entityId || null;
+    if (!ownerId) continue;
 
     const artifact = {
       id: expectedArtifactId,
       domain,
       type: dtu.tier || "regular",
-      ownerId: dtu.createdBy || dtu.entityId || "system",
+      ownerId,
       title: dtu.title || "Untitled DTU",
       data: {
         dtuId: dtu.id,
@@ -492,8 +508,8 @@ function* fixUnsyncedLensGen(STATE, unsynced, log, tick) {
       },
       meta: {
         tags: dtu.tags || [],
-        status: "published",
-        visibility: "public",
+        status: vis === "published" ? "published" : "draft",
+        visibility: vis === "marketplace" ? "public" : vis,
         scope: dtu.scope || "local",
         createdFrom: "integrity-repair",
       },

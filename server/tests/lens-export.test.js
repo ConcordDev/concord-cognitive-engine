@@ -131,4 +131,71 @@ describe("lens-export (Q79)", () => {
     assert.equal(out.sources.stateRecords, 1);
     delete globalThis._concordSTATE;
   });
+
+  it("export-leak hotfix: activity-minted system mirrors are dropped unless caller-owned", async () => {
+    _clearLensExportProvidersForTests();
+    const runMacro = listMacro([
+      { id: "mine-1", type: "note", title: "My note", ownerId: "u1", meta: { visibility: "private" }, data: {} },
+      {
+        id: "dtu_lens_meditation_dtu_leak1",
+        type: "regular",
+        title: "Lens:goals delete goal",
+        ownerId: "system",
+        meta: { visibility: "public", createdFrom: "dtu-auto-sync" },
+        data: { summary: "delete goal \"secret\" in goals lens" },
+      },
+      {
+        id: "public-feed",
+        type: "feed_article",
+        title: "External headline",
+        ownerId: "system",
+        meta: { visibility: "public" },
+        data: { url: "https://example.com" },
+      },
+      {
+        id: "dtu_lens_meditation_dtu_own",
+        type: "regular",
+        title: "Lens:meditation sessionLog session",
+        ownerId: "u1",
+        meta: { visibility: "private", createdFrom: "dtu-auto-sync" },
+        data: {},
+      },
+    ]);
+    const out = await collectLensExport({ runMacro, domain: "meditation", ctx: { actor: { userId: "u1" } } });
+    assert.equal(out.ok, true);
+    const ids = out.artifacts.map((a) => a.id);
+    assert.ok(ids.includes("mine-1"), "own artifact kept");
+    assert.ok(ids.includes("public-feed"), "genuine public catalog kept");
+    assert.ok(ids.includes("dtu_lens_meditation_dtu_own"), "caller-owned activity mint kept");
+    assert.ok(!ids.includes("dtu_lens_meditation_dtu_leak1"), "system activity mirror dropped");
+    const serialized = JSON.stringify(out.artifacts);
+    assert.ok(!serialized.includes("secret"), "leaked goal text must not appear");
+  });
+
+  it("meditation provider: caller's journal session exports; another user's does not", async () => {
+    _clearLensExportProvidersForTests();
+    globalThis._concordSTATE = {
+      meditationLens: {
+        sessions: new Map([
+          ["u1", [{ id: "s1", title: "Morning sit", journal: "felt steady", completedAt: "2026-11-09T10:00:00Z", durationMin: 10, category: "guided", sessionId: "g-morn-7" }]],
+          ["u2", [{ id: "s2", title: "Other sit", journal: "private other", completedAt: "2026-11-09T10:00:00Z", durationMin: 5, category: "guided", sessionId: "g-focus-10" }]],
+        ]),
+        moods: new Map(),
+      },
+    };
+    const { default: registerMeditationActions } = await import("../domains/meditation.js");
+    registerMeditationActions(() => {});
+    assert.equal(hasLensExportProvider("meditation"), true);
+    const out = await collectLensExport({
+      runMacro: listMacro([]),
+      domain: "meditation",
+      ctx: { actor: { userId: "u1" } },
+    });
+    assert.equal(out.ok, true);
+    const serialized = JSON.stringify(out.artifacts);
+    assert.ok(serialized.includes("felt steady"), "caller journal appears");
+    assert.ok(!serialized.includes("private other"), "other user journal never leaks");
+    delete globalThis._concordSTATE;
+  });
+
 });

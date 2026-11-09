@@ -49976,12 +49976,24 @@ register("lens", "list", (ctx, input={}) => {
   const SOCIAL_DOMAINS = new Set(["forum", "feed", "marketplace", "collab", "thread", "vote", "alliance", "global", "news", "questmarket"]);
   if (!SOCIAL_DOMAINS.has(domain)) {
     const currentUserId = ctx.actor?.userId || "anon";
+    const isActivityMint = (a) => {
+      const from = a?.meta?.createdFrom;
+      if (from === "dtu-auto-sync" || from === "integrity-repair") return true;
+      if (typeof a?.id === "string" && a.id.startsWith("dtu_lens_")) return true;
+      if (typeof a?.title === "string" && a.title.startsWith("Lens:")) return true;
+      return false;
+    };
     artifacts = artifacts.filter(a => {
-      // System/anonymous artifacts are always visible (backward compat)
+      // Hotfix 2026-11-09: activity-minted mirrors (private exhaust copied
+      // public as system) are owner-only. System-owned activity mints stay hidden.
+      if (isActivityMint(a)) {
+        return !!(a.ownerId && a.ownerId !== "system" && a.ownerId !== "anon" && a.ownerId === currentUserId);
+      }
+      // Ownerless / anonymous scaffolding stays visible (backward compat)
       if (!a.ownerId || a.ownerId === "anon") return true;
       // User's own artifacts are always visible
       if (a.ownerId === currentUserId) return true;
-      // Published or public artifacts are visible to everyone
+      // Genuinely public/published catalog (feeds, shared work) stays visible
       const vis = a.meta?.visibility;
       if (vis === "published" || vis === "public") return true;
       return false;
@@ -90790,7 +90802,23 @@ function applyAutoTagging(dtu) {
  */
 function syncDTUToLensArtifacts(dtu) {
   try {
+    // Hotfix 2026-11-09 export-leak: never mirror private / lens_exhaust
+    // activity into public system lens artifacts. Inherit real owner + visibility.
     if (!dtu || !dtu.id) return 0;
+    if (dtu.machine?.kind === "lens_exhaust") return 0;
+    const vis = String(dtu.meta?.visibility || dtu.visibility || "private");
+    if (
+      vis === "private" ||
+      vis === "internal" ||
+      dtu.privacy === "private" ||
+      dtu.privacy === "followers-only" ||
+      dtu.scope === "user"
+    ) {
+      return 0;
+    }
+    if (vis !== "public" && vis !== "published" && vis !== "marketplace") return 0;
+    const ownerId = dtu.ownerId || dtu.createdBy || dtu.entityId || null;
+    if (!ownerId) return 0;
     const domains = (dtu.tags || []).filter(t => LENS_DOMAIN_KEYWORDS[t]);
     let synced = 0;
     for (const domain of domains) {
@@ -90800,7 +90828,7 @@ function syncDTUToLensArtifacts(dtu) {
           id: key,
           domain,
           type: dtu.tier || "regular",
-          ownerId: dtu.createdBy || dtu.entityId || "system",
+          ownerId,
           title: dtu.title || "Untitled DTU",
           data: {
             dtuId: dtu.id,
@@ -90811,8 +90839,8 @@ function syncDTUToLensArtifacts(dtu) {
           },
           meta: {
             tags: dtu.tags || [],
-            status: "published",
-            visibility: "public",
+            status: vis === "published" ? "published" : "draft",
+            visibility: vis === "marketplace" ? "public" : vis,
             scope: dtu.scope || "local",
             createdFrom: "dtu-auto-sync",
           },

@@ -3,6 +3,8 @@
 // management, session log. Shadows Calm / Headspace / Insight Timer.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
 export default function registerMeditationActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -902,4 +904,39 @@ export default function registerMeditationActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // Hotfix 2026-11-09: Export the caller's own sessions (incl. journal) and
+  // moods so the shared Export menu is not an empty/system-mirror dump.
+  registerLensExportProvider("meditation", (ctx) => {
+    const s = getMedState();
+    if (!s) return [];
+    const userId = medActor(ctx);
+    if (!userId || userId === "anon") return [];
+    const rows = [];
+    for (const entry of medList(s.sessions, userId)) {
+      const title = entry.title || entry.sessionId || "Meditation session";
+      const journal = typeof entry.journal === "string" ? entry.journal : "";
+      rows.push({
+        id: entry.id,
+        type: "session",
+        title: journal ? `${title} (journal)` : title,
+        createdAt: entry.completedAt || entry.createdAt || null,
+        updatedAt: entry.completedAt || entry.createdAt || null,
+        data: entry,
+      });
+    }
+    if (s.moods instanceof Map) {
+      for (const entry of medList(s.moods, userId)) {
+        rows.push({
+          id: entry.id || `mood-${entry.createdAt || rows.length}`,
+          type: "mood",
+          title: `Mood ${entry.mood ?? entry.value ?? ""}`.trim() || "Mood check-in",
+          createdAt: entry.createdAt || null,
+          updatedAt: entry.createdAt || null,
+          data: entry,
+        });
+      }
+    }
+    return rows;
+  });
 }

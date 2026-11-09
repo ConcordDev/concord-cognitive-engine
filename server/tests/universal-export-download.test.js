@@ -62,4 +62,18 @@ describe("GET /api/lens/:domain/export/download", () => {
     assert.equal((await fetch(`${base}/api/lens/bad..name/export/download`)).status, 400);
     assert.equal((await fetch(`${base}/api/lens/crafting/export/download?format=xml`)).status, 400);
   });
+
+  it("AUTH_REQUIRED for anonymous export/download (export-leak hotfix)", async () => {
+    const runMacro = async () => ({ ok: true, artifacts: ROWS, total: ROWS.length });
+    const app = express();
+    app.use(createUniversalExportRouter({}, runMacro, () => ({ actor: { userId: "anon" } })));
+    const srv = await new Promise((r) => { const s = app.listen(0, () => r(s)); });
+    const url = `http://127.0.0.1:${srv.address().port}/api/lens/meditation/export/download?format=json`;
+    const res = await fetch(url);
+    assert.equal(res.status, 401);
+    const body = await res.json();
+    assert.equal(body.code || body.error, "AUTH_REQUIRED");
+    await new Promise((r) => srv.close(r));
+  });
+
 });

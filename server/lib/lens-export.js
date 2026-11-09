@@ -72,8 +72,23 @@ export async function collectLensExport({ runMacro, domain, ctx, limit = 1000 })
   if (!listed || listed.ok === false) {
     return { ok: false, error: listed?.error || "lens_list_failed" };
   }
+  const callerId = ctx?.actor?.userId || ctx?.actor?.id || null;
+  const isActivityMint = (a) => {
+    const from = a?.meta?.createdFrom;
+    if (from === "dtu-auto-sync" || from === "integrity-repair") return true;
+    if (typeof a?.id === "string" && a.id.startsWith("dtu_lens_")) return true;
+    if (typeof a?.title === "string" && a.title.startsWith("Lens:")) return true;
+    return false;
+  };
+  // Hotfix 2026-11-09: export is caller-scoped. Drop activity-minted
+  // mirrors (even if lens.list still returned a stale public copy) unless
+  // the caller owns them. Keep genuine non-activity public catalog rows.
   const artifacts = (Array.isArray(listed.artifacts) ? listed.artifacts : [])
-    .filter((a) => a && !SCAFFOLDING_TYPES.has(a.type));
+    .filter((a) => a && !SCAFFOLDING_TYPES.has(a.type))
+    .filter((a) => {
+      if (!isActivityMint(a)) return true;
+      return !!(callerId && a.ownerId && a.ownerId === callerId && a.ownerId !== "system" && a.ownerId !== "anon");
+    });
 
   let providerRows = [];
   let providerError = null;

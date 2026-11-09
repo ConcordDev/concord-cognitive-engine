@@ -99,6 +99,10 @@ export default function createUniversalExportRouter(STATE, runMacro, makeCtx) {
   // { artifacts, total } envelope as lens.list, plus provenance.
   router.get("/api/lens/:domain/export", asyncHandler(async (req, res) => {
     const ctx = makeCtx(req);
+    const uid = ctx?.actor?.userId || ctx?.actor?.id || req.user?.id || null;
+    if (!uid || uid === "anon") {
+      return res.status(401).json({ ok: false, error: "AUTH_REQUIRED", code: "AUTH_REQUIRED" });
+    }
     const limit = Math.min(Math.max(Number(req.query.limit) || 1000, 1), 5000);
     const out = await collectLensExport({ runMacro, domain: req.params.domain, ctx, limit });
     if (!out.ok) return res.status(500).json(out);
@@ -122,6 +126,10 @@ export default function createUniversalExportRouter(STATE, runMacro, makeCtx) {
       return res.status(400).json({ ok: false, error: "invalid_format" });
     }
     const ctx = makeCtx(req);
+    const uid = ctx?.actor?.userId || ctx?.actor?.id || req.user?.id || null;
+    if (!uid || uid === "anon") {
+      return res.status(401).json({ ok: false, error: "AUTH_REQUIRED", code: "AUTH_REQUIRED" });
+    }
     const limit = Math.min(Math.max(Number(req.query.limit) || 1000, 1), 5000);
     const out = await collectLensExport({ runMacro, domain, ctx, limit });
     if (!out.ok) return res.status(500).json(out);
