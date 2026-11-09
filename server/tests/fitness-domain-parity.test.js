@@ -1,6 +1,8 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import Database from "better-sqlite3";
 import registerFitnessActions from "../domains/fitness.js";
+import { packDtuData } from "../lib/dtu-at-rest.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -883,5 +885,122 @@ describe("fitness.feed seen-set ids — corpus-scan recovery (re-check #2 remain
       // Adopted into the stored entry, not just the response.
       assert.equal(s.feedLibrary.get("wger_uuid-184").dtuId, "dtu_legacy_184");
     } finally { globalThis.fetch = realFetch; }
+  });
+});
+
+describe("fitness.feed seen-set ids — store-level recovery (re-check #3 remainder)", () => {
+  // Re-check #3 (2026-11-09): the corpus scan healed nothing on prod
+  // either — because the legacy rows are no longer IN the corpus.
+  // The platform's cold-DTU archive (lib/dtu-archive.js) moves rows
+  // whose updated_at is older than 7 days out of dtu_store into
+  // dtu_store_archive (gzip-packed data), and neither STATE.dtus nor
+  // dtu.search reads the archive; feedSeen/feedLibrary persist in
+  // lens state, so pulls keep counting the rows as seen while every
+  // corpus-keyed channel is blind to them. These pins run in that
+  // exact shape: STATE.dtus EMPTY of wger rows, search returning
+  // nothing, the rows present only in the store tables (reached via
+  // ctx.db, the handle lens actions receive).
+  const LIST1 = { results: [{ id: 184, uuid: "uuid-184", name: null, description: null }] };
+  let realFetch;
+  function stubFetch1() {
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes("/exerciseinfo/")) return { ok: true, json: async () => ({ translations: [{ language: 2, name: "Deadlifts", description: "<p>d</p>" }] }) };
+      if (u.includes("/exercise/")) return { ok: true, json: async () => LIST1 };
+      throw new Error("unexpected fetch " + u);
+    };
+  }
+  function storeDb() {
+    const db = new Database(":memory:");
+    db.exec("CREATE TABLE dtu_store (id TEXT, title TEXT, source TEXT, data TEXT)");
+    db.exec("CREATE TABLE dtu_store_archive (id TEXT, title TEXT, source TEXT, data BLOB)");
+    return db;
+  }
+  function storeCtx(db) {
+    return {
+      actor: { userId: "user_a" }, userId: "user_a", db,
+      macro: { run: async (domain, action) => {
+        if (domain === "dtu" && action === "search") return { ok: true, dtus: [] }; // archive-blind, as on prod
+        if (domain === "dtu" && action === "create") throw new Error("must not re-ingest a legacy row");
+        throw new Error(`unexpected macro ${domain}.${action}`);
+      } },
+    };
+  }
+  function seedEntry() {
+    const s = globalThis._concordSTATE.fitnessLens;
+    s.feedLibrary.set("wger_uuid-184", { exerciseId: 184, uuid: "uuid-184", name: "Deadlifts", dtuId: null });
+    return s;
+  }
+
+  it("feed-library adopts from a PACKED ARCHIVE row by its stamped meta.exerciseId (corpus empty)", async () => {
+    const db = storeDb();
+    try {
+      const record = {
+        id: "dtu_arch_184", title: "Exercise: Exercise 184",
+        meta: { exerciseId: 184, uuid: "uuid-184", name: "Exercise 184" },
+        tags: ["fitness", "feed", "exercise", "wger"], source: "wger-feed",
+      };
+      db.prepare("INSERT INTO dtu_store_archive (id, title, source, data) VALUES (?, ?, 'wger-feed', ?)")
+        .run(record.id, record.title, packDtuData(JSON.stringify(record)));
+      const ctx = storeCtx(db);
+      await call("feed-library", ctx, {}); // materialise the state bucket
+      const s = seedEntry();
+      const lib = await call("feed-library", ctx, {});
+      assert.deepEqual(lib.result.items, [{ name: "Deadlifts", dtuId: "dtu_arch_184", exerciseId: 184 }]);
+      assert.equal(s.feedLibrary.get("wger_uuid-184").dtuId, "dtu_arch_184"); // persisted, not just rendered
+    } finally { db.close(); }
+  });
+
+  it("feed-library adopts from an archive row whose meta is gone, by the title-encoded exercise id", async () => {
+    const db = storeDb();
+    try {
+      const record = { id: "dtu_arch_184", title: "Exercise: Exercise 184", source: "wger-feed", tags: ["fitness", "feed", "exercise", "wger"] };
+      db.prepare("INSERT INTO dtu_store_archive (id, title, source, data) VALUES (?, ?, 'wger-feed', ?)")
+        .run(record.id, record.title, packDtuData(JSON.stringify(record)));
+      const ctx = storeCtx(db);
+      await call("feed-library", ctx, {});
+      seedEntry();
+      const lib = await call("feed-library", ctx, {});
+      assert.deepEqual(lib.result.items, [{ name: "Deadlifts", dtuId: "dtu_arch_184", exerciseId: 184 }]);
+    } finally { db.close(); }
+  });
+
+  it("feed-library adopts from the LIVE store table by meta.uuid when exerciseId is absent", async () => {
+    const db = storeDb();
+    try {
+      const record = {
+        id: "dtu_live_184", title: "Exercise: Deadlifts",
+        meta: { uuid: "uuid-184", name: "Deadlifts" },
+        tags: ["fitness", "feed", "exercise", "wger"], source: "wger-feed",
+      };
+      db.prepare("INSERT INTO dtu_store (id, title, source, data) VALUES (?, ?, 'wger-feed', ?)")
+        .run(record.id, record.title, JSON.stringify(record));
+      const ctx = storeCtx(db);
+      await call("feed-library", ctx, {});
+      seedEntry();
+      const lib = await call("feed-library", ctx, {});
+      assert.deepEqual(lib.result.items, [{ name: "Deadlifts", dtuId: "dtu_live_184", exerciseId: 184 }]);
+    } finally { db.close(); }
+  });
+
+  it("the SEEN pull heals a legacy entry from the archive (no re-ingest, search dead)", async () => {
+    realFetch = globalThis.fetch; stubFetch1();
+    const db = storeDb();
+    try {
+      const record = {
+        id: "dtu_arch_184", title: "Exercise: Exercise 184",
+        meta: { exerciseId: 184, uuid: "uuid-184", name: "Exercise 184" },
+        tags: ["fitness", "feed", "exercise", "wger"], source: "wger-feed",
+      };
+      db.prepare("INSERT INTO dtu_store_archive (id, title, source, data) VALUES (?, ?, 'wger-feed', ?)")
+        .run(record.id, record.title, packDtuData(JSON.stringify(record)));
+      const ctx = storeCtx(db);
+      await call("feed-library", ctx, {}); // materialise the state bucket
+      const s = globalThis._concordSTATE.fitnessLens;
+      s.feedSeen = new Set(["wger_uuid-184"]);
+      const r = await call("feed", ctx, {});
+      assert.equal(r.result.ingested, 0);
+      assert.deepEqual(r.result.exercises, [{ name: "Deadlifts", dtuId: "dtu_arch_184", fresh: false }]);
+    } finally { globalThis.fetch = realFetch; db.close(); }
   });
 });

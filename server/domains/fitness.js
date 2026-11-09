@@ -1,5 +1,6 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { presentOwnedId, publicActor } from "../lib/public-actor.js";
+import { unpackDtuData } from "../lib/dtu-at-rest.js";
 
 export default function registerFitnessActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -2498,6 +2499,65 @@ Generate the plan.`;
     return adopted;
   }
 
+  // Store-level recovery (re-check #3, 2026-11-09): the corpus scan
+  // above sees only the in-memory cache, and the platform's cold-DTU
+  // archive (lib/dtu-archive.js) moves rows whose updated_at is older
+  // than 7 days out of that cache into dtu_store_archive — a table
+  // neither STATE.dtus nor dtu.search reads. The legacy feed rows
+  // crossed that line before re-check #2, so both earlier channels
+  // (search, then the corpus scan) were blind to rows that still
+  // exist. This index reads the store's own tables through ctx.db —
+  // dtu_store (plain JSON) and dtu_store_archive (gzip-packed) —
+  // and keys each wger-feed row by every identifier it carries:
+  // the stamped meta.exerciseId, the stamped meta.uuid, and the
+  // title-encoded keys ("Exercise: Exercise <id>" from the era when
+  // the wger list payload's null name made the fallback label the
+  // title; "Exercise: <name>" for name matching).
+  function feedStoreIndex(ctx) {
+    const db = ctx?.db || globalThis._concordSTATE?.db || null;
+    if (!db || typeof db.prepare !== "function") return null;
+    const byExercise = new Map(), byUuid = new Map(), byTitleName = new Map();
+    const add = (d) => {
+      if (!d || typeof d.id !== "string") return;
+      const exId = d?.meta?.exerciseId;
+      if (typeof exId === "number" && !byExercise.has(exId)) byExercise.set(exId, d.id);
+      const uuid = d?.meta?.uuid;
+      if (typeof uuid === "string" && uuid && !byUuid.has(uuid)) byUuid.set(uuid, d.id);
+      const title = typeof d.title === "string" ? d.title : "";
+      const legacy = title.match(/^Exercise: Exercise (\d+)$/);
+      if (legacy && !byExercise.has(Number(legacy[1]))) byExercise.set(Number(legacy[1]), d.id);
+      const named = title.match(/^Exercise: (.+)$/);
+      if (named && !byTitleName.has(named[1])) byTitleName.set(named[1], d.id);
+    };
+    for (const [table, packed] of [["dtu_store", false], ["dtu_store_archive", true]]) {
+      try {
+        const rows = db.prepare(`SELECT data FROM ${table} WHERE source = 'wger-feed'`).all();
+        for (const row of rows) {
+          try { add(JSON.parse(packed ? unpackDtuData(row.data) : row.data)); } catch { /* one bad row never blocks the rest */ }
+        }
+      } catch { /* table absent on minimal builds — the other channels stand */ }
+    }
+    return { byExercise, byUuid, byTitleName };
+  }
+
+  function storeIdFor(index, exerciseId, uuid, name) {
+    if (!index) return null;
+    return index.byExercise.get(exerciseId) || index.byUuid.get(uuid) || index.byTitleName.get(name) || null;
+  }
+
+  // Adopt ids for every library entry that lacks one, from the store
+  // index. Returns how many entries were healed.
+  function adoptFeedIdsFromStore(s, ctx, index = feedStoreIndex(ctx)) {
+    if (!index) return 0;
+    let adopted = 0;
+    for (const entry of s.feedLibrary.values()) {
+      if (entry.dtuId) continue;
+      const id = storeIdFor(index, entry.exerciseId, entry.uuid, entry.name);
+      if (id) { entry.dtuId = id; adopted++; }
+    }
+    return adopted;
+  }
+
   function feedLibraryList(s) {
     return [...(s.feedLibrary?.values() || [])]
       .map((e) => ({ name: e.name, dtuId: e.dtuId ?? null, exerciseId: e.exerciseId }))
@@ -2518,6 +2578,7 @@ Generate the plan.`;
       let ingested = 0, skipped = 0; const dtuIds = [];
       const surfaced = [];
       let corpusIndex = null; // built lazily, only if a legacy entry needs an id
+      let storeIndex = null; // same laziness for the store-level index
       for (const ex of exercises) {
         const key = `wger_${ex.uuid || ex.id}`;
         const info = await wgerExerciseInfo(ex);
@@ -2552,11 +2613,18 @@ Generate the plan.`;
         // Heal the stored record on every sighting: real name from
         // exerciseinfo (replacing any fallback label), and the DTU id
         // for a legacy entry (ingested before the library existed) —
-        // corpus scan first (deterministic), search only as fallback.
+        // corpus scan first (deterministic), then the store-level
+        // scan (which also sees archived rows), search only as the
+        // last fallback.
         if (info.name) entry.name = info.name;
         if (!entry.dtuId && !entry.pendingCreate) {
           if (!corpusIndex) corpusIndex = feedCorpusIndex();
-          entry.dtuId = corpusIndex.get(ex.id) ?? await recoverFeedDtuId(ctx, ex, entry.name);
+          entry.dtuId = corpusIndex.get(ex.id) ?? null;
+          if (!entry.dtuId) {
+            if (!storeIndex) storeIndex = feedStoreIndex(ctx);
+            entry.dtuId = storeIdFor(storeIndex, ex.id, ex.uuid, entry.name);
+          }
+          if (!entry.dtuId) entry.dtuId = await recoverFeedDtuId(ctx, ex, entry.name);
         }
         s.feedLibrary.set(key, entry);
         if (entry.dtuId) s.feedSeen.add(key);
@@ -2584,9 +2652,13 @@ Generate the plan.`;
     if (!(s.feedLibrary instanceof Map)) s.feedLibrary = new Map();
     // Reconcile on read: any entry still missing its DTU id adopts it
     // from the corpus index (deterministic scan — see feedCorpusIndex),
-    // so the stored listing carries ids even before the next pull.
+    // then from the store-level index (which also sees archived rows —
+    // see feedStoreIndex), so the stored listing carries ids even
+    // before the next pull.
     if ([...s.feedLibrary.values()].some((e) => !e.dtuId)) {
-      if (adoptFeedIdsFromCorpus(s) > 0) saveStateIfAvailable();
+      let healed = adoptFeedIdsFromCorpus(s);
+      if ([...s.feedLibrary.values()].some((e) => !e.dtuId)) healed += adoptFeedIdsFromStore(s, ctx);
+      if (healed > 0) saveStateIfAvailable();
     }
     return { ok: true, result: { source: "wger-exercises", items: feedLibraryList(s) } };
   });
