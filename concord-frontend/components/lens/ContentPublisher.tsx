@@ -443,17 +443,23 @@ export function ContentPublisher({
                         <p className="text-xs text-gray-400">
                           Publish this {contentType} to the Marketplace where others can discover, fork, or purchase it.
                         </p>
-                        <button
-                          onClick={handleMarketplace}
-                          disabled={publishing || !artifactId}
-                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-                        >
-                          {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Store className="w-4 h-4" />}
-                          Publish to Marketplace
-                        </button>
-                        {!artifactId && (
-                          <p className="text-[10px] text-gray-400 text-center">
-                            Save your work first to publish to the marketplace
+                        {artifactId ? (
+                          <button
+                            onClick={handleMarketplace}
+                            disabled={publishing}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                          >
+                            {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Store className="w-4 h-4" />}
+                            Publish to Marketplace
+                          </button>
+                        ) : (
+                          // Close-out A6 (fix return, fold-loss restore): the
+                          // toolbar mount never passes an item, so there is
+                          // nothing here to publish — say that, instead of
+                          // the false save-first note (the member's
+                          // work in this lens may already stand saved).
+                          <p className="text-xs text-gray-400 text-center px-2">
+                            Publishing to the Marketplace happens from the item itself — open the piece you want to list and use its Publish control. This share sheet doesn’t hold an item to publish.
                           </p>
                         )}
                       </div>
