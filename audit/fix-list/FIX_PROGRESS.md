@@ -896,4 +896,4 @@ A wallet is stored only when the address matches the selected chain: 40 hex char
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-crypto-001 | crypto | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-crypto-001 | crypto | high | FIXED_PENDING_VERIFY | fd1a354f7 |
