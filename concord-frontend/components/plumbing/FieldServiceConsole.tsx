@@ -127,6 +127,7 @@ export function FieldServiceConsole() {
   const [ops, setOps] = useState<OpsSummary | null>(null);
   const [techs, setTechs] = useState<Tech[]>([]);
   const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [clientName, setClientName] = useState('');
   const [lanes, setLanes] = useState<Lane[]>([]);
   const [unassigned, setUnassigned] = useState<Assignment[]>([]);
   const [emergencyCount, setEmergencyCount] = useState(0);
@@ -281,6 +282,21 @@ export function FieldServiceConsole() {
   const handleClientCreated = useCallback((client: ClientRecord) => {
     setClients((cs) => (cs.some((c) => c.id === client.id) ? cs : [...cs, client]));
   }, []);
+
+  const addClient = async () => {
+    const name = clientName.trim();
+    if (!name || busy) return;
+    setBusy(true);
+    setErr(null);
+    const r = await run<{ client: ClientRecord }>('clientAdd', { name });
+    setBusy(false);
+    if (r?.client) {
+      handleClientCreated(r.client);
+      setClientName('');
+    } else {
+      setErr('Could not add that client.');
+    }
+  };
 
   useEffect(() => {
     void refreshAll();
@@ -823,7 +839,19 @@ export function FieldServiceConsole() {
           </div>
           <div className={`${cardCls} lg:col-span-2`}>
             <h4 className="mb-2 text-xs font-semibold text-white">Clients ({clients.length})</h4>
-            {clients.length === 0 && <p className="text-xs text-zinc-400">No clients yet. Add one from the client field above.</p>}
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <input
+                className={inputCls}
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                placeholder="Client name"
+                aria-label="New client name"
+              />
+              <button type="button" className={btnCls} onClick={() => void addClient()} disabled={busy || !clientName.trim()}>
+                <Plus className="h-3.5 w-3.5" /> Add client
+              </button>
+            </div>
+            {clients.length === 0 && <p className="text-xs text-zinc-400">No clients yet.</p>}
             <ul className="space-y-1">
               {clients.map((c) => (
                 <li key={c.id} className="flex items-center justify-between rounded border border-zinc-800 px-2 py-1.5 text-xs">

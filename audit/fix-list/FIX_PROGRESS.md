@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 165 | 53 | 3 |
+| high | 166 | 52 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **706** | **1442** | **3** |
+| **total** | **707** | **1441** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -983,3 +983,9 @@ A creator publishes to their own hub. Official posts for a catalog creator stay 
 | FIX-social-012 | social | high | FIXED_PENDING_VERIFY | be58eeb32 |
 | FIX-markets-003 | markets | high | FIXED_PENDING_VERIFY | be58eeb32 |
 | FIX-education-006 | education | high | FIXED_PENDING_VERIFY | be58eeb32 |
+
+Field Service has an Add client control on the clients card. The name is stored with clientAdd and the new client shows in the list.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-plumbing-007 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
