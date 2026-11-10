@@ -1255,9 +1255,9 @@ Fuel, service, expense, trip, and document rows have an Edit control that update
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-automotive-007 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-automotive-010 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-automotive-011 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-automotive-007 | automotive | medium | FIXED_PENDING_VERIFY | c2b84e49a |
+| FIX-automotive-010 | automotive | medium | FIXED_PENDING_VERIFY | c2b84e49a |
+| FIX-automotive-011 | automotive | medium | FIXED_PENDING_VERIFY | c2b84e49a |
 
 ## NEEDS_PRODUCT_SURFACE
 
