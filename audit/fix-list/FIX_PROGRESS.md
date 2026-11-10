@@ -1521,12 +1521,12 @@ Saving a translation says it was saved. Keep as DTU says the private DTU id, or 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-translation-001 | translation | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-translation-002 | translation | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-chat-003 | chat | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-chat-005 | chat | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-staking-004 | staking | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-education-003 | education | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-translation-001 | translation | medium | FIXED_PENDING_VERIFY | 029e5e945 |
+| FIX-translation-002 | translation | medium | FIXED_PENDING_VERIFY | 029e5e945 |
+| FIX-chat-003 | chat | medium | FIXED_PENDING_VERIFY | 029e5e945 |
+| FIX-chat-005 | chat | medium | FIXED_PENDING_VERIFY | 029e5e945 |
+| FIX-staking-004 | staking | medium | FIXED_PENDING_VERIFY | 029e5e945 |
+| FIX-education-003 | education | medium | FIXED_PENDING_VERIFY | 029e5e945 |
 
 ## NEEDS_PRODUCT_SURFACE
 
