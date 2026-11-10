@@ -853,6 +853,20 @@ export default function registerAgentsActions(registerLensAction) {
     }
   });
 
+  registerLensAction("agents", "clearBudget", (ctx, _a, params = {}) => {
+    try {
+      const s = getAgentState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const budgetMap = submap(s.budgets, aActor(ctx));
+      const agentId = aClean(params.agentId, 80);
+      if (!agentId || !budgetMap.has(agentId)) return { ok: false, error: "no budget set for agent" };
+      budgetMap.delete(agentId);
+      saveAgents();
+      return { ok: true, result: { agentId, cleared: true } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   // ── Feature 7: agent templates / marketplace import ──────────────────
   const AGENT_TEMPLATES = [
     {

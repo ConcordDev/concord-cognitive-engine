@@ -143,6 +143,13 @@ function publicView(p, ctx) {
   };
 }
 
+function refreshGreeting(personaId, greeting) {
+  for (const chat of store().chats.values()) {
+    if (chat.personaId !== personaId || !Array.isArray(chat.turns) || !chat.turns[0]) continue;
+    if (chat.turns[0].basis === "greeting") chat.turns[0].text = greeting;
+  }
+}
+
 function ratingsFor(personaId) {
   const { ratings } = store();
   const rows = [];
@@ -322,6 +329,7 @@ export default function registerPersonasActions(registerLensAction) {
           }));
       }
       p.updatedAt = now();
+      if (params.greeting !== undefined) refreshGreeting(p.id, p.greeting);
       p.contentHash = contentHash({
         name: p.name, personality: p.personality, voice: p.voice,
         greeting: p.greeting, exampleDialogue: p.exampleDialogue,
@@ -383,7 +391,15 @@ export default function registerPersonasActions(registerLensAction) {
       if (!p) return { ok: false, error: "persona_not_found" };
       if (p.authorUserId !== userId) return { ok: false, error: "not_author" };
       store().personas.delete(id);
-      return { ok: true, result: { deleted: id } };
+      let removedChats = 0;
+      for (const [chatId, chat] of [...store().chats.entries()]) {
+        if (chat.personaId === id) { store().chats.delete(chatId); removedChats += 1; }
+      }
+      let removedRatings = 0;
+      for (const key of [...store().ratings.keys()]) {
+        if (String(key).startsWith(`${id}:`)) { store().ratings.delete(key); removedRatings += 1; }
+      }
+      return { ok: true, result: { deleted: id, removedChats, removedRatings } };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   });
 
@@ -617,6 +633,7 @@ export default function registerPersonasActions(registerLensAction) {
       }
       p.version += 1;
       p.updatedAt = now();
+      if (params.greeting !== undefined) refreshGreeting(p.id, p.greeting);
       p.contentHash = contentHash({
         name: p.name, personality: p.personality, voice: p.voice,
         greeting: p.greeting, exampleDialogue: p.exampleDialogue,

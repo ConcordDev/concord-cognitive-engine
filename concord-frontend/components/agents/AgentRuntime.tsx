@@ -735,6 +735,13 @@ function BudgetsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () 
     await load(agentId); onChange();
   };
 
+  const clearBudget = async () => {
+    if (!agentId) return;
+    const r = await lensRun(DOMAIN, 'clearBudget', { agentId });
+    if (!r.data?.ok) setErr(r.data?.message || r.data?.error || 'That budget was not removed.');
+    await load(agentId); onChange();
+  };
+
   const chartData = useMemo(() => {
     if (!view?.budget) return null;
     return [
@@ -779,7 +786,10 @@ function BudgetsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () 
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wallet className="h-3.5 w-3.5" />} Save budget
           </button>
           <button onClick={reset} className="inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-2 text-xs text-zinc-400 hover:text-white">
-            <RefreshCw className="h-3.5 w-3.5" /> reset
+            <RefreshCw className="h-3.5 w-3.5" /> Reset usage
+          </button>
+          <button onClick={clearBudget} className="inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-2 text-xs text-zinc-400 hover:text-white">
+            Remove budget
           </button>
         </div>
         {err && <p className="text-[11px] text-rose-400">{err}</p>}

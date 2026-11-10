@@ -373,8 +373,20 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const accountTz = resolveCalendarTimeZone(profileTimeZone(user));
 
   // State
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('concord:calendar:visible');
+      if (raw) { const d = new Date(raw); if (!Number.isNaN(d.getTime())) return d; }
+    } catch { /* storage unavailable */ }
+    return new Date();
+  });
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    try {
+      const raw = sessionStorage.getItem('concord:calendar:visible');
+      if (raw) { const d = new Date(raw); if (!Number.isNaN(d.getTime())) return d; }
+    } catch { /* storage unavailable */ }
+    return new Date();
+  });
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [calendars, setCalendars] = useState<BackendCalendar[]>([]);
@@ -501,6 +513,8 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   const [nearestSlot, setNearestSlot] = useState<{ start: string; end: string } | null>(null);
   const [checkingConflicts, setCheckingConflicts] = useState(false);
   const [activityNote, setActivityNote] = useState<string | null>(null);
+  const [startDraft, setStartDraft] = useState<string | null>(null);
+  const [endDraft, setEndDraft] = useState<string | null>(null);
 
   // Fetch real calendars + events from the STATE-backed engine (calendars-list /
   // events-list — server/domains/calendar.js). Range spans 2 months back
@@ -536,6 +550,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   }, [monthKey]);
 
   useEffect(() => { void Promise.resolve().then(fetchData); }, [fetchData]);
+  useEffect(() => {
+    try { sessionStorage.setItem('concord:calendar:visible', currentDate.toISOString()); } catch { /* storage unavailable */ }
+  }, [currentDate]);
 
   // RSVP state for the open event's invites (F6: shown on the detail,
   // not only in the Sync & share tab).
@@ -672,9 +689,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   };
 
   const navigateWeek = (direction: number) => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(currentDate.getDate() + direction * 7);
+    const newDate = new Date(selectedDate);
+    newDate.setDate(selectedDate.getDate() + direction * 7);
     setCurrentDate(newDate);
+    setSelectedDate(newDate);
   };
 
   const navigateDay = (direction: number) => {
@@ -997,7 +1015,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
         if (!id) throw new Error('The server returned no event id');
         flashNote(eventSavedSentence(id) + (calendarDateKey(event.startDate).endsWith('-02-29') ? ' A day that only sometimes exists.' : ''));
       }
-      await fetchData();
+      setCurrentDate(event.startDate);
+      setSelectedDate(event.startDate);
+      const sameMonth = event.startDate.getFullYear() === currentDate.getFullYear() && event.startDate.getMonth() === currentDate.getMonth();
+      if (sameMonth) await fetchData();
     } catch (e) {
       setEvents(previousEvents);
       const message = e instanceof Error ? e.message : 'Failed to save event';
@@ -1206,7 +1227,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
             return (
               <div
                 key={index}
-                onClick={() => setSelectedDate(date)}
+                onClick={() => { setSelectedDate(date); setCurrentDate(date); }}
                 onDoubleClick={() => openCreateFor(date)}
                 title="Double-click to add an event"
                 className={cn(
@@ -1216,7 +1237,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 role="button"
                 tabIndex={0}
                 aria-label={date.toDateString()}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDate(date); } }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDate(date); setCurrentDate(date); } }}
               >
                 <span
                   className={cn(
@@ -1268,7 +1289,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                   {dayEvents.length > 2 && (
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setSelectedDate(date); setViewMode('day'); }}
+                      onClick={(e) => { e.stopPropagation(); setSelectedDate(date); setCurrentDate(date); setViewMode('day'); }}
                       className="block w-full text-center text-[11px] tabular-nums text-zinc-500 transition-colors hover:text-zinc-100"
                     >
                       +{dayEvents.length - 2} more
@@ -1284,7 +1305,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
   };
 
   const renderWeekView = () => {
-    const weekDates = getWeekDates(currentDate);
+    const weekDates = getWeekDates(selectedDate);
     const hours = getHoursArray();
 
     return (
@@ -1671,7 +1692,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                       style={{ borderLeft: `4px solid ${event.color}` }}
                     >
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium flex items-center gap-2">
+                        <h4 className="font-medium text-zinc-100 flex items-center gap-2">
                           <CategoryIcon type={event.eventType} className="w-4 h-4" />
                           {event.title}
                         </h4>
@@ -1771,7 +1792,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     days.push(
                       <button
                         key={i}
-                        onClick={() => setSelectedDate(date)}
+                        onClick={() => { setSelectedDate(date); setCurrentDate(date); }}
                         className={cn(
                           'w-7 h-7 rounded-full text-xs tabular-nums transition-colors relative',
                           isToday(date) && 'bg-neon-blue text-white',
@@ -2405,8 +2426,16 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     <label className="text-xs text-gray-400 mb-1 block">Start</label>
                     <input
                       type="datetime-local"
-                      value={newEvent.startDate ? toZonedInputValue(newEvent.startDate, formTz) : ''}
-                      onChange={(e) => { const d = e.target.value ? fromZonedInputValue(e.target.value, formTz) : null; setNewEvent({ ...newEvent, startDate: d || undefined }); }}
+                      value={startDraft !== null ? startDraft : (newEvent.startDate ? toZonedInputValue(newEvent.startDate, formTz) : '')}
+                      onFocus={() => setStartDraft(newEvent.startDate ? toZonedInputValue(newEvent.startDate, formTz) : '')}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setStartDraft(raw);
+                        if (!raw) { setNewEvent({ ...newEvent, startDate: undefined }); return; }
+                        const d = fromZonedInputValue(raw, formTz);
+                        if (d) setNewEvent({ ...newEvent, startDate: d });
+                      }}
+                      onBlur={() => setStartDraft(null)}
                       className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                     />
                   </div>
@@ -2414,8 +2443,16 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     <label className="text-xs text-gray-400 mb-1 block">End</label>
                     <input
                       type="datetime-local"
-                      value={newEvent.endDate ? toZonedInputValue(newEvent.endDate, formTz) : ''}
-                      onChange={(e) => { const d = fromZonedInputValue(e.target.value, formTz); if (d) setNewEvent({ ...newEvent, endDate: d }); }}
+                      value={endDraft !== null ? endDraft : (newEvent.endDate ? toZonedInputValue(newEvent.endDate, formTz) : '')}
+                      onFocus={() => setEndDraft(newEvent.endDate ? toZonedInputValue(newEvent.endDate, formTz) : '')}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setEndDraft(raw);
+                        if (!raw) return;
+                        const d = fromZonedInputValue(raw, formTz);
+                        if (d) setNewEvent({ ...newEvent, endDate: d });
+                      }}
+                      onBlur={() => setEndDraft(null)}
                       className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                     />
                   </div>

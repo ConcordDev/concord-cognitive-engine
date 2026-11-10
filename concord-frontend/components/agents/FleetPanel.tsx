@@ -1263,7 +1263,7 @@ export function FleetPanel() {
                   disabled={!newName.trim() || createAgent.isPending}
                   className="flex-1 py-2.5 bg-neon-cyan text-black font-medium rounded-lg hover:bg-neon-cyan/90 transition-colors disabled:opacity-50"
                 >
-                  {createAgent.isPending ? 'Creating...' : 'Deploy Agent'}
+                  {createAgent.isPending ? 'Saving...' : 'Save draft'}
                 </button>
               </div>
             </motion.div>

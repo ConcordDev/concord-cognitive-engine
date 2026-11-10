@@ -186,9 +186,8 @@ export function MarketingEmailPanel() {
 
       {/* Builder modal */}
       {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
-          <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onMouseDown={(ev) => { if (ev.target === ev.currentTarget) setCreating(false); }}>
+          <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3" role="dialog" aria-modal="true" aria-label={editing ? 'Edit email' : 'New email'}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{editing ? 'Edit' : 'New'} email</h4>
               <button type="button" onClick={() => setCreating(false)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>

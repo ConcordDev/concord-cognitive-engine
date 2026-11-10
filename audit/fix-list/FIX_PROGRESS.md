@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 440 | 505 | 0 |
+| medium | 449 | 496 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **861** | **1287** | **3** |
+| **total** | **870** | **1278** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1332,6 +1332,22 @@ A second entity with the same name is refused. A transcript duration that is not
 | FIX-entity-001 | entity | medium | FIXED_PENDING_VERIFY | 6d8961bba |
 | FIX-voice-009 | voice | medium | FIXED_PENDING_VERIFY | 6d8961bba |
 | FIX-marketing-014 | marketing | medium | FIXED_PENDING_VERIFY | 6d8961bba |
+
+## Mediums — persona chat, calendar view, agent draft
+
+Deleting a persona also removes its chats and ratings, and the delete stays armed until confirm. Editing a greeting updates the open chat preview. The week view follows the selected date, the visible month is remembered for the session, and a saved event opens on its own month. A half-typed year is not rewritten. Saving an agent stores a dormant draft. Reset usage still only clears spend; Remove budget clears the limit.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-personas-004 | personas | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-personas-005 | personas | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-002 | calendar | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-calendar-002 | calendar | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-calendar-008 | calendar | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-calendar-013 | calendar | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-agents-001 | agents | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-agents-012 | agents | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-marketing-010 | marketing | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

@@ -20,10 +20,12 @@ export function PersonaChat({
   personaId,
   personaName,
   portrait,
+  greeting,
 }: {
   personaId: string;
   personaName: string;
   portrait?: string;
+  greeting?: string;
 }) {
   const [chatId, setChatId] = useState<string | null>(null);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -68,6 +70,15 @@ export function PersonaChat({
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [personaId]);
+
+  useEffect(() => {
+    if (!greeting) return;
+    setTurns((prev) => {
+      const first = prev[0];
+      if (!first || first.basis !== 'greeting' || first.text === greeting) return prev;
+      return [{ ...first, text: greeting }, ...prev.slice(1)];
+    });
+  }, [greeting]);
 
   const newChat = async () => {
     try { sessionStorage.removeItem(storageKey); } catch { /* storage unavailable */ }

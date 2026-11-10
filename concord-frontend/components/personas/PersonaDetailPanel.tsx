@@ -253,7 +253,7 @@ export function PersonaDetailPanel({
       </div>
 
       {tab === 'chat' && (
-        <PersonaChat personaId={persona.id} personaName={persona.name} portrait={persona.portrait} />
+        <PersonaChat personaId={persona.id} personaName={persona.name} portrait={persona.portrait} greeting={persona.greeting} />
       )}
 
       {tab === 'stats' && stats && (

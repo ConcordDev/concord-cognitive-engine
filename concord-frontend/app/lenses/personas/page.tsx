@@ -13,6 +13,7 @@
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
 import { useEffect, useState, useCallback } from 'react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -261,10 +262,11 @@ export default function PersonasPage() {
                             type="button" onClick={() => setSelectedId(p.id)}
                             className="text-[11px] text-purple-300 hover:text-purple-200"
                           >Open</button>
-                          <button
-                            type="button" onClick={() => deletePersona(p.id)}
+                          <StickyDeleteConfirm
+                            onConfirm={() => deletePersona(p.id)}
+                            armLabel="Delete"
                             className="text-[11px] text-red-400 hover:text-red-300"
-                          >Delete</button>
+                          />
                         </div>
                       </li>
                     ))}
