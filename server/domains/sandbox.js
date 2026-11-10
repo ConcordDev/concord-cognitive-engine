@@ -227,7 +227,11 @@ export default function registerSandboxMacros(register) {
     if (!weapon) return { ok: false, error: "unknown_weaponId" };
     const skill = SKILLS.find((k) => k.id === String(params.skillId || "none"));
     if (!skill) return { ok: false, error: "unknown_skillId" };
-    const name = String(params.name || "").trim().slice(0, 60) || `${weapon.label} loadout`;
+    const named = params.name !== undefined && params.name !== null;
+    const trimmed = named ? String(params.name).trim() : "";
+    if (named && !trimmed) return { ok: false, error: "loadout name required", message: "Loadout name is required." };
+    if (trimmed.length > 60) return { ok: false, error: "invalid_input", field: "name", message: "Loadout name must be 60 characters or fewer." };
+    const name = trimmed || `${weapon.label} loadout`;
     const list = ulist(s.loadouts, actor(ctx));
     const entry = {
       id: sid("ld"),

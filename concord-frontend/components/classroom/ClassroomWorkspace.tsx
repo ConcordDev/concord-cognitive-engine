@@ -238,11 +238,16 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   const create = async () => {
-    if (!form.title.trim() || cohortId == null) { flash('err', 'Title + cohort required'); return; }
+    if (!form.title.trim() || cohortId == null) { flash('err', 'Assignment title is required.'); return; }
+    const points = form.points.trim() === '' ? undefined : Number(form.points);
+    if (points !== undefined && (!Number.isFinite(points) || points < 0 || points > 1000)) {
+      flash('err', 'Points must be a number from 0 to 1000.');
+      return;
+    }
     setBusy(true);
     const r = await run('assignment-create', {
       cohortId, title: form.title.trim(), instructions: form.instructions,
-      dueAt: form.dueAt || undefined, points: Number(form.points) || 100,
+      dueAt: form.dueAt || undefined, points,
       topic: form.topic || undefined,
     });
     setBusy(false);

@@ -37,6 +37,11 @@ export function WorldSettingsPanel({
   };
 
   const saveSettings = async () => {
+    const cap = Number(capacity);
+    if (!Number.isInteger(cap) || cap < 1 || cap > 200) {
+      flash('Capacity must be a whole number from 1 to 200.');
+      return;
+    }
     setBusy(true);
     const r = await lensRun('sub_worlds', 'update_settings', {
       worldId: world.world_id,
@@ -52,7 +57,7 @@ export function WorldSettingsPanel({
       flash('Settings saved.');
       onChanged();
     } else {
-      flash(`Failed: ${r.data?.error || 'unknown'}`);
+      flash(`Failed: ${r.data?.message || r.data?.error || 'unknown'}`);
     }
   };
 

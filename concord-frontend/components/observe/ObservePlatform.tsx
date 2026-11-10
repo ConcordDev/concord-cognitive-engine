@@ -171,7 +171,8 @@ function DashboardsTab() {
   useEffect(() => { refresh(); }, [refresh]);
 
   const create = async () => {
-    if (!title.trim()) { setNotice({ kind: 'err', text: 'Title required.' }); return; }
+    if (!title.trim()) { setNotice({ kind: 'err', text: 'Dashboard title is required.' }); return; }
+    if (title.trim().length > 120) { setNotice({ kind: 'err', text: 'Title must be 120 characters or fewer.' }); return; }
     setBusy(true);
     const d = await run('dashboardSave', { title: title.trim(), widgets: [] });
     setBusy(false);

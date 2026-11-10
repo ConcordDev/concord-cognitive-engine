@@ -53,7 +53,15 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
   };
 
   const submit = async () => {
-    setBusy(true); setErr(null);
+    setErr(null);
+    const rewardOk = (n: number) => Number.isFinite(n) && n >= 1 && n === Math.floor(n);
+    if (!useMilestones) {
+      if (!rewardOk(rewardCc)) { setErr('Reward must be a whole number of at least 1.'); return; }
+    } else {
+      const priced = milestones.filter((m) => m.title.trim());
+      if (priced.some((m) => !rewardOk(m.rewardCc))) { setErr('Each milestone reward must be a whole number of at least 1.'); return; }
+    }
+    setBusy(true);
     const params: Record<string, unknown> = {
       title, description, category, difficulty, tags, deadline: deadline || undefined,
     };
@@ -160,7 +168,7 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
             <Coins className="w-4 h-4 text-amber-400" /> Total reward CC
             <input
               type="number" min={1} value={rewardCc}
-              onChange={(e) => setRewardCc(Math.max(1, Number(e.target.value) || 1))}
+              onChange={(e) => setRewardCc(e.target.value === '' ? 0 : Number(e.target.value))}
               className="w-24 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-sm text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
             />
           </label>
@@ -177,7 +185,7 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
                 />
                 <input
                   type="number" min={1} value={m.rewardCc}
-                  onChange={(e) => setMilestones((ms) => ms.map((x, j) => j === i ? { ...x, rewardCc: Math.max(1, Number(e.target.value) || 1) } : x))}
+                  onChange={(e) => setMilestones((ms) => ms.map((x, j) => j === i ? { ...x, rewardCc: e.target.value === '' ? 0 : Number(e.target.value) } : x))}
                   className="w-20 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
                 {milestones.length > 1 && (

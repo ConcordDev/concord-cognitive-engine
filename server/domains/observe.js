@@ -17,6 +17,7 @@
 // by userId. Every handler returns { ok, result?, error? } and never throws.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber } from "../lib/finite-input.js";
 import { assessPublicUrl, fetchPublicUrl, PUBLIC_URL_BLOCKED } from "../lib/public-fetch.js";
 
 export default function registerObserveActions(registerLensAction) {
@@ -272,7 +273,9 @@ export default function registerObserveActions(registerLensAction) {
       if (!s) return { ok: false, error: "state unavailable" };
       const uid = actor(ctx);
       const list = listFor(s.dashboards, uid);
-      const title = clean(params.title || "Untitled dashboard", 120);
+      const title = String(params.title ?? "").trim();
+      if (!title) return { ok: false, error: "title required", message: "Dashboard title is required." };
+      if (title.length > 120) return badNumber("title", "must be 120 characters or fewer");
       const widgets = Array.isArray(params.widgets) ? params.widgets.slice(0, 40).map((w) => ({
         id: clean(w.id || oId("wg"), 40),
         kind: ["timeseries", "query_value", "toplist", "slo", "alert_count", "log_stream", "trace_map", "note"]

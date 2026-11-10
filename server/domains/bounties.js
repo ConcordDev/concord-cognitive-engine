@@ -13,6 +13,7 @@
 // the acting user but a global index makes the open board cross-user.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import { isAdmin, requireActor } from "../lib/lens-authz.js";
 
@@ -142,19 +143,28 @@ export default function registerBountiesActions(registerLensAction) {
       const rawMilestones = Array.isArray(params.milestones) ? params.milestones : [];
       const badMilestone = rawMilestones.findIndex((m) => badNumericField(m, ["rewardCc"]));
       if (badMilestone !== -1) return { ok: false, error: `invalid numeric field: milestones[${badMilestone}].rewardCc` };
-      const milestones = rawMilestones
-        .map((m, i) => ({
+      const wholeReward = (v) => {
+        if (v === undefined || v === null || v === "") return null;
+        const n = readingOrNull(v, { min: 1, max: 1e12, fallback: null });
+        if (n === null || n !== Math.floor(n)) return null;
+        return n;
+      };
+      const milestones = [];
+      for (const m of rawMilestones.slice(0, 12)) {
+        const reward = wholeReward(m && m.rewardCc);
+        if (reward === null) return badNumber("rewardCc", "must be a whole number of at least 1");
+        milestones.push({
           id: id("ms"),
-          index: i,
-          title: clean(m && m.title, 120) || `Milestone ${i + 1}`,
-          rewardCc: Math.max(1, Math.floor(num(m && m.rewardCc, 0))),
-          status: "open", // open -> submitted -> paid
-        }))
-        .slice(0, 12);
+          index: milestones.length,
+          title: clean(m && m.title, 120) || `Milestone ${milestones.length + 1}`,
+          rewardCc: reward,
+          status: "open",
+        });
+      }
       const rewardCc = milestones.length
         ? milestones.reduce((sum, m) => sum + m.rewardCc, 0)
-        : Math.max(1, Math.floor(num(params.rewardCc, 0)));
-      if (rewardCc < 1) return { ok: false, error: "rewardCc must be at least 1 (or supply milestones)" };
+        : wholeReward(params.rewardCc);
+      if (rewardCc === null) return badNumber("rewardCc", "must be a whole number of at least 1");
       const bounty = {
         id: id("bty"),
         title,

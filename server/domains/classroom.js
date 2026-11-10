@@ -10,6 +10,7 @@
 const OL_BASE = "https://openlibrary.org";
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 export default function registerClassroomActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -211,8 +212,12 @@ export default function registerClassroomActions(registerLensAction) {
       const userId = uid(ctx);
       const title = String(params.title || "").trim();
       const cohortId = Number(params.cohortId);
-      if (!title) return { ok: false, error: "title required" };
+      if (!title) return { ok: false, error: "title required", message: "Assignment title is required." };
       if (!Number.isFinite(cohortId)) return { ok: false, error: "cohortId required" };
+      const points = params.points === undefined || params.points === null || params.points === ""
+        ? 100
+        : readingOrNull(params.points, { min: 0, max: 1000, fallback: null });
+      if (points === null) return badNumber("points", "must be a number from 0 to 1000");
       const assignment = {
         id: rid("asg"),
         cohortId,
@@ -222,7 +227,7 @@ export default function registerClassroomActions(registerLensAction) {
           ? params.attachments.slice(0, 20).map((a) => String(a).slice(0, 300))
           : [],
         dueAt: params.dueAt ? String(params.dueAt) : null,
-        points: Math.max(0, Math.min(1000, Number(params.points) || 100)),
+        points,
         topic: String(params.topic || "").slice(0, 80) || null,
         status: "published",
         createdAt: new Date().toISOString(),

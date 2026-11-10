@@ -101,7 +101,7 @@ export function RecipeBoxSection() {
     setEditRecipe({ _new: true, title: '', servings: 4, prepMin: 0, cookMin: 0, ingredients: [{ name: '', qty: null, unit: '' }], steps: [''], tags: [], cuisine: '', notes: '' });
   }
   async function saveRecipe() {
-    if (!editRecipe?.title?.trim()) return;
+    if (!editRecipe?.title?.trim()) { setNotice('Recipe title is required.'); return; }
     const input = {
       title: editRecipe.title, servings: editRecipe.servings, prepMin: editRecipe.prepMin, cookMin: editRecipe.cookMin,
       ingredients: (editRecipe.ingredients || []).filter(i => i.name.trim()),

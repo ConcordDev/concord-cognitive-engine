@@ -16,6 +16,7 @@
 // Handlers never throw — they return { ok, result?, error? }.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 import { seedSubWorldStarterContent } from "../lib/sub-world-starter-content.js";
 
 export default function registerSubWorldsActions(registerLensActionRaw) {
@@ -319,6 +320,10 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     if (name.length < 3) return { ok: false, error: "name must be at least 3 characters" };
     const kind = KINDS.has(params.kind) ? params.kind : "physics_simulator";
     const privacy = PRIVACY.has(params.privacy) ? params.privacy : "public";
+    const capacity = params.capacity === undefined || params.capacity === null || params.capacity === ""
+      ? 16
+      : readingOrNull(params.capacity, { min: 1, max: 200, fallback: null });
+    if (capacity === null || capacity !== Math.trunc(capacity)) return badNumber("capacity", "must be a whole number from 1 to 200");
     const w = {
       world_id: newId("subw"),
       forge_app_dtu_id: clean(params.forgeAppDtuId, 80) || null,
@@ -328,7 +333,7 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
       kind,
       privacy,
       status: "active",
-      capacity: Math.max(1, Math.min(200, num(params.capacity, 16))),
+      capacity,
       spawned_by_user_id: actor(ctx),
       spawned_at: now(),
       updated_at: now(),
@@ -463,7 +468,11 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
       if (!PRIVACY.has(params.privacy)) return { ok: false, error: "invalid privacy" };
       w.privacy = params.privacy;
     }
-    if (params.capacity != null) w.capacity = Math.max(1, Math.min(200, num(params.capacity, w.capacity)));
+    if (params.capacity != null && params.capacity !== "") {
+      const capacity = readingOrNull(params.capacity, { min: 1, max: 200, fallback: null });
+      if (capacity === null || capacity !== Math.trunc(capacity)) return badNumber("capacity", "must be a whole number from 1 to 200");
+      w.capacity = capacity;
+    }
     if (params.kind != null) {
       if (!KINDS.has(params.kind)) return { ok: false, error: "invalid kind" };
       w.kind = params.kind;

@@ -165,7 +165,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
   }
 
   async function addLesson(courseId: string) {
-    if (!lessonForm.title.trim()) return;
+    if (!lessonForm.title.trim()) { setLessonErr('Lesson title is required.'); return; }
     setSavingLesson(true);
     try {
       await lensRun({

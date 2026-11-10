@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 354 | 591 | 0 |
+| medium | 362 | 583 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **775** | **1373** | **3** |
+| **total** | **783** | **1365** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1135,6 +1135,21 @@ Studio Recent projects call the existing owner-scoped project delete after confi
 | FIX-mentorship-001 | mentorship | medium | FIXED_PENDING_VERIFY | b97869307 |
 | FIX-forge-006 | forge | medium | FIXED_PENDING_VERIFY | b97869307 |
 | FIX-lab-001 | lab | medium | FIXED_PENDING_VERIFY | b97869307 |
+
+## Mediums — refuse blank and out-of-range form values
+
+A bounty reward, assignment points, dashboard title, lesson title, recipe title, loadout name, sub-world capacity, and materials shortlist name are refused with a message. They are no longer rewritten into 1, 0, Untitled, or a weapon default.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-bounties-002 | bounties | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-classroom-003 | classroom | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-observe-002 | observe | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-008 | education | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-cooking-003 | cooking | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-sandbox-002 | sandbox | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-sub-worlds-003 | sub-worlds | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-materials-004 | materials | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 
