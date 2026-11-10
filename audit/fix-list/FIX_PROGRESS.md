@@ -1355,12 +1355,12 @@ An unpaid veterinary invoice can be deleted. A paid one is voided and the paymen
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-veterinary-007 | veterinary | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-veterinary-008 | veterinary | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-pharmacy-010 | pharmacy | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-pharmacy-011 | pharmacy | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-pharmacy-012 | pharmacy | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-eco-005 | eco | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-veterinary-007 | veterinary | medium | FIXED_PENDING_VERIFY | bd3d0e1b5 |
+| FIX-veterinary-008 | veterinary | medium | FIXED_PENDING_VERIFY | bd3d0e1b5 |
+| FIX-pharmacy-010 | pharmacy | medium | FIXED_PENDING_VERIFY | bd3d0e1b5 |
+| FIX-pharmacy-011 | pharmacy | medium | FIXED_PENDING_VERIFY | bd3d0e1b5 |
+| FIX-pharmacy-012 | pharmacy | medium | FIXED_PENDING_VERIFY | bd3d0e1b5 |
+| FIX-eco-005 | eco | medium | FIXED_PENDING_VERIFY | bd3d0e1b5 |
 
 ## NEEDS_PRODUCT_SURFACE
 
