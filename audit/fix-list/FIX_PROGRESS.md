@@ -1053,11 +1053,11 @@ A workout distance and duration must be real numbers in range. A CVSS score outs
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-fitness-005 | fitness | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-security-005 | security | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-legal-005 | legal | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-nonprofit-006 | nonprofit | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-accounting-001 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-fitness-005 | fitness | medium | FIXED_PENDING_VERIFY | 0bb1350e4 |
+| FIX-security-005 | security | medium | FIXED_PENDING_VERIFY | 0bb1350e4 |
+| FIX-legal-005 | legal | medium | FIXED_PENDING_VERIFY | 0bb1350e4 |
+| FIX-nonprofit-006 | nonprofit | medium | FIXED_PENDING_VERIFY | 0bb1350e4 |
+| FIX-accounting-001 | accounting | medium | FIXED_PENDING_VERIFY | 0bb1350e4 |
 
 ## NEEDS_PRODUCT_SURFACE
 
