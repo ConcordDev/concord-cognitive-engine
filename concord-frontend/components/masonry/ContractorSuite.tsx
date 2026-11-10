@@ -170,7 +170,12 @@ function TakeoffTab() {
     if (r) { setPreview(r); await load(); }
     else setFormError('Could not save that takeoff.');
   };
-  const del = async (id: string) => { await run('takeoff-delete', { id }); await load(); };
+  const del = async (id: string) => {
+    const r = await run('takeoff-delete', { id });
+    if (!r) return;
+    setPreview((cur) => (cur?.id === id ? null : cur));
+    await load();
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">

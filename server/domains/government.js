@@ -153,7 +153,7 @@ export default function registerGovernmentActions(registerLensAction) {
   // behavior tests, are unaffected) plus a single-zone fallback for
   // resourceStaging (the editor has no multi-zone entry UI — an explicit
   // `zones` array, e.g. from an API/MCP caller, still works as before).
-  registerLensAction("government", "permitTimeline", (ctx, artifact, _params) => {
+  registerLensAction("government", "permitTimeline", (ctx, artifact, params = {}) => {
     const applicationDate = (artifact.data?.applicationDate || artifact.data?.submittedDate)
       ? new Date(artifact.data.applicationDate || artifact.data.submittedDate) : null;
     const approvalDate = artifact.data?.approvalDate ? new Date(artifact.data.approvalDate) : null;
@@ -161,16 +161,19 @@ export default function registerGovernmentActions(registerLensAction) {
     if (applicationDate && approvalDate) {
       processingDays = Math.ceil((approvalDate - applicationDate) / (1000 * 60 * 60 * 24));
     }
-    const permitType = String(artifact.data?.type || 'general').toLowerCase();
+    const permitType = String(params.permitType || artifact.data?.type || "general").toLowerCase();
     const benchmarks = { building: 30, electrical: 14, plumbing: 14, grading: 21, business: 10, general: 21 };
     const benchmark = benchmarks[permitType] || 21;
-    return { ok: true, result: { permitId: artifact.id, permitType, processingDays, benchmark, onTime: processingDays !== null ? processingDays <= benchmark : null } };
+    const estimatedWeeks = Math.max(1, Math.ceil(benchmark / 7));
+    return { ok: true, result: { permitId: artifact.id, permitType, processingDays, benchmark, estimatedWeeks, onTime: processingDays !== null ? processingDays <= benchmark : null } };
   });
 
-  registerLensAction("government", "violationEscalation", (ctx, artifact, _params) => {
+  registerLensAction("government", "violationEscalation", (ctx, artifact, params = {}) => {
+    const severity = String(params.severity || artifact.data?.severity || "").toLowerCase();
+    const tierFromSeverity = { critical: "critical", high: "high", medium: "standard", low: "low" }[severity] || "standard";
     const deadline = artifact.data?.complianceDeadline ? new Date(artifact.data.complianceDeadline) : null;
     const now = new Date();
-    if (!deadline) return { ok: true, result: { escalated: false, message: "No compliance deadline set" } };
+    if (!deadline) return { ok: true, result: { escalated: false, tier: tierFromSeverity, nextStep: "Set a compliance deadline on the violation to see whether it is past due.", message: "No compliance deadline set" } };
     const pastDeadline = now > deadline;
     const daysPast = pastDeadline ? Math.ceil((now - deadline) / (1000 * 60 * 60 * 24)) : 0;
     if (pastDeadline && artifact.meta?.status !== 'escalated') {
@@ -178,7 +181,9 @@ export default function registerGovernmentActions(registerLensAction) {
       artifact.data = { ...artifact.data, escalatedAt: now.toISOString(), daysPastDeadline: daysPast };
       artifact.updatedAt = now.toISOString();
     }
-    return { ok: true, result: { violationId: artifact.id, escalated: pastDeadline, daysPast, currentStatus: artifact.meta?.status } };
+    const tier = pastDeadline ? (daysPast > 30 || severity === "critical" ? "critical" : "high") : tierFromSeverity;
+    const nextStep = pastDeadline ? "The compliance deadline has passed." : "Within the compliance deadline.";
+    return { ok: true, result: { violationId: artifact.id, escalated: pastDeadline, daysPast, currentStatus: artifact.meta?.status, tier, nextStep } };
   });
 
   registerLensAction("government", "resourceStaging", (ctx, artifact, params) => {
@@ -1744,7 +1749,9 @@ export default function registerGovernmentActions(registerLensAction) {
     let notifications = ensureGovBucket(s, "notifications", userId).slice().reverse();
     if (unreadOnly) notifications = notifications.filter(n => !n.read);
     const unreadCount = ensureGovBucket(s, "notifications", userId).filter(n => !n.read).length;
-    return { ok: true, result: { notifications, unreadCount } };
+    if (!(s.notificationSubs instanceof Map)) s.notificationSubs = new Map();
+    const subscriptions = (s.notificationSubs.get(userId) || []).slice();
+    return { ok: true, result: { notifications, unreadCount, subscriptions } };
   });
 
   registerLensAction("government", "notifications-subscribe", (ctx, _a, params = {}) => {

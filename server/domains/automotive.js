@@ -1109,7 +1109,11 @@ export default function registerAutomotiveActions(registerLensAction) {
     const service = listAu(s.service, userId).filter(x => x.vehicleId === vehicleId);
     // miles tracked across logged odometer points
     const odoPts = [...fuel.map(f => f.odometer), ...service.map(x => x.odometer)].filter(Number.isFinite);
+    if (Number.isFinite(Number(vehicle.odometer))) odoPts.push(Number(vehicle.odometer));
     const milesTracked = odoPts.length >= 2 ? Math.max(...odoPts) - Math.min(...odoPts) : 0;
+    const milesNote = milesTracked === 0 && Number(vehicle.odometer) > 0
+      ? `Odometer reads ${Number(vehicle.odometer)}. Miles driven need a second reading.`
+      : null;
     // expense breakdown by category
     const byCategory = {};
     for (const e of expenses) byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
@@ -1140,7 +1144,7 @@ export default function registerAutomotiveActions(registerLensAction) {
         operatingCostPerMile: milesTracked > 0 ? round3(operatingTotal / milesTracked) : null,
         costPerMonth: round2(totalCostOfOwnership / ownedMonths),
         byCategory: Object.fromEntries(Object.entries(byCategory).map(([k, v]) => [k, round2(v)])),
-        note: purchasePrice === 0 ? "Supply purchasePrice for a full TCO including depreciation." : null,
+        note: [purchasePrice === 0 ? "Supply purchasePrice for a full TCO including depreciation." : null, milesNote].filter(Boolean).join(" ") || null,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }

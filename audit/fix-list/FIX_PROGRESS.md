@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 381 | 564 | 0 |
+| medium | 386 | 559 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **802** | **1346** | **3** |
+| **total** | **807** | **1341** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1190,6 +1190,18 @@ Typed amounts are no longer rewritten as the user types. A share, salary, pet we
 | FIX-game-design-003 | game-design | medium | FIXED_PENDING_VERIFY | 691623a9f |
 | FIX-sim-003 | sim | medium | FIXED_PENDING_VERIFY | 691623a9f |
 | FIX-sim-004 | sim | medium | FIXED_PENDING_VERIFY | 691623a9f |
+
+## Mediums — government, automotive, masonry
+
+A permit lookup names the timeline in weeks, and a violation lookup names a tier. Notice subscriptions come back with the notice list. A TCO with only an odometer says so, and a second reading is counted. Deleting a masonry job removes its inspections, and deleting a takeoff clears the preview.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-government-002 | government | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-government-016 | government | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-automotive-002 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-016 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-004 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

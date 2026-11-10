@@ -37,6 +37,7 @@ export function NotificationsPanel() {
       const res = await lensRun({ domain: 'government', action: 'notifications-list', input: { unreadOnly } });
       setNotifications((res.data?.result?.notifications || []) as GovNotification[]);
       setUnreadCount((res.data?.result?.unreadCount as number) || 0);
+      setSubscriptions((res.data?.result?.subscriptions || []) as Subscription[]);
     } catch (e) { console.error('[Notifs] refresh', e); }
     finally { setLoading(false); }
   }, [unreadOnly]);
@@ -51,7 +52,7 @@ export function NotificationsPanel() {
     }
     try {
       const res = await lensRun({ domain: 'government', action: 'notifications-subscribe', input: subForm });
-      if (res.data?.ok === false) { setSubError((res.data?.error as string) || 'subscribe failed'); return; }
+      if (res.data?.ok === false) { setSubError(res.data?.message || (res.data?.error as string) || 'Could not save that subscription.'); return; }
       const sub = res.data?.result?.subscription as Subscription;
       if (sub) setSubscriptions(prev => [...prev.filter(s => s.id !== sub.id), sub]);
       setSubForm({ subjectKind: 'permit', subjectId: '', channel: 'email', contact: '' });

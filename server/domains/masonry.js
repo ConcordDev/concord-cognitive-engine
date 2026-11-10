@@ -458,8 +458,13 @@ export default function registerMasonryActions(registerLensAction) {
       const idx = list.findIndex((j) => j.id === params.id);
       if (idx < 0) return { ok: false, error: "Job not found" };
       list.splice(idx, 1);
+      const inspections = mlist(s.inspections, maid(ctx));
+      let removedInspections = 0;
+      for (let i = inspections.length - 1; i >= 0; i--) {
+        if (inspections[i].jobId === params.id) { inspections.splice(i, 1); removedInspections += 1; }
+      }
       saveMasonState();
-      return { ok: true, result: { deleted: params.id } };
+      return { ok: true, result: { deleted: params.id, removedInspections } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -784,8 +789,8 @@ export default function registerMasonryActions(registerLensAction) {
   // the schedule record's own `id` (not free text) so the frontend can
   // offer a real job picker sourced from schedule-list instead of a
   // typed field; jobTitle/jobFound are looked up live, never fabricated —
-  // an inspection against a since-deleted job still displays honestly
-  // (jobFound:false) instead of silently losing its link.
+  // schedule-delete removes inspections for that job. A list of an
+  // inspection whose job is already gone still says jobFound:false.
   // ─────────────────────────────────────────────────────────────────────
   const INSPECTION_TYPES = [
     "footing_foundation", "reinforcement_placement", "grout_mortar_qa",
