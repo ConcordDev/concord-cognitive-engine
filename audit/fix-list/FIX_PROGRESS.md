@@ -1534,11 +1534,11 @@ The paper library's Papers count is the list on screen. Expenses can be searched
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-paper-001 | paper | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-accounting-004 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-staking-012 | staking | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-education-005 | education | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-fitness-009 | fitness | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-paper-001 | paper | medium | FIXED_PENDING_VERIFY | 9856a1384 |
+| FIX-accounting-004 | accounting | medium | FIXED_PENDING_VERIFY | 9856a1384 |
+| FIX-staking-012 | staking | medium | FIXED_PENDING_VERIFY | 9856a1384 |
+| FIX-education-005 | education | medium | FIXED_PENDING_VERIFY | 9856a1384 |
+| FIX-fitness-009 | fitness | medium | FIXED_PENDING_VERIFY | 9856a1384 |
 
 ## NEEDS_PRODUCT_SURFACE
 
