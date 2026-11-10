@@ -947,10 +947,10 @@ Corner actions sit above the mobile nav and receive the tap. A board card can mo
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-006 | board | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-012 | goals | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-015 | cross-cutting | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-board-012 | board | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-analytics-001 | analytics | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-markets-014 | markets | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-finance-001 | finance | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-006 | board | high | FIXED_PENDING_VERIFY | fe006d27f |
+| FIX-012 | goals | high | FIXED_PENDING_VERIFY | fe006d27f |
+| FIX-015 | cross-cutting | high | FIXED_PENDING_VERIFY | fe006d27f |
+| FIX-board-012 | board | high | FIXED_PENDING_VERIFY | fe006d27f |
+| FIX-analytics-001 | analytics | high | FIXED_PENDING_VERIFY | fe006d27f |
+| FIX-markets-014 | markets | high | FIXED_PENDING_VERIFY | fe006d27f |
+| FIX-finance-001 | finance | high | FIXED_PENDING_VERIFY | fe006d27f |
