@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ASPECTS, card, primaryBtn, type MintedMove, type MoveDetail } from './types';
 
 export type MintedMovesHandle = { reload: () => void };
@@ -15,6 +16,9 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
   const [detail, setDetail] = useState<MoveDetail['move'] | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [armedId, setArmedId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [rename, setRename] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +98,34 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
                 </span>
                 <span style={{ opacity: 0.4, fontSize: 11, marginLeft: 8 }}>{expandedId === m.id ? '▲ hide detail' : '▼ show detail'}</span>
               </button>
+              {renamingId === m.id ? (
+                <span style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                  <input value={rename} onChange={(e) => setRename(e.target.value)}
+                    style={{ flex: 1, background: 'transparent', color: 'inherit', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, padding: '2px 6px' }} />
+                  <button type="button" className="underline" onClick={async () => {
+                    await lensRun('move-builder', 'rename', { moveId: m.id, name: rename });
+                    setRenamingId(null);
+                    await load();
+                  }}>Save</button>
+                </span>
+              ) : (
+                <button type="button" className="underline" style={{ fontSize: 12, marginRight: 8 }}
+                  onClick={() => { setRenamingId(m.id); setRename(m.name); }}>Rename</button>
+              )}
+              <StickyDeleteConfirm
+                armed={armedId === m.id}
+                onArm={() => setArmedId(m.id)}
+                onCancel={() => setArmedId(null)}
+                onConfirm={async () => {
+                  await lensRun('move-builder', 'delete', { moveId: m.id });
+                  setArmedId(null);
+                  if (expandedId === m.id) setExpandedId(null);
+                  await load();
+                }}
+                armLabel="Delete"
+                confirmLabel={`Delete “${m.name}”?`}
+                className="text-[12px] underline"
+              />
 
               {expandedId === m.id && (
                 <div data-testid="move-detail" style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #2a2a35', fontSize: 13 }}>

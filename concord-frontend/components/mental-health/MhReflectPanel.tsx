@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Heart, Target } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ErrorState } from '@/components/ui';
 
 interface GratitudeEntry { id: string; items: string[]; date: string }
@@ -20,6 +21,9 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<string[]>(['', '', '']);
   const [goalInput, setGoalInput] = useState('');
+  const [armedId, setArmedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -128,7 +132,38 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
           <ul className="space-y-1.5 mt-2">
             {entries.map((e) => (
               <li key={e.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-                <p className="text-[10px] text-zinc-400 mb-1">{e.date}</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] text-zinc-400">{e.date}</p>
+                  <span className="flex items-center gap-2">
+                  {editingId !== e.id && (
+                    <button type="button" className="text-[11px] text-zinc-300 underline" onClick={() => { setEditingId(e.id); setEditText(e.items.join('\n')); }}>Edit</button>
+                  )}
+                  <StickyDeleteConfirm
+                    armed={armedId === e.id}
+                    onArm={() => setArmedId(e.id)}
+                    onCancel={() => setArmedId(null)}
+                    onConfirm={async () => {
+                      await lensRun('mental-health', 'gratitude-delete', { id: e.id });
+                      setArmedId(null);
+                      await refresh();
+                    }}
+                    armLabel="Delete"
+                    confirmLabel="Delete this journal entry?"
+                    className="text-[11px] text-rose-300 underline"
+                  />
+                  </span>
+                </div>
+                {editingId === e.id ? (
+                  <div className="space-y-1">
+                    <textarea value={editText} onChange={(ev) => setEditText(ev.target.value)} rows={3}
+                      className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100" />
+                    <button type="button" className="text-[11px] text-sky-300 underline" onClick={async () => {
+                      await lensRun('mental-health', 'gratitude-update', { id: e.id, entries: editText.split('\n') });
+                      setEditingId(null);
+                      await refresh();
+                    }}>Save</button>
+                  </div>
+                ) : (
                 <ul className="space-y-0.5">
                   {e.items.map((it, i) => (
                     <li key={i} className="flex items-start gap-1.5 text-xs text-zinc-200">
@@ -136,6 +171,7 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
                     </li>
                   ))}
                 </ul>
+                )}
               </li>
             ))}
           </ul>

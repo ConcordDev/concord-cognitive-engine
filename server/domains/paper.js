@@ -474,6 +474,20 @@ export default function registerPaperActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  registerLensAction("paper", "collection-delete", (ctx, _a, params = {}) => {
+    const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const cols = ppCollections(s, ctx);
+    const id = String(params.id || "");
+    const idx = cols.findIndex((c) => c.id === id);
+    if (idx < 0) return { ok: false, error: "collection not found" };
+    cols.splice(idx, 1);
+    for (const paper of ppList(s, ctx)) {
+      if (Array.isArray(paper.collectionIds)) paper.collectionIds = paper.collectionIds.filter((cid) => cid !== id);
+    }
+    savePaper(ctx);
+    return { ok: true, result: { deleted: id } };
+  });
+
   registerLensAction("paper", "collection-assign", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ppActor(ctx);

@@ -22,6 +22,7 @@ import {
   ListChecks, FileQuestion, Plus, Trash2, Check, Loader2, AlertTriangle,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { quizAttemptFromSubmit } from '@/components/classroom/quiz-attempt';
 import { ChartKit, TimelineView } from '@/components/viz';
 
@@ -218,6 +219,8 @@ function StreamTab({ cohortId, flash }: TabProps) {
 /* ── Assignments (create + list + submit + grade) ───────────────────── */
 function AssignmentsTab({ cohortId, flash }: TabProps) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [other, setOther] = useState<Assignment[]>([]);
+  const [armedId, setArmedId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', instructions: '', dueAt: '', points: '100', topic: '' });
   const [busy, setBusy] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -226,9 +229,10 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
   const [gradeForm, setGradeForm] = useState<{ subId: string; score: string; feedback: string } | null>(null);
 
   const refresh = useCallback(async () => {
-    const r = await run<{ assignments: Assignment[] }>('assignment-list',
+    const r = await run<{ assignments: Assignment[]; other?: Assignment[] }>('assignment-list',
       cohortId != null ? { cohortId } : {});
     setAssignments(r?.assignments ?? []);
+    setOther(r?.other ?? []);
   }, [cohortId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -317,7 +321,7 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
       </div>
 
       {assignments.length === 0 ? (
-        <p className="text-zinc-400 italic text-xs">No assignments yet.</p>
+        <p className="text-zinc-400 italic text-xs">No assignments in this cohort.</p>
       ) : assignments.map((a) => (
         <div key={a.id} className={cardCls}>
           <div className="flex justify-between gap-2 items-start">
@@ -336,10 +340,16 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
                 className="text-[10px] px-2 py-1 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700">
                 {openId === a.id ? 'Hide' : 'Open'}
               </button>
-              <button aria-label="Delete" onClick={() => remove(a.id)}
-                className="text-[10px] px-1.5 py-1 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60">
-                <Trash2 className="w-3 h-3" />
-              </button>
+              <StickyDeleteConfirm
+                armed={armedId === a.id}
+                onArm={() => setArmedId(a.id)}
+                onCancel={() => setArmedId(null)}
+                onConfirm={() => void remove(a.id)}
+                armLabel={<Trash2 className="w-3 h-3" />}
+                confirmLabel={`Delete “${a.title}”?`}
+                armAriaLabel="Delete"
+                className="text-[10px] px-1.5 py-1 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60"
+              />
             </div>
           </div>
 
@@ -398,6 +408,30 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
           )}
         </div>
       ))}
+      {other.length > 0 && (
+        <div className="mt-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5">From other or archived cohorts</h4>
+          {other.map((a) => (
+            <div key={a.id} className={cardCls}>
+              <div className="flex justify-between gap-2 items-start">
+                <div>
+                  <div className="text-sm font-semibold text-zinc-100">{a.title}</div>
+                  <div className="text-[10px] text-zinc-400">cohort #{a.cohortId}</div>
+                </div>
+                <StickyDeleteConfirm
+                  armed={armedId === a.id}
+                  onArm={() => setArmedId(a.id)}
+                  onCancel={() => setArmedId(null)}
+                  onConfirm={() => void remove(a.id)}
+                  armLabel="Delete"
+                  confirmLabel={`Delete “${a.title}”?`}
+                  className="text-[11px] text-rose-300 underline"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -579,6 +613,7 @@ function TodoTab({ cohortId }: { cohortId: number | null }) {
     counts: { upcoming: number; missing: number; done: number };
   } | null>(null);
   const [studentId, setStudentId] = useState('');
+  const [armedId, setArmedId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await run<{
@@ -602,9 +637,24 @@ function TodoTab({ cohortId }: { cohortId: number | null }) {
           {items.map((i) => (
             <li key={i.assignmentId} className="bg-zinc-950/60 rounded p-2 text-xs flex justify-between gap-2">
               <span className="text-zinc-200">{i.title}</span>
-              <span className="text-[10px] text-zinc-400 whitespace-nowrap">
-                {i.score != null ? `${i.score} pts`
-                  : i.dueAt ? `due ${new Date(i.dueAt).toLocaleDateString()}` : `${i.points} pts`}
+              <span className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 whitespace-nowrap">
+                  {i.score != null ? `${i.score} pts`
+                    : i.dueAt ? `due ${new Date(i.dueAt).toLocaleDateString()}` : `${i.points} pts`}
+                </span>
+                <StickyDeleteConfirm
+                  armed={armedId === i.assignmentId}
+                  onArm={() => setArmedId(i.assignmentId)}
+                  onCancel={() => setArmedId(null)}
+                  onConfirm={async () => {
+                    await run('assignment-delete', { assignmentId: i.assignmentId });
+                    setArmedId(null);
+                    void refresh();
+                  }}
+                  armLabel="Delete"
+                  confirmLabel={`Delete “${i.title}”?`}
+                  className="text-[11px] text-rose-300 underline"
+                />
               </span>
             </li>
           ))}

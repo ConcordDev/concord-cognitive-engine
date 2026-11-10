@@ -242,18 +242,20 @@ export default function registerClassroomActions(registerLensAction) {
       if (!state) return { ok: false, error: "STATE unavailable" };
       const userId = uid(ctx);
       let list = state.assignments.get(userId) || [];
+      let other = [];
       if (params.cohortId !== undefined && params.cohortId !== null && params.cohortId !== "") {
         const c = Number(params.cohortId);
+        other = list.filter((a) => a.cohortId !== c);
         list = list.filter((a) => a.cohortId === c);
       }
       const subs = state.submissions.get(userId) || [];
       const grades = state.grades.get(userId) || [];
-      const enriched = list.map((a) => {
+      const enrich = (rows) => rows.map((a) => {
         const subCount = subs.filter((s) => s.assignmentId === a.id).length;
         const gradedCount = grades.filter((g) => g.assignmentId === a.id).length;
         return { ...a, submissionCount: subCount, gradedCount };
       });
-      return { ok: true, result: { assignments: [...enriched].reverse() } };
+      return { ok: true, result: { assignments: [...enrich(list)].reverse(), other: [...enrich(other)].reverse() } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

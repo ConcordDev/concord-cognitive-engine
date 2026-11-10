@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Gavel, Plus, Calendar, Clock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
 
@@ -31,6 +32,7 @@ interface MatterRef { id: string; name: string; number?: string }
 
 export function CaseTracker() {
   const [cases, setCases] = useState<Case[]>([]);
+  const [armedId, setArmedId] = useState<string | null>(null);
   const [matters, setMatters] = useState<MatterRef[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -114,6 +116,20 @@ export function CaseTracker() {
                       c.status === 'appealed' ? 'bg-orange-500/20 text-orange-300' :
                       'bg-gray-500/20 text-gray-300'
                     )}>{c.status.replace(/_/g, ' ')}</span>
+                    <StickyDeleteConfirm
+                      armed={armedId === c.id}
+                      onArm={() => setArmedId(c.id)}
+                      onCancel={() => setArmedId(null)}
+                      onConfirm={async () => {
+                        await lensRun({ domain: 'legal', action: 'case-delete', input: { id: c.id } });
+                        setArmedId(null);
+                        const res = await lensRun({ domain: 'legal', action: 'case-list', input: {} });
+                        setCases((res.data?.result?.cases || []) as Case[]);
+                      }}
+                      armLabel="Delete"
+                      confirmLabel={`Delete “${c.caption}”?`}
+                      className="text-[11px] text-rose-300 underline"
+                    />
                   </div>
                   <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-3 flex-wrap">
                     <span className="capitalize">{c.matterType}</span>

@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Library, Plus, Trash2, Loader2, Star } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { PaperVersionHistory } from '@/components/paper/PaperVersionHistory';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -120,6 +121,12 @@ export function PaperLibrary() {
     setNewCollection('');
     await refresh();
   }
+  const [armedCollection, setArmedCollection] = useState<string | null>(null);
+  async function deleteCollection(id: string) {
+    await lensRun('paper', 'collection-delete', { id });
+    setArmedCollection(null);
+    await refresh();
+  }
   async function toggleCollection(paperId: string, collectionId: string, remove: boolean) {
     const r = await lensRun('paper', 'collection-assign', { paperId, collectionId, remove });
     if (r.data?.ok && active?.id === paperId) {
@@ -211,7 +218,21 @@ export function PaperLibrary() {
         ))}
       </ul>
       {collections.length > 0 && (
-        <p className="text-[10px] text-zinc-400 mt-2">{collections.length} collection{collections.length === 1 ? '' : 's'}: {collections.map(c => `${c.name} (${c.paperCount})`).join(' · ')}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {collections.map((c) => (
+            <StickyDeleteConfirm
+              key={c.id}
+              armed={armedCollection === c.id}
+              onArm={() => setArmedCollection(c.id)}
+              onCancel={() => setArmedCollection(null)}
+              onConfirm={() => void deleteCollection(c.id)}
+              armLabel={`${c.name} (${c.paperCount})`}
+              confirmLabel={`Delete collection “${c.name}”?`}
+              armAriaLabel={`Delete collection ${c.name}`}
+              className="text-[10px] text-zinc-400 underline"
+            />
+          ))}
+        </div>
       )}
     </div>
   );

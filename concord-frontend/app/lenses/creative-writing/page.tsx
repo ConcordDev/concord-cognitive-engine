@@ -36,6 +36,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface PageRow {
   id: string;
@@ -138,6 +139,8 @@ export default function CreativeWritingPage() {
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [exportError, setExportError] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [armedId, setArmedId] = useState<string | null>(null);
 
   const pull = useCallback(async () => readPages(), []);
 
@@ -183,6 +186,18 @@ export default function CreativeWritingPage() {
 
   const startCompose = useCallback(() => {
     if (busy || phase !== 'ready' || composing) return;
+    setEditingId(null);
+    setTitle('');
+    setBody('');
+    setComposing(true);
+    setActionError('');
+  }, [busy, phase, composing]);
+
+  const beginEdit = useCallback((item: PageRow) => {
+    if (busy || phase !== 'ready' || composing) return;
+    setEditingId(item.id);
+    setTitle(item.title);
+    setBody(item.body);
     setComposing(true);
     setActionError('');
   }, [busy, phase, composing]);
@@ -190,6 +205,7 @@ export default function CreativeWritingPage() {
   const cancelCompose = useCallback(() => {
     if (pages.length === 0) return; // nothing to go back to
     setComposing(false);
+    setEditingId(null);
     setTitle('');
     setBody('');
     setActionError('');
@@ -205,12 +221,18 @@ export default function CreativeWritingPage() {
     setBusy(true);
     setActionError('');
     try {
-      const created = await lensRun<{ project?: { id?: string; title?: string; body?: string } }>(
-        'creative-writing',
-        'project-create',
-        { title: trimmedTitle, body },
-      );
-      const id = created.data?.result?.project?.id;
+      const created = editingId
+        ? await lensRun<{ project?: { id?: string; title?: string; body?: string } }>(
+          'creative-writing',
+          'project-update',
+          { id: editingId, title: trimmedTitle, body },
+        )
+        : await lensRun<{ project?: { id?: string; title?: string; body?: string } }>(
+          'creative-writing',
+          'project-create',
+          { title: trimmedTitle, body },
+        );
+      const id = editingId || created.data?.result?.project?.id;
       if (!created.data?.ok || !id) {
         throw new Error(created.data?.error || 'Could not open that page.');
       }
@@ -222,13 +244,14 @@ export default function CreativeWritingPage() {
       setPages(rows);
       setTitle('');
       setBody('');
+      setEditingId(null);
       setComposing(false);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not open that page.');
     } finally {
       setBusy(false);
     }
-  }, [busy, phase, title, body]);
+  }, [busy, phase, title, body, editingId]);
 
   const primaryAction = useCallback(() => {
     if (composing) { void savePage(); } else { startCompose(); }
@@ -358,6 +381,38 @@ export default function CreativeWritingPage() {
                         >
                           Export CSV
                         </button>
+                        <button
+                          type="button"
+                          data-testid={`edit-page-${item.id}`}
+                          onClick={() => beginEdit(item)}
+                          className="underline decoration-dotted hover:text-zinc-200"
+                        >
+                          Edit
+                        </button>
+                        <StickyDeleteConfirm
+                          armed={armedId === item.id}
+                          onArm={() => setArmedId(item.id)}
+                          onCancel={() => setArmedId(null)}
+                          onConfirm={async () => {
+                            const res = await lensRun('creative-writing', 'project-delete', { id: item.id });
+                            if (!res.data?.ok) {
+                              setActionError(res.data?.error || 'Could not delete that page.');
+                              return;
+                            }
+                            const rows = await readPages();
+                            setPages(rows);
+                            setArmedId(null);
+                            if (rows.length === 0) {
+                              setEditingId(null);
+                              setTitle('');
+                              setBody('');
+                              setComposing(true);
+                            }
+                          }}
+                          armLabel="Delete"
+                          confirmLabel={`Delete “${item.title}”?`}
+                          className="underline decoration-dotted hover:text-zinc-200"
+                        />
                       </span>
                     </li>
                   ))}

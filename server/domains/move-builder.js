@@ -269,6 +269,64 @@ export default function registerMoveBuilderMacros(register) {
     return { ok: true, moves };
   }, { note: "list the caller's minted moves" });
 
+  register("move-builder", "delete", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    const moveId = String(input.moveId || input.id || "");
+    if (!moveId) return { ok: false, reason: "missing_move" };
+    const cols = dtuColumns(db);
+    let changes = 0;
+    try {
+      if (cols.has("type") && cols.has("creator_id")) {
+        changes = db.prepare(`DELETE FROM dtus WHERE id = ? AND type = 'move_recipe' AND creator_id = ?`).run(moveId, userId).changes;
+      } else if (cols.has("owner_user_id")) {
+        changes = db.prepare(`DELETE FROM dtus WHERE id = ? AND owner_user_id = ?`).run(moveId, userId).changes;
+      } else {
+        return { ok: false, reason: "no_dtu_table" };
+      }
+    } catch (e) {
+      return { ok: false, reason: "delete_failed", detail: String(e?.message || e) };
+    }
+    if (!changes) return { ok: false, reason: "move_not_found" };
+    return { ok: true, deleted: moveId };
+  }, { note: "delete the caller's minted move" });
+
+  register("move-builder", "rename", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    const moveId = String(input.moveId || input.id || "");
+    const name = String(input.name || "").trim().slice(0, 120);
+    if (!moveId) return { ok: false, reason: "missing_move" };
+    if (!name) return { ok: false, reason: "missing_name" };
+    const cols = dtuColumns(db);
+    try {
+      let row = null;
+      if (cols.has("type") && cols.has("creator_id") && cols.has("data")) {
+        row = db.prepare(`SELECT id, data AS body, creator_id AS owner FROM dtus WHERE id = ? AND type = 'move_recipe'`).get(moveId);
+      } else if (cols.has("body_json") && cols.has("owner_user_id")) {
+        row = db.prepare(`SELECT id, body_json AS body, owner_user_id AS owner FROM dtus WHERE id = ?`).get(moveId);
+      } else {
+        return { ok: false, reason: "no_dtu_table" };
+      }
+      if (!row || (row.owner && String(row.owner) !== String(userId))) return { ok: false, reason: "move_not_found" };
+      let meta = {};
+      try { meta = JSON.parse(row.body || "{}"); } catch { meta = {}; }
+      meta.name = name;
+      const body = JSON.stringify(meta);
+      const changes = cols.has("data")
+        ? db.prepare(`UPDATE dtus SET title = ?, data = ? WHERE id = ?`).run(name, body, moveId).changes
+        : db.prepare(`UPDATE dtus SET title = ?, body_json = ? WHERE id = ?`).run(name, body, moveId).changes;
+      if (!changes) return { ok: false, reason: "move_not_found" };
+      return { ok: true, moveId, name };
+    } catch (e) {
+      return { ok: false, reason: "rename_failed", detail: String(e?.message || e) };
+    }
+  }, { note: "rename the caller's minted move" });
+
   /**
    * move-builder.get — one minted move, round-tripping the stamped descriptor.
    * input: { moveId }

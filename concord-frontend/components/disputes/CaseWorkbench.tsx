@@ -28,6 +28,7 @@ import {
   Send, Trash2, Unlock, UserCheck, X, XCircle,
 } from 'lucide-react';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -41,6 +42,7 @@ interface PublicCase {
   status: string;
   disputeAmount: number;
   claimantId: string;
+  claimantIsMe?: boolean;
   respondentId: string | null;
   mediatorId: string | null;
   escrowFrozen: boolean;
@@ -182,6 +184,7 @@ export function CaseWorkbench() {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [armedId, setArmedId] = useState<string | null>(null);
 
   /* ---- list ---- */
   const refreshList = useCallback(async () => {
@@ -274,8 +277,9 @@ export function CaseWorkbench() {
             </div>
           ) : (
             cases.map((c) => (
+              <div key={c.id}>
               <button
-                key={c.id}
+                type="button"
                 onClick={() => setSelectedId(c.id)}
                 className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors ${
                   selectedId === c.id
@@ -304,6 +308,25 @@ export function CaseWorkbench() {
                   {c.slaBreached && <span className="text-rose-400 flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" />SLA</span>}
                 </div>
               </button>
+              {c.claimantIsMe && !['resolved', 'dismissed', 'withdrawn'].includes(c.status) && (
+                <div className="px-1 pb-1">
+                  <StickyDeleteConfirm
+                    armed={armedId === c.id}
+                    onArm={() => setArmedId(c.id)}
+                    onCancel={() => setArmedId(null)}
+                    onConfirm={async () => {
+                      await lensRun('disputes', 'case-withdraw', { id: c.id });
+                      setArmedId(null);
+                      await refreshList();
+                    }}
+                    armLabel="Withdraw"
+                    confirmLabel={`Withdraw “${c.title}”?`}
+                    armAriaLabel={`Withdraw case ${c.title}`}
+                    className="text-[11px] text-rose-300 underline"
+                  />
+                </div>
+              )}
+              </div>
             ))
           )}
         </div>

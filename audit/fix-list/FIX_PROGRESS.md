@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 83 | 134 | 3 |
-| medium | 287 | 658 | 0 |
+| high | 92 | 126 | 3 |
+| medium | 288 | 657 | 0 |
 | low | 250 | 730 | 0 |
-| unrated | 0 | 6 | 0 |
-| **total** | **620** | **1528** | **3** |
+| unrated | 0 | 5 | 0 |
+| **total** | **630** | **1518** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -765,8 +765,19 @@ Records the user can create now have a delete that stays armed until Confirm nam
 | FIX-plumbing-012 | plumbing | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
 | FIX-plumbing-013 | plumbing | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
 | FIX-supplychain-001 | supplychain | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-classroom-002 | classroom | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-creative-writing-001 | creative-writing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-disputes-003 | disputes | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-education-010 | education | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-legal-001 | legal | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-mental-health-001 | mental-health | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-move-builder-008 | move-builder | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-paper-006 | paper | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-questmarket-001 | questmarket | high | FIXED_PENDING_VERIFY | this commit |
 
-Still open in this group: classroom, creative-writing, disputes, education, legal, mental-health, move-builder, paper, and questmarket deletes. FIX-foundry-007 and FIX-world-creator-013 stay design calls.
+Classroom assignments from another cohort stay listed and can be deleted. Creative-writing pages open into the title and body fields and save through project-update; delete confirms. A dispute filer can withdraw their own open case. Education flashcard decks (including a minted quiz deck) and exercises delete. Legal matters, docket cases, calendar events, and templates delete, and wiping the last template does not re-seed it. Mood check-ins and gratitude entries can be edited or deleted. A minted move can be renamed or deleted. A quest poster can edit the title and description or cancel and refund escrow. Reward is not changed by the edit.
+
+FIX-foundry-007 and FIX-world-creator-013 stay design calls.
 
 ## RCA-export-no-lens-bag
 

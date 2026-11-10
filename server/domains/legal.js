@@ -361,6 +361,18 @@ Reading perspective: ${perspective}. Decision-support, NOT legal advice.`;
     return { ok: true, result: { cases } };
   });
 
+  registerLensAction("legal", "case-delete", (ctx, _artifact, params = {}) => {
+    const state = getLegalState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const cases = state.cases.get(userId) || [];
+    const id = String(params.id || "");
+    const next = cases.filter((c) => c.id !== id);
+    if (next.length === cases.length) return { ok: false, error: "case not found" };
+    state.cases.set(userId, next);
+    saveLegalState();
+    return { ok: true, result: { deleted: id } };
+  });
+
   registerLensAction("legal", "case-add", (ctx, _artifact, params = {}) => {
   try {
     const state = getLegalState(); if (!state) return { ok: false, error: "STATE unavailable" };
@@ -524,6 +536,17 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     m.closedAt = isoDay();
     saveLegalState();
     return { ok: true, result: { matter: m } };
+  });
+
+  registerLensAction("legal", "matters-delete", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureBucket(s.matters, aid(ctx));
+    const id = String(params.id || "");
+    const idx = list.findIndex((x) => x.id === id);
+    if (idx < 0) return { ok: false, error: "matter not found" };
+    list.splice(idx, 1);
+    saveLegalState();
+    return { ok: true, result: { deleted: id } };
   });
 
   registerLensAction("legal", "matters-detail", (ctx, _a, params = {}) => {
@@ -1000,7 +1023,9 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
     const list = ensureBucket(s.templates, userId);
-    if (list.length === 0) {
+    // Seed once. A later empty list means the owner deleted the last template.
+    if (!s.templatesTouched) s.templatesTouched = {};
+    if (list.length === 0 && !s.templatesTouched[userId]) {
       // seed a few canonical templates so users see something on first run.
       const seed = [
         { name: "Engagement Letter", body: "Dear {{client_name}},\n\nThis letter confirms our agreement to represent you in {{matter_name}}. Our hourly rate is {{hourly_rate}}.\n\nSincerely,\n{{attorney_name}}", kind: 'letter' },
@@ -1010,6 +1035,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
       for (const tpl of seed) {
         list.push({ id: uid("tpl"), createdAt: isoNow(), ...tpl });
       }
+      s.templatesTouched[userId] = true;
       saveLegalState();
     }
     return { ok: true, result: { templates: list } };
@@ -1030,6 +1056,19 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     ensureBucket(s.templates, aid(ctx)).push(tpl);
     saveLegalState();
     return { ok: true, result: { template: tpl } };
+  });
+
+  registerLensAction("legal", "doc-templates-delete", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureBucket(s.templates, aid(ctx));
+    const id = String(params.id || "");
+    const idx = list.findIndex((t) => t.id === id);
+    if (idx < 0) return { ok: false, error: "template not found" };
+    list.splice(idx, 1);
+    if (!s.templatesTouched) s.templatesTouched = {};
+    s.templatesTouched[aid(ctx)] = true;
+    saveLegalState();
+    return { ok: true, result: { deleted: id } };
   });
 
   registerLensAction("legal", "doc-generate", (ctx, _a, params = {}) => {
@@ -1267,6 +1306,17 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     ensureBucket(s.calendar, userId).push(event);
     saveLegalState();
     return { ok: true, result: { event } };
+  });
+
+  registerLensAction("legal", "calendar-delete", (ctx, _a, params = {}) => {
+    const s = getLegalState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = ensureBucket(s.calendar, aid(ctx));
+    const id = String(params.id || "");
+    const idx = list.findIndex((e) => e.id === id);
+    if (idx < 0) return { ok: false, error: "event not found" };
+    list.splice(idx, 1);
+    saveLegalState();
+    return { ok: true, result: { deleted: id } };
   });
 
   // Court rules deadline calculator. Supports federal civil + a few state rules.

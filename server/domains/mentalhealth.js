@@ -319,6 +319,33 @@ export default function registerMentalhealthActions(registerLensAction) {
     return { ok: true, result: { series, count: series.length } };
   });
 
+  registerLensAction("mental-health", "mood-delete", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.moods.get(mhAid(ctx)) || [];
+    const id = String(params.id || "");
+    const idx = list.findIndex((m) => m.id === id);
+    if (idx < 0) return { ok: false, error: "mood entry not found" };
+    list.splice(idx, 1);
+    saveMhState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  registerLensAction("mental-health", "mood-update", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.moods.get(mhAid(ctx)) || [];
+    const entry = list.find((m) => m.id === String(params.id || ""));
+    if (!entry) return { ok: false, error: "mood entry not found" };
+    if (params.mood != null) {
+      const mood = Math.round(mhNum(params.mood));
+      if (mood < 1 || mood > 5) return { ok: false, error: "mood must be 1–5" };
+      entry.mood = mood;
+    }
+    if (params.note != null) entry.note = mhClean(params.note, 500) || null;
+    if (params.label != null) entry.label = mhClean(params.label, 40).toLowerCase() || null;
+    saveMhState();
+    return { ok: true, result: { entry } };
+  });
+
   registerLensAction("mental-health", "mood-insights", (ctx, _a, _params = {}) => {
     const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const moods = (s.moods.get(mhAid(ctx)) || []).slice().sort((a, b) => a.at.localeCompare(b.at));
@@ -422,6 +449,30 @@ export default function registerMentalhealthActions(registerLensAction) {
     const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const entries = [...(s.gratitude.get(mhAid(ctx)) || [])].sort((a, b) => b.at.localeCompare(a.at));
     return { ok: true, result: { entries, count: entries.length } };
+  });
+
+  registerLensAction("mental-health", "gratitude-delete", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.gratitude.get(mhAid(ctx)) || [];
+    const id = String(params.id || "");
+    const idx = list.findIndex((e) => e.id === id);
+    if (idx < 0) return { ok: false, error: "gratitude entry not found" };
+    list.splice(idx, 1);
+    saveMhState();
+    return { ok: true, result: { deleted: id } };
+  });
+
+  registerLensAction("mental-health", "gratitude-update", (ctx, _a, params = {}) => {
+    const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.gratitude.get(mhAid(ctx)) || [];
+    const entry = list.find((e) => e.id === String(params.id || ""));
+    if (!entry) return { ok: false, error: "gratitude entry not found" };
+    const items = Array.isArray(params.entries)
+      ? params.entries.map((x) => mhClean(x, 200)).filter(Boolean).slice(0, 10) : [];
+    if (!items.length) return { ok: false, error: "at least one gratitude entry required" };
+    entry.items = items;
+    saveMhState();
+    return { ok: true, result: { entry } };
   });
 
   // ── Goal ────────────────────────────────────────────────────────────

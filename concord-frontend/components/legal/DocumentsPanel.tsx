@@ -4,6 +4,7 @@ import { showToast } from '@/components/common/Toasts';
 import { useEffect, useState } from 'react';
 import { FolderOpen, Plus, FileText, Send, Eye } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
@@ -21,6 +22,7 @@ interface LegalDoc {
 export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'documents' | 'templates' }) {
   const [tab, setTab] = useState<'documents' | 'templates'>(defaultTab);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [armedId, setArmedId] = useState<string | null>(null);
   const [docs, setDocs] = useState<LegalDoc[]>([]);
   const [matters, setMatters] = useState<Matter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,6 +208,19 @@ export function DocumentsPanel({ defaultTab = 'documents' }: { defaultTab?: 'doc
                   <div className="text-sm text-white truncate">{t.name}</div>
                   <div className="text-[10px] text-gray-400 truncate">{t.kind}</div>
                 </div>
+                <StickyDeleteConfirm
+                  armed={armedId === t.id}
+                  onArm={() => setArmedId(t.id)}
+                  onCancel={() => setArmedId(null)}
+                  onConfirm={async () => {
+                    await lensRun({ domain: 'legal', action: 'doc-templates-delete', input: { id: t.id } });
+                    setArmedId(null);
+                    await refresh();
+                  }}
+                  armLabel="Delete"
+                  confirmLabel={`Delete “${t.name}”?`}
+                  className="text-[11px] text-rose-300 underline"
+                />
                 <details className="text-[10px] text-amber-300 cursor-pointer">
                   <summary>Preview</summary>
                   <pre className="mt-2 p-2 bg-black/30 rounded border border-white/10 font-mono whitespace-pre-wrap max-w-xl text-gray-300">{t.body}</pre>

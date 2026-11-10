@@ -778,6 +778,21 @@ export default function registerEducationActions(registerLensAction) {
     return { ok: true, result: { deck } };
   });
 
+  registerLensAction("education", "flashcards-deck-delete", (ctx, _artifact, params = {}) => {
+    const state = getEduState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const id = String(params.deckId || params.id || "");
+    const decks = state.decks.get(userId) || [];
+    const next = decks.filter((d) => d.id !== id);
+    if (next.length === decks.length) return { ok: false, error: "deck not found" };
+    state.decks.set(userId, next);
+    const cards = state.cards.get(userId) || [];
+    state.cards.set(userId, cards.filter((c) => c.deckId !== id));
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: id } };
+  });
+
   registerLensAction("education", "flashcards-card-create", (ctx, _artifact, params = {}) => {
     const state = getEduState();
     if (!state) return { ok: false, error: "STATE unavailable" };
@@ -1950,6 +1965,18 @@ Constraints:
     return { ok: true, result: { exercise: { id: exercise.id, title, skillId: exercise.skillId, stepCount: steps.length } } };
     } catch (e) { return handlerFailure(e); }
 });
+
+  registerLensAction("education", "exercises-delete", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const id = String(params.exerciseId || params.id || "");
+    const all = ensureEduBucket(s, "exercises", userId);
+    const idx = all.findIndex((e) => e.id === id);
+    if (idx < 0) return { ok: false, error: "exercise not found" };
+    all.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: id } };
+  });
 
   // exercises-hint — return the next hint for a step (1-indexed escalation),
   // never the answer.

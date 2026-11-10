@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Target, Plus, Loader2, Lightbulb, CheckCircle, XCircle, Trash2, Trophy } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface ExerciseSummary { id: string; title: string; skillId: string | null; stepCount: number }
@@ -25,6 +26,7 @@ const EMPTY_STEP: DraftStep = { prompt: '', type: 'text', answer: '', tolerance:
  */
 export function InteractiveExercises() {
   const [exercises, setExercises] = useState<ExerciseSummary[]>([]);
+  const [armedId, setArmedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
@@ -234,17 +236,32 @@ export function InteractiveExercises() {
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               {exercises.map(ex => (
-                <button
+                <div
                   key={ex.id}
-                  onClick={() => startExercise(ex)}
-                  className="text-left p-3 bg-white/[0.02] border border-white/10 rounded-lg hover:border-amber-400/40 transition-colors"
+                  className="text-left p-3 bg-white/[0.02] border border-white/10 rounded-lg"
                 >
+                  <button type="button" onClick={() => startExercise(ex)} className="w-full text-left hover:border-amber-400/40">
                   <div className="text-sm font-bold text-white">{ex.title}</div>
                   <div className="text-[10px] text-gray-400 mt-1">
                     {ex.stepCount} step{ex.stepCount !== 1 ? 's' : ''}
                     {ex.skillId ? ' · linked to skill' : ''}
                   </div>
                 </button>
+                  <StickyDeleteConfirm
+                    armed={armedId === ex.id}
+                    onArm={() => setArmedId(ex.id)}
+                    onCancel={() => setArmedId(null)}
+                    onConfirm={async () => {
+                      await lensRun('education', 'exercises-delete', { exerciseId: ex.id });
+                      setArmedId(null);
+                      const r = await lensRun('education', 'exercises-list', {});
+                      setExercises((r.data?.result?.exercises || []) as ExerciseSummary[]);
+                    }}
+                    armLabel="Delete"
+                    confirmLabel={`Delete “${ex.title}”?`}
+                    className="mt-2 text-[11px] text-rose-300 underline"
+                  />
+                </div>
               ))}
             </div>
           )}
