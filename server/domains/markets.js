@@ -865,6 +865,39 @@ export default function registerMarketsActions(registerLensAction) {
     }
   });
 
+  // ── Edit an open market. Question text stays put once a position exists. ──
+  registerLensAction("markets", "market-update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getPredictionState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = pmActor(ctx);
+      const m = s.markets.get(String(params.marketId || ""));
+      if (!m) return { ok: false, error: "market not found" };
+      if (m.creatorId !== userId) return { ok: false, error: "only the market creator can edit" };
+      if (m.status !== "open") return { ok: false, error: `market is ${m.status}` };
+      const hasPosition = [...s.positions.values()].some((p) => p.marketId === m.id && p.status !== "cancelled");
+      if (params.question != null) {
+        if (hasPosition) return { ok: false, error: "cannot change the question after a position exists" };
+        const question = String(params.question || "").trim();
+        if (question.length < 8) return { ok: false, error: "question must be at least 8 characters" };
+        if (question.length > 240) return { ok: false, error: "question too long (240 max)" };
+        m.question = question;
+      }
+      if (params.description != null) {
+        m.description = String(params.description).trim().slice(0, 1000);
+      }
+      if (params.resolutionCriteria != null) {
+        const criteria = String(params.resolutionCriteria).trim();
+        if (criteria.length < 8) return { ok: false, error: "resolutionCriteria must be at least 8 characters" };
+        m.resolutionCriteria = criteria.slice(0, 2000);
+      }
+      saveMarketsState();
+      return { ok: true, result: { market: summariseMarket(m) } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   // ── Cancel an open market (creator-only, and only with zero positions) ──
   // Seed liquidity is not a position. Resting orders are cancelled with the market.
   registerLensAction("markets", "market-cancel", (ctx, _artifact, params = {}) => {

@@ -232,16 +232,19 @@ export default function registerSponsorshipActions(registerLensAction) {
   });
 
   // ── Sponsor-only content: creator publishes a post ─────────────────────
-  // ADMIN ONLY — see the authz note at the top of this file. `creatorId` is
-  // a fixed seeded NPC with no real-account ownership, so an unrestricted
-  // caller could broadcast content into any creator's sponsor-gated feed.
+  // A caller may publish on their own hub (`asSelf`, or creatorId equal to
+  // their user id). Publishing as a seeded NPC creator stays admin-only:
+  // those ids have no player account, so an open caller could broadcast
+  // into that creator's sponsor-gated feed.
   registerLensAction("sponsorship", "publish_post", (ctx, artifact, params = {}) => {
     try {
-      if (!isAdmin(ctx)) return { ok: false, error: "admin_only" };
-      const s = getState();
-      const creatorId = String(params.creatorId || "");
+      const userId = actor(ctx);
+      const asSelf = params.asSelf === true;
+      const creatorId = asSelf ? userId : String(params.creatorId || "");
       const title = String(params.title || "").trim();
       if (!creatorId || !title) return { ok: false, error: "creatorId and title required" };
+      if (!asSelf && creatorId !== userId && !isAdmin(ctx)) return { ok: false, error: "admin_only" };
+      const s = getState();
       const post = {
         id: nextId(s, "post"),
         creatorId,
@@ -268,15 +271,16 @@ export default function registerSponsorshipActions(registerLensAction) {
       const out = [];
       for (const cid of creators) {
         const sp = activeSponsorshipFor(s, userId, cid);
-        // tier name → rank
+        // tier name → rank. The author always reads what they published.
         let myRank = 0;
         if (sp && sp.status === "active") {
           const tn = (sp.tierName || "").toLowerCase();
           myRank = tierRank[tn] !== undefined ? tierRank[tn] : 1;
         }
+        const own = cid === userId;
         for (const p of (s.posts.get(cid) || [])) {
           const needRank = tierRank[p.minTier] || 0;
-          const locked = needRank > myRank;
+          const locked = !own && needRank > myRank;
           out.push({
             id: p.id, creatorId: cid, title: p.title,
             body: locked ? null : p.body,

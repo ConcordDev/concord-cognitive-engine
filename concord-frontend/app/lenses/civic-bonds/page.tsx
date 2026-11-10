@@ -418,6 +418,18 @@ export default function CivicBondsLens() {
                     data-testid={`civic-bonds-open-${b.id}`}
                   >Open</button>
                 )}
+                {['proposed', 'voting', 'funding'].includes(b.status) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!window.confirm(`Cancel "${b.title}"? Escrowed pledges are refunded.`)) return;
+                      void act('cancel', { bondId: b.id });
+                    }}
+                    className="px-3 py-1 rounded bg-rose-500/15 text-rose-200 text-sm hover:bg-rose-500/25"
+                    aria-label={`Cancel ${b.title}`}
+                    data-testid={`civic-bonds-cancel-${b.id}`}
+                  >Cancel drive</button>
+                )}
                 <button
                   onClick={() => {
                     if (badAmount(amount, b.denomination)) {

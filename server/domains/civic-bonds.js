@@ -6,12 +6,12 @@
 //
 //   read:  civic_bonds.list / get / spillover / scopes / ledger
 //   write: create / open / vote / pledge / unpledge / fund / complete_milestone
-//          / complete / fail   (require ctx.actor.userId)
+//          / complete / fail / cancel   (require ctx.actor.userId)
 
 import {
   civicBondsEnabled, createBond, getBond, listBonds, openBondForVoting, voteBond,
   checkQuorum, pledgeToBond, unpledge, fundBond, completeMilestone, completeBond,
-  failBond, getSpillover, raidBondEscrow,
+  failBond, cancelBond, getSpillover, raidBondEscrow,
 } from "../lib/civic-bonds.js";
 import { isAdmin, requireActor } from "../lib/lens-authz.js";
 // GOVERNANCE_SCOPES is the canonical town->city->county->state->national->
@@ -179,6 +179,13 @@ export default function registerCivicBondsMacros(register) {
     const mgr = requireBondManager(ctx, input.bondId); if (!mgr.ok) return mgr;
     return failBond(ctx.db, input.bondId, input.reason);
   }, { note: "fail the bond: refund unspent escrow" });
+
+  register("civic_bonds", "cancel", async (ctx, input = {}) => {
+    const g = gate(ctx); if (g) return g;
+    const auth = requireActor(ctx); if (!auth.ok) return auth;
+    const mgr = requireBondManager(ctx, input.bondId); if (!mgr.ok) return mgr;
+    return cancelBond(ctx.db, input.bondId);
+  }, { note: "creator cancels a drive before it is funded; escrow is refunded" });
 
   // The corrupt option — raid the restricted escrow into the treasury. Lawful
   // rulers never call this; doing so collapses legitimacy + raises refusal_debt.

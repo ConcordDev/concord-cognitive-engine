@@ -264,20 +264,82 @@ export function flushSocialStore(STATE) {
   return true;
 }
 
+function readProfileRows(db) {
+  const table = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='social_profiles'").get();
+  if (!table) return [];
+  return db.prepare("SELECT payload_json, user_id FROM social_profiles").all();
+}
+
+function profileFromRow(row) {
+  if (!row?.payload_json) return null;
+  let profile;
+  try { profile = JSON.parse(row.payload_json); } catch { return null; }
+  if (!profile || typeof profile !== "object") return null;
+  if (!profile.userId) profile.userId = row.user_id;
+  if (!profile.stats || typeof profile.stats !== "object") {
+    profile.stats = { dtuCount: 0, publicDtuCount: 0, citationCount: 0, followerCount: 0, followingCount: 0 };
+  }
+  return profile;
+}
+
+/**
+ * One profile the memory cache missed. A worker that already holds posts
+ * skips the full hydrate, so a public profile that only exists in
+ * social_profiles used to read as "Profile not found" for both the user id
+ * and the username.
+ */
+export function loadPersistedProfile(STATE, key) {
+  const db = dbOf(STATE);
+  const raw = String(key || "").trim();
+  if (!db || raw.length < 2) return null;
+  let row = null;
+  try {
+    row = db.prepare("SELECT payload_json, user_id FROM social_profiles WHERE user_id = ?").get(raw);
+    if (!row) {
+      row = db.prepare("SELECT payload_json, user_id FROM social_profiles WHERE lower(display_name) = lower(?)").get(raw);
+    }
+    if (!row) {
+      const users = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
+      if (users) {
+        const user = db.prepare("SELECT id FROM users WHERE lower(username) = lower(?) AND is_active = 1").get(raw);
+        if (user?.id) row = db.prepare("SELECT payload_json, user_id FROM social_profiles WHERE user_id = ?").get(user.id);
+      }
+    }
+  } catch {
+    return null;
+  }
+  const profile = profileFromRow(row);
+  if (!profile?.userId) return null;
+  const social = STATE._social;
+  if (social?.profiles && !social.profiles.has(profile.userId)) social.profiles.set(profile.userId, profile);
+  return social?.profiles?.get(profile.userId) || profile;
+}
+
 export function ensureSocialHydrated(STATE) {
   if (!STATE || STATE.__socialDbHydrated || STATE.__socialHydrating) return;
   const social = STATE._social;
   const db = dbOf(STATE);
   STATE.__socialDbHydrated = true;
   if (!social || !db || !tableReady(db)) return;
-  const hasMemory = social.posts.size || social.profiles.size || social.messages.size || social.notifications.size || social.follows.size;
-  if (hasMemory) return;
+  const profilesEmpty = social.profiles.size === 0;
+  const hasOther = social.posts.size || social.messages.size || social.notifications.size || social.follows.size;
+  if (profilesEmpty && hasOther) {
+    STATE.__socialHydrating = true;
+    try {
+      for (const row of readProfileRows(db)) {
+        const profile = profileFromRow(row);
+        if (profile?.userId) social.profiles.set(profile.userId, profile);
+      }
+    } catch { /* profiles table missing: leave the warm cache */ }
+    finally { STATE.__socialHydrating = false; }
+    return;
+  }
+  if (hasOther) return;
 
   STATE.__socialHydrating = true;
   try {
-    for (const row of db.prepare("SELECT payload_json FROM social_profiles").all()) {
-      if (!row.payload_json) continue;
-      const profile = JSON.parse(row.payload_json);
+    for (const row of readProfileRows(db)) {
+      const profile = profileFromRow(row);
       if (profile?.userId) social.profiles.set(profile.userId, profile);
     }
     for (const row of db.prepare("SELECT follower_id, followed_id FROM social_follows").all()) {

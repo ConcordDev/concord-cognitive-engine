@@ -6,7 +6,7 @@
  */
 
 import { lookupUserIdentity } from "../lib/user-identity.js";
-import { ensureSocialHydrated, scheduleSocialFlush } from "../lib/social-persist.js";
+import { ensureSocialHydrated, loadPersistedProfile, scheduleSocialFlush } from "../lib/social-persist.js";
 import { assertSocialRate, duplicatePost, linkHeavyNewAccount } from "../lib/social-safety.js";
 
 
@@ -227,10 +227,27 @@ export function profileForViewer(profile, viewerId = null) {
   return view;
 }
 
+function profileByHandle(social, userId) {
+  const key = String(userId || "");
+  const direct = social.profiles.get(key);
+  if (direct) return direct;
+  const needle = key.trim().toLowerCase();
+  if (needle.length < 2) return null;
+  for (const profile of social.profiles.values()) {
+    const handle = String(profile.username || profile.displayName || "").toLowerCase();
+    if (handle && handle === needle) return profile;
+  }
+  return null;
+}
+
 export function getProfile(STATE, userId, viewerId = null) {
   const social = getSocialState(STATE);
-  const profile = social.profiles.get(userId);
-  if (!profile) return { ok: false, error: "Profile not found" };
+  let profile = profileByHandle(social, userId);
+  if (!profile) {
+    try { profile = loadPersistedProfile(STATE, userId); } catch { profile = null; }
+  }
+  if (!profile) return { ok: false, status: 404, error: "Profile not found" };
+  userId = profile.userId || userId;
 
   // Recompute stats
   profile.stats.followerCount = (social.followers.get(userId) || new Set()).size;

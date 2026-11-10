@@ -1253,6 +1253,16 @@ export function EducationSection() {
       actions={(
         <div className="flex items-center gap-2">
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+          {surface !== 'teaching' && (
+            <button
+              type="button"
+              onClick={() => { setSurface('learning'); setLearnView('player'); }}
+              className={ds.btnPrimary}
+              title="Open the lesson player"
+            >
+              <BookOpen className="w-4 h-4" /> Open a lesson
+            </button>
+          )}
           {surface === 'teaching' && (
             <>
               <DTUExportButton domain="education" data={{}} compact />
@@ -1275,9 +1285,6 @@ export function EducationSection() {
           )}
         </div>
       )}
-      cta={surface === 'teaching'
-        ? { label: 'New record', icon: Plus, onClick: openNewEditor, title: 'Create a new classroom record' }
-        : { label: 'Open a lesson', icon: BookOpen, onClick: () => { setSurface('learning'); setLearnView('player'); }, title: 'Open the lesson player' }}
     >
     <div className="space-y-6 pb-20 lg:pb-6">
       {surface === 'learning' && <KhanCourseraWorkbenchSection view={learnView} onViewChange={setLearnView} />}

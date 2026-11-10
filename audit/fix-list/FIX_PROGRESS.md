@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 160 | 58 | 3 |
+| high | 165 | 53 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **701** | **1447** | **3** |
+| **total** | **706** | **1442** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -862,6 +862,7 @@ These stay `OPEN`. The code that was checked does not show the reported failure,
 | FIX-voice-001 | No renderer path was found that crashes on a long recording title. |
 | FIX-cognition-009 | A confirmed miss on /dtu/[id] already 404s via lookupOwnerDtu. The live 500 did not reduce to one throw. |
 | FIX-music-001 | renderProject schedules from beat 0. No start offset puts a 4-bar 100 BPM arrangement at 16.75s. |
+| FIX-010 | GET /api/dtus/:id already maps a missing DTU to 404, and the page middleware rewrites a confirmed miss to /dtu-not-found with status 404. The live 500 was hypothesized as a front-door rewrite to localhost:3001, which this tree does not do. |
 
 ## Highs with a local root cause
 
@@ -972,3 +973,13 @@ A paper export is a one-page PDF that includes the body. A drain-slope question 
 | FIX-entity-008 | entity | high | FIXED_PENDING_VERIFY | 01d93532d |
 | FIX-black-market-007 | black-market | high | FIXED_PENDING_VERIFY | 01d93532d |
 | FIX-inheritance-004 | inheritance | high | FIXED_PENDING_VERIFY | 01d93532d |
+
+A creator publishes to their own hub. Official posts for a catalog creator stay operator-only. A bond drive can be cancelled before it is funded, and escrowed pledges are refunded. A public profile stored in sqlite is readable by user id and by username when the memory cache already holds other social rows. An open market's description can be edited. The question stays put once a position exists, and cancel still refuses so those stakes are not wiped. Education's Open a lesson control sits in the header instead of a fixed overlay.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-sponsorship-003 | sponsorship | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-civic-bonds-001 | civic-bonds | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-social-012 | social | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-markets-003 | markets | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-education-006 | education | high | FIXED_PENDING_VERIFY | this commit |

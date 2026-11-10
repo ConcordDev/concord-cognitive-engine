@@ -204,6 +204,12 @@ describe('education lens — four UX states', () => {
     await waitFor(() => expect(refetch).toHaveBeenCalled());
   });
 
+  it('Open a lesson sits in the header and is not a fixed overlay', () => {
+    const { getByRole } = render(<EducationLensPage />);
+    const btn = getByRole('button', { name: /open a lesson/i });
+    expect(btn.className).not.toMatch(/\bfixed\b/);
+  });
+
   it('POPULATED: a real student artifact renders with its title + subject', async () => {
     lensDataState.items = [STUDENT];
     const { getByText, getByRole } = render(<EducationLensPage />);

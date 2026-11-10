@@ -300,6 +300,33 @@ export function failBond(db, id, reason = "failed") {
   try { return tx(); } catch (e) { return { ok: false, reason: String(e?.message || e) }; }
 }
 
+// Creator withdraws a drive that has not been funded yet. Escrowed pledges
+// are refunded, same as a failure, and the drive is marked cancelled so it
+// is no longer a live proposal. A funded (active) bond is left alone.
+export function cancelBond(db, id) {
+  const bond = db.prepare(`SELECT * FROM civic_bonds WHERE id=?`).get(String(id));
+  if (!bond) return { ok: false, reason: "bond_not_found" };
+  if (bond.status === "active") return { ok: false, reason: "already_funded" };
+  if (["completed", "failed", "cancelled"].includes(bond.status)) return { ok: false, reason: "terminal" };
+
+  const tx = db.transaction(() => {
+    const pledges = db.prepare(`SELECT * FROM civic_bond_pledges WHERE bond_id=? AND status='escrowed'`).all(String(id));
+    const markRefunded = db.prepare(`UPDATE civic_bond_pledges SET status='refunded' WHERE id=?`);
+    let refunded = 0;
+    for (const p of pledges) {
+      if (p.amount > 0) {
+        creditSparks(db, { holderKind: p.entity_kind, holderId: p.entity_id, amount: p.amount,
+          refId: `civic_cancel:${id}:${p.entity_kind}:${p.entity_id}`, reason: `civic_cancel:${id}` });
+        refunded += p.amount;
+      }
+      markRefunded.run(p.id);
+    }
+    db.prepare(`UPDATE civic_bonds SET status='cancelled' WHERE id=?`).run(String(id));
+    return { ok: true, refunded, status: "cancelled" };
+  });
+  try { return tx(); } catch (e) { return { ok: false, reason: String(e?.message || e) }; }
+}
+
 // ── The corruption duality (item 7) ─────────────────────────────────────────
 //
 // The lawful baseline never touches escrow until completion. A ruler MAY defy
