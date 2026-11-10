@@ -1235,9 +1235,9 @@ A saved takeoff and a scheduled job load back into the form and save under the s
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-masonry-005 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-masonry-014 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-automotive-012 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-005 | masonry | medium | FIXED_PENDING_VERIFY | 35f17daff |
+| FIX-masonry-014 | masonry | medium | FIXED_PENDING_VERIFY | 35f17daff |
+| FIX-automotive-012 | automotive | medium | FIXED_PENDING_VERIFY | 35f17daff |
 
 ## NEEDS_PRODUCT_SURFACE
 
