@@ -816,8 +816,8 @@ A fixture for FIX-finance-002 and FIX-finance-003 passes on the current macros: 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-board-001 | board | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-carpentry-001 | carpentry | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-healthcare-002 | healthcare | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-landscaping-009 | landscaping | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-legal-002 | legal | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-board-001 | board | high | FIXED_PENDING_VERIFY | c6dd576e9 |
+| FIX-carpentry-001 | carpentry | high | FIXED_PENDING_VERIFY | c6dd576e9 |
+| FIX-healthcare-002 | healthcare | high | FIXED_PENDING_VERIFY | c6dd576e9 |
+| FIX-landscaping-009 | landscaping | high | FIXED_PENDING_VERIFY | c6dd576e9 |
+| FIX-legal-002 | legal | high | FIXED_PENDING_VERIFY | c6dd576e9 |
