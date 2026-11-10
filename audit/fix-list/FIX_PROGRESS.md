@@ -1463,17 +1463,17 @@ A generated meal keeps a calorie count only when that meal has one. The day's to
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-food-003 | food | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-goals-006 | goals | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-goals-011 | goals | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-trades-003 | trades | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-trades-010 | trades | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-death-insurance-005 | death-insurance | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-death-insurance-009 | death-insurance | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-trades-012 | trades | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-dx-platform-004 | dx-platform | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-mail-005 | mail | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-debate-018 | debate | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-food-003 | food | medium | FIXED_PENDING_VERIFY | e13c721d5 |
+| FIX-goals-006 | goals | medium | FIXED_PENDING_VERIFY | e13c721d5 |
+| FIX-goals-011 | goals | medium | FIXED_PENDING_VERIFY | e13c721d5 |
+| FIX-trades-003 | trades | medium | FIXED_PENDING_VERIFY | e13c721d5 |
+| FIX-trades-010 | trades | medium | FIXED_PENDING_VERIFY | e13c721d5 |
+| FIX-death-insurance-005 | death-insurance | medium | FIXED_PENDING_VERIFY | e13c721d5 |
+| FIX-death-insurance-009 | death-insurance | medium | FIXED_PENDING_VERIFY | e13c721d5 |
+| FIX-trades-012 | trades | low | FIXED_PENDING_VERIFY | e13c721d5 |
+| FIX-dx-platform-004 | dx-platform | low | FIXED_PENDING_VERIFY | e13c721d5 |
+| FIX-mail-005 | mail | low | FIXED_PENDING_VERIFY | e13c721d5 |
+| FIX-debate-018 | debate | low | FIXED_PENDING_VERIFY | e13c721d5 |
 
 ## NEEDS_PRODUCT_SURFACE
 
