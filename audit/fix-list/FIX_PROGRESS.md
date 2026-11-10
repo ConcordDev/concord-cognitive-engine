@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 124 | 94 | 3 |
+| high | 125 | 93 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **665** | **1483** | **3** |
+| **total** | **666** | **1482** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -891,3 +891,9 @@ A BOM compute tolerates a project whose materials array has not loaded. A shipme
 | FIX-aviation-001 | aviation | high | FIXED_PENDING_VERIFY | 82af5ece0 |
 | FIX-black-market-005 | black-market | high | FIXED_PENDING_VERIFY | 82af5ece0 |
 | FIX-marketing-006 | marketing | high | FIXED_PENDING_VERIFY | 82af5ece0 |
+
+A wallet is stored only when the address matches the selected chain: 40 hex characters after 0x, or a Bitcoin address when that chain is selected. The Verified badge is the default wallet that also has an address in that shape.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-crypto-001 | crypto | high | FIXED_PENDING_VERIFY | this commit |

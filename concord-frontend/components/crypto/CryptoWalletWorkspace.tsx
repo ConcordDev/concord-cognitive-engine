@@ -70,6 +70,12 @@ interface WalletData {
   isDefault: boolean;
 }
 
+function looksLikeChainAddress(address: string, chainId: string): boolean {
+  const value = String(address || '').trim();
+  if (chainId === 'bitcoin') return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(value);
+  return /^0x[a-fA-F0-9]{40}$/.test(value);
+}
+
 interface Allocation {
   token: string;
   weight: number;
@@ -566,6 +572,10 @@ export function CryptoWalletWorkspace() {
 
   const handleAddWallet = useCallback(async () => {
     if (!walletName || !walletAddress) return;
+    if (!looksLikeChainAddress(walletAddress, walletChainId || 'concord')) {
+      useUIStore.getState().addToast({ type: 'error', message: 'That address does not match the selected chain' });
+      return;
+    }
     try {
       await createWallet({
         title: walletName,
@@ -1085,9 +1095,11 @@ export function CryptoWalletWorkspace() {
                 <div className="space-y-3">
                   {wallets.map((wallet, widx) => {
                     const chainColor = ALLOC_COLORS[widx % ALLOC_COLORS.length];
-                    const shortAddr = wallet.address.length > 12
-                      ? `${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)}`
-                      : wallet.address;
+                    const address = wallet.address || '';
+                    const shortAddr = address.length > 12
+                      ? `${address.slice(0, 6)}…${address.slice(-4)}`
+                      : address;
+                    const addressOk = looksLikeChainAddress(address, wallet.chainId || '');
                     return (
                       <div key={wallet.id} className="panel p-4 flex items-center justify-between group">
                         <div className="flex items-center gap-4">
@@ -1098,7 +1110,7 @@ export function CryptoWalletWorkspace() {
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-semibold">{wallet.name}</h3>
-                              {wallet.isDefault && (
+                              {wallet.isDefault && addressOk && (
                                 <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-neon-green/15 text-neon-green border border-neon-green/30">
                                   <ShieldCheck className="w-3 h-3" />
                                   Verified
