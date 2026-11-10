@@ -826,10 +826,10 @@ A payload field named `name` is no longer discarded when the request also has `a
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-classroom-001 | classroom | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-voice-002 | voice | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-expedition-journal-001 | expedition-journal | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-lock-007 | lock | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-mesh-001 | mesh | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-database-001 | database | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-meta-001 | meta | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-classroom-001 | classroom | high | FIXED_PENDING_VERIFY | c5cbdea57 |
+| FIX-voice-002 | voice | high | FIXED_PENDING_VERIFY | c5cbdea57 |
+| FIX-expedition-journal-001 | expedition-journal | high | FIXED_PENDING_VERIFY | c5cbdea57 |
+| FIX-lock-007 | lock | high | FIXED_PENDING_VERIFY | c5cbdea57 |
+| FIX-mesh-001 | mesh | high | FIXED_PENDING_VERIFY | c5cbdea57 |
+| FIX-database-001 | database | high | FIXED_PENDING_VERIFY | c5cbdea57 |
+| FIX-meta-001 | meta | high | FIXED_PENDING_VERIFY | c5cbdea57 |
