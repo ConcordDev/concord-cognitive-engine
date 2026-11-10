@@ -89,9 +89,14 @@ export function TaskDetailPanel({
       </div>
 
       {/* Description */}
-      <p className="text-sm text-gray-400 leading-relaxed">
-        {task.description || 'No description.'}
-      </p>
+      <textarea
+        value={task.description}
+        onChange={(e) => onUpdate(task.id, { description: e.target.value })}
+        placeholder="Add a description"
+        rows={3}
+        className="w-full text-sm text-gray-200 leading-relaxed bg-white/5 border border-white/10 rounded-md px-2 py-1.5 focus:outline-none focus:border-purple-500/50"
+        aria-label="Task description"
+      />
 
       {/* Meta grid */}
       <div className="grid grid-cols-2 gap-3">

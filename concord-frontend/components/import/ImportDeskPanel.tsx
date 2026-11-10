@@ -229,8 +229,27 @@ export function ImportDeskPanel() {
     setImportActionResult(null);
     try {
       const text = await file.text();
+      const kind = file.name.toLowerCase();
+      const structured = kind.endsWith('.json') || kind.endsWith('.jsonl') || kind.endsWith('.csv');
       let rows: Record<string, unknown>[] = [];
-      try { rows = parseImportFile(file.name, text); } catch { rows = []; }
+      let parseError: string | null = null;
+      if (structured && !text.trim()) parseError = 'The file is empty.';
+      else {
+        try { rows = parseImportFile(file.name, text); }
+        catch (e) { parseError = e instanceof Error ? e.message : 'Could not parse the file.'; }
+      }
+      if (parseError || (structured && rows.length === 0)) {
+        setValidationResult({
+          valid: false,
+          type: 'tabular',
+          record_count: 0,
+          warnings: [],
+          errors: [parseError || 'JSON must be an array of records, or { rows: [...] }.'],
+          schema_version: 'n/a',
+          compatible: false,
+        });
+        return;
+      }
 
       if (rows.length > 0) {
         // Real path: CSV or a row-shaped JSON array. Infer a schema, then

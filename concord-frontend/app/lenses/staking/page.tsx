@@ -91,7 +91,7 @@ export default function StakingPage() {
       <DepthBadge lensId="staking" size="sm" className="ml-2" />
       <NorthStarFrame
         lensId="staking"
-        crumb="Finance"
+        crumb="Staking"
         subtitle="Lock Concord Coin and earn yield from the treasury share of marketplace fees. APR is honestly variable, based on real marketplace activity. Currency: CC."
         tabs={VIEWS.map((v) => ({ id: v.id, label: v.label, icon: v.icon, keys: v.keys }))}
         activeTab={view}

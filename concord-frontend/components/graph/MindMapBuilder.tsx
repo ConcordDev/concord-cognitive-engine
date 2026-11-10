@@ -137,7 +137,7 @@ function NodeBranch({ node, depth, mapId, kidsOf, branchText, onBranchText, onAd
           Properties
         </button>
         {!node.central && (
-          <button aria-label="Delete" onClick={() => onDeleteNode(node.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+          <button aria-label="Delete" onClick={() => onDeleteNode(node.id)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>
         )}
       </div>
       {propsOpen[node.id] && (

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { presentOwnedId, publicActor } from "../lib/public-actor.js";
 
@@ -2092,7 +2093,7 @@ Generate the plan.`;
       ? String(params.type).toLowerCase() : "run";
     const beacon = {
       id: fid("beacon"),
-      shareToken: `bcn_${Math.random().toString(36).slice(2, 12)}`,
+      shareToken: `bcn_${randomBytes(24).toString("base64url")}`,
       userId, type,
       status: "live",
       startedAt: fnow(),
@@ -2145,9 +2146,11 @@ Generate the plan.`;
     if (!beacon) return { ok: false, error: "beacon not found" };
     const isOwner = beacon.userId === userId;
     const isFollower = beacon.followers.includes(userId);
-    if (!isOwner && !isFollower && !params.shareToken) {
+    const holdsToken = params.shareToken && beacon.shareToken === String(params.shareToken);
+    if (!isOwner && !isFollower && !holdsToken) {
       return { ok: false, error: "not authorised to view this beacon" };
     }
+    const revealGps = isOwner || isFollower;
     return {
       ok: true,
       result: {
@@ -2158,11 +2161,11 @@ Generate the plan.`;
           startedAt: beacon.startedAt,
           endedAt: beacon.endedAt,
           lastUpdate: beacon.lastUpdate,
-          position: beacon.position,
-          distanceKm: beacon.distanceKm,
-          durationSec: beacon.durationSec,
+          position: revealGps ? beacon.position : null,
+          distanceKm: revealGps ? beacon.distanceKm : null,
+          durationSec: revealGps ? beacon.durationSec : null,
           followerCount: beacon.followers.length,
-          track: beacon.pings.map((p) => ({ lat: p.lat, lon: p.lon })),
+          track: revealGps ? beacon.pings.map((p) => ({ lat: p.lat, lon: p.lon })) : [],
         },
         isOwner,
       },

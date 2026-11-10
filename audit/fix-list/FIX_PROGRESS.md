@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 125 | 93 | 3 |
+| high | 132 | 86 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **666** | **1482** | **3** |
+| **total** | **673** | **1475** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -897,3 +897,15 @@ A wallet is stored only when the address matches the selected chain: 40 hex char
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
 | FIX-crypto-001 | crypto | high | FIXED_PENDING_VERIFY | fd1a354f7 |
+
+Empty or unparseable JSON and CSV are marked invalid, so Import stays off. Resolve refuses a species id that is not in the authored catalog. A beacon share token is 24 random bytes, and coordinates are returned only to the owner or a listed follower. A mind-map node delete stays visible. A task description is an editor and is stored on the task. Clearing the calendar start field clears the saved start, and a save without a start is refused. The staking lens header says Staking. The lens registry lists that lens once.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-import-001 | import | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-creatures-004 | creatures | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-fitness-002 | fitness | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-graph-002 | graph | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-board-002 | board | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-calendar-005 | calendar | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-staking-001 | staking | high | FIXED_PENDING_VERIFY | this commit |

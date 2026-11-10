@@ -910,7 +910,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
   const handleCreateEvent = async (scope?: RecurrenceScope) => {
     setActivityNote(null);
-    if (!newEvent.title) return;
+    if (!newEvent.title || !newEvent.startDate) {
+      if (!newEvent.startDate) setActivityNote('Set a start time before saving.');
+      return;
+    }
     const original = editingEventId ? editingOriginal : null;
     const recurringEdit = !!(original?.recurrence && original.occurrenceKey);
     if (recurringEdit && !scope) {
@@ -923,7 +926,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
       id: editingEventId || `pending_${Date.now()}`,
       title: newEvent.title,
       description: newEvent.description,
-      startDate: newEvent.startDate || new Date(),
+      startDate: newEvent.startDate,
       endDate: newEvent.endDate || new Date(),
       allDay: newEvent.allDay || false,
       color: newEvent.color || COLORS[0].value,
@@ -2391,7 +2394,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     <input
                       type="datetime-local"
                       value={newEvent.startDate ? toZonedInputValue(newEvent.startDate, formTz) : ''}
-                      onChange={(e) => { const d = fromZonedInputValue(e.target.value, formTz); if (d) setNewEvent({ ...newEvent, startDate: d }); }}
+                      onChange={(e) => { const d = e.target.value ? fromZonedInputValue(e.target.value, formTz) : null; setNewEvent({ ...newEvent, startDate: d || undefined }); }}
                       className="w-full bg-lattice-deep rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neon-cyan"
                     />
                   </div>
