@@ -1094,23 +1094,23 @@ The existing owner-scoped delete stays armed until confirm. Spot and session, fi
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-ocean-003 | ocean | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-geology-002 | geology | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-robotics-003 | robotics | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-robotics-007 | robotics | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-genesis-001 | genesis | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-parenting-008 | parenting | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-marketing-009 | marketing | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-export-004 | export | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-integrations-006 | integrations | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-game-design-002 | game-design | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-debate-013 | debate | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-creatures-006 | creatures | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-quests-004 | quests | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-staking-007 | staking | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-materials-001 | materials | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-automotive-008 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-analytics-002 | analytics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-ocean-003 | ocean | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-geology-002 | geology | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-robotics-003 | robotics | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-robotics-007 | robotics | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-genesis-001 | genesis | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-parenting-008 | parenting | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-marketing-009 | marketing | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-export-004 | export | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-integrations-006 | integrations | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-game-design-002 | game-design | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-debate-013 | debate | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-creatures-006 | creatures | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-quests-004 | quests | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-staking-007 | staking | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-materials-001 | materials | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-automotive-008 | automotive | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+| FIX-analytics-002 | analytics | medium | FIXED_PENDING_VERIFY | f012a8f62 |
 
 ## NEEDS_PRODUCT_SURFACE
 
