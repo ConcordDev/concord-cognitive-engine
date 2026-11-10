@@ -599,8 +599,8 @@ One capture listener closes the top dialog by activating its Close control, and 
 | FIX-world-003 | world | low | FIXED_PENDING_VERIFY | a6242b1a4 |
 | FIX-world-observatory-004 | world-observatory | low | FIXED_PENDING_VERIFY | a6242b1a4 |
 | FIX-world-observatory-008 | world-observatory | low | FIXED_PENDING_VERIFY | a6242b1a4 |
-| FIX-board-008 | board | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-goals-013 | goals | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-board-008 | board | medium | FIXED_PENDING_VERIFY | 3d93e974a |
+| FIX-goals-013 | goals | low | FIXED_PENDING_VERIFY | 3d93e974a |
 
 ## RCA-arrow-tablist
 
