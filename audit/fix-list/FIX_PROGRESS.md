@@ -914,8 +914,8 @@ A scheduled landscaping job can be edited. Government inspections, fines, FOIA d
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-landscaping-001 | landscaping | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-government-018 | government | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-debate-015 | debate | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-insurance-011 | insurance | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-auction-001 | auction | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-landscaping-001 | landscaping | high | FIXED_PENDING_VERIFY | b02a020bf |
+| FIX-government-018 | government | high | FIXED_PENDING_VERIFY | b02a020bf |
+| FIX-debate-015 | debate | high | FIXED_PENDING_VERIFY | b02a020bf |
+| FIX-insurance-011 | insurance | high | FIXED_PENDING_VERIFY | b02a020bf |
+| FIX-auction-001 | auction | high | FIXED_PENDING_VERIFY | b02a020bf |
