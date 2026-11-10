@@ -83,53 +83,53 @@ Muted-on-dark tickets that are not this invert (Lighthouse-only, FIX-education-0
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-automotive-015 | automotive | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-billing-001 | billing | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-black-market-002 | black-market | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-calendar-001 | calendar | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-creatures-008 | creatures | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-dreams-005 | dreams | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-ethics-008 | ethics | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-household-004 | household | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-marketing-004 | marketing | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-markets-009 | markets | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-personas-009 | personas | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-sim-002 | sim | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-app-maker-003 | app-maker | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-ar-009 | ar | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-atlas-004 | atlas | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-crypto-003 | crypto | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-eco-008 | eco | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-finance-005 | finance | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-fitness-007 | fitness | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-geology-006 | geology | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-healthcare-009 | healthcare | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-hvac-006 | hvac | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-integrations-004 | integrations | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-logistics-011 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-manufacturing-002 | manufacturing | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-masonry-009 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-mining-004 | mining | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-ml-008 | ml | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-parenting-004 | parenting | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-repair-telemetry-002 | repair-telemetry | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-retail-005 | retail | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-sandbox-008 | sandbox | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-self-012 | self | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-agents-006 | agents | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-aviation-009 | aviation | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-cognition-006 | cognition | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-command-center-005 | command-center | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-concord-link-frontier-005 | concord-link-frontier | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-debate-017 | debate | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-desert-005 | desert | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-disputes-006 | disputes | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-game-design-007 | game-design | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-goals-008 | goals | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-insurance-010 | insurance | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-lattice-007 | lattice | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-legal-011 | legal | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-ocean-008 | ocean | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-poetry-005 | poetry | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-psyops-001 | psyops | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-spectate-004 | spectate | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-automotive-015 | automotive | high | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-billing-001 | billing | high | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-black-market-002 | black-market | high | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-calendar-001 | calendar | high | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-creatures-008 | creatures | high | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-dreams-005 | dreams | high | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-ethics-008 | ethics | high | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-household-004 | household | high | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-marketing-004 | marketing | high | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-markets-009 | markets | high | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-personas-009 | personas | high | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-sim-002 | sim | high | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-app-maker-003 | app-maker | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-ar-009 | ar | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-atlas-004 | atlas | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-crypto-003 | crypto | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-eco-008 | eco | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-finance-005 | finance | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-fitness-007 | fitness | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-geology-006 | geology | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-healthcare-009 | healthcare | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-hvac-006 | hvac | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-integrations-004 | integrations | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-logistics-011 | logistics | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-manufacturing-002 | manufacturing | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-masonry-009 | masonry | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-mining-004 | mining | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-ml-008 | ml | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-parenting-004 | parenting | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-repair-telemetry-002 | repair-telemetry | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-retail-005 | retail | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-sandbox-008 | sandbox | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-self-012 | self | medium | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-agents-006 | agents | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-aviation-009 | aviation | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-cognition-006 | cognition | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-command-center-005 | command-center | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-concord-link-frontier-005 | concord-link-frontier | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-debate-017 | debate | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-desert-005 | desert | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-disputes-006 | disputes | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-game-design-007 | game-design | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-goals-008 | goals | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-insurance-010 | insurance | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-lattice-007 | lattice | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-legal-011 | legal | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-ocean-008 | ocean | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-poetry-005 | poetry | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-psyops-001 | psyops | low | FIXED_PENDING_VERIFY | 35df41d9e |
+| FIX-spectate-004 | spectate | low | FIXED_PENDING_VERIFY | 35df41d9e |
