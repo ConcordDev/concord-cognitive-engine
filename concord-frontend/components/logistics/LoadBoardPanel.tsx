@@ -11,6 +11,7 @@ export function LoadBoardPanel() {
   const [loads, setLoads] = useState<Load[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ origin: '', destination: '', ratePerMile: '', weightLbs: '', equipment: 'dry_van', pickupDate: '' });
+  const [formError, setFormError] = useState<string | null>(null);
   const [bidFor, setBidFor] = useState<string | null>(null);
   const [bidAmt, setBidAmt] = useState('');
   const [bidCarrier, setBidCarrier] = useState('');
@@ -27,15 +28,19 @@ export function LoadBoardPanel() {
   }
 
   async function post() {
-    if (!form.origin.trim() || !form.destination.trim() || !form.ratePerMile) return;
+    if (!form.origin.trim() || !form.destination.trim()) { setFormError('Origin and destination are required.'); return; }
+    if (!(Number(form.ratePerMile) > 0)) { setFormError('Rate per mile must be a number greater than 0.'); return; }
+    if (!(Number(form.weightLbs) > 0)) { setFormError('Weight must be a number greater than 0.'); return; }
+    setFormError(null);
     try {
-      await lensRun({
+      const res = await lensRun({
         domain: 'logistics', action: 'loads-post',
-        input: { ...form, ratePerMile: Number(form.ratePerMile), weightLbs: Number(form.weightLbs) || 0 },
+        input: { ...form, ratePerMile: Number(form.ratePerMile), weightLbs: Number(form.weightLbs) },
       });
+      if (res.data?.ok === false) { setFormError(res.data?.message || res.data?.error || 'Could not post that load.'); return; }
       setForm({ origin: '', destination: '', ratePerMile: '', weightLbs: '', equipment: 'dry_van', pickupDate: '' });
       await refresh();
-    } catch (e) { console.error('[Loads] post', e); }
+    } catch (e) { setFormError(e instanceof Error ? e.message : 'Could not post that load.'); }
   }
 
   async function bid(loadId: string) {
@@ -71,6 +76,7 @@ export function LoadBoardPanel() {
           <option value="dry_van">Dry van</option><option value="reefer">Reefer</option><option value="flatbed">Flatbed</option><option value="step_deck">Step deck</option><option value="tanker">Tanker</option>
         </select>
         <input type="date" value={form.pickupDate} onChange={e => setForm({ ...form, pickupDate: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        {formError && <p role="alert" className="col-span-2 lg:col-span-4 text-xs text-rose-300">{formError}</p>}
         <button onClick={post} className="col-span-2 lg:col-span-4 px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold hover:bg-violet-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Post load</button>
       </div>
 

@@ -465,8 +465,9 @@ function MonitorsTab() {
 
   const save = async () => {
     if (!metric.trim()) { setNotice({ kind: 'err', text: 'Metric required.' }); return; }
+    if (threshold.trim() && !Number.isFinite(Number(threshold))) { setNotice({ kind: 'err', text: 'Threshold must be a number.' }); return; }
     setBusy(true);
-    const d = await run('monitorSave', { metric: metric.trim(), type, op, agg, severity, threshold: parseFloat(threshold) || 0, windowMinutes: 15 });
+    const d = await run('monitorSave', { metric: metric.trim(), type, op, agg, severity, threshold: threshold.trim() ? Number(threshold) : 0, windowMinutes: 15 });
     setBusy(false);
     if (d.ok) { setNotice({ kind: 'ok', text: 'Monitor saved.' }); refresh(); }
     else setNotice({ kind: 'err', text: d.error || 'save failed' });

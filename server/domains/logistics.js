@@ -1323,17 +1323,33 @@ export default function registerLogisticsActions(registerLensAction) {
     const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = logActor(ctx);
     const number = String(params.number || "").trim();
-    if (!number) return { ok: false, error: "number (truck/unit number) required" };
+    if (!number) return { ok: false, error: "number (truck/unit number) required", message: "Truck number is required." };
+    if (number.length > 40) return { ok: false, error: "invalid_input", message: "Truck number must be 40 characters or fewer." };
+    let year = null;
+    if (params.year != null && params.year !== "") {
+      year = Number(params.year);
+      const maxYear = new Date().getFullYear() + 1;
+      if (!Number.isInteger(year) || year < 1900 || year > maxYear) {
+        return { ok: false, error: "invalid_input", message: `Year must be a whole year from 1900 to ${maxYear}.` };
+      }
+    }
+    let capacityLbs = 0;
+    if (params.capacityLbs != null && params.capacityLbs !== "") {
+      capacityLbs = Number(params.capacityLbs);
+      if (!Number.isFinite(capacityLbs) || capacityLbs < 0 || capacityLbs > 200000) {
+        return { ok: false, error: "invalid_input", message: "Capacity must be a number from 0 to 200,000 pounds." };
+      }
+    }
     const vehicle = {
       id: uidLog("veh"), number,
       kind: ["box_truck", "tractor", "trailer", "van", "pickup"].includes(params.kind) ? params.kind : "box_truck",
       make: String(params.make || ""),
       model: String(params.model || ""),
-      year: Number(params.year) || null,
+      year,
       vin: String(params.vin || ""),
       mileage: Math.max(0, Number(params.mileage) || 0),
       fuelType: String(params.fuelType || "diesel"),
-      capacityLbs: Math.max(0, Number(params.capacityLbs) || 0),
+      capacityLbs,
       status: "available",
       assignedDriverId: null,
       lat: params.lat != null ? Number(params.lat) : null,
@@ -1391,9 +1407,10 @@ export default function registerLogisticsActions(registerLensAction) {
     const origin = String(params.origin || "").trim();
     const destination = String(params.destination || "").trim();
     const ratePerMile = Number(params.ratePerMile);
-    const weightLbs = Math.max(0, Number(params.weightLbs) || 0);
-    if (!origin || !destination) return { ok: false, error: "origin and destination required" };
-    if (!Number.isFinite(ratePerMile) || ratePerMile <= 0) return { ok: false, error: "ratePerMile must be > 0" };
+    const weightLbs = Number(params.weightLbs);
+    if (!origin || !destination) return { ok: false, error: "origin and destination required", message: "Origin and destination are required." };
+    if (!Number.isFinite(ratePerMile) || ratePerMile <= 0) return { ok: false, error: "ratePerMile must be > 0", message: "Rate per mile must be a number greater than 0." };
+    if (!Number.isFinite(weightLbs) || weightLbs <= 0) return { ok: false, error: "invalid_input", message: "Weight must be a number greater than 0." };
     const load = {
       id: uidLog("load"), origin, destination, ratePerMile, weightLbs,
       equipment: String(params.equipment || "dry_van"),

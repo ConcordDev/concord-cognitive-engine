@@ -112,16 +112,20 @@ export function BillsPanel() {
     : vendors
   ).slice(0, 6);
 
+  const [formError, setFormError] = useState<string | null>(null);
   async function create() {
-    if (!draft.vendorId || !draft.total) return;
+    if (!draft.vendorId) { setFormError('Choose a vendor.'); return; }
+    if (!(Number(draft.total) > 0)) { setFormError('Total must be a number greater than 0.'); return; }
     const vendor = vendors.find(v => v.id === draft.vendorId);
     const expenseAccountId = draft.expenseAccountId || vendor?.defaultExpenseAccountId || '';
-    if (!expenseAccountId) { alert('Pick an expense account'); return; }
+    if (!expenseAccountId) { setFormError('Pick an expense account.'); return; }
+    setFormError(null);
     try {
-      await lensRun({
+      const res = await lensRun({
         domain: 'accounting', action: 'bills-create',
         input: { ...draft, total: Number(draft.total), expenseAccountId },
       });
+      if (res.data?.ok === false) { setFormError(res.data?.message || res.data?.error || 'Could not post that bill.'); return; }
       setDraft({ vendorId: '', total: '', expenseAccountId: '', memo: '', issuedAt: '', dueAt: '' });
       setVendorQuery('');
       setVendorSuggestion(null);
@@ -249,6 +253,7 @@ export function BillsPanel() {
             <input type="date" value={draft.issuedAt} onChange={e => setDraft({ ...draft, issuedAt: e.target.value })} placeholder="Issued" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
             <input value={draft.memo} onChange={e => setDraft({ ...draft, memo: e.target.value })} placeholder="Memo" className="col-span-9 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
             <input type="date" value={draft.dueAt} onChange={e => setDraft({ ...draft, dueAt: e.target.value })} placeholder="Due" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
+            {formError && <p role="alert" className="col-span-12 text-xs text-rose-300">{formError}</p>}
             <button onClick={create} className="col-span-12 px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Post bill (auto-creates JE: Dr Expense / Cr A/P)</button>
           </div>
         )}

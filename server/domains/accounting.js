@@ -1159,9 +1159,9 @@ export default function registerAccountingActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const customerName = String(params.customerName || "").trim();
-    if (!customerName) return { ok: false, error: "customerName required" };
+    if (!customerName) return { ok: false, error: "customerName required", message: "Customer name is required." };
     const total = Number(params.total);
-    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0" };
+    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0", message: "Total must be a number greater than 0." };
     const issuedAt = String(params.issuedAt || nowIso().slice(0, 10));
     const dueAt = String(params.dueAt || issuedAt);
     if (!s.invoices.has(userId)) s.invoices.set(userId, []);
@@ -1538,7 +1538,7 @@ export default function registerAccountingActions(registerLensAction) {
     const vendor = vendors.find(v => v.id === vendorId);
     if (!vendor) return { ok: false, error: "vendor not found" };
     const total = Number(params.total);
-    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0" };
+    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0", message: "Total must be a number greater than 0." };
     const expenseAccountId = String(params.expenseAccountId || vendor.defaultExpenseAccountId || "");
     const coa = s.coa.get(userId);
     if (!coa.has(expenseAccountId)) return { ok: false, error: "expenseAccountId invalid" };
@@ -1859,7 +1859,8 @@ export default function registerAccountingActions(registerLensAction) {
     const customerName = String(params.customerName || "").trim();
     const total = Number(params.total);
     const cadence = ["weekly", "monthly", "quarterly", "annually"].includes(params.cadence) ? params.cadence : "monthly";
-    if (!customerName || !Number.isFinite(total) || total <= 0) return { ok: false, error: "customerName and positive total required" };
+    if (!customerName) return { ok: false, error: "customerName and positive total required", message: "Customer name is required." };
+    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "customerName and positive total required", message: "Total must be a number greater than 0." };
     const seq = ensureSeq(s, userId);
     const startAt = String(params.startAt || nowIso().slice(0, 10));
     const r = {
@@ -1941,7 +1942,8 @@ export default function registerAccountingActions(registerLensAction) {
     const userId = actId(ctx);
     const customerName = String(params.customerName || "").trim();
     const total = Number(params.total);
-    if (!customerName || !Number.isFinite(total) || total <= 0) return { ok: false, error: "customerName and positive total required" };
+    if (!customerName) return { ok: false, error: "customerName and positive total required", message: "Customer name is required." };
+    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "customerName and positive total required", message: "Total must be a number greater than 0." };
     const seq = ensureSeq(s, userId);
     const e = {
       id: nextId("est"),
@@ -3691,7 +3693,7 @@ Output the single best account code:`;
     const vendor = ensureList(s.vendors, userId).find(v => v.id === vendorId);
     if (!vendor) return { ok: false, error: "vendor not found" };
     const total = Number(params.total);
-    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0" };
+    if (!Number.isFinite(total) || total <= 0) return { ok: false, error: "total must be > 0", message: "Total must be a number greater than 0." };
     const expenseAccountId = String(params.expenseAccountId || vendor.defaultExpenseAccountId || "");
     if (!s.coa.get(userId).has(expenseAccountId)) return { ok: false, error: "expenseAccountId invalid" };
     const cadence = ["weekly", "monthly", "quarterly", "annually"].includes(params.cadence) ? params.cadence : "monthly";

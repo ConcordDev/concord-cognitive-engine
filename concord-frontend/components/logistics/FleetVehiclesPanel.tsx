@@ -21,6 +21,7 @@ export function FleetVehiclesPanel() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ number: '', kind: 'box_truck', make: '', model: '', year: '', capacityLbs: '' });
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -34,15 +35,24 @@ export function FleetVehiclesPanel() {
   }
 
   async function add() {
-    if (!form.number.trim()) return;
+    if (!form.number.trim()) { setFormError('Truck number is required.'); return; }
+    if (form.number.trim().length > 40) { setFormError('Truck number must be 40 characters or fewer.'); return; }
+    if (form.capacityLbs.trim() && !(Number(form.capacityLbs) >= 0)) { setFormError('Capacity must be a number from 0 up.'); return; }
+    if (form.year.trim()) {
+      const year = Number(form.year);
+      const maxYear = new Date().getFullYear() + 1;
+      if (!Number.isInteger(year) || year < 1900 || year > maxYear) { setFormError(`Year must be a whole year from 1900 to ${maxYear}.`); return; }
+    }
+    setFormError(null);
     try {
-      await lensRun({
+      const res = await lensRun({
         domain: 'logistics', action: 'fleet-vehicles-add',
-        input: { ...form, year: Number(form.year) || undefined, capacityLbs: Number(form.capacityLbs) || 0 },
+        input: { ...form, year: form.year.trim() ? Number(form.year) : undefined, capacityLbs: form.capacityLbs.trim() ? Number(form.capacityLbs) : 0 },
       });
+      if (res.data?.ok === false) { setFormError(res.data?.message || res.data?.error || 'Could not add that vehicle.'); return; }
       setForm({ number: '', kind: 'box_truck', make: '', model: '', year: '', capacityLbs: '' });
       await refresh();
-    } catch (e) { console.error('[Fleet] add', e); }
+    } catch (e) { setFormError(e instanceof Error ? e.message : 'Could not add that vehicle.'); }
   }
 
   async function setStatus(id: string, status: Vehicle['status']) {
@@ -76,6 +86,7 @@ export function FleetVehiclesPanel() {
         <input value={form.model} onChange={e => setForm({ ...form, model: e.target.value })} placeholder="Model" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input type="number" value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} placeholder="Year" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input type="number" value={form.capacityLbs} onChange={e => setForm({ ...form, capacityLbs: e.target.value })} placeholder="Capacity lbs" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        {formError && <p role="alert" className="col-span-full text-xs text-rose-300">{formError}</p>}
         <button onClick={add} className="col-span-full px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Add vehicle</button>
       </div>
 

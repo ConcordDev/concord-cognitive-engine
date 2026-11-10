@@ -553,11 +553,15 @@ export default function registerObserveActions(registerLensAction) {
       const op = [">", ">=", "<", "<=", "=="].includes(params.op) ? params.op : ">";
       const type = ["threshold", "anomaly"].includes(params.type) ? params.type : "threshold";
       const agg = ["avg", "sum", "min", "max", "count", "last"].includes(params.agg) ? params.agg : "avg";
+      if (params.threshold != null && params.threshold !== "" && !Number.isFinite(Number(params.threshold))) {
+        return { ok: false, error: "invalid_input", message: "Threshold must be a number." };
+      }
+      const threshold = params.threshold == null || params.threshold === "" ? 0 : Number(params.threshold);
       let mon = params.id ? list.find((m) => m.id === params.id) : null;
       const fields = {
-        name: clean(params.name || `${metric} ${op} ${params.threshold}`, 120),
+        name: clean(params.name || `${metric} ${op} ${threshold}`, 120),
         type, metric, op, agg,
-        threshold: num(params.threshold, 0),
+        threshold,
         windowMinutes: num(params.windowMinutes, 15),
         sigma: num(params.sigma, 3),            // anomaly band width
         severity: ["sev1", "sev2", "sev3", "sev4"].includes(params.severity) ? params.severity : "sev3",

@@ -848,12 +848,17 @@ function AgingTab() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const createInvoice = async () => {
+    if (!draft.customerName.trim()) { setInvoiceError('Customer name is required.'); return; }
+    if (!(Number(draft.total) > 0)) { setInvoiceError('Total must be a number greater than 0.'); return; }
+    setInvoiceError(null);
     try {
-      await lensRun({
+      const res = await lensRun({
         domain: 'accounting', action: 'invoice-create',
         input: draft,
       });
+      if (res.data?.ok === false) { setInvoiceError(res.data?.message || res.data?.error || 'Could not save that invoice.'); return; }
       setCreating(false);
       setDraft({
         customerName: '',
@@ -923,6 +928,7 @@ function AgingTab() {
             placeholder="Customer name"
             className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100"
           />
+          {invoiceError && <p role="alert" className="text-xs text-rose-300">{invoiceError}</p>}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input
               type="number"

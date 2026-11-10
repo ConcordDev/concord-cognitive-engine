@@ -223,8 +223,10 @@ export default function registerOceanActions(registerLensAction) {
 
   registerLensAction("ocean", "spot-add", (ctx, _a, params = {}) => {
     const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const name = ocClean(params.name, 160);
-    if (!name) return { ok: false, error: "spot name required" };
+    const rawName = String(params.name || "").trim();
+    if (!rawName) return { ok: false, error: "spot name required", message: "Spot name is required." };
+    if (rawName.length > 160) return { ok: false, error: "invalid_input", message: "Spot name must be 160 characters or fewer." };
+    const name = rawName;
     const spot = {
       id: ocId("spot"),
       name,

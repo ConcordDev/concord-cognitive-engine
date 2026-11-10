@@ -573,7 +573,13 @@ export default function registerMarketsActions(registerLensAction) {
       // Seed liquidity so the first bet has a meaningful price. The creator
       // funds a tiny symmetric seed split YES/NO; this is real (creator-owned)
       // liquidity, not fabricated volume.
-      const seed = Math.min(Math.max(Number(params.seedSparks) || 10, 2), 200);
+      let seed = 10;
+      if (params.seedSparks != null && params.seedSparks !== "") {
+        seed = Number(params.seedSparks);
+        if (!Number.isFinite(seed) || seed < 2 || seed > 200) {
+          return { ok: false, error: "invalid_input", message: "Stake must be a number from 2 to 200." };
+        }
+      }
       const id = pmId(s, "mkt");
       const m = {
         id,

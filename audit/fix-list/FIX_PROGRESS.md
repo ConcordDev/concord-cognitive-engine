@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 386 | 559 | 0 |
+| medium | 395 | 550 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **807** | **1341** | **3** |
+| **total** | **816** | **1332** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1202,6 +1202,22 @@ A permit lookup names the timeline in weeks, and a violation lookup names a tier
 | FIX-automotive-002 | automotive | medium | FIXED_PENDING_VERIFY | 23ca5ec1c |
 | FIX-masonry-016 | masonry | medium | FIXED_PENDING_VERIFY | 23ca5ec1c |
 | FIX-masonry-004 | masonry | medium | FIXED_PENDING_VERIFY | 23ca5ec1c |
+
+## Mediums — validation that used to stay quiet
+
+A bad fleet vehicle, load weight, invoice total, spot name, market stake, monitor threshold, poll duration, harvest yield, or billing rate stays on the form and says why.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-logistics-006 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-accounting-002 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-accounting-015 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-law-005 | law | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-ocean-004 | ocean | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-observe-001 | observe | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-vote-002 | vote | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-markets-001 | markets | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-agriculture-003 | agriculture | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

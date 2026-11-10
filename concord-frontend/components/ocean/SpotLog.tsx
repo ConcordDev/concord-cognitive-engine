@@ -40,14 +40,18 @@ export function SpotLog() {
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const [spotError, setSpotError] = useState<string | null>(null);
   async function addSpot() {
-    if (!spotForm.name.trim()) return;
-    await lensRun('ocean', 'spot-add', {
+    if (!spotForm.name.trim()) { setSpotError('Spot name is required.'); return; }
+    if (spotForm.name.trim().length > 160) { setSpotError('Spot name must be 160 characters or fewer.'); return; }
+    setSpotError(null);
+    const res = await lensRun('ocean', 'spot-add', {
       name: spotForm.name.trim(),
       kind: spotForm.kind,
       lat: spotForm.lat.trim() ? Number(spotForm.lat) : undefined,
       lon: spotForm.lon.trim() ? Number(spotForm.lon) : undefined,
     });
+    if (res.data?.ok === false) { setSpotError(res.data?.message || res.data?.error || 'Could not save that spot.'); return; }
     setSpotForm({ name: '', kind: 'surf', lat: '', lon: '' });
     await refresh();
   }
@@ -95,6 +99,7 @@ export function SpotLog() {
           className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={spotForm.lon} onChange={e => setSpotForm({ ...spotForm, lon: e.target.value })} placeholder="lon"
           className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+        {spotError && <p role="alert" className="w-full text-xs text-rose-300">{spotError}</p>}
         <button onClick={addSpot} disabled={!spotForm.name.trim()}
           className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />Spot

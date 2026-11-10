@@ -1191,10 +1191,11 @@ export default function registerAgricultureActions(registerLensAction) {
     const parentRefusal = agriParentRefusal(s, userId, params); if (parentRefusal) return parentRefusal;
     const fieldId = String(params.fieldId || "");
     const crop = String(params.crop || "").trim();
-    const acresHarvested = Math.max(0, Number(params.acresHarvested) || 0);
-    const yieldBushels = Math.max(0, Number(params.yieldBushels) || 0);
+    const acresHarvested = Number(params.acresHarvested);
+    const yieldBushels = Number(params.yieldBushels);
     if (!fieldId || !crop) return { ok: false, error: "fieldId and crop required" };
-    if (acresHarvested <= 0) return { ok: false, error: "acresHarvested must be > 0" };
+    if (!Number.isFinite(acresHarvested) || acresHarvested <= 0) return { ok: false, error: "acresHarvested must be > 0", message: "Acres harvested must be a number greater than 0." };
+    if (!Number.isFinite(yieldBushels) || yieldBushels < 0) return { ok: false, error: "invalid_input", message: "Yield must be a number that is 0 or greater." };
     const yieldPerAcre = yieldBushels / acresHarvested;
     const pass = {
       id: uidAg("harv"), fieldId, crop,

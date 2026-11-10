@@ -466,6 +466,14 @@ export default function registerLawActions(registerLensAction) {
     const discountPercent = _params.discountPercent || 0;
 
     // Process each entry
+    for (const e of entries) {
+      if (e.hours != null && e.hours !== "" && !(Number(e.hours) > 0)) {
+        return { ok: false, error: "invalid_input", message: "Hours must be a number greater than 0." };
+      }
+      if (e.rate != null && e.rate !== "" && !(Number(e.rate) >= 0)) {
+        return { ok: false, error: "invalid_input", message: "Rate must be a number that is 0 or greater." };
+      }
+    }
     const processed = entries.map(e => {
       const hours = parseFloat(e.hours) || 0;
       const rate = parseFloat(e.rate) || 0;

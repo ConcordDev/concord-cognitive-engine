@@ -1078,6 +1078,10 @@ function CreatePollModal({ onClose, onCreated }: { onClose: () => void; onCreate
     const opts = options.map((o) => o.trim()).filter(Boolean);
     if (!title.trim()) { setErr('Title required.'); return; }
     if (opts.length < 2) { setErr('At least 2 options required.'); return; }
+    const days = Number(durationDays);
+    if (!Number.isInteger(days) || days < 1 || days > 365) { setErr('Duration must be a whole number of days from 1 to 365.'); return; }
+    const quorumN = Number(quorum);
+    if (quorum.trim() && (!Number.isFinite(quorumN) || quorumN < 0)) { setErr('Quorum must be a number that is 0 or greater.'); return; }
     setBusy(true);
 
     const input: Record<string, unknown> = {
@@ -1085,8 +1089,8 @@ function CreatePollModal({ onClose, onCreated }: { onClose: () => void; onCreate
       description: description.trim() || undefined,
       method,
       options: opts,
-      durationDays: Number(durationDays) || 0,
-      quorum: Number(quorum) || 0,
+      durationDays: days,
+      quorum: quorum.trim() ? quorumN : 0,
     };
     if (useThreshold) input.passThreshold = (Number(passThreshold) || 50) / 100;
     if (restricted) {
@@ -1111,7 +1115,7 @@ function CreatePollModal({ onClose, onCreated }: { onClose: () => void; onCreate
     const { data } = await lensRun('vote', 'poll-create', input);
     setBusy(false);
     if (data.ok) onCreated();
-    else setErr(data.error || 'Failed to create poll.');
+    else setErr(data.message || data.error || 'Failed to create poll.');
   };
 
   return (

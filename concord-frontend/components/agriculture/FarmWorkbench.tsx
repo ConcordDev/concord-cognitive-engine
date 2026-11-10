@@ -151,11 +151,16 @@ function FieldsTab({
   const [editDraft, setEditDraft] = useState({ name: '', acreage: 0, soilType: '', currentCrop: '' });
   const [lastField, setLastField] = useState<AgField | null>(null);
 
+  const [formError, setFormError] = useState<string | null>(null);
   const save = async () => {
+    if (!draft.name.trim()) { setFormError('Field name is required.'); return; }
+    if (!(Number(draft.acreage) > 0)) { setFormError('Acreage must be a number greater than 0.'); return; }
+    setFormError(null);
     try {
       const res = await lensRun({
         domain: 'agriculture', action: 'field-create', input: draft,
       });
+      if (res.data?.ok === false) { setFormError(res.data?.message || res.data?.error || 'Could not save that field.'); return; }
       const field = (res.data as { result?: { field?: AgField } })?.result?.field;
       if (field) setLastField(field);
       setCreating(false);
@@ -242,9 +247,9 @@ function FieldsTab({
               placeholder="Current crop" maxLength={40}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
           </div>
+          {formError && <p role="alert" className="text-xs text-rose-300">{formError}</p>}
           <button type="button" onClick={save}
-            disabled={!draft.name.trim() || draft.acreage <= 0}
-            className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 text-xs text-emerald-100 hover:brightness-110 disabled:opacity-40">
+            className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 text-xs text-emerald-100 hover:brightness-110">
             <Save className="w-3 h-3" /> Save field
           </button>
         </div>
