@@ -1339,15 +1339,15 @@ Deleting a persona also removes its chats and ratings, and the delete stays arme
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-personas-004 | personas | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-personas-005 | personas | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-002 | calendar | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-calendar-002 | calendar | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-calendar-008 | calendar | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-calendar-013 | calendar | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-agents-001 | agents | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-agents-012 | agents | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-marketing-010 | marketing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-personas-004 | personas | medium | FIXED_PENDING_VERIFY | 585a56bf6 |
+| FIX-personas-005 | personas | medium | FIXED_PENDING_VERIFY | 585a56bf6 |
+| FIX-002 | calendar | medium | FIXED_PENDING_VERIFY | 585a56bf6 |
+| FIX-calendar-002 | calendar | medium | FIXED_PENDING_VERIFY | 585a56bf6 |
+| FIX-calendar-008 | calendar | medium | FIXED_PENDING_VERIFY | 585a56bf6 |
+| FIX-calendar-013 | calendar | medium | FIXED_PENDING_VERIFY | 585a56bf6 |
+| FIX-agents-001 | agents | medium | FIXED_PENDING_VERIFY | 585a56bf6 |
+| FIX-agents-012 | agents | medium | FIXED_PENDING_VERIFY | 585a56bf6 |
+| FIX-marketing-010 | marketing | medium | FIXED_PENDING_VERIFY | 585a56bf6 |
 
 ## NEEDS_PRODUCT_SURFACE
 
