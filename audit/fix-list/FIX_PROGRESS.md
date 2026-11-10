@@ -1281,16 +1281,16 @@ A past goal date counts as overdue, and a new goal cannot be saved on a past dat
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-agriculture-010 | agriculture | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-board-007 | board | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-byo-keys-003 | byo-keys | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-black-market-011 | black-market | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-crisis-ops-003 | crisis-ops | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-finance-006 | finance | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-goals-002 | goals | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-logistics-013 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-mining-002 | mining | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-plumbing-016 | plumbing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-agriculture-010 | agriculture | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
+| FIX-board-007 | board | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
+| FIX-byo-keys-003 | byo-keys | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
+| FIX-black-market-011 | black-market | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
+| FIX-crisis-ops-003 | crisis-ops | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
+| FIX-finance-006 | finance | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
+| FIX-goals-002 | goals | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
+| FIX-logistics-013 | logistics | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
+| FIX-mining-002 | mining | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
+| FIX-plumbing-016 | plumbing | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
 
 ## NEEDS_PRODUCT_SURFACE
 
