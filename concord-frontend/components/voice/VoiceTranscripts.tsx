@@ -30,6 +30,7 @@ export function VoiceTranscripts() {
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [draft, setDraft] = useState({ title: '', transcript: '' });
+  const [formNote, setFormNote] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [hits, setHits] = useState<{ recordingId: string; recordingTitle: string; text: string }[] | null>(null);
 
@@ -47,11 +48,20 @@ export function VoiceTranscripts() {
   async function reload() { if (active) await open(active.id); }
 
   async function create() {
-    if (!draft.title.trim() || !draft.transcript.trim()) return;
+    if (!draft.title.trim() || !draft.transcript.trim()) {
+      setFormNote('A title and a transcript are required.');
+      return;
+    }
     const r = await lensRun('voice', 'recording-create', { title: draft.title.trim(), transcript: draft.transcript.trim() });
-    setDraft({ title: '', transcript: '' }); setShowNew(false);
+    if (!r.data?.ok) {
+      setFormNote(r.data?.message || r.data?.error || 'Could not add that recording.');
+      return;
+    }
+    setDraft({ title: '', transcript: '' });
+    setShowNew(false);
+    setFormNote('Recording added.');
     await refresh();
-    if (r.data?.ok) await open(r.data.result?.recording.id);
+    await open(r.data.result?.recording.id);
   }
   async function del(id: string) {
     if (!confirm('Delete this recording?')) return;
@@ -100,8 +110,9 @@ export function VoiceTranscripts() {
           <textarea value={draft.transcript} onChange={e => setDraft({ ...draft, transcript: e.target.value })} rows={4}
             placeholder="Paste a transcript — sentences become segments"
             className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100" />
-          <button onClick={create} disabled={!draft.title.trim() || !draft.transcript.trim()}
-            className="px-3 py-1.5 text-xs font-semibold rounded bg-sky-600 hover:bg-sky-500 text-white disabled:opacity-40">Add recording</button>
+          <button onClick={create}
+            className="px-3 py-1.5 text-xs font-semibold rounded bg-sky-600 hover:bg-sky-500 text-white">Add recording</button>
+          {formNote && <p className="text-xs text-sky-200" role="status">{formNote}</p>}
         </div>
       )}
 
@@ -176,6 +187,7 @@ export function VoiceTranscripts() {
                     <span className="text-[10px] font-mono text-zinc-400 mt-0.5 w-9 shrink-0">{ts(g.startSec)}</span>
                     <span className="text-[10px] font-semibold text-sky-400 mt-0.5 w-16 shrink-0 truncate">{g.speaker}</span>
                     <textarea defaultValue={g.text} rows={1}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.currentTarget.blur(); } }}
                       onBlur={e => { if (e.target.value !== g.text) void editSegment(g.id, e.target.value); }}
                       className="flex-1 bg-transparent text-xs text-zinc-200 resize-none focus:outline-none focus:bg-zinc-800/40 rounded px-1" />
                   </div>

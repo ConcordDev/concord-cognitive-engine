@@ -206,8 +206,10 @@ export function LearningPathPanel() {
 
   const pathMutation = useMutation<PathApiResponse, Error, string>({
     mutationFn: async (targetGoal: string) => {
-      const r = await api.post('/api/learning/path', { goal: targetGoal });
-      return r.data as PathApiResponse;
+      const r = await api.post('/api/learning/path', { goal: targetGoal, targetDomain: targetGoal });
+      const data = r.data as PathApiResponse & { error?: string; plan?: { path?: PathApiResponse['path'] } };
+      if (data?.ok === false) throw new Error(data.error || 'The path request failed.');
+      return { ...data, path: data.path ?? data.plan?.path ?? [] };
     },
   });
 
@@ -280,6 +282,13 @@ export function LearningPathPanel() {
           {pathMutation.isPending ? 'Computing…' : 'Plan Path'}
         </button>
       </div>
+
+      {pathMutation.isError && (
+        <p className="mb-3 text-sm text-red-300" role="alert">{pathMutation.error.message || 'The path request failed.'}</p>
+      )}
+      {pathMutation.isSuccess && pathSteps.length === 0 && (
+        <p className="mb-3 text-sm text-gray-300" role="status">No steps came back for that goal.</p>
+      )}
 
       {pathSteps.length > 0 && (
         <div className="mb-6">

@@ -217,6 +217,8 @@ export function VoiceBoothPanel() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [sessionTime, setSessionTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playhead, setPlayhead] = useState(0);
+  const [playDur, setPlayDur] = useState(0);
   const [playbackSrc, setPlaybackSrc] = useState<string | null>(null);
   const wantPlayRef = useRef(false);
 
@@ -342,7 +344,7 @@ export function VoiceBoothPanel() {
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
+    const s = Math.floor(seconds % 60);
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
@@ -565,7 +567,7 @@ export function VoiceBoothPanel() {
 
   const markBest = (id: string) =>
     setTakes((prev) =>
-      prev.map((t) => ({ ...t, isBest: t.id === id }))
+      prev.map((t) => ({ ...t, isBest: t.id === id ? !t.isBest : false }))
     );
 
   // Effects
@@ -884,8 +886,16 @@ export function VoiceBoothPanel() {
               src={playbackSrc ?? undefined}
               preload="none"
               className="sr-only"
-              onEnded={() => setIsPlaying(false)}
+              onTimeUpdate={(e) => setPlayhead(e.currentTarget.currentTime)}
+              onLoadedMetadata={(e) => setPlayDur(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : 0)}
+              onEnded={() => { setIsPlaying(false); setPlayhead(0); }}
             />
+            <div className="flex items-center gap-2 min-w-[10rem]" aria-label="Playback progress">
+              <div className="h-1 flex-1 rounded-full bg-white/10" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={playDur > 0 ? Math.round((playhead / playDur) * 100) : 0}>
+                <div className="h-full rounded-full bg-neon-cyan" style={{ width: `${playDur > 0 ? Math.min(100, (playhead / playDur) * 100) : 0}%` }} />
+              </div>
+              <span className="text-[10px] font-mono text-gray-400">{formatTime(playhead)} / {formatTime(playDur)}</span>
+            </div>
             <button
               type="button"
               onClick={() => {

@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 513 | 432 | 0 |
+| medium | 517 | 428 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **939** | **1209** | **3** |
+| **total** | **943** | **1205** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1487,6 +1487,17 @@ A wellness reading outside its range is refused, including sleep past 24 hours, 
 | FIX-education-008 | education | medium | FIXED_PENDING_VERIFY | e71ac66ec |
 | FIX-staking-011 | staking | medium | FIXED_PENDING_VERIFY | e71ac66ec |
 | FIX-creatures-003 | creatures | medium | FIXED_PENDING_VERIFY | e71ac66ec |
+
+## Mediums — playback, a transcript, and a path
+
+A booth take shows elapsed time against its duration while it plays, and Best toggles off when it is already the best take. Adding a transcript says what is missing, Enter commits a segment edit, and a saved recording says it was added. A recent live session opens when its row is clicked, so an orphan session can be ended from the open session. Planning a learning path reads the returned steps, and a failed or empty plan says so on the panel.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-voice-006 | voice | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-voice-007 | voice | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-voice-008 | voice | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-education-004 | education | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 
