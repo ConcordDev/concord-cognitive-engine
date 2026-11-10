@@ -298,6 +298,18 @@ export function composeToolTurnReply(results) {
       }
       const err = userFacingGenerationError(raw, r?.tool === "generate_3d" ? THREE_D_USER_TIMEOUT : undefined) || raw;
       const label = r?.tool || "that step";
+      if (/admin role|forbidden/i.test(String(err))) {
+        lines.push("I can't answer that with this sign-in. It needs a permission this account doesn't have, so nothing was changed.");
+        continue;
+      }
+      if (/needs_artifact_input/i.test(String(err))) {
+        lines.push("I need a specific record from this lens before I can answer that. Open one, then ask again. Nothing was changed.");
+        continue;
+      }
+      if (/handler_error/i.test(String(err))) {
+        lines.push("That question didn't get an answer from this lens. Nothing was changed. Ask it again in this lens's own thread.");
+        continue;
+      }
       lines.push(scrubUserFacingToolNames(`I couldn't complete ${label}: ${String(err).replace(/[.!?]+\s*$/, "")}.`));
       continue;
     }

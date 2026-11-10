@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 50 | 167 | 3 |
-| medium | 264 | 681 | 0 |
-| low | 242 | 738 | 0 |
+| high | 60 | 157 | 3 |
+| medium | 284 | 661 | 0 |
+| low | 249 | 731 | 0 |
 | unrated | 0 | 6 | 0 |
-| **total** | **556** | **1592** | **3** |
+| **total** | **593** | **1555** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -628,3 +628,47 @@ Arrow keys move focus to the next control in a `role="tablist"` and activate it.
 | FIX-robotics-005 | robotics | low | FIXED_PENDING_VERIFY | a6242b1a4 |
 | FIX-telecommunications-001 | telecommunications | low | FIXED_PENDING_VERIFY | a6242b1a4 |
 | FIX-world-007 | world | low | FIXED_PENDING_VERIFY | a6242b1a4 |
+
+## RCA-ask-silent
+
+Ask about a lens reuses a thread already filed under that lens, or starts a new one, instead of appending to whatever chat is open. Permission failures and handler failures are explained without the internal tool name. FIX-tick-005 (abort) stays open.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-all-002 | all | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-ar-014 | ar | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-black-market-006 | black-market | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-ethics-001 | ethics | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-fractal-001 | fractal | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-goals-001 | goals | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-hvac-004 | hvac | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-marketing-003 | marketing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-staking-009 | staking | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-voice-004 | voice | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-auction-008 | auction | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-black-market-008 | black-market | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-civic-bonds-011 | civic-bonds | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-command-center-004 | command-center | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-custom-009 | custom | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-fishing-002 | fishing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-forge-011 | forge | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-game-design-004 | game-design | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-garage-003 | garage | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-graph-007 | graph | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-lab-007 | lab | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-market-007 | market | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-observe-004 | observe | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-parenting-005 | parenting | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-productivity-004 | productivity | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-questmarket-008 | questmarket | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-social-009 | social | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-spectate-003 | spectate | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-system-003 | system | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-training-room-001 | training-room | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-app-maker-008 | app-maker | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-cognitive-replay-004 | cognitive-replay | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-event-timeline-002 | event-timeline | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-literary-005 | literary | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-meta-004 | meta | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-mining-006 | mining | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-timeline-008 | timeline | low | FIXED_PENDING_VERIFY | this commit |

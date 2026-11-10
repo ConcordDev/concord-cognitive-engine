@@ -139,6 +139,7 @@ import {
   loadConversations,
   loadMessagesForSession,
   loadSessionId,
+  resolveAskThread,
   saveConversations,
   saveMessagesForSession,
   saveSessionId,
@@ -274,6 +275,7 @@ interface Conversation {
   lastMessage: string;
   updatedAt: string;
   messageCount: number;
+  lensContext?: string;
 }
 
 interface AIMode {
@@ -554,7 +556,10 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   useEffect(() => {
     try {
       const ctx = new URLSearchParams(window.location.search).get('context');
-      if (ctx) setDomainContext(ctx);
+      if (!ctx) return;
+      setDomainContext(ctx);
+      const convs = loadConversations<Conversation>();
+      setSelectedConversation(resolveAskThread(convs, loadSessionId(), ctx));
     } catch { /* SSR / no window */ }
   }, []);
 
@@ -1221,6 +1226,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           lastMessage: content.slice(0, 100),
           updatedAt: new Date().toISOString(),
           messageCount: 1,
+          ...(domainContext ? { lensContext: domainContext } : {}),
         };
         setStoredConversations((prev) => {
           const next = [newConv, ...prev];
