@@ -847,13 +847,20 @@ export default function registerHealthcareActions(registerLensAction) {
     const firstName = String(params.firstName || "").trim();
     const lastName = String(params.lastName || "").trim();
     if (!firstName || !lastName) return { ok: false, error: "firstName + lastName required" };
+    if (firstName.length > 80 || lastName.length > 80) return { ok: false, error: "name must be at most 80 characters" };
+    const dob = String(params.dob || "");
+    if (dob) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) return { ok: false, error: "dob must be YYYY-MM-DD" };
+      const born = new Date(`${dob}T00:00:00Z`);
+      if (Number.isNaN(born.getTime()) || born.getTime() > Date.now()) return { ok: false, error: "dob cannot be in the future" };
+    }
     const seq = ensureSeqH(s, userId);
     const mrn = String(params.mrn || `MRN-${String(seq.pat).padStart(6, "0")}`);
     const patient = {
       id: uidH("pat"),
       mrn,
       firstName, lastName,
-      dob: String(params.dob || ""),                   // YYYY-MM-DD
+      dob,
       sex: ['M','F','X','U'].includes(params.sex) ? params.sex : 'U',
       pronouns: String(params.pronouns || ""),
       phone: String(params.phone || ""),

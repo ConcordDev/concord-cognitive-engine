@@ -50,6 +50,7 @@ export function StakePositions({
   const [busy, setBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmExitId, setConfirmExitId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -225,10 +226,14 @@ export function StakePositions({
                     <button
                       type="button"
                       disabled={busy === p.id}
-                      onClick={() => act('early_unstake', p, 'Exiting')}
+                      onClick={() => {
+                        if (confirmExitId !== p.id) { setConfirmExitId(p.id); return; }
+                        setConfirmExitId(null);
+                        void act('early_unstake', p, 'Exiting');
+                      }}
                       className="rounded bg-rose-800 px-2.5 py-1 text-xs text-white hover:bg-rose-700 disabled:opacity-50"
                     >
-                      Early exit (penalty)
+                      {confirmExitId === p.id ? 'Confirm penalty' : 'Early exit (penalty)'}
                     </button>
                   )}
                   <button

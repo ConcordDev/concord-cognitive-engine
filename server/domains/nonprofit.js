@@ -348,6 +348,14 @@ export default function registerNonprofitActions(registerLensAction) {
         receiptIssued: false, ackSent: false,
       };
       d.gifts.push(gift);
+      if (gift.campaign) {
+        const campaign = npCampaigns(s, npActor(ctx)).find((c) => c.id === gift.campaign || c.name === gift.campaign);
+        if (campaign) {
+          campaign.donations = campaign.donations || [];
+          campaign.donations.push({ id: gift.id, amount, at: gift.at, donorId: d.id });
+          campaign.raised = (Number(campaign.raised) || 0) + amount;
+        }
+      }
       saveNonprofit();
       return { ok: true, result: { gift, donor: { ...d, ...donorStats(d) } } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }

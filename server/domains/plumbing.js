@@ -487,6 +487,7 @@ export default function registerPlumbingActions(registerLensAction) {
       const ref = resolveClientRef(g, userId, params);
       if (ref.error) return { ok: false, error: ref.error };
       const clientName = ref.client ? ref.client.name : clean(params.client, 80);
+      if (!clientName) return { ok: false, error: "client required" };
       const invoice = {
         id: pid("inv"),
         number: clean(params.number, 32) || `INV-${String(seq).padStart(4, "0")}`,

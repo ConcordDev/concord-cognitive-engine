@@ -63,6 +63,7 @@ describe("missing delete controls", () => {
     assert.equal(call("plumbing", "dispatchDelete", ctx, { assignmentId: assignment.id }).result.deleted, assignment.id);
 
     const invoice = call("plumbing", "invoiceFromQuote", ctx, {
+      client: "QA Client",
       lines: [{ name: "Trap", quantity: 1, unitPrice: 25 }],
     }).result.invoice;
     assert.equal(call("plumbing", "invoiceDelete", ctx, { invoiceId: invoice.id }).ok, true);

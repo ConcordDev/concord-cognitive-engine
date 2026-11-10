@@ -1112,6 +1112,9 @@ export default function registerParentingActions(registerLensAction) {
     if (weightKg <= 0 && heightCm <= 0 && headCm <= 0) {
       return { ok: false, error: "provide at least one measurement" };
     }
+    if (weightKg > 500) return { ok: false, error: "weightKg must be at most 500" };
+    if (heightCm > 300) return { ok: false, error: "heightCm must be at most 300" };
+    if (headCm > 80) return { ok: false, error: "headCm must be at most 80" };
     const entry = {
       id: pgId("grw"), childId: String(params.childId),
       weightKg: weightKg > 0 ? Math.round(weightKg * 100) / 100 : null,

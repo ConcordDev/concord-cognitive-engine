@@ -812,6 +812,13 @@ export default function registerInsuranceActions(register) {
     if (params.status != null && ["submitted", "under_review", "approved", "denied", "paid", "closed"].includes(params.status)) {
       claim.status = params.status;
     }
+    if (params.status === "paid" && params.payoutAmount == null && claim.payoutAmount == null) {
+      const policy = claim.policyId
+        ? (s.policies.get(insAid(ctx)) || []).find((p) => p.id === claim.policyId)
+        : null;
+      const deductible = policy ? insNum(policy.deductible) : 0;
+      claim.payoutAmount = Math.max(0, Math.round((insNum(claim.claimAmount) - deductible) * 100) / 100);
+    }
     if (params.payoutAmount != null) claim.payoutAmount = Math.max(0, insNum(params.payoutAmount));
     if (params.adjuster != null) claim.adjuster = insClean(params.adjuster, 120) || null;
     if (params.note != null) {
@@ -1335,6 +1342,14 @@ export default function registerInsuranceActions(register) {
 
     const beneficiaries = normaliseBeneficiaries(params.beneficiaries, params.beneficiaryUserId);
     if (!beneficiaries.length) return { ok: false, error: "at least one beneficiary required" };
+    if (typeof ctx?.db?.prepare === "function") {
+      for (const b of beneficiaries) {
+        let row = true;
+        try { row = ctx.db.prepare("SELECT id FROM users WHERE id = ?").get(b.userId); }
+        catch { row = true; }
+        if (!row) return { ok: false, error: "beneficiary_unresolved" };
+      }
+    }
     // Suicide-pact prevention: insured cannot be a beneficiary of their own pact.
     if (beneficiaries.some((b) => b.userId === userId)) {
       return { ok: false, error: "self_pact_blocked: beneficiary cannot equal insured" };

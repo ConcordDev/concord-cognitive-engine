@@ -151,7 +151,7 @@ describe("plumbing quote-to-invoice flow", () => {
   });
 
   it("invoiceRecordPayment marks partial then paid", () => {
-    const inv = call("invoiceFromQuote", ctxA, { lines: [{ name: "X", quantity: 1, unitPrice: 100 }] }).result.invoice;
+    const inv = call("invoiceFromQuote", ctxA, { client: "Acme", lines: [{ name: "X", quantity: 1, unitPrice: 100 }] }).result.invoice;
     const p1 = call("invoiceRecordPayment", ctxA, { invoiceId: inv.id, amount: 40, method: "card" });
     assert.equal(p1.result.invoice.status, "partial");
     assert.equal(p1.result.balanceDue, 60);
@@ -161,7 +161,7 @@ describe("plumbing quote-to-invoice flow", () => {
   });
 
   it("invoiceList reports outstanding + collected totals", () => {
-    const inv = call("invoiceFromQuote", ctxA, { lines: [{ name: "X", quantity: 1, unitPrice: 200 }] }).result.invoice;
+    const inv = call("invoiceFromQuote", ctxA, { client: "Acme", lines: [{ name: "X", quantity: 1, unitPrice: 200 }] }).result.invoice;
     call("invoiceRecordPayment", ctxA, { invoiceId: inv.id, amount: 50 });
     const lst = call("invoiceList", ctxA, {});
     assert.equal(lst.ok, true);
@@ -337,7 +337,7 @@ describe("plumbing ops summary + tenant isolation", () => {
   it("opsSummary aggregates dispatch, invoices, plans, parts", () => {
     const today = new Date().toISOString().slice(0, 10);
     call("dispatchAssign", ctxA, { jobTitle: "Today job", date: today });
-    call("invoiceFromQuote", ctxA, { lines: [{ name: "X", quantity: 1, unitPrice: 100 }] });
+    call("invoiceFromQuote", ctxA, { client: "Acme", lines: [{ name: "X", quantity: 1, unitPrice: 100 }] });
     call("planCreate", ctxA, { client: "Acme", cadence: "annual", fee: 200 });
     call("partStock", ctxA, { name: "Low", quantity: 0, reorderAt: 5 });
     const s = call("opsSummary", ctxA, {});
