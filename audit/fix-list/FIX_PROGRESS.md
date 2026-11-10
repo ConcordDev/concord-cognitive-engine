@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 486 | 459 | 0 |
+| medium | 492 | 453 | 0 |
 | low | 252 | 728 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **908** | **1240** | **3** |
+| **total** | **914** | **1234** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1428,6 +1428,19 @@ Exceptions, damage, delay risk, and GPS accept the SHP reference, tracking numbe
 | FIX-trades-009 | trades | medium | FIXED_PENDING_VERIFY | 99e9ad301 |
 | FIX-dreams-002 | dreams | medium | FIXED_PENDING_VERIFY | 99e9ad301 |
 | FIX-dx-platform-003 | dx-platform | low | FIXED_PENDING_VERIFY | 99e9ad301 |
+
+## Mediums — floor, mail, and a signature note
+
+Creating a floor debate also creates the argument-map debate, and a floor argument is added to that map. The floor phase and the selected debate stay for the session when you leave and come back. An argument's text can be edited. A mail recipient that is blank, spaced, or not an address shows the error on the field, and a name the server does not know does too. An e-sign email is labeled as stored on the envelope, not sent.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-debate-009 | debate | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-debate-010 | debate | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-debate-011 | debate | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-debate-014 | debate | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-mail-001 | mail | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-insurance-007 | insurance | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

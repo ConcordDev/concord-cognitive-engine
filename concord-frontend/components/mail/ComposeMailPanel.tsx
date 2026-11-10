@@ -20,6 +20,7 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
   const [showDtuPicker, setShowDtuPicker] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
+  const [recipientError, setRecipientError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -42,6 +43,13 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
     e.preventDefault();
     setBusy('send');
     try {
+      const recipient = composeTo.trim();
+      if (!recipient || /[\s,]/.test(recipient) || (recipient.includes('@') && !/^[^\s@]+@[^\s@]+$/.test(recipient))) {
+        setRecipientError('Pick a recipient who has a Concord account. A typed address is not sent until it matches one.');
+        setBusy(null);
+        return;
+      }
+      setRecipientError(null);
       const j = await playerMail('send', {
         toUserId: composeTo.trim(),
         subject: composeSubject.trim(),
@@ -56,7 +64,9 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
         setComposeAttachments([]);
         onSent();
       } else {
-        setFlash({ kind: 'err', msg: sendFailureText(j.ok ? undefined : j.error) });
+        const msg = sendFailureText(j.ok ? undefined : j.error);
+        setRecipientError(msg);
+        setFlash({ kind: 'err', msg });
       }
     } finally { setBusy(null); }
   }, [composeTo, composeSubject, composeBody, composeCc, composeCod, composeAttachments, onSent]);
@@ -78,6 +88,7 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
               onChange={setComposeTo}
               inputId="mail-compose-recipient"
             />
+            {recipientError && <p className="mt-1 text-[11px] text-rose-300" role="alert">{recipientError}</p>}
           </div>
         </label>
         <label className="mb-2 block">
