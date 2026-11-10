@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 395 | 550 | 0 |
+| medium | 398 | 547 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **816** | **1332** | **3** |
+| **total** | **819** | **1329** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1218,6 +1218,16 @@ A bad fleet vehicle, load weight, invoice total, spot name, market stake, monito
 | FIX-vote-002 | vote | medium | FIXED_PENDING_VERIFY | 76cac608a |
 | FIX-markets-001 | markets | medium | FIXED_PENDING_VERIFY | 76cac608a |
 | FIX-agriculture-003 | agriculture | medium | FIXED_PENDING_VERIFY | 76cac608a |
+
+## Mediums — government desks
+
+Oversight counts open permit-desk permits and open service requests, and an empty emergency plan list is not 100% ready. Bills stop spinning and show the load error. A spending period that is not published yet falls back to the previous closed period.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-government-001 | government | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-government-003 | government | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-government-014 | government | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

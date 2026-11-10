@@ -533,6 +533,32 @@ export default function registerGovernmentActions(registerLensAction) {
           const j = await r.json();
           if (typeof j?.detail === "string") detail = j.detail;
         } catch (_e) { /* body unreadable — the status alone is reported */ }
+        if (/submission period/i.test(detail)) {
+          const prev = period > 1 ? { fy: year, period: period - 1 } : { fy: Number(year) - 1, period: 12 };
+          const again = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "budget_function", filters: { fy: String(prev.fy), period: String(prev.period) } }),
+            signal: ctrl.signal,
+          });
+          if (again.ok) {
+            const data = await again.json();
+            const results = data?.results || [];
+            const totalDollars = results.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+            const categories = results.map((c) => ({
+              name: c.name,
+              amountBillions: (Number(c.amount) || 0) / 1e9,
+              pctOfTotal: totalDollars > 0 ? (Number(c.amount) / totalDollars) * 100 : 0,
+            })).sort((a, b) => b.amountBillions - a.amountBillions);
+            const result = {
+              scope: "federal", year: prev.fy, period: prev.period, totalBillions: totalDollars / 1e9, categories,
+              source: "usaspending.gov",
+              note: `Fiscal year ${year} period ${period} is not published yet. Showing fiscal year ${prev.fy} period ${prev.period}.`,
+            };
+            SPENDING_CACHE.set(`federal:${prev.fy}:${prev.period}`, result);
+            return { ok: true, result };
+          }
+        }
         return {
           ok: false,
           error: detail

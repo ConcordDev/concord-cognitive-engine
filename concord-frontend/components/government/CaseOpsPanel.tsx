@@ -8,7 +8,8 @@
  */
 
 import { motion } from 'framer-motion';
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { lensRun } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -645,6 +646,21 @@ export function CaseOpsPanel({
     useLensData<ArtifactData>('government', currentType, {
       seed: seedData[currentType] || [],
     });
+
+  const [deskPermits, setDeskPermits] = useState<Array<{ status: string }>>([]);
+  const [serviceRequests, setServiceRequests] = useState<Array<{ status: string }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([
+      lensRun({ domain: 'government', action: 'permits-list', input: {} }),
+      lensRun({ domain: 'government', action: 'service-requests-list', input: {} }),
+    ]).then(([permits, requests]) => {
+      if (cancelled) return;
+      setDeskPermits((permits.data?.result?.permits || []) as Array<{ status: string }>);
+      setServiceRequests((requests.data?.result?.requests || []) as Array<{ status: string }>);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const permitData = useLensData<ArtifactData>('government', 'Permit', {
     seed: seedData.Permit,
@@ -2794,9 +2810,12 @@ export function CaseOpsPanel({
     const allRecords = recordData.items;
     const allCourt = courtData.items;
 
-    const openPermits = allPermits.filter((i) =>
+    const caseOpenPermits = allPermits.filter((i) =>
       ['draft', 'proposed', 'public-comment'].includes(i.meta.status)
     ).length;
+    const deskOpenPermits = deskPermits.filter((p) => p.status === 'applied' || p.status === 'under_review' || p.status === 'approved').length;
+    const openPermits = deskPermits.length > 0 ? deskOpenPermits : caseOpenPermits;
+    const permitTotal = deskPermits.length > 0 ? deskPermits.length : allPermits.length;
     const activeViolations = allViolations.filter(
       (i) => !['enacted', 'repealed', 'archived'].includes(i.meta.status)
     ).length;
@@ -2817,14 +2836,20 @@ export function CaseOpsPanel({
     const pendingRecordRequests = allRecords.filter((i) =>
       ['draft', 'proposed', 'public-comment'].includes(i.meta.status)
     ).length;
-    const emergencyReadiness =
-      allEmergency.length > 0
-        ? Math.round(
-            (allEmergency.filter((i) => ['draft', 'archived'].includes(i.meta.status)).length /
-              allEmergency.length) *
-              100
-          )
-        : 100;
+    const openServiceRequests = serviceRequests.filter((r) =>
+      ['submitted', 'assigned', 'in_progress', 'needs_more_info'].includes(r.status)
+    ).length;
+    const pendingShown = serviceRequests.length > 0 ? openServiceRequests : pendingRecordRequests;
+    const pendingCaption = serviceRequests.length > 0
+      ? `${serviceRequests.length} service requests`
+      : `${allRecords.length} total records`;
+    const emergencyReadiness = allEmergency.length > 0
+      ? Math.round(
+          (allEmergency.filter((i) => ['draft', 'archived'].includes(i.meta.status)).length /
+            allEmergency.length) *
+            100
+        )
+      : null;
     const upcomingHearings = allCourt.filter((i) => {
       const d = i.data as unknown as Record<string, unknown>;
       const courtDate = d.courtDate as string;
@@ -2861,7 +2886,7 @@ export function CaseOpsPanel({
               <span className={ds.textMuted}>Open Permits</span>
             </div>
             <p className={ds.heading1}>{openPermits}</p>
-            <p className={cn(ds.textMuted, 'text-xs mt-1')}>{allPermits.length} total permits</p>
+            <p className={cn(ds.textMuted, 'text-xs mt-1')}>{permitTotal} total permits</p>
           </div>
           <div className={cn(ds.panel, 'border-red-400/30')}>
             <div className="flex items-center gap-2 mb-2">
@@ -2889,8 +2914,8 @@ export function CaseOpsPanel({
               <Archive className="w-5 h-5 text-neon-cyan" />
               <span className={ds.textMuted}>Pending Requests</span>
             </div>
-            <p className={ds.heading1}>{pendingRecordRequests}</p>
-            <p className={cn(ds.textMuted, 'text-xs mt-1')}>{allRecords.length} total records</p>
+            <p className={ds.heading1}>{pendingShown}</p>
+            <p className={cn(ds.textMuted, 'text-xs mt-1')}>{pendingCaption}</p>
           </div>
         </div>
 
@@ -2902,22 +2927,24 @@ export function CaseOpsPanel({
               <span className={ds.textMuted}>Emergency Readiness</span>
             </div>
             <div className="flex items-center gap-3">
-              <p className={ds.heading1}>{emergencyReadiness}%</p>
+              <p className={ds.heading1}>{emergencyReadiness == null ? '—' : `${emergencyReadiness}%`}</p>
               <div
                 className={cn(
                   'px-2 py-1 rounded text-xs font-medium',
-                  emergencyReadiness >= 80
+                  emergencyReadiness == null
+                    ? 'bg-zinc-500/20 text-zinc-300'
+                    : emergencyReadiness >= 80
                     ? 'bg-green-400/20 text-green-400'
                     : emergencyReadiness >= 50
                       ? 'bg-yellow-400/20 text-yellow-400'
                       : 'bg-red-400/20 text-red-400'
                 )}
               >
-                {emergencyReadiness >= 80 ? 'READY' : emergencyReadiness >= 50 ? 'PARTIAL' : 'LOW'}
+                {emergencyReadiness == null ? 'NO PLANS' : emergencyReadiness >= 80 ? 'READY' : emergencyReadiness >= 50 ? 'PARTIAL' : 'LOW'}
               </div>
             </div>
             <p className={cn(ds.textMuted, 'text-xs mt-1')}>
-              {allEmergency.length} plans maintained
+              {allEmergency.length === 0 ? 'No plans on file' : `${allEmergency.length} plans maintained`}
             </p>
           </div>
           <div className={ds.panel}>
