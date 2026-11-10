@@ -939,6 +939,6 @@ Choosing Terrain, Anomalies, Privacy, or Coverage scrolls that panel into view i
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-atlas-001 | atlas | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-markets-012 | markets | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-robotics-001 | robotics | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-atlas-001 | atlas | high | FIXED_PENDING_VERIFY | 90b2eca5a |
+| FIX-markets-012 | markets | high | FIXED_PENDING_VERIFY | 90b2eca5a |
+| FIX-robotics-001 | robotics | high | FIXED_PENDING_VERIFY | 90b2eca5a |
