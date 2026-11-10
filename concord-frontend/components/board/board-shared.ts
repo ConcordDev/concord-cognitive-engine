@@ -101,11 +101,23 @@ export const projects: string[] = [];
 /** Empty seed — tasks come from live lens artifacts (no fabricated rows). */
 export const TASKS_FALLBACK: { title: string; data: Record<string, unknown> }[] = [];
 
+/** Title edits must land on the artifact title. A data-only patch is dropped on reload because the list reads `item.title` first. */
+export function taskPatchToLensUpdate(patch: Partial<Task>): { title?: string; data: Record<string, unknown> } {
+  const { id: _id, title, ...rest } = patch as Partial<Task> & { id?: string };
+  const data: Record<string, unknown> = { ...rest };
+  if (typeof title === 'string') data.title = title;
+  return {
+    ...(typeof title === 'string' ? { title } : {}),
+    data,
+  };
+}
+
 export function lensItemToTask(item: LensItem<Record<string, unknown>>): Task {
   const d = item.data || {};
+  const editedTitle = typeof d.title === 'string' && d.title.trim() ? d.title : '';
   return {
     id: item.id,
-    title: item.title || (d.title as string) || 'Untitled',
+    title: editedTitle || item.title || 'Untitled',
     description: (d.description as string) || '',
     status: (d.status as ColumnId) || 'backlog',
     priority: (d.priority as Priority) || 'medium',

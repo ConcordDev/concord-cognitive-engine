@@ -121,6 +121,7 @@ export default function registerCarpentryActions(registerLensAction) {
     if (!(s.invoices instanceof Map)) s.invoices = new Map();      // userId -> Array<invoice>
     if (!(s.portalShares instanceof Map)) s.portalShares = new Map(); // token -> share
     if (!(s.signatures instanceof Map)) s.signatures = new Map();  // userId -> Map<estimateId, signature>
+    if (!(s.estimates instanceof Map)) s.estimates = new Map();    // userId -> Array<estimate>
     return s;
   }
   function saveCarpentry() {
@@ -233,27 +234,39 @@ export default function registerCarpentryActions(registerLensAction) {
       const subtotal = baseCost + overhead;
       const margin = Math.round(subtotal * (marginPct / 100) * 100) / 100;
       const total = Math.round((subtotal + margin) * 100) / 100;
-      return {
-        ok: true,
-        result: {
-          projectName: cpClean(params.projectName || "Untitled Project", 160),
-          items,
-          materialSubtotal: Math.round(materialSubtotal * 100) / 100,
-          wastePct,
-          materialWithWaste,
-          laborHours,
-          laborRate,
-          laborCost,
-          overheadPct,
-          overhead,
-          marginPct,
-          margin,
-          total,
-        },
+      const result = {
+        projectName: cpClean(params.projectName || "Untitled Project", 160),
+        items,
+        materialSubtotal: Math.round(materialSubtotal * 100) / 100,
+        wastePct,
+        materialWithWaste,
+        laborHours,
+        laborRate,
+        laborCost,
+        overheadPct,
+        overhead,
+        marginPct,
+        margin,
+        total,
       };
+      const s = getCarpentryState();
+      if (s) {
+        const estimate = { id: cpId("est"), savedAt: new Date().toISOString(), ...result };
+        cpArr(s.estimates, cpActor(ctx)).unshift(estimate);
+        saveCarpentry();
+        result.estimateId = estimate.id;
+      }
+      return { ok: true, result };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
+  });
+
+  registerLensAction("carpentry", "estimate-list", (ctx, _a, _params = {}) => {
+    const s = getCarpentryState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const estimates = cpArr(s.estimates, cpActor(ctx));
+    return { ok: true, result: { estimates, count: estimates.length } };
   });
 
   // ─── Feature: Photo job-log with before/after per job ────────────────

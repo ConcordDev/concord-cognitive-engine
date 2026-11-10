@@ -1129,6 +1129,14 @@ export default function registerHealthcareActions(registerLensAction) {
     const patientId = String(params.patientId || "");
     if (!patientId) return { ok: false, error: "patientId required" };
     const seq = ensureSeqH(s, userId);
+    const hr = Number(params.heartRate);
+    if (params.heartRate != null && params.heartRate !== '' && Number.isFinite(hr) && (hr < 20 || hr > 250)) {
+      return { ok: false, error: "heart rate must be between 20 and 250" };
+    }
+    const temp = Number(params.tempF);
+    if (params.tempF != null && params.tempF !== '' && Number.isFinite(temp) && (temp < 90 || temp > 110)) {
+      return { ok: false, error: "temperature must be between 90 and 110 °F" };
+    }
     const v = {
       id: uidH("vit"),
       number: `V-${String(seq.vit).padStart(6, "0")}`,

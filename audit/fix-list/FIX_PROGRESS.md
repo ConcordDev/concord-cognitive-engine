@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 95 | 123 | 3 |
+| high | 100 | 118 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **636** | **1512** | **3** |
+| **total** | **641** | **1507** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -807,3 +807,17 @@ On a phone, a table's parent scrolls sideways and the table sizes to its columns
 | FIX-disputes-010 | disputes | high | FIXED_PENDING_VERIFY | 4b78317fc |
 | FIX-landscaping-008 | landscaping | high | FIXED_PENDING_VERIFY | 4b78317fc |
 | FIX-manufacturing-003 | manufacturing | medium | FIXED_PENDING_VERIFY | 4b78317fc |
+
+## Persistence and corruption
+
+A board title edit is written to the artifact title, and a reload prefers that saved title. A carpentry takeoff is stored and listed back. A landscaping proposal is stored even when the total is 0. A vital outside 20–250 bpm or 90–110 °F is refused, so 200 °F is not stored as 2 or as 200. A legal time entry above 336 hours is refused.
+
+A fixture for FIX-finance-002 and FIX-finance-003 passes on the current macros: cash 10 + investments 5 − liabilities 3 is 12, and a cash-flow amount of 5 is stored as 5. Those two stay open until a failing UI path is found.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-board-001 | board | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-carpentry-001 | carpentry | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-healthcare-002 | healthcare | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-landscaping-009 | landscaping | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-legal-002 | legal | high | FIXED_PENDING_VERIFY | this commit |

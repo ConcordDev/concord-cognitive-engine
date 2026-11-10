@@ -24,7 +24,7 @@ import { BoardLanes } from './BoardLanes';
 import {
   type Task, type TaskView,
   columns, priorityConfig, typeConfig, labels, assignees, projects,
-  TASKS_FALLBACK, lensItemToTask, isOverdue,
+  TASKS_FALLBACK, lensItemToTask, isOverdue, taskPatchToLensUpdate,
   buildBoardActionParams,
 } from './board-shared';
 
@@ -151,9 +151,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
     (taskId: string, patch: Partial<Task>) => {
       // Optimistically update the selected task panel
       setSelectedTask((prev) => (prev && prev.id === taskId ? { ...prev, ...patch } : prev));
-      // Persist to backend
-      const { id: _id, ...patchData } = patch as Record<string, unknown>;
-      updateLens(taskId, { data: patchData as Record<string, unknown> });
+      updateLens(taskId, taskPatchToLensUpdate(patch));
     },
     [updateLens]
   );

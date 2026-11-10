@@ -694,6 +694,7 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     if (!matter) return { ok: false, error: "matter not found" };
     const hours = Number(params.hours);
     if (!Number.isFinite(hours) || hours <= 0) return { ok: false, error: "hours must be > 0" };
+    if (hours > 336) return { ok: false, error: "hours must be at most 336" };
     const seq = ensureSeqLegal(s, userId);
     const billable = params.billable !== false;
     const rate = Number.isFinite(Number(params.rate)) && Number(params.rate) > 0 ? Number(params.rate) : (matter.hourlyRate || 0);

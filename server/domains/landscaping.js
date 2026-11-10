@@ -744,20 +744,34 @@ export default function registerLandscapingActions(registerLensAction) {
       ``,
       `_This proposal is valid for 30 days from the date above._`,
     ].join("\n");
-    return {
-      ok: true,
-      result: {
-        client, project, lineItems,
-        subtotal: Math.round(subtotal * 100) / 100,
-        overhead, margin, tax, total,
-        overheadPct, marginPct, taxPct,
-        clientId: resolvedClientId,
-        proposalMarkdown: md,
-        generatedAt: new Date().toISOString(),
-      },
+    const proposal = {
+      id: lsId("prop"),
+      client, project, lineItems,
+      subtotal: Math.round(subtotal * 100) / 100,
+      overhead, margin, tax, total,
+      overheadPct, marginPct, taxPct,
+      clientId: resolvedClientId,
+      proposalMarkdown: md,
+      generatedAt: new Date().toISOString(),
     };
+    const s = getLandState();
+    if (s) {
+      if (!(s.proposals instanceof Map)) s.proposals = new Map();
+      const userId = lsActor(ctx);
+      if (!s.proposals.has(userId)) s.proposals.set(userId, []);
+      s.proposals.get(userId).unshift(proposal);
+      saveLand();
+    }
+    return { ok: true, result: proposal };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  registerLensAction("landscaping", "proposal-list", (ctx, _a, _params = {}) => {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = lsActor(ctx);
+    const proposals = (s.proposals instanceof Map && s.proposals.get(userId)) || [];
+    return { ok: true, result: { proposals, count: proposals.length } };
+  });
 
   // ─── Feature 7 — Maintenance calendar (per-bed seasonal tasks) ──────
   // Generates a 12-month task schedule for a bed, biased by sun

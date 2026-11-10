@@ -166,6 +166,16 @@ function MaterialTakeoff({ onEstimate }: { onEstimate: (e: TakeoffResult) => voi
   const [overheadPct, setOverheadPct] = useState('12');
   const [marginPct, setMarginPct] = useState('20');
   const [result, setResult] = useState<TakeoffResult | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const r = await run<{ estimates?: TakeoffResult[] }>('estimate-list', {});
+      const latest = r.result?.estimates?.[0];
+      if (!cancelled && latest) setResult(latest);
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
