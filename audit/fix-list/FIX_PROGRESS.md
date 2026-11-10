@@ -1019,13 +1019,13 @@ Tab and Shift+Tab move focus in the studio. Arrange and Session are buttons. The
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-government-007 | government | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-automotive-003 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-automotive-004 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-automotive-005 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-automotive-006 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-masonry-002 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-masonry-003 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-government-007 | government | medium | FIXED_PENDING_VERIFY | 313e19a61 |
+| FIX-automotive-003 | automotive | medium | FIXED_PENDING_VERIFY | 313e19a61 |
+| FIX-automotive-004 | automotive | medium | FIXED_PENDING_VERIFY | 313e19a61 |
+| FIX-automotive-005 | automotive | medium | FIXED_PENDING_VERIFY | 313e19a61 |
+| FIX-automotive-006 | automotive | medium | FIXED_PENDING_VERIFY | 313e19a61 |
+| FIX-masonry-002 | masonry | medium | FIXED_PENDING_VERIFY | 313e19a61 |
+| FIX-masonry-003 | masonry | medium | FIXED_PENDING_VERIFY | 313e19a61 |
 
 ## NEEDS_PRODUCT_SURFACE
 
