@@ -799,7 +799,7 @@ Still open in section 1g: FIX-cognition-009 (public and non-owner `/dtu/<id>` st
 
 ## RCA-mobile-table-tap-fab
 
-On a phone, a table's parent scrolls sideways and the table sizes to its columns, so End, Kind, Delete, and OEE stay reachable. Buttons, tabs, and role=button controls have a 44px minimum height. The landscaping New design button focuses the layout-name field on the yard designer. File a case opens the disputes filing form.
+On a phone, a table's parent scrolls sideways and the table sizes to its columns, so End, Kind, Delete, and OEE stay reachable. Buttons, tabs, and role=button controls have a 44px minimum height only when the pointer is coarse and the viewport is a phone. A fine pointer, including a desktop window dragged narrow, keeps the dense toolbar. The landscaping New design button focuses the layout-name field on the yard designer. File a case opens the disputes filing form.
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|

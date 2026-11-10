@@ -844,6 +844,11 @@ button, a, input, textarea, select {
     width: max-content;
     min-width: 100%;
   }
+}
+
+/* 44px tap targets only for a coarse pointer on a phone. A fine pointer,
+   including a desktop window dragged narrow, keeps the dense toolbar. */
+@media (max-width: 767px) and (pointer: coarse) {
   button,
   [role="tab"],
   [role="button"] {
