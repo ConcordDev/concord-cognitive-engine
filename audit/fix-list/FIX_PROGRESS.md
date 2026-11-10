@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 301 | 644 | 0 |
+| medium | 303 | 642 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **722** | **1426** | **3** |
+| **total** | **724** | **1424** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1026,6 +1026,15 @@ Tab and Shift+Tab move focus in the studio. Arrange and Session are buttons. The
 | FIX-automotive-006 | automotive | medium | FIXED_PENDING_VERIFY | 313e19a61 |
 | FIX-masonry-002 | masonry | medium | FIXED_PENDING_VERIFY | 313e19a61 |
 | FIX-masonry-003 | masonry | medium | FIXED_PENDING_VERIFY | 313e19a61 |
+
+## Mediums — delete where there was no control
+
+A session can be deleted by its owner. The delete removes that user's row and its events, and another user's id is not found. The detail page uses StickyDeleteConfirm. Photo albums keep the same owner check and the delete control stays visible, armed until confirm, instead of appearing only on hover. Photography albums use the same confirm.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-sessions-001 | sessions | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-photos-004 | photos | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

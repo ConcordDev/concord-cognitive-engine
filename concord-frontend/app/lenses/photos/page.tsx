@@ -22,6 +22,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useUIStore } from '@/store/ui';
 import { PhotoLightboxModal } from '@/components/photos/PhotoLightboxModal';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Frame {
   id: string;
@@ -468,14 +469,13 @@ export default function PhotosLensPage() {
                             <span className="block px-3 pt-2 text-[14px] text-zinc-100">{album.name}</span>
                             <span className="block px-3 pb-2 text-[12px] text-zinc-500">{album.count} {album.count === 1 ? 'photo' : 'photos'}</span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => void deleteAlbum(album)}
-                            aria-label={`Delete album ${album.name}`}
-                            className="absolute right-2 top-2 rounded bg-black/70 px-2 py-0.5 text-[11px] text-zinc-300 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
-                          >
-                            Delete
-                          </button>
+                          <StickyDeleteConfirm
+                            onConfirm={() => void deleteAlbum(album)}
+                            armLabel="Delete"
+                            armAriaLabel={`Delete album ${album.name}`}
+                            confirmAriaLabel={`Confirm delete album ${album.name}`}
+                            className="absolute right-2 top-2 rounded bg-black/70 px-2 py-0.5 text-[11px] text-zinc-100"
+                          />
                         </li>
                       ))}
                     </ul>

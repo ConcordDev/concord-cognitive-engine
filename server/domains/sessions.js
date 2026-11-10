@@ -355,6 +355,32 @@ export default function registerSessionsMacros(register) {
     return { ok: true, sessionId, status: outcome, closedAt: now };
   }, { note: "close a session" });
 
+  /**
+   * sessions.remove — delete the caller's session and its events.
+   * input: { sessionId }
+   * Another user's id is not_found. The events delete runs only after that check.
+   */
+  register("sessions", "remove", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    const sessionId = String(input.sessionId || "").trim();
+    if (!sessionId) return { ok: false, reason: "missing_session_id" };
+    const row = db.prepare(`SELECT id FROM lens_sessions WHERE id = ? AND user_id = ?`).get(sessionId, userId);
+    if (!row) return { ok: false, reason: "not_found" };
+    try {
+      const tx = db.transaction(() => {
+        db.prepare(`DELETE FROM lens_session_events WHERE session_id = ?`).run(sessionId);
+        db.prepare(`DELETE FROM lens_sessions WHERE id = ? AND user_id = ?`).run(sessionId, userId);
+      });
+      tx();
+    } catch (e) {
+      return { ok: false, reason: "db_error", error: String(e?.message || e) };
+    }
+    return { ok: true, sessionId, deleted: true };
+  }, { note: "delete the caller's session" });
+
   // ───────────────────────────────────────────────────────────────────
   // Phase 5 feature-parity backlog — session-manager surface.
   // ───────────────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import { Loader2, Plus, FolderOpen, Camera, Trash2, ChevronRight } from 'lucide-
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Album { id: string; name: string; photoCount: number }
 interface Shoot { id: string; name: string; date: string | null; location: string | null; photoCount: number }
@@ -134,9 +135,13 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
                     <span className="text-sm font-semibold text-zinc-100">{al.name}</span>
                     <span className="text-[11px] text-zinc-400">{al.photoCount} photos</span>
                   </button>
-                  <button aria-label="Delete" type="button" onClick={() => delAlbum(al.id)} className="px-3 text-zinc-600 hover:text-rose-400">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => { void delAlbum(al.id); }}
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                    armAriaLabel={`Delete album ${al.name}`}
+                    confirmAriaLabel={`Confirm delete album ${al.name}`}
+                    className="px-3 text-zinc-400 hover:text-rose-400"
+                  />
                 </div>
                 {openAlbum === al.id && (
                   <div className="border-t border-zinc-800 p-3 bg-zinc-950/50 space-y-1">
