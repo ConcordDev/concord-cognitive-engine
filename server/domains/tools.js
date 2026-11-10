@@ -590,4 +590,17 @@ export default function registerToolsActions(register) {
     saveToolsState();
     return { ok: true, result: { envelope: env } };
   });
+
+  registerLensAction("tools", "esign-delete", (ctx, _artifact, params = {}) => {
+    const s = getToolsState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = aid(ctx);
+    const list = bucket(s.envelopes, userId);
+    const idx = list.findIndex((e) => e.id === String(params.envelopeId || ""));
+    if (idx < 0) return { ok: false, error: "envelope not found" };
+    const [removed] = list.splice(idx, 1);
+    revokeSigningLinks("tools", userId, removed.id);
+    saveToolsState();
+    return { ok: true, result: { id: removed.id, deleted: true } };
+  });
 }

@@ -100,6 +100,10 @@ export default function registerWellnessMacros(_register) {
       const inBed = parseFloat(input.minutesInBed) || asleep;
       const disturb = parseInt(input.disturbances, 10) || 0;
       if (asleep <= 0) return { ok: false, error: "minutesAsleep required" };
+      if (asleep > 24 * 60) return { ok: false, error: "invalid_input", message: "Minutes asleep cannot exceed 24 hours." };
+      if (Number.isFinite(Number(input.minutesInBed)) && asleep > inBed) {
+        return { ok: false, error: "invalid_input", message: "Minutes asleep cannot exceed minutes in bed." };
+      }
       const efficiency = inBed > 0 ? asleep / inBed : 1;
       const hoursAsleep = asleep / 60;
       // Reference: 7.5h baseline at 95% efficiency, 0 disturbances = 95
@@ -167,6 +171,7 @@ export default function registerWellnessMacros(_register) {
       const baseHrv = parseFloat(input.baselineHrvMs) || hrv;
       const baseRhr = parseFloat(input.baselineRhrBpm) || rhr;
       const sleep = parseFloat(input.sleepScore) || 70;
+      if (hrv < 0) return { ok: false, error: "invalid_input", message: "HRV is in milliseconds and cannot be negative." };
       if (hrv <= 0 || rhr <= 0) return { ok: false, error: "hrvMs and rhrBpm required" };
       const hrvFactor = Math.min(1.2, hrv / Math.max(1, baseHrv));
       const rhrFactor = Math.min(1.2, baseRhr / Math.max(1, rhr));
@@ -194,7 +199,10 @@ export default function registerWellnessMacros(_register) {
       const readings = Array.isArray(input.readings) ? input.readings : [];
       if (readings.length < 2) return { ok: true, result: { message: "Need at least 2 readings.", count: readings.length } };
       const sorted = [...readings].sort((a, b) => String(a.date).localeCompare(String(b.date)));
-      const values = sorted.map((r) => parseFloat(r.hrvMs) || 0);
+      const values = sorted.map((r) => parseFloat(r.hrvMs));
+      if (values.some((v) => !Number.isFinite(v) || v < 0 || v > 300)) {
+        return { ok: false, error: "invalid_input", message: "Each HRV reading must be from 0 to 300 ms." };
+      }
       const avg = values.reduce((s, v) => s + v, 0) / values.length;
       const recent7 = values.slice(-7);
       const recentAvg = recent7.reduce((s, v) => s + v, 0) / recent7.length;
@@ -265,6 +273,14 @@ export default function registerWellnessMacros(_register) {
       if (badVal) return { ok: false, error: "invalid_value" };
       const value = Number(input.value);
       if (!Number.isFinite(value)) return { ok: false, error: "numeric value required" };
+      const bounds = {
+        steps: [0, 200000], weight_kg: [0.5, 500], sleep_hours: [0, 24], water_ml: [0, 20000],
+        resting_hr: [20, 250], calories: [0, 20000], hrv_ms: [0, 300], body_fat_pct: [0, 100],
+        systolic: [40, 300], diastolic: [20, 200],
+      }[type];
+      if (value < bounds[0] || value > bounds[1]) {
+        return { ok: false, error: "invalid_input", message: `${type} must be from ${bounds[0]} to ${bounds[1]}.` };
+      }
       const entry = {
         id: uidWl('m'),
         type,

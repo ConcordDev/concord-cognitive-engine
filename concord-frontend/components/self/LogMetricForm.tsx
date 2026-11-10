@@ -30,6 +30,8 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
   const [err, setErr] = useState<string | null>(null);
   const [recent, setRecent] = useState<Array<{ id: string; metric: string; value: number }>>([]);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
 
   const loadRecent = async () => {
     const r = await lensRun('self', 'readings', { limit: 8 });
@@ -97,8 +99,17 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
       {recent.length > 0 && (
         <ul className="mt-3 space-y-1">
           {recent.map((row) => (
-            <li key={row.id} className="flex items-center justify-between text-xs text-rose-200">
-              <span>{row.metric} · {row.value}</span>
+            <li key={row.id} className="flex items-center justify-between gap-2 text-xs text-rose-200">
+              {editId === row.id ? (
+                <input value={editValue} onChange={(e) => setEditValue(e.target.value)} aria-label={`Edit ${row.metric}`} className="w-24 rounded border border-rose-900/40 bg-black px-1 py-0.5 text-rose-100" onBlur={async () => {
+                  const n = Number(editValue);
+                  const d = await lensRun('self', 'reading-update', { id: row.id, value: n });
+                  if (d.data?.ok) { setEditId(null); await loadRecent(); onLogged(); }
+                  else setErr(d.data?.message || d.data?.error || 'Could not update the reading');
+                }} />
+              ) : (
+                <button type="button" onClick={() => { setEditId(row.id); setEditValue(String(row.value)); }} className="text-left">{row.metric} · {row.value}</button>
+              )}
               <button
                 type="button"
                 onClick={async () => {

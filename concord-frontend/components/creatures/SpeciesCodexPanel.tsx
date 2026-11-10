@@ -17,6 +17,17 @@ export function SpeciesCodexPanel() {
   const [taxLoading, setTaxLoading] = useState(false);
   const [taxResult, setTaxResult] = useState<{ id: string; taxonomy: TaxonomyLookup } | { id: string; error: string } | null>(null);
   const codexSearchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      e.preventDefault();
+      codexSearchRef.current?.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const refreshCodex = useCallback(async () => {
     setCodexLoading(true);

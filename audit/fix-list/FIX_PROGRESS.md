@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 507 | 438 | 0 |
+| medium | 513 | 432 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **933** | **1215** | **3** |
+| **total** | **939** | **1209** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1474,6 +1474,19 @@ A generated meal keeps a calorie count only when that meal has one. The day's to
 | FIX-dx-platform-004 | dx-platform | low | FIXED_PENDING_VERIFY | e13c721d5 |
 | FIX-mail-005 | mail | low | FIXED_PENDING_VERIFY | e13c721d5 |
 | FIX-debate-018 | debate | low | FIXED_PENDING_VERIFY | e13c721d5 |
+
+## Mediums — readings, envelopes, and a blank principal
+
+A wellness reading outside its range is refused, including sleep past 24 hours, negative water, HRV below zero, and minutes asleep greater than minutes in bed. The HRV field keeps a minus sign and says it cannot be negative, instead of turning -10 into 10. A logged self reading can be edited to another in-range value, and delete still asks first. An envelope can be voided only after confirm, deleted after confirm, and the list sorts by title. A new lesson type has an accessible name. The stake principal starts empty, with 10 as the placeholder, so typing does not append onto a prefilled 100. Slash focuses the species filter when the key is not already in a field.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-wellness-002 | wellness | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-self-002 | self | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-tools-003 | tools | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-education-008 | education | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-staking-011 | staking | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-creatures-003 | creatures | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

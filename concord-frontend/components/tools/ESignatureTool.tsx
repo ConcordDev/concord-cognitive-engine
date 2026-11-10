@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   FileSignature, Loader2, Plus, Trash2, Lock, ShieldCheck, ShieldAlert,
   X, FileText, Users, ClipboardList, Eye,
@@ -55,6 +56,7 @@ export function ESignatureTool() {
   const [view, setView] = useState<'create' | 'list'>('list');
   const [list, setList] = useState<EnvelopeSummary[]>([]);
   const [statusFilter, setStatusFilter] = useState<'all' | 'out_for_signature' | 'completed' | 'voided'>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'title'>('newest');
   const [selected, setSelected] = useState<Envelope | null>(null);
   const [verify, setVerify] = useState<VerifyResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -308,11 +310,18 @@ export function ESignatureTool() {
                 >{f === 'out_for_signature' ? 'out' : f}</button>
               ))}
             </div>
+            <label className="mb-2 flex items-center gap-2 text-[10px] text-yellow-600">
+              Sort
+              <select aria-label="Sort envelopes" value={sortBy} onChange={(e) => setSortBy(e.target.value as 'newest' | 'title')} className="rounded border border-yellow-900/40 bg-yellow-950/30 px-1.5 py-1 text-xs text-yellow-200">
+                <option value="newest">Newest</option>
+                <option value="title">Title</option>
+              </select>
+            </label>
             {list.length === 0 ? (
               <p className="py-6 text-center text-xs text-yellow-700">No envelopes yet — create one to begin.</p>
             ) : (
               <ul className="space-y-1.5">
-                {list.map((e) => (
+                {[...list].sort((a, b) => sortBy === 'title' ? a.title.localeCompare(b.title) : 0).map((e) => (
                   <li key={e.id}>
                     <button
                       onClick={() => openDetail(e.id)}
@@ -421,14 +430,26 @@ export function ESignatureTool() {
                 <Eye className="h-3.5 w-3.5" aria-hidden /> Verify signatures
               </button>
               {selected.status === 'out_for_signature' && (
-                <button
-                  onClick={() => voidEnvelope(selected.id)}
+                <StickyDeleteConfirm
+                  armLabel={<><X className="h-3.5 w-3.5" aria-hidden /> Void</>}
+                  confirmLabel="Void this envelope?"
+                  armAriaLabel="Void envelope"
+                  confirmAriaLabel="Confirm void"
                   disabled={busy}
-                  className="inline-flex items-center gap-1.5 rounded border border-red-900/60 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-950/30 disabled:opacity-40"
-                >
-                  <X className="h-3.5 w-3.5" aria-hidden /> Void
-                </button>
+                  className="inline-flex items-center gap-1.5 rounded border border-red-900/60 px-2.5 py-1.5 text-xs font-medium text-red-400"
+                  onConfirm={() => voidEnvelope(selected.id)}
+                />
               )}
+              <StickyDeleteConfirm
+                armLabel="Delete envelope"
+                confirmLabel="Delete this envelope?"
+                className="inline-flex items-center gap-1.5 rounded border border-red-900/60 px-2.5 py-1.5 text-xs font-medium text-red-300"
+                onConfirm={async () => {
+                  const r = await lensRun('tools', 'esign-delete', { envelopeId: selected.id });
+                  if (r.data?.ok) { setSelected(null); await loadList(); }
+                  else setError(r.data?.error || 'Could not delete that envelope');
+                }}
+              />
             </div>
 
             {verify && (

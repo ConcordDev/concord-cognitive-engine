@@ -148,6 +148,23 @@ export default function registerSelfActions(registerLensAction) {
     return { ok: true, result: { deleted: removed.id } };
   });
 
+  registerLensAction("self", "reading-update", (ctx, _a, params = {}) => {
+    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const row = readingsFor(s, actor(ctx)).find((r) => r.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "reading not found" };
+    const value = Number(params.value);
+    if (!Number.isFinite(value)) return { ok: false, error: "value must be a finite number" };
+    const bounds = {
+      steps: [0, 200000], sleep_hours: [0, 24], workout_min: [0, 1440], mood: [1, 5],
+      weight_kg: [0.5, 500], resting_hr: [20, 250], water_ml: [0, 20000], calories: [0, 20000],
+      meditation_min: [0, 1440], journal_entries: [0, 100],
+    }[row.metric];
+    if (value < bounds[0] || value > bounds[1]) return { ok: false, error: `${row.metric} must be between ${bounds[0]} and ${bounds[1]}` };
+    row.value = value;
+    save();
+    return { ok: true, result: { reading: row } };
+  });
+
   // ─── importBatch — wearable / Apple Health / Google Fit ingestion ────
   // Accepts an array of {metric,value,at?,source?} samples in one call.
   // Idempotency: a sample equal in (metric, value, day, source) to an
