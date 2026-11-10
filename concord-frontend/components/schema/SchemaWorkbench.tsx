@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { TreeDiagram, TreeNode } from '@/components/viz';
 import { SchemaCanvas } from './SchemaCanvas';
 import {
@@ -359,9 +360,12 @@ function RegistryPanel({
               <div className="flex shrink-0 gap-1">
                 <button onClick={() => viewHistory(s.id)} className="rounded border border-zinc-700 px-2 py-1 text-[10px] text-zinc-300 hover:bg-zinc-800">History</button>
                 <button onClick={() => onOpen(s.id)} className="rounded border border-cyan-500/30 px-2 py-1 text-[10px] text-cyan-300 hover:bg-cyan-500/15">Edit</button>
-                <button onClick={() => handleDelete(s.id)} disabled={deleting === s.id} className="rounded border border-red-500/30 px-2 py-1 text-red-300 hover:bg-red-500/15 disabled:opacity-50">
-                  {deleting === s.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => handleDelete(s.id)}
+                  disabled={deleting === s.id}
+                  armLabel={<Trash2 className="h-3 w-3" />}
+                  className="rounded border border-red-500/30 px-2 py-1 text-red-300 hover:bg-red-500/15 disabled:opacity-50"
+                />
               </div>
             </div>
           </div>

@@ -579,6 +579,9 @@ export default function registerAgentsActions(registerLensAction) {
       const kind = SCHEDULE_KINDS.includes(params.kind) ? params.kind : "interval";
       const spec = aClean(params.spec, 200);
       if (!spec) return { ok: false, error: "spec required (interval ms / cron / webhook path / event name)" };
+      if (kind === "interval" && !(Number.isInteger(Number(spec)) && Number(spec) >= 1)) {
+        return { ok: false, error: "invalid_input", message: "Interval must be a whole number of milliseconds that is 1 or greater." };
+      }
       const schedule = {
         id: aId("sched"),
         agentId,
@@ -781,15 +784,21 @@ export default function registerAgentsActions(registerLensAction) {
       const userId = aActor(ctx);
       const agentId = aClean(params.agentId, 80);
       if (!agentId) return { ok: false, error: "agentId required" };
-      const tokenLimit = aNum(params.tokenLimit, 0);
-      if (tokenLimit <= 0) return { ok: false, error: "tokenLimit must be positive" };
+      const tokenLimit = Number(params.tokenLimit);
+      const costPer1k = Number(params.costPer1k);
+      if (!Number.isFinite(tokenLimit) || tokenLimit <= 0) {
+        return { ok: false, error: "tokenLimit must be positive", message: "Token limit must be a number greater than 0." };
+      }
+      if (params.costPer1k != null && params.costPer1k !== "" && !(costPer1k >= 0)) {
+        return { ok: false, error: "invalid_input", message: "Cost per 1k tokens must be a number that is 0 or greater." };
+      }
       const budgetMap = submap(s.budgets, userId);
       const prev = budgetMap.get(agentId);
       const budget = {
         agentId,
         tokenLimit,
         // $ per 1k tokens — used for the cost projection.
-        costPer1k: aNum(params.costPer1k, 3),
+        costPer1k: params.costPer1k == null || params.costPer1k === "" ? 3 : costPer1k,
         enforce: params.enforce !== false,
         tokensUsed: prev ? (prev.tokensUsed || 0) : 0,
         updatedAt: new Date().toISOString(),

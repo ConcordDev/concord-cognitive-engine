@@ -118,8 +118,10 @@ export function FleetPanel() {
   });
   const isError2 = isError; const error2 = error; const refetch2 = refetch;
 
+  const [createError, setCreateError] = useState('');
   const createAgent = useMutation({
     mutationFn: async () => {
+      if (newName.trim().length > 120) throw new Error('Name must be at most 120 characters.');
       await createLensAgent({
         title: newName,
         data: { name: newName, type: newType, description: newDescription, goals: newGoals.split('\n').filter(Boolean), tools: newTools, model: newModel, temperature: newTemp, maxTokens: newMaxTokens, enabled: false, status: 'dormant', tickCount: 0, successRate: 0, avgLatency: 0, createdAt: new Date().toISOString(), memory: [], logs: [] } as unknown as Record<string, unknown>,
@@ -129,7 +131,7 @@ export function FleetPanel() {
       setShowCreate(false);
       resetCreateForm();
     },
-    onError: () => { setShowCreate(false); },
+    onError: (err) => { setCreateError(err instanceof Error ? err.message : 'That agent was not saved.'); },
   });
 
   // Wave 3 audit fix: `agents.start`/`agents.stop` (server.js:39985-39996)
@@ -1248,9 +1250,10 @@ export function FleetPanel() {
                 </div>
               </div>
 
+              {createError && <p className="text-[12px] text-rose-300" role="alert">{createError}</p>}
               <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => { setShowCreate(false); resetCreateForm(); }}
+                  onClick={() => { setShowCreate(false); setCreateError(''); resetCreateForm(); }}
                   className="flex-1 py-2.5 border border-lattice-border rounded-lg text-gray-400 hover:text-white transition-colors"
                 >
                   Cancel

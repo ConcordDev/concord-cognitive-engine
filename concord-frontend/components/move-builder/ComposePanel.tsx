@@ -54,7 +54,12 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
   const balanced = composed?.budget?.balanced ?? true;
 
   function setAspect(a: Aspect, v: number) {
-    setAlloc((prev) => ({ ...prev, [a]: Math.max(0, Math.min(7, v)) }));
+    setAlloc((prev) => {
+      const next = { ...prev, [a]: Math.max(0, v) };
+      const sum = Object.values(next).reduce((s, n) => s + n, 0);
+      if (sum > (composed?.budget?.budget ?? 6)) return prev;
+      return next;
+    });
   }
 
   const canMint = useMemo(
@@ -64,6 +69,7 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
 
   async function mint() {
     if (!canMint) return;
+    if (name.trim().length > 120) { setMintMsg('Name must be at most 120 characters.'); return; }
     setMinting(true);
     setMintMsg(null);
     try {
@@ -144,7 +150,7 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
               <span style={{ width: 90, textTransform: 'capitalize' }}>{a}</span>
               <button type="button" onClick={() => setAspect(a, alloc[a] - 1)} aria-label={`Decrease ${a}`} className="transition-colors hover:brightness-125" style={stepBtn}>−</button>
               <span style={{ width: 24, textAlign: 'center' }} aria-label={`${a} points`}>{alloc[a]}</span>
-              <button type="button" onClick={() => setAspect(a, alloc[a] + 1)} aria-label={`Increase ${a}`} className="transition-colors hover:brightness-125" style={stepBtn}>+</button>
+              <button type="button" onClick={() => setAspect(a, alloc[a] + 1)} disabled={spent >= budget} aria-label={`Increase ${a}`} className="transition-colors hover:brightness-125 disabled:opacity-40" style={stepBtn}>+</button>
               <span style={{ opacity: 0.5, fontSize: 12 }}>eff {composed?.budget?.effective?.[a] ?? 0}</span>
             </div>
           ))}

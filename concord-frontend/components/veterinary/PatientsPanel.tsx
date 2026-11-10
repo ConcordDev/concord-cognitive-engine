@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { Heart, Plus, Trash2, Loader2, Stethoscope, Syringe, ChevronRight } from 'lucide-react';
 import {
   VetPatient,
@@ -193,13 +194,12 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
                   <span className="flex items-center gap-1 text-xs text-zinc-400">
                     <Syringe className="h-3.5 w-3.5" /> {p.vaccinationCount ?? p.vaccinations.length}
                   </span>
-                  <button
-                    onClick={() => removePatient(p.id)}
-                    aria-label="Delete patient"
+                  <StickyDeleteConfirm
+                    onConfirm={() => removePatient(p.id)}
+                    armLabel={<Trash2 className="h-4 w-4" />}
+                    armAriaLabel="Delete patient"
                     className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  />
                 </div>
               </div>
               {expanded === p.id && (

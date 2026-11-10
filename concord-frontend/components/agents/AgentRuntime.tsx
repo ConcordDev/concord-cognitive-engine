@@ -720,11 +720,13 @@ function BudgetsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () 
   const save = async () => {
     setErr(null);
     if (!agentId) { setErr('Select an agent'); return; }
+    if (!(Number(tokenLimit) > 0)) { setErr('Token limit must be a number greater than 0.'); return; }
+    if (!(Number(costPer1k) >= 0)) { setErr('Cost per 1k tokens must be a number that is 0 or greater.'); return; }
     setBusy(true);
     const r = await lensRun(DOMAIN, 'setBudget', { agentId, tokenLimit, costPer1k, enforce });
     setBusy(false);
     if (r.data?.ok) { await load(agentId); onChange(); }
-    else setErr(r.data?.error || 'Save failed');
+    else setErr(r.data?.message || r.data?.error || 'Save failed');
   };
 
   const reset = async () => {

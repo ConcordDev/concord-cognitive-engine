@@ -160,12 +160,13 @@ export default function registerMoveBuilderMacros(register) {
    * input: { name, skillKind, element, allocation?, skillLevel?, worldId? }
    */
   register("move-builder", "mint", async (ctx, input = {}) => {
+    const name = String(input.name || "").trim();
+    if (!name) return { ok: false, reason: "missing_name" };
+    if (name.length > 120) return { ok: false, reason: "name_too_long", message: "Name must be at most 120 characters." };
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_user" };
-    const name = String(input.name || "").trim();
-    if (!name) return { ok: false, reason: "missing_name" };
     // Fail-closed on poisoned numerics BEFORE any DB write.
     const badNum = badNumericField(input, ["skillLevel"]);
     if (badNum) return { ok: false, reason: `invalid_${badNum}` };

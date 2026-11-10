@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 430 | 515 | 0 |
+| medium | 437 | 508 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **851** | **1297** | **3** |
+| **total** | **858** | **1290** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1308,6 +1308,20 @@ A persona tagline, personality, greeting, or tag that is out of range is refused
 | FIX-construction-001 | construction | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
 | FIX-construction-002 | construction | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
 | FIX-construction-003 | construction | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
+
+## Mediums — confirm and limits
+
+A schema, a veterinary patient, and a medication archive ask before they go. An agent interval has to be a positive whole number of milliseconds, and a token budget has to be greater than 0. A move name over 120 characters is refused, and a modifier cannot be raised past the budget.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-schema-002 | schema | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-veterinary-001 | veterinary | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-pharmacy-002 | pharmacy | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-agents-011 | agents | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-move-builder-001 | move-builder | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-move-builder-002 | move-builder | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-move-builder-009 | move-builder | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 
