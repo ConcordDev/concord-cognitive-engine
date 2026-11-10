@@ -1546,13 +1546,13 @@ Ratios count revenue in the same year-to-date window as the P&L. The manuscript 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-accounting-005 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-paper-014 | paper | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-paper-010 | paper | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-paper-011 | paper | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-fitness-014 | fitness | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-fitness-015 | fitness | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-creatures-010 | creatures | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-accounting-005 | accounting | medium | FIXED_PENDING_VERIFY | 660c04b7e |
+| FIX-paper-014 | paper | medium | FIXED_PENDING_VERIFY | 660c04b7e |
+| FIX-paper-010 | paper | medium | FIXED_PENDING_VERIFY | 660c04b7e |
+| FIX-paper-011 | paper | medium | FIXED_PENDING_VERIFY | 660c04b7e |
+| FIX-fitness-014 | fitness | medium | FIXED_PENDING_VERIFY | 660c04b7e |
+| FIX-fitness-015 | fitness | medium | FIXED_PENDING_VERIFY | 660c04b7e |
+| FIX-creatures-010 | creatures | medium | FIXED_PENDING_VERIFY | 660c04b7e |
 
 ## NEEDS_PRODUCT_SURFACE
 
