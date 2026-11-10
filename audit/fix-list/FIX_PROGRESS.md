@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 142 | 76 | 3 |
+| high | 145 | 73 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **683** | **1465** | **3** |
+| **total** | **686** | **1462** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -934,3 +934,11 @@ Renaming an event rewrites the ticket tiers that named it, and a tier can also p
 | FIX-mail-012 | mail | high | FIXED_PENDING_VERIFY | 85819dccf |
 | FIX-board-006 | board | high | FIXED_PENDING_VERIFY | 85819dccf |
 | FIX-market-001 | market | high | FIXED_PENDING_VERIFY | 85819dccf |
+
+Choosing Terrain, Anomalies, Privacy, or Coverage scrolls that panel into view instead of leaving the signals summary on screen. The finance book nav scrolls sideways so Wallet and More stay reachable on a phone. The robotics arXiv list is capped so the view under it is on the page.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-atlas-001 | atlas | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-markets-012 | markets | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-robotics-001 | robotics | high | FIXED_PENDING_VERIFY | this commit |

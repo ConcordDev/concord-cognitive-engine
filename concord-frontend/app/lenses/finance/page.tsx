@@ -255,7 +255,7 @@ function FinanceTerminal() {
           </div>
         </div>
 
-        <nav className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1 text-[13px]" aria-label="Books">
+        <nav className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1 text-[13px]" aria-label="Books">
           <span className="rounded-full bg-white/10 px-3 py-1 text-zinc-50" aria-current="page">Finance</span>
           <Link href="/lenses/markets" className="rounded-full px-3 py-1 text-zinc-500 hover:text-zinc-200">Markets</Link>
           <Link href="/lenses/wallet" className="rounded-full px-3 py-1 text-zinc-500 hover:text-zinc-200">Wallet</Link>
