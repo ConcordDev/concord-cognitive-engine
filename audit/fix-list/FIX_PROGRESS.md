@@ -1368,11 +1368,11 @@ An entity node can change type after it is created. A floor argument can be remo
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-entity-002 | entity | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-debate-012 | debate | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-construction-004 | construction | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-marketing-001 | marketing | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-marketing-013 | marketing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-entity-002 | entity | medium | FIXED_PENDING_VERIFY | 16d7fe919 |
+| FIX-debate-012 | debate | medium | FIXED_PENDING_VERIFY | 16d7fe919 |
+| FIX-construction-004 | construction | medium | FIXED_PENDING_VERIFY | 16d7fe919 |
+| FIX-marketing-001 | marketing | medium | FIXED_PENDING_VERIFY | 16d7fe919 |
+| FIX-marketing-013 | marketing | medium | FIXED_PENDING_VERIFY | 16d7fe919 |
 
 ## NEEDS_PRODUCT_SURFACE
 
