@@ -708,6 +708,17 @@ export default function registerForestryActions(registerLensAction) {
     return { ok: true, result: { reports, count: reports.length, openCount: reports.filter((r) => r.status === "open").length, upcomingTreatments: upcoming } };
   });
 
+  registerLensAction("forestry", "pest-delete", (ctx, _a, params = {}) => {
+    const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.pests instanceof Map)) s.pests = new Map();
+    const arr = frPests(s, frActor(ctx));
+    const i = arr.findIndex((r) => r.id === params.id);
+    if (i < 0) return { ok: false, error: "pest report not found" };
+    arr.splice(i, 1);
+    saveForestry();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
   registerLensAction("forestry", "pest-schedule-treatment", (ctx, _a, params = {}) => {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.pests instanceof Map)) s.pests = new Map();
@@ -793,6 +804,17 @@ export default function registerForestryActions(registerLensAction) {
         totalSeedlings: projects.reduce((n, p) => n + p.seedlingsOrdered, 0),
       },
     };
+  });
+
+  registerLensAction("forestry", "replant-delete", (ctx, _a, params = {}) => {
+    const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.replanting instanceof Map)) s.replanting = new Map();
+    const arr = frReplant(s, frActor(ctx));
+    const i = arr.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "replant project not found" };
+    arr.splice(i, 1);
+    saveForestry();
+    return { ok: true, result: { deleted: params.id } };
   });
 
   registerLensAction("forestry", "replant-update-status", (ctx, _a, params = {}) => {

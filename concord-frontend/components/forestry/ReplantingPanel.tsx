@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Sprout, Loader2, Plus, ClipboardCheck } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Survey { id: string; date: string; survivalPercent: number; recommendation: string }
 interface Project {
@@ -73,6 +74,12 @@ export function ReplantingPanel() {
     else setErr(r.data?.error || 'Create failed.');
     setBusy(false);
   }, [name, species, acres, spa, method, plannedDate, standId, load]);
+
+  const drop = useCallback(async (id: string) => {
+    const r = await lensRun('forestry', 'replant-delete', { id });
+    if (r.data?.ok) await load();
+    else setErr(r.data?.message || r.data?.error || 'Could not delete that project.');
+  }, [load]);
 
   const setStatus = useCallback(async (id: string, status: string) => {
     const r = await lensRun('forestry', 'replant-update-status', { id, status });
@@ -150,8 +157,9 @@ export function ReplantingPanel() {
                   {p.latestSurvival}% survival
                 </span>
               )}
+              <StickyDeleteConfirm onConfirm={() => void drop(p.id)} armAriaLabel={`Delete ${p.name}`} confirmAriaLabel={`Confirm delete ${p.name}`} className="ml-auto text-rose-400" />
               <select value={p.status} onChange={(e) => setStatus(p.id, e.target.value)}
-                className="ml-auto bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[10px] text-zinc-200">
+                className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[10px] text-zinc-200">
                 {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>

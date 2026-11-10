@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 344 | 601 | 0 |
+| medium | 349 | 596 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **765** | **1383** | **3** |
+| **total** | **770** | **1378** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1111,6 +1111,18 @@ The existing owner-scoped delete stays armed until confirm. Spot and session, fi
 | FIX-materials-001 | materials | medium | FIXED_PENDING_VERIFY | f012a8f62 |
 | FIX-automotive-008 | automotive | medium | FIXED_PENDING_VERIFY | f012a8f62 |
 | FIX-analytics-002 | analytics | medium | FIXED_PENDING_VERIFY | f012a8f62 |
+
+## Mediums — owner-scoped delete where the list already exists
+
+Pest reports, replanting projects, sprints, the caller's own poll, observing sessions, and saved HVAC load estimates can be removed after confirm. Another user's record is not found. Deleting a sprint clears that sprint id on the owner's tasks and does not delete the tasks.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-forestry-004 | forestry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-projects-001 | projects | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-vote-001 | vote | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-astronomy-008 | astronomy | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-hvac-003 | hvac | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

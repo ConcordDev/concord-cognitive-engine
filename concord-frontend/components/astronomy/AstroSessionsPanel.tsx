@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Moon, ChevronRight, Radio } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { AstroCoObservePanel } from './AstroCoObservePanel';
@@ -57,6 +58,14 @@ export function AstroSessionsPanel({ onChange }: { onChange: () => void }) {
     setShowAdd(false); setError(null);
     await refresh();
   };
+  const removeSession = async (id: string) => {
+    const r = await lensRun('astronomy', 'session-delete', { id });
+    if (r.data?.ok === false) { setError(r.data?.message || r.data?.error || 'Could not delete that session.'); return; }
+    if (open === id) { setOpen(null); setOpenObs([]); }
+    setError(null);
+    await refresh();
+  };
+
   const openSession = async (id: string) => {
     if (open === id) { setOpen(null); return; }
     setOpen(id);
@@ -131,6 +140,7 @@ export function AstroSessionsPanel({ onChange }: { onChange: () => void }) {
                 </div>
                 <ChevronRight className={cn('w-4 h-4 text-zinc-600 ml-auto transition-transform', open === ses.id && 'rotate-90')} />
               </button>
+              <StickyDeleteConfirm onConfirm={() => void removeSession(ses.id)} armAriaLabel={`Delete session ${ses.date}`} confirmAriaLabel={`Confirm delete session ${ses.date}`} className="mr-2 text-rose-400" />
               {open === ses.id && (
                 <div className="border-t border-zinc-800 px-3 py-2 bg-zinc-950/50">
                   {openObs.length === 0 ? (

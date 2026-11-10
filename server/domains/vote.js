@@ -810,6 +810,20 @@ export default function registerVoteActions(registerLensAction) {
     return { ok: true, result: { poll: { ...poll, status: "closed" } } };
   });
 
+  registerLensAction("vote", "poll-delete", (ctx, _a, params = {}) => {
+    const s = getVoteState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const poll = findPoll(s, vtclean(params.pollId || params.id, 80));
+    if (!poll) return { ok: false, error: "poll not found" };
+    if (poll.owner !== vtaid(ctx)) return { ok: false, error: "only the poll owner can delete it" };
+    const arr = s.polls.get(poll.owner) || [];
+    const i = arr.findIndex((p) => p.id === poll.id);
+    if (i >= 0) arr.splice(i, 1);
+    s.ballots.delete(poll.id);
+    saveVoteState();
+    return { ok: true, result: { deleted: poll.id } };
+  });
+
   /**
    * cast-ballot — cast a ballot for a poll. Shape varies by method:
    *   plurality: { choice }

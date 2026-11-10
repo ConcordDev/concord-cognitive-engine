@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
 import { useCurrentUser } from '@/hooks/use-current-user';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import {
   Plus, X, Vote, ListChecks, Users, ShieldCheck, Network, Layers,
@@ -282,6 +283,14 @@ export function GovernanceWorkbench() {
 
 function PollDetail({ poll, onChanged }: { poll: Poll; onChanged: () => void }) {
   const [tab, setTab] = useState<'vote' | 'results' | 'delegate' | 'audit'>('vote');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { data: meData } = useCurrentUser();
+  const mine = !!meData?.user?.id && meData.user.id === poll.owner;
+  const removePoll = async () => {
+    const r = await lensRun('vote', 'poll-delete', { pollId: poll.id });
+    if (!r.data?.ok) { setDeleteError(r.data?.message || r.data?.error || 'Could not delete that poll.'); return; }
+    onChanged();
+  };
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
@@ -299,7 +308,11 @@ function PollDetail({ poll, onChanged }: { poll: Poll; onChanged: () => void }) 
           </div>
         </div>
         <span className={`shrink-0 rounded border px-2 py-0.5 text-[11px] uppercase ${STATUS_TONE[poll.status]}`}>{poll.status}</span>
+        {mine && (
+          <StickyDeleteConfirm onConfirm={() => void removePoll()} armAriaLabel={`Delete poll ${poll.title}`} confirmAriaLabel={`Confirm delete poll ${poll.title}`} className="shrink-0 text-rose-300" />
+        )}
       </div>
+      {deleteError && <p role="alert" className="mt-2 text-xs text-rose-300">{deleteError}</p>}
 
       <div className="mt-4 flex gap-1 border-b border-zinc-800">
         {([
