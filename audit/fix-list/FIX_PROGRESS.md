@@ -635,40 +635,40 @@ Ask about a lens reuses a thread already filed under that lens, or starts a new 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-all-002 | all | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-ar-014 | ar | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-black-market-006 | black-market | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-ethics-001 | ethics | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-fractal-001 | fractal | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-goals-001 | goals | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-hvac-004 | hvac | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-marketing-003 | marketing | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-staking-009 | staking | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-voice-004 | voice | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-auction-008 | auction | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-black-market-008 | black-market | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-civic-bonds-011 | civic-bonds | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-command-center-004 | command-center | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-custom-009 | custom | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-fishing-002 | fishing | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-forge-011 | forge | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-game-design-004 | game-design | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-garage-003 | garage | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-graph-007 | graph | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-lab-007 | lab | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-market-007 | market | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-observe-004 | observe | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-parenting-005 | parenting | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-productivity-004 | productivity | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-questmarket-008 | questmarket | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-social-009 | social | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-spectate-003 | spectate | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-system-003 | system | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-training-room-001 | training-room | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-app-maker-008 | app-maker | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-cognitive-replay-004 | cognitive-replay | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-event-timeline-002 | event-timeline | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-literary-005 | literary | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-meta-004 | meta | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-mining-006 | mining | low | FIXED_PENDING_VERIFY | this commit |
-| FIX-timeline-008 | timeline | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-all-002 | all | high | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-ar-014 | ar | high | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-black-market-006 | black-market | high | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-ethics-001 | ethics | high | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-fractal-001 | fractal | high | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-goals-001 | goals | high | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-hvac-004 | hvac | high | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-marketing-003 | marketing | high | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-staking-009 | staking | high | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-voice-004 | voice | high | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-auction-008 | auction | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-black-market-008 | black-market | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-civic-bonds-011 | civic-bonds | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-command-center-004 | command-center | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-custom-009 | custom | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-fishing-002 | fishing | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-forge-011 | forge | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-game-design-004 | game-design | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-garage-003 | garage | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-graph-007 | graph | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-lab-007 | lab | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-market-007 | market | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-observe-004 | observe | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-parenting-005 | parenting | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-productivity-004 | productivity | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-questmarket-008 | questmarket | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-social-009 | social | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-spectate-003 | spectate | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-system-003 | system | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-training-room-001 | training-room | medium | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-app-maker-008 | app-maker | low | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-cognitive-replay-004 | cognitive-replay | low | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-event-timeline-002 | event-timeline | low | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-literary-005 | literary | low | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-meta-004 | meta | low | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-mining-006 | mining | low | FIXED_PENDING_VERIFY | 545ed1873 |
+| FIX-timeline-008 | timeline | low | FIXED_PENDING_VERIFY | 545ed1873 |
