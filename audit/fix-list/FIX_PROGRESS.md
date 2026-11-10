@@ -687,8 +687,8 @@ FIX-finance-004. A lens export's DTU leg keeps rows that belong to this caller a
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-whiteboard-001 | whiteboard | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-whiteboard-002 | whiteboard | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-whiteboard-001 | whiteboard | high | FIXED_PENDING_VERIFY | 8f2f24760 |
+| FIX-whiteboard-002 | whiteboard | high | FIXED_PENDING_VERIFY | 8f2f24760 |
 
 ## SEC-mail-recipient
 
@@ -696,7 +696,7 @@ FIX-finance-004. A lens export's DTU leg keeps rows that belong to this caller a
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-mail-011 | mail | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-mail-011 | mail | high | FIXED_PENDING_VERIFY | 8f2f24760 |
 
 ## SEC-pharmacy-datetime
 
@@ -704,7 +704,7 @@ The appointment field keeps `YYYY-MM-DDTHH:mm` only. A concatenated year (`52026
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-pharmacy-008 | pharmacy | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-pharmacy-008 | pharmacy | high | FIXED_PENDING_VERIFY | 8f2f24760 |
 
 ## SEC-crafting-publish-confirm
 
@@ -712,7 +712,7 @@ Publish states that anyone who can list published pieces will see it, and waits 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-crafting-001 | crafting | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-crafting-001 | crafting | high | FIXED_PENDING_VERIFY | 8f2f24760 |
 
 ## SEC-sentinel-unverified-report
 
@@ -720,7 +720,7 @@ A user threat report is stored private with `verified: false`. It is not propaga
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-sentinel-001 | sentinel | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-sentinel-001 | sentinel | high | FIXED_PENDING_VERIFY | 8f2f24760 |
 
 ## SEC-lens-exhaust-emit
 
@@ -728,7 +728,7 @@ A user threat report is stored private with `verified: false`. It is not propaga
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-xl-ws-001 | cross-lens | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-xl-ws-001 | cross-lens | high | FIXED_PENDING_VERIFY | 8f2f24760 |
 
 ## SEC-fitness-leaderboard
 
@@ -736,7 +736,7 @@ Challenge totals drawn from other people's activities are included only when the
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-fitness-001 | fitness | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-fitness-001 | fitness | high | FIXED_PENDING_VERIFY | 8f2f24760 |
 
 ## SEC-export-browser-decrypt
 
@@ -744,6 +744,6 @@ Decrypt reads the downloaded JSON envelope and runs `concord-xor-fnv/v1` in the 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-export-001 | export | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-export-001 | export | high | FIXED_PENDING_VERIFY | 8f2f24760 |
 
 Still open in section 1g: FIX-cognition-009 (public and non-owner `/dtu/<id>` still needs a live response trace) and FIX-music-001 (export silence / start offset not yet located in the offline renderer).
