@@ -570,6 +570,16 @@ export function LiveFloorPanel() {
     setNewArgument('');
   }, [newArgument, selectedDebate, selectedDebateData, argumentSide, items, update]);
 
+  const removeArgument = useCallback(async (side: 'pro' | 'con', index: number) => {
+    if (!selectedDebate) return;
+    const item = items.find((i) => i.id === selectedDebate);
+    if (!item) return;
+    const data = { ...item.data } as DebateData;
+    const key = side === 'pro' ? 'proArguments' : 'conArguments';
+    data[key] = (data[key] || []).filter((_, i) => i !== index);
+    await update(selectedDebate, { data });
+  }, [selectedDebate, items, update]);
+
   if (isError) return <div className="flex items-center justify-center h-full p-8"><ErrorState error={error?.message} onRetry={refetch} /></div>;
 
   return (
@@ -943,6 +953,7 @@ export function LiveFloorPanel() {
                           <p className="text-sm text-gray-200">{arg.text}</p>
                           <p className="text-xs text-gray-400">{arg.author}</p>
                           <ArgumentStrengthMeter evaluation={arg.evaluation} />
+                          <StickyDeleteConfirm onConfirm={() => removeArgument('pro', i)} armLabel="Remove" className="text-[11px] text-gray-400" />
                         </div>
                       ))}
                     </div>
@@ -956,6 +967,7 @@ export function LiveFloorPanel() {
                           <p className="text-sm text-gray-200">{arg.text}</p>
                           <p className="text-xs text-gray-400">{arg.author}</p>
                           <ArgumentStrengthMeter evaluation={arg.evaluation} />
+                          <StickyDeleteConfirm onConfirm={() => removeArgument('con', i)} armLabel="Remove" className="text-[11px] text-gray-400" />
                         </div>
                       ))}
                     </div>

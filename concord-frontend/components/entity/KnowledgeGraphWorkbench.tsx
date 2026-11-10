@@ -397,8 +397,20 @@ function GraphTab({ graph, busy, mutate }: {
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
+              <label className="block text-[11px] text-gray-400">
+                Type
+                <select
+                  value={selNode.entityType}
+                  aria-label="Entity type"
+                  disabled={busy}
+                  onChange={(e) => mutate('node-update', { id: selNode.id, entityType: e.target.value }, 'Type updated')}
+                  className="input-lattice mt-1 w-full text-sm"
+                >
+                  {(typeOptions.includes(selNode.entityType) ? typeOptions : [selNode.entityType, ...typeOptions]).map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
               <p className="text-[11px] text-gray-400 font-mono">
-                {selNode.entityType} · #{selNode.id}
+                #{selNode.id}
                 {selNode.wikidataId && <span className="text-cyan-400"> · {selNode.wikidataId}</span>}
               </p>
 

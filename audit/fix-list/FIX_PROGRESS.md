@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 455 | 490 | 0 |
+| medium | 460 | 485 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **876** | **1272** | **3** |
+| **total** | **881** | **1267** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1361,6 +1361,18 @@ An unpaid veterinary invoice can be deleted. A paid one is voided and the paymen
 | FIX-pharmacy-011 | pharmacy | medium | FIXED_PENDING_VERIFY | bd3d0e1b5 |
 | FIX-pharmacy-012 | pharmacy | medium | FIXED_PENDING_VERIFY | bd3d0e1b5 |
 | FIX-eco-005 | eco | medium | FIXED_PENDING_VERIFY | bd3d0e1b5 |
+
+## Mediums — type, arguments, names, studio
+
+An entity node can change type after it is created. A floor argument can be removed. A construction row is titled with the record name, not the default trade. The marketing studio stays on the tab you picked, and a typed ROI is labeled as the numbers you entered rather than the campaign's recorded ROAS.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-entity-002 | entity | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-debate-012 | debate | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-construction-004 | construction | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-marketing-001 | marketing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-marketing-013 | marketing | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

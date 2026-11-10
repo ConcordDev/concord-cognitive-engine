@@ -581,10 +581,9 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                 <div className="flex items-center gap-3">
                   <HardHat className="w-5 h-5 text-neon-cyan" />
                   <div>
-                    <p className="text-white font-medium">{d.name || item.title}</p>
+                    <p className="text-white font-medium">{item.title || d.name || 'Untitled'}</p>
                     <p className={ds.textMuted}>
-                      {d.client || ''} {d.address ? `- ${d.address}` : ''}{' '}
-                      {d.trade ? `[${d.trade}]` : ''}
+                      {[d.client, d.address, d.trade && d.trade !== 'General' ? d.trade : ''].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                 </div>

@@ -264,6 +264,7 @@ export function MarketingActionPanel() {
         {roiResult && (
           <div className={cn('rounded-md border p-2.5', roiResult.profitable ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">{roiResult.campaign} · {roiResult.grade}</div>
+            <p className="text-[10px] text-zinc-400">These figures are the numbers typed here. They are not the campaign's recorded ROAS.</p>
             <div className={cn('text-2xl font-bold', GRADE_COLOR[roiResult.grade])}>{roiResult.roi}%<span className="text-xs text-zinc-400"> ROI</span></div>
             <div className="text-[10px] text-zinc-400">CPL ${roiResult.costPerLead} · CPA ${roiResult.costPerAcquisition}</div>
             <div className="text-[10px] text-zinc-400">conv rate {roiResult.conversionRate}%</div>
