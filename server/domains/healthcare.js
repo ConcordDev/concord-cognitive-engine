@@ -878,6 +878,16 @@ export default function registerHealthcareActions(registerLensAction) {
     return { ok: true, result: { patient } };
   });
 
+  registerLensAction("healthcare", "patients-delete", (ctx, _a, params = {}) => {
+    const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = bucketH(s.patients, aidH(ctx));
+    const i = arr.findIndex((x) => x.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "patient not found" };
+    const [removed] = arr.splice(i, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: removed.id } };
+  });
+
   registerLensAction("healthcare", "patients-update", (ctx, _a, params = {}) => {
     const s = getHealthState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const p = bucketH(s.patients, aidH(ctx)).find(x => x.id === String(params.id || ""));

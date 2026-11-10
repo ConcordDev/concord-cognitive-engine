@@ -91,6 +91,32 @@ export function OpsRecordsPanel({ kind }: { kind: OpsKind }) {
     const status = (data._status as string) || defaultStatus(kind);
     delete data._title;
     delete data._status;
+    if (kind === 'flights') {
+      const icao = /^[A-Z]{3,4}$/;
+      const departure = String(data.departure || '').trim().toUpperCase();
+      const arrival = String(data.arrival || '').trim().toUpperCase();
+      if (!icao.test(departure) || !icao.test(arrival)) {
+        showToast('error', 'Departure and arrival must be 3 or 4 letter ICAO codes');
+        return;
+      }
+      const hobbsStart = Number(data.hobbsStart);
+      const hobbsEnd = Number(data.hobbsEnd);
+      if (!Number.isFinite(hobbsStart) || hobbsStart < 0 || !Number.isFinite(hobbsEnd) || hobbsEnd < hobbsStart || hobbsEnd - hobbsStart > 24) {
+        showToast('error', 'Hobbs end must be at least the start, and the flight at most 24 hours');
+        return;
+      }
+      const fuel = Number(data.fuelBurn);
+      if (data.fuelBurn !== '' && data.fuelBurn != null && (!Number.isFinite(fuel) || fuel < 0 || fuel > 5000)) {
+        showToast('error', 'Fuel burn must be between 0 and 5000 gallons');
+        return;
+      }
+      if (data.etd && data.eta && String(data.eta) < String(data.etd)) {
+        showToast('error', 'ETA cannot be before ETD on the same day');
+        return;
+      }
+      data.departure = departure;
+      data.arrival = arrival;
+    }
     if (kind === 'wb') {
       data = { ...data, ...computeWbTotals(form) };
     }

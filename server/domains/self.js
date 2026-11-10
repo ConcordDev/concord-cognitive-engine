@@ -102,8 +102,15 @@ export default function registerSelfActions(registerLensAction) {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const metric = normMetric(params.metric);
     if (!metric) return { ok: false, error: `metric must be one of: ${METRIC_KEYS.join(", ")}` };
+    if (params.value === "" || params.value == null) return { ok: false, error: "value required" };
     const value = Number(params.value);
     if (!Number.isFinite(value)) return { ok: false, error: "value must be a finite number" };
+    const bounds = {
+      steps: [0, 200000], sleep_hours: [0, 24], workout_min: [0, 1440], mood: [1, 5],
+      weight_kg: [0.5, 500], resting_hr: [20, 250], water_ml: [0, 20000], calories: [0, 20000],
+      meditation_min: [0, 1440], journal_entries: [0, 100],
+    }[metric];
+    if (value < bounds[0] || value > bounds[1]) return { ok: false, error: `${metric} must be between ${bounds[0]} and ${bounds[1]}` };
     const at = params.at && !Number.isNaN(new Date(params.at).getTime())
       ? new Date(params.at).toISOString() : new Date().toISOString();
     const entry = {
@@ -129,6 +136,16 @@ export default function registerSelfActions(registerLensAction) {
     const limit = Math.max(1, Math.min(500, parseInt(params.limit, 10) || 100));
     rows = rows.sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
     return { ok: true, result: { readings: rows, count: rows.length, metrics: METRICS } };
+  });
+
+  registerLensAction("self", "reading-delete", (ctx, _a, params = {}) => {
+    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rows = readingsFor(s, actor(ctx));
+    const i = rows.findIndex((r) => r.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "reading not found" };
+    const [removed] = rows.splice(i, 1);
+    save();
+    return { ok: true, result: { deleted: removed.id } };
   });
 
   // ─── importBatch — wearable / Apple Health / Google Fit ingestion ────

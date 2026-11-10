@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 116 | 102 | 3 |
+| high | 124 | 94 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **657** | **1491** | **3** |
+| **total** | **665** | **1483** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -878,3 +878,16 @@ A growth entry above 500 kg, 300 cm, or 80 cm head circumference is refused. A p
 | FIX-death-insurance-003 | death-insurance | high | FIXED_PENDING_VERIFY | a620c7658 |
 | FIX-death-insurance-010 | death-insurance | high | FIXED_PENDING_VERIFY | a620c7658 |
 | FIX-staking-002 | staking | high | FIXED_PENDING_VERIFY | a620c7658 |
+
+A BOM compute tolerates a project whose materials array has not loaded. A shipment with no events array no longer reads length off undefined, and an unknown status still renders. A graph label that is missing no longer calls slice. A patient can be removed. A self reading must fall inside its metric range, and a logged reading can be deleted. A flight save requires ICAO codes, a Hobbs pair of at most 24 hours, fuel at most 5000 gallons, and an ETA that is not before ETD. An auction refuses a bid under 1 or over 1,000,000 and a duration outside 1 to 10,080 minutes. A campaign budget must be a number from 0 to 1,000,000,000.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-diy-001 | diy | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-logistics-001 | logistics | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-graph-001 | graph | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-healthcare-003 | healthcare | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-self-001 | self | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-aviation-001 | aviation | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-black-market-005 | black-market | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-marketing-006 | marketing | high | FIXED_PENDING_VERIFY | this commit |

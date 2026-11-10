@@ -125,10 +125,13 @@ export default function registerMarketingActions(registerLensAction) {
     const s = getMktState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = mkClean(params.name, 120);
     if (!name) return { ok: false, error: "campaign name required" };
+    const budget = Number(params.budget);
+    if (params.budget != null && params.budget !== "" && !Number.isFinite(budget)) return { ok: false, error: "budget must be a number" };
+    if (Number.isFinite(budget) && (budget < 0 || budget > 1_000_000_000)) return { ok: false, error: "budget must be between 0 and 1000000000" };
     const campaign = {
       id: mkId("cmp"), name,
       channel: CHANNELS.includes(String(params.channel).toLowerCase()) ? String(params.channel).toLowerCase() : "search",
-      budget: Math.max(0, mkNum(params.budget)),
+      budget: Number.isFinite(budget) ? budget : 0,
       goal: mkClean(params.goal, 80).toLowerCase() || "conversions",
       startDate: mkDay(params.startDate) || mkDay(mkNow()),
       endDate: mkDay(params.endDate) || null,

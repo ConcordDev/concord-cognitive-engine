@@ -18,6 +18,7 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
   const [creating, setCreating] = useState(false);
   const [q, setQ] = useState('');
   const [draft, setDraft] = useState({ firstName: '', lastName: '', dob: '', sex: 'U' as 'M' | 'F' | 'X' | 'U', phone: '', email: '', insurancePlan: '', insuranceMemberId: '', address: '' });
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -40,6 +41,15 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
       await refresh();
       if (r.data?.result?.patient) onSelect(r.data.result.patient.id);
     } catch (e) { console.error('[Patients] create failed', e); }
+  }
+
+  async function removePatient(id: string) {
+    try {
+      const r = await lensRun({ domain: 'healthcare', action: 'patients-delete', input: { id } });
+      if (r.data?.ok === false) { alert(r.data?.error || 'Could not remove the patient'); return; }
+      setConfirmId(null);
+      await refresh(q);
+    } catch (e) { console.error('[Patients] delete failed', e); }
   }
 
   function age(dob: string): string {
@@ -114,6 +124,17 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
                     {p.insurancePlan && <span> · {p.insurancePlan}</span>}
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirmId === p.id) void removePatient(p.id);
+                    else setConfirmId(p.id);
+                  }}
+                  className="text-[10px] text-rose-300 hover:text-rose-200"
+                >
+                  {confirmId === p.id ? 'Confirm remove' : 'Remove'}
+                </button>
                 <span className="text-[10px] text-cyan-300">Open chart →</span>
               </li>
             ))}

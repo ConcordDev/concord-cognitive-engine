@@ -74,7 +74,8 @@ export function ShipmentTracker() {
         ) : (
           <ul className="divide-y divide-white/5">
             {shipments.map(s => {
-              const st = STATUS[s.status];
+              const events = s.events || [];
+              const st = STATUS[s.status] || { label: s.status || 'Unknown', color: 'bg-gray-500/20 text-gray-300' };
               return (
                 <li key={s.id} className="px-3 py-2 hover:bg-white/[0.03]">
                   <div className="flex items-center gap-2">
@@ -89,7 +90,7 @@ export function ShipmentTracker() {
                     <span className="inline-flex items-center gap-0.5"><MapPin className="w-3 h-3" /> {s.from} → {s.to}</span>
                     {s.currentLocation && <span>Now: {s.currentLocation}</span>}
                     {s.etaDate && <span>ETA: {new Date(s.etaDate).toLocaleDateString()}</span>}
-                    <span>{s.events.length} events</span>
+                    <span>{events.length} events</span>
                   </div>
                 </li>
               );

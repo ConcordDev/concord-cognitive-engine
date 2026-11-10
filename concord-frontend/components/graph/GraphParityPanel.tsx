@@ -645,7 +645,7 @@ export function GraphParityPanel() {
                     <g key={n.id}>
                       <circle cx={p.x} cy={p.y} r={n.central ? 7 : 5} fill={n.central ? '#a855f7' : '#06b6d4'} />
                       <text x={p.x} y={p.y - 9} fontSize={8} fill="#a1a1aa" textAnchor="middle">
-                        {n.label.slice(0, 14)}
+                        {String(n.label || '').slice(0, 14)}
                       </text>
                     </g>
                   );

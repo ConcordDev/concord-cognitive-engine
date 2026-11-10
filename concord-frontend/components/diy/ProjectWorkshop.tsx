@@ -1442,19 +1442,19 @@ function InsightsPanel({
     category: project.category,
     difficulty: project.difficulty,
     estimatedHours: project.estimatedHours,
-    materials: project.bom.map((b) => ({ name: b.item, quantity: b.quantity, unit: b.unit, unitPrice: b.unitPrice })),
+    materials: (project.bom || []).map((b) => ({ name: b.item, quantity: b.quantity, unit: b.unit, unitPrice: b.unitPrice })),
   }, (r) => setEstimate(r as DEstimate));
 
   const runSafety = () => run('safetyCheck', {
     category: project.category,
     difficulty: project.difficulty,
-    materials: project.bom.map((b) => b.item),
+    materials: (project.bom || []).map((b) => b.item),
   }, (r) => setSafety(r as DSafety));
 
   const runBuildTime = () => run('buildTimeEstimate', {
     difficulty: project.difficulty,
     estimatedHours: project.estimatedHours,
-    steps: project.steps.map((s) => ({ name: s.title, estimatedMinutes: s.estimatedMinutes })),
+    steps: (project.steps || []).map((s) => ({ name: s.title, estimatedMinutes: s.estimatedMinutes })),
   }, (r) => setBuildTime(r as DBuildTime));
 
   const riskTone: Record<string, string> = {
@@ -1470,7 +1470,7 @@ function InsightsPanel({
             <Calculator className="h-3.5 w-3.5 text-orange-300" /> Full cost estimate
           </h4>
           <button onClick={runEstimate} disabled={busy} className={cn(ds.btnSecondary, 'text-[11px]')}>
-            Compute from {project.bom.length} BOM line{project.bom.length === 1 ? '' : 's'}
+            Compute from {(project.bom || []).length} BOM line{(project.bom || []).length === 1 ? '' : 's'}
           </button>
         </div>
         {estimate ? (
@@ -1534,7 +1534,7 @@ function InsightsPanel({
             <Clock3 className="h-3.5 w-3.5 text-orange-300" /> Build-time estimate
           </h4>
           <button onClick={runBuildTime} disabled={busy} className={cn(ds.btnSecondary, 'text-[11px]')}>
-            Compute from {project.stepCount} step{project.stepCount === 1 ? '' : 's'}
+            Compute from {(project.steps || []).length || project.stepCount} step{((project.steps || []).length || project.stepCount) === 1 ? '' : 's'}
           </button>
         </div>
         {buildTime ? (

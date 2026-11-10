@@ -182,8 +182,10 @@ export default function registerBlackMarketActions(registerLensAction) {
     if (!TIER_ORDER.includes(encryptionLevel)) {
       return { ok: false, error: "encryptionLevel invalid" };
     }
-    const minBid = Math.max(1, Math.round(num(params.minBid, 1)));
-    const durationMin = Math.min(1440, Math.max(1, Math.round(num(params.durationMin, 60))));
+    const minBid = Math.round(num(params.minBid, 1));
+    const durationMin = Math.round(num(params.durationMin, 60));
+    if (!Number.isFinite(minBid) || minBid < 1 || minBid > 1_000_000) return { ok: false, error: "minBid must be between 1 and 1000000" };
+    if (!Number.isFinite(durationMin) || durationMin < 1 || durationMin > 10080) return { ok: false, error: "durationMin must be between 1 and 10080" };
     const seq = ensureSeq(s, uid);
     const list = ensureList(s.auctions, uid);
     const now = Date.now();

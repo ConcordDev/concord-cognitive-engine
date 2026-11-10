@@ -6,7 +6,7 @@
  * typed by the user.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { Plus, Loader2 } from 'lucide-react';
 
@@ -28,6 +28,16 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [recent, setRecent] = useState<Array<{ id: string; metric: string; value: number }>>([]);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  const loadRecent = async () => {
+    const r = await lensRun('self', 'readings', { limit: 8 });
+    const rows = (r.data?.result?.readings || []) as Array<{ id: string; metric: string; value: number }>;
+    setRecent(rows);
+  };
+
+  useEffect(() => { void loadRecent(); }, []);
 
   const unit = METRIC_OPTIONS.find((m) => m.key === metric)?.unit ?? '';
 
@@ -38,7 +48,7 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
     setBusy(true);
     try {
       const r = await lensRun('self', 'logMetric', { metric, value: num });
-      if (r.data?.ok) { setValue(''); onLogged(); }
+      if (r.data?.ok) { setValue(''); onLogged(); await loadRecent(); }
       else setErr(r.data?.error ?? 'Failed to log');
     } catch { setErr('Network error'); }
     finally { setBusy(false); }
@@ -78,6 +88,27 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
         </button>
       </div>
       {err && <p className="mt-2 text-xs text-red-400">{err}</p>}
+      {recent.length > 0 && (
+        <ul className="mt-3 space-y-1">
+          {recent.map((row) => (
+            <li key={row.id} className="flex items-center justify-between text-xs text-rose-200">
+              <span>{row.metric} · {row.value}</span>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (confirmId !== row.id) { setConfirmId(row.id); return; }
+                  const d = await lensRun('self', 'reading-delete', { id: row.id });
+                  if (d.data?.ok) { setConfirmId(null); await loadRecent(); onLogged(); }
+                  else setErr(d.data?.error || 'Could not delete the reading');
+                }}
+                className="text-rose-400 hover:text-rose-200"
+              >
+                {confirmId === row.id ? 'Confirm delete' : 'Delete'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
