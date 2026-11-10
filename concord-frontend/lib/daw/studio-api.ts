@@ -13,7 +13,10 @@ async function run<T>(action: string, input: Record<string, unknown>): Promise<T
 }
 
 function meta(p: DAWProject) {
-  return { name: p.title.slice(0, 80) || 'Untitled Song', bpm: p.bpm, key: p.key, scale: p.scale, genre: p.genre, timeSignature: p.timeSignature };
+  const name = (p.title || '').trim();
+  if (!name) throw new Error('Song title is required.');
+  if (!Number.isFinite(p.bpm) || p.bpm < 30 || p.bpm > 300) throw new Error('Tempo must be a number from 30 to 300.');
+  return { name: name.slice(0, 80), bpm: p.bpm, key: p.key, scale: p.scale, genre: p.genre, timeSignature: p.timeSignature };
 }
 
 export const studioTransport: StudioTransport = {

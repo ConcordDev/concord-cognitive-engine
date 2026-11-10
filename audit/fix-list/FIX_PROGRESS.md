@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 362 | 583 | 0 |
+| medium | 365 | 580 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **783** | **1365** | **3** |
+| **total** | **786** | **1362** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1150,6 +1150,16 @@ A bounty reward, assignment points, dashboard title, lesson title, recipe title,
 | FIX-sandbox-002 | sandbox | medium | FIXED_PENDING_VERIFY | 89a618747 |
 | FIX-sub-worlds-003 | sub-worlds | medium | FIXED_PENDING_VERIFY | 89a618747 |
 | FIX-materials-004 | materials | medium | FIXED_PENDING_VERIFY | 89a618747 |
+
+## Mediums — song title, tempo, customer email, and playtest sessions
+
+A blank song title and a tempo outside 30 to 300 show on the save control. A customer email without a name and a domain is refused. A playtest session can be renamed and deleted after confirm.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-studio-001 | studio | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-retail-006 | retail | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-game-002 | game | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

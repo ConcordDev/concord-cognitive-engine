@@ -52,7 +52,7 @@ function SaveBadge({ save, onClick }: { save: SaveInfo; onClick: () => void }) {
     unsaved: { icon: Circle, text: 'Unsaved changes', cls: 'text-amber-300' },
     saving: { icon: Loader2, text: 'Saving…', cls: 'text-sky-300' },
     offline: { icon: CloudOff, text: 'Offline — kept on this device', cls: 'text-amber-300' },
-    error: { icon: AlertTriangle, text: 'Save failed — retrying', cls: 'text-red-400' },
+    error: { icon: AlertTriangle, text: save.error || 'Save failed — retrying', cls: 'text-red-400' },
   } as const;
   const m = map[save.status];
   const Icon = m.icon;

@@ -42,6 +42,7 @@ export function CustomersPanel() {
     // say so in the panel instead of returning in silence.
     if (!form.name.trim()) { setAddError('Name is required.'); return; }
     if (!form.email.trim()) { setAddError('Email is required — a customer cannot be created without one.'); return; }
+    if (!/^[^\s@]+@[^\s@]+$/.test(form.email.trim())) { setAddError('Email must include a name and a domain, like name@example.com.'); return; }
     try {
       const r = await lensRun({ domain: 'retail', action: 'customers-add', input: form });
       if (r.data?.ok === false) { setAddError(String(r.data.error || 'Could not add the customer.')); return; }

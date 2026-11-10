@@ -1373,7 +1373,10 @@ export default function registerRetailActions(registerLensAction) {
     const name = String(params.name || "").trim();
     const email = String(params.email || "").trim().toLowerCase();
     if (!name) return { ok: false, error: "name required" };
-    if (!email) return { ok: false, error: "email required" };
+    if (!email) return { ok: false, error: "email required", message: "Email is required." };
+    if (!/^[^\s@]+@[^\s@]+$/.test(email)) {
+      return { ok: false, error: "invalid_input", field: "email", message: "Email must include a name and a domain, like name@example.com." };
+    }
     const customer = {
       id: nextRetailId("cust"), name, email,
       phone: String(params.phone || ""),

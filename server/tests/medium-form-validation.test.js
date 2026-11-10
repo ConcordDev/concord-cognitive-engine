@@ -5,6 +5,8 @@ import registerClassroom from "../domains/classroom.js";
 import registerObserve from "../domains/observe.js";
 import registerSandbox from "../domains/sandbox.js";
 import registerSubWorlds from "../domains/sub-worlds.js";
+import registerRetail from "../domains/retail.js";
+import registerStudio from "../domains/studio.js";
 
 const actions = new Map();
 function register(domain, name, fn) { actions.set(`${domain}.${name}`, fn); }
@@ -19,6 +21,8 @@ before(() => {
   registerObserve(register);
   registerSandbox(register);
   registerSubWorlds(register);
+  registerRetail(register);
+  registerStudio(register);
 });
 beforeEach(() => {
   globalThis._concordSTATE = {};
@@ -86,5 +90,24 @@ describe("form validation sweep", () => {
     assert.equal((ok.result.world || ok.result).capacity, 24);
     const updated = call("sub_worlds", "update_settings", { worldId: id, capacity: 0 });
     assert.equal(updated.ok, false);
+  });
+
+  it("refuses a customer email with no domain", () => {
+    const bad = call("retail", "customers-add", { name: "Ada", email: "not-an-email" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.field, "email");
+    const ok = call("retail", "customers-add", { name: "Ada", email: "ada@example.com" });
+    assert.equal(ok.ok, true);
+  });
+
+  it("refuses a studio tempo outside 30 to 300 and a blank song name", () => {
+    const tempo = call("studio", "project-create", { name: "Ada song", bpm: 9999 });
+    assert.equal(tempo.ok, false);
+    assert.equal(tempo.field, "bpm");
+    const blank = call("studio", "project-create", { name: "   ", bpm: 120 });
+    assert.equal(blank.ok, false);
+    const ok = call("studio", "project-create", { name: "Ada song", bpm: 96 });
+    assert.equal(ok.ok, true);
+    assert.equal(ok.result.project.bpm, 96);
   });
 });

@@ -18,6 +18,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
@@ -287,7 +288,7 @@ function BalanceCalculators() {
 // ---------------------------------------------------------------------------
 
 function PlaytestSessions() {
-  const { items, isLoading, create, refetch } = useLensData<SessionData>('game', 'playtest', { noSeed: true });
+  const { items, isLoading, create, update, remove, refetch } = useLensData<SessionData>('game', 'playtest', { noSeed: true });
   const runArtifact = useRunArtifact('game');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
@@ -350,13 +351,22 @@ function PlaytestSessions() {
       {items.length > 0 && (
         <div className="flex gap-1.5 flex-wrap">
           {items.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => { setSelectedId(s.id); setAnalysis(null); }}
-              className={cn('text-xs px-3 py-1.5 rounded border', selectedId === s.id ? 'border-neon-purple/50 bg-neon-purple/15 text-neon-purple' : 'border-lattice-border text-gray-400 hover:text-white')}
-            >
-              {s.title} · Lv {(s.data?.level as number) || 1}
-            </button>
+            <span key={s.id} className="inline-flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => { setSelectedId(s.id); setAnalysis(null); }}
+                className={cn('text-xs px-3 py-1.5 rounded border', selectedId === s.id ? 'border-neon-purple/50 bg-neon-purple/15 text-neon-purple' : 'border-lattice-border text-gray-400 hover:text-white')}
+              >
+                {s.title} · Lv {(s.data?.level as number) || 1}
+              </button>
+              <button type="button" className="text-[10px] text-zinc-400 hover:text-white" onClick={() => {
+                const next = window.prompt('Session name', s.title || '');
+                const title = (next || '').trim();
+                if (!title) return;
+                void update(s.id, { title });
+              }}>Rename</button>
+              <StickyDeleteConfirm onConfirm={() => { void remove(s.id); if (selectedId === s.id) setSelectedId(null); }} armAriaLabel={`Delete ${s.title || 'session'}`} confirmAriaLabel={`Confirm delete ${s.title || 'session'}`} className="text-rose-300" />
+            </span>
           ))}
         </div>
       )}
