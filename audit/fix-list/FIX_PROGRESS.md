@@ -1167,10 +1167,10 @@ VO2max and the race predictor return an empty result when no run is logged, and 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-fitness-004 | fitness | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-accounting-003 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-accounting-011 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-music-007 | music | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-fitness-004 | fitness | medium | FIXED_PENDING_VERIFY | 4c07b5ce5 |
+| FIX-accounting-003 | accounting | medium | FIXED_PENDING_VERIFY | 4c07b5ce5 |
+| FIX-accounting-011 | accounting | medium | FIXED_PENDING_VERIFY | 4c07b5ce5 |
+| FIX-music-007 | music | medium | FIXED_PENDING_VERIFY | 4c07b5ce5 |
 
 ## NEEDS_PRODUCT_SURFACE
 
