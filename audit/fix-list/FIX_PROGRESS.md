@@ -1329,9 +1329,9 @@ A second entity with the same name is refused. A transcript duration that is not
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-entity-001 | entity | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-voice-009 | voice | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-marketing-014 | marketing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-entity-001 | entity | medium | FIXED_PENDING_VERIFY | 6d8961bba |
+| FIX-voice-009 | voice | medium | FIXED_PENDING_VERIFY | 6d8961bba |
+| FIX-marketing-014 | marketing | medium | FIXED_PENDING_VERIFY | 6d8961bba |
 
 ## NEEDS_PRODUCT_SURFACE
 
