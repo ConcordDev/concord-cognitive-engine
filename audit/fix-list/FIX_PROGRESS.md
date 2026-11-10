@@ -71,6 +71,6 @@ Tickets that have no delete control at all are still open. FIX-hvac-002 stays re
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-hvac-001 | hvac | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-hvac-013 | hvac | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-hvac-015 | hvac | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-hvac-001 | hvac | high | FIXED_PENDING_VERIFY | bd4c4cf98 |
+| FIX-hvac-013 | hvac | medium | FIXED_PENDING_VERIFY | bd4c4cf98 |
+| FIX-hvac-015 | hvac | medium | FIXED_PENDING_VERIFY | bd4c4cf98 |
