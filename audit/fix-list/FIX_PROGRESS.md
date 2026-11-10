@@ -1245,9 +1245,9 @@ A click on the 311 map fills latitude and longitude, and the map keeps a size an
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-government-012 | government | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-government-022 | government | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-government-017 | government | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-government-012 | government | medium | FIXED_PENDING_VERIFY | b292a2e77 |
+| FIX-government-022 | government | medium | FIXED_PENDING_VERIFY | b292a2e77 |
+| FIX-government-017 | government | medium | FIXED_PENDING_VERIFY | b292a2e77 |
 
 ## NEEDS_PRODUCT_SURFACE
 
