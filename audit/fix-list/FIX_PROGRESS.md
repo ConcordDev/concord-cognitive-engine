@@ -1435,12 +1435,12 @@ Creating a floor debate also creates the argument-map debate, and a floor argume
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-debate-009 | debate | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-debate-010 | debate | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-debate-011 | debate | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-debate-014 | debate | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-mail-001 | mail | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-insurance-007 | insurance | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-debate-009 | debate | medium | FIXED_PENDING_VERIFY | 2cf9ea422 |
+| FIX-debate-010 | debate | medium | FIXED_PENDING_VERIFY | 2cf9ea422 |
+| FIX-debate-011 | debate | medium | FIXED_PENDING_VERIFY | 2cf9ea422 |
+| FIX-debate-014 | debate | medium | FIXED_PENDING_VERIFY | 2cf9ea422 |
+| FIX-mail-001 | mail | medium | FIXED_PENDING_VERIFY | 2cf9ea422 |
+| FIX-insurance-007 | insurance | medium | FIXED_PENDING_VERIFY | 2cf9ea422 |
 
 ## NEEDS_PRODUCT_SURFACE
 
