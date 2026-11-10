@@ -1380,13 +1380,13 @@ Closing soon lists a market that is still open before one whose close has passed
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-markets-004 | markets | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-markets-005 | markets | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-death-insurance-002 | death-insurance | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-death-insurance-004 | death-insurance | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-board-003 | board | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-board-005 | board | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-civic-bonds-004 | civic-bonds | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-markets-004 | markets | medium | FIXED_PENDING_VERIFY | b4e5eb744 |
+| FIX-markets-005 | markets | medium | FIXED_PENDING_VERIFY | b4e5eb744 |
+| FIX-death-insurance-002 | death-insurance | medium | FIXED_PENDING_VERIFY | b4e5eb744 |
+| FIX-death-insurance-004 | death-insurance | medium | FIXED_PENDING_VERIFY | b4e5eb744 |
+| FIX-board-003 | board | medium | FIXED_PENDING_VERIFY | b4e5eb744 |
+| FIX-board-005 | board | medium | FIXED_PENDING_VERIFY | b4e5eb744 |
+| FIX-civic-bonds-004 | civic-bonds | medium | FIXED_PENDING_VERIFY | b4e5eb744 |
 
 ## NEEDS_PRODUCT_SURFACE
 
