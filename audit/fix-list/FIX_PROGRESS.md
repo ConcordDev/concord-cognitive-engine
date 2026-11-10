@@ -930,7 +930,7 @@ Renaming an event rewrites the ticket tiers that named it, and a tier can also p
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-events-001 | events | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-mail-012 | mail | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-board-006 | board | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-market-001 | market | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-events-001 | events | high | FIXED_PENDING_VERIFY | 85819dccf |
+| FIX-mail-012 | mail | high | FIXED_PENDING_VERIFY | 85819dccf |
+| FIX-board-006 | board | high | FIXED_PENDING_VERIFY | 85819dccf |
+| FIX-market-001 | market | high | FIXED_PENDING_VERIFY | 85819dccf |
