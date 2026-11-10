@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 349 | 596 | 0 |
+| medium | 354 | 591 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **770** | **1378** | **3** |
+| **total** | **775** | **1373** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1123,6 +1123,18 @@ Pest reports, replanting projects, sprints, the caller's own poll, observing ses
 | FIX-vote-001 | vote | medium | FIXED_PENDING_VERIFY | 39bf2da56 |
 | FIX-astronomy-008 | astronomy | medium | FIXED_PENDING_VERIFY | 39bf2da56 |
 | FIX-hvac-003 | hvac | medium | FIXED_PENDING_VERIFY | 39bf2da56 |
+
+## Mediums — delete on lists that already had a store
+
+Studio Recent projects call the existing owner-scoped project delete after confirm. Mentorship goals, Forge projects, and draft lab notebook entries delete from the caller's store. A signed or witnessed notebook entry stays. Another caller is refused.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-studio-008 | studio | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-music-003 | music | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-mentorship-001 | mentorship | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-forge-006 | forge | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-lab-001 | lab | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

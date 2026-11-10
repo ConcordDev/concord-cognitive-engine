@@ -11,6 +11,7 @@ import {
   Loader2, Target, Plus, X, CheckCircle2, ChevronLeft, MessageSquarePlus,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
 import { notifyMentorshipProgramChanged } from '@/lib/mentorship/program-stats';
@@ -61,6 +62,13 @@ export function MentorshipGoalsPanel() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  const dropGoal = async (id: string) => {
+    const r = await lensRun('mentorship', 'goal-delete', { id });
+    if (r.data?.ok === false) { setError(r.data?.message || r.data?.error || 'Could not delete that goal.'); return; }
+    if (selected?.id === id) setSelected(null);
+    await refresh();
+  };
 
   const create = async () => {
     if (!form.title.trim()) { setError('Goal title is required.'); return; }
@@ -220,7 +228,8 @@ export function MentorshipGoalsPanel() {
       ) : (
         <div className="space-y-2">
           {goals.map((g) => (
-            <button key={g.id} onClick={() => { setSelected(g); setCheckInDraft({ note: '', progress: g.progress }); }} className="lens-card text-left w-full hover:border-neon-green transition-colors">
+            <div key={g.id} className="lens-card">
+            <button type="button" onClick={() => { setSelected(g); setCheckInDraft({ note: '', progress: g.progress }); }} className="text-left w-full hover:border-neon-green transition-colors">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-sm flex items-center gap-1.5">
                   {g.status === 'done' && <CheckCircle2 className="w-4 h-4 text-neon-green" />}
@@ -235,6 +244,8 @@ export function MentorshipGoalsPanel() {
                 <span className="text-[10px] font-mono text-zinc-400">{g.progress}%</span>
               </div>
             </button>
+            <StickyDeleteConfirm onConfirm={() => void dropGoal(g.id)} armAriaLabel={`Delete goal ${g.title}`} confirmAriaLabel={`Confirm delete goal ${g.title}`} className="mt-2 text-rose-300" />
+            </div>
           ))}
         </div>
       )}

@@ -762,4 +762,16 @@ export default function registerForgeActions(registerLensAction) {
       return { ok: false, error: e?.message || String(e) };
     }
   });
+
+  registerLensAction("forge", "deleteProject", (ctx, _artifact, params = {}) => {
+    try {
+      const projects = userProjects(ctx);
+      const id = String(params.projectId || params.id || "");
+      if (!id || !projects.has(id)) return { ok: false, error: "project not found" };
+      projects.delete(id);
+      return { ok: true, result: { deleted: id } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
 }

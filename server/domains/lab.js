@@ -798,6 +798,22 @@ export default function registerLabActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  registerLensAction("lab", "notebook-delete", (ctx, _a, params = {}) => {
+    try {
+      const L = getLabState(); if (!L) return { ok: false, error: "STATE unavailable" };
+      const userId = labActor(ctx);
+      const arr = labArr(L, "notebook", userId);
+      const i = arr.findIndex((entry) => entry.id === String(params.id || ""));
+      if (i < 0) return { ok: false, error: "entry not found" };
+      if (arr[i].status === "signed" || arr[i].status === "witnessed") {
+        return { ok: false, error: "signed entry stays on the record", message: "A signed or witnessed entry stays on the record." };
+      }
+      arr.splice(i, 1);
+      saveLab();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   // notebook-list — all notebook entries for the user, or (with orgId) the
   // lab org's shared notebook — any member tier, including guest, may read.
   registerLensAction("lab", "notebook-list", (ctx, _a, params = {}) => {

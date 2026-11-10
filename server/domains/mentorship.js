@@ -855,6 +855,19 @@ export default function registerMentorshipActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e.message }; }
   });
 
+  registerLensAction("mentorship", "goal-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMentorshipState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = mAid(ctx);
+      const arr = mList(s.goals, userId);
+      const i = arr.findIndex((g) => g.id === mClean(params.id || params.goalId, 64));
+      if (i < 0) return { ok: false, error: "goal not found" };
+      const [removed] = arr.splice(i, 1);
+      saveState();
+      return { ok: true, result: { deleted: removed.id } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
   // ── 6. Mentor reviews & ratings ───────────────────────────────────────
   registerLensAction("mentorship", "review-add", (ctx, _a, params = {}) => {
     try {

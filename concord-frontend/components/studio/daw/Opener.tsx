@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Music, Plus, Loader2, Clock, Play } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useAuth } from '@/hooks/useAuth';
 import type { DAWProject } from '@/lib/daw/types';
 import { STUDIO_TEMPLATES, buildTemplate } from '@/lib/daw/templates';
@@ -25,6 +26,15 @@ export function Opener({ onOpenProject, onNew, opening }: OpenerProps) {
       .catch(() => { if (alive) { setRecent([]); setError(true); } });
     return () => { alive = false; };
   }, []);
+  const remove = async (id: string) => {
+    try {
+      await studioTransport.delete(id);
+      setRecent((rows) => (rows || []).filter((r) => r.id !== id));
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  };
   return (
     <div className="h-full overflow-y-auto bg-[#0c0c11] text-zinc-200" data-testid="studio-opener">
       <div className="mx-auto max-w-5xl px-6 py-8">
@@ -66,14 +76,15 @@ export function Opener({ onOpenProject, onNew, opening }: OpenerProps) {
         ) : (
           <ul className="divide-y divide-white/5 overflow-hidden rounded-xl border border-white/5">
             {recent.slice(0, 30).map((r) => (
-              <li key={r.id}>
-                <button onClick={() => onOpenProject(r.id)} disabled={!!opening} className="flex w-full items-center justify-between bg-[#121219] px-4 py-2.5 text-left text-sm hover:bg-[#191922] disabled:opacity-60" data-testid="studio-recent">
+              <li key={r.id} className="flex items-center bg-[#121219]">
+                <button onClick={() => onOpenProject(r.id)} disabled={!!opening} className="flex min-w-0 flex-1 items-center justify-between px-4 py-2.5 text-left text-sm hover:bg-[#191922] disabled:opacity-60" data-testid="studio-recent">
                   <span className="truncate">{r.name}</span>
                   <span className="flex items-center gap-1 text-[11px] text-zinc-500">
                     {opening === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
                     {new Date(r.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                   </span>
                 </button>
+                <StickyDeleteConfirm onConfirm={() => void remove(r.id)} armAriaLabel={`Delete ${r.name}`} confirmAriaLabel={`Confirm delete ${r.name}`} className="mr-2 shrink-0 text-rose-300" />
               </li>
             ))}
           </ul>

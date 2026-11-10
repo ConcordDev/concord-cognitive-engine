@@ -27,6 +27,7 @@ import {
   FolderOpen, Clock,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 
 // ── Types ───────────────────────────────────────────────────────────────
@@ -194,6 +195,11 @@ export function ForgeStudio() {
       setSavedProjects(list);
     }
   }, []);
+
+  const dropSaved = async (projectId: string) => {
+    const r = await lensRun('forge', 'deleteProject', { projectId });
+    if (r.data?.ok) await loadSaved();
+  };
 
   // Load the resume list whenever the builder returns to the "no project" state.
   useEffect(() => {
@@ -505,12 +511,12 @@ export function ForgeStudio() {
               </div>
               <ul className="space-y-1.5">
                 {savedProjects.map((sp) => (
-                  <li key={sp.projectId}>
+                  <li key={sp.projectId} className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => handleReopen(sp)}
                       disabled={reopeningId != null}
-                      className="flex w-full items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-left text-xs transition-colors hover:border-amber-500/40 hover:bg-amber-500/5 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-left text-xs transition-colors hover:border-amber-500/40 hover:bg-amber-500/5 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
                     >
                       <Hammer className="h-3.5 w-3.5 shrink-0 text-amber-400/70" />
                       <div className="min-w-0 flex-1">
@@ -526,6 +532,7 @@ export function ForgeStudio() {
                         ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-amber-400" />
                         : <FolderOpen className="h-3.5 w-3.5 shrink-0 text-slate-500" />}
                     </button>
+                    <StickyDeleteConfirm onConfirm={() => void dropSaved(sp.projectId)} armAriaLabel={`Delete ${sp.appName}`} confirmAriaLabel={`Confirm delete ${sp.appName}`} className="shrink-0 text-rose-300" />
                   </li>
                 ))}
               </ul>

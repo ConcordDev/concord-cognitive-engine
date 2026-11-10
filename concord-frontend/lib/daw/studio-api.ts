@@ -38,6 +38,9 @@ export const studioTransport: StudioTransport = {
     const r = await run<{ projects: ProjectRecord[] }>('project-list', {});
     return r.projects || [];
   },
+  async delete(id) {
+    await run('project-delete', { id });
+  },
   async versions(id) {
     const r = await run<{ versions: VersionMeta[] }>('project-versions', { id });
     return r.versions || [];
