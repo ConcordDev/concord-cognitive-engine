@@ -380,11 +380,11 @@ export function GoalsListPanel() {
                         <Pencil className="h-3.5 w-3.5" /> Edit goal
                       </button>
                       {confirmDeleteId === goal.id ? (
-                        <>
+                        <span data-overlay-open="true" className="contents">
                           <button type="button" onClick={() => deleteGoal(goal)} className="rounded-lg bg-rose-500/90 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-rose-400">Confirm delete</button>
                           <button type="button" onClick={() => setConfirmDeleteId(null)} className="text-[13px] text-zinc-400 hover:text-zinc-200">Cancel</button>
                           <span className="text-[12px] text-zinc-500">You can undo after deleting.</span>
-                        </>
+                        </span>
                       ) : (
                         <button type="button" onClick={() => setConfirmDeleteId(goal.id)} className="inline-flex items-center gap-1 rounded-lg border border-rose-400/30 px-3 py-1.5 text-[13px] text-rose-300 hover:bg-rose-400/10">
                           <Trash2 className="h-3.5 w-3.5" /> Delete goal

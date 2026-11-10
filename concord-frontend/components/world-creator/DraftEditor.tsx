@@ -582,7 +582,7 @@ function NpcPlacementForm({
         <span className="text-xs font-semibold uppercase tracking-wider text-amber-300">
           New {archetype} NPC
         </span>
-        <button onClick={onCancel} className="text-[11px] text-stone-400 hover:text-stone-200">✕ cancel</button>
+        <button type="button" data-overlay-close="" onClick={onCancel} aria-label="Close" className="text-[11px] text-stone-400 hover:text-stone-200">✕ cancel</button>
       </div>
       <div className="space-y-1">
         <label className="text-[11px] text-stone-400">Name</label>

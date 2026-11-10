@@ -100,6 +100,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-600"
           />
           {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
+          <button type="button" data-overlay-close="" aria-label="Close" onClick={onClose} className="text-[11px] text-gray-400">Close</button>
           <kbd className="text-[10px] text-gray-400 border border-lattice-border rounded px-1">Esc</kbd>
         </div>
         <div ref={listRef} className="max-h-[50vh] overflow-y-auto">

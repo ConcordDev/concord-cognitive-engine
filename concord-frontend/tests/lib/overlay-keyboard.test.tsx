@@ -62,6 +62,38 @@ describe('overlay keyboard', () => {
     expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Studio' }));
   });
 
+  it('Escape clicks a Close or Cancel button that has no aria-label', () => {
+    const close = vi.fn();
+    const cancel = vi.fn();
+    render(
+      <>
+        <div role="dialog" aria-label="Text close">
+          <button type="button" onClick={close}>Close settings</button>
+        </div>
+        <div data-overlay-open="true">
+          <button type="button" onClick={cancel}>Cancel</button>
+        </div>
+      </>,
+    );
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    handleOverlayKeyDown(event);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('Escape clicks a Close settings button', () => {
+    const close = vi.fn();
+    render(
+      <div role="dialog" aria-label="Settings">
+        <button type="button" onClick={close}>Close settings</button>
+      </div>,
+    );
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    handleOverlayKeyDown(event);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
   it('installs a single capture listener', () => {
     const removeA = installOverlayKeyboard();
     const removeB = installOverlayKeyboard();

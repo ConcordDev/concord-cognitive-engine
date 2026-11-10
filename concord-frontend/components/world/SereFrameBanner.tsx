@@ -64,6 +64,7 @@ export default function SereFrameBanner({ worldId }: { worldId?: string }) {
         <h2 className="mb-3 text-lg font-semibold text-amber-200">{copy.title}</h2>
         <p className="mb-5 text-sm leading-relaxed text-zinc-300">{copy.body}</p>
         <button
+          data-overlay-close=""
           onClick={dismiss}
           className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-200 hover:bg-amber-500/20 transition-colors"
         >

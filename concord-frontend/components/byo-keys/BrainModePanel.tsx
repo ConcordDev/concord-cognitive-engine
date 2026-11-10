@@ -190,6 +190,7 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
               <button
                 type="button"
                 data-testid="brain-mode-cancel-high-power"
+                data-overlay-close=""
                 onClick={() => setConfirmHighPower(false)}
                 className="rounded-md bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200"
               >
@@ -313,6 +314,7 @@ export function BrainModePanel({ onModeChange, compact = false }: Props = {}) {
             <button
               type="button"
               data-testid="brain-mode-cancel-high-power"
+              data-overlay-close=""
               onClick={() => setConfirmHighPower(false)}
               className="rounded-md bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200"
             >

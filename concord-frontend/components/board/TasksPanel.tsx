@@ -6,7 +6,7 @@
  * Workspace / BGG are routed by the page shell.
  */
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ListTodo, ChevronDown, Search, Filter, LayoutGrid, BarChart3, CheckCircle2, AlertTriangle, TrendingUp, Activity, Loader2, XCircle, Zap,
@@ -63,6 +63,23 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!selectedTask && !showFilters) return;
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (selectedTask) {
+        const drawer = document.getElementById('board-task-drawer');
+        if (drawer && !drawer.contains(target)) setSelectedTask(null);
+      }
+      if (showFilters && !(target instanceof Element && target.closest('[data-board-filters]'))) {
+        setShowFilters(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointer);
+    return () => document.removeEventListener('mousedown', onPointer);
+  }, [selectedTask, showFilters]);
 
   useLensCommand(
     [
@@ -295,6 +312,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                 />
               </div>
               <button
+                data-board-filters=""
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors',
@@ -316,6 +334,8 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden"
+                  data-overlay-open="true"
+                  data-board-filters=""
                 >
                   <div className="flex gap-3 pb-1">
                     {/* Assignee filter */}
@@ -370,6 +390,9 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                         </option>
                       ))}
                     </select>
+                    <button type="button" onClick={() => setShowFilters(false)} className="px-3 py-1.5 text-sm text-gray-300" aria-label="Close">
+                      Close
+                    </button>
                   </div>
                 </motion.div>
               )}
@@ -867,6 +890,8 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
         <AnimatePresence>
           {selectedTask && (
             <motion.aside
+              id="board-task-drawer"
+              data-overlay-open="true"
               key="detail-panel"
               initial={{ width: 0, opacity: 0 }}
               animate={{ width: 400, opacity: 1 }}

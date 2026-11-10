@@ -81,6 +81,7 @@ export function PluginInstallConsent({ plugin, onCancel, onInstalled }: PluginIn
           </div>
           <button
             onClick={onCancel}
+            data-overlay-close=""
             aria-label="Cancel install"
             className="rounded-md p-1 text-slate-500 hover:bg-zinc-900 hover:text-slate-300"
           >

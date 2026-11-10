@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 92 | 126 | 3 |
-| medium | 288 | 657 | 0 |
-| low | 250 | 730 | 0 |
+| medium | 289 | 656 | 0 |
+| low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **630** | **1518** | **3** |
+| **total** | **632** | **1516** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -405,7 +405,7 @@ At widths under 768px, fixed corner actions (`bottom-4` through `bottom-12`) are
 
 ## RCA-escape-focus-trap
 
-One capture listener closes the top dialog by activating its Close control, and keeps Tab inside an aria-modal dialog. Share and Export are dialogs, so Escape reaches them. Dialogs with no Close control still need that button.
+One capture listener closes the top dialog by activating its Close control, and keeps Tab inside an aria-modal dialog. Share and Export are dialogs, so Escape reaches them. A button whose name is Close, starts with Close (Close settings, Close inspector), or is exactly Cancel or Dismiss counts, in any case, including when that name is the button text. Dialogs whose dismiss uses another word (Stay private, Enter the mirror, Skip onboarding, Cancel install) carry `data-overlay-close` so Escape hits that button. Help and the command palettes have a Close button. The board task drawer and Filters panel are overlays: Escape uses their Close control, and a press outside them dismisses them. The goals inline delete confirm is an overlay so Escape hits Cancel.
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
@@ -599,6 +599,8 @@ One capture listener closes the top dialog by activating its Close control, and 
 | FIX-world-003 | world | low | FIXED_PENDING_VERIFY | a6242b1a4 |
 | FIX-world-observatory-004 | world-observatory | low | FIXED_PENDING_VERIFY | a6242b1a4 |
 | FIX-world-observatory-008 | world-observatory | low | FIXED_PENDING_VERIFY | a6242b1a4 |
+| FIX-board-008 | board | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-goals-013 | goals | low | FIXED_PENDING_VERIFY | this commit |
 
 ## RCA-arrow-tablist
 

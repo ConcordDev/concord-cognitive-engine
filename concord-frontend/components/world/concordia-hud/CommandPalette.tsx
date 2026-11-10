@@ -178,6 +178,9 @@ export function CommandPalette() {
       aria-label="Concordia command palette"
       onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="w-[28rem] max-h-[60vh] bg-zinc-950 border border-zinc-700/60 rounded-lg shadow-2xl flex flex-col">
+        <div className="flex justify-end px-3 pt-2">
+          <button type="button" data-overlay-close="" aria-label="Close" onClick={() => setOpen(false)} className="text-[11px] text-zinc-400">Close</button>
+        </div>
         <input
           ref={inputRef}
           value={query}

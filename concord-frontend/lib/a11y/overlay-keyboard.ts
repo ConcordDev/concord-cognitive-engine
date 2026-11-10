@@ -32,10 +32,19 @@ export function focusableIn(root: HTMLElement): HTMLElement[] {
   )].filter((el) => visible(el) && el.tabIndex !== -1);
 }
 
+// "Close", "close", "Close settings", "Cancel", "Dismiss". A longer Cancel
+// name (Cancel install, Cancel subscription) is not treated as the dismiss.
+const CLOSE_NAME = /^(close(\b.*)?)|(dismiss)|(cancel)$/i;
+
+function closeName(el: HTMLElement): string {
+  return (el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
 function closeOverlay(overlay: HTMLElement): boolean {
-  const close = overlay.querySelector<HTMLElement>(CLOSE_SELECTOR);
-  if (!close) return false;
-  close.click();
+  const explicit = overlay.querySelector<HTMLElement>(CLOSE_SELECTOR);
+  const named = explicit ?? [...overlay.querySelectorAll<HTMLElement>('button')].find((el) => CLOSE_NAME.test(closeName(el)));
+  if (!named) return false;
+  named.click();
   return true;
 }
 
