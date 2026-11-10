@@ -9,7 +9,7 @@
 // Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors.
 // Empty state: handled inline per panel.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
@@ -59,6 +59,21 @@ export default function StakingPage() {
   const [autoCompound, setAutoCompound] = useState(false);
   const [liquidReceipt, setLiquidReceipt] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [ccBalance, setCcBalance] = useState<number | null>(null);
+  const [ccBalanceNote, setCcBalanceNote] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/economy/balance', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('unavailable'))))
+      .then((data: { balance?: number; concordCoins?: number }) => {
+        if (!alive) return;
+        const n = data.balance ?? data.concordCoins;
+        if (typeof n === 'number' && Number.isFinite(n)) setCcBalance(n);
+        else setCcBalanceNote('CC balance is unavailable.');
+      })
+      .catch(() => { if (alive) setCcBalanceNote('CC balance is unavailable.'); });
+    return () => { alive = false; };
+  }, []);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
@@ -117,7 +132,12 @@ export default function StakingPage() {
           {view === 'stake' && (
             <div className="grid gap-5 xl:grid-cols-2">
               <section className="space-y-3 rounded-2xl border border-white/10 bg-[#111] p-4">
-                <h2 className="text-sm font-bold text-amber-300">New stake</h2>
+                <div className="flex items-baseline justify-between gap-2">
+                  <h2 className="text-sm font-bold text-amber-300">New stake</h2>
+                  <p className="text-sm font-medium text-amber-100" aria-live="polite">
+                    {ccBalanceNote ?? (ccBalance == null ? 'Reading CC balance…' : `${ccBalance} CC available`)}
+                  </p>
+                </div>
                 <StakingPools
                   selectedPoolId={poolId}
                   months={months}

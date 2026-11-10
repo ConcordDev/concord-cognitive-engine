@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 526 | 419 | 0 |
+| medium | 532 | 413 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **952** | **1196** | **3** |
+| **total** | **958** | **1190** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1514,6 +1514,19 @@ A world name over 64 characters is refused, and the field shows the count. Typin
 | FIX-personas-010 | personas | medium | FIXED_PENDING_VERIFY | 0ce36b3b4 |
 | FIX-personas-014 | personas | medium | FIXED_PENDING_VERIFY | 0ce36b3b4 |
 | FIX-personas-015 | personas | medium | FIXED_PENDING_VERIFY | 0ce36b3b4 |
+
+## Mediums — a saved translation, a chat title, and a balance
+
+Saving a translation says it was saved. Keep as DTU says the private DTU id, or why it was not saved. Draft in Thread says it stays off until that DTU reads back. A renamed chat keeps the title you saved when the session list reloads, including the spaces inside it. The composer control that opens ConKay is labeled ConKay. Staking shows the CC balance, or that it is unavailable. A dictionary lookup reads the definitions that came back, and says when none did.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-translation-001 | translation | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-translation-002 | translation | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-chat-003 | chat | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-chat-005 | chat | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-staking-004 | staking | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-education-003 | education | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

@@ -103,7 +103,9 @@ export default function TranslationLens() {
       addToast({ type: 'info', message: 'That translation is already saved.', duration: 2500 });
       return;
     }
-    saveTranslation({ title: `${t.input.slice(0, 40) || 'Translation'} → ${t.target}`, data: t });
+    void Promise.resolve(saveTranslation({ title: `${t.input.slice(0, 40) || 'Translation'} → ${t.target}`, data: t }))
+      .then(() => addToast({ type: 'success', message: 'Translation saved in this lens.', duration: 2500 }))
+      .catch(() => addToast({ type: 'error', message: 'Could not save that translation.', duration: 3500 }));
   }, [saveTranslation, saved, addToast]);
 
   const onUpdateSaved = useCallback((id: string, data: SavedTranslation) => {

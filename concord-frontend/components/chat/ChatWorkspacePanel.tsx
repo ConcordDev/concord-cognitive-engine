@@ -61,7 +61,6 @@ import {
   Check,
   ExternalLink,
   Layers,
-  Mic,
   PauseCircle,
   GitBranch,
   Key,
@@ -511,7 +510,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             const existing = localById.get(s.id);
             const remote: Conversation = {
               id: s.id,
-              title: s.title || existing?.title || 'New conversation',
+              title: existing?.title || s.title || 'New conversation',
               lastMessage: existing?.lastMessage || '',
               updatedAt: new Date(s.updated_at).toISOString(),
               messageCount: s.msg_count || existing?.messageCount || 0,
@@ -3904,11 +3903,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                           const kay = AI_MODES.find((m) => m.id === 'conkay');
                           if (kay) selectAiMode(kay);
                         }}
-                        className="p-2 text-white/50 hover:text-white transition-colors"
+                        className="px-2 py-1 text-xs text-white/70 hover:text-white transition-colors"
                         title="Open ConKay"
                         aria-label="Open ConKay"
                       >
-                        <Mic className="w-5 h-5" />
+                        ConKay
                       </button>
                     )}
                     {!cleanEmpty && (
