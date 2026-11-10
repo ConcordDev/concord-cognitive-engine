@@ -74,7 +74,7 @@ export default function CreaturesLensPage() {
         onTab={(id) => setActive(id as CreaturesView)}
         cta={{ label: 'Open the pen', icon: Dna, onClick: () => setActive('populations'), title: 'Open the crossbreeding pen (N)' }}
       >
-        <section key={active}>
+        <section key={active} className="pb-24 md:pb-0">
           <CreaturesPane active={active} worldId={worldId} />
         </section>
       </NorthStarFrame>

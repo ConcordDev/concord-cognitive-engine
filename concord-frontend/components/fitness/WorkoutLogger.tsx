@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Dumbbell, Plus, Trash2, Loader2, Play, Pause, RotateCcw, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 export interface WorkoutSet {
@@ -172,9 +173,18 @@ export function WorkoutLogger() {
         ) : (
           <ul className="divide-y divide-white/5 max-h-96 overflow-y-auto">
             {workouts.map(w => (
-              <li key={w.id} className="px-3 py-2 hover:bg-white/[0.03]">
+              <li key={w.id} className="px-3 py-2 hover:bg-white/[0.03] flex items-start justify-between gap-2">
+                <div>
                 <div className="text-sm text-white font-medium">{w.title}</div>
                 <div className="text-[10px] text-gray-400">{new Date(w.startedAt).toLocaleString()} · {w.exercises.length} exercise{w.exercises.length === 1 ? '' : 's'} · {w.exercises.reduce((s, e) => s + e.sets.length, 0)} sets</div>
+                </div>
+                <StickyDeleteConfirm
+                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  confirmLabel="Delete this workout?"
+                  armAriaLabel="Delete workout"
+                  className="text-rose-300"
+                  onConfirm={async () => { await lensRun('fitness', 'workout-delete', { id: w.id }); await refresh(); }}
+                />
               </li>
             ))}
           </ul>

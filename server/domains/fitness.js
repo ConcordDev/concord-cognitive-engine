@@ -979,6 +979,7 @@ Generate the plan.`;
       const best = efforts.length ? Math.min(...efforts.map((e) => e.timeSeconds)) : null;
       return presentOwnedId(ctx, faid(ctx), {
         ...seg,
+        isOwner: seg.ownerUserId === faid(ctx),
         effortCount: efforts.length,
         myBestSeconds: mine.length ? Math.min(...mine.map((e) => e.timeSeconds)) : null,
         courseRecordSeconds: best,
@@ -1501,6 +1502,7 @@ Generate the plan.`;
         ...rest,
         memberCount: members.length,
         joined: members.includes(userId),
+        isOwner: c.ownerUserId === userId,
       }, "ownerUserId", { label: "Athlete", nameKey: "ownerDisplayName" });
     });
     return { ok: true, result: { clubs, count: clubs.length } };
@@ -1512,10 +1514,59 @@ Generate the plan.`;
     if (!club) return { ok: false, error: "club not found" };
     const userId = faid(ctx);
     const leaving = params.leave === true;
-    if (leaving) club.members = club.members.filter((m) => m !== userId);
+    if (leaving) {
+      club.members = club.members.filter((m) => m !== userId);
+      if (club.members.length === 0) {
+        s.clubs.delete(club.id);
+        saveStateIfAvailable();
+        return { ok: true, result: { joined: false, memberCount: 0, deleted: true } };
+      }
+    }
     else if (!club.members.includes(userId)) club.members.push(userId);
     saveStateIfAvailable();
     return { ok: true, result: { joined: !leaving, memberCount: club.members.length } };
+  });
+
+  registerLensAction("fitness", "club-delete", (ctx, _a, params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const club = s.clubs.get(String(params.id || ""));
+    if (!club) return { ok: false, error: "club not found" };
+    if (club.ownerUserId !== faid(ctx)) return { ok: false, error: "only the owner can delete this club" };
+    s.clubs.delete(club.id);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: club.id } };
+  });
+
+  registerLensAction("fitness", "segment-delete", (ctx, _a, params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const seg = s.segments.get(String(params.id || ""));
+    if (!seg) return { ok: false, error: "segment not found" };
+    if (seg.ownerUserId !== faid(ctx)) return { ok: false, error: "only the owner can delete this segment" };
+    s.segments.delete(seg.id);
+    s.segmentEfforts.delete(seg.id);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: seg.id } };
+  });
+
+  registerLensAction("fitness", "challenge-delete", (ctx, _a, params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const ch = s.challenges.get(String(params.id || ""));
+    if (!ch) return { ok: false, error: "challenge not found" };
+    if (ch.ownerUserId !== faid(ctx)) return { ok: false, error: "only the owner can delete this challenge" };
+    s.challenges.delete(ch.id);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: ch.id } };
+  });
+
+  registerLensAction("fitness", "workout-delete", (ctx, _a, params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = faid(ctx);
+    const list = s.workouts.get(userId) || [];
+    const idx = list.findIndex((w) => w.id === String(params.id || ""));
+    if (idx < 0) return { ok: false, error: "workout not found" };
+    const [removed] = list.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: removed.id } };
   });
 
   // ── Challenges ──────────────────────────────────────────────────────
@@ -1591,6 +1642,7 @@ Generate the plan.`;
       const { participants, ...rest } = ch;
       return {
         ...presentOwnedId(ctx, userId, rest, "ownerUserId", { label: "Athlete", nameKey: "ownerDisplayName" }),
+        isOwner: ch.ownerUserId === userId,
         joined,
         active: today >= ch.startDate && today <= ch.endDate,
         participantCount: participants.length,

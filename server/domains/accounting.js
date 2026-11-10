@@ -3145,8 +3145,11 @@ Output the single best account code:`;
     const userId = actId(ctx);
     const coa = s.coa.get(userId) || new Map();
     const journal = s.journal.get(userId) || [];
+    const today = nowIso().slice(0, 10);
+    const start = today.slice(0, 4) + "-01-01";
     const netByAccount = {};
     for (const e of journal) {
+      if (e.date < start || e.date > today) continue;
       for (const l of e.lines) {
         netByAccount[l.accountId] = (netByAccount[l.accountId] || 0) + (l.debit - l.credit);
       }
@@ -3192,7 +3195,8 @@ Output the single best account code:`;
           currentLiabilities: acN(currentLiab), totalLiabilities: acN(totalLiab),
           revenue: acN(revenue), netIncome: acN(netIncome),
         },
-        note: "Current vs. long-term split approximated by account code (<1500 assets, <2500 liabilities).",
+        period: { start, end: today },
+        note: "Revenue and expense use the same year-to-date window as the P&L. Current vs. long-term split approximated by account code (<1500 assets, <2500 liabilities).",
       },
     };
     } catch (e) { return handlerFailure(e); }

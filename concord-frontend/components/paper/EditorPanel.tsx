@@ -28,6 +28,7 @@ import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { setLensPublishTarget } from '@/lib/lens-publish-target';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
@@ -381,6 +382,9 @@ export function EditorPanel() {
     () => paperItems.find(i => i.id === selectedItemId) || null,
     [paperItems, selectedItemId]
   );
+  useEffect(() => {
+    if (selectedItem?.id) setLensPublishTarget('paper', selectedItem.id, selectedItem.title);
+  }, [selectedItem]);
 
   const sortedItems = useMemo(() => {
     const clone = [...paperItems];
@@ -490,25 +494,28 @@ export function EditorPanel() {
 
   const handleCreate = useCallback(async () => {
     try {
+      let created: { id?: string; item?: { id?: string }; artifact?: { id?: string } } | undefined;
       switch (activeTab) {
         case 'papers':
-          await createArtifact({ title: newTitle || 'Untitled Paper', data: { wordCount: 0, excerpt: '', content: '', sections: PAPER_SECTIONS.map(h => ({ heading: h, body: '' })) }, meta: { tags: [] } });
+          created = await createArtifact({ title: newTitle || 'Untitled Paper', data: { wordCount: 0, excerpt: '', content: '', sections: PAPER_SECTIONS.map(h => ({ heading: h, body: '' })) }, meta: { tags: [] } });
           break;
         case 'hypotheses':
-          await createArtifact({ title: newTitle || 'Untitled Hypothesis', data: { statement: newStatement, status: 'proposed', confidence: 50, linkedEvidence: [], linkedExperiments: [], rationale: '' }, meta: { tags: [] } });
+          created = await createArtifact({ title: newTitle || 'Untitled Hypothesis', data: { statement: newStatement, status: 'proposed', confidence: 50, linkedEvidence: [], linkedExperiments: [], rationale: '' }, meta: { tags: [] } });
           break;
         case 'evidence':
-          await createArtifact({ title: newTitle || 'Untitled Evidence', data: { source: newSource, strength: newStrength, type: newEvidenceType, summary: '', linkedHypotheses: [] }, meta: { tags: [] } });
+          created = await createArtifact({ title: newTitle || 'Untitled Evidence', data: { source: newSource, strength: newStrength, type: newEvidenceType, summary: '', linkedHypotheses: [] }, meta: { tags: [] } });
           break;
         case 'experiments':
-          await createArtifact({ title: newTitle || 'Untitled Experiment', data: { status: 'planned', methodology: newMethodology, results: '', conclusions: '', linkedHypothesis: '', linkedEvidence: [] }, meta: { tags: [] } });
+          created = await createArtifact({ title: newTitle || 'Untitled Experiment', data: { status: 'planned', methodology: newMethodology, results: '', conclusions: '', linkedHypothesis: '', linkedEvidence: [] }, meta: { tags: [] } });
           break;
         case 'bibliography':
-          await createArtifact({ title: newTitle || 'Untitled Citation', data: { doi: newDoi, authors: newAuthors, year: parseInt(newYear) || undefined, journal: newJournal, citedByCount: 0 }, meta: { tags: [] } });
+          created = await createArtifact({ title: newTitle || 'Untitled Citation', data: { doi: newDoi, authors: newAuthors, year: parseInt(newYear) || undefined, journal: newJournal, citedByCount: 0 }, meta: { tags: [] } });
           break;
         default:
           break;
       }
+      const savedId = created?.id || created?.item?.id || created?.artifact?.id;
+      if (savedId) setLensPublishTarget('paper', savedId, newTitle || undefined);
       setCreateModalOpen(false);
       resetCreateForm();
     } catch (err) {
@@ -732,7 +739,7 @@ export function EditorPanel() {
     <>
     <div className="space-y-4">
       {/* ---- Manuscript header ---- */}
-      <header className={ds.sectionHeader}>
+      <header className={cn(ds.sectionHeader, 'flex-wrap')}>
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-[var(--lens-accent)]/20 border border-[var(--lens-accent)]/30">
             <FileText className="w-6 h-6 text-[var(--lens-accent)]" />
@@ -744,7 +751,7 @@ export function EditorPanel() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={handleExportCSV} className={cn(ds.btnGhost, ds.btnSmall)} title="Export CSV">
             <Download className="w-4 h-4" /> CSV
           </button>
@@ -1154,7 +1161,7 @@ export function EditorPanel() {
               <div className="space-y-3">
                 <div>
                   <label className={ds.label}>Title</label>
-                  <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} className={ds.input} placeholder="Enter title..." />
+                  <input type="text" autoFocus value={newTitle} onChange={e => setNewTitle(e.target.value)} className={ds.input} placeholder="Enter title..." aria-label="Title" />
                 </div>
 
                 {activeTab === 'hypotheses' && (
@@ -1217,7 +1224,7 @@ export function EditorPanel() {
                       </div>
                       <div>
                         <label className={ds.label}>Year</label>
-                        <input type="text" value={newYear} onChange={e => setNewYear(e.target.value)} className={ds.input} placeholder="2024" />
+                        <input type="text" name="citation-year" autoComplete="off" value={newYear} onChange={e => setNewYear(e.target.value)} className={ds.input} placeholder="2024" aria-label="Year" />
                       </div>
                     </div>
                     <div>

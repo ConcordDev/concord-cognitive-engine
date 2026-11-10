@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trophy, Mountain, ChevronRight, Map as MapIcon } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { MapView, type MapMarker } from '@/components/viz/MapView';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +19,7 @@ interface Segment {
   distanceKm: number;
   elevationGainM: number;
   location: string | null;
+  isOwner?: boolean;
   effortCount: number;
   myBestSeconds: number | null;
   courseRecordSeconds: number | null;
@@ -211,6 +213,16 @@ export function StravaSegmentsPanel() {
         <ul className="space-y-2">
           {segments.map((seg) => (
             <li key={seg.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl overflow-hidden">
+              {seg.isOwner && (
+                <div className="flex justify-end px-3 pt-2">
+                  <StickyDeleteConfirm
+                    armLabel="Delete segment"
+                    confirmLabel="Delete this segment?"
+                    className="text-[11px] text-rose-300"
+                    onConfirm={async () => { await lensRun('fitness', 'segment-delete', { id: seg.id }); await refresh(); }}
+                  />
+                </div>
+              )}
               <button type="button" onClick={() => openLeaderboard(seg.id)}
                 className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-zinc-900">
                 <div>

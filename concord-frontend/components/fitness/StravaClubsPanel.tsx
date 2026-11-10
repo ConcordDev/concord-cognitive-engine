@@ -9,12 +9,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Users, Trophy, Flag } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
-interface Club { id: string; name: string; sport: string; description: string | null; memberCount: number; joined: boolean }
+interface Club { id: string; name: string; sport: string; description: string | null; memberCount: number; joined: boolean; isOwner?: boolean }
 interface ChallengeRow { rank: number; userId?: string; displayName?: string; value: number; isMe: boolean }
 interface Challenge {
-  id: string; name: string; metric: string; target: number;
+  id: string; name: string; metric: string; target: number; isOwner?: boolean;
   startDate: string; endDate: string; active: boolean; joined: boolean;
   participantCount: number;
   myProgress: { value: number; pct: number; complete: boolean };
@@ -108,11 +109,21 @@ export function StravaClubsPanel() {
                   <p className="text-sm font-semibold text-zinc-100">{c.name}</p>
                   <p className="text-[11px] text-zinc-400 capitalize">{c.sport} · {c.memberCount} members</p>
                 </div>
+                <div className="flex items-center gap-2">
+                {c.isOwner && (
+                  <StickyDeleteConfirm
+                    armLabel="Delete"
+                    confirmLabel="Delete this club?"
+                    className="text-[11px] text-rose-300"
+                    onConfirm={async () => { await lensRun('fitness', 'club-delete', { id: c.id }); await refresh(); }}
+                  />
+                )}
                 <button type="button" onClick={() => joinClub(c)}
                   className={cn('text-[11px] px-2.5 py-1 rounded-lg border',
                     c.joined ? 'border-zinc-700 text-zinc-400' : 'border-orange-700/50 bg-orange-950/40 text-orange-300')}>
                   {c.joined ? 'Leave' : 'Join'}
                 </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -152,11 +163,21 @@ export function StravaClubsPanel() {
                       {ch.active ? '' : ' · ended'}
                     </p>
                   </div>
+                  <div className="flex items-center gap-2">
+                  {ch.isOwner && (
+                    <StickyDeleteConfirm
+                      armLabel="Delete"
+                      confirmLabel="Delete this challenge?"
+                      className="text-[11px] text-rose-300"
+                      onConfirm={async () => { await lensRun('fitness', 'challenge-delete', { id: ch.id }); await refresh(); }}
+                    />
+                  )}
                   <button type="button" onClick={() => joinChallenge(ch)}
                     className={cn('text-[11px] px-2.5 py-1 rounded-lg border',
                       ch.joined ? 'border-zinc-700 text-zinc-400' : 'border-orange-700/50 bg-orange-950/40 text-orange-300')}>
                     {ch.joined ? 'Leave' : 'Join'}
                   </button>
+                  </div>
                 </div>
                 {ch.joined && (
                   <div className="mt-1.5 h-2 rounded-full bg-zinc-800 overflow-hidden">

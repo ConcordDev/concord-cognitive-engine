@@ -21,6 +21,7 @@ import { useConkayInitiativeStore } from '@/components/conkay/conkayInitiativeSt
 import { apiHelpers } from '@/lib/api/client';
 import { openLensTool, useAvailableLensTools, type LensTool } from '@/lib/lens-dock';
 import { ContentPublisher } from '@/components/lens/ContentPublisher';
+import { useLensPublishTarget } from '@/lib/lens-publish-target';
 import { ExportMenu } from '@/components/common/ExportMenu';
 
 const TOOLS: Array<{ tool: LensTool; icon: ComponentType<{ className?: string }>; label: string; shortcut?: string }> = [
@@ -34,6 +35,19 @@ const TOOLS: Array<{ tool: LensTool; icon: ComponentType<{ className?: string }>
 
 const itemCls =
   'flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] text-zinc-300 hover:bg-white/[0.06] hover:text-zinc-50';
+
+function PublisherForLens({ domain }: { domain: string }) {
+  const saved = useLensPublishTarget(domain);
+  return (
+    <ContentPublisher
+      domain={domain}
+      artifactId={saved?.id}
+      title={saved?.title || ''}
+      compact
+      className="[&>button]:h-7 [&>button]:w-7 [&>button]:justify-center [&>button]:px-0"
+    />
+  );
+}
 
 export function LensToolbar({ domain, domainLabel }: { domain: string; domainLabel: string }) {
   const available = useAvailableLensTools();
@@ -69,7 +83,7 @@ export function LensToolbar({ domain, domainLabel }: { domain: string; domainLab
 
   return (
     <div className="flex flex-shrink-0 items-center gap-0.5">
-      <ContentPublisher domain={domain} compact className="[&>button]:h-7 [&>button]:w-7 [&>button]:justify-center [&>button]:px-0" />
+      <PublisherForLens domain={domain} />
       <ExportMenu domain={domain} />
       <div className="relative" ref={ref}>
         <button

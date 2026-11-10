@@ -228,9 +228,9 @@ export function WorkoutFinishPanel() {
         }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Workout DTU minted — ${id}`); }
-      else err('No DTU id returned.');
+      const id = dtu?.id ?? dtu?.dtuId ?? r.data?.result?.id;
+      if (r.data?.ok && id) { setMintedDtuId(id); ok(`Workout DTU minted — ${id}`); }
+      else err(r.data?.message || r.data?.error || 'No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -282,8 +282,8 @@ export function WorkoutFinishPanel() {
         }, 'knowledge', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
-      const id = dtu?.id ?? dtu?.dtuId;
-      if (!id) { err('No DTU id returned.'); return; }
+      const id = dtu?.id ?? dtu?.dtuId ?? r.data?.result?.id;
+      if (!r.data?.ok || !id) { err(r.data?.message || r.data?.error || 'No DTU id returned.'); return; }
       const pub = await api.post(`/api/dtus/${encodeURIComponent(id)}/publish`);
       if (pub.data?.ok !== false) { setPublishedDtuId(id); ok(`PR published — ${id}`); }
       else err(pub.data?.error ?? 'publish flag failed');

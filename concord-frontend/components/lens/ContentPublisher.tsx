@@ -120,7 +120,7 @@ export function ContentPublisher({
     setPublishing(true);
     try {
       await api.post('/api/social/post', {
-        content: postText || title,
+        content: artifactId ? `${postText || title}\n\n${domain} ${artifactId}` : (postText || title),
         title,
         tags: [...tags, domain, contentType].filter(Boolean),
         mediaType: contentType,

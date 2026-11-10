@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 537 | 408 | 0 |
+| medium | 544 | 401 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **963** | **1185** | **3** |
+| **total** | **970** | **1178** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1539,6 +1539,20 @@ The paper library's Papers count is the list on screen. Expenses can be searched
 | FIX-staking-012 | staking | medium | FIXED_PENDING_VERIFY | 9856a1384 |
 | FIX-education-005 | education | medium | FIXED_PENDING_VERIFY | 9856a1384 |
 | FIX-fitness-009 | fitness | medium | FIXED_PENDING_VERIFY | 9856a1384 |
+
+## Mediums — the same year, a saved manuscript, and a club
+
+Ratios count revenue in the same year-to-date window as the P&L. The manuscript header wraps, the new-item title takes focus, and the year field does not autocomplete. Saving or opening a paper gives the share control that manuscript, so the link is not the bare lens and marketplace publish is no longer waiting for a save. The owner can delete a segment, a club, a challenge, or a workout, and a club with no members left is removed. A PR publish shows the server's reason when it does not return a DTU id. The creatures list keeps space under the pen button.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-accounting-005 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-paper-014 | paper | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-paper-010 | paper | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-paper-011 | paper | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-fitness-014 | fitness | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-fitness-015 | fitness | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-creatures-010 | creatures | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 
