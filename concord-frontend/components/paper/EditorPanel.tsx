@@ -23,6 +23,7 @@ import {
   RefreshCw, Sparkles, ShieldCheck, AlertCircle, type LucideIcon
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
@@ -612,7 +613,12 @@ export function EditorPanel() {
         if (summary) {
           const keywords = (inner?.keywords as string[] | undefined) || [];
           setSynthesisResult(`${summary}\n\nKeywords: ${keywords.length ? keywords.join(', ') : '—'}`);
-          showToast('success', 'Abstract generated — see the Synthesis tab.');
+          const data = (selectedItem.data || {}) as Record<string, unknown>;
+          const sections = Array.isArray(data.sections)
+            ? (data.sections as Array<{ heading?: string; body?: string }>).map((s) => s.heading === 'Abstract' ? { ...s, body: summary } : s)
+            : undefined;
+          await updateArtifact(selectedItemId, { data: { ...data, abstract: summary, ...(sections ? { sections } : {}) } });
+          showToast('success', 'Abstract written into the Abstract section.');
         } else {
           showToast('info', String(inner?.message || 'Add more text to this item before generating an abstract.'));
         }
@@ -999,7 +1005,7 @@ export function EditorPanel() {
           )}
 
           {/* ---- Tab-Specific Content ---- */}
-          {activeTab === 'papers' && !editorOpen && <PapersGrid items={sortedItems} onEdit={openEditor} onSelect={openDetail} onValidate={(item) => validateMutation.mutate({ id: item.id, title: item.title, data: item.data as Record<string, unknown> })} validationResults={validationResults} isValidating={validateMutation.isPending} />}
+          {activeTab === 'papers' && !editorOpen && <PapersGrid items={sortedItems} onEdit={openEditor} onSelect={openDetail} onDelete={async (item) => { await removeArtifact(item.id); if (selectedItemId === item.id) { setDetailOpen(false); setSelectedItemId(null); } }} onValidate={(item) => validateMutation.mutate({ id: item.id, title: item.title, data: item.data as Record<string, unknown> })} validationResults={validationResults} isValidating={validateMutation.isPending} />}
           {activeTab === 'hypotheses' && <HypothesesList items={sortedItems} onSelect={openDetail} allEvidence={allEvidence} />}
           {activeTab === 'evidence' && <EvidenceBoard items={sortedItems} onSelect={openDetail} />}
           {activeTab === 'experiments' && <ExperimentLog items={sortedItems} onSelect={openDetail} />}
@@ -1023,6 +1029,17 @@ export function EditorPanel() {
           <div className={cn(ds.panel, 'w-[35%] min-w-[300px] max-h-[calc(100vh-200px)] overflow-y-auto space-y-4 sticky top-6')}>
             <div className="flex items-center justify-between">
               <h3 className={ds.heading3}>Detail</h3>
+              <StickyDeleteConfirm
+                onConfirm={async () => {
+                  await removeArtifact(selectedItem.id);
+                  setDetailOpen(false);
+                  setSelectedItemId(null);
+                }}
+                armLabel={<><Trash2 className="w-3.5 h-3.5" /> Delete</>}
+                armAriaLabel="Delete manuscript"
+                confirmLabel="Delete this manuscript?"
+                className={cn(ds.btnDanger, ds.btnSmall)}
+              />
               <button onClick={() => setDetailOpen(false)} className={ds.btnGhost} aria-label="Panel right close">
                 <PanelRightClose className="w-4 h-4" />
               </button>
@@ -1593,10 +1610,11 @@ function StatCard({ icon: Icon, label, value, color }: { icon: LucideIcon; label
 }
 
 // ---- Papers Grid ----
-function PapersGrid({ items, onEdit, onSelect, onValidate, validationResults, isValidating }: {
+function PapersGrid({ items, onEdit, onSelect, onDelete, onValidate, validationResults, isValidating }: {
   items: LensItem[];
   onEdit: (item: LensItem) => void;
   onSelect: (item: LensItem) => void;
+  onDelete: (item: LensItem) => void;
   onValidate: (item: LensItem) => void;
   validationResults: Record<string, { passRate: number; issueCount: number; claimsChecked: number }>;
   isValidating?: boolean;
@@ -1643,6 +1661,9 @@ function PapersGrid({ items, onEdit, onSelect, onValidate, validationResults, is
                 <button onClick={e => { e.stopPropagation(); onEdit(item); }} className={cn(ds.btnGhost, 'text-xs px-1.5 py-0.5')} title="Edit">
                   <Edit3 className="w-3 h-3 text-neon-cyan" />
                 </button>
+                <span onClick={e => e.stopPropagation()}>
+                  <StickyDeleteConfirm onConfirm={() => onDelete(item)} armLabel={<Trash2 className="w-3 h-3" />} armAriaLabel="Delete manuscript" confirmLabel="Delete?" className={cn(ds.btnGhost, 'text-xs px-1.5 py-0.5 text-rose-300')} />
+                </span>
               </div>
             </div>
           </motion.div>

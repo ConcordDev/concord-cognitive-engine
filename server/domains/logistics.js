@@ -830,6 +830,56 @@ export default function registerLogisticsActions(registerLensAction) {
     const idx = list.findIndex(x => x.id === id);
     if (idx < 0) return { ok: false, error: "shipment not found" };
     list.splice(idx, 1);
+    for (const bucket of ["pods", "dockAppointments", "shipmentEvents", "exceptions"]) {
+      const related = ensureLogBucket(s, bucket, userId);
+      for (let i = related.length - 1; i >= 0; i--) {
+        if (related[i].shipmentId === id) related.splice(i, 1);
+      }
+    }
+    saveLogState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
+  registerLensAction("logistics", "shipments-update", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const shp = ensureLogBucket(s, "shipments", userId).find(x => x.id === String(params.id || ""));
+    if (!shp) return { ok: false, error: "shipment not found" };
+    if (params.origin != null) shp.origin = String(params.origin).trim().slice(0, 160);
+    if (params.destination != null) shp.destination = String(params.destination).trim().slice(0, 160);
+    if (params.poNumber != null) shp.poNumber = String(params.poNumber).trim().slice(0, 40);
+    if (params.consignee != null) shp.consignee = String(params.consignee).trim().slice(0, 120);
+    if (params.trackingNumber != null) shp.trackingNumber = String(params.trackingNumber).trim().slice(0, 40) || null;
+    saveLogState();
+    return { ok: true, result: { shipment: shp } };
+  });
+
+  function deleteLogRow(ctx, bucket, id) {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const list = ensureLogBucket(s, bucket, userId);
+    const idx = list.findIndex(x => x.id === String(id || ""));
+    if (idx < 0) return { ok: false, error: "not found" };
+    list.splice(idx, 1);
+    saveLogState();
+    return { ok: true, result: { id: String(id), deleted: true } };
+  }
+
+  registerLensAction("logistics", "pickups-delete", (ctx, _a, params = {}) => deleteLogRow(ctx, "pickups", params.id));
+  registerLensAction("logistics", "pods-delete", (ctx, _a, params = {}) => deleteLogRow(ctx, "pods", params.id));
+  registerLensAction("logistics", "loads-delete", (ctx, _a, params = {}) => deleteLogRow(ctx, "loads", params.id));
+  registerLensAction("logistics", "freight-invoices-delete", (ctx, _a, params = {}) => deleteLogRow(ctx, "freightInvoices", params.id));
+  registerLensAction("logistics", "dock-appointments-delete", (ctx, _a, params = {}) => deleteLogRow(ctx, "dockAppointments", params.id));
+  registerLensAction("logistics", "docks-delete", (ctx, _a, params = {}) => {
+    const s = ensureLogState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = logActor(ctx);
+    const id = String(params.id || "");
+    const list = ensureLogBucket(s, "docks", userId);
+    const idx = list.findIndex(x => x.id === id);
+    if (idx < 0) return { ok: false, error: "not found" };
+    list.splice(idx, 1);
+    const appts = ensureLogBucket(s, "dockAppointments", userId);
+    for (let i = appts.length - 1; i >= 0; i--) if (appts[i].dockId === id) appts.splice(i, 1);
     saveLogState();
     return { ok: true, result: { id, deleted: true } };
   });

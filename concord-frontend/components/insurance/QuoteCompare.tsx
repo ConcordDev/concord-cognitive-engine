@@ -25,6 +25,12 @@ export function QuoteCompare() {
   const [error, setError] = useState<string | null>(null);
 
   async function getQuotes() {
+    if (!/^\d{5}$/.test(zip.trim())) {
+      setError('ZIP must be 5 digits.');
+      setQuotes([]);
+      setSearched(true);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {

@@ -22,6 +22,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
@@ -915,6 +916,11 @@ function FreightPanel() {
     await refresh();
   }
 
+  async function removeInvoice(id: string) {
+    await lensRun('logistics', 'freight-invoices-delete', { id });
+    await refresh();
+  }
+
   async function dispute(id: string, action: string) {
     await lensRun('logistics', 'freight-invoice-dispute', { id, action });
     await refresh();
@@ -983,6 +989,7 @@ function FreightPanel() {
                   <span className="text-amber-400">disputable ${inv.disputableUsd}</span>
                 )}
                 <div className="ml-auto flex gap-1">
+                  <StickyDeleteConfirm onConfirm={() => removeInvoice(inv.id)} armLabel="Delete" armAriaLabel="Delete invoice" confirmLabel="Delete invoice?" className="px-2 py-0.5 text-[10px] text-rose-300" />
                   {inv.status !== 'disputed' && (
                     <button
                       onClick={() => dispute(inv.id, 'dispute')}

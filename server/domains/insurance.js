@@ -569,7 +569,10 @@ export default function registerInsuranceActions(register) {
   // quotes from a hardcoded carrier-rate table.
   registerLensAction("insurance", "quotes-compare", (_ctx, _artifact, params = {}) => {
     const kind = String(params.kind || "auto");
-    const zip = String(params.zip || "");
+    const zip = String(params.zip || "").trim();
+    if (!/^\d{5}$/.test(zip)) {
+      return { ok: false, error: "invalid_input", message: "ZIP must be 5 digits." };
+    }
     const coverage = ["minimum", "standard", "premium"].includes(params.coverage) ? params.coverage : "standard";
     return {
       ok: false,

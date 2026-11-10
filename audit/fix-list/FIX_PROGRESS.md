@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 467 | 478 | 0 |
+| medium | 474 | 471 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **888** | **1260** | **3** |
+| **total** | **895** | **1253** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1387,6 +1387,20 @@ Closing soon lists a market that is still open before one whose close has passed
 | FIX-board-003 | board | medium | FIXED_PENDING_VERIFY | b4e5eb744 |
 | FIX-board-005 | board | medium | FIXED_PENDING_VERIFY | b4e5eb744 |
 | FIX-civic-bonds-004 | civic-bonds | medium | FIXED_PENDING_VERIFY | b4e5eb744 |
+
+## Mediums — records, drafts, and a trade confirm
+
+A pickup, dock, appointment, load, proof of delivery, and freight invoice can be deleted, and deleting a shipment removes its proof. A shipment row shows its PO number and those fields can be saved. A new goal form clears its draft, category, and priority on cancel and after save. Checking a step sets the percent from the steps, and marking a goal complete checks every step. A quote compare refuses a ZIP that is not 5 digits before it asks a broker. Generate Abstract reads the manuscript sections, states both minimums in one message, and writes the abstract into the Abstract section. A manuscript can be deleted from the card and from the top of the detail panel. A pooled bet and a limit order ask for confirm before they fill. FIX-logistics-003 stays open for carrier, pickup, and dock renames. FIX-logistics-004 stays open because the dashboard can still disagree until reload.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-logistics-002 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-goals-005 | goals | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-goals-003 | goals | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-insurance-013 | insurance | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-paper-009 | paper | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-paper-013 | paper | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-markets-016 | markets | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

@@ -51,6 +51,8 @@ export interface DraftedTextareaProps extends Omit<TextareaHTMLAttributes<HTMLTe
   onValueChange?: (next: string) => void;
   /** Hide the saving / saved indicator. Default false. */
   hideStatus?: boolean;
+  /** Increment to wipe the saved draft and show the initial value. */
+  resetToken?: number;
   /** Optional wrapper classname. */
   wrapperClassName?: string;
 }
@@ -63,11 +65,12 @@ export function DraftedTextarea({
   schemaVersion,
   onValueChange,
   hideStatus = false,
+  resetToken = 0,
   wrapperClassName,
   className,
   ...textareaProps
 }: DraftedTextareaProps) {
-  const { value, setValue, status, lastSavedAt } = useLensDraft<string>(
+  const { value, setValue, status, lastSavedAt, clear } = useLensDraft<string>(
     lensId,
     draftKey,
     {
@@ -81,6 +84,12 @@ export function DraftedTextarea({
 
   // Mirror hydrate / external value changes. Keystrokes also notify
   // synchronously in onChange so a submit in the same tick sees the live field.
+  useEffect(() => {
+    if (resetToken > 0) void clear();
+    // clear identity changes with the draft key; the token is the trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetToken]);
+
   useEffect(() => {
     onValueChange?.(value);
     // We deliberately do NOT depend on onValueChange — only the value changes

@@ -79,10 +79,19 @@ export default function registerPaperActions(registerLensAction) {
   });
 
   registerLensAction("paper", "abstractSummarize", (ctx, artifact, _params) => {
-    const text = artifact.data?.text || artifact.data?.content || "";
-    if (!text || text.length < 100) return { ok: true, result: { message: "Provide at least 100 characters of text to summarize." } };
+    const data = artifact.data || {};
+    const sources = [];
+    if (typeof data.text === "string") sources.push(data.text);
+    if (typeof data.content === "string") sources.push(data.content);
+    if (Array.isArray(data.sections)) {
+      const bodies = data.sections.map((s) => (s && typeof s.body === "string" ? s.body : "")).filter(Boolean);
+      if (bodies.length) sources.push(bodies.join("\n\n"));
+    }
+    const text = sources.sort((a, b) => b.length - a.length)[0] || "";
     const sentences = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 10);
-    if (sentences.length < 3) return { ok: true, result: { message: "Need at least 3 sentences to summarize." } };
+    if (text.length < 100 || sentences.length < 3) {
+      return { ok: true, result: { message: `An abstract needs at least 100 characters and 3 sentences. This has ${text.length} characters and ${sentences.length} sentences.` } };
+    }
     const stopWords = new Set(["the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "may", "might", "shall", "can", "to", "of", "in", "for", "on", "with", "at", "by", "from", "as", "into", "through", "during", "before", "after", "above", "below", "between", "under", "and", "but", "or", "nor", "not", "so", "yet", "both", "either", "neither", "each", "every", "all", "any", "few", "more", "most", "other", "some", "such", "no", "only", "own", "same", "than", "too", "very", "just", "because", "if", "when", "which", "who", "whom", "this", "that", "these", "those", "it", "its", "we", "our", "they", "their", "he", "she", "his", "her"]);
     const wordFreq = {};
     sentences.forEach(s => s.toLowerCase().split(/\s+/).forEach(w => { const clean = w.replace(/[^a-z]/g, ""); if (clean.length > 2 && !stopWords.has(clean)) wordFreq[clean] = (wordFreq[clean] || 0) + 1; }));

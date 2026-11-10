@@ -545,6 +545,7 @@ function MarketDetail({
   const [side, setSide] = useState<'yes' | 'no'>('yes');
   const [limitPrice, setLimitPrice] = useState('0.50');
   const [busy, setBusy] = useState(false);
+  const [confirmTrade, setConfirmTrade] = useState<null | 'bet' | 'order'>(null);
   const { user, isLoading: authLoading } = useAuth();
   const me = user?.id ?? null;
   const isCreator = !!market && !!me && market.creatorId === me;
@@ -581,6 +582,8 @@ function MarketDetail({
   }, [marketId, stake, market]);
 
   const placeBet = async () => {
+    if (confirmTrade !== 'bet') { setConfirmTrade('bet'); return; }
+    setConfirmTrade(null);
     setBusy(true);
     const d = await run('position-open', { marketId, side, stakeSparks: stake });
     setBusy(false);
@@ -589,6 +592,8 @@ function MarketDetail({
   };
 
   const placeOrder = async () => {
+    if (confirmTrade !== 'order') { setConfirmTrade('order'); return; }
+    setConfirmTrade(null);
     setBusy(true);
     const d = await run('order-place', { marketId, side, limitPrice: Number(limitPrice), stakeSparks: stake });
     setBusy(false);
@@ -725,7 +730,7 @@ function MarketDetail({
                       type="button" onClick={placeBet} disabled={busy}
                       className="rounded bg-indigo-600 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
                     >
-                      Place pooled bet
+                      {confirmTrade === 'bet' ? `Confirm ${stake} ⚡ ${side.toUpperCase()}` : 'Place pooled bet'}
                     </button>
                     <div className="flex items-center gap-1">
                       <input
@@ -738,7 +743,7 @@ function MarketDetail({
                         type="button" onClick={placeOrder} disabled={busy}
                         className="flex-1 rounded border border-cyan-500/40 bg-cyan-500/15 py-1.5 text-xs text-cyan-100 disabled:opacity-50"
                       >
-                        Limit order
+                        {confirmTrade === 'order' ? 'Confirm limit' : 'Limit order'}
                       </button>
                     </div>
                   </div>

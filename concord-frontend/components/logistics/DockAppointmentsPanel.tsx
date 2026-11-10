@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Calendar, Plus, Loader2, Anchor, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 
@@ -53,11 +54,18 @@ export function DockAppointmentsPanel() {
     } catch (e) { console.error('[Docks] book', e); }
   }
 
-  async function cancel(id: string) {
+  async function removeDock(id: string) {
     try {
-      await lensRun({ domain: 'logistics', action: 'dock-appointments-cancel', input: { id } });
+      await lensRun({ domain: 'logistics', action: 'docks-delete', input: { id } });
       await refresh();
-    } catch (e) { console.error('[Docks] cancel', e); }
+    } catch (e) { console.error('[Docks] delete', e); }
+  }
+
+  async function removeAppt(id: string) {
+    try {
+      await lensRun({ domain: 'logistics', action: 'dock-appointments-delete', input: { id } });
+      await refresh();
+    } catch (e) { console.error('[Docks] appointment delete', e); }
   }
 
   return (
@@ -73,6 +81,12 @@ export function DockAppointmentsPanel() {
         <input value={dockForm.name} onChange={e => setDockForm({ ...dockForm, name: e.target.value })} placeholder="Dock name" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={dockForm.facility} onChange={e => setDockForm({ ...dockForm, facility: e.target.value })} placeholder="Facility" className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={addDock} className="px-3 py-1 rounded bg-amber-500/30 text-amber-300 hover:bg-amber-500/50 inline-flex items-center justify-center gap-1"><Anchor className="w-3 h-3" />Add dock</button>
+        {docks.map(d => (
+          <div key={d.id} className="col-span-2 sm:col-span-4 flex items-center gap-2 text-[11px] text-gray-300">
+            <span className="truncate">{d.name} · {d.facility}</span>
+            <StickyDeleteConfirm onConfirm={() => removeDock(d.id)} armLabel="Delete" armAriaLabel={`Delete dock ${d.name}`} confirmLabel="Delete dock?" className="text-rose-300" />
+          </div>
+        ))}
       </div>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
@@ -109,7 +123,7 @@ export function DockAppointmentsPanel() {
                   </div>
                   <div className="text-[10px] text-gray-400">{a.truckNumber || '—'}</div>
                 </div>
-                {a.status === 'scheduled' && <button aria-label="Close" onClick={() => cancel(a.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 hover:text-rose-300"><X className="w-3 h-3" /></button>}
+                <StickyDeleteConfirm onConfirm={() => removeAppt(a.id)} armLabel={<X className="w-3 h-3" />} armAriaLabel="Delete appointment" confirmLabel="Delete appointment?" className="p-1 text-rose-400 hover:text-rose-300" />
               </li>
             ))}
           </ul>
