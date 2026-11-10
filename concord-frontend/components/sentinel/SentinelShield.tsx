@@ -124,7 +124,7 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
   const [reportHash, setReportHash] = useState('');
   const [reportVector, setReportVector] = useState('');
   const [reportBusy, setReportBusy] = useState(false);
-  const [reportResult, setReportResult] = useState<{ status?: string; message?: string } | null>(null);
+  const [reportResult, setReportResult] = useState<{ status?: string; message?: string; threatDtu?: { id?: string } } | null>(null);
 
   // Fortify Suite — full lattice sweep.
   const [sweeping, setSweeping] = useState(false);
@@ -242,7 +242,7 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
       fileHash: reportHash.trim() || undefined,
       vector: reportVector.trim() || undefined,
     });
-    const result = (r.data?.result ?? r.data) as { status?: string; message?: string } | null;
+    const result = (r.data?.result ?? r.data) as { status?: string; message?: string; threatDtu?: { id?: string } } | null;
     setReportResult(result);
     setReportBusy(false);
     if (r.data?.ok) {
@@ -306,7 +306,7 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
           {reportOpen && (
             <div className="rounded-lg border border-blue-900/40 bg-blue-950/10 p-4">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-200">
-                <Send className="h-4 w-4" /> Report a threat to the collective lattice
+                <Send className="h-4 w-4" /> Report a threat
               </h3>
               <div className="grid gap-2 sm:grid-cols-2">
                 <select
@@ -355,10 +355,24 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
                 Submit report
               </button>
               {reportResult && (
-                <p className="mt-2 text-[11px] text-blue-400">
-                  {reportResult.status === 'known_threat' ? 'Already known — ' : 'New threat added — '}
-                  {reportResult.message}
-                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <p className="text-[11px] text-blue-400">{reportResult.message}</p>
+                  {reportResult.threatDtu?.id && reportResult.status !== 'known_threat' && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const id = reportResult.threatDtu?.id;
+                        if (!id) return;
+                        await lensRun('shield', 'retract-report', { id });
+                        setReportResult({ status: 'retracted', message: 'Report retracted. The Shield score was not changed.' });
+                        await load();
+                      }}
+                      className="text-[11px] text-blue-200 underline"
+                    >
+                      Retract this report
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}

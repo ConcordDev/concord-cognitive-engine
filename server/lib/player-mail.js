@@ -41,6 +41,15 @@ export function sendMail(db, input) {
   const toUserId = String(input?.toUserId || "").trim();
   if (!fromUserId || !toUserId) return { ok: false, error: "missing_users" };
   if (fromUserId === toUserId) return { ok: false, error: "cannot_mail_self" };
+  // A typed display name is not a recipient. Mail and any CC gift go only
+  // to a real user id. An unknown id must not create a message for "A Concord member".
+  let recipientRow = null;
+  try {
+    recipientRow = db.prepare(`SELECT id FROM users WHERE id = ?`).get(toUserId);
+  } catch {
+    return { ok: false, error: "recipient_lookup_failed" };
+  }
+  if (!recipientRow?.id) return { ok: false, error: "recipient_unresolved" };
 
   const subject = String(input?.subject || "").slice(0, MAX_SUBJECT_LEN).trim();
   if (!subject) return { ok: false, error: "subject_required" };

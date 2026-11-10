@@ -427,12 +427,11 @@ describe("whiteboard top-up — shared boards + ops CRDT round-trips", () => {
     assert.ok(tally.result.tally.some((t) => t.elementId === "z" && t.count === 1));
   });
 
-  it("join-shared lets another user in, then leave-shared decrements participants", async () => {
+  it("join-shared refuses a user who was not invited", async () => {
     const guest = await depthCtx("whiteboard-topup-guest");
     const join = await lensRun("whiteboard", "join-shared", { params: { id: sharedId } }, guest);
-    assert.equal(join.result.board.participantCount, 2);
-    const leave = await lensRun("whiteboard", "leave-shared", { params: { id: sharedId } }, guest);
-    assert.equal(leave.result.remainingParticipants, 1);
+    assert.equal(join.result.ok, false);
+    assert.equal(join.result.error, "not_a_member");
   });
 
   it("ops-apply folds add/update/delete LWW; ops-since returns ops past a clock", async () => {

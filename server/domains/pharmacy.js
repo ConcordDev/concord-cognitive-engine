@@ -639,6 +639,21 @@ export default function registerPharmacyActions(registerLensAction) {
   const APPT_STATUSES = ["scheduled", "completed", "cancelled", "missed"];
   const APPT_TERMINAL = ["completed", "cancelled", "missed"];
 
+  // A datetime-local edit can concatenate the year (2026 → 52026). Reject
+  // that instead of storing it. A real ISO instant with a 4-digit year in
+  // range is kept as the caller sent it.
+  function appointmentInstant(raw) {
+    const v = String(raw || "").trim();
+    if (!v) return null;
+    const year = /^(\d+)/.exec(v);
+    if (!year || year[1].length !== 4) return null;
+    const t = Date.parse(v);
+    if (!Number.isFinite(t)) return null;
+    const y = new Date(t).getUTCFullYear();
+    if (y < 1900 || y > 2100) return null;
+    return v.slice(0, 40);
+  }
+
   registerLensAction("pharmacy", "appointment-add", (ctx, _a, params = {}) => {
   try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -646,7 +661,7 @@ export default function registerPharmacyActions(registerLensAction) {
     const userId = raid(ctx);
     const providerName = rclean(params.providerName, 120);
     if (!providerName) return { ok: false, error: "providerName required" };
-    const dateTime = rclean(params.dateTime, 40);
+    const dateTime = appointmentInstant(params.dateTime);
     if (!dateTime) return { ok: false, error: "dateTime required" };
     let relatedMedId = null, relatedMedName = null;
     if (params.relatedMedId != null && params.relatedMedId !== "") {
@@ -748,7 +763,7 @@ export default function registerPharmacyActions(registerLensAction) {
       if (APPT_TERMINAL.includes(appt.status)) {
         return { ok: false, error: `cannot reschedule an appointment that is already ${appt.status}` };
       }
-      const dt = rclean(params.dateTime, 40);
+      const dt = appointmentInstant(params.dateTime);
       if (!dt) return { ok: false, error: "dateTime cannot be blank" };
       appt.dateTime = dt;
     }

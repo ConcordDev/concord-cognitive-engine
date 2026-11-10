@@ -232,20 +232,24 @@ export default function CraftingPage() {
   }, [name, saving, registerPiece, recipes, clearDraft]);
 
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [confirmPublishId, setConfirmPublishId] = useState<string | null>(null);
 
   // D1's publish act: the piece's canonical artifact is what publish acts
   // on (POST /api/lens/crafting/:artifactId/publish flips its visibility).
   // A piece with no artifact yet has nothing to publish — no button.
-  const publishPiece = useCallback(async (piece: BenchPiece) => {
+  const publishPiece = useCallback(async (piece: BenchPiece, unpublish = false) => {
     if (!piece.artifactId || publishingId) return;
     setPublishingId(piece.id);
     try {
-      const res = await api.post(`/api/lens/crafting/${piece.artifactId}/publish`, {});
+      const res = await api.post(`/api/lens/crafting/${piece.artifactId}/publish`, unpublish ? { unpublish: true } : {});
       const body = res.data as { ok?: boolean } | null;
       if (!body || body.ok === false) throw new Error('publish refused');
-      setRecipes((prev) => prev.map((p) => (p.id === piece.id ? { ...p, published: true } : p)));
+      setRecipes((prev) => prev.map((p) => (p.id === piece.id ? { ...p, published: !unpublish } : p)));
+      setConfirmPublishId(null);
     } catch {
-      setNotice('That piece could not be published. It is still on your bench.');
+      setNotice(unpublish
+        ? 'That piece could not be unpublished. It is still marked published.'
+        : 'That piece could not be published. It is still on your bench.');
     } finally {
       setPublishingId(null);
     }
@@ -384,11 +388,33 @@ export default function CraftingPage() {
                   <span>{row.title}</span>
                   <span className="flex shrink-0 items-baseline gap-3">
                     {row.published ? (
-                      <span className="text-[12px] text-zinc-500">Published</span>
+                      <button
+                        type="button"
+                        onClick={() => void publishPiece(row, true)}
+                        disabled={publishingId === row.id}
+                        className="text-[13px] text-zinc-300 underline disabled:opacity-60"
+                      >
+                        Unpublish
+                      </button>
+                    ) : row.artifactId && confirmPublishId === row.id ? (
+                      <span className="flex items-baseline gap-2">
+                        <span className="text-[12px] text-zinc-500">Anyone who can list published pieces will see this. It is not posted to a feed or a market.</span>
+                        <button
+                          type="button"
+                          onClick={() => void publishPiece(row)}
+                          disabled={publishingId === row.id}
+                          className="text-[13px] text-zinc-100 underline disabled:opacity-60"
+                        >
+                          Confirm publish
+                        </button>
+                        <button type="button" onClick={() => setConfirmPublishId(null)} className="text-[13px] text-zinc-400 underline">
+                          Cancel
+                        </button>
+                      </span>
                     ) : row.artifactId ? (
                       <button
                         type="button"
-                        onClick={() => void publishPiece(row)}
+                        onClick={() => setConfirmPublishId(row.id)}
                         disabled={publishingId === row.id}
                         className="text-[13px] text-zinc-300 underline disabled:opacity-60"
                       >

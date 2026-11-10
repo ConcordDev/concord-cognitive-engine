@@ -10,6 +10,7 @@
 // from real input. Empty collections render "no data yet" in the UI.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { archiveChecksum, encryptArchive, decryptArchive } from "../lib/export-archive.js";
 export default function registerExportActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ─── legacy stateless macros (unchanged behaviour) ──────────────────
@@ -174,29 +175,9 @@ export default function registerExportActions(registerLensAction) {
 });
 
   // ─── [S] encrypted / password-protected archive ─────────────────────
-  // XOR-stream cipher keyed by a PBKDF-style iterated hash of the
-  // password + per-archive salt. Deterministic, dependency-free,
-  // round-trippable. Real payload only.
-  function deriveKeyStream(password, salt, length) {
-    // Iterated FNV-1a mixing to expand password+salt into a keystream.
-    const seed = `${password}::${salt}`;
-    const ks = Buffer.alloc(length);
-    let h = 0x811c9dc5 >>> 0;
-    for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
-    for (let i = 0; i < length; i++) {
-      h ^= (i & 0xff);
-      h = Math.imul(h, 0x01000193) >>> 0;
-      h ^= h >>> 13;
-      ks[i] = h & 0xff;
-    }
-    return ks;
-  }
-  function checksum(buf) {
-    let h = 0x811c9dc5 >>> 0;
-    for (let i = 0; i < buf.length; i++) { h ^= buf[i]; h = Math.imul(h, 0x01000193) >>> 0; }
-    return (h >>> 0).toString(16).padStart(8, "0");
-  }
-
+  // Cipher lives in lib/export-archive.js so the browser copy can pin
+  // the same bytes. Salt is cleaned before the keystream, and the same
+  // cleaned salt is what the envelope stores.
   registerLensAction("export", "encrypt-archive", (ctx, _a, params = {}) => {
   try {
     const password = clean(params.password, 128);
@@ -204,22 +185,9 @@ export default function registerExportActions(registerLensAction) {
     const payload = typeof params.payload === "string"
       ? params.payload
       : JSON.stringify(params.payload ?? {});
-    const plain = Buffer.from(payload, "utf8");
     const salt = clean(params.salt || eid("salt"), 40);
-    const ks = deriveKeyStream(password, salt, plain.length);
-    const cipher = Buffer.alloc(plain.length);
-    for (let i = 0; i < plain.length; i++) cipher[i] = plain[i] ^ ks[i];
-    return {
-      ok: true,
-      result: {
-        algorithm: "concord-xor-fnv/v1",
-        salt,
-        plainChecksum: checksum(plain),
-        byteLength: cipher.length,
-        ciphertextBase64: cipher.toString("base64"),
-        extension: ".enc",
-      },
-    };
+    const encrypted = encryptArchive(password, payload, salt);
+    return { ok: true, result: encrypted };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -228,21 +196,17 @@ export default function registerExportActions(registerLensAction) {
     const salt = clean(params.salt, 40);
     const b64 = typeof params.ciphertextBase64 === "string" ? params.ciphertextBase64 : "";
     if (!password || !salt || !b64) return { ok: false, error: "password, salt and ciphertextBase64 required" };
-    let cipher;
-    try { cipher = Buffer.from(b64, "base64"); } catch (_e) { return { ok: false, error: "ciphertext not valid base64" }; }
-    const ks = deriveKeyStream(password, salt, cipher.length);
-    const plain = Buffer.alloc(cipher.length);
-    for (let i = 0; i < cipher.length; i++) plain[i] = cipher[i] ^ ks[i];
-    const sum = checksum(plain);
+    let opened;
+    try { opened = decryptArchive(password, salt, b64); } catch (_e) { return { ok: false, error: "ciphertext not valid base64" }; }
     const expected = clean(params.expectedChecksum, 16);
-    const verified = expected ? sum === expected : null;
+    const verified = expected ? opened.checksum === expected : null;
     return {
       ok: true,
       result: {
         verified,
-        checksum: sum,
-        byteLength: plain.length,
-        plaintext: plain.toString("utf8"),
+        checksum: opened.checksum,
+        byteLength: opened.byteLength,
+        plaintext: opened.plaintext,
       },
     };
   });
@@ -330,7 +294,7 @@ export default function registerExportActions(registerLensAction) {
       provider,
       accountLabel,
       // store only a non-reversible fingerprint of the token for display
-      tokenFingerprint: checksum(Buffer.from(accessToken, "utf8")),
+      tokenFingerprint: archiveChecksum(Buffer.from(accessToken, "utf8")),
       scope: clean(params.scope || "file.write", 120),
       connectedAt: now(),
       lastDeliveryAt: null,

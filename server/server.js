@@ -18,6 +18,8 @@ import { persistToolCall as _persistToolCall } from "./lib/chat/tool-call-normal
 installSlowSyncIoOnce();
 import expressRateLimit from "express-rate-limit";
 import { findActiveUserRowByEmail, emailsMatchIgnoreCase } from "./lib/user-email-lookup.js";
+import { whiteboardRoomAllowed } from "./lib/whiteboard-room.js";
+import { lensExhaustEmitTarget } from "./lib/lens-dtu-emit.js";
 import { podPick as _podPick } from "./lib/pod-profile.js";
 import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
@@ -2269,7 +2271,7 @@ import { reconcileArtifactTypes } from "./lib/lens-artifact-types.js";
 import { pickLegacyShadow } from "./lib/whiteboard-board-artifacts.js";
 import { accumulate as accumulateSessionContext, getContextSnapshot, getAccumulatorMetrics, cleanupExpiredSessions as cleanupAccumulatorSessions } from "./lib/session-context-accumulator.js";
 import { detectForge, runForgePipeline, saveForgedDTU, deleteForgedDTU, saveAndList, iterateForge, recordForgeMetric, getForgeMetrics, recordEmergentContribution } from "./lib/inline-dtu-forge.js";
-import { initializeShield, scanContent as shieldScanContent, scanHashAgainstLattice, runAnalysisPipeline as shieldAnalyze, classifyWithYARA, runProphet as shieldProphet, runSurgeon as shieldSurgeon, runGuardian as shieldGuardian, propagateThreatToLattice, shieldHeartbeatTick, computeSecurityScore, detectShieldIntent, performSweep, processUserReport, getThreatFeed, getFirewallRules, getPredictions, getShieldMetrics, queueScan as shieldQueueScan, createThreatDTU, THREAT_SUBTYPES, SCAN_MODES } from "./lib/concord-shield.js";
+import { initializeShield, scanContent as shieldScanContent, scanHashAgainstLattice, runAnalysisPipeline as shieldAnalyze, classifyWithYARA, runProphet as shieldProphet, runSurgeon as shieldSurgeon, runGuardian as shieldGuardian, propagateThreatToLattice, shieldHeartbeatTick, computeSecurityScore, detectShieldIntent, performSweep, processUserReport, retractUserReport, getThreatFeed, getFirewallRules, getPredictions, getShieldMetrics, queueScan as shieldQueueScan, createThreatDTU, THREAT_SUBTYPES, SCAN_MODES } from "./lib/concord-shield.js";
 import registerShieldRoutes from "./routes/shield.js";
 import { initializeMesh, detectChannels as meshDetectChannels, getChannelStatus as meshGetChannelStatus, getNodeId as meshGetNodeId, sendDTU as meshSendDTU, receiveDTU as meshReceiveDTU, initiateTransfer as meshInitiateTransfer, getTransferStatus as meshGetTransferStatus, registerPeer as meshRegisterPeer, getPeers as meshGetPeers, getTopology as meshGetTopology, getMeshMetrics, getTransmissionStats as meshGetTransmissionStats, getPendingQueue as meshGetPendingQueue, configureRelay as meshConfigureRelay, detectMeshIntent, meshHeartbeatTick, planOfflineSync as meshPlanOfflineSync, TRANSPORT_LAYERS, TRANSPORT_LIST, RELAY_PRIORITIES } from "./lib/concord-mesh.js";
 import registerMeshRoutes from "./routes/mesh.js";
@@ -11496,6 +11498,13 @@ async function tryInitWebSockets(server) {
           socket.emit('error', { code: 'UNAUTHORIZED', message: 'Join the astronomy session before listening' });
           return;
         }
+      }
+
+      const whiteboardMatch = room.match(/^whiteboard:(.+)$/);
+      if (whiteboardMatch && !whiteboardRoomAllowed(STATE, socket.data.userId, whiteboardMatch[1])) {
+        console.warn('[ws] Non-member whiteboard room join blocked:', { userId: socket.data.userId, room });
+        socket.emit('error', { code: 'UNAUTHORIZED', message: 'Join this board before listening' });
+        return;
       }
 
       socket.join(room); try { _socketRoomBridge?.writeBehindJoin(room, socket.id); } catch (_e) { /* fail-soft */ }
@@ -31984,7 +31993,13 @@ register("shield", "report", (ctx, input) => {
     description: input.description,
   }, userId, STATE);
   return result;
-}, { description: "Report a suspected threat to the collective lattice." });
+}, { description: "Save a private, unverified threat report. It does not enter the lattice or the score until reviewed." });
+
+register("shield", "retract-report", (ctx, input) => {
+  const userId = ctx?.actor?.userId || input.userId || "";
+  const id = input.id || input.threatId || input.reportId;
+  return retractUserReport(id, userId, STATE);
+}, { description: "Retract the caller's own unverified threat report." });
 
 register("shield", "firewall", (ctx, input) => {
   const limit = Number(input.limit) || 50;
@@ -49931,19 +49946,22 @@ function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
       updateCrossDomainContext(extra.sessionId, domain, action, dtuId, artifact.title);
     }
 
-    // MEGA SPEC: Emit new WebSocket events for artifact lifecycle
-    realtimeEmit("artifact:rendered", {
-      dtuId, domain, action, fileType: artifact.type || artifactType,
-    });
-    // Broadcast DTU birth so LiveDTUFeed and ActivityFeed see lens-generated DTUs
-    realtimeEmit("dtu:created", {
-      dtuId, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
-    });
-    // Separate event so ActivityFeed can distinguish lens-generated DTUs from user-created ones
-    realtimeEmit("lens:dtu_generated", {
-      dtuId, domain, action, artifactType, artifactId: artifact.id,
-      title: dtu.title, timestamp: nowISO(),
-    });
+    // The owner's own feed still hears the birth. Title and tags stay in
+    // that user's room — a global emit handed every signed-in socket the
+    // artifact title (FIX-xl-ws-001). No owner, no emit.
+    const exhaustRoom = lensExhaustEmitTarget(ownerId);
+    if (exhaustRoom) {
+      realtimeEmit("artifact:rendered", {
+        dtuId, domain, action, fileType: artifact.type || artifactType,
+      }, exhaustRoom);
+      realtimeEmit("dtu:created", {
+        dtuId, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
+      }, exhaustRoom);
+      realtimeEmit("lens:dtu_generated", {
+        dtuId, domain, action, artifactType, artifactId: artifact.id,
+        title: dtu.title, timestamp: nowISO(),
+      }, exhaustRoom);
+    }
 
     saveStateDebounced();
 
@@ -51875,12 +51893,18 @@ app.post("/api/lens/:domain/:id/publish", async (req, res) => {
       return res.status(403).json({ ok: false, error: "not your artifact" });
     }
     artifact.meta = artifact.meta || {};
-    artifact.meta.visibility = "published";
-    artifact.meta.publishedAt = new Date().toISOString();
+    const unpublish = req.body?.unpublish === true;
+    if (unpublish) {
+      artifact.meta.visibility = "private";
+      delete artifact.meta.publishedAt;
+    } else {
+      artifact.meta.visibility = "published";
+      artifact.meta.publishedAt = new Date().toISOString();
+    }
     artifact.updatedAt = new Date().toISOString();
     saveStateDebounced();
     // Close-out A1: the publish mutation records like any other write.
-    _recordLensActivity(req.params.domain, "publish", ctx, { title: artifact.title || "" }, { artifact });
+    _recordLensActivity(req.params.domain, unpublish ? "unpublish" : "publish", ctx, { title: artifact.title || "" }, { artifact });
     res.json({ ok: true, artifact: _presentLensArtifact(artifact, ctx) });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });

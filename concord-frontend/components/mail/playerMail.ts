@@ -36,7 +36,7 @@ export function sendFailureText(error: string | undefined): string {
   if (error === 'insufficient_funds') return 'Not sent. Not enough Concord Coin to escrow that gift.';
   if (error === 'cannot_mail_self') return 'Not sent. You cannot mail yourself.';
   if (error === 'subject_required') return 'Not sent. A subject is required.';
-  if (error === 'missing_users' || error === 'no_user') return 'Not sent. Pick a recipient who has a Concord account.';
+  if (error === 'missing_users' || error === 'no_user' || error === 'recipient_unresolved') return 'Not sent. Pick a recipient who has a Concord account.';
   return error ? `Not sent. ${error.replace(/_/g, ' ')}.` : 'Not sent.';
 }
 

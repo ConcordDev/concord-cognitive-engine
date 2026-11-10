@@ -1546,27 +1546,32 @@ Generate the plan.`;
     if (params.mine) challenges = challenges.filter((c) => c.participants.includes(userId));
     const today = fday(fnow());
     challenges = challenges.map((ch) => {
+      const joined = ch.participants.includes(userId);
       const myActs = s.activities.get(userId) || [];
-      const myValue = challengeProgress(ch, myActs);
-      // leaderboard across all participants
-      const board = ch.participants.map((p) => ({
-        userId: p,
-        value: challengeProgress(ch, s.activities.get(p) || []),
-      })).sort((a, b) => b.value - a.value)
-        .map((x, i) => {
-          const card = publicActor(ctx, userId, x.userId, "Athlete");
-          return {
-            rank: i + 1,
-            value: x.value,
-            isMe: card.isMine,
-            displayName: card.displayName,
-            ...(card.isMine ? { userId: x.userId } : {}),
-          };
-        });
+      const myValue = joined ? challengeProgress(ch, myActs) : 0;
+      // Other people's private activity totals are visible only to someone
+      // who joined this challenge. A listing by a stranger used to read
+      // every participant's activity Map.
+      const board = joined
+        ? ch.participants.map((p) => ({
+          userId: p,
+          value: challengeProgress(ch, s.activities.get(p) || []),
+        })).sort((a, b) => b.value - a.value)
+          .map((x, i) => {
+            const card = publicActor(ctx, userId, x.userId, "Athlete");
+            return {
+              rank: i + 1,
+              value: x.value,
+              isMe: card.isMine,
+              displayName: card.displayName,
+              ...(card.isMine ? { userId: x.userId } : {}),
+            };
+          })
+        : [];
       const { participants, ...rest } = ch;
       return {
         ...presentOwnedId(ctx, userId, rest, "ownerUserId", { label: "Athlete", nameKey: "ownerDisplayName" }),
-        joined: participants.includes(userId),
+        joined,
         active: today >= ch.startDate && today <= ch.endDate,
         participantCount: participants.length,
         myProgress: { value: myValue, pct: Math.round(fclamp(myValue / ch.target, 0, 1) * 100), complete: myValue >= ch.target },

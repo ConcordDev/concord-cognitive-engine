@@ -15,6 +15,7 @@ import {
   Unlock, Upload,
 } from 'lucide-react';
 import { lensRun, api } from '@/lib/api/client';
+import { decryptEncEnvelope, packEncEnvelope, readEncEnvelope } from '@/lib/export/xor-fnv-archive';
 import { loadExportDtus } from '@/lib/dtu/list-pages';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 
@@ -370,7 +371,7 @@ function EncryptedArchive({ dtus }: { dtus: Dtu[] }) {
       if (r.data?.ok && r.data.result) {
         const res = r.data.result as { algorithm: string; salt: string; plainChecksum: string; ciphertextBase64: string; byteLength: number };
         // Pack salt + checksum + ciphertext into a self-describing envelope so it round-trips.
-        const envelope = JSON.stringify({ algorithm: res.algorithm, salt: res.salt, plainChecksum: res.plainChecksum, ciphertextBase64: res.ciphertextBase64 });
+        const envelope = packEncEnvelope({ algorithm: res.algorithm, salt: res.salt, plainChecksum: res.plainChecksum, ciphertextBase64: res.ciphertextBase64 });
         dl(`concord-export-${Date.now()}.enc`, envelope, 'application/octet-stream');
         setInfo(`Encrypted ${fmtBytes(res.byteLength)} archive (${res.algorithm}). Keep the password — it is required to decrypt.`);
         await lensRun('export', 'record-run', { format: 'enc', itemCount: dtus.length, byteLength: res.byteLength, dataSources: ['dtus'], trigger: 'manual', filename: 'concord-export.enc' });
@@ -414,8 +415,8 @@ export function DecryptedArchive() {
     setInfo(null);
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text) as { salt?: string; plainChecksum?: string; ciphertextBase64?: string };
-      if (!parsed.salt || !parsed.ciphertextBase64) { setInfo('Not a recognized .enc envelope (missing salt/ciphertext).'); return; }
+      const parsed = readEncEnvelope(text);
+      if (!parsed) { setInfo('Not a recognized .enc envelope (missing salt/ciphertext).'); return; }
       setEnvelope({ salt: parsed.salt, plainChecksum: parsed.plainChecksum || '', ciphertextBase64: parsed.ciphertextBase64 });
       setFileName(file.name);
     } catch {
@@ -428,18 +429,17 @@ export function DecryptedArchive() {
     if (!password) { setInfo('Password required.'); return; }
     setBusy(true); setInfo(null);
     try {
-      const r = await lensRun('export', 'decrypt-archive', {
-        password, salt: envelope.salt, ciphertextBase64: envelope.ciphertextBase64,
-        expectedChecksum: envelope.plainChecksum || undefined,
+      // Decrypt the file bytes in the browser. The envelope the user
+      // downloaded is what gets checked, not a second copy posted back.
+      const res = decryptEncEnvelope(password, {
+        algorithm: 'concord-xor-fnv/v1',
+        salt: envelope.salt,
+        plainChecksum: envelope.plainChecksum,
+        ciphertextBase64: envelope.ciphertextBase64,
       });
-      if (r.data?.ok && r.data.result) {
-        const res = r.data.result as { verified: boolean | null; checksum: string; byteLength: number; plaintext: string };
-        if (res.verified === false) { setInfo('Wrong password — checksum did not match.'); return; }
-        dl(`${(fileName || 'archive').replace(/\.enc$/, '')}.decrypted.json`, res.plaintext, 'application/json');
-        setInfo(`Decrypted ${fmtBytes(res.byteLength)}${res.verified ? ' — checksum verified' : ''}.`);
-      } else {
-        setInfo(r.data?.error || 'Decryption failed');
-      }
+      if (!res.verified) { setInfo('Wrong password — checksum did not match.'); return; }
+      dl(`${(fileName || 'archive').replace(/\.enc$/, '')}.decrypted.json`, res.plaintext, 'application/json');
+      setInfo(`Decrypted ${fmtBytes(new TextEncoder().encode(res.plaintext).length)} — checksum verified.`);
     } finally { setBusy(false); }
   };
 

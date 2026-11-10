@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 61 | 156 | 3 |
+| high | 70 | 147 | 3 |
 | medium | 284 | 661 | 0 |
 | low | 249 | 731 | 0 |
 | unrated | 0 | 6 | 0 |
-| **total** | **594** | **1554** | **3** |
+| **total** | **603** | **1545** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -680,3 +680,70 @@ FIX-finance-004. A lens export's DTU leg keeps rows that belong to this caller a
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
 | FIX-finance-004 | finance | high | FIXED_PENDING_VERIFY | 96a7c6276 |
+
+## SEC-whiteboard-membership
+
+`join-shared` returns `not_a_member` unless the caller already owns the board or was named on `share-board`. The socket room `whiteboard:<id>` uses the same check.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-whiteboard-001 | whiteboard | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-whiteboard-002 | whiteboard | high | FIXED_PENDING_VERIFY | this commit |
+
+## SEC-mail-recipient
+
+`sendMail` looks the recipient up in `users`. A typed display name returns `recipient_unresolved` and writes no mail row and no CC gift.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-mail-011 | mail | high | FIXED_PENDING_VERIFY | this commit |
+
+## SEC-pharmacy-datetime
+
+The appointment field keeps `YYYY-MM-DDTHH:mm` only. A concatenated year (`52026`) is dropped in the control and refused by `appointment-add` / `appointment-update`.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-pharmacy-008 | pharmacy | high | FIXED_PENDING_VERIFY | this commit |
+
+## SEC-crafting-publish-confirm
+
+Publish states that anyone who can list published pieces will see it, and waits for Confirm. Unpublish posts `{ unpublish: true }` on the same route.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-crafting-001 | crafting | high | FIXED_PENDING_VERIFY | this commit |
+
+## SEC-sentinel-unverified-report
+
+A user threat report is stored private with `verified: false`. It is not propagated into the lattice and it is skipped by the Shield score. The reporter can retract it.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-sentinel-001 | sentinel | high | FIXED_PENDING_VERIFY | this commit |
+
+## SEC-lens-exhaust-emit
+
+`dtu:created`, `lens:dtu_generated`, and `artifact:rendered` from lens exhaust go to `user:<ownerId>`. A missing or placeholder owner produces no emit.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-xl-ws-001 | cross-lens | high | FIXED_PENDING_VERIFY | this commit |
+
+## SEC-fitness-leaderboard
+
+Challenge totals drawn from other people's activities are included only when the caller has joined that challenge. A stranger gets an empty leaderboard and a zero of their own.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-fitness-001 | fitness | high | FIXED_PENDING_VERIFY | this commit |
+
+## SEC-export-browser-decrypt
+
+Decrypt reads the downloaded JSON envelope and runs `concord-xor-fnv/v1` in the browser. A wrong password fails the checksum and does not download plaintext. The server encrypt/decrypt pair still round-trips the same envelope.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-export-001 | export | high | FIXED_PENDING_VERIFY | this commit |
+
+Still open in section 1g: FIX-cognition-009 (public and non-owner `/dtu/<id>` still needs a live response trace) and FIX-music-001 (export silence / start offset not yet located in the offline renderer).
