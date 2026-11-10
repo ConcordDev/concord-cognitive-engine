@@ -1185,3 +1185,6 @@ These stay `OPEN`. Each one needs a product surface this pass did not build. `ne
 | FIX-forge-003 | Config is component state that starts as my-forge-app and is not saved on a project. | Load and save app name, port, and tables on the opened project. |
 | FIX-app-maker-001 | Preview does not run the button, and the canvas does not restore the saved layout. | The preview executes the saved actions and paints the saved nodes. |
 | FIX-import-002 | A JSON array is still one queue payload. validateImport now reads posted rows, and it does not mint one DTU per row. | One artifact per JSON element and per CSV row, with the job counting those rows. |
+| FIX-art-008 | Lasso stores a polygon on the artwork. There is no list of selected marks and no move or delete of that content. | A selection can move or delete the marks it contains. |
+| FIX-code-002 | Scratch tabs are in-memory editor buffers that start as untitled.js. There is no saved scratch-script list. | Name, rename, and remove a saved scratch script. |
+| FIX-ar-016 | Sketchfab Save as DTU does not land on a library row the caller can open. There is no list item to delete. | Show that saved DTU in the caller's library, with delete. |
