@@ -1315,13 +1315,13 @@ A schema, a veterinary patient, and a medication archive ask before they go. An 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-schema-002 | schema | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-veterinary-001 | veterinary | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-pharmacy-002 | pharmacy | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-agents-011 | agents | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-move-builder-001 | move-builder | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-move-builder-002 | move-builder | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-move-builder-009 | move-builder | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-schema-002 | schema | medium | FIXED_PENDING_VERIFY | 7aa0b3704 |
+| FIX-veterinary-001 | veterinary | medium | FIXED_PENDING_VERIFY | 7aa0b3704 |
+| FIX-pharmacy-002 | pharmacy | medium | FIXED_PENDING_VERIFY | 7aa0b3704 |
+| FIX-agents-011 | agents | medium | FIXED_PENDING_VERIFY | 7aa0b3704 |
+| FIX-move-builder-001 | move-builder | medium | FIXED_PENDING_VERIFY | 7aa0b3704 |
+| FIX-move-builder-002 | move-builder | medium | FIXED_PENDING_VERIFY | 7aa0b3704 |
+| FIX-move-builder-009 | move-builder | medium | FIXED_PENDING_VERIFY | 7aa0b3704 |
 
 ## NEEDS_PRODUCT_SURFACE
 
