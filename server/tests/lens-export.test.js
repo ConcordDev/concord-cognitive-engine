@@ -17,6 +17,7 @@ const {
   collectLensExport,
   registerLensExportProvider,
   hasLensExportProvider,
+  exportCallerLensState,
   _clearLensExportProvidersForTests,
 } = await import("../lib/lens-export.js");
 
@@ -195,6 +196,72 @@ describe("lens-export (Q79)", () => {
     const serialized = JSON.stringify(out.artifacts);
     assert.ok(serialized.includes("felt steady"), "caller journal appears");
     assert.ok(!serialized.includes("private other"), "other user journal never leaks");
+    delete globalThis._concordSTATE;
+  });
+
+  it("panel records in STATE.<domain>Lens export for the caller only, with no provider registered", async () => {
+    _clearLensExportProvidersForTests();
+    globalThis._concordSTATE = {
+      nonprofitLens: {
+        campaigns: new Map([
+          ["u1", [{ id: "cmp1", name: "QA donor drive", goal: 50, createdAt: "2026-11-01T00:00:00Z", donations: [{ id: "don1", amount: 5, donor: "Ada" }] }]],
+          ["u2", [{ id: "cmp2", name: "Secret drive", goal: 10, createdAt: "2026-11-01T00:00:00Z" }]],
+        ]),
+        seq: new Map([["u1", { n: 1 }]]),
+      },
+      tradesLens: {
+        jobs: new Map([
+          ["u1", new Map([["job1", { id: "job1", name: "Boiler repair", createdAt: "2026-11-02T00:00:00Z" }]])],
+          ["u2", new Map([["job2", { id: "job2", name: "Other job", createdAt: "2026-11-02T00:00:00Z" }]])],
+        ]),
+      },
+      filmStudiosLens: {
+        slates: new Map([
+          ["u1", [{ id: "sl1", title: "Scene 12", createdAt: "2026-11-03T00:00:00Z" }]],
+        ]),
+      },
+      whiteboardLens: {
+        boards: new Map([["u1", new Map([["b1", { id: "b1", title: "My board" }]])]]),
+        sharedBoards: new Map([["bX", { id: "bX", title: "Someone else's shared board", ownerId: "u9" }]]),
+      },
+      looseLens: {
+        notes: [
+          { id: "n1", title: "Mine", ownerId: "u1" },
+          { id: "n2", title: "Theirs", ownerId: "u2" },
+          { id: "n3", title: "Unscoped" },
+        ],
+      },
+    };
+    const runMacro = async (domain) => {
+      if (domain === "lens") return { ok: true, artifacts: [] };
+      if (domain === "dtu") return { ok: true, dtus: [] };
+      return { ok: false, error: "unexpected" };
+    };
+    const nonprofit = await collectLensExport({ runMacro, domain: "nonprofit", ctx: { actor: { userId: "u1" } } });
+    const np = JSON.stringify(nonprofit.artifacts);
+    assert.ok(np.includes("QA donor drive"), "caller campaign is in the export");
+    assert.ok(!np.includes("Secret drive"), "another user's campaign is not");
+    assert.equal(nonprofit.stateBacked, true);
+    assert.equal(nonprofit.sources.stateRecords, 1);
+
+    const trades = await collectLensExport({ runMacro, domain: "trades", ctx: { actor: { userId: "u1" } } });
+    const tr = JSON.stringify(trades.artifacts);
+    assert.ok(tr.includes("Boiler repair"));
+    assert.ok(!tr.includes("Other job"));
+
+    const film = await collectLensExport({ runMacro, domain: "film-studios", ctx: { actor: { userId: "u1" } } });
+    assert.ok(JSON.stringify(film.artifacts).includes("Scene 12"), "hyphenated domain matches filmStudiosLens");
+
+    const board = await collectLensExport({ runMacro, domain: "whiteboard", ctx: { actor: { userId: "u1" } } });
+    const wb = JSON.stringify(board.artifacts);
+    assert.ok(wb.includes("My board"));
+    assert.ok(!wb.includes("Someone else's shared board"));
+
+    const loose = exportCallerLensState(globalThis._concordSTATE, "loose", { actor: { userId: "u1" } });
+    assert.deepEqual(loose.map((r) => r.title), ["Mine"]);
+
+    const anon = await collectLensExport({ runMacro, domain: "nonprofit", ctx: {} });
+    assert.equal(anon.sources.stateRecords, 0, "no actor means no panel rows");
     delete globalThis._concordSTATE;
   });
 
