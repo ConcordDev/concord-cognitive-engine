@@ -1033,8 +1033,8 @@ A session can be deleted by its owner. The delete removes that user's row and it
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-sessions-001 | sessions | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-photos-004 | photos | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-sessions-001 | sessions | medium | FIXED_PENDING_VERIFY | 1de860c9d |
+| FIX-photos-004 | photos | medium | FIXED_PENDING_VERIFY | 1de860c9d |
 
 ## NEEDS_PRODUCT_SURFACE
 
