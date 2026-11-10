@@ -147,8 +147,11 @@ export default function CivicBondsLens() {
         (typeof envelope.reason === 'string' && envelope.reason) ||
         null;
       if (!r?.ok) {
-        setNote(`${action}: ${reason || 'failed'}`);
-        addToast({ type: 'error', message: `${action} failed: ${reason || 'unknown error'}` });
+        const explained = reason === 'exceeds_single_entity_cap'
+          ? `${reason}. One pledger cannot cover more than the single-entity cap on this bond.`
+          : reason;
+        setNote(`${action}: ${explained || 'failed'}`);
+        addToast({ type: 'error', message: `${action} failed: ${explained || 'unknown error'}` });
       } else {
         setNote(`${action} ✓`);
         addToast({ type: 'success', message: `${action} succeeded`, duration: 2500 });

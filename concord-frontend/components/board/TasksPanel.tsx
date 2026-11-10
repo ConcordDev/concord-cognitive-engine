@@ -24,7 +24,7 @@ import { BoardLanes } from './BoardLanes';
 import {
   type Task, type TaskView,
   columns, priorityConfig, typeConfig, labels, assignees, projects,
-  TASKS_FALLBACK, lensItemToTask, isOverdue, taskPatchToLensUpdate,
+  TASKS_FALLBACK, lensItemToTask, isOverdue, formatTaskDate, taskPatchToLensUpdate,
   buildBoardActionParams,
 } from './board-shared';
 
@@ -139,7 +139,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     return {
       total: tasks.length,
-      inProgress: tasks.filter((t) => !['backlog', 'done'].includes(t.status)).length,
+      inProgress: tasks.filter((t) => ['in_progress', 'in_review', 'testing'].includes(t.status)).length,
       overdue: tasks.filter((t) => isOverdue(t.dueDate) && t.status !== 'done').length,
       completedThisWeek: tasks.filter((t) => t.status === 'done' && new Date(t.dueDate) >= weekAgo)
         .length,
@@ -812,7 +812,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                               overdue ? 'text-red-400 font-medium' : 'text-gray-400',
                             )}>
                               {task.dueDate
-                                ? new Date(task.dueDate).toLocaleDateString()
+                                ? formatTaskDate(task.dueDate)
                                 : 'no due date'}
                               {overdue && ' · overdue'}
                             </span>
@@ -870,7 +870,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                         <td className="py-2 text-xs text-gray-400 capitalize">{task.priority}</td>
                         <td className="py-2 text-xs text-gray-400">{task.assignee}</td>
                         <td className={cn('py-2 text-xs', overdue ? 'text-red-400 font-medium' : 'text-gray-400')}>
-                          {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—'}
+                          {task.dueDate ? formatTaskDate(task.dueDate) : '—'}
                           {overdue && ' · overdue'}
                         </td>
                         <td className="py-2 pr-2 text-xs text-gray-400 text-right">{task.progress}%</td>

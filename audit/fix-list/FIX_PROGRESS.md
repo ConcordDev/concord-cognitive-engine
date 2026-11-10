@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 460 | 485 | 0 |
+| medium | 467 | 478 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **881** | **1267** | **3** |
+| **total** | **888** | **1260** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1373,6 +1373,20 @@ An entity node can change type after it is created. A floor argument can be remo
 | FIX-construction-004 | construction | medium | FIXED_PENDING_VERIFY | 16d7fe919 |
 | FIX-marketing-001 | marketing | medium | FIXED_PENDING_VERIFY | 16d7fe919 |
 | FIX-marketing-013 | marketing | medium | FIXED_PENDING_VERIFY | 16d7fe919 |
+
+## Mediums — markets, pacts, board dates
+
+Closing soon lists a market that is still open before one whose close has passed. Volume follows recorded trades. A Politics chip matches a politics market. A pact share of 0, or shares that do not add to 100, is refused, and a 0-day term is refused on write and on renew. A date-only due date is read as that calendar day, and In Progress counts Doing, review, and testing. A pledge over the single-entity cap says what the cap is. The logistics on-time card shows a dash when there is no delivered sample. FIX-logistics-004 stays open because the dashboard can still disagree with other panels until reload.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-markets-004 | markets | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-markets-005 | markets | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-death-insurance-002 | death-insurance | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-death-insurance-004 | death-insurance | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-board-003 | board | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-board-005 | board | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-civic-bonds-004 | civic-bonds | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

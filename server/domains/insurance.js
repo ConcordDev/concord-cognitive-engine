@@ -1305,15 +1305,11 @@ export default function registerInsuranceActions(register) {
     const seen = new Set();
     list = list.filter((b) => (seen.has(b.userId) ? false : (seen.add(b.userId), true)));
     const total = list.reduce((a, b) => a + b.sharePct, 0);
-    if (total <= 0 && list.length) {
-      const even = Math.floor(100 / list.length);
-      list.forEach((b, i) => { b.sharePct = i === list.length - 1 ? 100 - even * (list.length - 1) : even; });
-    } else if (total !== 100 && list.length) {
-      let acc = 0;
-      list.forEach((b, i) => {
-        if (i === list.length - 1) { b.sharePct = 100 - acc; }
-        else { b.sharePct = Math.round((b.sharePct / total) * 100); acc += b.sharePct; }
-      });
+    if (list.some((b) => !(b.sharePct > 0))) {
+      return { error: "Each beneficiary share must be a number greater than 0." };
+    }
+    if (list.length && total !== 100) {
+      return { error: "Beneficiary shares must add up to 100." };
     }
     return list.map((b) => ({ userId: b.userId, sharePct: b.sharePct, accepted: false, respondedAt: null }));
   }
@@ -1338,9 +1334,16 @@ export default function registerInsuranceActions(register) {
     const premiumSparks = pactInt(params.premiumSparks);
     if (payoutSparks <= 0) return { ok: false, error: "payoutSparks must be > 0" };
     if (premiumSparks <= 0) return { ok: false, error: "premiumSparks must be > 0" };
-    const durationDays = Math.max(1, pactInt(params.durationDays, 30));
+    let durationDays = 30;
+    if (params.durationDays != null && params.durationDays !== "") {
+      durationDays = pactInt(params.durationDays, NaN);
+      if (!Number.isFinite(durationDays) || durationDays < 1) {
+        return { ok: false, error: "invalid_input", message: "Duration must be a whole number of days that is 1 or greater." };
+      }
+    }
 
     const beneficiaries = normaliseBeneficiaries(params.beneficiaries, params.beneficiaryUserId);
+    if (beneficiaries && beneficiaries.error) return { ok: false, error: "invalid_input", message: beneficiaries.error };
     if (!beneficiaries.length) return { ok: false, error: "at least one beneficiary required" };
     if (typeof ctx?.db?.prepare === "function") {
       for (const b of beneficiaries) {
@@ -1438,7 +1441,13 @@ export default function registerInsuranceActions(register) {
     if (badNum) return { ok: false, error: `invalid_${badNum}` };
     const st = pactStatus(pact);
     if (st === "revoked" || st === "fired") return { ok: false, error: `cannot renew a ${st} pact` };
-    const extraDays = Math.max(1, pactInt(params.durationDays, pact.durationDays));
+    let extraDays = pact.durationDays;
+    if (params.durationDays != null && params.durationDays !== "") {
+      extraDays = pactInt(params.durationDays, NaN);
+      if (!Number.isFinite(extraDays) || extraDays < 1) {
+        return { ok: false, error: "invalid_input", message: "Renewal days must be a whole number that is 1 or greater." };
+      }
+    }
     const base = st === "expired" ? pactNow() : pact.expiresAt;
     pact.expiresAt = base + extraDays * PACT_DAY;
     pact.durationDays = extraDays;

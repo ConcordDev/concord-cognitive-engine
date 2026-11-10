@@ -619,7 +619,10 @@ export default function registerMarketsActions(registerLensAction) {
       const sort = String(params.sort || "newest"); // newest | volume | closing | trending
       const limit = Math.min(Math.max(Number(params.limit) || 50, 1), 200);
       let rows = [...s.markets.values()];
-      if (category) rows = rows.filter((m) => m.category === category);
+      if (category) {
+        const wanted = category.toLowerCase();
+        rows = rows.filter((m) => String(m.category || "").toLowerCase() === wanted);
+      }
       if (statusFilter) rows = rows.filter((m) => m.status === statusFilter);
       if (search) {
         rows = rows.filter((m) =>
@@ -629,9 +632,15 @@ export default function registerMarketsActions(registerLensAction) {
       }
       const now = pmNow();
       if (sort === "volume") {
-        rows.sort((a, b) => (b.poolYes + b.poolNo) - (a.poolYes + a.poolNo));
+        const volume = (m) => (m.priceHistory?.length || 0) * 1_000_000 + (m.poolYes + m.poolNo);
+        rows.sort((a, b) => volume(b) - volume(a));
       } else if (sort === "closing") {
-        rows.sort((a, b) => (a.closesAt || Infinity) - (b.closesAt || Infinity));
+        const rank = (m) => {
+          const closes = m.closesAt || Infinity;
+          const closed = m.status === "resolved" || m.status === "closed" || (Number.isFinite(closes) && closes < now);
+          return closed ? closes + 1e15 : closes;
+        };
+        rows.sort((a, b) => rank(a) - rank(b));
       } else if (sort === "trending") {
         // recent trade count weighted by total pool
         const score = (m) => {

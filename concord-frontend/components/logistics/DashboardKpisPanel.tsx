@@ -13,7 +13,7 @@ export interface DashboardSummary {
   inTransit: number;
   deliveredToday: number;
   exceptions: number;
-  onTimePct: number;
+  onTimePct: number | null;
   carrierCount: number;
   vehicles: number;
   vehiclesInUse: number;
@@ -57,7 +57,7 @@ export function DashboardKpisPanel({ summary }: { summary?: DashboardSummary | n
       <div className={ds.grid4}>
         <StatCard icon={Package} label="Total Shipments" value={s.totalShipments} />
         <StatCard icon={Truck} label="In Transit" value={s.inTransit} color="text-neon-purple" />
-        <StatCard icon={CheckCircle} label="On-Time Rate" value={`${s.onTimePct}%`} color="text-green-400" />
+        <StatCard icon={CheckCircle} label="On-Time Rate" value={s.onTimePct == null ? '—' : `${s.onTimePct}%`} color="text-green-400" />
         <StatCard icon={Warehouse} label="Fleet Vehicles" value={`${s.vehiclesInUse}/${s.vehicles}`} sub="in use / total" color="text-amber-400" />
       </div>
       <div className={ds.grid4}>
