@@ -242,6 +242,12 @@ describe("ar.publishScene", () => {
     assert.equal(r.result.publish.qrPayload, r.result.publish.url);
     assert.equal(r.result.publish.markerBased, false);
     assert.ok(r.result.publish.expiresAt > r.result.publish.publishedAt);
+    const slug = r.result.publish.slug;
+    const pub = call("publishBySlug", ctxB, {}, { slug });
+    assert.equal(pub.ok, true);
+    assert.equal(pub.result.scene.name, "Storefront AR");
+    assert.equal(pub.result.scene.objects.length, 2);
+    assert.equal(call("publishBySlug", ctxB, {}, { slug: "missing" }).ok, false);
   });
 
   it("rejects publishing an unknown scene", () => {

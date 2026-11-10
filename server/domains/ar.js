@@ -1140,6 +1140,47 @@ export default function registerArActions(registerLensAction) {
   });
 
   /**
+   * publishBySlug
+   * Public read of a published scene. The share URL is /ar/view/<slug>.
+   * Scans every owner's publish bucket; the caller does not have to be the author.
+   */
+  registerLensAction("ar", "publishBySlug", (_ctx, _artifact, params) => {
+    try {
+      const slug = String((params && params.slug) || "").trim();
+      if (!slug) return { ok: false, error: "slug is required" };
+      const state = arState();
+      let record = null;
+      for (const bucket of state.publishes.values()) {
+        for (const item of bucket.values()) {
+          if (item && item.slug === slug) { record = item; break; }
+        }
+        if (record) break;
+      }
+      if (!record) return { ok: false, error: "publish not found" };
+      if (record.expiresAt && Date.parse(record.expiresAt) < Date.now()) {
+        return { ok: false, error: "this link has expired" };
+      }
+      let scene = null;
+      for (const bucket of state.scenes.values()) {
+        const found = bucket.get(record.sceneId);
+        if (found) { scene = found; break; }
+      }
+      const objects = Array.isArray(scene?.objects) ? scene.objects.map((obj) => ({
+        id: obj.id, name: obj.name || "Object", kind: obj.kind || "model",
+      })) : [];
+      return {
+        ok: true,
+        result: {
+          publish: record,
+          scene: scene ? { id: scene.id, name: scene.name, anchor: scene.anchor, objects } : null,
+        },
+      };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /**
    * webxrPreview
    * Produce a deterministic WebXR session plan for a scene — what session
    * features to request, fallbacks, and a draw list the live camera preview

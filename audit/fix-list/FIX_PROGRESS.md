@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 166 | 52 | 3 |
+| high | 170 | 48 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **707** | **1441** | **3** |
+| **total** | **711** | **1437** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -862,6 +862,9 @@ These stay `OPEN`. The code that was checked does not show the reported failure,
 | FIX-voice-001 | No renderer path was found that crashes on a long recording title. |
 | FIX-cognition-009 | A confirmed miss on /dtu/[id] already 404s via lookupOwnerDtu. The live 500 did not reduce to one throw. |
 | FIX-music-001 | renderProject schedules from beat 0. No start offset puts a 4-bar 100 BPM arrangement at 16.75s. |
+| FIX-001 | Opening a production enables Add scene and Rename. "Nothing selected." is the scene pane until a scene is clicked, and the lens tests pin that. |
+| FIX-ethics-003 | Case titles render as text-white on the lattice surface. Archive Case opens the create form. The unreadable-title report was not reproduced from those classes. |
+| FIX-ghost-tracker-001 | The residue map reads a residues prop. The only lens call found in that folder is ghost-hunt advance. The six 400s were not reduced to one bad action. |
 | FIX-010 | GET /api/dtus/:id already maps a missing DTU to 404, and the page middleware rewrites a confirmed miss to /dtu-not-found with status 404. The live 500 was hypothesized as a front-door rewrite to localhost:3001, which this tree does not do. |
 
 ## Highs with a local root cause
@@ -989,3 +992,37 @@ Field Service has an Add client control on the clients card. The name is stored 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
 | FIX-plumbing-007 | plumbing | high | FIXED_PENDING_VERIFY | 692efd45b |
+
+Tab and Shift+Tab move focus in the studio. Arrange and Session are buttons. The arrange workspace scrolls sideways on a phone instead of squeezing the canvas off the screen. A hosted request that gets no response does not say it was the local API, and a detector sweep gives up after 25 seconds. A published AR link opens /ar/view/<slug> and shows the scene that was published.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-studio-006 | studio | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-studio-005 | studio | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-code-quality-008 | code-quality | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-ar-013 | ar | high | FIXED_PENDING_VERIFY | this commit |
+
+## NEEDS_PRODUCT_SURFACE
+
+These stay `OPEN`. Each one needs a product surface this pass did not build. `needs_product_surface` is set on the ticket.
+
+| Ticket | What's missing | Suggested scope |
+|---|---|---|
+| FIX-film-studios-002 | The live page is a production and its scene sluglines. Script, shot, and budget panels exist and the page says they are not on this screen. | Mount those existing panels on the open production. Do not add a second editor. |
+| FIX-005 | The recipe list is recipe artifacts. Mint writes a private DTU the list does not query. | Show that caller's private recipe DTUs in Recipes, or say why a minted DTU is not a recipe row. |
+| FIX-chat-001 | A reply can update the history preview while the open transcript stays empty until reload. | Append the completed reply onto the open thread. |
+| FIX-trades-002 | Workbench jobs and Project Desk jobs are different stores. | One job record that both surfaces read. |
+| FIX-agriculture-001 | Records and Ops keep separate field lists, so yield is divided by the Ops acreage. | One field record. Yield uses that field's acres. |
+| FIX-repos-004 | Share says published, and the social feed has no post to open or delete. | Create a real social post and return its id. |
+| FIX-ml-001 | Playground and deploy invoke have no provider for the named models. | A provider that serves those models, or a refusal before invoke that names the missing provider. |
+| FIX-ml-002 | Four AutoML templates say they are not wired. The tabular run reports complete without a model. | A template runs and returns a score, or it stays visibly unwired. |
+| FIX-accounting-013 | Creating an invoice and marking it paid does not post a journal entry. | Double-entry rows for the invoice and the payment, reversible. |
+| FIX-srs-003 | Publishing a deck is refused because the council rejects the DTU. | A deck publish that passes the same gate as other shared study material, then an independent copy. |
+| FIX-crisis-ops-001 | Ask fails because list_lens_actions requires mcp:lens:read. | The lens ask grant includes that read scope. |
+| FIX-goddess-001 | Ask stays on "Working on it…" and never answers. | The goddess context returns or shows the error. |
+| FIX-law-001 | CourtListener returns an error and patent search requires PATENTSVIEW_API_KEY. | The keys and a result with a citation, or a setup state that names the missing key before search. |
+| FIX-lfg-001 | Ask about LFG crashes the tab. | The chat page for that context stays up and shows the error. |
+| FIX-quests-001 | A web user cannot create or accept a quest. The empty state points at a world NPC. | A web create and accept that uses the existing quest records. |
+| FIX-forge-003 | Config is component state that starts as my-forge-app and is not saved on a project. | Load and save app name, port, and tables on the opened project. |
+| FIX-app-maker-001 | Preview does not run the button, and the canvas does not restore the saved layout. | The preview executes the saved actions and paints the saved nodes. |
+| FIX-import-002 | A JSON array is still one queue payload. validateImport now reads posted rows, and it does not mint one DTU per row. | One artifact per JSON element and per CSV row, with the job counting those rows. |

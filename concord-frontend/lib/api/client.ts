@@ -199,6 +199,15 @@ export async function attemptTokenRefresh(): Promise<unknown> {
 // ---- Retry with exponential backoff for transient server errors ----
 const MAX_RETRIES = 3;
 const RETRY_STATUS_CODES = new Set([502, 503, 504]);
+
+/** A failed request with no response. On a hosted origin this is not a local API. */
+export function unreachableApiMessage(hostname?: string): string {
+  const host = hostname ?? (typeof window !== 'undefined' ? window.location.hostname : '');
+  const local = host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '';
+  return local
+    ? 'Unable to reach the local Concord API. If you are on this machine, the backend may be down — this is not your internet.'
+    : 'Concord did not respond. This is not a local API. Check your connection and try again.';
+}
 const RETRY_BASE_DELAY_MS = 1000;
 
 // Lens-run refusals that are read-path noise, not a user action that just
@@ -713,7 +722,7 @@ api.interceptors.response.use(
         } else if (toastStatus && toastStatus >= 500 && !isBackgroundFetch && !isGeocoderUnavailableResponse(error)) {
           store.addToast({ type: 'error', message: 'Something went wrong on our end. Please try again.' });
         } else if (!error.response && !isBackgroundFetch) {
-          store.addToast({ type: 'error', message: 'Unable to reach the local Concord API. If you are on this machine, the backend may be down — this is not your internet.' });
+          store.addToast({ type: 'error', message: unreachableApiMessage() });
         } else if (data?.ok === false && data?.error && !isBackgroundFetch) {
           store.addToast({ type: 'error', message: data.error.replace(/_/g, ' ') });
         }

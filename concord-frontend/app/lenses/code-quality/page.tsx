@@ -85,8 +85,8 @@ const TABS: Array<{ id: Tab; label: string; keys: string; hint: string; icon: ty
   { id: 'detectors', label: 'Detector Suite', keys: '7', hint: 'Internal detector suite sweep and findings', icon: Activity },
 ];
 
-async function postLensRun<T>(domain: string, name: string, input: object): Promise<T> {
-  const res = await api.post('/api/lens/run', { domain, name, input });
+async function postLensRun<T>(domain: string, name: string, input: object, timeout = 25_000): Promise<T> {
+  const res = await api.post('/api/lens/run', { domain, name, input }, { timeout });
   return (res.data?.result ?? res.data) as T;
 }
 
