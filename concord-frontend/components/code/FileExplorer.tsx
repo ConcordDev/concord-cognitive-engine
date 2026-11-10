@@ -30,7 +30,6 @@ export function FileExplorer({
   // failed delete renders its reason here instead of vanishing.
   const [confirmingPath, setConfirmingPath] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
-  const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [renameFlash, setRenameFlash] = useState(0);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
@@ -82,8 +81,6 @@ export function FileExplorer({
   function handleDeleteClick(path: string) {
     if (confirmingPath === path) { void remove(path); return; }
     setConfirmingPath(path);
-    if (armTimerRef.current) clearTimeout(armTimerRef.current);
-    armTimerRef.current = setTimeout(() => setConfirmingPath(cur => (cur === path ? null : cur)), 4000);
   }
 
   function startRename(path: string) {
@@ -181,9 +178,14 @@ export function FileExplorer({
                   <Pencil className="w-3 h-3" />
                 </button>
                 {confirmingPath === f.path ? (
-                  <button aria-label={`Confirm delete ${f.path}`} onClick={(e) => { e.stopPropagation(); handleDeleteClick(f.path); }} className="p-0.5 px-1 rounded bg-rose-500/20 text-rose-200 text-[10px] font-bold hover:bg-rose-500/30">
-                    Delete?
-                  </button>
+                  <>
+                    <button aria-label={`Confirm delete ${f.path}`} onClick={(e) => { e.stopPropagation(); handleDeleteClick(f.path); }} className="p-0.5 px-1 rounded bg-rose-500/20 text-rose-200 text-[10px] font-bold hover:bg-rose-500/30">
+                      Delete?
+                    </button>
+                    <button aria-label={`Cancel delete ${f.path}`} onClick={(e) => { e.stopPropagation(); setConfirmingPath(null); }} className="p-0.5 px-1 text-[10px] text-gray-300 hover:text-white">
+                      Cancel
+                    </button>
+                  </>
                 ) : (
                   <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); handleDeleteClick(f.path); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-rose-300">
                     <Trash2 className="w-3 h-3" />

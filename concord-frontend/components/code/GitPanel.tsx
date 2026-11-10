@@ -282,12 +282,8 @@ function FileRow({
   onPrimary: () => void; primaryLabel: string; primaryTitle: string; onDiscard?: () => void;
 }) {
   // In-UI arm/confirm (S10): first click arms, second click discards.
+  // The arm stays until Discard or Keep — a 4s timeout raced the click.
   const [armed, setArmed] = useState(false);
-  useEffect(() => {
-    if (!armed) return;
-    const t = setTimeout(() => setArmed(false), 4000);
-    return () => clearTimeout(t);
-  }, [armed]);
   return (
     <div className="px-3 py-1 flex items-center gap-2 text-xs hover:bg-white/[0.03] group">
       <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', accent === 'emerald' ? 'bg-emerald-400' : 'bg-amber-400')} />
@@ -296,9 +292,14 @@ function FileRow({
       </button>
       {onDiscard && (
         armed ? (
-          <button onClick={() => { setArmed(false); onDiscard(); }} title="Confirm discard" className="px-1 text-[11px] font-semibold text-rose-300 hover:text-rose-200">
-            Discard?
-          </button>
+          <>
+            <button onClick={() => { setArmed(false); onDiscard(); }} title="Confirm discard" className="px-1 text-[11px] font-semibold text-rose-300 hover:text-rose-200">
+              Discard?
+            </button>
+            <button type="button" onClick={() => setArmed(false)} className="px-1 text-[11px] text-gray-300 hover:text-white">
+              Keep
+            </button>
+          </>
         ) : (
           <button onClick={() => setArmed(true)} title="Discard changes" className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300">
             <Undo2 className="w-3 h-3" />

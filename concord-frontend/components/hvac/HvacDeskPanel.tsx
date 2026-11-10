@@ -17,7 +17,8 @@
  *  - S3: the Dashboard aggregates every desk type, not just Jobs, and its
  *    Outstanding tile sums unpaid invoices; a recent-activity list is
  *    drawn from the records' own timestamps and labelled as such.
- *  - F4: row delete is a two-step confirm. Every save/delete toasts.
+ *  - F4: row delete is a two-step confirm that stays up until Confirm or
+ *    Cancel. It must not auto-dismiss. Every save/delete toasts.
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
@@ -28,6 +29,7 @@ import { useUIStore } from '@/store/ui';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Thermometer, Wrench, ClipboardList, DollarSign, Users, Plus, Search, X, Trash2,
   BarChart3, CheckCircle2, FileText, Award, Calculator, Receipt, Fan, Gauge,
@@ -469,7 +471,6 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   const handleDelete = async (item: LensItem<TradeArtifact>) => {
     if (confirmDeleteId !== item.id) {
       setConfirmDeleteId(item.id);
-      window.setTimeout(() => setConfirmDeleteId((cur) => (cur === item.id ? null : cur)), 4000);
       return;
     }
     setConfirmDeleteId(null);
@@ -807,23 +808,14 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>
                     {statusLabel(activeArtifactType, d.status)}
                   </span>
-                  {confirmDeleteId === item.id ? (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); void handleDelete(item); }}
-                      className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-300"
-                      aria-label="Confirm delete"
-                    >
-                      Confirm delete?
-                    </button>
-                  ) : (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); void handleDelete(item); }}
-                      className={ds.btnGhost}
-                      aria-label="Delete"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-400" />
-                    </button>
-                  )}
+                  <StickyDeleteConfirm
+                    armed={confirmDeleteId === item.id}
+                    onArm={() => setConfirmDeleteId(item.id)}
+                    onConfirm={() => { void handleDelete(item); }}
+                    onCancel={() => setConfirmDeleteId(null)}
+                    armLabel={<Trash2 className="w-4 h-4 text-red-400" />}
+                    className={ds.btnGhost}
+                  />
                 </div>
               </div>
             </motion.div>

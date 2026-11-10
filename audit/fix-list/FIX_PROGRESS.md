@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 20 | 197 | 3 |
-| medium | 13 | 932 | 0 |
+| high | 21 | 196 | 3 |
+| medium | 15 | 930 | 0 |
 | low | 7 | 973 | 0 |
 | unrated | 0 | 6 | 0 |
-| **total** | **40** | **2108** | **3** |
+| **total** | **43** | **2105** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -62,3 +62,15 @@ Shared fix: `shouldIgnoreLensHotkey` in `concord-frontend/lib/a11y/editable-targ
 | FIX-voice-016 | voice | low | FIXED_PENDING_VERIFY | ffdc6205c |
 
 Reviewed and left open (not this root cause): command-palette Ctrl+K in fields (global by design: FIX-creator-004, FIX-energy-004, FIX-genesis-002, FIX-poetry-003, FIX-understanding-001), Escape-led FIX-government-004, arrow-key tablists, FIX-council-002 (`QAQAQA` is not explained by the hotkey map), FIX-game-010 (shortcuts while focus is outside a field), FIX-ml-010 (no steal observed; tab URL), FIX-finance-002/003 (math; the word "keystroke" is a caveat only).
+
+## RCA-missing-delete-confirm (vanishing confirm only)
+
+The in-row confirm armed for 4 seconds and then reverted, so the click never landed. `StickyDeleteConfirm` stays armed until Confirm or Cancel. HVAC Jobs/Estimates/other desk rows use it. The same timer was removed from the code file tree, snippet delete, and git discard arm.
+
+Tickets that have no delete control at all are still open. FIX-hvac-002 stays retracted.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-hvac-001 | hvac | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-hvac-013 | hvac | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-hvac-015 | hvac | medium | FIXED_PENDING_VERIFY | this commit |
