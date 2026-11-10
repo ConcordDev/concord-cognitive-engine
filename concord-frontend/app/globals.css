@@ -58,12 +58,28 @@
   --background-start-rgb: 10, 10, 15;
   --background-end-rgb: 13, 13, 20;
 
-  /* Lattice Empire Theme - Dark (Default) */
+  /* Lattice Empire Theme - Dark (Default).
+     Hex vars stay for direct var() consumers. The *-rgb channels are what
+     Tailwind utilities read (see tailwind.config.js), so bg-lattice-* flips
+     with .light instead of staying a compiled dark hex under dark text. */
   --lattice-void: #0a0a0f;
+  --lattice-void-rgb: 10 10 15;
   --lattice-deep: #0d0d14;
+  --lattice-deep-rgb: 13 13 20;
   --lattice-surface: #12121a;
+  --lattice-surface-rgb: 18 18 26;
   --lattice-elevated: #1a1a24;
+  --lattice-elevated-rgb: 26 26 36;
   --lattice-border: #2a2a3a;
+  --lattice-border-rgb: 42 42 58;
+  --lattice-bg: #0d0d14;
+  --lattice-bg-rgb: 13 13 20;
+  --lattice-base: #0a0a0f;
+  --lattice-base-rgb: 10 10 15;
+  --lattice-edge: #2a2a3a;
+  --lattice-edge-rgb: 42 42 58;
+  --lattice-text: #e4e4e7;
+  --lattice-text-rgb: 228 228 231;
 
   /* Neon Accents */
   --neon-blue: #00d4ff;
@@ -106,10 +122,23 @@
   --background-end-rgb: 245, 245, 250;
 
   --lattice-void: #fafafa;
+  --lattice-void-rgb: 250 250 250;
   --lattice-deep: #f5f5f7;
+  --lattice-deep-rgb: 245 245 247;
   --lattice-surface: #ffffff;
+  --lattice-surface-rgb: 255 255 255;
   --lattice-elevated: #f8f8fc;
+  --lattice-elevated-rgb: 248 248 252;
   --lattice-border: #e5e5e8;
+  --lattice-border-rgb: 229 229 232;
+  --lattice-bg: #f5f5f7;
+  --lattice-bg-rgb: 245 245 247;
+  --lattice-base: #fafafa;
+  --lattice-base-rgb: 250 250 250;
+  --lattice-edge: #e5e5e8;
+  --lattice-edge-rgb: 229 229 232;
+  --lattice-text: #18181b;
+  --lattice-text-rgb: 24 24 27;
 
   --neon-blue: #0095cc;
   --neon-cyan: #00b8b0;
@@ -1367,3 +1396,19 @@ html.a11y-reduce-motion .social-reveal-items > * {
 [data-theme="light"] .bg-white, .light .bg-white { background-color: #fafafa; }
 [data-theme="light"] .text-black, .light .text-black { color: #fafafa; }
 [data-theme="light"] .bg-black, .light .bg-black { background-color: #18181b; }
+
+/* bg-black stays a dark island, but the text invert above paints the
+   light zinc ramp the same near-black. Put the light ramp back inside
+   that island (higher specificity than `.light .text-white`). */
+[data-theme="light"] .bg-black .text-white, [data-theme="light"] .bg-black.text-white,
+.light .bg-black .text-white, .light .bg-black.text-white { color: #fafafa; }
+[data-theme="light"] .bg-black .text-zinc-50, [data-theme="light"] .bg-black.text-zinc-50,
+.light .bg-black .text-zinc-50, .light .bg-black.text-zinc-50 { color: #fafafa; }
+[data-theme="light"] .bg-black .text-zinc-100, [data-theme="light"] .bg-black.text-zinc-100,
+.light .bg-black .text-zinc-100, .light .bg-black.text-zinc-100 { color: #f4f4f5; }
+[data-theme="light"] .bg-black .text-zinc-200, [data-theme="light"] .bg-black.text-zinc-200,
+.light .bg-black .text-zinc-200, .light .bg-black.text-zinc-200 { color: #e4e4e7; }
+[data-theme="light"] .bg-black .text-zinc-300, [data-theme="light"] .bg-black.text-zinc-300,
+.light .bg-black .text-zinc-300, .light .bg-black.text-zinc-300 { color: #d4d4d8; }
+[data-theme="light"] .bg-black .text-zinc-400, [data-theme="light"] .bg-black.text-zinc-400,
+.light .bg-black .text-zinc-400, .light .bg-black.text-zinc-400 { color: #a1a1aa; }

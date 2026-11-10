@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 21 | 196 | 3 |
-| medium | 15 | 930 | 0 |
-| low | 7 | 973 | 0 |
+| high | 33 | 184 | 3 |
+| medium | 36 | 909 | 0 |
+| low | 24 | 956 | 0 |
 | unrated | 0 | 6 | 0 |
-| **total** | **43** | **2105** | **3** |
+| **total** | **93** | **2055** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -74,3 +74,62 @@ Tickets that have no delete control at all are still open. FIX-hvac-002 stays re
 | FIX-hvac-001 | hvac | high | FIXED_PENDING_VERIFY | bd4c4cf98 |
 | FIX-hvac-013 | hvac | medium | FIXED_PENDING_VERIFY | bd4c4cf98 |
 | FIX-hvac-015 | hvac | medium | FIXED_PENDING_VERIFY | bd4c4cf98 |
+
+## RCA-contrast-theme-tokens
+
+Light mode inverted `text-white` and the zinc ramp to near-black while `bg-lattice-*` stayed a compiled dark hex, so labels sat on a dark surface. Lattice utilities now read theme RGB channels, and text inside a `bg-black` island stays light.
+
+Muted-on-dark tickets that are not this invert (Lighthouse-only, FIX-education-009, FIX-studio-007, and the other secondary notes in the RCA) stay open. Mixed tickets that also have a non-contrast bug stay open (FIX-finance-002, FIX-ethics-003, FIX-voice-012, FIX-parenting-001, and similar).
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-automotive-015 | automotive | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-billing-001 | billing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-black-market-002 | black-market | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-calendar-001 | calendar | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-creatures-008 | creatures | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-dreams-005 | dreams | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-ethics-008 | ethics | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-household-004 | household | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-marketing-004 | marketing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-markets-009 | markets | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-personas-009 | personas | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-sim-002 | sim | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-app-maker-003 | app-maker | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-ar-009 | ar | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-atlas-004 | atlas | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-crypto-003 | crypto | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-eco-008 | eco | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-finance-005 | finance | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-fitness-007 | fitness | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-geology-006 | geology | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-healthcare-009 | healthcare | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-hvac-006 | hvac | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-integrations-004 | integrations | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-logistics-011 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-manufacturing-002 | manufacturing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-009 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-mining-004 | mining | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-ml-008 | ml | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-parenting-004 | parenting | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-repair-telemetry-002 | repair-telemetry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-retail-005 | retail | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-sandbox-008 | sandbox | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-self-012 | self | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-agents-006 | agents | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-aviation-009 | aviation | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-cognition-006 | cognition | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-command-center-005 | command-center | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-concord-link-frontier-005 | concord-link-frontier | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-debate-017 | debate | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-desert-005 | desert | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-disputes-006 | disputes | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-game-design-007 | game-design | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-goals-008 | goals | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-insurance-010 | insurance | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-lattice-007 | lattice | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-legal-011 | legal | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-ocean-008 | ocean | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-poetry-005 | poetry | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-psyops-001 | psyops | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-spectate-004 | spectate | low | FIXED_PENDING_VERIFY | this commit |
