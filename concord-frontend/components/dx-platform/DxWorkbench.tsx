@@ -12,6 +12,7 @@ import {
   ShieldCheck, FileJson, TrendingUp,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz/ChartKit';
 import { downloadFile } from '@/lib/utils';
 
@@ -206,6 +207,7 @@ function CodebasesTab({
   const [indexErr, setIndexErr] = useState<string | null>(null);
 
   const [question, setQuestion] = useState('');
+  const [renameName, setRenameName] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [answer, setAnswer] = useState<{ answer: string; grounded: boolean; citations: Citation[]; totalMatches: number } | null>(null);
 
@@ -309,7 +311,24 @@ function CodebasesTab({
           <Empty>No codebases indexed yet. Index one to ask questions about it.</Empty>
         ) : (
           <>
-            <CodebasePicker codebases={codebases} value={activeCb} onChange={setActiveCb} />
+            <div className="flex flex-wrap items-center gap-2">
+              <CodebasePicker codebases={codebases} value={activeCb} onChange={setActiveCb} />
+              <input value={renameName} onChange={(e) => setRenameName(e.target.value)} placeholder="New name" className="w-32 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+              <button type="button" onClick={() => {
+                const next = renameName.trim();
+                if (!next) { setIndexErr('Enter a new name.'); return; }
+                void lensRun('dx-platform', 'renameCodebase', { codebaseId: activeCb, name: next }).then((r) => {
+                  if (r.data?.ok === false) setIndexErr(r.data?.message || r.data?.error || 'Could not rename that codebase.');
+                  else { setRenameName(''); setIndexErr(null); onIndexed(); }
+                });
+              }} className="rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-200">Rename</button>
+              <StickyDeleteConfirm onConfirm={() => {
+                void lensRun('dx-platform', 'deleteCodebase', { codebaseId: activeCb }).then(() => {
+                  setActiveCb('');
+                  onIndexed();
+                });
+              }} armLabel="Delete" armAriaLabel="Delete codebase" confirmLabel="Delete codebase?" className="text-[11px] text-rose-300" />
+            </div>
             <div className="flex gap-2">
               <input
                 value={question}
@@ -783,6 +802,9 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [lastInvite, setLastInvite] = useState<string | null>(null);
+  const [inviteHidden, setInviteHidden] = useState(true);
+  const [teams, setTeams] = useState<Array<{ teamId: string; name: string; ownerId?: string }>>([]);
+  const [teamRename, setTeamRename] = useState('');
 
   const create = async () => {
     if (!teamName.trim()) return;
@@ -794,7 +816,9 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
       if (result.inviteCode) {
         setLastInvite(result.inviteCode);
         setInviteCode(result.inviteCode);
-        setMsg(`Team created — share invite code ${result.inviteCode} (team ${result.teamId})`);
+        setInviteHidden(false);
+        setMsg('Team created. The invite code is shown once below. Hide it after you copy it.');
+        void loadTeams();
       } else {
         setMsg(`Team created — share ID ${result.teamId}`);
       }
@@ -813,6 +837,13 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
     }
   }, []);
 
+  const loadTeams = useCallback(async () => {
+    const r = await lensRun('dx-platform', 'listMyTeams', {});
+    const rows = (r.data?.result as { teams?: Array<{ teamId?: string; id?: string; name?: string }> } | undefined)?.teams || [];
+    setTeams(rows.map((t) => ({ teamId: String(t.teamId || t.id || ''), name: String(t.name || 'Team') })));
+  }, []);
+
+  useEffect(() => { void loadTeams(); }, [loadTeams]);
   useEffect(() => { if (teamId) void loadDash(teamId); }, [teamId, loadDash]);
 
   const mintInvite = async () => {
@@ -822,7 +853,8 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
       const code = (r.data.result as { inviteCode: string }).inviteCode;
       setLastInvite(code);
       setInviteCode(code);
-      setMsg(`Invite code ${code} — share with the person joining.`);
+      setInviteHidden(false);
+      setMsg('A new invite code is shown once below.');
     } else {
       setMsg(r.data?.error || 'Invite failed.');
     }
@@ -858,6 +890,7 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
               value={teamName}
               onChange={(e) => setTeamName(e.target.value)}
               placeholder="Team name"
+              maxLength={80}
               className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
             />
             <button type="button" onClick={create} disabled={!teamName.trim()}
@@ -872,7 +905,33 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
             </button>
           )}
           {lastInvite && (
-            <p className="font-mono text-[11px] text-amber-200/90">Invite: {lastInvite}</p>
+            <div className="flex items-center gap-2">
+              <input readOnly type={inviteHidden ? 'password' : 'text'} value={lastInvite} aria-label="Invite code" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-[11px] text-amber-200" />
+              <button type="button" onClick={() => { void navigator.clipboard?.writeText(lastInvite); setMsg('Invite code copied.'); }} className="text-[11px] text-zinc-300">Copy</button>
+              <button type="button" onClick={() => setInviteHidden(true)} className="text-[11px] text-zinc-400">Hide</button>
+            </div>
+          )}
+          {teams.length > 0 && (
+            <ul className="space-y-1">
+              {teams.map((t) => (
+                <li key={t.teamId} className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
+                  <button type="button" onClick={() => { setTeamId(t.teamId); setJoinId(t.teamId); }} className="text-left text-zinc-100">{t.name}</button>
+                  <input value={teamId === t.teamId ? teamRename : ''} onChange={(e) => { setTeamId(t.teamId); setTeamRename(e.target.value); }} placeholder="Rename" className="w-24 rounded border border-zinc-800 bg-zinc-900 px-1 py-0.5 text-[11px] text-white" />
+                  <button type="button" onClick={() => {
+                    void lensRun('dx-platform', 'renameTeam', { teamId: t.teamId, name: teamRename.trim() }).then((r) => {
+                      if (r.data?.ok === false) setMsg(r.data?.message || r.data?.error || 'Could not rename that team.');
+                      else { setTeamRename(''); void loadTeams(); }
+                    });
+                  }} className="text-zinc-400">Save</button>
+                  <StickyDeleteConfirm onConfirm={() => {
+                    void lensRun('dx-platform', 'deleteTeam', { teamId: t.teamId }).then(() => {
+                      if (teamId === t.teamId) setTeamId('');
+                      void loadTeams();
+                    });
+                  }} armLabel="Delete" armAriaLabel={`Delete team ${t.name}`} confirmLabel="Delete team?" className="text-rose-300" />
+                </li>
+              ))}
+            </ul>
           )}
         </section>
         <section className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 space-y-2">

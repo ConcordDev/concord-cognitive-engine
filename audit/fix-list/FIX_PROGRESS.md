@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 474 | 471 | 0 |
+| medium | 480 | 465 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **895** | **1253** | **3** |
+| **total** | **901** | **1247** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1401,6 +1401,19 @@ A pickup, dock, appointment, load, proof of delivery, and freight invoice can be
 | FIX-paper-009 | paper | medium | FIXED_PENDING_VERIFY | dfd9f2fb2 |
 | FIX-paper-013 | paper | medium | FIXED_PENDING_VERIFY | dfd9f2fb2 |
 | FIX-markets-016 | markets | medium | FIXED_PENDING_VERIFY | dfd9f2fb2 |
+
+## Mediums — codebases, teams, and a stopped reply
+
+A codebase and a team can be renamed and deleted by the owner. Teams you belong to are listed after reload. An invite code is shown once, can be copied, and then hidden. A question that names an indexed file quotes that file's stored lines. Chat history for that question still clears on reload. A weight lookup says what is missing instead of staying blank. Stopping a reply no longer toasts an abort error. A turn the server already accepted can still be in the history after reload. FIX-dx-platform-003 stays open because a one-character team name is still accepted. FIX-dx-platform-011 and FIX-dx-platform-012 stay open: the editor listings are not published here, and there is no API-keys page on that path.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-dx-platform-001 | dx-platform | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-dx-platform-002 | dx-platform | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-dx-platform-013 | dx-platform | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-dx-platform-014 | dx-platform | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-dx-platform-015 | dx-platform | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-chat-004 | chat | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

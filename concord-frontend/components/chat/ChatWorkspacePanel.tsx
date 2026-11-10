@@ -1610,6 +1610,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     onError: (err) => {
       setStreamActive(false);
       setStreamingContent('');
+      const aborted = err instanceof Error && (err.name === 'AbortError' || err.name === 'CanceledError' || /aborted/i.test(err.message));
+      if (aborted) return;
       const errorMsg: Message = {
         id: `err-${Date.now()}`,
         role: 'system',
@@ -1675,6 +1677,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       queryClient.invalidateQueries({ queryKey: ['cognitive-status'] });
     },
     onError: (err) => {
+      if (err instanceof Error && (err.name === 'AbortError' || err.name === 'CanceledError' || /aborted/i.test(err.message))) return;
       const errorMsg: Message = {
         id: `err-${Date.now()}`,
         role: 'system',
