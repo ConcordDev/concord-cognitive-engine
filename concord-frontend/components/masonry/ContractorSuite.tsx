@@ -144,6 +144,7 @@ function TakeoffTab() {
   const [saved, setSaved] = useState<Takeoff[]>([]);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<Takeoff | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const dims = [...segments.map((s) => [s.lengthFeet, s.heightFeet]), ...openings.map((o) => [o.widthFeet, o.heightFeet])].flat();
   const takeoffError = !name.trim()
@@ -165,10 +166,20 @@ function TakeoffTab() {
     if (takeoffError) { setFormError(takeoffError); return; }
     setBusy(true);
     setFormError(null);
-    const r = await run<Takeoff>('takeoff-save', { name: name.trim(), material, wastePct: waste, segments, openings });
+    const r = await run<Takeoff>('takeoff-save', { id: editingId || undefined, name: name.trim(), material, wastePct: waste, segments, openings });
     setBusy(false);
-    if (r) { setPreview(r); await load(); }
+    if (r) { setPreview(r); setEditingId(null); await load(); }
     else setFormError('Could not save that takeoff.');
+  };
+  const beginEdit = (t: Takeoff) => {
+    setEditingId(t.id);
+    setName(t.name);
+    setMaterial(t.material);
+    setWaste(t.wastePct);
+    setSegments(t.segments.map((s) => ({ id: s.id, label: s.label, lengthFeet: s.lengthFeet, heightFeet: s.heightFeet })));
+    setOpenings((t.openings || []).map((o) => ({ id: o.id, label: o.label, widthFeet: o.widthFeet, heightFeet: o.heightFeet })));
+    setPreview(t);
+    setFormError(null);
   };
   const del = async (id: string) => {
     const r = await run('takeoff-delete', { id });
@@ -225,7 +236,7 @@ function TakeoffTab() {
         ))}
         { (formError || takeoffError) && <p role="alert" className="mt-3 text-[11px] text-rose-300">{formError || takeoffError}</p> }
         <button className={`${btnP} mt-4`} onClick={save} disabled={busy || !!takeoffError}>
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />}Compute & save takeoff
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />}{editingId ? 'Save changes' : 'Compute & save takeoff'}
         </button>
       </div>
 
@@ -259,7 +270,10 @@ function TakeoffTab() {
                 <p className="text-xs font-medium text-white">{t.name}</p>
                 <p className="text-[10px] text-zinc-400">{t.materialLabel} · {t.netAreaSqFt} sf · {t.unitsNeeded} units · {money(t.totalMaterialCost)}</p>
               </button>
-              <ConfirmDelete name={`takeoff "${t.name}"`} ariaLabel="Delete takeoff" className="text-zinc-600 hover:text-rose-400" onConfirm={() => del(t.id)}><Trash2 className="h-3.5 w-3.5" /></ConfirmDelete>
+              <div className="flex items-center gap-1">
+                <button type="button" aria-label="Edit takeoff" className="text-zinc-600 hover:text-white" onClick={() => beginEdit(t)}><ClipboardEdit className="h-3.5 w-3.5" /></button>
+                <ConfirmDelete name={`takeoff "${t.name}"`} ariaLabel="Delete takeoff" className="text-zinc-600 hover:text-rose-400" onConfirm={() => del(t.id)}><Trash2 className="h-3.5 w-3.5" /></ConfirmDelete>
+              </div>
             </div>
           ))}
         </div>
@@ -402,6 +416,7 @@ function ScheduleTab() {
   const [lowF, setLowF] = useState(55);
   const [precip, setPrecip] = useState(0);
   const [jobs, setJobs] = useState<SchedJob[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [crewLoad, setCrewLoad] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const invalidateStats = useInvalidateStats();
@@ -416,11 +431,21 @@ function ScheduleTab() {
   const add = async () => {
     setBusy(true);
     const r = await run('schedule-add', {
+      id: editingId || undefined,
       title, startDate: start, durationDays: days, forecastLowF: lowF, precipChancePct: precip,
       crew: crew.split(',').map((c) => c.trim()).filter(Boolean),
     });
     setBusy(false);
-    if (r) { setTitle(''); setStart(''); setCrew(''); await load(); invalidateStats(); }
+    if (r) { setEditingId(null); setTitle(''); setStart(''); setCrew(''); await load(); invalidateStats(); }
+  };
+  const beginEdit = (j: SchedJob) => {
+    setEditingId(j.id);
+    setTitle(j.title);
+    setStart(j.startDate);
+    setDays(j.durationDays);
+    setCrew(j.crew.join(', '));
+    setLowF(j.forecastLowF);
+    setPrecip(j.precipChancePct);
   };
   const del = async (id: string) => { await run('schedule-delete', { id }); await load(); invalidateStats(); };
 
@@ -447,7 +472,7 @@ function ScheduleTab() {
           <div><label className={lbl}>Precip chance %</label><input type="number" className={inp} value={precip} onChange={(e) => setPrecip(Number(e.target.value) || 0)} /></div>
         </div>
         <button className={`${btnP} mt-4`} onClick={add} disabled={busy || !title.trim() || !start}>
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarDays className="h-3.5 w-3.5" />}Add to calendar
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarDays className="h-3.5 w-3.5" />}{editingId ? 'Save job' : 'Add to calendar'}
         </button>
         {Object.keys(crewLoad).length > 0 && (
           <div className="mt-4">
@@ -470,7 +495,10 @@ function ScheduleTab() {
                 <p className="text-xs font-medium text-white">{j.title}</p>
                 <p className="text-[10px] text-zinc-400">{j.startDate} · {j.durationDays}d · {j.crew.join(', ') || 'no crew'}</p>
               </div>
-              <ConfirmDelete name={`job "${j.title}"`} ariaLabel="Delete job" className="text-zinc-600 hover:text-rose-400" onConfirm={() => del(j.id)}><Trash2 className="h-3.5 w-3.5" /></ConfirmDelete>
+              <div className="flex items-center gap-1">
+                <button type="button" aria-label="Edit job" className="text-zinc-600 hover:text-white" onClick={() => beginEdit(j)}><ClipboardEdit className="h-3.5 w-3.5" /></button>
+                <ConfirmDelete name={`job "${j.title}"`} ariaLabel="Delete job" className="text-zinc-600 hover:text-rose-400" onConfirm={() => del(j.id)}><Trash2 className="h-3.5 w-3.5" /></ConfirmDelete>
+              </div>
             </div>
             {j.weather.advisories.length > 0 && (
               <div className={`mt-1.5 rounded px-2 py-1 text-[10px] ${j.weather.risk === 'high' ? 'bg-rose-500/15 text-rose-300' : 'bg-amber-500/15 text-amber-300'}`}>

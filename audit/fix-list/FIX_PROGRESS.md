@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 398 | 547 | 0 |
+| medium | 401 | 544 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **819** | **1329** | **3** |
+| **total** | **822** | **1326** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1228,6 +1228,16 @@ Oversight counts open permit-desk permits and open service requests, and an empt
 | FIX-government-001 | government | medium | FIXED_PENDING_VERIFY | 1a995b79a |
 | FIX-government-003 | government | medium | FIXED_PENDING_VERIFY | 1a995b79a |
 | FIX-government-014 | government | medium | FIXED_PENDING_VERIFY | 1a995b79a |
+
+## Mediums — edit and search on existing lists
+
+A saved takeoff and a scheduled job load back into the form and save under the same id. The garage can be searched and sorted.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-masonry-005 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-014 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-automotive-012 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 
