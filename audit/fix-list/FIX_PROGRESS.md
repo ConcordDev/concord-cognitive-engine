@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 312 | 633 | 0 |
+| medium | 316 | 629 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **733** | **1415** | **3** |
+| **total** | **737** | **1411** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1058,6 +1058,17 @@ A workout distance and duration must be real numbers in range. A CVSS score outs
 | FIX-legal-005 | legal | medium | FIXED_PENDING_VERIFY | 0bb1350e4 |
 | FIX-nonprofit-006 | nonprofit | medium | FIXED_PENDING_VERIFY | 0bb1350e4 |
 | FIX-accounting-001 | accounting | medium | FIXED_PENDING_VERIFY | 0bb1350e4 |
+
+## Mediums — confirm before delete on four more lenses
+
+Asset, vulnerability, alert-rule, and camera delete stay visible and armed until confirm. Cancelling a sponsorship asks first. Environment record delete asks first. Deleting an artwork from the studio list asks first. Each still calls the existing owner-scoped delete.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-security-004 | security | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-sponsorship-002 | sponsorship | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-environment-005 | environment | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-art-007 | art | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

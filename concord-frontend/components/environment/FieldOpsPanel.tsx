@@ -58,6 +58,7 @@ import {
   Map,
 } from 'lucide-react';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
@@ -2843,9 +2844,13 @@ export function FieldOpsPanel({
           <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)}>
             <Edit3 className="w-3.5 h-3.5" /> Edit
           </button>
-          <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={() => handleDelete(item.id)}>
-            <Trash2 className="w-3.5 h-3.5" /> Delete
-          </button>
+          <StickyDeleteConfirm
+            onConfirm={() => handleDelete(item.id)}
+            armLabel={<><Trash2 className="w-3.5 h-3.5" /> Delete</>}
+            armAriaLabel={`Delete ${item.title || 'record'}`}
+            confirmAriaLabel={`Confirm delete ${item.title || 'record'}`}
+            className={cn(ds.btnDanger, ds.btnSmall)}
+          />
           <button
             className={cn(ds.btnGhost, ds.btnSmall)}
             onClick={() => setDetailItem(detailItem === item.id ? null : item.id)}

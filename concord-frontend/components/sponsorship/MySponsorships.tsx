@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { Tier } from './DiscoverPanel';
 
 export interface Sponsorship {
@@ -132,8 +133,14 @@ export function MySponsorships({ refreshKey, onChange }: { refreshKey: number; o
                   className="text-[11px] text-cyan-400 hover:text-cyan-300">
                   {openHistory === sp.id ? 'Hide dispatches' : 'Dispatch history'}
                 </button>
-                <button type="button" onClick={() => void act('cancel', { sponsorshipId: sp.id }, 'Cancelled')}
-                  className="text-[11px] text-rose-400 hover:text-rose-300 ml-auto">Cancel</button>
+                <StickyDeleteConfirm
+                  onConfirm={() => { void act('cancel', { sponsorshipId: sp.id }, 'Cancelled'); }}
+                  armLabel="Cancel"
+                  armAriaLabel={`Cancel sponsorship ${sp.creatorName}`}
+                  confirmAriaLabel={`Confirm cancel sponsorship ${sp.creatorName}`}
+                  confirmLabel="Cancel this sponsorship?"
+                  className="text-[11px] text-rose-400 hover:text-rose-300 ml-auto"
+                />
               </div>
               {openHistory === sp.id && (
                 <div className="mt-2 border-t border-zinc-800 pt-2 space-y-1.5">

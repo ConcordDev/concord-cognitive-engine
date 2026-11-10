@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import Image from 'next/image';
 import {
   Activity, Bell, ClipboardList, Link2, KeyRound, Camera, Radar,
@@ -459,9 +460,7 @@ export function SOCConsole() {
                   <button className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" onClick={() => toggleRule(r.id)} title="Toggle">
                     <Power className="h-3.5 w-3.5" />
                   </button>
-                  <button className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-rose-400" onClick={() => deleteRule(r.id)} title="Delete">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <StickyDeleteConfirm onConfirm={() => deleteRule(r.id)} armAriaLabel={`Delete rule ${r.name || r.id}`} confirmAriaLabel={`Confirm delete rule ${r.name || r.id}`} className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-rose-400" armLabel={<Trash2 className="h-3.5 w-3.5" />} />
                 </li>
               ))}
             </ul>
@@ -731,9 +730,7 @@ export function SOCConsole() {
                         <option value="offline">offline</option>
                         <option value="maintenance">maintenance</option>
                       </select>
-                      <button className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-rose-400" onClick={() => deleteCamera(c.id)} title="Delete">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <StickyDeleteConfirm onConfirm={() => deleteCamera(c.id)} armAriaLabel={`Delete camera ${c.name || c.id}`} confirmAriaLabel={`Confirm delete camera ${c.name || c.id}`} className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-rose-400" armLabel={<Trash2 className="h-3.5 w-3.5" />} />
                     </div>
                   </div>
                 </div>

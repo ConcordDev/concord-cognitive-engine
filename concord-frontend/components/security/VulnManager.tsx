@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ShieldAlert, Plus, Trash2, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { cn } from '@/lib/utils';
 
@@ -111,7 +112,13 @@ export function VulnManager() {
               <li key={a.id} className="group flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1">
                 <span className="text-xs text-zinc-200 flex-1 truncate">{a.name} <span className="text-zinc-400">{a.vendor || a.type}</span></span>
                 {a.openVulnCount > 0 && <span className="text-[10px] text-rose-400">{a.openVulnCount} open</span>}
-                <button aria-label="Delete" onClick={() => del('asset', a.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <StickyDeleteConfirm
+                  onConfirm={() => del('asset', a.id)}
+                  armLabel={<Trash2 className="w-3 h-3" />}
+                  armAriaLabel={`Delete asset ${a.name}`}
+                  confirmAriaLabel={`Confirm delete asset ${a.name}`}
+                  className="text-rose-400"
+                />
               </li>
             ))}
           </ul>
@@ -146,7 +153,13 @@ export function VulnManager() {
                   className="bg-zinc-950 border border-zinc-800 rounded px-1 py-0.5 text-[9px] text-zinc-300">
                   {STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
                 </select>
-                <button aria-label="Delete" onClick={() => del('vuln', v.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <StickyDeleteConfirm
+                  onConfirm={() => del('vuln', v.id)}
+                  armLabel={<Trash2 className="w-3 h-3" />}
+                  armAriaLabel={`Delete vulnerability ${v.title}`}
+                  confirmAriaLabel={`Confirm delete vulnerability ${v.title}`}
+                  className="text-rose-400"
+                />
               </li>
             ))}
           </ul>
