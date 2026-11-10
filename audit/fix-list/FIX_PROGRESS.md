@@ -924,4 +924,4 @@ The Following list has an Unfollow control on the signed-in user's own list.
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-social-013 | social | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-social-013 | social | high | FIXED_PENDING_VERIFY | 5ecae04b7 |
