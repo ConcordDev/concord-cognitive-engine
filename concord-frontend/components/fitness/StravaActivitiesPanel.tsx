@@ -12,6 +12,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { FitnessKeepMenu } from './FitnessKeepMenu';
 import type { FitnessActivityDetail } from './fitnessActivityReport';
@@ -230,9 +231,13 @@ export function StravaActivitiesPanel() {
                   <p className="text-sm font-semibold text-zinc-100">{a.name}</p>
                   <p className="text-[11px] text-zinc-400 capitalize">{a.type} · {a.date}</p>
                 </div>
-                <button aria-label="Delete" type="button" onClick={() => remove(a)} className="text-zinc-600 hover:text-rose-400">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <StickyDeleteConfirm
+                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  confirmLabel="Delete this activity?"
+                  armAriaLabel="Delete activity"
+                  className="text-zinc-600 hover:text-rose-400"
+                  onConfirm={() => remove(a)}
+                />
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[11px] text-zinc-400">
                 <span className="flex items-center gap-1"><Ruler className="w-3 h-3 text-orange-400" />{a.distanceKm} km</span>

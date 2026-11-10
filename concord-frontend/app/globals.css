@@ -852,8 +852,13 @@ button, a, input, textarea, select {
 @media (max-width: 767px) and (pointer: coarse) {
   button,
   [role="tab"],
-  [role="button"] {
+  [role="button"],
+  select,
+  input[type="checkbox"] {
     min-height: 44px;
+  }
+  input[type="checkbox"] {
+    min-width: 44px;
   }
 }
 

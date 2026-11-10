@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Route as RouteIcon, Plus, Trash2, Loader2, AlertTriangle, Mountain } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Route {
@@ -93,8 +94,13 @@ export function RoutesPanel({ className }: { className?: string }) {
             <span className="text-zinc-100 font-medium flex-1 truncate">{r.name}</span>
             {r.distanceKm != null && <span className="text-zinc-400 font-mono">{r.distanceKm} km</span>}
             {!!r.elevationGainM && <span className="text-zinc-500 inline-flex items-center gap-0.5"><Mountain className="w-3 h-3" />{r.elevationGainM} m</span>}
-            <button type="button" onClick={() => void remove(r.id)} aria-label="Delete route"
-              className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+            <StickyDeleteConfirm
+              armLabel={<Trash2 className="w-3 h-3" />}
+              confirmLabel="Delete this route?"
+              armAriaLabel="Delete route"
+              className="p-1 text-rose-300 hover:bg-rose-500/20 rounded"
+              onConfirm={() => void remove(r.id)}
+            />
           </div>
         ))}
       </div>

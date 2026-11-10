@@ -1209,8 +1209,9 @@ Generate the plan.`;
   try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const samples = [...(s.hrvSamples.get(faid(ctx)) || [])].sort((a, b) => a.date.localeCompare(b.date));
+    const recentRows = samples.slice(-8).map((x) => ({ id: x.id, date: x.date, rmssd: x.rmssd }));
     if (samples.length < 3) {
-      return { ok: true, result: { status: "insufficient_data", samples: samples.length, notes: "Log at least 3 nightly HRV readings for a status." } };
+      return { ok: true, result: { status: "insufficient_data", samples: samples.length, recent: recentRows, notes: "Log at least 3 nightly HRV readings for a status." } };
     }
     const recent = samples.slice(-7);
     const recentAvg = recent.reduce((a, x) => a + x.rmssd, 0) / recent.length;
@@ -1230,10 +1231,21 @@ Generate the plan.`;
         deviationPct: Math.round((ratio - 1) * 1000) / 10,
         samples: samples.length,
         latest: samples[samples.length - 1],
+        recent: recentRows,
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  registerLensAction("fitness", "hrv-delete", (ctx, _a, params = {}) => {
+    const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.hrvSamples.get(faid(ctx)) || [];
+    const idx = list.findIndex((x) => x.id === String(params.id || ""));
+    if (idx < 0) return { ok: false, error: "HRV sample not found" };
+    const [removed] = list.splice(idx, 1);
+    saveStateIfAvailable();
+    return { ok: true, result: { deleted: removed.id } };
+  });
 
   registerLensAction("fitness", "training-readiness", (ctx, _a, params = {}) => {
   try {

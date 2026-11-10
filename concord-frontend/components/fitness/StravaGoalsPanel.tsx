@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Target, Trash2, Award, Footprints } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Goal {
@@ -185,10 +186,20 @@ export function StravaGoalsPanel() {
                   <span className={cn('text-xs', g.retired ? 'text-zinc-400 line-through' : 'text-zinc-200')}>
                     {g.name} <span className="text-zinc-600 capitalize">· {g.kind}</span>
                   </span>
-                  <button type="button" onClick={() => toggleRetire(g)}
-                    className="text-[10px] text-zinc-400 hover:text-zinc-300">
-                    {g.retired ? 'Reactivate' : 'Retire'}
-                  </button>
+                  {g.retired ? (
+                    <button type="button" onClick={() => toggleRetire(g)}
+                      className="text-[10px] text-zinc-400 hover:text-zinc-300">
+                      Reactivate
+                    </button>
+                  ) : (
+                    <StickyDeleteConfirm
+                      armLabel="Retire"
+                      confirmLabel="Retire this gear?"
+                      armAriaLabel="Retire gear"
+                      className="text-[10px] text-zinc-400 hover:text-zinc-300"
+                      onConfirm={() => toggleRetire(g)}
+                    />
+                  )}
                 </div>
                 <div className="mt-1.5 h-2 rounded-full bg-zinc-800 overflow-hidden">
                   <div className={cn('h-full rounded-full',

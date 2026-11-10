@@ -15,6 +15,7 @@ import {
   Loader2, Activity, Battery, HeartPulse, Gauge, Timer, TrendingUp, TrendingDown, Minus, Flame,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +28,7 @@ interface Freshness {
 }
 interface Readiness { score: number; label: string; recommendation: string; factors: { factor: string; contribution: number }[] }
 interface BodyBattery { battery: number; state: string; todayDrain: number }
-interface HrvStatus { status: string; recent7Avg?: number; baselineAvg?: number; samples: number; notes?: string }
+interface HrvStatus { status: string; recent7Avg?: number; baselineAvg?: number; samples: number; notes?: string; recent?: Array<{ id: string; date: string; rmssd: number }> }
 interface RacePrediction { distance: string; time: string; pace: string }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -227,6 +228,21 @@ export function StravaTrainingPanel() {
             <button type="button" onClick={logHrv}
               className="px-2.5 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">Log</button>
           </div>
+          {(hrv?.recent || []).length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {(hrv?.recent || []).map((row) => (
+                <li key={row.id} className="flex items-center justify-between text-[11px] text-zinc-300">
+                  <span>{row.date} · {row.rmssd} ms</span>
+                  <StickyDeleteConfirm
+                    armLabel="Delete"
+                    confirmLabel="Delete this HRV reading?"
+                    className="text-rose-300"
+                    onConfirm={async () => { await lensRun('fitness', 'hrv-delete', { id: row.id }); await refresh(); }}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">

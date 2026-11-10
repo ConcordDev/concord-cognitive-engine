@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 532 | 413 | 0 |
+| medium | 537 | 408 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **958** | **1190** | **3** |
+| **total** | **963** | **1185** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1527,6 +1527,18 @@ Saving a translation says it was saved. Keep as DTU says the private DTU id, or 
 | FIX-chat-005 | chat | medium | FIXED_PENDING_VERIFY | 029e5e945 |
 | FIX-staking-004 | staking | medium | FIXED_PENDING_VERIFY | 029e5e945 |
 | FIX-education-003 | education | medium | FIXED_PENDING_VERIFY | 029e5e945 |
+
+## Mediums — a filtered library, an expense search, and a confirm
+
+The paper library's Papers count is the list on screen. Expenses can be searched, limited by date, and sorted newest or oldest. On a phone with a coarse pointer, selects and checkboxes use the 44px minimum. Creating a path says it needs a title and at least one course. Deleting an activity or a route, and retiring gear, stays armed until confirm. An HRV reading can be removed.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-paper-001 | paper | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-accounting-004 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-staking-012 | staking | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-education-005 | education | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-fitness-009 | fitness | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

@@ -143,6 +143,9 @@ export function LearningPaths() {
           >
             Create path
           </button>
+          {(!title.trim() || picked.length === 0) && (
+            <p className="text-xs text-gray-400">A path needs a title and at least one course. Selecting a course does not create it until both are set.</p>
+          )}
         </div>
       )}
 

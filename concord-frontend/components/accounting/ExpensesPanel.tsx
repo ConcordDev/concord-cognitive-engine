@@ -19,6 +19,10 @@ export function ExpensesPanel() {
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [draft, setDraft] = useState({ accountId: '', amount: '', vendor: '', memo: '', date: '', receiptUrl: '' });
+  const [query, setQuery] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
 
   useEffect(() => { refresh(); }, []);
 
@@ -83,6 +87,20 @@ export function ExpensesPanel() {
         </div>
       )}
 
+      <div className="flex flex-wrap items-center gap-2 px-4 py-2">
+        <input
+          id="expense-search" name="expenseSearch" aria-label="Search expenses"
+          value={query} onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search vendor, memo, or date"
+          className="flex-1 min-w-[10rem] px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white"
+        />
+        <input type="date" aria-label="Expenses from" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input type="date" aria-label="Expenses to" value={toDate} onChange={(e) => setToDate(e.target.value)} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <select aria-label="Sort expenses" value={sort} onChange={(e) => setSort(e.target.value as 'newest' | 'oldest')} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <option value="newest">Newest date</option>
+          <option value="oldest">Oldest date</option>
+        </select>
+      </div>
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
           <SkeletonTableRows rows={5} columns={4} />
@@ -90,7 +108,13 @@ export function ExpensesPanel() {
           <EmptyState compact title="No expenses logged" description="Post an expense above. A blank amount, a zero, or a date that is not YYYY-MM-DD is refused here." />
         ) : (
           <ul className="divide-y divide-white/5">
-            {list.map(e => {
+            {[...list].filter((e) => {
+              const q = query.trim().toLowerCase();
+              if (q && !`${e.vendor} ${e.memo} ${e.date}`.toLowerCase().includes(q)) return false;
+              if (fromDate && e.date < fromDate) return false;
+              if (toDate && e.date > toDate) return false;
+              return true;
+            }).sort((a, b) => sort === 'newest' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)).map(e => {
               const a = accountById.get(e.accountId);
               return (
                 <li key={e.id} className="px-4 py-2 hover:bg-white/[0.02] flex items-center gap-3">
