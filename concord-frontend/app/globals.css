@@ -815,6 +815,26 @@ button, a, input, textarea, select {
 .mobile-nav-pad { padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px)); }
 @media (min-width: 768px) { .mobile-nav-pad { padding-bottom: 0; } }
 
+/* Phones (390px audit width): corner FABs using Tailwind bottom-4..12 sit
+   under MobileNav (fixed, z-50, h-14 + safe area). Lift them by the same
+   offset as .mobile-nav-pad. Desktop is unchanged. Tab strips scroll
+   instead of clipping off the right edge. */
+@media (max-width: 767px) {
+  .fixed.bottom-4,
+  .fixed.bottom-5,
+  .fixed.bottom-6,
+  .fixed.bottom-8,
+  .fixed.bottom-10,
+  .fixed.bottom-12 {
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+  [role="tablist"] {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+}
+
 /* ── Phase 8 — combat polish time-dilation overlay ───────────────────────
    Applied to <body> by CombatTimeDilationOverlay when a perfect dodge fires
    on a high-dilation profile (Cyberpunk = 0.35, Sifu = 0.15, etc).

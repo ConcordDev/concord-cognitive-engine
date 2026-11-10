@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 38 | 179 | 3 |
-| medium | 87 | 858 | 0 |
-| low | 52 | 928 | 0 |
+| high | 50 | 167 | 3 |
+| medium | 164 | 781 | 0 |
+| low | 130 | 850 | 0 |
 | unrated | 0 | 6 | 0 |
-| **total** | **177** | **1971** | **3** |
+| **total** | **344** | **1804** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -228,3 +228,177 @@ Lenses with no `*Lens` state bag are still open (their records live somewhere el
 | FIX-timeline-007 | timeline | low | FIXED_PENDING_VERIFY | bf88fd41f |
 | FIX-veterinary-002 | veterinary | low | FIXED_PENDING_VERIFY | bf88fd41f |
 | FIX-world-002 | world | low | FIXED_PENDING_VERIFY | bf88fd41f |
+
+## RCA-mobile-clip-fab
+
+At widths under 768px, fixed corner actions (`bottom-4` through `bottom-12`) are lifted by the mobile-nav safe-area offset so they sit above the bottom nav. `role="tablist"` scrolls horizontally instead of clipping. Table-column clip, tap-target size, and dead FABs that do nothing are not this change.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-black-market-003 | black-market | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-calendar-010 | calendar | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-creative-writing-006 | creative-writing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-creative-writing-009 | creative-writing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-disputes-008 | disputes | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-dreams-006 | dreams | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-education-007 | education | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-fitness-008 | fitness | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-government-011 | government | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-marketing-005 | marketing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-personas-007 | personas | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-telecommunications-009 | telecommunications | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-accounting-008 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-agents-017 | agents | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-agriculture-008 | agriculture | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-all-005 | all | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-app-maker-004 | app-maker | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-astronomy-006 | astronomy | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-automotive-016 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-bridge-007 | bridge | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-carpentry-006 | carpentry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-classroom-005 | classroom | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-code-006 | code | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-cognitive-replay-002 | cognitive-replay | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-cooking-006 | cooking | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-council-005 | council | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-council-012 | council | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-creative-004 | creative | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-creator-006 | creator | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-creatures-009 | creatures | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-debate-006 | debate | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-electrical-011 | electrical | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-energy-006 | energy | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-environment-004 | environment | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-ethics-009 | ethics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-expedition-journal-004 | expedition-journal | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-food-007 | food | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-forecast-003 | forecast | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-forestry-007 | forestry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-foundry-001 | foundry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-genesis-004 | genesis | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-goals-004 | goals | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-graph-005 | graph | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-healthcare-006 | healthcare | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-hr-007 | hr | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-hvac-007 | hvac | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-landscaping-007 | landscaping | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-law-006 | law | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-logistics-010 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-010 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-materials-007 | materials | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-ml-009 | ml | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-narrative-walk-005 | narrative-walk | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-nonprofit-010 | nonprofit | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-ops-007 | ops | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-ops-009 | ops | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-paper-008 | paper | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-pets-006 | pets | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-pharmacy-003 | pharmacy | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-photography-005 | photography | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-photos-005 | photos | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-plumbing-004 | plumbing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-plumbing-008 | plumbing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-podcast-005 | podcast | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-poetry-006 | poetry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-projects-002 | projects | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-queue-011 | queue | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-realestate-006 | realestate | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-repos-006 | repos | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-retail-004 | retail | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-robotics-006 | robotics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-robotics-008 | robotics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-schema-009 | schema | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-schema-010 | schema | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-science-005 | science | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-security-008 | security | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-sentinel-010 | sentinel | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-sentinel-012 | sentinel | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-services-004 | services | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-sim-008 | sim | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-sponsorship-005 | sponsorship | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-srs-006 | srs | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-staking-010 | staking | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-timeline-005 | timeline | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-understanding-005 | understanding | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-veterinary-005 | veterinary | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-voice-013 | voice | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-wallet-006 | wallet | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-worldmodel-009 | worldmodel | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-analytics-010 | analytics | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-animation-007 | animation | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-answers-003 | answers | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-ar-011 | ar | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-aviation-010 | aviation | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-byo-keys-016 | byo-keys | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-civic-bonds-013 | civic-bonds | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-code-quality-009 | code-quality | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-codex-002 | codex | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-cognition-007 | cognition | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-collab-008 | collab | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-concord-link-frontier-006 | concord-link-frontier | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-construction-009 | construction | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-consulting-008 | consulting | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-crafting-006 | crafting | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-crypto-012 | crypto | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-custom-010 | custom | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-database-006 | database | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-desert-004 | desert | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-dx-platform-010 | dx-platform | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-eco-009 | eco | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-electrical-009 | electrical | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-event-timeline-004 | event-timeline | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-events-010 | events | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-expert-mode-007 | expert-mode | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-finance-011 | finance | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-fishing-005 | fishing | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-forge-012 | forge | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-fork-009 | fork | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-fractal-009 | fractal | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-frontier-006 | frontier | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-game-011 | game | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-garage-005 | garage | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-global-015 | global | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-goddess-010 | goddess | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-history-008 | history | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-household-006 | household | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-housing-008 | housing | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-import-008 | import | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-inheritance-009 | inheritance | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-insurance-009 | insurance | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-invariant-002 | invariant | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-lab-008 | lab | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-ledger-002 | ledger | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-legacy-007 | legacy | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-linguistics-004 | linguistics | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-literary-004 | literary | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-lock-010 | lock | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-maker-002 | maker | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-mentorship-005 | mentorship | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-mesh-008 | mesh | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-meta-008 | meta | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-move-builder-015 | move-builder | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-observe-006 | observe | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-offline-008 | offline | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-ops-011 | ops | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-philosophy-003 | philosophy | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-platform-009 | platform | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-plugins-004 | plugins | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-queue-012 | queue | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-reasoning-007 | reasoning | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-retail-011 | retail | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-saved-007 | saved | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-society-014 | society | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-space-003 | space | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-sports-006 | sports | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-sub-worlds-009 | sub-worlds | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-supplychain-006 | supplychain | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-sync-008 | sync | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-tools-010 | tools | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-translation-009 | translation | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-travel-006 | travel | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-vault-006 | vault | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-welding-008 | welding | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-wellness-009 | wellness | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-world-004 | world | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-world-creator-009 | world-creator | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-world-observatory-006 | world-observatory | low | FIXED_PENDING_VERIFY | this commit |

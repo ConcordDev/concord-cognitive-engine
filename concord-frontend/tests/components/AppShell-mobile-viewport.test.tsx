@@ -190,6 +190,8 @@ describe('AppShell mobile viewport (INC-129)', () => {
     const css = readFileSync(resolve(__dirname, '../../app/globals.css'), 'utf8');
     expect(css).toMatch(/\.app-viewport-h\s*\{[^}]*100dvh/s);
     expect(css).toMatch(/\.mobile-nav-pad\s*\{[^}]*env\(\s*safe-area-inset-bottom/s);
+    expect(css).toMatch(/@media \(max-width: 767px\)[\s\S]*\.fixed\.bottom-8[\s\S]*safe-area-inset-bottom/);
+    expect(css).toMatch(/@media \(max-width: 767px\)[\s\S]*\[role="tablist"\][\s\S]*overflow-x:\s*auto/);
   });
 
   it('layout.tsx viewport sets interactiveWidget to resizes-content', () => {
