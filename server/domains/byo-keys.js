@@ -212,8 +212,16 @@ export default function registerByoKeysMacros(register) {
     if (!VALID_SLOTS.has(slot)) return { ok: false, reason: "invalid_slot" };
     const bm = userMap("budgets", userId);
     if (!bm) return { ok: false, reason: "state_unavailable" };
-    const usd = monthlyUsdCap == null ? null : Math.max(0, Number(monthlyUsdCap));
-    const tok = monthlyTokenCap == null ? null : Math.max(0, Math.floor(Number(monthlyTokenCap)));
+    const usdGiven = monthlyUsdCap != null && monthlyUsdCap !== "";
+    const tokGiven = monthlyTokenCap != null && monthlyTokenCap !== "";
+    if (usdGiven && !(Number(monthlyUsdCap) >= 0)) {
+      return { ok: false, error: "invalid_input", message: "Monthly USD cap must be a number that is 0 or greater." };
+    }
+    if (tokGiven && !(Number(monthlyTokenCap) >= 0)) {
+      return { ok: false, error: "invalid_input", message: "Monthly token cap must be a number that is 0 or greater." };
+    }
+    const usd = usdGiven ? Number(monthlyUsdCap) : null;
+    const tok = tokGiven ? Math.floor(Number(monthlyTokenCap)) : null;
     if (usd == null && tok == null) {
       bm.delete(slot);
       return { ok: true, result: { slot, budget: null } };

@@ -98,7 +98,7 @@ export function MinePlanWorkbench() {
     });
     setBusy(null);
     if (r.data.ok && r.data.result) setPit(r.data.result);
-    else setErr(r.data.error || 'pit design failed');
+    else setErr(r.data.message || r.data.error || 'pit design failed');
   }
 
   async function runReport() {

@@ -42,6 +42,7 @@ export function GoalsListPanel() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [undoGoal, setUndoGoal] = useState<{ title: string; data: Record<string, unknown> } | null>(null);
   const [deleteError, setDeleteError] = useState('');
+  const [formError, setFormError] = useState('');
   const [showFocusPicker, setShowFocusPicker] = useState(false);
 
   const { isLoading, isError, error, refetch, items: goalItems, create: createGoalItem, update: updateGoalItem, remove: removeGoalItem } = useLensData<Record<string, unknown>>('goals', 'goal', {
@@ -183,7 +184,14 @@ export function GoalsListPanel() {
       .catch(() => setDeleteError('Undo failed — the goal was not restored.'));
   };
 
-  const handleCreateGoal = () => { createGoalMutation.mutate(); };
+  const handleCreateGoal = () => {
+    if (newTargetDate && daysUntil(newTargetDate) < 0) {
+      setFormError('That target date is in the past.');
+      return;
+    }
+    setFormError('');
+    createGoalMutation.mutate();
+  };
 
   if (isLoading) {
     return (
@@ -273,6 +281,7 @@ export function GoalsListPanel() {
                 <input type="date" value={newTargetDate} onChange={(e) => setNewTargetDate(e.target.value)} className={field} aria-label="Target date" />
               </div>
               <DraftedTextarea lensId="goals" draftKey="newSubtasks" initial="" onValueChange={setNewSubtasks} placeholder="Steps, one per line — progress follows them" className={`${field} h-16 resize-none`} />
+              {formError && <p className="text-[12px] text-rose-300" role="alert">{formError}</p>}
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setShowCreate(false)} className="rounded-lg px-3 py-2 text-[13px] text-zinc-400 hover:text-zinc-100">Cancel</button>
                 <button type="button" onClick={handleCreateGoal} disabled={!newTitle || createGoalMutation.isPending} className="rounded-lg bg-teal-400 px-4 py-2 text-[13px] font-medium text-black hover:bg-teal-300 disabled:opacity-50">

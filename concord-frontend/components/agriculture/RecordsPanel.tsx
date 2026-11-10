@@ -307,6 +307,14 @@ export function RecordsPanel({ kind }: { kind: RecordKind }) {
 
   const handleSave = async () => {
     setSaveError(null);
+    if (!form.name.trim()) { setSaveError('Name is required.'); return; }
+    if (artifactType === 'Crop' && form.estimatedYield.trim()) {
+      const yieldN = Number(form.estimatedYield);
+      if (!Number.isFinite(yieldN) || yieldN < 0) {
+        setSaveError('Estimated yield must be a number that is 0 or greater.');
+        return;
+      }
+    }
     const data = payloadFromForm(form, artifactType);
     const payload = {
       title: form.name,

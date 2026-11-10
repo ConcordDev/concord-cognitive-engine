@@ -191,7 +191,7 @@ export function ChallengesPanel() {
                   {ch.deadline && (
                     <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1 justify-end">
                       <Clock className="w-3 h-3" />
-                      {daysUntil(ch.deadline) === 0 ? 'Due today' : `${daysUntil(ch.deadline)}d left`}
+                      {daysUntil(ch.deadline) < 0 ? `${-daysUntil(ch.deadline)}d overdue` : daysUntil(ch.deadline) === 0 ? 'Due today' : `${daysUntil(ch.deadline)}d left`}
                     </p>
                   )}
                   {confirmDeleteId === ch.id ? (

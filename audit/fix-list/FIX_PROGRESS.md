@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 410 | 535 | 0 |
+| medium | 420 | 525 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **831** | **1317** | **3** |
+| **total** | **841** | **1307** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1274,6 +1274,23 @@ Takeoffs, proposals, jobs, and the price book say they are loading until the fir
 | FIX-masonry-008 | masonry | medium | FIXED_PENDING_VERIFY | fdeaecb37 |
 | FIX-masonry-011 | masonry | medium | FIXED_PENDING_VERIFY | fdeaecb37 |
 | FIX-masonry-013 | masonry | medium | FIXED_PENDING_VERIFY | fdeaecb37 |
+
+## Mediums — range refusals
+
+A past goal date counts as overdue, and a new goal cannot be saved on a past date. A blank task title, a blank crop name, a negative crop yield, an empty cash-flow row, a negative pit depth, a price over one million, a non-positive shipment weight, a non-positive watch price, a bad asset quantity, and a negative budget cap each say what is wrong instead of being rewritten.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-agriculture-010 | agriculture | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-board-007 | board | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-byo-keys-003 | byo-keys | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-black-market-011 | black-market | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-crisis-ops-003 | crisis-ops | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-finance-006 | finance | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-goals-002 | goals | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-logistics-013 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-mining-002 | mining | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-plumbing-016 | plumbing | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

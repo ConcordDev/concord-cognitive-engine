@@ -733,7 +733,10 @@ export default function registerMiningActions(registerLensAction) {
   registerLensAction("mining", "pit-design", (ctx, _a, params = {}) => {
     try {
       const surfaceRL = mnNum(params.surfaceRL) || 100; // surface reduced level (m)
-      const pitDepth = Math.max(5, mnNum(params.pitDepth) || 120);
+      const pitDepth = params.pitDepth == null || params.pitDepth === "" ? 120 : Number(params.pitDepth);
+      if (!Number.isFinite(pitDepth) || pitDepth <= 0 || pitDepth > 5000) {
+        return { ok: false, error: "invalid_input", message: "Pit depth must be a number of metres greater than 0." };
+      }
       const benchHeight = Math.max(2, mnNum(params.benchHeight) || 15);
       const slopeAngle = Math.max(20, Math.min(75, mnNum(params.slopeAngle) || 45));
       const oreBottomWidth = Math.max(10, mnNum(params.bottomWidth) || 40);

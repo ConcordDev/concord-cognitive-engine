@@ -356,7 +356,7 @@ export function FieldServiceConsole() {
 
   const addPriceItem = () => guarded(async () => {
     if (!piName.trim()) { setErr('Item name required'); return; }
-    if (piCost.trim() && !(Number(piCost) >= 0)) { setErr('Cost must be a number that is 0 or greater.'); return; }
+    if (piCost.trim() && (!(Number(piCost) >= 0) || Number(piCost) > 1_000_000)) { setErr('Cost must be a number from 0 to 1,000,000.'); return; }
     const { data } = await lensRun('plumbing', 'priceItemAdd', {
       name: piName, kind: piKind, cost: piCost.trim() ? Number(piCost) : 0,
       markupPct: Number(piMarkup) || 0, sku: piSku,

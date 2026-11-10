@@ -29,7 +29,8 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
   const [data, setData] = useState<ResourcesResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: '', category: 'general', quantity: 0, unit: 'units' });
+  const [form, setForm] = useState({ name: '', category: 'general', quantity: '', unit: 'units' });
+  const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -43,18 +44,26 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
   useEffect(() => { load(); }, [load]);
 
   const upsert = useCallback(async () => {
-    if (!form.name.trim()) return;
+    if (!form.name.trim()) { setFormError('Asset name is required.'); return; }
+    const qty = Number(form.quantity);
+    if (!Number.isInteger(qty) || qty < 1 || qty > 1_000_000) {
+      setFormError('Quantity must be a whole number from 1 to 1,000,000.');
+      return;
+    }
+    setFormError('');
     setBusy(true);
     const r = await lensRun('crisis', 'resource_upsert', {
       name: form.name.trim(),
       category: form.category,
-      quantity: Number(form.quantity) || 0,
+      quantity: qty,
       unit: form.unit.trim() || 'units',
     });
     if (r.data?.ok) {
-      setForm({ name: '', category: 'general', quantity: 0, unit: 'units' });
+      setForm({ name: '', category: 'general', quantity: '', unit: 'units' });
       setAdding(false);
       await load();
+    } else {
+      setFormError(r.data?.message || r.data?.error || 'That asset was not saved.');
     }
     setBusy(false);
   }, [form, load]);
@@ -115,7 +124,7 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
               type="number"
               min={0}
               value={form.quantity}
-              onChange={(e) => setForm((f) => ({ ...f, quantity: Number(e.target.value) }))}
+              onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
               placeholder="Qty"
               className="w-20 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-white"
             />
@@ -134,6 +143,7 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
               Save
             </button>
           </div>
+          {formError && <p className="text-[11px] text-rose-300" role="alert">{formError}</p>}
         </div>
       )}
 

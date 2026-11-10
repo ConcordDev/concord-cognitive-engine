@@ -406,8 +406,8 @@ export default function registerPlumbingActions(registerLensAction) {
       const book = list(g.s.priceBook, actor(ctx));
       const name = clean(params.name, 120);
       if (!name) return { ok: false, error: "name_required" };
-      if (params.cost !== undefined && params.cost !== "" && !(Number(params.cost) >= 0)) {
-        return { ok: false, error: "invalid_input", field: "cost", message: "Cost must be a number that is 0 or greater." };
+      if (params.cost !== undefined && params.cost !== "" && (!(Number(params.cost) >= 0) || Number(params.cost) > 1_000_000)) {
+        return { ok: false, error: "invalid_input", field: "cost", message: "Cost must be a number from 0 to 1,000,000." };
       }
       const cost = num(params.cost);
       const markupPct = Math.max(0, Math.min(500, num(params.markupPct) || 0));
@@ -455,8 +455,8 @@ export default function registerPlumbingActions(registerLensAction) {
       if (!item) return { ok: false, error: "item_not_found" };
       if (params.name !== undefined) item.name = clean(params.name, 120);
       if (params.cost !== undefined) {
-        if (params.cost !== "" && !(Number(params.cost) >= 0)) {
-          return { ok: false, error: "invalid_input", field: "cost", message: "Cost must be a number that is 0 or greater." };
+        if (params.cost !== "" && (!(Number(params.cost) >= 0) || Number(params.cost) > 1_000_000)) {
+          return { ok: false, error: "invalid_input", field: "cost", message: "Cost must be a number from 0 to 1,000,000." };
         }
         item.cost = num(params.cost);
       }

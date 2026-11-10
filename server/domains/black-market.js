@@ -583,9 +583,14 @@ export default function registerBlackMarketActions(registerLensAction) {
     const keyword = str(params.keyword).toLowerCase();
     if (!keyword) return { ok: false, error: "keyword required" };
     if (keyword.length > 60) return { ok: false, error: "keyword too long (max 60)" };
-    const maxPrice = params.maxPrice != null
-      ? Math.max(1, Math.round(num(params.maxPrice, 0)))
-      : null;
+    let maxPrice = null;
+    if (params.maxPrice != null && params.maxPrice !== "") {
+      const priced = Number(params.maxPrice);
+      if (!Number.isFinite(priced) || priced < 1) {
+        return { ok: false, error: "invalid_input", message: "Max price must be a number that is 1 or greater." };
+      }
+      maxPrice = Math.round(priced);
+    }
     const tier = params.tier != null ? str(params.tier) : null;
     if (tier && !TIER_ORDER.includes(tier)) {
       return { ok: false, error: "tier invalid" };

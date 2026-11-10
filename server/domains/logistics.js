@@ -1099,7 +1099,13 @@ export default function registerLogisticsActions(registerLensAction) {
       const userId = logActor(ctx);
       const origin = String(params.origin || "").trim();
       const destination = String(params.destination || "").trim();
-      const weightLbs = Math.max(0.1, Number(params.weightLbs) || 1);
+      let weightLbs = 1;
+      if (params.weightLbs != null && params.weightLbs !== "") {
+        weightLbs = Number(params.weightLbs);
+        if (!Number.isFinite(weightLbs) || weightLbs <= 0 || weightLbs > 200_000) {
+          return { ok: false, error: "invalid_input", message: "Weight must be a number greater than 0." };
+        }
+      }
       const mode = ["parcel", "ltl", "ftl"].includes(params.mode) ? params.mode : "parcel";
       if (!origin || !destination) return { ok: false, error: "origin and destination required" };
       // This user's carriers only. Another account's rows are a different bucket.

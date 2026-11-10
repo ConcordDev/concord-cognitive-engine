@@ -44,6 +44,7 @@ export function TransactionFeed() {
   const [suggestion, setSuggestion] = useState<{ category: string; confidence: number; source: string } | null>(null);
   const [coa, setCoa] = useState<CoaAccount[]>([]);
   const [postedByTxn, setPostedByTxn] = useState<Record<string, PostedEntry>>({});
+  const [formError, setFormError] = useState('');
 
   async function suggestCategory() {
     if (!form.description.trim()) return;
@@ -93,7 +94,12 @@ export function TransactionFeed() {
 
   async function ingest() {
     const amount = Number(form.amount);
-    if (!form.description.trim() || !Number.isFinite(amount) || amount === 0) return;
+    if (!form.description.trim()) { setFormError('A description is required.'); return; }
+    if (!form.amount.trim() || !Number.isFinite(amount) || amount === 0) {
+      setFormError('Amount must be a non-zero number. Use a negative amount for spending.');
+      return;
+    }
+    setFormError('');
     try {
       const r = await lensRun('finance', 'transactions-ingest', {
         description: form.description.trim(),
@@ -105,8 +111,10 @@ export function TransactionFeed() {
         setForm({ description: '', amount: '', date: '', category: '' });
         setAdding(false);
         await refresh();
+      } else {
+        setFormError(r.data?.message || r.data?.error || 'That transaction was not saved.');
       }
-    } catch (e) { console.error('[TxFeed] ingest failed', e); }
+    } catch (e) { setFormError(e instanceof Error ? e.message : 'That transaction was not saved.'); }
   }
 
   async function recategorise(id: string, category: string) {
@@ -184,6 +192,7 @@ export function TransactionFeed() {
             </button>
             {suggestion && <span>Suggested <span className="text-white">{suggestion.category}</span> · {Math.round(suggestion.confidence * 100)}% · {suggestion.source === 'rules' ? 'merchant rules' : 'utility brain'}</span>}
           </div>
+          {formError && <p className="col-span-6 text-[11px] text-rose-300" role="alert">{formError}</p>}
           <button
             onClick={ingest}
             className="col-span-6 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400"

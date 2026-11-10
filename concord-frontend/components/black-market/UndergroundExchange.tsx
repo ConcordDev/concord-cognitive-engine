@@ -321,7 +321,14 @@ export function UndergroundExchange() {
     }
     setBusy('add-watch');
     const params: Record<string, unknown> = { keyword: watchKeyword.trim() };
-    if (watchMaxPrice) params.maxPrice = Number(watchMaxPrice);
+    if (String(watchMaxPrice).trim()) {
+      const price = Number(watchMaxPrice);
+      if (!Number.isFinite(price) || price < 1) {
+        setError('Max price must be a number that is 1 or greater.');
+        return;
+      }
+      params.maxPrice = price;
+    }
     if (watchTier) params.tier = watchTier;
     const res = await run<{ watch: Watch }>('watch-add', params);
     setBusy(null);

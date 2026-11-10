@@ -863,10 +863,12 @@ export default function registerCrisisMacros(register) {
     try {
       const userId = ctx?.actor?.userId;
       if (!userId) return { ok: false, error: "no_actor" };
-      const badNum = badNumericField(input, ["quantity"]);
-      if (badNum) return { ok: false, error: "bad_numeric_field", field: badNum };
       const { resourceId, name, category, quantity, unit } = input || {};
       if (!name) return { ok: false, error: "missing_name" };
+      const qty = Number(quantity);
+      if (!Number.isInteger(qty) || qty < 1 || qty > 1_000_000) {
+        return { ok: false, error: "invalid_input", field: "quantity", message: "Quantity must be a whole number from 1 to 1,000,000." };
+      }
       const S = stores();
       let map = S.crisisResources.get(userId);
       if (!map) { map = new Map(); S.crisisResources.set(userId, map); }
@@ -876,9 +878,9 @@ export default function registerCrisisMacros(register) {
         id,
         name: String(name).slice(0, 80),
         category: String(category || "general").slice(0, 40),
-        quantity: Math.max(0, Math.floor(Number(quantity) || 0)),
+        quantity: qty,
         unit: String(unit || "units").slice(0, 20),
-        deployed: Math.min(prior.deployed || 0, Math.max(0, Math.floor(Number(quantity) || 0))),
+        deployed: Math.min(prior.deployed || 0, qty),
         createdAt: prior.createdAt,
         updatedAt: Date.now(),
       };
