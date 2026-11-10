@@ -9,7 +9,7 @@
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth, type AuthUser } from '@/hooks/useAuth';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -663,8 +663,12 @@ function DisputeCard({
 
 type ViewTab = 'my' | 'queue';
 
-export function CasesPanel() {
+export function CasesPanel({ fileRequest = 0 }: { fileRequest?: number }) {
   const [showCreateForm, setShowCreateForm] = useState(false);
+
+  useEffect(() => {
+    if (fileRequest) setShowCreateForm(true);
+  }, [fileRequest]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ViewTab>('my');
   const { user, isLoading: authLoading } = useAuth();

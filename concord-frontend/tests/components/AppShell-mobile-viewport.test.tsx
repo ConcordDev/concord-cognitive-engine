@@ -192,6 +192,8 @@ describe('AppShell mobile viewport (INC-129)', () => {
     expect(css).toMatch(/\.mobile-nav-pad\s*\{[^}]*env\(\s*safe-area-inset-bottom/s);
     expect(css).toMatch(/@media \(max-width: 767px\)[\s\S]*\.fixed\.bottom-8[\s\S]*safe-area-inset-bottom/);
     expect(css).toMatch(/@media \(max-width: 767px\)[\s\S]*\[role="tablist"\][\s\S]*overflow-x:\s*auto/);
+    expect(css).toMatch(/@media \(max-width: 767px\)[\s\S]*div:has\(> table\)[\s\S]*overflow-x:\s*auto/);
+    expect(css).toMatch(/@media \(max-width: 767px\)[\s\S]*button,[\s\S]*min-height:\s*44px/);
   });
 
   it('layout.tsx viewport sets interactiveWidget to resizes-content', () => {

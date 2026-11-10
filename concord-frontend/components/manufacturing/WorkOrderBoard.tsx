@@ -217,7 +217,7 @@ export function WorkOrderBoard() {
                   <div key={o.id} className="p-2 bg-white/[0.02] border border-white/10 rounded text-xs">
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono text-cyan-300">{o.number}</span>
-                      <span className={cn('text-[8px] uppercase px-1 py-0.5 rounded font-bold',
+                      <span className={cn('text-xs uppercase px-1 py-0.5 rounded font-bold',
                         o.priority === 'urgent' ? 'bg-red-500/30 text-red-200' :
                         o.priority === 'high' ? 'bg-orange-500/30 text-orange-200' :
                         o.priority === 'medium' ? 'bg-yellow-500/30 text-yellow-200' :

@@ -833,6 +833,22 @@ button, a, input, textarea, select {
     overflow-x: auto;
     overscroll-behavior-x: contain;
   }
+  /* A wide table's parent scrolls sideways so the right columns stay reachable. */
+  div:has(> table),
+  section:has(> table) {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  div:has(> table) > table,
+  section:has(> table) > table {
+    width: max-content;
+    min-width: 100%;
+  }
+  button,
+  [role="tab"],
+  [role="button"] {
+    min-height: 44px;
+  }
 }
 
 /* ── Phase 8 — combat polish time-dilation overlay ───────────────────────

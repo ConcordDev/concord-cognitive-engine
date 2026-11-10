@@ -124,8 +124,12 @@ const btnCls =
   'inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50';
 const cardCls = 'rounded-lg border border-zinc-800 bg-zinc-950/60 p-4';
 
-export function GardenStudio() {
+export function GardenStudio({ designRequest = 0 }: { designRequest?: number }) {
   const [tab, setTab] = useState<StudioTab>('designer');
+
+  useEffect(() => {
+    if (designRequest) setTab('designer');
+  }, [designRequest]);
 
   return (
     <div className="space-y-4">
@@ -154,7 +158,7 @@ export function GardenStudio() {
         ))}
       </nav>
 
-      {tab === 'designer' && <YardDesigner />}
+      {tab === 'designer' && <YardDesigner designRequest={designRequest} />}
       {/* @modal-escape-ok: PhotoOverlay is a tab panel selected by `tab`, not a trapping modal dialog. */}
       {tab === 'overlay' && <PhotoOverlay />}
       {tab === 'identify' && <PlantIdentify />}
@@ -171,7 +175,7 @@ export function GardenStudio() {
 }
 
 // ─── Feature 1 — Visual yard designer ───────────────────────────────
-function YardDesigner() {
+function YardDesigner({ designRequest = 0 }: { designRequest?: number }) {
   const [layouts, setLayouts] = useState<Layout[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
@@ -184,6 +188,13 @@ function YardDesigner() {
   const [dirty, setDirty] = useState(false);
   const [palette, setPalette] = useState('plant');
   const canvasRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!designRequest) return;
+    nameRef.current?.focus();
+    nameRef.current?.scrollIntoView({ block: 'center' });
+  }, [designRequest]);
 
   const active = layouts.find((l) => l.id === activeId) || null;
 
@@ -297,6 +308,8 @@ function YardDesigner() {
         <div>
           <label className="text-[10px] uppercase tracking-wider text-zinc-400">Layout name</label>
           <input
+            ref={nameRef}
+            aria-label="Layout name"
             className={inputCls}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}

@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 92 | 126 | 3 |
-| medium | 289 | 656 | 0 |
+| high | 95 | 123 | 3 |
+| medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **632** | **1516** | **3** |
+| **total** | **636** | **1512** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -796,3 +796,14 @@ Header export now reads a domain bag that is not named `<domain>Lens`: `writingL
 FIX-creative-writing-007 stays open: that one is the per-row CSV omitting the body column, not the header pack. Lenses that keep records only in SQL, or in a map that is not keyed by the caller, are still open.
 
 Still open in section 1g: FIX-cognition-009 (public and non-owner `/dtu/<id>` still needs a live response trace) and FIX-music-001 (export silence / start offset not yet located in the offline renderer).
+
+## RCA-mobile-table-tap-fab
+
+On a phone, a table's parent scrolls sideways and the table sizes to its columns, so End, Kind, Delete, and OEE stay reachable. Buttons, tabs, and role=button controls have a 44px minimum height. The landscaping New design button focuses the layout-name field on the yard designer. File a case opens the disputes filing form.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-manufacturing-001 | manufacturing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-disputes-010 | disputes | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-landscaping-008 | landscaping | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-manufacturing-003 | manufacturing | medium | FIXED_PENDING_VERIFY | this commit |
