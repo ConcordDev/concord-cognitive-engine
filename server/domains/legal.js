@@ -12,7 +12,7 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { getProcedureForState, listProcedureStates, listProcedureStateSummaries } from "../lib/court-procedure-reference.js";
 import { createHash } from "node:crypto";
-import { moneyOrNull, badNumber } from "../lib/finite-input.js";
+import { moneyOrNull, badNumber, boundedNum } from "../lib/finite-input.js";
 import { measuredPercent } from "../lib/measured-rate.js";
 import { registerEsignProvider, issueSigningLinks, deliverSigningLinks, revokeSigningLinks } from "../lib/esign-links.js";
 
@@ -479,8 +479,10 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
     const userId = aid(ctx);
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
-    if (moneyOrNull(params.hourlyRate, 0) === null) return badNumber("hourlyRate", "must be a finite amount >= 0");
-    if (moneyOrNull(params.flatFee, 0) === null) return badNumber("flatFee", "must be a finite amount >= 0");
+    const hourlyRate = boundedNum(params.hourlyRate, { min: 0, max: 10_000 }, 0);
+    if (hourlyRate === null) return badNumber("hourlyRate", "must be from 0 to 10000");
+    const flatFee = boundedNum(params.flatFee, { min: 0, max: 1_000_000 }, 0);
+    if (flatFee === null) return badNumber("flatFee", "must be from 0 to 1000000");
     const seq = ensureSeqLegal(s, userId);
     const matter = {
       id: uid("matter"),
@@ -493,8 +495,8 @@ Rules: cite real statutes/cases/regs; ALWAYS include not-legal-advice caveat; if
       jurisdiction: String(params.jurisdiction || ""),
       court: String(params.court || ""),
       caseNumber: String(params.caseNumber || ""),
-      hourlyRate: Number(params.hourlyRate) || 0,
-      flatFee: Number(params.flatFee) || 0,
+      hourlyRate,
+      flatFee,
       billingType: ['hourly','flat','contingency','pro_bono'].includes(params.billingType) ? params.billingType : 'hourly',
       openedAt: isoDay(),
       closedAt: null,

@@ -11,6 +11,7 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { writeGmailMessage } from "../lib/connector-client.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 
 const PROPUBLICA_BASE = "https://projects.propublica.org/nonprofits/api/v2";
 
@@ -239,8 +240,8 @@ export default function registerNonprofitActions(registerLensAction) {
     const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const c = npCampaigns(s, npActor(ctx)).find((x) => x.id === params.campaignId);
     if (!c) return { ok: false, error: "campaign not found" };
-    const amount = npNum(params.amount);
-    if (amount <= 0) return { ok: false, error: "donation amount must be positive" };
+    const amount = readingOrNull(params.amount, { min: 0.01, max: 1_000_000_000, fallback: null });
+    if (amount === null) return badNumber("amount", "must be a number greater than 0");
     const donation = { id: npId("don"), amount, donor: npClean(params.donor, 120) || "Anonymous",
       recurring: params.recurring === true, at: new Date().toISOString() };
     c.donations.push(donation); saveNonprofit();
@@ -271,8 +272,10 @@ export default function registerNonprofitActions(registerLensAction) {
   registerLensAction("nonprofit", "donor-create", (ctx, _a, params = {}) => {
     try {
       const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
-      const name = npClean(params.name, 160);
-      if (!name) return { ok: false, error: "donor name required" };
+      const rawName = String(params.name || "").trim();
+      if (!rawName) return { ok: false, error: "donor name required" };
+      if (rawName.length > 160) return badNumber("name", "must be at most 160 characters");
+      const name = rawName;
       const donor = {
         id: npId("dnr"), name,
         email: npClean(params.email, 160), phone: npClean(params.phone, 40),

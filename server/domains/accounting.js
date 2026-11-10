@@ -8,6 +8,7 @@ import { assertPayable } from "../lib/money-guards.js";
 import { bindWave1 } from "../lib/lens-input-schemas-wave1.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
+import { calendarDateOrNull } from "../lib/finite-input.js";
 
 export default function registerAccountingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -984,7 +985,8 @@ export default function registerAccountingActions(registerLensAction) {
     seedDefaultCoA(userId, s);
     const lines = Array.isArray(params.lines) ? params.lines : [];
     if (lines.length < 2) return { ok: false, error: "journal entry needs at least 2 lines" };
-    const date = String(params.date || nowIso().slice(0, 10));
+    const date = params.date ? calendarDateOrNull(params.date) : nowIso().slice(0, 10);
+    if (!date) return { ok: false, error: "date must be a real date as YYYY-MM-DD" };
     const memo = String(params.memo || "").slice(0, 200);
     // Provenance. A journal entry posted from a lens (Finance posts its
     // ingested ledger rows here) carries the DTU it was built from so the
@@ -2484,12 +2486,13 @@ Output the single best account code:`;
     const accountId = String(params.accountId || "");
     const amount = Number(params.amount);
     if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "amount must be > 0" };
+    const date = params.date ? calendarDateOrNull(params.date) : nowIso().slice(0, 10);
+    if (!date) return { ok: false, error: "date must be a real date as YYYY-MM-DD" };
     const coa = s.coa.get(userId);
     if (!coa.has(accountId)) return { ok: false, error: "accountId invalid" };
     const cashAcct = Array.from(coa.values()).find(a => a.code === "1000" && a.category === "asset");
     if (!cashAcct) return { ok: false, error: "cash account 1000 not found" };
     const seq = ensureSeq(s, userId);
-    const date = String(params.date || nowIso().slice(0, 10));
     const vendor = String(params.vendor || "").trim();
     const memo = String(params.memo || "").slice(0, 200);
     const exp = {

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { presentOwnedId, publicActor } from "../lib/public-actor.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 
 export default function registerFitnessActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -831,9 +832,11 @@ Generate the plan.`;
     const userId = faid(ctx);
     const type = String(params.type || "").toLowerCase();
     if (!ACTIVITY_TYPES.includes(type)) return { ok: false, error: `type required (${ACTIVITY_TYPES.join("/")})` };
-    const durationSec = fnum(params.durationSec);
-    if (durationSec <= 0) return { ok: false, error: "durationSec must be > 0" };
-    const distanceKm = Math.max(0, fnum(params.distanceKm));
+    const durationSec = readingOrNull(params.durationSec, { min: 1, max: 86400, fallback: null });
+    if (durationSec === null) return badNumber("durationSec", "must be a number of seconds from 1 to 86400");
+    const distanceGiven = params.distanceKm !== undefined && params.distanceKm !== null && params.distanceKm !== "";
+    const distanceKm = distanceGiven ? readingOrNull(params.distanceKm, { min: 0, max: 1000, fallback: null }) : 0;
+    if (distanceKm === null) return badNumber("distanceKm", "must be a number of kilometres from 0 to 1000");
     const act = {
       id: fid("act"),
       type,

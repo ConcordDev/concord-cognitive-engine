@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 307 | 638 | 0 |
+| medium | 312 | 633 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **728** | **1420** | **3** |
+| **total** | **733** | **1415** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1046,6 +1046,18 @@ The literary library uses the shared empty state and no longer tells a reader to
 | FIX-science-002 | science | medium | FIXED_PENDING_VERIFY | 7af8c55c6 |
 | FIX-manufacturing-010 | manufacturing | medium | FIXED_PENDING_VERIFY | 7af8c55c6 |
 | FIX-agents-002 | agents | medium | FIXED_PENDING_VERIFY | 7af8c55c6 |
+
+## Mediums — range checks on five more lenses
+
+A workout distance and duration must be real numbers in range. A CVSS score outside 0 to 10 is refused instead of clamped. An hourly rate above 10000 is refused. A donor name over 160 characters and a negative gift are refused. An expense or journal date that is not a real calendar day is refused.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-fitness-005 | fitness | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-security-005 | security | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-legal-005 | legal | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-nonprofit-006 | nonprofit | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-accounting-001 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 
