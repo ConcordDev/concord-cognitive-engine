@@ -803,7 +803,7 @@ On a phone, a table's parent scrolls sideways and the table sizes to its columns
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-manufacturing-001 | manufacturing | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-disputes-010 | disputes | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-landscaping-008 | landscaping | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-manufacturing-003 | manufacturing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-manufacturing-001 | manufacturing | high | FIXED_PENDING_VERIFY | 4b78317fc |
+| FIX-disputes-010 | disputes | high | FIXED_PENDING_VERIFY | 4b78317fc |
+| FIX-landscaping-008 | landscaping | high | FIXED_PENDING_VERIFY | 4b78317fc |
+| FIX-manufacturing-003 | manufacturing | medium | FIXED_PENDING_VERIFY | 4b78317fc |
