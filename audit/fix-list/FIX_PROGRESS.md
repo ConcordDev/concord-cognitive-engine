@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 500 | 445 | 0 |
-| low | 252 | 728 | 0 |
+| medium | 507 | 438 | 0 |
+| low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **922** | **1226** | **3** |
+| **total** | **933** | **1215** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1456,6 +1456,24 @@ A model refuses a negative poly count, a file size that is not a size, and a sou
 | FIX-ml-005 | ml | medium | FIXED_PENDING_VERIFY | 736b75bb5 |
 | FIX-self-009 | self | medium | FIXED_PENDING_VERIFY | 736b75bb5 |
 | FIX-self-003 | self | medium | FIXED_PENDING_VERIFY | 736b75bb5 |
+
+## Mediums — meals, objectives, and quotes
+
+A generated meal keeps a calorie count only when that meal has one. The day's total is not copied onto every meal. Deleting an objective removes its check-ins. Using a template creates the objective and its key results, and a recurring goal only when you ask for one. A quote asks before it is sent, and a draft quote, a customer, and a job can be deleted after confirm. An accepted quote stays. Paying a pact premium moves the next due date out of the soon window, and a decline shows up for the writer. A tied debate has no winner. Index says to add a file before it will run. A mail subject shows how many of 120 characters are used.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-food-003 | food | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-goals-006 | goals | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-goals-011 | goals | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-trades-003 | trades | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-trades-010 | trades | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-death-insurance-005 | death-insurance | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-death-insurance-009 | death-insurance | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-trades-012 | trades | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-dx-platform-004 | dx-platform | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-mail-005 | mail | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-debate-018 | debate | low | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

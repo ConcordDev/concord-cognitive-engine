@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Wrench, Users, Calendar, FileText, Plus, Save, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { TradesKeepMenu } from './TradesKeepMenu';
 
@@ -288,6 +289,7 @@ function CustomersTab() {
           {c.phone && <p className="text-[11px] text-gray-400">{c.phone}</p>}
           {c.email && <p className="text-[11px] text-gray-400">{c.email}</p>}
           {c.address && <p className="text-[11px] text-gray-400">{c.address}</p>}
+          <StickyDeleteConfirm onConfirm={async () => { await lensRun('trades', 'customer-delete', { id: c.id }); await refresh(); }} armLabel="Delete" armAriaLabel={`Delete ${c.name}`} confirmLabel="Delete customer?" className="mt-1 text-[11px] text-rose-300" />
         </div>
       ))}
     </div>

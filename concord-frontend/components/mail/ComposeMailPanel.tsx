@@ -100,6 +100,7 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
             maxLength={120}
             className="mt-1 block w-full rounded-md border border-lattice-border bg-lattice-void/60 px-2 py-1 text-[12px] text-gray-100 outline-none transition-colors focus:border-neon-blue"
           />
+          <span className="mt-0.5 block text-right text-[10px] text-gray-500">{composeSubject.length}/120</span>
         </label>
         <label className="mb-2 block">
           <span className={ds.overline}>Message</span>

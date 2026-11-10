@@ -1641,7 +1641,15 @@ export default function registerInsuranceActions(register) {
           message: `Pact ${p.id} ${p.autoRenew ? "will auto-renew" : "expires"} ${new Date(p.expiresAt * 1000).toLocaleDateString()}`,
         });
       }
-      if (st === "active" && p.premiumFrequency !== "upfront" && p.nextPremiumDueAt != null && p.nextPremiumDueAt <= horizon) {
+      for (const b of p.beneficiaries || []) {
+        if (b.respondedAt && b.accepted === false) {
+          notes.push({
+            kind: "beneficiary_declined", pactId: p.id, severity: "medium", at: b.respondedAt,
+            message: `A beneficiary declined pact ${p.id}.`,
+          });
+        }
+      }
+      if (st === "active" && p.premiumFrequency !== "upfront" && p.nextPremiumDueAt != null && p.nextPremiumDueAt < horizon) {
         notes.push({
           kind: "premium_due", pactId: p.id,
           severity: p.nextPremiumDueAt < now ? "high" : "medium",

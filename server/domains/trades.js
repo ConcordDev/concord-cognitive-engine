@@ -846,6 +846,29 @@ export default function registerTradesActions(registerLensAction) {
     return { ok: true, result: { quote } };
   });
 
+  registerLensAction("trades", "quotes-delete", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const list = ensureTrBucket(s, "quotes", userId);
+    const idx = list.findIndex(q => q.id === String(params.id || ""));
+    if (idx < 0) return { ok: false, error: "quote not found" };
+    if (list[idx].status === "accepted") return { ok: false, error: "invalid_input", message: "An accepted quote stays on the record." };
+    list.splice(idx, 1);
+    saveTradesState();
+    return { ok: true, result: { id: String(params.id), deleted: true } };
+  });
+
+  registerLensAction("trades", "customer-delete", (ctx, _a, params = {}) => {
+    const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = tradesActor(ctx);
+    const map = s.customers.get(userId);
+    const id = String(params.id || "");
+    if (!map || !map.has(id)) return { ok: false, error: "customer not found" };
+    map.delete(id);
+    saveTradesState();
+    return { ok: true, result: { id, deleted: true } };
+  });
+
   registerLensAction("trades", "quotes-accept", (ctx, _a, params = {}) => {
     const s = getTradesState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tradesActor(ctx);

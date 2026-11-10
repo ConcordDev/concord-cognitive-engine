@@ -292,6 +292,9 @@ function CodebasesTab({
             {indexing ? 'Indexing…' : `Index ${files.length || ''} file(s)`}
           </button>
         </div>
+        {files.length === 0 && (name.trim() || path.trim() || content.trim()) && (
+          <p className="text-[11px] text-amber-200">Add file first. Index stays off until a file is on the list.</p>
+        )}
         {files.length > 0 && (
           <ul className="space-y-1 text-[11px] text-zinc-400">
             {files.map((f, i) => (

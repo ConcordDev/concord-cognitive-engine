@@ -8,6 +8,7 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { apiHelpers } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Hammer,
   HardHat,
@@ -1732,9 +1733,9 @@ export default function ProjectDeskPanel() {
                   <button onClick={e => { e.stopPropagation(); openEdit(item); }} className={cn(ds.btnSmall, 'text-gray-400 hover:text-white')}>
                     <Edit2 className="w-3 h-3" /> Edit
                   </button>
-                  <button onClick={e => { e.stopPropagation(); handleDelete(item.id); }} className={cn(ds.btnSmall, 'text-red-400 hover:text-red-300')}>
-                    <Trash2 className="w-3 h-3" /> Delete
-                  </button>
+                  <span onClick={e => e.stopPropagation()}>
+                    <StickyDeleteConfirm onConfirm={() => handleDelete(item.id)} armLabel={<><Trash2 className="w-3 h-3" /> Delete</>} armAriaLabel="Delete job" confirmLabel="Delete this job?" className={cn(ds.btnSmall, 'text-red-400 hover:text-red-300')} />
+                  </span>
                   {activeTab === 'jobs' && (
                     <button onClick={e => { e.stopPropagation(); selectJobForDetail(item); }} className={cn(ds.btnSmall, 'text-neon-cyan hover:text-white ml-auto')}>
                       <Layers className="w-3 h-3" /> Detail

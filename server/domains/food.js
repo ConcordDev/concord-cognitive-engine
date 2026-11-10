@@ -995,12 +995,14 @@ export default function registerFoodActions(registerLensAction) {
           for (let s = 0; s < Math.min(slots.length, apiSlots.length); s++) {
             const meal = dayData.meals?.[s];
             if (!meal) continue;
+            const own = meal.nutrition || {};
+            const num = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : null);
             meals.push({
               date, slot: apiSlots[s], title: meal.title, servings: meal.servings || 1,
-              calories: dayData.nutrients?.calories / apiSlots.length,
-              protein: dayData.nutrients?.protein / apiSlots.length,
-              carbs: dayData.nutrients?.carbohydrates / apiSlots.length,
-              fat: dayData.nutrients?.fat / apiSlots.length,
+              calories: num(own.calories ?? meal.calories),
+              protein: num(own.protein ?? meal.protein),
+              carbs: num(own.carbs ?? own.carbohydrates ?? meal.carbs),
+              fat: num(own.fat ?? meal.fat),
               recipeId: meal.id,
               source: "spoonacular",
             });

@@ -186,7 +186,8 @@ export default function registerDebateActions(registerLensAction) {
       const score = Math.round(args.length * 15 + evidenceCount * 10 + rebuttals * 20 + votes * 2);
       return { side: s.name || s.position || "—", arguments: args.length, evidencePoints: evidenceCount, rebuttals, score, votes, highlights: args.slice(0, 2).map(argText).filter(Boolean) };
     }).sort((a, b) => b.score - a.score);
-    return { ok: true, result: { sides: scored, winner: scored[0]?.side, margin: scored.length >= 2 ? scored[0].score - scored[1].score : 0, close: scored.length >= 2 && Math.abs(scored[0].score - scored[1].score) < 20 } };
+    const margin = scored.length >= 2 ? scored[0].score - scored[1].score : 0;
+    return { ok: true, result: { sides: scored, winner: margin > 0 ? scored[0].side : null, margin, tie: margin === 0, close: scored.length >= 2 && Math.abs(margin) < 20 } };
    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
   registerLensAction("debate", "fallacyCheck", (ctx, artifact, params = {}) => {

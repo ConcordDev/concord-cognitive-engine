@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { FileText, Plus, Loader2, Send, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface LineItem { desc: string; qty: number; unitPrice: number }
@@ -26,6 +27,7 @@ export function QuotesPanel() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [sendArmed, setSendArmed] = useState<string | null>(null);
   const [form, setForm] = useState({ customerId: '', title: '', taxRate: '8' });
   const [lines, setLines] = useState<LineItem[]>([{ desc: '', qty: 1, unitPrice: 0 }]);
 
@@ -122,7 +124,12 @@ export function QuotesPanel() {
                   <span className="text-sm text-white font-medium flex-1 truncate">{q.title}</span>
                   <span className={cn('text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded', STATUS_COLOUR[q.status])}>{q.status}</span>
                   <span className="font-mono text-sm tabular-nums text-violet-300">${q.total.toFixed(2)}</span>
-                  {q.status === 'draft' && <button onClick={() => action(q.id, 'send')} className="p-1 text-cyan-400 hover:text-cyan-300" title="Send"><Send className="w-3 h-3" /></button>}
+                  {q.status === 'draft' && (
+                    <button type="button" onClick={() => { if (sendArmed === q.id) { setSendArmed(null); void action(q.id, 'send'); } else setSendArmed(q.id); }} className="px-1.5 py-0.5 text-[10px] text-cyan-300" title="Send">
+                      {sendArmed === q.id ? `Send to ${customerName(q.customerId)}?` : <Send className="w-3 h-3" />}
+                    </button>
+                  )}
+                  {q.status !== 'accepted' && <StickyDeleteConfirm onConfirm={() => lensRun({ domain: 'trades', action: 'quotes-delete', input: { id: q.id } }).then(() => refresh())} armLabel="Delete" armAriaLabel="Delete quote" confirmLabel="Delete quote?" className="text-[10px] text-rose-300" />}
                   {q.status === 'sent' && (
                     <>
                       <button onClick={() => action(q.id, 'accept')} className="p-1 text-emerald-400 hover:text-emerald-300" title="Accept"><Check className="w-3 h-3" /></button>
