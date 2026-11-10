@@ -752,19 +752,19 @@ Records the user can create now have a delete that stays armed until Confirm nam
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-creator-002 | creator | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-landscaping-002 | landscaping | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-masonry-001 | masonry | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-masonry-015 | masonry | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-masonry-017 | masonry | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-pharmacy-009 | pharmacy | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-pharmacy-013 | pharmacy | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-plumbing-001 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-plumbing-010 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-plumbing-011 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-plumbing-012 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-plumbing-013 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-supplychain-001 | supplychain | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-creator-002 | creator | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-landscaping-002 | landscaping | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-masonry-001 | masonry | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-masonry-015 | masonry | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-masonry-017 | masonry | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-pharmacy-009 | pharmacy | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-pharmacy-013 | pharmacy | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-plumbing-001 | plumbing | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-plumbing-010 | plumbing | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-plumbing-011 | plumbing | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-plumbing-012 | plumbing | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-plumbing-013 | plumbing | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
+| FIX-supplychain-001 | supplychain | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
 
 Still open in this group: classroom, creative-writing, disputes, education, legal, mental-health, move-builder, paper, and questmarket deletes. FIX-foundry-007 and FIX-world-creator-013 stay design calls.
 
