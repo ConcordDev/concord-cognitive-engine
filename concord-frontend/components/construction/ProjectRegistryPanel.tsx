@@ -7,6 +7,7 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import {
   HardHat,
@@ -621,16 +622,9 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                       <Zap className="w-4 h-4 text-neon-cyan" />
                     </button>
                   )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(item.id);
-                    }}
-                    className={ds.btnGhost}
-                    aria-label="Delete"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                  </button>
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <StickyDeleteConfirm onConfirm={() => remove(item.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
+                  </span>
                 </div>
               </div>
             </motion.div>

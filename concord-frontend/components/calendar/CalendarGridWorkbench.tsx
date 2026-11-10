@@ -910,8 +910,17 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
   const handleCreateEvent = async (scope?: RecurrenceScope) => {
     setActivityNote(null);
-    if (!newEvent.title || !newEvent.startDate) {
-      if (!newEvent.startDate) setActivityNote('Set a start time before saving.');
+    const title = String(newEvent.title || '').trim();
+    if (!title) {
+      setActivityNote('A title is required. The event was not saved.');
+      return;
+    }
+    if (!newEvent.startDate) {
+      setActivityNote('Set a start time before saving.');
+      return;
+    }
+    if (newEvent.endDate && newEvent.endDate.getTime() < newEvent.startDate.getTime()) {
+      setActivityNote('The end has to be after the start. The event was not saved.');
       return;
     }
     const original = editingEventId ? editingOriginal : null;
@@ -924,7 +933,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
 
     const event: CalendarEvent = {
       id: editingEventId || `pending_${Date.now()}`,
-      title: newEvent.title,
+      title,
       description: newEvent.description,
       startDate: newEvent.startDate,
       endDate: newEvent.endDate || new Date(),
@@ -2336,6 +2345,9 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                 </button>
               </div>
 
+              {activityNote && (
+                <p className="mb-4 text-[13px] text-rose-300" role="alert">{activityNote}</p>
+              )}
               <div className="space-y-4">
                 {/* Event type selector */}
                 <div>

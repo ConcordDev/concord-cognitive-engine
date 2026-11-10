@@ -23,6 +23,7 @@ import {
   AlertCircle, CheckCircle2, Clock,
 } from 'lucide-react';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 type FieldTab =
   | 'rfi' | 'submittals' | 'dailylog' | 'punch'
@@ -180,9 +181,7 @@ function RfiTab() {
               {r.status === 'answered' && (
                 <button onClick={() => closeRfi(r.id)} className={ds.btnSecondary}>Close</button>
               )}
-              <button onClick={() => delRfi(r.id)} className={ds.btnGhost} aria-label="Delete">
-                <Trash2 className="w-4 h-4 text-red-400" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => delRfi(r.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
             </div>
           </div>
         </div>
@@ -324,9 +323,7 @@ function SubmittalsTab() {
               {s.status !== 'closed' && (
                 <button onClick={() => setReviewId(s.id)} className={ds.btnSecondary}>Review</button>
               )}
-              <button onClick={() => del(s.id)} className={ds.btnGhost} aria-label="Delete">
-                <Trash2 className="w-4 h-4 text-red-400" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => del(s.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
             </div>
           </div>
         </div>
@@ -415,18 +412,33 @@ function DailyLogTab() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
+  const [formError, setFormError] = useState('');
+  const resetLog = () => {
+    setF({ date: calendarDateKey(), weather: 'Clear', tempHigh: '', tempLow: '', conditions: '', workCompleted: '', delays: '', author: 'Superintendent' });
+    setManpower([{ trade: 'General', workers: '', hours: '8' }]);
+    setEquipment('');
+    setFormError('');
+  };
   const create = async () => {
-    if (!f.date) return;
-    await lensRun('construction', 'dailylog-create', {
+    if (!f.date) { setFormError('A date is required.'); return; }
+    if (f.tempHigh && f.tempLow && Number(f.tempHigh) < Number(f.tempLow)) {
+      setFormError('The high temperature has to be at least the low.');
+      return;
+    }
+    if (manpower.some((m) => (m.workers && !(Number(m.workers) >= 0)) || (m.hours && !(Number(m.hours) >= 0)))) {
+      setFormError('Workers and hours must be numbers that are 0 or greater.');
+      return;
+    }
+    setFormError('');
+    const r = await lensRun('construction', 'dailylog-create', {
       ...f,
       tempHigh: f.tempHigh ? Number(f.tempHigh) : null,
       tempLow: f.tempLow ? Number(f.tempLow) : null,
       manpower: manpower.filter((m) => m.workers).map((m) => ({ trade: m.trade, workers: Number(m.workers), hours: Number(m.hours) })),
       equipment: equipment.split(',').map((e) => e.trim()).filter(Boolean),
     });
-    setF({ date: calendarDateKey(), weather: 'Clear', tempHigh: '', tempLow: '', conditions: '', workCompleted: '', delays: '', author: 'Superintendent' });
-    setManpower([{ trade: 'General', workers: '', hours: '8' }]);
-    setEquipment('');
+    if (!r.data?.ok) { setFormError(r.data?.message || r.data?.error || 'That log was not saved.'); return; }
+    resetLog();
     setCreateOpen(false);
     load();
   };
@@ -472,16 +484,15 @@ function DailyLogTab() {
               {l.workCompleted && <p className="text-xs text-gray-400 mt-1">{l.workCompleted}</p>}
               {l.delays && <p className="text-xs text-red-400 mt-1">Delays: {l.delays}</p>}
             </div>
-            <button onClick={() => del(l.id)} className={ds.btnGhost} aria-label="Delete">
-              <Trash2 className="w-4 h-4 text-red-400" />
-            </button>
+            <StickyDeleteConfirm onConfirm={() => del(l.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
           </div>
         </div>
       ))}
 
       {createOpen && (
-        <Modal title="New Daily Log" onClose={() => setCreateOpen(false)}>
+        <Modal title="New Daily Log" onClose={() => { setCreateOpen(false); resetLog(); }}>
           <div className="space-y-3">
+            {formError && <p className="text-[12px] text-rose-300" role="alert">{formError}</p>}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Date">
                 <input type="date" className={ds.input} value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
@@ -557,8 +568,10 @@ function PunchTab() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
+  const [formError, setFormError] = useState('');
   const add = async () => {
-    if (!f.description.trim()) return;
+    if (!f.description.trim()) { setFormError('A description is required.'); return; }
+    setFormError('');
     await lensRun('construction', 'punch-add', { ...f });
     setF({ description: '', location: '', trade: 'General', assignee: '', priority: 'normal', dueDate: '', markup: '' });
     setCreateOpen(false);
@@ -609,17 +622,16 @@ function PunchTab() {
                   <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
                 ))}
               </select>
-              <button onClick={() => del(p.id)} className={ds.btnGhost} aria-label="Delete">
-                <Trash2 className="w-4 h-4 text-red-400" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => del(p.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
             </div>
           </div>
         </div>
       ))}
 
       {createOpen && (
-        <Modal title="Add Punch Item" onClose={() => setCreateOpen(false)}>
+        <Modal title="Add Punch Item" onClose={() => { setCreateOpen(false); setFormError(''); }}>
           <div className="space-y-3">
+            {formError && <p className="text-[12px] text-rose-300" role="alert">{formError}</p>}
             <Field label="Description">
               <textarea className={ds.textarea} rows={2} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} />
             </Field>
@@ -664,6 +676,7 @@ function ChangeOrdersTab() {
   const [summary, setSummary] = useState({ approvedValue: 0, pendingValue: 0, approvedCount: 0, pendingCount: 0 });
   const [createOpen, setCreateOpen] = useState(false);
   const [f, setF] = useState({ jobId: '', title: '', reason: '', description: '', amount: '', scheduleImpactDays: '' });
+  const [formError, setFormError] = useState('');
 
   const load = useCallback(async () => {
     const r = await lensRun('construction', 'changeorder-list', {});
@@ -679,10 +692,13 @@ function ChangeOrdersTab() {
   useEffect(() => { load(); }, []);
 
   const create = async () => {
-    if (!f.title.trim() || !f.amount) return;
-    await lensRun('construction', 'changeorder-create', {
+    if (!f.title.trim()) { setFormError('A title is required.'); return; }
+    if (!(Number(f.amount) >= 0)) { setFormError('Amount must be a number that is 0 or greater.'); return; }
+    setFormError('');
+    const r = await lensRun('construction', 'changeorder-create', {
       ...f, amount: Number(f.amount), scheduleImpactDays: f.scheduleImpactDays ? Number(f.scheduleImpactDays) : 0,
     });
+    if (!r.data?.ok) { setFormError(r.data?.message || r.data?.error || 'That change order was not saved.'); return; }
     setF({ jobId: '', title: '', reason: '', description: '', amount: '', scheduleImpactDays: '' });
     setCreateOpen(false);
     load();
@@ -739,17 +755,16 @@ function ChangeOrdersTab() {
                   </button>
                 </div>
               )}
-              <button onClick={() => del(c.id)} className={ds.btnGhost} aria-label="Delete">
-                <Trash2 className="w-4 h-4 text-red-400" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => del(c.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
             </div>
           </div>
         </div>
       ))}
 
       {createOpen && (
-        <Modal title="New Change Order" onClose={() => setCreateOpen(false)}>
+        <Modal title="New Change Order" onClose={() => { setCreateOpen(false); setFormError(''); }}>
           <div className="space-y-3">
+            {formError && <p className="text-[12px] text-rose-300" role="alert">{formError}</p>}
             <Field label="Title">
               <input className={ds.input} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
             </Field>
@@ -773,7 +788,7 @@ function ChangeOrdersTab() {
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <button onClick={() => setCreateOpen(false)} className={ds.btnSecondary}>Cancel</button>
-            <button onClick={create} className={ds.btnPrimary} disabled={!f.title.trim() || !f.amount}>Create</button>
+            <button onClick={create} className={ds.btnPrimary}>Create</button>
           </div>
         </Modal>
       )}
@@ -961,9 +976,7 @@ function DrawingsTab() {
                 {d.discipline} · rev {d.currentRevision} · {d.markups?.length || 0} markups
               </p>
             </div>
-            <button onClick={(e) => { e.stopPropagation(); del(d.id); }} className={ds.btnGhost} aria-label="Delete">
-              <Trash2 className="w-4 h-4 text-red-400" />
-            </button>
+            <span onClick={(e) => e.stopPropagation()}><StickyDeleteConfirm onConfirm={() => del(d.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} /></span>
           </div>
         </div>
       ))}
@@ -1008,6 +1021,7 @@ function BudgetTab() {
   const [totals, setTotals] = useState({ totalBudget: 0, totalCommitted: 0, totalActual: 0, forecastAtCompletion: 0, variance: 0, status: '' });
   const [createOpen, setCreateOpen] = useState(false);
   const [f, setF] = useState({ costCode: '', description: '', category: 'General', budgetAmount: '', committed: '', actual: '' });
+  const [formError, setFormError] = useState('');
 
   const load = useCallback(async () => {
     const r = await lensRun('construction', 'budget-list', {});
@@ -1024,11 +1038,18 @@ function BudgetTab() {
   useEffect(() => { load(); }, []);
 
   const add = async () => {
-    if (!f.costCode.trim() || !f.description.trim() || !f.budgetAmount) return;
-    await lensRun('construction', 'budget-add', {
+    if (!f.costCode.trim() || !f.description.trim()) { setFormError('A cost code and a description are required.'); return; }
+    const money = [f.budgetAmount, f.committed, f.actual].filter((v) => v.trim());
+    if (!f.budgetAmount.trim() || money.some((v) => !(Number(v) >= 0))) {
+      setFormError('Budget, committed, and actual must be numbers that are 0 or greater.');
+      return;
+    }
+    setFormError('');
+    const r = await lensRun('construction', 'budget-add', {
       ...f, budgetAmount: Number(f.budgetAmount),
       committed: f.committed ? Number(f.committed) : 0, actual: f.actual ? Number(f.actual) : 0,
     });
+    if (!r.data?.ok) { setFormError(r.data?.message || r.data?.error || 'That cost line was not saved.'); return; }
     setF({ costCode: '', description: '', category: 'General', budgetAmount: '', committed: '', actual: '' });
     setCreateOpen(false);
     load();
@@ -1110,17 +1131,16 @@ function BudgetTab() {
                   </Field>
                 </div>
               </div>
-              <button onClick={() => del(l.id)} className={ds.btnGhost} aria-label="Delete">
-                <Trash2 className="w-4 h-4 text-red-400" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => del(l.id)} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} className={ds.btnGhost} />
             </div>
           </div>
         );
       })}
 
       {createOpen && (
-        <Modal title="Add Cost Line" onClose={() => setCreateOpen(false)}>
+        <Modal title="Add Cost Line" onClose={() => { setCreateOpen(false); setFormError(''); }}>
           <div className="space-y-3">
+            {formError && <p className="text-[12px] text-rose-300" role="alert">{formError}</p>}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Cost Code">
                 <input className={ds.input} placeholder="03-300" value={f.costCode} onChange={(e) => setF({ ...f, costCode: e.target.value })} />
@@ -1146,7 +1166,7 @@ function BudgetTab() {
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <button onClick={() => setCreateOpen(false)} className={ds.btnSecondary}>Cancel</button>
-            <button onClick={add} className={ds.btnPrimary} disabled={!f.costCode.trim() || !f.description.trim() || !f.budgetAmount}>Add</button>
+            <button onClick={add} className={ds.btnPrimary}>Add</button>
           </div>
         </Modal>
       )}

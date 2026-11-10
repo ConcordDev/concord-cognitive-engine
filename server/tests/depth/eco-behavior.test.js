@@ -134,17 +134,23 @@ describe("eco — environmental calc contracts (exact computed values)", () => {
     assert.equal(r.result.maturityLevel, "Developing");    // 64.62 >= 65? no → 50..65 Developing
   });
 
-  it("sustainabilityScore: low scores surface gaps + recommendations + clamps values", async () => {
-    // a single 120 value clamps to 100; a 10 value triggers a gap + recommendation.
-    const r = await lensRun("eco", "sustainabilityScore", {
+  it("sustainabilityScore: a score above 100 is refused; a low score still surfaces a gap", async () => {
+    const refused = await lensRun("eco", "sustainabilityScore", {
       data: {
         indicators: {
           environmental: { emissions: 120, energyEfficiency: 10 },
         },
       },
     });
-    const emissions = r.result.pillars.environmental.subIndicators.find((s) => s.indicator === "emissions");
-    assert.equal(emissions.score, 100);                    // 120 clamped
+    assert.equal(refused.ok, false);
+    assert.match(refused.message, /0 to 100/);
+    const r = await lensRun("eco", "sustainabilityScore", {
+      data: {
+        indicators: {
+          environmental: { energyEfficiency: 10 },
+        },
+      },
+    });
     const gap = r.result.pillars.environmental.gaps.find((g) => g.indicator === "energyEfficiency");
     assert.equal(gap.score, 10);
     assert.equal(gap.improvementPotential, 90);            // 100 − 10

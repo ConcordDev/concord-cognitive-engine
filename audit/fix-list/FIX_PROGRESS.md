@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 420 | 525 | 0 |
+| medium | 430 | 515 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **841** | **1307** | **3** |
+| **total** | **851** | **1297** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1291,6 +1291,23 @@ A past goal date counts as overdue, and a new goal cannot be saved on a past dat
 | FIX-logistics-013 | logistics | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
 | FIX-mining-002 | mining | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
 | FIX-plumbing-016 | plumbing | medium | FIXED_PENDING_VERIFY | 8b56e4a0e |
+
+## Mediums — personas, eco, calendar, construction
+
+A persona tagline, personality, greeting, or tag that is out of range is refused. A saved place needs a real coordinate and a label of at most 80 characters, and deleting it or a footprint snapshot asks first. An ESG score outside 0 to 100 is not counted. A calendar event with no title or an end before its start stays in the form. Construction deletes ask first. A negative amount, budget, or crew count, an empty punch item, and a cancelled daily-log draft are not saved.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-personas-001 | personas | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-personas-002 | personas | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-eco-001 | eco | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-eco-002 | eco | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-eco-003 | eco | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-eco-006 | eco | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-calendar-006 | calendar | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-construction-001 | construction | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-construction-002 | construction | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-construction-003 | construction | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

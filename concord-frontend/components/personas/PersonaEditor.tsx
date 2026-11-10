@@ -67,6 +67,15 @@ export function PersonaEditor({
 
   const save = async () => {
     if (!name.trim()) { setErr('Name is required.'); return; }
+    if (tagline.trim().length > 140) { setErr('Tagline must be at most 140 characters.'); return; }
+    if (personality.trim().length > 2000) { setErr('Personality must be at most 2000 characters.'); return; }
+    if (greeting.trim().length > 600) { setErr('Greeting must be at most 600 characters.'); return; }
+    const tagList = tags.split(',').map((t) => t.trim()).filter(Boolean);
+    if (tagList.length > 8) { setErr('Use at most 8 tags.'); return; }
+    if (tagList.some((t) => { const cleaned = t.toLowerCase().replace(/[^a-z0-9 -]/g, ''); return cleaned.length < 2 || cleaned.length > 24; })) {
+      setErr('Each tag must be 2 to 24 letters, numbers, or spaces.');
+      return;
+    }
     setBusy(true);
     setErr(null);
     const exampleDialogue = dialogue.filter((d) => d.prompt.trim() && d.response.trim());

@@ -70,6 +70,32 @@ function generatePortrait(seed) {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+const PERSONA_LIMITS = { tagline: 140, personality: 2000, greeting: 600 };
+
+function lengthProblem(params) {
+  for (const [field, max] of Object.entries(PERSONA_LIMITS)) {
+    if (params[field] == null) continue;
+    if (String(params[field]).trim().length > max) {
+      return { ok: false, error: "invalid_input", field, message: `${field} must be at most ${max} characters.` };
+    }
+  }
+  return null;
+}
+
+function tagProblem(raw) {
+  if (raw == null || raw === "") return null;
+  const list = Array.isArray(raw) ? raw : String(raw).split(",");
+  const tags = list.flatMap((t) => String(t || "").split(",")).map((t) => t.trim()).filter(Boolean);
+  if (tags.length > 8) return "Use at most 8 tags.";
+  for (const tag of tags) {
+    const cleaned = tag.toLowerCase().replace(/[^a-z0-9 -]/g, "");
+    if (cleaned.length < 2 || cleaned.length > 24) {
+      return "Each tag must be 2 to 24 letters, numbers, or spaces.";
+    }
+  }
+  return null;
+}
+
 function normTags(raw) {
   if (!Array.isArray(raw)) {
     if (typeof raw === "string" && raw.trim()) {
@@ -204,6 +230,10 @@ export default function registerPersonasActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const name = String(params.name || "").trim();
       if (!name) return { ok: false, error: "name_required" };
+      const long = lengthProblem(params);
+      if (long) return long;
+      const tagsBad = tagProblem(params.tags);
+      if (tagsBad) return { ok: false, error: "invalid_input", field: "tags", message: tagsBad };
       let owned = 0;
       for (const existing of store().personas.values()) {
         if (existing.authorUserId === userId) owned += 1;
@@ -215,10 +245,10 @@ export default function registerPersonasActions(registerLensAction) {
         id,
         authorUserId: userId,
         name,
-        tagline: String(params.tagline || "").trim().slice(0, 140),
-        personality: String(params.personality || "").trim().slice(0, 2000),
+        tagline: String(params.tagline || "").trim(),
+        personality: String(params.personality || "").trim(),
         voice: String(params.voice || "warm").trim().toLowerCase().slice(0, 24),
-        greeting: String(params.greeting || `Hello, I'm ${name}.`).trim().slice(0, 600),
+        greeting: String(params.greeting || `Hello, I'm ${name}.`).trim(),
         category: String(params.category || "original").trim().toLowerCase().slice(0, 32),
         tags: normTags(params.tags),
         exampleDialogue: Array.isArray(params.exampleDialogue)
@@ -256,6 +286,12 @@ export default function registerPersonasActions(registerLensAction) {
       const p = store().personas.get(String(params.personaId || ""));
       if (!p) return { ok: false, error: "persona_not_found" };
       if (p.authorUserId !== userId) return { ok: false, error: "not_author" };
+      const long = lengthProblem(params);
+      if (long) return long;
+      if (params.tags !== undefined) {
+        const tagsBad = tagProblem(params.tags);
+        if (tagsBad) return { ok: false, error: "invalid_input", field: "tags", message: tagsBad };
+      }
       // Every edit mints a version: snapshot the current state first, in
       // the same shape revise keeps, so the ordinary save path holds a
       // history too — not only published edits with a changelog.
@@ -546,6 +582,12 @@ export default function registerPersonasActions(registerLensAction) {
       const p = store().personas.get(String(params.personaId || ""));
       if (!p) return { ok: false, error: "persona_not_found" };
       if (p.authorUserId !== userId) return { ok: false, error: "not_author" };
+      const long = lengthProblem(params);
+      if (long) return long;
+      if (params.tags !== undefined) {
+        const tagsBad = tagProblem(params.tags);
+        if (tagsBad) return { ok: false, error: "invalid_input", field: "tags", message: tagsBad };
+      }
       // Snapshot the current state into version history.
       p.history.push({
         version: p.version,

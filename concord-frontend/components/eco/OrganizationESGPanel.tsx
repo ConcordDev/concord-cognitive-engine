@@ -102,7 +102,11 @@ export function OrganizationESGPanel() {
       const raw = values[def.key];
       if (raw === undefined || raw === '') continue;
       const n = Number(raw);
-      if (Number.isFinite(n)) indicators[def.pillar][def.key] = n;
+      if (!Number.isFinite(n) || n < 0 || n > 100) {
+        setError(`${def.label} must be a number from 0 to 100.`);
+        return;
+      }
+      indicators[def.pillar][def.key] = n;
     }
     setComputing(true);
     setError(null);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LineChart, Loader2, Plus, Trash2, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz/ChartKit';
 
 interface FootprintEntry {
@@ -222,13 +223,12 @@ export function FootprintTrend() {
                         {e.totalKgCO2e} kg
                       </div>
                     </div>
-                    <button
-                      onClick={() => remove(e.id)}
+                    <StickyDeleteConfirm
+                      onConfirm={() => remove(e.id)}
+                      armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                      armAriaLabel="Delete snapshot"
                       className="p-1 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400"
-                      aria-label="Delete snapshot"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    />
                   </div>
                 ))}
             </div>

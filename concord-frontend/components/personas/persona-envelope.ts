@@ -41,7 +41,7 @@ export function readEnvelope<T = any>(
   // explicit `ok:false` as failure.
   const innerOk = inner && typeof inner === 'object' && 'ok' in inner ? inner.ok !== false : true;
   const ok = transportOk && innerOk;
-  const error = ok ? null : (inner?.error || inner?.reason || d?.error || 'request_failed');
+  const error = ok ? null : (inner?.message || inner?.error || inner?.reason || d?.error || 'request_failed');
   return { ok, error, data: (inner ?? null) as T | null };
 }
 
