@@ -13650,6 +13650,7 @@ function saveStateSync() {
     }
   }
 }
+globalThis._concordSaveStateSync = saveStateSync;
 
 /**
  * Critical state save — for operations that must not sit in the coalescing

@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 517 | 428 | 0 |
+| medium | 526 | 419 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **943** | **1205** | **3** |
+| **total** | **952** | **1196** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1498,6 +1498,22 @@ A booth take shows elapsed time against its duration while it plays, and Best to
 | FIX-voice-007 | voice | medium | FIXED_PENDING_VERIFY | 5f94ffe27 |
 | FIX-voice-008 | voice | medium | FIXED_PENDING_VERIFY | 5f94ffe27 |
 | FIX-education-004 | education | medium | FIXED_PENDING_VERIFY | 5f94ffe27 |
+
+## Mediums — a world name, a draft, and a persona
+
+A world name over 64 characters is refused, and the field shows the count. Typing the name or the description is not replaced by a refresh, so the caret stays and the start of the description is what gets saved. Deleting a draft stays armed until confirm, then the delete is written before the response returns. Entering a playtested world uses the minted world id, and the world page opens on that id. Persona tabs wrap, so Create and NPC Packaging stay on the screen. Marketplace search and sort have names. A persona you authored has Save as DTU. A packaged NPC's id and DTU id can be copied into the package and install fields.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-world-creator-001 | world-creator | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-world-creator-002 | world-creator | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-world-creator-003 | world-creator | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-world-creator-004 | world-creator | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-world-creator-014 | world-creator | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-personas-008 | personas | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-personas-010 | personas | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-personas-014 | personas | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-personas-015 | personas | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

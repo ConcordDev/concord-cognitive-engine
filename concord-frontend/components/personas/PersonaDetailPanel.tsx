@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { ChartKit } from '@/components/viz';
 import { PersonaChat } from './PersonaChat';
 import { runPersona } from './persona-envelope';
+import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import type { PersonaDetail } from './PersonaEditor';
 
 interface Review { userId: string; stars: number; review: string; at: number }
@@ -197,6 +198,13 @@ export function PersonaDetailPanel({
               type="button" onClick={() => onEdit(persona)}
               className="text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
             >Edit</button>
+            <SaveAsDtuButton
+              apiSource="persona"
+              title={`${persona.name} — persona`}
+              content={[persona.tagline, persona.personality, persona.greeting].filter(Boolean).join('\n\n')}
+              extraTags={['personas', persona.category].filter(Boolean)}
+              rawData={{ id: persona.id, name: persona.name, tagline: persona.tagline, personality: persona.personality, greeting: persona.greeting, voice: persona.voice }}
+            />
             <button
               type="button" onClick={togglePublish}
               className="text-xs px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-emerald-100"

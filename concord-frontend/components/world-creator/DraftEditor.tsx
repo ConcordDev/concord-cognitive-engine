@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { SceneCanvas, type SceneTool } from './SceneCanvas';
 import { BiomePreview } from './BiomePreview';
 
@@ -60,11 +61,22 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
   // form (name/backstory/level) instead of committing immediately — mirrors
   // the FactionPanel's inline-form pattern rather than a browser prompt().
   const [pendingNpc, setPendingNpc] = useState<{ x: number; z: number } | null>(null);
+  const nameDirty = useRef(false);
+  const descDirty = useRef(false);
 
   const refresh = useCallback(async () => {
     const r = await lensRun<{ draft: Draft }>('world-creator', 'draft-get', { id: draftId });
-    if (r.data?.ok && r.data.result?.draft) setDraft(r.data.result.draft);
-    else setErr(r.data?.error || 'draft not found');
+    if (r.data?.ok && r.data.result?.draft) {
+      const next = r.data.result.draft;
+      setDraft((prev) => {
+        if (!prev) return next;
+        return {
+          ...next,
+          name: nameDirty.current ? prev.name : next.name,
+          description: descDirty.current ? prev.description : next.description,
+        };
+      });
+    } else setErr(r.data?.error || 'draft not found');
   }, [draftId]);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -372,17 +384,37 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
       {tab === 'rules' && (
         <div className="max-w-xl space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-stone-300">World name</label>
-            <input value={draft.name}
-              onChange={e => setDraft({ ...draft, name: e.target.value })}
-              onBlur={e => run('draft-update', { id: draftId, name: e.target.value })}
+            <label className="text-sm font-medium text-stone-300" htmlFor="world-draft-name">World name</label>
+            <input id="world-draft-name" name="name" value={draft.name} maxLength={64}
+              onFocus={() => { nameDirty.current = true; }}
+              onChange={e => {
+                nameDirty.current = true;
+                const v = e.target.value;
+                setDraft(d => d ? { ...d, name: v } : d);
+              }}
+              onBlur={e => {
+                nameDirty.current = false;
+                const v = e.target.value;
+                if (v.trim().length > 64) { setErr('A world name is 64 characters or fewer.'); return; }
+                if (v.trim().length < 3) { setErr('A world name needs at least 3 characters.'); return; }
+                void run('draft-update', { id: draftId, name: v });
+              }}
               className="w-full rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100" />
+            <p className="text-[11px] text-stone-500">{draft.name.length}/64</p>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-stone-300">Description</label>
-            <textarea value={draft.description} rows={2}
-              onChange={e => setDraft({ ...draft, description: e.target.value })}
-              onBlur={e => run('draft-update', { id: draftId, description: e.target.value })}
+            <label className="text-sm font-medium text-stone-300" htmlFor="world-draft-description">Description</label>
+            <textarea id="world-draft-description" name="description" value={draft.description} rows={2}
+              onFocus={() => { descDirty.current = true; }}
+              onChange={e => {
+                descDirty.current = true;
+                const v = e.target.value;
+                setDraft(d => d ? { ...d, description: v } : d);
+              }}
+              onBlur={e => {
+                descDirty.current = false;
+                void run('draft-update', { id: draftId, description: e.target.value });
+              }}
               className="w-full rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100" />
           </div>
           <fieldset className="space-y-3">
@@ -454,16 +486,16 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
             ) : <p className="text-xs text-stone-500">Run a check to see issues before publishing.</p>}
           </div>
 
-          <button
-            onClick={async () => {
-              if (!window.confirm('Delete this draft? This cannot be undone.')) return;
+          <StickyDeleteConfirm
+            armLabel="Delete draft"
+            confirmLabel="Delete this draft?"
+            className="rounded border border-red-800 bg-red-950/30 px-3 py-2 text-sm text-red-300 hover:bg-red-950/60"
+            onConfirm={async () => {
               const r = await lensRun('world-creator', 'draft-delete', { id: draftId });
               if (r.data?.ok) onClose();
-              else setErr(r.data?.error || 'delete failed');
+              else setErr(r.data?.message || r.data?.error || 'delete failed');
             }}
-            className="rounded border border-red-800 bg-red-950/30 px-3 py-2 text-sm text-red-300 hover:bg-red-950/60">
-            Delete draft
-          </button>
+          />
         </div>
       )}
     </div>

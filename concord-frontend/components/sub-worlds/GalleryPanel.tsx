@@ -87,21 +87,24 @@ export function GalleryPanel({ mode }: { mode: GalleryMode }) {
   }, [refresh]);
 
   const visit = async (w: SubWorld) => {
-    const r = await lensRun('sub_worlds', 'visit', { worldId: w.world_id });
+    const bridged = w as SubWorld & { enterId?: string | null; enterable?: boolean; enterNote?: string | null };
+    if (bridged.enterable === false) {
+      flash(bridged.enterNote || 'This world cannot be entered yet.');
+      return;
+    }
+    // A playtested draft's card key is the draft id. The world page loads
+    // the minted id. Visit that id, which is the one the direct URL uses.
+    const destId = bridged.enterId || w.world_id;
+    const r = await lensRun('sub_worlds', 'visit', { worldId: destId });
     if (!r.data?.ok) {
       flash(`Cannot enter: ${r.data?.error || 'unknown'}`);
       return;
     }
     await refresh();
-    // B15: bridged rows (world-creator drafts · worlds-table worlds)
-    // travel by their enterId — the worlds-table id the travel system
-    // resolves — never by the discovery row's own key. Store rows
-    // carry enterId === world_id, so their path is unchanged.
-    const destId = (w as any).enterId || w.world_id;
     setTravelingWorldId(w.world_id);
     try {
       await travelHook.travel(destId);
-      router.push('/lenses/world');
+      router.push(`/lenses/world?worldId=${encodeURIComponent(destId)}`);
     } catch (e: any) {
       flash(`Could not enter "${w.name}": ${e?.message || 'travel failed'}.`);
     } finally {

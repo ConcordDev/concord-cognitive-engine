@@ -287,8 +287,14 @@ export default function registerWorldCreatorActions(registerLensAction) {
       const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const draft = findDraft(s, aid(ctx), clean(params.id, 80));
       if (!draft) return { ok: false, error: "draft not found" };
-      if (params.name != null) { const n = clean(params.name, 64); if (n.length >= 3) draft.name = n; }
-      if (params.description != null) draft.description = clean(params.description, 500);
+      if (params.name != null) {
+        const rawName = String(params.name);
+        if (rawName.trim().length > 64) return { ok: false, error: "invalid_input", message: "A world name is 64 characters or fewer." };
+        const n = rawName.trim();
+        if (n.length < 3) return { ok: false, error: "world name must be ≥ 3 characters" };
+        draft.name = n;
+      }
+      if (params.description != null) draft.description = String(params.description).slice(0, 500);
       if (params.universeType != null) draft.universeType = clean(params.universeType, 40);
       if (params.biome != null && BIOMES[clean(params.biome, 40)]) draft.biome = clean(params.biome, 40);
       if (params.rules != null) draft.rules = clampRules({ ...draft.rules, ...params.rules });
@@ -314,6 +320,9 @@ export default function registerWorldCreatorActions(registerLensAction) {
       if (i < 0) return { ok: false, error: "draft not found" };
       const [removed] = arr.splice(i, 1);
       save();
+      if (typeof globalThis._concordSaveStateSync === "function") {
+        try { globalThis._concordSaveStateSync(); } catch (_e) { /* the debounced save still runs */ }
+      }
       return { ok: true, result: { deleted: removed.id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
