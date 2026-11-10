@@ -76,6 +76,15 @@ function badCc(v) {
   return !Number.isFinite(n) || n < 0 || n > MAX_CC;
 }
 
+function sharePctValue(v) {
+  if (v === undefined || v === null || v === "") return { sharePct: 0 };
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0 || n > 100) {
+    return { error: "Share must be a number from 0 to 100." };
+  }
+  return { sharePct: n };
+}
+
 function actorId(ctx) {
   return ctx?.actor?.userId || ctx?.userId || null;
 }
@@ -126,7 +135,9 @@ export default function registerInheritanceActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const name = String(params.name || "").trim();
       if (!name) return { ok: false, error: "missing_name" };
-      const sharePct = Math.max(0, Math.min(100, Number(params.sharePct) || 0));
+      const share = sharePctValue(params.sharePct);
+      if (share.error) return { ok: false, error: "invalid_input", field: "sharePct", message: share.error };
+      const sharePct = share.sharePct;
       const e = getEstate(userId);
       const ben = {
         id: uid("ben"),
@@ -153,7 +164,11 @@ export default function registerInheritanceActions(registerLensAction) {
       if (!ben) return { ok: false, error: "beneficiary_not_found" };
       if (params.name !== undefined) ben.name = String(params.name).trim() || ben.name;
       if (params.relationship !== undefined) ben.relationship = String(params.relationship).trim();
-      if (params.sharePct !== undefined) ben.sharePct = Math.max(0, Math.min(100, Number(params.sharePct) || 0));
+      if (params.sharePct !== undefined) {
+        const share = sharePctValue(params.sharePct);
+        if (share.error) return { ok: false, error: "invalid_input", field: "sharePct", message: share.error };
+        ben.sharePct = share.sharePct;
+      }
       if (params.contingent !== undefined) ben.contingent = !!params.contingent;
       if (params.contingentOn !== undefined) ben.contingentOn = params.contingentOn ? String(params.contingentOn).trim() : null;
       e.updatedAt = Date.now();

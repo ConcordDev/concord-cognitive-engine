@@ -356,11 +356,12 @@ export function FieldServiceConsole() {
 
   const addPriceItem = () => guarded(async () => {
     if (!piName.trim()) { setErr('Item name required'); return; }
-    const r = await run('priceItemAdd', {
-      name: piName, kind: piKind, cost: Number(piCost) || 0,
+    if (piCost.trim() && !(Number(piCost) >= 0)) { setErr('Cost must be a number that is 0 or greater.'); return; }
+    const { data } = await lensRun('plumbing', 'priceItemAdd', {
+      name: piName, kind: piKind, cost: piCost.trim() ? Number(piCost) : 0,
       markupPct: Number(piMarkup) || 0, sku: piSku,
     });
-    if (!r) { setErr('priceItemAdd failed'); return; }
+    if (!data?.ok) { setErr(data?.message || 'Could not add that price.'); return; }
     setPiName(''); setPiCost(''); setPiSku('');
     await refreshPriceBook();
   });

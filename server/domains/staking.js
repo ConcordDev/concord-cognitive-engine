@@ -170,11 +170,11 @@ export default function registerStakingActions(registerLensAction) {
   registerLensAction("staking", "estimate_rewards", (ctx, artifact, params = {}) => {
     try {
       const bad = badNumericField(params, ["principalCc", "months"]);
-      if (bad) return { ok: false, error: `invalid_${bad}` };
+      if (bad) return { ok: false, error: `invalid_${bad}`, message: `${bad === "principalCc" ? "Principal" : "Months"} must be a finite number from 0 to 1,000,000,000.` };
       const poolId = String(params.poolId || "core");
       const pool = poolById(poolId);
       if (!pool) return { ok: false, error: "unknown_pool" };
-      const principal = Math.max(0, Math.floor(Number(params.principalCc) || 0));
+      const principal = Math.floor(Number(params.principalCc) || 0);
       const months = Math.max(1, Math.min(60, Math.floor(Number(params.months) || 12)));
       if (principal < pool.minStake) return { ok: false, error: `min_stake_${pool.minStake}_cc` };
       const bps = aprBpsFor(pool, months);
@@ -216,7 +216,7 @@ export default function registerStakingActions(registerLensAction) {
       const userId = ctx?.actor?.userId || ctx?.userId;
       if (!userId) return { ok: false, error: "no_actor" };
       const bad = badNumericField(params, ["principalCc", "months"]);
-      if (bad) return { ok: false, error: `invalid_${bad}` };
+      if (bad) return { ok: false, error: `invalid_${bad}`, message: `${bad === "principalCc" ? "Principal" : "Months"} must be a finite number from 0 to 1,000,000,000.` };
       const poolId = String(params.poolId || "core");
       const pool = poolById(poolId);
       if (!pool) return { ok: false, error: "unknown_pool" };

@@ -395,6 +395,18 @@ export default function registerHRActions(registerLensAction) {
   const hrAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const hrListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const hrNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const hrSalary = (v) => {
+    if (v == null || String(v).trim() === "") return { salary: 0 };
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0 || n > 1e12) return { error: "Salary must be a number from 0 to 1,000,000,000,000." };
+    return { salary: n };
+  };
+  const hrEmail = (v) => {
+    if (v == null || String(v).trim() === "") return { email: null };
+    const s = hrClean(v, 160);
+    if (!/^[^\s@]+@[^\s@]+$/.test(s)) return { error: "Email needs a name and a domain, like ada@example.com." };
+    return { email: s };
+  };
   const hrClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const hrDay = (v) => hrClean(v, 10).slice(0, 10);
   const findEmployee = (s, userId, id) => (s.employees.get(userId) || []).find((e) => e.id === id) || null;
@@ -407,14 +419,18 @@ export default function registerHRActions(registerLensAction) {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = hrClean(params.name, 120);
     if (!name) return { ok: false, error: "employee name required" };
+    const pay = hrSalary(params.salary);
+    if (pay.error) return { ok: false, error: "invalid_input", field: "salary", message: pay.error };
+    const mail = hrEmail(params.email);
+    if (mail.error) return { ok: false, error: "invalid_input", field: "email", message: mail.error };
     const emp = {
       id: hrId("emp"), name,
       title: hrClean(params.title, 120) || null,
       department: hrClean(params.department, 80) || "General",
       managerId: params.managerId ? String(params.managerId) : null,
-      email: hrClean(params.email, 160) || null,
+      email: mail.email,
       hireDate: hrDay(params.hireDate) || hrDay(hrNow()),
-      salary: Math.max(0, hrNum(params.salary)),
+      salary: pay.salary,
       employmentType: ["full_time", "part_time", "contract", "intern"].includes(String(params.employmentType).toLowerCase())
         ? String(params.employmentType).toLowerCase() : "full_time",
       status: "active",
@@ -442,8 +458,16 @@ export default function registerHRActions(registerLensAction) {
     if (params.title != null) emp.title = hrClean(params.title, 120) || null;
     if (params.department != null) emp.department = hrClean(params.department, 80) || emp.department;
     if (params.managerId != null) emp.managerId = params.managerId ? String(params.managerId) : null;
-    if (params.email != null) emp.email = hrClean(params.email, 160) || null;
-    if (params.salary != null) emp.salary = Math.max(0, hrNum(params.salary));
+    if (params.email != null) {
+      const mail = hrEmail(params.email);
+      if (mail.error) return { ok: false, error: "invalid_input", field: "email", message: mail.error };
+      emp.email = mail.email;
+    }
+    if (params.salary != null) {
+      const pay = hrSalary(params.salary);
+      if (pay.error) return { ok: false, error: "invalid_input", field: "salary", message: pay.error };
+      emp.salary = pay.salary;
+    }
     saveHrState();
     return { ok: true, result: { employee: emp } };
   });

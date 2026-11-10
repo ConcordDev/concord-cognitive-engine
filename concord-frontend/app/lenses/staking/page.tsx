@@ -52,8 +52,10 @@ export default function StakingPage() {
   );
 
   const [poolId, setPoolId] = useState('core');
-  const [principalCc, setPrincipalCc] = useState(100);
-  const [months, setMonths] = useState(6);
+  const [principalText, setPrincipalText] = useState('100');
+  const [monthsText, setMonthsText] = useState('6');
+  const principalCc = Number(principalText);
+  const months = Number(monthsText);
   const [autoCompound, setAutoCompound] = useState(false);
   const [liquidReceipt, setLiquidReceipt] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -61,7 +63,14 @@ export default function StakingPage() {
 
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
 
+  const stakeProblem = () => {
+    if (!Number.isFinite(principalCc) || principalCc < 10 || principalCc > 1e9) return 'Principal must be a number from 10 to 1,000,000,000 CC.';
+    if (!Number.isInteger(months) || months < 1 || months > 60) return 'Lock must be a whole number of months from 1 to 60.';
+    return null;
+  };
+
   const openStake = async () => {
+    if (stakeProblem()) return;
     setStatus('Locking…');
     const r = await lensRun('staking', 'open_stake', {
       poolId,
@@ -79,8 +88,7 @@ export default function StakingPage() {
       );
       bumpRefresh();
     } else {
-      const code = String(r.data?.error || 'unknown').replace(/_/g, ' ');
-      setStatus(`Failed: ${code}`);
+      setStatus(r.data?.message || 'That stake was not opened.');
     }
     window.setTimeout(() => setStatus(null), 5000);
   };
@@ -122,8 +130,8 @@ export default function StakingPage() {
                       id="stk-principal"
                       type="number"
                       min={10}
-                      value={principalCc}
-                      onChange={(e) => setPrincipalCc(Math.max(10, Number(e.target.value) || 10))}
+                      value={principalText}
+                      onChange={(e) => setPrincipalText(e.target.value)}
                       className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
                     />
                   </div>
@@ -134,8 +142,8 @@ export default function StakingPage() {
                       type="number"
                       min={1}
                       max={60}
-                      value={months}
-                      onChange={(e) => setMonths(Math.max(1, Math.min(60, Number(e.target.value) || 1)))}
+                      value={monthsText}
+                      onChange={(e) => setMonthsText(e.target.value)}
                       className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
                     />
                   </div>
@@ -155,14 +163,17 @@ export default function StakingPage() {
                   onClick={openStake}
                   className="w-full rounded-lg bg-amber-700 py-2 text-sm text-white hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
-                  Lock {principalCc} CC
+                  Lock {principalText || '…'} CC
                 </button>
+                {stakeProblem() && <p role="alert" className="text-xs text-amber-200">{stakeProblem()}</p>}
               </section>
 
               <div className="space-y-5">
                 <section className="space-y-2 rounded-2xl border border-white/10 bg-[#111] p-4">
                   <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-300">Estimated rewards</h2>
-                  <RewardsEstimator poolId={poolId} principalCc={principalCc} months={months} />
+                  {stakeProblem() == null
+                    ? <RewardsEstimator poolId={poolId} principalCc={principalCc} months={months} />
+                    : <p className="text-xs text-zinc-400">Enter a principal of at least 10 CC and a lock of 1 to 60 months to estimate rewards.</p>}
                 </section>
                 <section className="space-y-2 rounded-2xl border border-white/10 bg-[#111] p-4">
                   <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-300">APR history — {poolId} pool</h2>

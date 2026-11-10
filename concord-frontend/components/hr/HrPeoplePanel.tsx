@@ -81,11 +81,15 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
 
   const addEmp = async () => {
     if (!form.name.trim()) { setError('Employee name is required.'); return; }
+    if (form.salary.trim()) {
+      const salary = Number(form.salary);
+      if (!Number.isFinite(salary) || salary < 0) { setError('Salary must be a number from 0 up.'); return; }
+    }
     const r = await lensRun('hr', 'employee-add', {
       name: form.name.trim(), title: form.title.trim(), department: form.department.trim() || 'General',
-      managerId: form.managerId || undefined, salary: Number(form.salary) || 0,
+      managerId: form.managerId || undefined, salary: form.salary.trim() ? Number(form.salary) : 0,
     });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    if (r.data?.ok === false) { setError(r.data?.message || r.data?.error || 'Failed'); return; }
     setForm({ name: '', title: '', department: '', managerId: '', salary: '' });
     setShowAdd(false); setError(null);
     await refresh(); onChange();
@@ -114,15 +118,23 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
     setEditing(true);
   };
   const saveEdit = async (emp: Employee) => {
+    if (editForm.salary.trim()) {
+      const salary = Number(editForm.salary);
+      if (!Number.isFinite(salary) || salary < 0) { setError('Salary must be a number from 0 up.'); return; }
+    }
+    if (editForm.email.trim() && !/^[^\s@]+@[^\s@]+$/.test(editForm.email.trim())) {
+      setError('Email needs a name and a domain, like ada@example.com.');
+      return;
+    }
     const r = await lensRun('hr', 'employee-update', {
       id: emp.id,
       title: editForm.title.trim(),
       department: editForm.department.trim() || emp.department,
       email: editForm.email.trim(),
-      salary: Number(editForm.salary) || 0,
+      salary: editForm.salary.trim() ? Number(editForm.salary) : 0,
       managerId: editForm.managerId || null,
     });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Save failed'); return; }
+    if (r.data?.ok === false) { setError(r.data?.message || r.data?.error || 'Save failed'); return; }
     setError(null);
     setEditing(false);
     if (r.data?.result?.employee) setSelected(r.data.result.employee as Employee);

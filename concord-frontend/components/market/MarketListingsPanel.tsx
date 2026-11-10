@@ -96,6 +96,7 @@ export function MarketListingsPanel() {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newPrice, setNewPrice] = useState('');
+  const [priceError, setPriceError] = useState<string | null>(null);
   const [newType, setNewType] = useState('beat');
   const [newTags, setNewTags] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -245,6 +246,7 @@ export function MarketListingsPanel() {
             </select>
             <input className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none" placeholder="Tags (comma-separated)" value={newTags} onChange={(e) => setNewTags(e.target.value)} />
           </div>
+          {priceError && <p role="alert" className="text-xs text-red-400">{priceError}</p>}
           {createMutation.isError && (
             <p className="text-xs text-red-400">{createMutation.error instanceof Error ? createMutation.error.message : 'Failed to create listing'}</p>
           )}
@@ -253,7 +255,15 @@ export function MarketListingsPanel() {
             <button
               className="btn-neon purple text-sm"
               disabled={!dtuId.trim() || createMutation.isPending}
-              onClick={() => createMutation.mutate({ dtuId: dtuId.trim(), price: Number(newPrice) || 0 })}
+              onClick={() => {
+                const price = Number(newPrice);
+                if (!newPrice.trim() || !Number.isFinite(price) || price <= 0 || price > 1e12) {
+                  setPriceError('Price must be a number greater than 0 and at most 1,000,000,000,000.');
+                  return;
+                }
+                setPriceError(null);
+                createMutation.mutate({ dtuId: dtuId.trim(), price });
+              }}
             >
               {createMutation.isPending ? 'Creating...' : 'Submit Listing'}
             </button>

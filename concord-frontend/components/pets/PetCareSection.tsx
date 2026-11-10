@@ -79,11 +79,15 @@ export function PetCareSection() {
 
   const addPet = async () => {
     if (!form.name.trim()) { setError('Pet name is required.'); return; }
+    if (form.weightKg.trim()) {
+      const kg = Number(form.weightKg);
+      if (!Number.isFinite(kg) || kg <= 0) { setError('Weight must be a number greater than 0.'); return; }
+    }
     const r = await lensRun('pets', 'pet-add', {
       name: form.name.trim(), species: form.species, breed: form.breed.trim(),
-      birthdate: form.birthdate, weightKg: Number(form.weightKg) || 0,
+      birthdate: form.birthdate, weightKg: form.weightKg.trim() ? Number(form.weightKg) : undefined,
     });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Could not add pet'); return; }
+    if (r.data?.ok === false) { setError(r.data?.message || r.data?.error || 'Could not add pet'); return; }
     setForm({ name: '', species: 'dog', breed: '', birthdate: '', weightKg: '' });
     setShowAdd(false);
     setError(null);

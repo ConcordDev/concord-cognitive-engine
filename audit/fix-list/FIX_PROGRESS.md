@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 369 | 576 | 0 |
+| medium | 381 | 564 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **790** | **1358** | **3** |
+| **total** | **802** | **1346** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1171,6 +1171,25 @@ VO2max and the race predictor return an empty result when no run is logged, and 
 | FIX-accounting-003 | accounting | medium | FIXED_PENDING_VERIFY | 4c07b5ce5 |
 | FIX-accounting-011 | accounting | medium | FIXED_PENDING_VERIFY | 4c07b5ce5 |
 | FIX-music-007 | music | medium | FIXED_PENDING_VERIFY | 4c07b5ce5 |
+
+## Mediums — bad numbers stay on the form and say why
+
+Typed amounts are no longer rewritten as the user types. A share, salary, pet weight, plumbing cost, staking principal, queue capacity, flow-calculator beat, simulation step, and listing price that is out of range is refused with a sentence.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-staking-003 | staking | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-wallet-002 | wallet | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-inheritance-001 | inheritance | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-plumbing-015 | plumbing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-pets-003 | pets | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-hr-001 | hr | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-market-003 | market | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-marketplace-002 | marketplace | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-queue-008 | queue | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-game-design-003 | game-design | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-sim-003 | sim | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-sim-004 | sim | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

@@ -207,7 +207,7 @@ export default function registerPetsActions(registerLensAction) {
     const data = { ...(artifact && artifact.data), ...(_params || {}) };
     const species = (data.species || "dog").toLowerCase();
     const weight = optNum(data.weight);
-    if (!(weight > 0)) return { ok: false, error: "invalid_input", field: "weight" };
+    if (!(weight > 0)) return { ok: false, error: "invalid_input", field: "weight", message: "Weight must be a number greater than 0." };
     const age = parseFloat(data.age) || 1;
     const activity = (data.activityLevel || data.intensity || "moderate").toLowerCase();
 
@@ -557,6 +557,12 @@ export default function registerPetsActions(registerLensAction) {
   const paid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const plistB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const pnum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const petWeight = (v) => {
+    if (v == null || v === "") return { weightKg: 0 };
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0 || n > 500) return { error: "Weight must be a number greater than 0." };
+    return { weightKg: Math.round(n * 100) / 100 };
+  };
   const pclean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const pday = (v) => pclean(v, 10).slice(0, 10);
   const findPet = (s, userId, petId) => (s.pets.get(userId) || []).find((p) => p.id === petId) || null;
@@ -584,6 +590,8 @@ export default function registerPetsActions(registerLensAction) {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = pclean(params.name, 80);
     if (!name) return { ok: false, error: "name required" };
+    const weighed = petWeight(params.weightKg);
+    if (weighed.error) return { ok: false, error: "invalid_input", field: "weightKg", message: weighed.error };
     const species = pclean(params.species, 40).toLowerCase() || "dog";
     const pet = {
       id: pid("pet"),
@@ -592,7 +600,7 @@ export default function registerPetsActions(registerLensAction) {
       sex: ["male", "female", "unknown"].includes(String(params.sex).toLowerCase())
         ? String(params.sex).toLowerCase() : "unknown",
       birthdate: pday(params.birthdate) || null,
-      weightKg: Math.max(0, pnum(params.weightKg)),
+      weightKg: weighed.weightKg,
       microchipId: pclean(params.microchipId, 40) || null,
       photo: pclean(params.photo, 500) || null,
       neutered: params.neutered === true,
@@ -615,7 +623,11 @@ export default function registerPetsActions(registerLensAction) {
     if (!pet) return { ok: false, error: "pet not found" };
     if (params.name != null) { const n = pclean(params.name, 80); if (n) pet.name = n; }
     if (params.breed != null) pet.breed = pclean(params.breed, 80) || null;
-    if (params.weightKg != null) pet.weightKg = Math.max(0, pnum(params.weightKg));
+    if (params.weightKg != null) {
+      const w = petWeight(params.weightKg);
+      if (w.error) return { ok: false, error: "invalid_input", field: "weightKg", message: w.error };
+      pet.weightKg = w.weightKg;
+    }
     if (params.birthdate != null) pet.birthdate = pday(params.birthdate) || null;
     if (params.microchipId != null) pet.microchipId = pclean(params.microchipId, 40) || null;
     if (params.photo != null) pet.photo = pclean(params.photo, 500) || null;
@@ -821,8 +833,9 @@ export default function registerPetsActions(registerLensAction) {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const pet = findPet(s, paid(ctx), params.petId);
     if (!pet) return { ok: false, error: "pet not found" };
-    const weightKg = pnum(params.weightKg);
-    if (weightKg <= 0) return { ok: false, error: "weightKg must be > 0" };
+    const weighed = petWeight(params.weightKg);
+    if (weighed.error || weighed.weightKg <= 0) return { ok: false, error: "invalid_input", field: "weightKg", message: weighed.error || "Weight must be a number greater than 0." };
+    const weightKg = weighed.weightKg;
     const entry = {
       id: pid("wt"), petId: pet.id,
       weightKg: Math.round(weightKg * 100) / 100,

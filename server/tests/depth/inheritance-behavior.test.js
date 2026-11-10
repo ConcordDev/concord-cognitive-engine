@@ -23,20 +23,26 @@ describe("inheritance — beneficiary designation + share math (shared ctx)", ()
   let ctx;
   before(async () => { ctx = await depthCtx("inheritance-ben"); });
 
-  it("add_beneficiary clamps sharePct to [0,100] and trims fields", async () => {
+  it("add_beneficiary refuses a share outside 0 to 100 and still trims a valid one", async () => {
     const over = await lensRun("inheritance", "add_beneficiary", {
       params: { name: "  Asbir  ", relationship: "  child  ", sharePct: 140 },
     }, ctx);
-    assert.equal(over.ok, true);
-    assert.equal(over.result.beneficiary.name, "Asbir");          // trimmed
-    assert.equal(over.result.beneficiary.relationship, "child");  // trimmed
-    assert.equal(over.result.beneficiary.sharePct, 100);          // clamped down to 100
+    assert.equal(over.ok, false);
+    assert.match(over.result.message, /0 to 100/);
 
     const neg = await lensRun("inheritance", "add_beneficiary", {
       params: { name: "Iyatte", sharePct: -10 },
     }, ctx);
-    assert.equal(neg.result.beneficiary.sharePct, 0);             // clamped up to 0
-    assert.equal(neg.result.beneficiary.relationship, "unspecified"); // default
+    assert.equal(neg.ok, false);
+    assert.match(neg.result.message, /0 to 100/);
+
+    const ok = await lensRun("inheritance", "add_beneficiary", {
+      params: { name: "  Asbir  ", relationship: "  child  ", sharePct: 40 },
+    }, ctx);
+    assert.equal(ok.ok, true);
+    assert.equal(ok.result.beneficiary.name, "Asbir");
+    assert.equal(ok.result.beneficiary.relationship, "child");
+    assert.equal(ok.result.beneficiary.sharePct, 40);
   });
 
   it("add_beneficiary rejects a missing name", async () => {
@@ -46,26 +52,31 @@ describe("inheritance — beneficiary designation + share math (shared ctx)", ()
   });
 
   it("list_beneficiaries totals shares and computes remainder/balanced", async () => {
-    // Two beneficiaries already present (100 + 0). Add one more to reach a known total.
+    // Asbir at 40% is already present. Add one more.
     const add = await lensRun("inheritance", "add_beneficiary", { params: { name: "Kel", sharePct: 25 } }, ctx);
     assert.equal(add.ok, true);
     const list = await lensRun("inheritance", "list_beneficiaries", {}, ctx);
     assert.equal(list.ok, true);
-    assert.equal(list.result.beneficiaries.length, 3);
-    assert.equal(list.result.totalSharePct, 125);                 // 100 + 0 + 25
-    assert.equal(list.result.balanced, false);                    // !== 100
-    assert.equal(list.result.remainderPct, 0);                    // max(0, 100-125)
+    assert.equal(list.result.beneficiaries.length, 2);
+    assert.equal(list.result.totalSharePct, 65);                  // 40 + 25
+    assert.equal(list.result.balanced, false);
+    assert.equal(list.result.remainderPct, 35);
   });
 
   it("update_beneficiary edits an existing record; remove_beneficiary deletes it", async () => {
     const add = await lensRun("inheritance", "add_beneficiary", { params: { name: "Orin", sharePct: 10 } }, ctx);
     const id = add.result.beneficiary.id;
     const upd = await lensRun("inheritance", "update_beneficiary", {
-      params: { beneficiaryId: id, sharePct: 200, relationship: "sibling" },
+      params: { beneficiaryId: id, sharePct: 40, relationship: "sibling" },
     }, ctx);
     assert.equal(upd.ok, true);
-    assert.equal(upd.result.beneficiary.sharePct, 100);           // re-clamped on update
+    assert.equal(upd.result.beneficiary.sharePct, 40);
     assert.equal(upd.result.beneficiary.relationship, "sibling");
+    const refused = await lensRun("inheritance", "update_beneficiary", {
+      params: { beneficiaryId: id, sharePct: 200 },
+    }, ctx);
+    assert.equal(refused.ok, false);
+    assert.match(refused.result.message, /0 to 100/);
 
     const rm = await lensRun("inheritance", "remove_beneficiary", { params: { beneficiaryId: id } }, ctx);
     assert.equal(rm.ok, true);

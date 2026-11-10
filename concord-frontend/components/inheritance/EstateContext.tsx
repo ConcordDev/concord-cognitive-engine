@@ -88,21 +88,27 @@ function useEstateValue(onNavigate?: (tab: string) => void) {
 
   const addBeneficiary = async () => {
     if (!bName.trim()) return flash('Beneficiary needs a name.');
+    if (bShare.trim()) {
+      const share = Number(bShare);
+      if (!Number.isFinite(share) || share < 0 || share > 100) return flash('Share must be a number from 0 to 100.');
+    }
     const r = await run('add_beneficiary', {
       name: bName, relationship: bRel, sharePct: Number(bShare) || 0,
       contingent: !!bContingentOn.trim(), contingentOn: bContingentOn.trim() || null,
       heirUserId: bHeir.trim() || null,
     });
     if (r?.ok) { setBName(''); setBRel(''); setBShare(''); setBContingentOn(''); setBHeir(''); flash('Beneficiary added.'); void loadAll(); }
-    else flash(`Failed: ${r?.error || 'unknown'}`);
+    else flash(r?.message || 'Could not add that beneficiary.');
   };
   const removeBeneficiary = async (id: string) => {
     const r = await run('remove_beneficiary', { beneficiaryId: id });
     if (r?.ok) { flash('Beneficiary removed.'); void loadAll(); }
   };
   const reShare = async (id: string, pct: number) => {
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) return flash('Share must be a number from 0 to 100.');
     const r = await run('update_beneficiary', { beneficiaryId: id, sharePct: pct });
     if (r?.ok) void loadAll();
+    else flash(r?.message || 'Share must be a number from 0 to 100.');
   };
   // Send a designation notice to an heir user so they can accept/decline
   // (the receiving half — My Notices — was already wired; this closes the loop).

@@ -58,13 +58,18 @@ export function PetProfileCard({ petId, recordTick = 0, onChange }: { petId: str
   };
 
   const save = async () => {
+    if (form.weightKg.trim()) {
+      const kg = Number(form.weightKg);
+      if (!Number.isFinite(kg) || kg <= 0) { setError('Weight must be a number greater than 0.'); return; }
+    }
     setBusy(true);
     try {
       const r = await lensRun('pets', 'pet-update', {
-        id: petId, name: form.name, breed: form.breed, weightKg: Number(form.weightKg) || 0,
+        id: petId, name: form.name, breed: form.breed,
+        weightKg: form.weightKg.trim() ? Number(form.weightKg) : undefined,
         birthdate: form.birthdate, microchipId: form.microchipId, neutered: form.neutered,
       });
-      if (!r.data.ok) { setError(r.data.error || 'Could not save.'); return; }
+      if (!r.data.ok) { setError(r.data.message || r.data.error || 'Could not save.'); return; }
       setEditing(false);
       await load();
       await onChange();

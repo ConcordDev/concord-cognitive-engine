@@ -63,8 +63,8 @@ export function SystemDynamicsBuilder() {
   const [model, setModel] = useState<SDModel>(emptyModel);
   const [modelName, setModelName] = useState('Population Growth');
   const [modelId, setModelId] = useState<string | null>(null);
-  const [steps, setSteps] = useState(40);
-  const [dt, setDt] = useState(1);
+  const [stepsText, setStepsText] = useState('40');
+  const [dtText, setDtText] = useState('1');
   const [result, setResult] = useState<SDResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -100,6 +100,18 @@ export function SystemDynamicsBuilder() {
   const run = useCallback(async () => {
     setRunning(true);
     setError(null);
+    const steps = Number(stepsText);
+    const dt = Number(dtText);
+    if (!Number.isInteger(steps) || steps < 1 || steps > 5000) {
+      setError('Steps must be a whole number from 1 to 5,000.');
+      setRunning(false);
+      return;
+    }
+    if (!Number.isFinite(dt) || dt <= 0 || dt > 1000) {
+      setError('dt must be a number greater than 0 and at most 1,000.');
+      setRunning(false);
+      return;
+    }
     const r = await lensRun<SDResult>('sim', 'systemDynamics', { model, steps, dt });
     if (r.data.ok && r.data.result && !('message' in r.data.result)) {
       setResult(r.data.result);
@@ -109,7 +121,7 @@ export function SystemDynamicsBuilder() {
       setError(r.data.error || 'Simulation returned no trajectory — check stocks and flow expressions.');
     }
     setRunning(false);
-  }, [model, steps, dt]);
+  }, [model, stepsText, dtText]);
 
   const save = useCallback(async () => {
     const r = await lensRun<{ id: string }>('sim', 'saveModel', {
@@ -376,8 +388,8 @@ export function SystemDynamicsBuilder() {
           <input
             type="number"
             className={cn(ds.input, 'w-24')}
-            value={steps}
-            onChange={(e) => setSteps(Math.max(1, parseInt(e.target.value) || 1))}
+            value={stepsText}
+            onChange={(e) => setStepsText(e.target.value)}
           />
         </div>
         <div>
@@ -386,8 +398,8 @@ export function SystemDynamicsBuilder() {
             type="number"
             step="any"
             className={cn(ds.input, 'w-24')}
-            value={dt}
-            onChange={(e) => setDt(parseFloat(e.target.value) || 1)}
+            value={dtText}
+            onChange={(e) => setDtText(e.target.value)}
           />
         </div>
         <button onClick={run} disabled={running} className={cn(ds.btnPrimary, 'ml-auto')}>

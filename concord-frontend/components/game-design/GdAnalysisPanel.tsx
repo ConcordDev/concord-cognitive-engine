@@ -127,15 +127,22 @@ function MechanicsDepthCard({ gameId }: { gameId: string }) {
 
 function FlowCalculatorCard() {
   const [states, setStates] = useState<FlowState[]>([]);
-  const [draft, setDraft] = useState<FlowState>({ name: '', challenge: 50, skillRequired: 50, durationMinutes: 10 });
+  const [draft, setDraft] = useState({ name: '', challenge: '50', skillRequired: '50', durationMinutes: '10' });
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<FlowResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const addState = () => {
-    if (!draft.name.trim()) return;
-    setStates((prev) => [...prev, { ...draft, name: draft.name.trim() }]);
-    setDraft({ name: '', challenge: 50, skillRequired: 50, durationMinutes: 10 });
+    if (!draft.name.trim()) { setError('Beat name is required.'); return; }
+    const challenge = Number(draft.challenge);
+    const skillRequired = Number(draft.skillRequired);
+    const durationMinutes = Number(draft.durationMinutes);
+    if (!Number.isFinite(challenge) || challenge < 0 || challenge > 100) { setError('Challenge must be a number from 0 to 100.'); return; }
+    if (!Number.isFinite(skillRequired) || skillRequired < 0 || skillRequired > 100) { setError('Skill must be a number from 0 to 100.'); return; }
+    if (!Number.isFinite(durationMinutes) || durationMinutes < 1 || durationMinutes > 240) { setError('Minutes must be a number from 1 to 240.'); return; }
+    setError(null);
+    setStates((prev) => [...prev, { name: draft.name.trim(), challenge, skillRequired, durationMinutes }]);
+    setDraft({ name: '', challenge: '50', skillRequired: '50', durationMinutes: '10' });
     setResult(null);
   };
   const delState = (idx: number) => { setStates((prev) => prev.filter((_, i) => i !== idx)); setResult(null); };
@@ -173,19 +180,19 @@ function FlowCalculatorCard() {
         <label className="flex items-center gap-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 text-[10px] text-zinc-400">
           Challenge
           <input type="number" min={0} max={100} value={draft.challenge}
-            onChange={(e) => setDraft({ ...draft, challenge: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })}
+            onChange={(e) => setDraft({ ...draft, challenge: e.target.value })}
             className="w-full bg-transparent py-1 text-[11px] text-zinc-100" />
         </label>
         <label className="flex items-center gap-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 text-[10px] text-zinc-400">
           Skill
           <input type="number" min={0} max={100} value={draft.skillRequired}
-            onChange={(e) => setDraft({ ...draft, skillRequired: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })}
+            onChange={(e) => setDraft({ ...draft, skillRequired: e.target.value })}
             className="w-full bg-transparent py-1 text-[11px] text-zinc-100" />
         </label>
         <label className="flex items-center gap-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 text-[10px] text-zinc-400">
           Min
           <input type="number" min={1} max={240} value={draft.durationMinutes}
-            onChange={(e) => setDraft({ ...draft, durationMinutes: Math.max(1, Number(e.target.value) || 1) })}
+            onChange={(e) => setDraft({ ...draft, durationMinutes: e.target.value })}
             className="w-full bg-transparent py-1 text-[11px] text-zinc-100" />
         </label>
         <button type="button" onClick={addState}

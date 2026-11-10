@@ -406,7 +406,10 @@ export default function registerPlumbingActions(registerLensAction) {
       const book = list(g.s.priceBook, actor(ctx));
       const name = clean(params.name, 120);
       if (!name) return { ok: false, error: "name_required" };
-      const cost = Math.max(0, num(params.cost));
+      if (params.cost !== undefined && params.cost !== "" && !(Number(params.cost) >= 0)) {
+        return { ok: false, error: "invalid_input", field: "cost", message: "Cost must be a number that is 0 or greater." };
+      }
+      const cost = num(params.cost);
       const markupPct = Math.max(0, Math.min(500, num(params.markupPct) || 0));
       const price = Math.round(cost * (1 + markupPct / 100) * 100) / 100;
       const item = {
@@ -451,7 +454,12 @@ export default function registerPlumbingActions(registerLensAction) {
       const item = book.find(i => i.id === params.itemId);
       if (!item) return { ok: false, error: "item_not_found" };
       if (params.name !== undefined) item.name = clean(params.name, 120);
-      if (params.cost !== undefined) item.cost = Math.max(0, num(params.cost));
+      if (params.cost !== undefined) {
+        if (params.cost !== "" && !(Number(params.cost) >= 0)) {
+          return { ok: false, error: "invalid_input", field: "cost", message: "Cost must be a number that is 0 or greater." };
+        }
+        item.cost = num(params.cost);
+      }
       if (params.markupPct !== undefined) item.markupPct = Math.max(0, Math.min(500, num(params.markupPct)));
       if (params.unit !== undefined) item.unit = clean(params.unit, 24);
       item.price = Math.round(item.cost * (1 + item.markupPct / 100) * 100) / 100;
