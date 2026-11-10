@@ -208,6 +208,18 @@ export function unreachableApiMessage(hostname?: string): string {
     ? 'Unable to reach the local Concord API. If you are on this machine, the backend may be down — this is not your internet.'
     : 'Concord did not respond. This is not a local API. Check your connection and try again.';
 }
+
+/** Message for a rejected write. GETs stay quiet so a background poll does not toast. */
+export function rejectedWriteMessage(
+  status: number | undefined,
+  data: { error?: string; message?: string } | undefined,
+  method: string | undefined,
+): string | null {
+  if ((method || 'GET').toUpperCase() === 'GET') return null;
+  if (status !== 400) return null;
+  const msg = data?.message || data?.error;
+  return msg ? String(msg).replace(/_/g, ' ') : 'That request was rejected.';
+}
 const RETRY_BASE_DELAY_MS = 1000;
 
 // Lens-run refusals that are read-path noise, not a user action that just
@@ -721,6 +733,9 @@ api.interceptors.response.use(
           store.addToast({ type: 'warning', message: 'Too many requests. Please wait a moment.' });
         } else if (toastStatus && toastStatus >= 500 && !isBackgroundFetch && !isGeocoderUnavailableResponse(error)) {
           store.addToast({ type: 'error', message: 'Something went wrong on our end. Please try again.' });
+        } else if (toastStatus === 400 && !isBackgroundFetch) {
+          const rejected = rejectedWriteMessage(toastStatus, data, error.config?.method);
+          if (rejected) store.addToast({ type: 'error', message: rejected });
         } else if (!error.response && !isBackgroundFetch) {
           store.addToast({ type: 'error', message: unreachableApiMessage() });
         } else if (data?.ok === false && data?.error && !isBackgroundFetch) {

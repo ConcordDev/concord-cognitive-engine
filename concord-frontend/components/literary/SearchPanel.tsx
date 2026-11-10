@@ -5,6 +5,7 @@ import { GraphView, type GraphNode, type GraphEdge } from '@/components/atlas/Gr
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { lensRun } from '@/lib/api/client';
 import { BookOpen, Search, Network, ShieldCheck, FileText, Loader2, Sparkles, PenLine, Download, AlertTriangle } from 'lucide-react';
+import { EmptyState } from '@/components/common/EmptyState';
 import {
   type Hit, type SearchPayload, type GraphPayload, type Stats, type ResonanceEdge, type ResonancePayload,
   type AnnotationData, type ChunkDetail,
@@ -222,13 +223,11 @@ export function SearchPanel() {
         </div>
 
         {corpusEmpty && (
-          <div className="rounded-lg border border-amber-900/50 bg-amber-950/20 p-4 text-sm text-amber-200/90">
-            <p className="font-medium mb-1">No corpus ingested yet.</p>
-            <p className="text-amber-200/70">
-              Run <code className="px-1 rounded bg-black/30">node scripts/ingest-gutenberg.mjs</code> to mirror a
-              public-domain starter set into the lattice, then search returns grounded passages with provenance.
-            </p>
-          </div>
+          <EmptyState
+            icon={<BookOpen className="h-6 w-6" />}
+            title="No works in the library yet"
+            description="Search stays empty until works are in the library. Nothing here asks you to run a script."
+          />
         )}
 
         {loading && (
