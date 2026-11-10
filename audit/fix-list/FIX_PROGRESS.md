@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 294 | 651 | 0 |
+| medium | 301 | 644 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **715** | **1433** | **3** |
+| **total** | **722** | **1426** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1012,6 +1012,20 @@ Tab and Shift+Tab move focus in the studio. Arrange and Session are buttons. The
 | FIX-sub-worlds-002 | sub-worlds | medium | FIXED_PENDING_VERIFY | 7531a0d8f |
 | FIX-agents-014 | agents | medium | FIXED_PENDING_VERIFY | 7531a0d8f |
 | FIX-government-019 | government | medium | FIXED_PENDING_VERIFY | 7531a0d8f |
+
+## Mediums — shared number, date, and length checks
+
+`finite-input` now has a model year, a reading, a length, and a calendar day. A permit fee that is negative or not a number is refused, and a blank permit form says which fields are required. A vehicle year has to be a whole year from 1886 through next year, and an odometer that is not a number is refused instead of stored as 0. A renewal needs a title and a real date. A document expiry that is not YYYY-MM-DD is refused. A takeoff name over 120 characters and a wall longer or taller than 1000 feet, or negative, cannot be computed.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-government-007 | government | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-automotive-003 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-automotive-004 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-automotive-005 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-automotive-006 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-002 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-003 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

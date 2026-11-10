@@ -102,7 +102,8 @@ export function GarageSection() {
     const year = prompt('Year?') || '';
     const odometer = prompt('Current odometer?') || '0';
     try {
-      const r = await lensRun({ domain: 'automotive', action: 'vehicles-create', input: { name: name.trim(), make, model, year: Number(year) || undefined, odometer: Number(odometer) || 0 } });
+      const r = await lensRun({ domain: 'automotive', action: 'vehicles-create', input: { name: name.trim(), make, model, year: year.trim() || undefined, odometer: odometer.trim() } });
+      if (r.data?.ok === false) { alert(r.data?.message || r.data?.error || 'Could not add the vehicle.'); return; }
       await refreshVehicles();
       if (r.data?.result?.vehicle) setActiveId(r.data.result.vehicle.id);
     } catch (e) { console.error('[Garage] addVehicle', e); }
@@ -121,9 +122,9 @@ export function GarageSection() {
     try {
       const r = await lensRun({ domain: 'automotive', action: 'vehicles-update', input: {
         id: v.id, name: name.trim() || v.name, make, model,
-        year: Number(year) || undefined, odometer: Number(odometer),
+        year: year.trim() || undefined, odometer: odometer.trim(),
       } });
-      if (r.data?.ok === false) { alert(r.data?.error); return; }
+      if (r.data?.ok === false) { alert(r.data?.message || r.data?.error); return; }
       await reloadAll();
     } catch (e) { console.error('[Garage] editVehicle', e); }
   }

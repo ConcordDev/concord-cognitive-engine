@@ -1,5 +1,6 @@
 // server/domains/masonry.js
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { lengthOrNull, badNumber } from "../lib/finite-input.js";
 import { assertPayable, assertTransition } from "../lib/money-guards.js";
 
 const CHANGE_ORDER_STATUS = {
@@ -109,8 +110,9 @@ export default function registerMasonryActions(registerLensAction) {
     let grossArea = 0;
     let linearFeet = 0;
     const segOut = (segments || []).map((sg) => {
-      const len = mnum(sg.lengthFeet);
-      const ht = mnum(sg.heightFeet);
+      const len = lengthOrNull(sg.lengthFeet, { min: 0, max: 1000 });
+      const ht = lengthOrNull(sg.heightFeet, { min: 0, max: 1000 });
+      if (len === null || ht === null) return null;
       const area = Math.round(len * ht * 100) / 100;
       grossArea += area;
       linearFeet += len;
@@ -118,12 +120,14 @@ export default function registerMasonryActions(registerLensAction) {
     });
     let openArea = 0;
     const openOut = (openings || []).map((op) => {
-      const w = mnum(op.widthFeet);
-      const h = mnum(op.heightFeet);
+      const w = lengthOrNull(op.widthFeet, { min: 0, max: 1000 });
+      const h = lengthOrNull(op.heightFeet, { min: 0, max: 1000 });
+      if (w === null || h === null) return null;
       const a = Math.round(w * h * 100) / 100;
       openArea += a;
       return { id: op.id || mid("op"), label: mclean(op.label || "Opening", 60), widthFeet: w, heightFeet: h, areaSqFt: a };
     });
+    if (segOut.includes(null) || openOut.includes(null)) return null;
     const netArea = Math.max(0, Math.round((grossArea - openArea) * 100) / 100);
     const wasteFactor = 1 + (mnum(waste, 5) / 100);
     const units = Math.ceil(netArea * rate.unitsPerSqFt * wasteFactor);
@@ -143,7 +147,9 @@ export default function registerMasonryActions(registerLensAction) {
     try {
       const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const userId = maid(ctx);
-      const name = mclean(params.name, 120) || "Untitled takeoff";
+      const name = String(params.name || "").trim();
+      if (!name) return { ok: false, error: "name required" };
+      if (name.length > 120) return badNumber("name", "must be at most 120 characters");
       const material = MATERIAL_RATES[params.material] ? params.material : "brick";
       if (params.segments != null && !Array.isArray(params.segments)) {
         return { ok: false, error: "invalid_input", field: "segments", reason: "expected_array" };
@@ -152,6 +158,7 @@ export default function registerMasonryActions(registerLensAction) {
         return { ok: false, error: "invalid_input", field: "openings", reason: "expected_array" };
       }
       const calc = computeTakeoff(params.segments, material, params.wastePct, params.openings);
+      if (!calc) return badNumber("dimensions", "each length and height must be a number from 0 to 1000 feet");
       const list = mlist(s.takeoffs, userId);
       const existing = params.id ? list.find((t) => t.id === params.id) : null;
       if (existing) {

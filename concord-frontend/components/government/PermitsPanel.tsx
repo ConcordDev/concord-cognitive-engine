@@ -30,6 +30,7 @@ export function PermitsPanel() {
   const [denyId, setDenyId] = useState<string | null>(null);
   const [denyReason, setDenyReason] = useState('');
   const [denyError, setDenyError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -43,12 +44,25 @@ export function PermitsPanel() {
   }
 
   async function apply() {
-    if (!form.applicantName.trim() || !form.applicantEmail.trim() || !form.kind.trim()) return;
+    if (!form.applicantName.trim() || !form.applicantEmail.trim() || !form.kind.trim()) {
+      setFormError('Applicant name, email, and kind are required.');
+      return;
+    }
+    const feeRaw = form.feeUsd.trim();
+    if (feeRaw && !/^\d+(\.\d{1,2})?$/.test(feeRaw)) {
+      setFormError('Fee must be a number that is 0 or more. Letters and negatives are not a fee.');
+      return;
+    }
+    setFormError(null);
     try {
-      await lensRun({ domain: 'government', action: 'permits-apply', input: { ...form, feeUsd: Number(form.feeUsd) || 0 } });
+      const res = await lensRun({ domain: 'government', action: 'permits-apply', input: { ...form, feeUsd: feeRaw === '' ? 0 : Number(feeRaw) } });
+      if (res.data?.ok === false) {
+        setFormError(res.data?.message || res.data?.error || 'Could not save the permit.');
+        return;
+      }
       setForm({ applicantName: '', applicantEmail: '', applicantPhone: '', kind: 'building_residential', description: '', siteAddress: '', feeUsd: '0' });
       await refresh();
-    } catch (e) { console.error('[Permits] apply', e); }
+    } catch (e) { setFormError(e instanceof Error ? e.message : 'Could not save the permit.'); }
   }
 
   async function action(id: string, act: 'pay-fee' | 'approve' | 'issue' | 'deny') {
@@ -97,6 +111,7 @@ export function PermitsPanel() {
         <input value={form.siteAddress} onChange={e => setForm({ ...form, siteAddress: e.target.value })} placeholder="Site address" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Description" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input type="number" value={form.feeUsd} onChange={e => setForm({ ...form, feeUsd: e.target.value })} placeholder="Fee $" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        {formError && <p role="alert" className="col-span-4 text-[11px] text-rose-300">{formError}</p>}
         <button onClick={apply} className="col-span-4 px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold hover:bg-violet-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Apply for permit</button>
       </div>
       <div className="max-h-96 overflow-y-auto">

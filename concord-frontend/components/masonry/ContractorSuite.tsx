@@ -144,6 +144,15 @@ function TakeoffTab() {
   const [saved, setSaved] = useState<Takeoff[]>([]);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<Takeoff | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const dims = [...segments.map((s) => [s.lengthFeet, s.heightFeet]), ...openings.map((o) => [o.widthFeet, o.heightFeet])].flat();
+  const takeoffError = !name.trim()
+    ? 'A takeoff name is required.'
+    : name.trim().length > 120
+      ? 'Name must be at most 120 characters.'
+      : dims.some((n) => !Number.isFinite(n) || n < 0 || n > 1000)
+        ? 'Each length and height must be a number from 0 to 1000 feet.'
+        : null;
 
   const load = useCallback(async () => {
     const r = await run<{ takeoffs: Takeoff[] }>('takeoff-list');
@@ -153,10 +162,13 @@ function TakeoffTab() {
   useEffect(() => { load(); }, []);
 
   const save = async () => {
+    if (takeoffError) { setFormError(takeoffError); return; }
     setBusy(true);
-    const r = await run<Takeoff>('takeoff-save', { name, material, wastePct: waste, segments, openings });
+    setFormError(null);
+    const r = await run<Takeoff>('takeoff-save', { name: name.trim(), material, wastePct: waste, segments, openings });
     setBusy(false);
     if (r) { setPreview(r); await load(); }
+    else setFormError('Could not save that takeoff.');
   };
   const del = async (id: string) => { await run('takeoff-delete', { id }); await load(); };
 
@@ -188,8 +200,8 @@ function TakeoffTab() {
         {segments.map((sg, i) => (
           <div key={sg.id} className="mt-2 grid grid-cols-[1fr_60px_60px_28px] gap-1.5">
             <input className={inp} value={sg.label} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} />
-            <input type="number" className={inp} placeholder="L ft" value={sg.lengthFeet || ''} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, lengthFeet: Number(e.target.value) || 0 } : x))} />
-            <input type="number" className={inp} placeholder="H ft" value={sg.heightFeet || ''} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, heightFeet: Number(e.target.value) || 0 } : x))} />
+            <input type="number" className={inp} placeholder="L ft" value={sg.lengthFeet} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, lengthFeet: e.target.value === '' ? 0 : Number(e.target.value) } : x))} />
+            <input type="number" className={inp} placeholder="H ft" value={sg.heightFeet} onChange={(e) => setSegments((s) => s.map((x, idx) => idx === i ? { ...x, heightFeet: e.target.value === '' ? 0 : Number(e.target.value) } : x))} />
             <button className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300" onClick={() => setSegments((s) => s.filter((_, idx) => idx !== i))} aria-label="Remove segment"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
@@ -201,12 +213,13 @@ function TakeoffTab() {
         {openings.map((op, i) => (
           <div key={op.id} className="mt-2 grid grid-cols-[1fr_60px_60px_28px] gap-1.5">
             <input className={inp} value={op.label} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} />
-            <input type="number" className={inp} placeholder="W ft" value={op.widthFeet || ''} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, widthFeet: Number(e.target.value) || 0 } : x))} />
-            <input type="number" className={inp} placeholder="H ft" value={op.heightFeet || ''} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, heightFeet: Number(e.target.value) || 0 } : x))} />
+            <input type="number" className={inp} placeholder="W ft" value={op.widthFeet} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, widthFeet: e.target.value === '' ? 0 : Number(e.target.value) } : x))} />
+            <input type="number" className={inp} placeholder="H ft" value={op.heightFeet} onChange={(e) => setOpenings((s) => s.map((x, idx) => idx === i ? { ...x, heightFeet: e.target.value === '' ? 0 : Number(e.target.value) } : x))} />
             <button className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300" onClick={() => setOpenings((s) => s.filter((_, idx) => idx !== i))} aria-label="Remove opening"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
-        <button className={`${btnP} mt-4`} onClick={save} disabled={busy || !name.trim()}>
+        { (formError || takeoffError) && <p role="alert" className="mt-3 text-[11px] text-rose-300">{formError || takeoffError}</p> }
+        <button className={`${btnP} mt-4`} onClick={save} disabled={busy || !!takeoffError}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ruler className="h-3.5 w-3.5" />}Compute & save takeoff
         </button>
       </div>
