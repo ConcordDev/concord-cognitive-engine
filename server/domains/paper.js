@@ -1056,7 +1056,33 @@ export default function registerPaperActions(registerLensAction) {
     }
   });
 
-  // export_pdf — format a paper artifact as a downloadable text document. Returns
+  function textToSinglePagePdf(text) {
+    const lines = String(text || "").replace(/[^\x09\x0A\x0D\x20-\x7E]/g, " ").split("\n").slice(0, 45);
+    const ops = lines.map((line, i) => {
+      const escaped = line.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)").slice(0, 90);
+      return `BT /F1 11 Tf 48 ${760 - i * 14} Td (${escaped}) Tj ET`;
+    }).join("\n");
+    const objects = [
+      "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n",
+      "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n",
+      "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj\n",
+      `4 0 obj << /Length ${ops.length} >> stream\n${ops}\nendstream endobj\n`,
+      "5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n",
+    ];
+    let pdf = "%PDF-1.4\n";
+    const offsets = [0];
+    for (const obj of objects) {
+      offsets.push(pdf.length);
+      pdf += obj;
+    }
+    const xref = pdf.length;
+    pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+    for (let i = 1; i < offsets.length; i++) pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+    pdf += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+    return pdf;
+  }
+
+  // export_pdf — a one-page PDF of the paper's title, abstract, and body.
   // { filename, content, format }; the lens triggers a client-side download (no real
   // PDF binary — an honest text/markdown export, not a faked .pdf). Artifact-based.
   registerLensAction("paper", "export_pdf", (ctx, artifact, _params = {}) => {
@@ -1077,14 +1103,20 @@ export default function registerPaperActions(registerLensAction) {
       "--------",
       d.abstract || d.summary || "(no abstract)",
       "",
+      "Body",
+      "----",
+      d.body || d.content || d.text || d.markdown || "(no body)",
+      "",
       Array.isArray(d.tags) && d.tags.length ? `Tags: ${d.tags.join(", ")}` : null,
       "",
       `Exported ${new Date().toISOString().slice(0, 10)} from Concord paper lens.`,
     ].filter((l) => l !== null);
+    const text = lines.join("\n");
+    const pdf = textToSinglePagePdf(text);
     const safe = title.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).toLowerCase() || "paper";
     return {
       ok: true,
-      result: { filename: `${safe}.txt`, format: "text", content: lines.join("\n"), byteLength: lines.join("\n").length },
+      result: { filename: `${safe}.pdf`, format: "pdf", content: pdf, byteLength: pdf.length },
     };
   });
 }

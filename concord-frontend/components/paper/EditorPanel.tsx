@@ -622,10 +622,11 @@ export function EditorPanel() {
       } else if (action === 'export_pdf') {
         const exp = inner as { filename?: string; content?: string } | undefined;
         if (exp?.content) {
-          const blob = new Blob([exp.content], { type: 'text/plain;charset=utf-8' });
+          const isPdf = (exp as { format?: string }).format === 'pdf' || (exp.filename || '').endsWith('.pdf');
+          const blob = new Blob([exp.content], { type: isPdf ? 'application/pdf' : 'text/plain;charset=utf-8' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = url; a.download = exp.filename || 'paper.txt'; a.click();
+          a.href = url; a.download = exp.filename || (isPdf ? 'paper.pdf' : 'paper.txt'); a.click();
           URL.revokeObjectURL(url);
           setSynthesisResult(`Exported ${exp.filename || 'paper.txt'} (${exp.content.length} chars).`);
           showToast('success', `Exported ${exp.filename || 'paper.txt'}.`);

@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 154 | 64 | 3 |
+| high | 160 | 58 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **695** | **1453** | **3** |
+| **total** | **701** | **1447** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -961,3 +961,14 @@ A vision upload is sent to the vision model and the chosen image stays on the pa
 |---|---|---|---|---|
 | FIX-education-001 | education | high | FIXED_PENDING_VERIFY | 1b4f4b16a |
 | FIX-education-002 | education | high | FIXED_PENDING_VERIFY | 1b4f4b16a |
+
+A paper export is a one-page PDF that includes the body. A drain-slope question returns inches per foot. A webhook create is stored for the owner and a refusal is shown. Deleting a node also drops relations that point at it by target id. Ask about the black market is told prices are Sparks only. Locking an heir slot reads the listing id and says when it is missing.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-paper-002 | paper | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-plumbing-003 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-integrations-001 | integrations | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-entity-008 | entity | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-black-market-007 | black-market | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-inheritance-004 | inheritance | high | FIXED_PENDING_VERIFY | this commit |

@@ -60577,8 +60577,15 @@ register("integration", "list", (_ctx, _input) => {
   return { ok: true, integrations };
 });
 
-app.post("/api/webhooks", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "register", req.body, makeCtx(req)))));
-app.get("/api/webhooks", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "list", {}, makeCtx(req)))));
+app.post("/api/webhooks", asyncHandler(async (req, res) => {
+  const ctx = makeCtx(req);
+  const result = registerWh(STATE, { ...(req.body || {}), ownerId: ctx?.actor?.userId || req.user?.id || null });
+  res.status(result.ok ? 200 : 422).json(result);
+}));
+app.get("/api/webhooks", asyncHandler(async (req, res) => {
+  const ctx = makeCtx(req);
+  res.json(listWebhooks(STATE, ctx?.actor?.userId || req.user?.id || null));
+}));
 app.delete("/api/webhooks/:id", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "delete", { webhookId: req.params.id }, makeCtx(req)))));
 app.post("/api/webhooks/:id/toggle", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "toggle", { webhookId: req.params.id, ...req.body }, makeCtx(req)))));
 // Webhook auth — per-domain HMAC secret management
@@ -93649,13 +93656,26 @@ register("inheritance", "claim_slot", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
   const userId = ctx?.actor?.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
-  const { listingId } = input || {};
-  if (!listingId) return { ok: false, reason: "missing_listingId" };
+  const listingId = input?.listingId ?? input?.id ?? input?.params?.listingId;
+  if (!listingId) return { ok: false, error: "missing_listingId", reason: "missing_listingId" };
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS inheritance_market_listings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      dying_npc_id TEXT NOT NULL,
+      mentor_user_id TEXT NOT NULL,
+      heir_slot_price_cc INTEGER NOT NULL,
+      buyer_user_id TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      listed_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      claimed_at INTEGER,
+      resolved_at INTEGER
+    )`);
+  } catch { /* table already present */ }
   try {
     const listing = db.prepare(`SELECT * FROM inheritance_market_listings WHERE id = ?`).get(listingId);
-    if (!listing) return { ok: false, reason: "listing_not_found" };
-    if (listing.status !== "open") return { ok: false, reason: "already_claimed" };
-    if (listing.mentor_user_id === userId) return { ok: false, reason: "cannot_claim_own" };
+    if (!listing) return { ok: false, error: "listing_not_found", reason: "listing_not_found" };
+    if (listing.status !== "open") return { ok: false, error: "already_claimed", reason: "already_claimed" };
+    if (listing.mentor_user_id === userId) return { ok: false, error: "cannot_claim_own", reason: "cannot_claim_own" };
     db.prepare(`
       UPDATE inheritance_market_listings
       SET buyer_user_id = ?, status = 'locked', claimed_at = unixepoch()

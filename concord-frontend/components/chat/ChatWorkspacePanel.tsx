@@ -1249,6 +1249,9 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         systemPrompt +=
           (systemPrompt ? '\n\n' : '') +
           `Current domain context: ${domainContext}. Use domain-specific knowledge and terminology.`;
+        if (domainContext === 'black-market') {
+          systemPrompt += ' Prices in this lens are Sparks only, never real money, dollars, or fiat.';
+        }
       }
 
       // Ground the analyst in the lens's live values (Review 4, Analytics

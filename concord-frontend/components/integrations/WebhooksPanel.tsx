@@ -117,13 +117,17 @@ export function WebhooksPanel({ showCreate, setShowCreate }: { showCreate: boole
   });
 
   const createWebhookMutation = useMutation({
-    mutationFn: (data: CreateWebhookRequest) => apiHelpers.webhooks.register(data),
+    mutationFn: async (data: CreateWebhookRequest) => {
+      const r = await apiHelpers.webhooks.register(data);
+      if (r.data?.ok === false) throw new Error(r.data.error || 'Webhook was not saved');
+      return r;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] });
       setShowCreate(false);
     },
-    onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+    onError: (err) => {
+      useUIStore.getState().addToast({ type: 'error', message: err instanceof Error ? err.message : 'Webhook was not saved' });
     },
   });
 

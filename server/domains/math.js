@@ -1645,11 +1645,27 @@ export default function registerMathActions(registerLensAction) {
    * "convert 5 km to mi", "derivative of sin(x)", "solve x^2-4=0".
    * params: { query }
    */
+  function drainSlopeFromQuery(query) {
+    const q = String(query || "").toLowerCase();
+    if (!q.includes("drain") || !q.includes("slope")) return null;
+    const size = Number((q.match(/(\d+(?:\.\d+)?)\s*(?:inch|in\b|")/) || [])[1]);
+    if (!Number.isFinite(size) || size <= 0) return null;
+    const slopePerFoot = size <= 2 ? 0.25 : size <= 3 ? 0.1875 : 0.125;
+    return {
+      kind: "drain-slope",
+      answer: `${slopePerFoot} inches per foot`,
+      pipeSizeInches: size,
+      ipc: "IPC Table 704.1",
+    };
+  }
+
   registerLensAction("math", "naturalQuery", (ctx, artifact, params) => {
     try {
       const p = { ...(artifact && artifact.data), ...params };
       const query = String(p.query || "").trim();
       if (!query) return { ok: false, error: "No query provided." };
+      const drain = drainSlopeFromQuery(query);
+      if (drain) return { ok: true, result: drain };
       const plan = parseNaturalQuery(query);
       if (!plan) return { ok: false, error: "Could not interpret the query." };
 

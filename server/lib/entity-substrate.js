@@ -129,7 +129,7 @@ export function deleteNode(state, userId, id) {
   for (const dtu of dtus.values()) {
     if (!isEntityNode(dtu) || !authoredBy(dtu, userId) || dtu.id === id) continue;
     const before = relationsOf(dtu).length;
-    dtu.relations = relationsOf(dtu).filter((r) => r.to !== id);
+    dtu.relations = relationsOf(dtu).filter((r) => r && r.to !== id && r.target !== id && r.targetId !== id);
     if (dtu.relations.length !== before) {
       edgesRemoved += before - dtu.relations.length;
       dtus.set(dtu.id, dtu);
