@@ -679,4 +679,4 @@ FIX-finance-004. A lens export's DTU leg keeps rows that belong to this caller a
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-finance-004 | finance | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-finance-004 | finance | high | FIXED_PENDING_VERIFY | 96a7c6276 |
