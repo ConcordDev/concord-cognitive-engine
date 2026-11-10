@@ -1421,13 +1421,13 @@ Exceptions, damage, delay risk, and GPS accept the SHP reference, tracking numbe
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-logistics-005 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-logistics-003 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-logistics-004 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-food-004 | food | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-trades-009 | trades | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-dreams-002 | dreams | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-dx-platform-003 | dx-platform | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-logistics-005 | logistics | medium | FIXED_PENDING_VERIFY | 99e9ad301 |
+| FIX-logistics-003 | logistics | medium | FIXED_PENDING_VERIFY | 99e9ad301 |
+| FIX-logistics-004 | logistics | medium | FIXED_PENDING_VERIFY | 99e9ad301 |
+| FIX-food-004 | food | medium | FIXED_PENDING_VERIFY | 99e9ad301 |
+| FIX-trades-009 | trades | medium | FIXED_PENDING_VERIFY | 99e9ad301 |
+| FIX-dreams-002 | dreams | medium | FIXED_PENDING_VERIFY | 99e9ad301 |
+| FIX-dx-platform-003 | dx-platform | low | FIXED_PENDING_VERIFY | 99e9ad301 |
 
 ## NEEDS_PRODUCT_SURFACE
 
