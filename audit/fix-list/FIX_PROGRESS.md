@@ -959,5 +959,5 @@ A vision upload is sent to the vision model and the chosen image stays on the pa
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-education-001 | education | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-education-002 | education | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-education-001 | education | high | FIXED_PENDING_VERIFY | 1b4f4b16a |
+| FIX-education-002 | education | high | FIXED_PENDING_VERIFY | 1b4f4b16a |
