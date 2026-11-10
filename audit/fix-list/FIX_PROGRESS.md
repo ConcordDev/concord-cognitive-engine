@@ -1271,9 +1271,9 @@ Takeoffs, proposals, jobs, and the price book say they are loading until the fir
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-masonry-008 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-masonry-011 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-masonry-013 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-008 | masonry | medium | FIXED_PENDING_VERIFY | fdeaecb37 |
+| FIX-masonry-011 | masonry | medium | FIXED_PENDING_VERIFY | fdeaecb37 |
+| FIX-masonry-013 | masonry | medium | FIXED_PENDING_VERIFY | fdeaecb37 |
 
 ## NEEDS_PRODUCT_SURFACE
 
