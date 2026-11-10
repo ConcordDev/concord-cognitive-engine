@@ -1197,11 +1197,11 @@ A permit lookup names the timeline in weeks, and a violation lookup names a tier
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-government-002 | government | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-government-016 | government | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-automotive-002 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-masonry-016 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-masonry-004 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-government-002 | government | medium | FIXED_PENDING_VERIFY | 23ca5ec1c |
+| FIX-government-016 | government | medium | FIXED_PENDING_VERIFY | 23ca5ec1c |
+| FIX-automotive-002 | automotive | medium | FIXED_PENDING_VERIFY | 23ca5ec1c |
+| FIX-masonry-016 | masonry | medium | FIXED_PENDING_VERIFY | 23ca5ec1c |
+| FIX-masonry-004 | masonry | medium | FIXED_PENDING_VERIFY | 23ca5ec1c |
 
 ## NEEDS_PRODUCT_SURFACE
 
