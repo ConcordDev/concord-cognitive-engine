@@ -997,10 +997,10 @@ Tab and Shift+Tab move focus in the studio. Arrange and Session are buttons. The
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-studio-006 | studio | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-studio-005 | studio | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-code-quality-008 | code-quality | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-ar-013 | ar | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-studio-006 | studio | high | FIXED_PENDING_VERIFY | ca9a0179a |
+| FIX-studio-005 | studio | high | FIXED_PENDING_VERIFY | ca9a0179a |
+| FIX-code-quality-008 | code-quality | high | FIXED_PENDING_VERIFY | ca9a0179a |
+| FIX-ar-013 | ar | high | FIXED_PENDING_VERIFY | ca9a0179a |
 
 ## NEEDS_PRODUCT_SURFACE
 
