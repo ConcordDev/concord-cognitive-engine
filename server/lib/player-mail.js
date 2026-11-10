@@ -220,13 +220,18 @@ export function readMail(db, mailId, userId) {
 export function deleteSentMail(db, mailId, userId) {
   if (!db || !mailId || !userId) return { ok: false, error: "missing_inputs" };
   try {
-    const row = db.prepare(`SELECT from_user_id AS fromUser, status, sender_deleted_at AS senderDeletedAt FROM player_mail WHERE id = ?`).get(mailId);
+    const row = db.prepare(`SELECT from_user_id AS fromUser, status, sender_deleted_at AS senderDeletedAt, attachment_cc AS attachmentCc FROM player_mail WHERE id = ?`).get(mailId);
     if (!row) return { ok: false, error: "not_found" };
     if (row.fromUser !== userId) return { ok: false, error: "not_authorized" };
     if (row.status === "claimed") return { ok: false, error: "already_claimed" };
     if (row.senderDeletedAt) return { ok: true, deleted: true, alreadyDeleted: true };
-    db.prepare(`UPDATE player_mail SET sender_deleted_at = unixepoch() WHERE id = ? AND from_user_id = ?`).run(mailId, userId);
-    return { ok: true, deleted: true };
+    const refundCc = row.status !== "claimed" ? Math.max(0, Number(row.attachmentCc) || 0) : 0;
+    const tx = db.transaction(() => {
+      if (refundCc > 0) _walletCredit(db, userId, refundCc, `mail_unclaimed_refund:${mailId}`);
+      db.prepare(`UPDATE player_mail SET attachment_cc = 0, sender_deleted_at = unixepoch() WHERE id = ? AND from_user_id = ?`).run(mailId, userId);
+    });
+    tx();
+    return { ok: true, deleted: true, refundedCc: refundCc };
   } catch (err) {
     return { ok: false, error: err?.message };
   }

@@ -587,7 +587,7 @@ export function EventsWorkbench({
     create: createTicket,
     update: updateTicket,
     remove: removeTicket,
-  } = useLensData('events', 'TicketTier', { seed: EMPTY_DATA.TicketTier, enabled: mode === 'tickets' });
+  } = useLensData('events', 'TicketTier', { seed: EMPTY_DATA.TicketTier, enabled: mode === 'tickets' || mode === 'events' });
 
   // RSVP / Ticket purchase state
   const [rsvpLoading, setRsvpLoading] = useState<string | null>(null);
@@ -796,8 +796,24 @@ export function EventsWorkbench({
           ? num
           : v;
     });
+    if (mode === 'tickets' && data.eventName && !data.eventId) {
+      const named = events.find((e) => e.title === String(data.eventName));
+      if (named) data.eventId = named.id;
+    }
     if (editing) {
+      const previous = mode === 'events' ? events.find((e) => e.id === editing) : null;
       await update(editing, { title: formTitle, data, meta: { status: formStatus } });
+      if (previous && previous.title !== formTitle) {
+        const related = tickets.filter((t) => {
+          const td = t.data as Record<string, unknown>;
+          return td.eventId === editing || td.eventName === previous.title;
+        });
+        for (const tier of related) {
+          await updateTicket(tier.id, {
+            data: { ...(tier.data as Record<string, unknown>), eventId: editing, eventName: formTitle },
+          });
+        }
+      }
     } else {
       await create({ title: formTitle, data, meta: { status: formStatus } });
       // Announce new event via social post
@@ -1380,9 +1396,10 @@ export function EventsWorkbench({
     const relatedVendors = vendors.filter(
       (v) => (v.data as Record<string, unknown>).assignedEvent === item.title
     );
-    const relatedTickets = tickets.filter(
-      (t) => (t.data as Record<string, unknown>).eventName === item.title
-    );
+    const relatedTickets = tickets.filter((t) => {
+      const td = t.data as Record<string, unknown>;
+      return td.eventId === item.id || td.eventName === item.title;
+    });
     const relatedROS = runofshows.filter(
       (r) => (r.data as Record<string, unknown>).eventName === item.title
     );

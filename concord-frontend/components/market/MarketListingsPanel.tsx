@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { MarketEmpireListing } from '@/components/market/MarketEmpireListing';
@@ -114,9 +114,22 @@ export function MarketListingsPanel() {
     queryFn: () => apiHelpers.economy.balance().then((r) => r.data),
   });
 
+  const [ownedDtus, setOwnedDtus] = useState<Array<{ id: string; title?: string }>>([]);
+  const [dtuId, setDtuId] = useState('');
+  useEffect(() => {
+    if (!showCreate) return;
+    void fetch('/api/dtus/mine', { credentials: 'include' })
+      .then((res) => res.json())
+      .then((body) => {
+        const rows = body?.dtus || body?.items || body?.results || [];
+        if (Array.isArray(rows)) setOwnedDtus(rows.map((d: { id?: string; title?: string }) => ({ id: String(d.id || ''), title: d.title })).filter((d) => d.id));
+      })
+      .catch(() => setOwnedDtus([]));
+  }, [showCreate]);
+
   const createMutation = useMutation({
-    mutationFn: (payload: { title: string; description: string; price: number; type: string }) =>
-      apiHelpers.marketplace.submit(payload as unknown as { name: string; githubUrl: string; description?: string; category?: string }),
+    mutationFn: (payload: { dtuId: string; price: number }) =>
+      apiHelpers.marketplaceSubmit.submit(payload.dtuId, payload.price),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['marketplace-listings'] });
       setShowCreate(false);
@@ -216,7 +229,11 @@ export function MarketListingsPanel() {
             <Store className="w-4 h-4 text-neon-purple" />
             New Listing
           </h2>
-          <input className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none" placeholder="Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
+          <select className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm" value={dtuId} onChange={(e) => setDtuId(e.target.value)}>
+            <option value="">{ownedDtus.length ? 'Pick one of your items' : 'No owned items loaded'}</option>
+            {ownedDtus.map((d) => <option key={d.id} value={d.id}>{d.title || d.id}</option>)}
+          </select>
+          <input className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none" placeholder="Or paste a DTU id" value={dtuId} onChange={(e) => setDtuId(e.target.value)} />
           <textarea className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none resize-none" placeholder="Description" rows={3} value={newDescription} onChange={(e) => setNewDescription(e.target.value)} />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none" placeholder="Price (CC)" type="number" min="0" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} />
@@ -235,8 +252,8 @@ export function MarketListingsPanel() {
             <button className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors" onClick={() => setShowCreate(false)}>Cancel</button>
             <button
               className="btn-neon purple text-sm"
-              disabled={!newTitle.trim() || createMutation.isPending}
-              onClick={() => createMutation.mutate({ title: newTitle.trim(), description: newDescription.trim(), price: Number(newPrice) || 0, type: newType })}
+              disabled={!dtuId.trim() || createMutation.isPending}
+              onClick={() => createMutation.mutate({ dtuId: dtuId.trim(), price: Number(newPrice) || 0 })}
             >
               {createMutation.isPending ? 'Creating...' : 'Submit Listing'}
             </button>

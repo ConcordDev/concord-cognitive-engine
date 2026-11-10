@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 138 | 80 | 3 |
+| high | 142 | 76 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **679** | **1469** | **3** |
+| **total** | **683** | **1465** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -925,3 +925,12 @@ The Following list has an Unfollow control on the signed-in user's own list.
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
 | FIX-social-013 | social | high | FIXED_PENDING_VERIFY | 5ecae04b7 |
+
+Renaming an event rewrites the ticket tiers that named it, and a tier can also point at the event id. Removing an unclaimed gift from Sent returns the escrowed Concord Coin and says so. A task file chooser stores the chosen file name on the task. A market listing is posted with a picked item id, not the title.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-events-001 | events | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-mail-012 | mail | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-board-006 | board | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-market-001 | market | high | FIXED_PENDING_VERIFY | this commit |

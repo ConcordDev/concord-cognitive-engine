@@ -324,7 +324,11 @@ export function MailFolderPanel({
                   </button>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                    <span className="text-gray-300">Remove this copy from your Sent list? The recipient keeps theirs.</span>
+                    <span className="text-gray-300">
+                      {selected.attachmentCc > 0 && selected.status !== 'claimed'
+                        ? `Remove this from Sent and return the unclaimed ${selected.attachmentCc} CC gift to you? The recipient keeps the message.`
+                        : 'Remove this copy from your Sent list? The recipient keeps theirs.'}
+                    </span>
                     <button
                       type="button"
                       onClick={() => void handleDeleteSent(selected.id)}
