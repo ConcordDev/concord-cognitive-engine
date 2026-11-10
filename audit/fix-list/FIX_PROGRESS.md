@@ -1065,10 +1065,10 @@ Asset, vulnerability, alert-rule, and camera delete stay visible and armed until
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-security-004 | security | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-sponsorship-002 | sponsorship | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-environment-005 | environment | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-art-007 | art | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-security-004 | security | medium | FIXED_PENDING_VERIFY | 37ac58a18 |
+| FIX-sponsorship-002 | sponsorship | medium | FIXED_PENDING_VERIFY | 37ac58a18 |
+| FIX-environment-005 | environment | medium | FIXED_PENDING_VERIFY | 37ac58a18 |
+| FIX-art-007 | art | medium | FIXED_PENDING_VERIFY | 37ac58a18 |
 
 ## NEEDS_PRODUCT_SURFACE
 
