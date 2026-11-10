@@ -77,13 +77,27 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
   const [fileSize, setFileSize] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [description, setDescription] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const resetForm = () => {
     setName(''); setFormat(MODEL_FORMATS[0]); setPolyCount(''); setFileSize(''); setSourceUrl(''); setDescription('');
   };
 
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (!name.trim()) { setFormError('A model needs a name.'); return; }
+    if (polyCount.trim()) {
+      const polys = Number(polyCount);
+      if (!Number.isInteger(polys) || polys < 0) { setFormError('Poly count must be a whole number that is 0 or greater.'); return; }
+    }
+    if (fileSize.trim() && !/^\d+(\.\d+)?\s*(b|kb|mb|gb)?$/i.test(fileSize.trim())) {
+      setFormError('File size must be a number, optionally with B, KB, MB, or GB.');
+      return;
+    }
+    if (sourceUrl.trim() && !/^https?:\/\/\S+$/i.test(sourceUrl.trim())) {
+      setFormError('Source URL must start with http:// or https://.');
+      return;
+    }
+    setFormError(null);
     await create({
       title: name,
       data: {
@@ -138,6 +152,7 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
               <div><label className={ds.label}>Poly count</label><input type="number" className={ds.input} value={polyCount} onChange={(e) => setPolyCount(e.target.value)} /></div>
               <div><label className={ds.label}>File size</label><input className={ds.input} value={fileSize} onChange={(e) => setFileSize(e.target.value)} placeholder="e.g. 4.2 MB" /></div>
               <div><label className={ds.label}>Source URL</label><input className={ds.input} value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://sketchfab.com/…" /></div>
+              {formError && <p className="col-span-full text-xs text-rose-300" role="alert">{formError}</p>}
             </div>
             <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
             <div className="flex justify-end gap-2">

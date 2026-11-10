@@ -72,14 +72,18 @@ export function ImportPanel({ onImported }: { onImported: () => void }) {
     const { samples, parseError } = parseExport(text);
     if (parseError) { setErr(parseError); return; }
     if (samples.length === 0) { setErr('No samples found.'); return; }
-    const unknown = samples.filter((s) => !VALID_METRICS.has(String(s.metric).toLowerCase()));
+    const aliased = samples.map((s) => {
+      const key = String(s.metric).toLowerCase();
+      return key === 'water' ? { ...s, metric: 'water_ml' } : s;
+    });
+    const unknown = aliased.filter((s) => !VALID_METRICS.has(String(s.metric).toLowerCase()));
     if (unknown.length === samples.length) {
       setErr('No samples use a supported metric key.');
       return;
     }
     setBusy(true);
     try {
-      const r = await lensRun<ImportResult>('self', 'importBatch', { samples, source });
+      const r = await lensRun<ImportResult>('self', 'importBatch', { samples: aliased, source });
       if (r.data?.ok && r.data.result) {
         setResult(r.data.result);
         onImported();
@@ -98,7 +102,7 @@ export function ImportPanel({ onImported }: { onImported: () => void }) {
         </div>
         <p className="mb-2 text-xs text-rose-700">
           Paste a JSON array (or {'{ samples: [...] }'}) or a CSV with a <code className="text-rose-400">metric,value,at</code> header.
-          Supported metrics: steps, sleep_hours, workout_min, mood, weight_kg, resting_hr, water_ml,
+          Supported metrics: steps, sleep_hours, workout_min, mood, weight_kg, resting_hr, water_ml (the Water reading; "water" is accepted),
           calories, meditation_min, journal_entries. Re-importing the same export is safe.
         </p>
         <textarea

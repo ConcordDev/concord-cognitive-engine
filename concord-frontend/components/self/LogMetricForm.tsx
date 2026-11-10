@@ -58,16 +58,21 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
     <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
       <div className="mb-2 text-[11px] uppercase tracking-wider text-rose-700">Log a reading</div>
       <div className="flex flex-wrap items-center gap-2">
-        <select
+        <label className="text-[11px] text-rose-200">
+          Metric
+          <select
           value={metric}
           onChange={(e) => setMetric(e.target.value)}
-          className="rounded border border-rose-900/40 bg-black px-2 py-1.5 text-sm text-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-400"
+          className="mt-1 block rounded border border-rose-900/40 bg-black px-2 py-1.5 text-sm text-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-400"
           aria-label="Metric"
         >
           {METRIC_OPTIONS.map((m) => (
             <option key={m.key} value={m.key}>{m.label}</option>
           ))}
         </select>
+        </label>
+        <label className="text-[11px] text-rose-200">
+          Value
         <input
           type="number"
           inputMode="decimal"
@@ -78,6 +83,7 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
           className="w-32 rounded border border-rose-900/40 bg-black px-2 py-1.5 text-sm text-rose-100 placeholder:text-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
           aria-label="Value"
         />
+        </label>
         <button
           onClick={() => void submit()}
           disabled={busy}

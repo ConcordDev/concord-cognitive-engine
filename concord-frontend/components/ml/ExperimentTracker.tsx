@@ -276,6 +276,9 @@ function NewExperimentModal({ onClose, onCreated }: { onClose: () => void; onCre
 
   const create = async () => {
     if (!cfg.name.trim()) { setError('Name required'); return; }
+    if (cfg.name.trim().length > 200) { setError('Name must be 200 characters or fewer.'); return; }
+    if (!Number.isInteger(cfg.epochs) || cfg.epochs < 1) { setError('Epochs must be a whole number that is 1 or greater.'); return; }
+    if (!Number.isInteger(cfg.batchSize) || cfg.batchSize < 1) { setError('Batch size must be a whole number that is 1 or greater.'); return; }
     setBusy(true); setError(null);
     const r = await lensRun('ml', 'experiment-start', cfg);
     if (r.data?.ok) onCreated();

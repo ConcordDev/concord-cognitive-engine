@@ -225,10 +225,14 @@ function ReviewTab() {
 
   const createAsset = async () => {
     if (!name.trim()) return;
+    if (kind === 'video' && duration.trim()) {
+      const seconds = Number(duration);
+      if (!Number.isFinite(seconds) || seconds < 0) { setUploadErr('Duration must be a number of seconds that is 0 or greater.'); return; }
+    }
     setBusy(true);
     const r = await lensRun<{ asset: ReviewAsset }>('creative', 'review-asset-create', {
       name: name.trim(), kind, src: src.trim() || undefined,
-      durationSec: kind === 'video' ? Number(duration) || 0 : 0,
+      durationSec: kind === 'video' ? Number(duration) : 0,
       project: project.trim() || undefined,
     });
     setBusy(false);
@@ -443,6 +447,7 @@ function CallSheetTab() {
   const [project, setProject] = useState('');
   const [shootDate, setShootDate] = useState('');
   const [dayNumber, setDayNumber] = useState('1');
+  const [sheetError, setSheetError] = useState<string | null>(null);
   const [generalCall, setGeneralCall] = useState('08:00');
   // row composer
   const [section, setSection] = useState<'cast' | 'crew' | 'locations' | 'schedule'>('cast');
@@ -463,11 +468,14 @@ function CallSheetTab() {
 
   const createSheet = async () => {
     if (!project.trim()) return;
+    const day = Number(dayNumber);
+    if (!Number.isInteger(day) || day < 1) { setSheetError('Shoot day must be a whole number that is 1 or greater.'); return; }
+    setSheetError(null);
     setBusy(true);
     const r = await lensRun<{ sheet: CallSheet }>('creative', 'callsheet-create', {
       project: project.trim(),
       shootDate: shootDate || undefined,
-      dayNumber: Number(dayNumber) || 1,
+      dayNumber: day,
       generalCall: generalCall || undefined,
     });
     setBusy(false);
@@ -525,7 +533,8 @@ function CallSheetTab() {
             <input className={INPUT} placeholder="Project" value={project} onChange={(e) => setProject(e.target.value)} />
             <input className={INPUT} type="date" value={shootDate} onChange={(e) => setShootDate(e.target.value)} />
             <div className="flex gap-2">
-              <input className={INPUT} type="number" min={1} placeholder="Day #" value={dayNumber} onChange={(e) => setDayNumber(e.target.value)} />
+              <input className={INPUT} type="number" min={1} placeholder="Day #" value={dayNumber} onChange={(e) => { setDayNumber(e.target.value); setSheetError(null); }} />
+              {sheetError && <p className="col-span-full text-xs text-rose-300" role="alert">{sheetError}</p>}
               <input className={INPUT} placeholder="General call" value={generalCall} onChange={(e) => setGeneralCall(e.target.value)} />
             </div>
             <button onClick={createSheet} disabled={busy || !project.trim()} className={BTN_PRIMARY}>Create call sheet</button>

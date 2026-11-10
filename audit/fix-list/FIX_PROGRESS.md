@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 492 | 453 | 0 |
+| medium | 500 | 445 | 0 |
 | low | 252 | 728 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **914** | **1234** | **3** |
+| **total** | **922** | **1226** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1441,6 +1441,21 @@ Creating a floor debate also creates the argument-map debate, and a floor argume
 | FIX-debate-014 | debate | medium | FIXED_PENDING_VERIFY | 2cf9ea422 |
 | FIX-mail-001 | mail | medium | FIXED_PENDING_VERIFY | 2cf9ea422 |
 | FIX-insurance-007 | insurance | medium | FIXED_PENDING_VERIFY | 2cf9ea422 |
+
+## Mediums — numbers, emails, and a water key
+
+A model refuses a negative poly count, a file size that is not a size, and a source URL that is not http. A transform field keeps a minus sign while you type it. A board title over 200 characters and a shoot day below 1 say so, and a negative review duration is refused. A party email has to include a name and a domain. An experiment name over 200 characters, or epochs or a batch size below 1, stays in the form. Import accepts the word water as the Water reading, and the log form shows Metric and Value.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-ar-005 | ar | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-ar-002 | ar | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-creative-001 | creative | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-creative-002 | creative | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-tools-002 | tools | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-ml-005 | ml | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-self-009 | self | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-self-003 | self | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

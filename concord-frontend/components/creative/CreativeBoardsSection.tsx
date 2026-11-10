@@ -45,6 +45,7 @@ export function CreativeBoardsSection() {
 
   const createBoard = async () => {
     if (!title.trim()) { setError('Board title is required.'); return; }
+    if (title.trim().length > 200) { setError('A board title must be 200 characters or fewer.'); return; }
     const r = await lensRun('creative', 'board-create', { title: title.trim() });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     setTitle('');

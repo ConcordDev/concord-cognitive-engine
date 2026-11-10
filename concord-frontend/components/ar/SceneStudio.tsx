@@ -307,6 +307,7 @@ function Viewport({ scene, selectedId, onSelect, canvasRef, simRunning, meshRefs
 export function SceneStudio() {
   const [scenes, setScenes] = useState<SceneSummary[]>([]);
   const [scene, setScene] = useState<SceneModel | null>(null);
+  const [transformDraft, setTransformDraft] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panel, setPanel] = useState<'inspector' | 'behaviors' | 'animation' | 'targets' | 'publish' | 'capture'>('inspector');
   // The real react-three-fiber WebGL canvas the Viewport renders into —
@@ -839,10 +840,25 @@ export function SceneStudio() {
                             type="number"
                             step={field === 'rotation' ? 0.1 : 0.1}
                             className={cn(ds.input, 'text-xs px-2 py-1')}
-                            value={selectedObject[field][axis]}
-                            onChange={(e) => patchObject(selectedObject.id, {
-                              [field]: { ...selectedObject[field], [axis]: parseFloat(e.target.value) || 0 },
-                            } as Partial<SceneObject>)}
+                            value={transformDraft[`${field}.${axis}`] ?? selectedObject[field][axis]}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              const key = `${field}.${axis}`;
+                              if (raw === '' || raw === '-' || raw === '.' || raw === '-.' || raw.endsWith('.')) {
+                                setTransformDraft((d) => ({ ...d, [key]: raw }));
+                                return;
+                              }
+                              const n = Number(raw);
+                              if (!Number.isFinite(n)) return;
+                              setTransformDraft((d) => {
+                                const next = { ...d };
+                                delete next[key];
+                                return next;
+                              });
+                              patchObject(selectedObject.id, {
+                                [field]: { ...selectedObject[field], [axis]: n },
+                              } as Partial<SceneObject>);
+                            }}
                             aria-label={`${field} ${axis}`}
                           />
                         ))}

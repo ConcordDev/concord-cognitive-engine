@@ -87,6 +87,10 @@ export function ESignatureTool() {
       setError('title, document text, and at least one named party are required');
       return;
     }
+    if (cleanParties.some((p) => p.email && !/^[^\s@]+@[^\s@]+$/.test(p.email))) {
+      setError('Each party email must include a name and a domain, such as ada@example.com.');
+      return;
+    }
     setBusy(true);
     setError(null);
     const r = await lensRun<{ envelope: Envelope }>('tools', 'esign-create', {
