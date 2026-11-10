@@ -1142,14 +1142,14 @@ A bounty reward, assignment points, dashboard title, lesson title, recipe title,
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-bounties-002 | bounties | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-classroom-003 | classroom | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-observe-002 | observe | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-008 | education | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-cooking-003 | cooking | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-sandbox-002 | sandbox | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-sub-worlds-003 | sub-worlds | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-materials-004 | materials | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-bounties-002 | bounties | medium | FIXED_PENDING_VERIFY | 89a618747 |
+| FIX-classroom-003 | classroom | medium | FIXED_PENDING_VERIFY | 89a618747 |
+| FIX-observe-002 | observe | medium | FIXED_PENDING_VERIFY | 89a618747 |
+| FIX-008 | education | medium | FIXED_PENDING_VERIFY | 89a618747 |
+| FIX-cooking-003 | cooking | medium | FIXED_PENDING_VERIFY | 89a618747 |
+| FIX-sandbox-002 | sandbox | medium | FIXED_PENDING_VERIFY | 89a618747 |
+| FIX-sub-worlds-003 | sub-worlds | medium | FIXED_PENDING_VERIFY | 89a618747 |
+| FIX-materials-004 | materials | medium | FIXED_PENDING_VERIFY | 89a618747 |
 
 ## NEEDS_PRODUCT_SURFACE
 
