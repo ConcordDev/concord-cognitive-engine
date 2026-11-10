@@ -869,12 +869,12 @@ A growth entry above 500 kg, 300 cm, or 80 cm head circumference is refused. A p
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-parenting-001 | parenting | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-plumbing-009 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-healthcare-001 | healthcare | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-insurance-001 | insurance | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-nonprofit-001 | nonprofit | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-death-insurance-001 | death-insurance | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-death-insurance-003 | death-insurance | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-death-insurance-010 | death-insurance | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-staking-002 | staking | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-parenting-001 | parenting | high | FIXED_PENDING_VERIFY | a620c7658 |
+| FIX-plumbing-009 | plumbing | high | FIXED_PENDING_VERIFY | a620c7658 |
+| FIX-healthcare-001 | healthcare | high | FIXED_PENDING_VERIFY | a620c7658 |
+| FIX-insurance-001 | insurance | high | FIXED_PENDING_VERIFY | a620c7658 |
+| FIX-nonprofit-001 | nonprofit | high | FIXED_PENDING_VERIFY | a620c7658 |
+| FIX-death-insurance-001 | death-insurance | high | FIXED_PENDING_VERIFY | a620c7658 |
+| FIX-death-insurance-003 | death-insurance | high | FIXED_PENDING_VERIFY | a620c7658 |
+| FIX-death-insurance-010 | death-insurance | high | FIXED_PENDING_VERIFY | a620c7658 |
+| FIX-staking-002 | staking | high | FIXED_PENDING_VERIFY | a620c7658 |
