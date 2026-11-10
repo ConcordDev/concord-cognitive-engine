@@ -1178,18 +1178,18 @@ Typed amounts are no longer rewritten as the user types. A share, salary, pet we
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-staking-003 | staking | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-wallet-002 | wallet | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-inheritance-001 | inheritance | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-plumbing-015 | plumbing | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-pets-003 | pets | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-hr-001 | hr | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-market-003 | market | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-marketplace-002 | marketplace | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-queue-008 | queue | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-game-design-003 | game-design | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-sim-003 | sim | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-sim-004 | sim | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-staking-003 | staking | medium | FIXED_PENDING_VERIFY | 691623a9f |
+| FIX-wallet-002 | wallet | medium | FIXED_PENDING_VERIFY | 691623a9f |
+| FIX-inheritance-001 | inheritance | medium | FIXED_PENDING_VERIFY | 691623a9f |
+| FIX-plumbing-015 | plumbing | medium | FIXED_PENDING_VERIFY | 691623a9f |
+| FIX-pets-003 | pets | medium | FIXED_PENDING_VERIFY | 691623a9f |
+| FIX-hr-001 | hr | medium | FIXED_PENDING_VERIFY | 691623a9f |
+| FIX-market-003 | market | medium | FIXED_PENDING_VERIFY | 691623a9f |
+| FIX-marketplace-002 | marketplace | medium | FIXED_PENDING_VERIFY | 691623a9f |
+| FIX-queue-008 | queue | medium | FIXED_PENDING_VERIFY | 691623a9f |
+| FIX-game-design-003 | game-design | medium | FIXED_PENDING_VERIFY | 691623a9f |
+| FIX-sim-003 | sim | medium | FIXED_PENDING_VERIFY | 691623a9f |
+| FIX-sim-004 | sim | medium | FIXED_PENDING_VERIFY | 691623a9f |
 
 ## NEEDS_PRODUCT_SURFACE
 
