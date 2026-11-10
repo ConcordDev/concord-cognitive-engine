@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
-interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
+interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; message?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
   const r = await apiHelpers.lens.runDomain('voice', action, { input });
   const data = (r as { data?: { ok: boolean; result?: T } }).data;
@@ -97,10 +97,18 @@ export function VoiceActionPanel() {
 
   async function actAnalyze() {
     if (!transcript.trim()) { err('Transcript required.'); return; }
+    let durationMinutes: number | null = null;
+    if (duration.trim()) {
+      durationMinutes = Number(duration);
+      if (!Number.isFinite(durationMinutes) || durationMinutes < 0) {
+        err('Duration must be a number of minutes that is 0 or greater.');
+        return;
+      }
+    }
     setBusy('analyze'); setFeedback(null);
     try {
-      const r = await callMacro<AnalyzeResult>('transcriptAnalyze', { artifact: { data: { transcript, durationMinutes: parseFloat(duration) || null } } });
-      if (r.ok && r.result) { setAnalyzeResult(r.result); pipe.publish('voice.analyze', r.result, { label: `${r.result.wordCount}w · ${r.result.complexityRating}` }); ok(`${r.result.wordCount}w · ${r.result.fillerRate} fillers.`); } else err(r.error ?? 'analyze failed');
+      const r = await callMacro<AnalyzeResult>('transcriptAnalyze', { artifact: { data: { transcript, durationMinutes } } });
+      if (r.ok && r.result) { setAnalyzeResult(r.result); pipe.publish('voice.analyze', r.result, { label: `${r.result.wordCount}w · ${r.result.complexityRating}` }); ok(`${r.result.wordCount}w · ${r.result.fillerRate} fillers.`); } else err(r.message || r.error || 'analyze failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actDiarize() {

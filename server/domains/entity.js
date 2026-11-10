@@ -780,6 +780,10 @@ export default function registerEntityActions(registerLensAction) {
     const w = wb(ctx); if (!w) return { ok: false, error: "STATE unavailable" };
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
+    const existing = wbListNodes(w.s, w.u);
+    if (existing.some((n) => String(n.name || "").trim().toLowerCase() === name.toLowerCase())) {
+      return { ok: false, error: "duplicate_name", message: "An entity with that name already exists." };
+    }
     // attributes: { key: { value, source? } }
     const attributes = {};
     if (params.attributes && typeof params.attributes === "object") {

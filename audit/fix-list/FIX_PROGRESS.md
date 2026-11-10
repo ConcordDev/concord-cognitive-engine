@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 437 | 508 | 0 |
+| medium | 440 | 505 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **858** | **1290** | **3** |
+| **total** | **861** | **1287** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1322,6 +1322,16 @@ A schema, a veterinary patient, and a medication archive ask before they go. An 
 | FIX-move-builder-001 | move-builder | medium | FIXED_PENDING_VERIFY | 7aa0b3704 |
 | FIX-move-builder-002 | move-builder | medium | FIXED_PENDING_VERIFY | 7aa0b3704 |
 | FIX-move-builder-009 | move-builder | medium | FIXED_PENDING_VERIFY | 7aa0b3704 |
+
+## Mediums — entity, voice, marketing
+
+A second entity with the same name is refused. A transcript duration that is not a number of minutes, including a negative or abc, says so before analysis, and a meeting duration does the same. A new campaign starts as a draft.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-entity-001 | entity | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-voice-009 | voice | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-marketing-014 | marketing | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

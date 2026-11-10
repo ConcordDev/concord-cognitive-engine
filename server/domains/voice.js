@@ -775,11 +775,14 @@ Only use information present in the transcript. Do not invent owners or decision
     if (!title) return { ok: false, error: "meeting title required" };
     const startAt = vcClean(params.startAt, 40);
     if (!startAt || Number.isNaN(Date.parse(startAt))) return { ok: false, error: "valid startAt (ISO datetime) required" };
+    if (params.durationMin != null && params.durationMin !== "" && !(Number(params.durationMin) > 0)) {
+      return { ok: false, error: "invalid_input", message: "Duration must be a number of minutes greater than 0." };
+    }
     const meeting = {
       id: vcId("mtg"),
       title,
       startAt: new Date(startAt).toISOString(),
-      durationMin: Number.isFinite(Number(params.durationMin)) ? Math.max(5, Math.round(Number(params.durationMin))) : 30,
+      durationMin: params.durationMin == null || params.durationMin === "" ? 30 : Math.round(Number(params.durationMin)),
       meetingUrl: vcClean(params.meetingUrl, 500),
       attendees: Array.isArray(params.attendees) ? params.attendees.map((a) => vcClean(a, 120)).filter(Boolean).slice(0, 50) : [],
       autoRecord: params.autoRecord !== false,

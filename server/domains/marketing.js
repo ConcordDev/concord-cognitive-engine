@@ -135,7 +135,7 @@ export default function registerMarketingActions(registerLensAction) {
       goal: mkClean(params.goal, 80).toLowerCase() || "conversions",
       startDate: mkDay(params.startDate) || mkDay(mkNow()),
       endDate: mkDay(params.endDate) || null,
-      status: "active",
+      status: ["draft", "active", "paused"].includes(params.status) ? params.status : "draft",
       createdAt: mkNow(),
     };
     mkListB(s.campaigns, mkAid(ctx)).push(campaign);
