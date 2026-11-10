@@ -765,15 +765,15 @@ Records the user can create now have a delete that stays armed until Confirm nam
 | FIX-plumbing-012 | plumbing | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
 | FIX-plumbing-013 | plumbing | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
 | FIX-supplychain-001 | supplychain | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
-| FIX-classroom-002 | classroom | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-creative-writing-001 | creative-writing | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-disputes-003 | disputes | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-education-010 | education | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-legal-001 | legal | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-mental-health-001 | mental-health | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-move-builder-008 | move-builder | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-paper-006 | paper | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-questmarket-001 | questmarket | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-classroom-002 | classroom | high | FIXED_PENDING_VERIFY | 67d0069f5 |
+| FIX-creative-writing-001 | creative-writing | high | FIXED_PENDING_VERIFY | 67d0069f5 |
+| FIX-disputes-003 | disputes | high | FIXED_PENDING_VERIFY | 67d0069f5 |
+| FIX-education-010 | education | high | FIXED_PENDING_VERIFY | 67d0069f5 |
+| FIX-legal-001 | legal | high | FIXED_PENDING_VERIFY | 67d0069f5 |
+| FIX-mental-health-001 | mental-health | high | FIXED_PENDING_VERIFY | 67d0069f5 |
+| FIX-move-builder-008 | move-builder | high | FIXED_PENDING_VERIFY | 67d0069f5 |
+| FIX-paper-006 | paper | high | FIXED_PENDING_VERIFY | 67d0069f5 |
+| FIX-questmarket-001 | questmarket | high | FIXED_PENDING_VERIFY | 67d0069f5 |
 
 Classroom assignments from another cohort stay listed and can be deleted. Creative-writing pages open into the title and body fields and save through project-update; delete confirms. A dispute filer can withdraw their own open case. Education flashcard decks (including a minted quiz deck) and exercises delete. Legal matters, docket cases, calendar events, and templates delete, and wiping the last template does not re-seed it. Mood check-ins and gratitude entries can be edited or deleted. A minted move can be renamed or deleted. A quest poster can edit the title and description or cancel and refund escrow. Reward is not changed by the edit.
 
