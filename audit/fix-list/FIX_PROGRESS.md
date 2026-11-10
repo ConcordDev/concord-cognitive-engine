@@ -978,8 +978,8 @@ A creator publishes to their own hub. Official posts for a catalog creator stay 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-sponsorship-003 | sponsorship | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-civic-bonds-001 | civic-bonds | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-social-012 | social | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-markets-003 | markets | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-education-006 | education | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-sponsorship-003 | sponsorship | high | FIXED_PENDING_VERIFY | be58eeb32 |
+| FIX-civic-bonds-001 | civic-bonds | high | FIXED_PENDING_VERIFY | be58eeb32 |
+| FIX-social-012 | social | high | FIXED_PENDING_VERIFY | be58eeb32 |
+| FIX-markets-003 | markets | high | FIXED_PENDING_VERIFY | be58eeb32 |
+| FIX-education-006 | education | high | FIXED_PENDING_VERIFY | be58eeb32 |
