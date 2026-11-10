@@ -157,10 +157,11 @@ export function PanelHost() {
           <h2 className="text-sm font-bold text-white">{label}</h2>
           <button
             type="button"
+            data-overlay-close=""
             onClick={() => setActiveId(null)}
             aria-label="Close panel"
             className="text-xs text-gray-300 hover:text-white"
-          >✕ Esc</button>
+          >Close</button>
         </header>
         <div className="flex-1 overflow-auto p-3">
           <Component />

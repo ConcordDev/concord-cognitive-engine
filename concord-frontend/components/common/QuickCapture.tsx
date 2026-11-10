@@ -117,6 +117,8 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                   Quick Capture &mdash; {domain}
                 </span>
                 <button
+                  type="button"
+                  data-overlay-close=""
                   onClick={() => setIsOpen(false)}
                   className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
                   aria-label="Close capture"

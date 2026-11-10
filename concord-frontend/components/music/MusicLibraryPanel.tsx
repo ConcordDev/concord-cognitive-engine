@@ -333,7 +333,7 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
                 <h3 id="track-detail-title" className="text-sm font-bold text-zinc-100 truncate">{detail.title}</h3>
                 <p className="text-xs text-zinc-400 truncate">{detail.artist}{detail.album ? ` · ${detail.album}` : ''}</p>
               </div>
-              <button type="button" onClick={() => setDetail(null)} aria-label="Close details" className="text-zinc-500 hover:text-zinc-200 shrink-0"><X className="w-4 h-4" /></button>
+              <button type="button" data-overlay-close="" onClick={() => setDetail(null)} aria-label="Close details" className="text-zinc-500 hover:text-zinc-200 shrink-0"><X className="w-4 h-4" /></button>
             </div>
             <dl className="grid grid-cols-2 gap-2 text-[11px]">
               <Field label="Genre" value={detail.genre || '—'} />

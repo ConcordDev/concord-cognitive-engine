@@ -213,6 +213,7 @@ export function FriendsPresencePanel({ myWorldId }: FriendsPresencePanelProps) {
             </div>
             <button
               type="button"
+              data-overlay-close=""
               onClick={() => setOpen(false)}
               className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
               aria-label="Close friends panel"

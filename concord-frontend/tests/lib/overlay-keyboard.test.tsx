@@ -82,6 +82,18 @@ describe('overlay keyboard', () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
+  it('Escape clicks data-overlay-close even when the label is not Close', () => {
+    const save = vi.fn();
+    render(
+      <div role="dialog" aria-label="Compose">
+        <button type="button" data-overlay-close="" onClick={save}>Save draft</button>
+      </div>,
+    );
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    handleOverlayKeyDown(event);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
   it('Escape clicks a Close settings button', () => {
     const close = vi.fn();
     render(

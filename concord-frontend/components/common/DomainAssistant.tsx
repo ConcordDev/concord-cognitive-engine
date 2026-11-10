@@ -191,6 +191,8 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
                   </div>
                 </div>
                 <button
+                  type="button"
+                  data-overlay-close=""
                   onClick={() => setOpen(false)}
                   className="p-2 rounded-lg hover:bg-lattice-bg text-gray-400 hover:text-white transition-colors"
                   aria-label="Close assistant"

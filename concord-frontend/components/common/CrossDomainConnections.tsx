@@ -296,6 +296,8 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                     <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
                   </button>
                   <button
+                    type="button"
+                    data-overlay-close=""
                     onClick={() => setOpen(false)}
                     className="p-2 rounded-lg hover:bg-lattice-bg text-gray-400 hover:text-white transition-colors"
                     aria-label="Close panel"

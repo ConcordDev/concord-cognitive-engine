@@ -140,7 +140,7 @@ export function ComposeSheet({ init, offset = 0, onClose, onSend, onDraftSaved }
         <button type="button" aria-label={minimized ? 'Expand' : 'Minimize'} onClick={() => setMinimized((v) => !v)} className="rounded p-1 text-zinc-500 transition-colors hover:text-zinc-200">
           {minimized ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
         </button>
-        <button type="button" aria-label="Close and save draft" onClick={() => void close()} className="rounded p-1 text-zinc-500 transition-colors hover:text-zinc-200"><X className="h-4 w-4" /></button>
+        <button type="button" data-overlay-close="" aria-label="Close and save draft" onClick={() => void close()} className="rounded p-1 text-zinc-500 transition-colors hover:text-zinc-200"><X className="h-4 w-4" /></button>
       </header>
       {!minimized && (
         <>
