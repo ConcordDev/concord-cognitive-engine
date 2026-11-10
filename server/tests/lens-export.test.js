@@ -289,4 +289,57 @@ describe("lens-export (Q79)", () => {
     assert.equal(dtuBelongsInLensExport({ id: "x", title: "Chat Context", ownerId: "u1" }, "finance", "u1"), false);
   });
 
+  it("exports caller records stored outside a <domain>Lens bag", async () => {
+    const runMacro = async () => ({ ok: true, artifacts: [], dtus: [] });
+    globalThis._concordSTATE = {
+      sentinelCases: new Map([
+        ["u1", [{ id: "case_1", title: "My sentinel case" }]],
+        ["u2", [{ id: "case_2", title: "Other sentinel case" }]],
+      ]),
+      writingLens: {
+        projects: new Map([
+          ["u1", [{ id: "page_1", title: "My page" }]],
+          ["u2", [{ id: "page_2", title: "Other page" }]],
+        ]),
+      },
+      conLens: {
+        rfis: new Map([["u1", [{ id: "rfi_1", title: "My RFI" }]]]),
+      },
+      insLens: {
+        policies: new Map([["u1", [{ id: "pol_1", title: "My policy" }]]]),
+      },
+      cognitiveReplay: {
+        moments: new Map([
+          ["u1", [{ id: "mom_1", title: "My moment" }]],
+          ["u2", [{ id: "mom_2", title: "Other moment" }]],
+        ]),
+      },
+      artifacts: new Map([["u1", [{ id: "art_1", title: "Not an art-lens row" }]]]),
+    };
+    const sentinel = await collectLensExport({ runMacro, domain: "sentinel", ctx: { actor: { userId: "u1" } } });
+    const sent = JSON.stringify(sentinel.artifacts);
+    assert.ok(sent.includes("My sentinel case"));
+    assert.ok(!sent.includes("Other sentinel case"));
+
+    const writing = await collectLensExport({ runMacro, domain: "creative-writing", ctx: { actor: { userId: "u1" } } });
+    const pages = JSON.stringify(writing.artifacts);
+    assert.ok(pages.includes("My page"));
+    assert.ok(!pages.includes("Other page"));
+
+    const construction = await collectLensExport({ runMacro, domain: "construction", ctx: { actor: { userId: "u1" } } });
+    assert.ok(JSON.stringify(construction.artifacts).includes("My RFI"));
+
+    const insurance = await collectLensExport({ runMacro, domain: "insurance", ctx: { actor: { userId: "u1" } } });
+    assert.ok(JSON.stringify(insurance.artifacts).includes("My policy"));
+
+    const replay = await collectLensExport({ runMacro, domain: "cognitive-replay", ctx: { actor: { userId: "u1" } } });
+    const moments = JSON.stringify(replay.artifacts);
+    assert.ok(moments.includes("My moment"));
+    assert.ok(!moments.includes("Other moment"));
+
+    const art = await collectLensExport({ runMacro, domain: "art", ctx: { actor: { userId: "u1" } } });
+    assert.ok(!JSON.stringify(art.artifacts).includes("Not an art-lens row"));
+    delete globalThis._concordSTATE;
+  });
+
 });

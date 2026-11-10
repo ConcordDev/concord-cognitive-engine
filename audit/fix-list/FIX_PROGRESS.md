@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 83 | 134 | 3 |
-| medium | 284 | 661 | 0 |
-| low | 249 | 731 | 0 |
+| medium | 287 | 658 | 0 |
+| low | 250 | 730 | 0 |
 | unrated | 0 | 6 | 0 |
-| **total** | **616** | **1532** | **3** |
+| **total** | **620** | **1528** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -767,5 +767,19 @@ Records the user can create now have a delete that stays armed until Confirm nam
 | FIX-supplychain-001 | supplychain | high | FIXED_PENDING_VERIFY | 7724d5cf2 |
 
 Still open in this group: classroom, creative-writing, disputes, education, legal, mental-health, move-builder, paper, and questmarket deletes. FIX-foundry-007 and FIX-world-creator-013 stay design calls.
+
+## RCA-export-no-lens-bag
+
+Header export now reads a domain bag that is not named `<domain>Lens`: `writingLens`, `conLens`, `insLens`, a namesake object such as `cognitiveReplay`, and root maps named `<domain><CamelRest>` such as `sentinelCases`. Only the caller's bucket is included. A key that merely shares a prefix (`artifacts` for `art`) is not taken.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-sentinel-008 | sentinel | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-creative-writing-003 | creative-writing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-insurance-003 | insurance | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-cognitive-replay-001 | cognitive-replay | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-construction-006 | construction | low | FIXED_PENDING_VERIFY | this commit |
+
+FIX-creative-writing-007 stays open: that one is the per-row CSV omitting the body column, not the header pack. Lenses that keep records only in SQL, or in a map that is not keyed by the caller, are still open.
 
 Still open in section 1g: FIX-cognition-009 (public and non-owner `/dtu/<id>` still needs a live response trace) and FIX-music-001 (export silence / start offset not yet located in the offline renderer).

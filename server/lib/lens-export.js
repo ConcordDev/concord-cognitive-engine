@@ -72,8 +72,20 @@ function exportActorId(ctx) {
 }
 
 /**
+ * Short bags whose key is not `<domain>Lens`. The records inside are still
+ * caller-scoped by exportCallerLensState.
+ */
+const LENS_BAG_ALIASES = {
+  creativewriting: "writingLens",
+  construction: "conLens",
+  insurance: "insLens",
+};
+
+/**
  * Find `STATE.<domain>Lens` for "film-studios" / "filmStudiosLens" alike.
- * Returns null when this domain keeps no lens bag.
+ * When that bag is absent, use a known alias (writingLens, conLens) or the
+ * root maps named `<domain><CamelRest>` (sentinelCases). Returns null when
+ * this domain keeps no such store.
  */
 export function lensStateBag(state, domain) {
   if (!state || typeof state !== "object" || !domain) return null;
@@ -85,7 +97,30 @@ export function lensStateBag(state, domain) {
     const stem = key.slice(0, -4).toLowerCase().replace(/[^a-z0-9]/g, "");
     if (stem === want) return state[key];
   }
-  return null;
+  const alias = LENS_BAG_ALIASES[want];
+  if (alias && state[alias] && typeof state[alias] === "object") return state[alias];
+  const prefixed = {};
+  for (const key of Object.keys(state)) {
+    if (typeof state[key] === "function") continue;
+    const flat = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (flat === want) {
+      const value = state[key];
+      // A namesake object (cognitiveReplay) is the bag. A namesake Map
+      // stays in the prefixed set so only the caller's bucket is read.
+      if (value && typeof value === "object" && !(value instanceof Map) && !Array.isArray(value)) {
+        return value;
+      }
+      prefixed[key] = value;
+      continue;
+    }
+    if (key.length > want.length && key.toLowerCase().startsWith(want)) {
+      const boundary = key[want.length];
+      if (boundary === boundary.toUpperCase() && boundary !== boundary.toLowerCase()) {
+        prefixed[key] = state[key];
+      }
+    }
+  }
+  return Object.keys(prefixed).length ? prefixed : null;
 }
 
 function isExportRecord(value) {
