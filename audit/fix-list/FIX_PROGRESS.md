@@ -1394,13 +1394,13 @@ A pickup, dock, appointment, load, proof of delivery, and freight invoice can be
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-logistics-002 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-goals-005 | goals | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-goals-003 | goals | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-insurance-013 | insurance | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-paper-009 | paper | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-paper-013 | paper | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-markets-016 | markets | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-logistics-002 | logistics | medium | FIXED_PENDING_VERIFY | dfd9f2fb2 |
+| FIX-goals-005 | goals | medium | FIXED_PENDING_VERIFY | dfd9f2fb2 |
+| FIX-goals-003 | goals | medium | FIXED_PENDING_VERIFY | dfd9f2fb2 |
+| FIX-insurance-013 | insurance | medium | FIXED_PENDING_VERIFY | dfd9f2fb2 |
+| FIX-paper-009 | paper | medium | FIXED_PENDING_VERIFY | dfd9f2fb2 |
+| FIX-paper-013 | paper | medium | FIXED_PENDING_VERIFY | dfd9f2fb2 |
+| FIX-markets-016 | markets | medium | FIXED_PENDING_VERIFY | dfd9f2fb2 |
 
 ## NEEDS_PRODUCT_SURFACE
 
