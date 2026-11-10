@@ -21,8 +21,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Boxes, Loader2, Plus, RefreshCw, Trash2, ArrowUpRight } from 'lucide-react';
+import { Boxes, Loader2, Plus, RefreshCw, ArrowUpRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { EmptyState, ErrorState } from '@/components/common/EmptyState';
 
@@ -221,18 +222,16 @@ export function FoundryWorldsPanel() {
                 Open <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
               </a>
             )}
-            <button
-              type="button"
-              onClick={() => remove(w.id)}
+            <StickyDeleteConfirm
+              onConfirm={() => remove(w.id)}
               disabled={busyId === w.id || w.status === 'published'}
-              aria-label={`Delete ${w.name}`}
-              title={w.status === 'published' ? 'Unpublish before deleting' : `Delete ${w.name}`}
-              className="rounded p-1.5 text-slate-400 hover:bg-red-600/20 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-40 disabled:hover:bg-transparent"
-            >
-              {busyId === w.id
+              armAriaLabel={`Delete ${w.name}`}
+              confirmAriaLabel={`Confirm delete ${w.name}`}
+              armLabel={busyId === w.id
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                : <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
-            </button>
+                : 'Delete'}
+              className="rounded px-2 py-1 text-xs text-slate-400 hover:bg-red-600/20 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-40"
+            />
           </li>
         ))}
       </ul>

@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 /**
  * Two-step delete that stays armed until the user confirms or cancels.
@@ -10,7 +10,7 @@ import type { ReactNode } from 'react';
  * control has no timer.
  */
 export function StickyDeleteConfirm({
-  armed,
+  armed: armedProp,
   onArm,
   onConfirm,
   onCancel,
@@ -20,25 +20,44 @@ export function StickyDeleteConfirm({
   confirmAriaLabel = 'Confirm delete',
   cancelAriaLabel = 'Cancel delete',
   className,
+  disabled = false,
 }: {
-  armed: boolean;
-  onArm: () => void;
+  /** Omit to let the button keep its own armed state until confirm or cancel. */
+  armed?: boolean;
+  onArm?: () => void;
   onConfirm: () => void;
-  onCancel: () => void;
+  onCancel?: () => void;
   armLabel?: ReactNode;
   confirmLabel?: string;
   armAriaLabel?: string;
   confirmAriaLabel?: string;
   cancelAriaLabel?: string;
   className?: string;
+  disabled?: boolean;
 }) {
+  const [localArmed, setLocalArmed] = useState(false);
+  const controlled = armedProp !== undefined;
+  const armed = controlled ? armedProp : localArmed;
+  const arm = () => {
+    if (!controlled) setLocalArmed(true);
+    onArm?.();
+  };
+  const cancel = () => {
+    if (!controlled) setLocalArmed(false);
+    onCancel?.();
+  };
+  const confirm = () => {
+    if (!controlled) setLocalArmed(false);
+    onConfirm();
+  };
   if (!armed) {
     return (
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); onArm(); }}
+        onClick={(e) => { e.stopPropagation(); arm(); }}
         className={className}
         aria-label={armAriaLabel}
+        disabled={disabled}
       >
         {armLabel ?? 'Delete'}
       </button>
@@ -48,7 +67,7 @@ export function StickyDeleteConfirm({
     <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
-        onClick={onConfirm}
+        onClick={confirm}
         className="text-xs px-2 py-1 rounded bg-red-500/20 text-red-300"
         aria-label={confirmAriaLabel}
       >
@@ -56,7 +75,7 @@ export function StickyDeleteConfirm({
       </button>
       <button
         type="button"
-        onClick={onCancel}
+        onClick={cancel}
         className="text-xs px-2 py-1 rounded text-zinc-300 hover:bg-white/10"
         aria-label={cancelAriaLabel}
       >

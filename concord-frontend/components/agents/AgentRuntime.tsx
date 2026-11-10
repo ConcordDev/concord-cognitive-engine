@@ -14,6 +14,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { TreeDiagram, TreeNode, TimelineView, TimelineEvent, ChartKit } from '@/components/viz';
 import {
   Play, Loader2, ListTree, GitBranch, CalendarClock, MessageSquare, Wallet,
@@ -434,9 +435,13 @@ function OrchestrationPanel({ agents, onChange }: { agents: AgentLite[]; onChang
                 <button onClick={() => run(g)} className="inline-flex items-center gap-1 rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/20">
                   <Play className="h-3 w-3" /> run
                 </button>
-                <button onClick={() => remove(g.id)} className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20">
-                  <Trash2 className="h-3 w-3" /> delete
-                </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => { void remove(g.id); }}
+                  armLabel={<><Trash2 className="h-3 w-3" /> delete</>}
+                  armAriaLabel={`Delete graph ${g.name}`}
+                  confirmAriaLabel={`Confirm delete graph ${g.name}`}
+                  className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20"
+                />
               </div>
             </div>
           ))}
@@ -591,9 +596,13 @@ function SchedulesPanel({ agents, onChange }: { agents: AgentLite[]; onChange: (
                 <button onClick={() => toggle(sc.id)} className="inline-flex items-center gap-1 rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:text-white">
                   <Power className="h-3 w-3" /> {sc.enabled ? 'pause' : 'enable'}
                 </button>
-                <button onClick={() => remove(sc.id)} className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20">
-                  <Trash2 className="h-3 w-3" /> delete
-                </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => { void remove(sc.id); }}
+                  armLabel={<><Trash2 className="h-3 w-3" /> delete</>}
+                  armAriaLabel={`Delete trigger ${sc.agentName}`}
+                  confirmAriaLabel={`Confirm delete trigger ${sc.agentName}`}
+                  className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20"
+                />
               </div>
             </div>
           ))}
@@ -1013,9 +1022,13 @@ function TaskDefinitionsPanel({ onChange }: { onChange: () => void }) {
                 ))}
               </div>
               <div className="mt-1.5 flex gap-1">
-                <button onClick={() => remove(td.id)} className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20">
-                  <Trash2 className="h-3 w-3" /> delete
-                </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => { void remove(td.id); }}
+                  armLabel={<><Trash2 className="h-3 w-3" /> delete</>}
+                  armAriaLabel={`Delete task ${td.name}`}
+                  confirmAriaLabel={`Confirm delete task ${td.name}`}
+                  className="inline-flex items-center gap-1 rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/20"
+                />
               </div>
             </div>
           ))}

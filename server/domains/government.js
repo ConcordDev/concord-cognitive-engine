@@ -882,11 +882,13 @@ export default function registerGovernmentActions(registerLensAction) {
     const userId = govActor(ctx);
     const id = String(params.id || "");
     const reason = String(params.reason || "").trim();
+    if (!reason) return { ok: false, error: "A denial reason is required." };
+    if (reason.length > 500) return { ok: false, error: "Denial reason must be at most 500 characters." };
     const permit = ensureGovBucket(s, "permits", userId).find(p => p.id === id);
     if (!permit) return { ok: false, error: "permit not found" };
     permit.status = "denied";
     permit.deniedAt = new Date().toISOString();
-    permit.denialReason = reason || "no reason provided";
+    permit.denialReason = reason;
     queueGovNotification(s, userId, {
       kind: "status_update", subjectKind: "permit", subjectId: permit.id,
       message: `Permit ${permit.recordNumber} was denied: ${permit.denialReason}`,

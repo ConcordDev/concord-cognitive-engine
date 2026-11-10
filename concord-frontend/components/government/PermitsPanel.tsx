@@ -27,6 +27,9 @@ export function PermitsPanel() {
   const [permits, setPermits] = useState<Permit[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ applicantName: '', applicantEmail: '', applicantPhone: '', kind: 'building_residential', description: '', siteAddress: '', feeUsd: '0' });
+  const [denyId, setDenyId] = useState<string | null>(null);
+  const [denyReason, setDenyReason] = useState('');
+  const [denyError, setDenyError] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -49,7 +52,6 @@ export function PermitsPanel() {
   }
 
   async function action(id: string, act: 'pay-fee' | 'approve' | 'issue' | 'deny') {
-    const reason = act === 'deny' ? prompt('Denial reason?') : null;
     try {
       const input: Record<string, unknown> = { id };
       if (act === 'pay-fee') {
@@ -57,10 +59,21 @@ export function PermitsPanel() {
         if (!proceed) return;
         input.method = 'offline';
       }
-      if (act === 'deny' && reason) input.reason = reason;
+      if (act === 'deny') {
+        const reason = denyReason.trim();
+        if (!reason) { setDenyError('A denial reason is required.'); return; }
+        input.reason = reason;
+      }
       if (act === 'issue') input.validForDays = 365;
       const res = await lensRun({ domain: 'government', action: `permits-${act}`, input });
-      if (res.data?.ok === false) alert(res.data?.error);
+      if (res.data?.ok === false) {
+        if (act === 'deny') setDenyError(res.data?.error || 'Deny failed.');
+        else alert(res.data?.error);
+      } else if (act === 'deny') {
+        setDenyId(null);
+        setDenyReason('');
+        setDenyError(null);
+      }
       await refresh();
     } catch (e) { console.error('[Permits]', act, e); }
   }
@@ -109,7 +122,24 @@ export function PermitsPanel() {
                   {p.status === 'applied' && !p.paid && <button onClick={() => action(p.id, 'pay-fee')} title="Records cash, check, or money order already received. Does not charge a card." className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/50">Record offline payment</button>}
                   {p.status === 'under_review' && <button onClick={() => action(p.id, 'approve')} className="px-2 py-0.5 text-[10px] rounded bg-cyan-500/30 text-cyan-300 hover:bg-cyan-500/50 inline-flex items-center gap-1"><Check className="w-2.5 h-2.5" />Approve</button>}
                   {p.status === 'approved' && <button onClick={() => action(p.id, 'issue')} className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/50 inline-flex items-center gap-1"><Send className="w-2.5 h-2.5" />Issue</button>}
-                  {p.status !== 'issued' && p.status !== 'denied' && <button onClick={() => action(p.id, 'deny')} className="px-2 py-0.5 text-[10px] rounded bg-rose-500/30 text-rose-300 hover:bg-rose-500/50 inline-flex items-center gap-1"><X className="w-2.5 h-2.5" />Deny</button>}
+                  {p.status !== 'issued' && p.status !== 'denied' && (
+                    denyId === p.id ? (
+                      <span className="inline-flex flex-wrap items-center gap-1">
+                        <input
+                          aria-label={`Denial reason for ${p.recordNumber}`}
+                          value={denyReason}
+                          onChange={(e) => { setDenyReason(e.target.value); setDenyError(null); }}
+                          placeholder="Denial reason"
+                          className="bg-black/40 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-gray-200"
+                        />
+                        <button type="button" onClick={() => action(p.id, 'deny')} className="px-2 py-0.5 text-[10px] rounded bg-rose-500/30 text-rose-300">Deny permit</button>
+                        <button type="button" onClick={() => { setDenyId(null); setDenyError(null); }} className="px-2 py-0.5 text-[10px] rounded text-gray-400">Cancel</button>
+                        {denyError && <span role="alert" className="text-[10px] text-rose-300">{denyError}</span>}
+                      </span>
+                    ) : (
+                      <button type="button" onClick={() => { setDenyId(p.id); setDenyReason(''); setDenyError(null); }} className="px-2 py-0.5 text-[10px] rounded bg-rose-500/30 text-rose-300 hover:bg-rose-500/50 inline-flex items-center gap-1"><X className="w-2.5 h-2.5" />Deny</button>
+                    )
+                  )}
                   {p.expiresAt && <span className="ml-auto text-[10px] text-gray-400">Expires {p.expiresAt.slice(0, 10)}</span>}
                 </div>
                 {p.denialReason && <div className="mt-1 text-[10px] text-rose-300">Denial reason: {p.denialReason}</div>}

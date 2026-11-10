@@ -7,6 +7,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 describe('StickyDeleteConfirm', () => {
+  it('keeps itself armed until confirm, without a parent timer', () => {
+    const onConfirm = vi.fn();
+    render(<StickyDeleteConfirm onConfirm={onConfirm} confirmAriaLabel="Confirm delete world" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Confirm delete world' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete world' }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
   it('arms on the first click and does not delete until confirm', () => {
     const onArm = vi.fn();
     const onConfirm = vi.fn();

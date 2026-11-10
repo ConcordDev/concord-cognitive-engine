@@ -21,6 +21,7 @@ import {
   TrendingUp, Trash2, Gauge, Route, Radio, Timer, Loader2, AlertTriangle
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { AgentRuntime } from '@/components/agents/AgentRuntime';
 import { AgentSelfPanel } from '@/components/agents/AgentSelfPanel';
 import { AgentDisclosureBadge } from '@/components/world/AgentDisclosureBadge';
@@ -535,13 +536,13 @@ export function FleetPanel() {
                           aria-label="Terminal">
                             <Terminal className="w-3 h-3" />
                           </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); removeLensAgent(agent.id); }}
+                          <StickyDeleteConfirm
+                            onConfirm={() => removeLensAgent(agent.id)}
+                            armLabel={<Trash2 className="w-3 h-3" />}
+                            armAriaLabel={`Delete agent ${agent.name}`}
+                            confirmAriaLabel={`Confirm delete agent ${agent.name}`}
                             className="flex items-center justify-center gap-1 px-3 py-1.5 rounded text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
-                            title="Delete agent"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                          />
                         </div>
                       </div>
                     </motion.div>

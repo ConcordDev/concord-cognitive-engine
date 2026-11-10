@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 290 | 655 | 0 |
+| medium | 294 | 651 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **711** | **1437** | **3** |
+| **total** | **715** | **1433** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1001,6 +1001,17 @@ Tab and Shift+Tab move focus in the studio. Arrange and Session are buttons. The
 | FIX-studio-005 | studio | high | FIXED_PENDING_VERIFY | ca9a0179a |
 | FIX-code-quality-008 | code-quality | high | FIXED_PENDING_VERIFY | ca9a0179a |
 | FIX-ar-013 | ar | high | FIXED_PENDING_VERIFY | ca9a0179a |
+
+## Mediums — shared delete confirm and a required denial reason
+
+`StickyDeleteConfirm` can keep its own armed state, so a delete stays armed until Confirm or Cancel without each lens holding a timer. Foundry world delete, sub-world hard delete, and agent, trigger, graph, and task-definition delete use it. A permit denial requires a reason; an empty prompt can no longer store "no reason provided".
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-foundry-002 | foundry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-sub-worlds-002 | sub-worlds | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-agents-014 | agents | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-government-019 | government | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 
