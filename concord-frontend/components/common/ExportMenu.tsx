@@ -215,9 +215,13 @@ export function ExportMenu({ domain }: ExportMenuProps) {
             initial={{ opacity: 0, y: -4, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.95 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Export"
             className="absolute right-0 top-full mt-1 w-56 bg-lattice-bg border border-lattice-border rounded-xl shadow-2xl overflow-hidden z-50"
           >
             <div className="p-1">
+              <button type="button" className="sr-only" aria-label="Close" onClick={() => setIsOpen(false)}>Close</button>
               {options.map(opt => (
                 <button
                   key={opt.id}

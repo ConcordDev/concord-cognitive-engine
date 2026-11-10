@@ -250,6 +250,9 @@ export function ContentPublisher({
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Share and publish"
               className="fixed inset-x-4 top-[15%] mx-auto max-w-lg z-50 bg-lattice-surface border border-lattice-border rounded-2xl shadow-2xl overflow-hidden"
             >
               {/* Header */}

@@ -12,6 +12,7 @@ const emptySubscribe = () => () => {};
 const getTrue = () => true;
 const getFalse = () => false;
 import { usePathname } from 'next/navigation';
+import { installOverlayKeyboard } from '@/lib/a11y/overlay-keyboard';
 import dynamic from 'next/dynamic';
 import { useDiegetic } from '@/hooks/useDiegetic';
 import { useWorldHudHidden } from '@/hooks/useWorldHudHidden';
@@ -162,6 +163,7 @@ export function AppShell({ children }: AppShellProps) {
   // dispatched across the app and routes it to the right macro /
   // navigation / toast. See lib/event-router.ts for the table.
   useEventRouter();
+  useEffect(() => installOverlayKeyboard(), []);
 
   // Phase 11 (Item 4) — pan-social notification toasts. Subscribes
   // to the social:notification socket event so reactions / comments /
