@@ -1448,14 +1448,14 @@ A model refuses a negative poly count, a file size that is not a size, and a sou
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-ar-005 | ar | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-ar-002 | ar | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-creative-001 | creative | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-creative-002 | creative | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-tools-002 | tools | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-ml-005 | ml | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-self-009 | self | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-self-003 | self | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-ar-005 | ar | medium | FIXED_PENDING_VERIFY | 736b75bb5 |
+| FIX-ar-002 | ar | medium | FIXED_PENDING_VERIFY | 736b75bb5 |
+| FIX-creative-001 | creative | medium | FIXED_PENDING_VERIFY | 736b75bb5 |
+| FIX-creative-002 | creative | medium | FIXED_PENDING_VERIFY | 736b75bb5 |
+| FIX-tools-002 | tools | medium | FIXED_PENDING_VERIFY | 736b75bb5 |
+| FIX-ml-005 | ml | medium | FIXED_PENDING_VERIFY | 736b75bb5 |
+| FIX-self-009 | self | medium | FIXED_PENDING_VERIFY | 736b75bb5 |
+| FIX-self-003 | self | medium | FIXED_PENDING_VERIFY | 736b75bb5 |
 
 ## NEEDS_PRODUCT_SURFACE
 
