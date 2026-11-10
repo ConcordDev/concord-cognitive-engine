@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 404 | 541 | 0 |
+| medium | 407 | 538 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **825** | **1323** | **3** |
+| **total** | **828** | **1320** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1248,6 +1248,16 @@ A click on the 311 map fills latitude and longitude, and the map keeps a size an
 | FIX-government-012 | government | medium | FIXED_PENDING_VERIFY | b292a2e77 |
 | FIX-government-022 | government | medium | FIXED_PENDING_VERIFY | b292a2e77 |
 | FIX-government-017 | government | medium | FIXED_PENDING_VERIFY | b292a2e77 |
+
+## Mediums — garage records
+
+Fuel, service, expense, trip, and document rows have an Edit control that updates the caller's record. The vehicle delete control stays visible and confirms before it runs. A VIN decode is stored and shown again after reload.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-automotive-007 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-automotive-010 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-automotive-011 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

@@ -112,7 +112,6 @@ export function GarageSection() {
     } catch (e) { console.error('[Garage] addVehicle', e); }
   }
   async function delVehicle(id: string) {
-    if (!confirm('Delete this vehicle and all its records?')) return;
     try { await lensRun({ domain: 'automotive', action: 'vehicles-delete', input: { id } }); setActiveId(null); await refreshVehicles(); }
     catch (e) { console.error('[Garage] delVehicle', e); }
   }
@@ -152,6 +151,15 @@ export function GarageSection() {
     try { await lensRun({ domain: 'automotive', action: 'fuel-delete', input: { id } }); await reloadAll(); }
     catch (e) { console.error('[Garage] delFuel', e); }
   }
+  async function editFuel(f: { id: string; volume: number; totalCost: number; odometer: number; station?: string }) {
+    const volume = prompt('Volume?', String(f.volume)); if (volume === null) return;
+    const totalCost = prompt('Total cost ($)?', String(f.totalCost)); if (totalCost === null) return;
+    const odometer = prompt('Odometer?', String(f.odometer)); if (odometer === null) return;
+    const station = prompt('Station?', f.station || '') ?? (f.station || '');
+    const r = await lensRun({ domain: 'automotive', action: 'fuel-update', input: { id: f.id, volume: Number(volume), totalCost: Number(totalCost), odometer: Number(odometer), station } });
+    if (r.data?.ok === false) { alert(r.data?.message || r.data?.error || 'Could not update that fill-up.'); return; }
+    await reloadAll();
+  }
 
   async function logService() {
     if (!activeId) return;
@@ -162,6 +170,15 @@ export function GarageSection() {
       await lensRun({ domain: 'automotive', action: 'service-log', input: { vehicleId: activeId, serviceType: serviceType.trim(), cost: Number(cost), odometer: Number(odometer) || undefined } });
       await reloadAll();
     } catch (e) { console.error('[Garage] logService', e); }
+  }
+  async function editService(sv: { id: string; serviceType: string; cost: number; odometer: number; shop: string }) {
+    const serviceType = prompt('Service type?', sv.serviceType); if (serviceType === null || !serviceType.trim()) return;
+    const cost = prompt('Cost ($)?', String(sv.cost)); if (cost === null) return;
+    const odometer = prompt('Odometer?', String(sv.odometer)); if (odometer === null) return;
+    const shop = prompt('Shop?', sv.shop || '') ?? (sv.shop || '');
+    const r = await lensRun({ domain: 'automotive', action: 'service-update', input: { id: sv.id, serviceType: serviceType.trim(), cost: Number(cost), odometer: Number(odometer), shop } });
+    if (r.data?.ok === false) { alert(r.data?.message || r.data?.error || 'Could not update that service.'); return; }
+    await reloadAll();
   }
   async function delService(id: string) {
     try { await lensRun({ domain: 'automotive', action: 'service-delete', input: { id } }); await reloadAll(); }
@@ -195,6 +212,13 @@ export function GarageSection() {
       await reloadAll();
     } catch (e) { console.error('[Garage] logExpense', e); }
   }
+  async function editExpense(e: { id: string; amount: number; note: string; category: string }) {
+    const amount = prompt('Amount ($)?', String(e.amount)); if (amount === null) return;
+    const note = prompt('Note?', e.note || '') ?? (e.note || '');
+    const r = await lensRun({ domain: 'automotive', action: 'expenses-update', input: { id: e.id, amount: Number(amount), note, category: e.category } });
+    if (r.data?.ok === false) { alert(r.data?.message || r.data?.error || 'Could not update that expense.'); return; }
+    await reloadAll();
+  }
   async function delExpense(id: string) {
     try { await lensRun({ domain: 'automotive', action: 'expenses-delete', input: { id } }); await reloadAll(); }
     catch (e) { console.error('[Garage] delExpense', e); }
@@ -211,6 +235,14 @@ export function GarageSection() {
       await reloadAll();
     } catch (e) { console.error('[Garage] logTrip', e); }
   }
+  async function editTrip(t: { id: string; distance: number; from: string; to: string; purpose: string }) {
+    const distance = prompt('Distance (mi)?', String(t.distance)); if (distance === null) return;
+    const from = prompt('From?', t.from || '') ?? (t.from || '');
+    const to = prompt('To?', t.to || '') ?? (t.to || '');
+    const r = await lensRun({ domain: 'automotive', action: 'trips-update', input: { id: t.id, distance: Number(distance), from, to, purpose: t.purpose } });
+    if (r.data?.ok === false) { alert(r.data?.message || r.data?.error || 'Could not update that trip.'); return; }
+    await reloadAll();
+  }
   async function delTrip(id: string) {
     try { await lensRun({ domain: 'automotive', action: 'trips-delete', input: { id } }); await reloadAll(); }
     catch (e) { console.error('[Garage] delTrip', e); }
@@ -226,6 +258,14 @@ export function GarageSection() {
       await lensRun({ domain: 'automotive', action: 'documents-create', input: { vehicleId: activeId, kind: kind.trim(), title, provider, expiryDate: expiryDate || undefined } });
       await reloadAll();
     } catch (e) { console.error('[Garage] addDoc', e); }
+  }
+  async function editDoc(d: { id: string; title: string; provider: string; expiryDate?: string | null }) {
+    const title = prompt('Title?', d.title); if (title === null || !title.trim()) return;
+    const provider = prompt('Provider?', d.provider || '') ?? (d.provider || '');
+    const expiryDate = prompt('Expiry (YYYY-MM-DD)?', d.expiryDate || '') ?? '';
+    const r = await lensRun({ domain: 'automotive', action: 'documents-update', input: { id: d.id, title: title.trim(), provider, expiryDate: expiryDate.trim() || undefined } });
+    if (r.data?.ok === false) { alert(r.data?.message || r.data?.error || 'Could not update that document.'); return; }
+    await reloadAll();
   }
   async function delDoc(id: string) {
     try { await lensRun({ domain: 'automotive', action: 'documents-delete', input: { id } }); await reloadAll(); }
@@ -277,7 +317,9 @@ export function GarageSection() {
                 <div className="text-xs text-white truncate">{v.name}</div>
                 <div className="text-[10px] text-gray-400 truncate">{[v.year, v.make, v.model].filter(Boolean).join(' ') || 'no details'} · {v.odometer.toLocaleString()} {v.odometerUnit}</div>
               </div>
-              <button aria-label="Delete" onClick={(e) => { e.stopPropagation(); delVehicle(v.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+              <span onClick={(e) => e.stopPropagation()}>
+                <StickyDeleteConfirm onConfirm={() => delVehicle(v.id)} armAriaLabel="Delete vehicle" confirmAriaLabel="Confirm delete vehicle" className="p-0.5 text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} />
+              </span>
             </li>
           ))}
         </ul>
@@ -393,7 +435,7 @@ export function GarageSection() {
                             <td className="text-right font-mono text-white">${f.totalCost.toFixed(2)}</td>
                             <td className="text-right font-mono text-gray-400">{f.pricePerUnit}</td>
                             <td className="text-right font-mono text-sky-300">{f.mpg !== null ? f.mpg : '—'}</td>
-                            <td className="text-right"><StickyDeleteConfirm onConfirm={() => delFuel(f.id)} armAriaLabel="Delete fuel entry" confirmAriaLabel="Confirm delete fuel entry" className="text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} /></td>
+                            <td className="text-right whitespace-nowrap"><button type="button" className="mr-2 text-[10px] text-sky-300" onClick={() => editFuel(f)}>Edit</button><StickyDeleteConfirm onConfirm={() => delFuel(f.id)} armAriaLabel="Delete fuel entry" confirmAriaLabel="Confirm delete fuel entry" className="text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} /></td>
                           </tr>
                         ))}
                       </tbody>
@@ -420,6 +462,7 @@ export function GarageSection() {
                             <div className="text-[10px] text-gray-400">{sv.date} · {sv.odometer.toLocaleString()} mi{sv.shop && ` · ${sv.shop}`}</div>
                           </div>
                           <span className="text-xs font-mono text-white">{sv.cost > 0 ? `$${sv.cost.toFixed(2)}` : '—'}</span>
+                          <button type="button" className="text-[10px] text-sky-300" onClick={() => editService(sv)}>Edit</button>
                           <StickyDeleteConfirm onConfirm={() => delService(sv.id)} armAriaLabel="Delete service" confirmAriaLabel="Confirm delete service" className="text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} />
                         </li>
                       ))}
@@ -444,6 +487,7 @@ export function GarageSection() {
                           <span className="text-[10px] text-gray-400 font-mono w-20">{e.date}</span>
                           <span className="flex-1 text-xs text-gray-300 truncate">{e.note}</span>
                           <span className="text-xs font-mono text-white">${e.amount.toFixed(2)}</span>
+                          <button type="button" className="text-[10px] text-sky-300" onClick={() => editExpense(e)}>Edit</button>
                           <StickyDeleteConfirm onConfirm={() => delExpense(e.id)} armAriaLabel="Delete expense" confirmAriaLabel="Confirm delete expense" className="text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} />
                         </li>
                       ))}
@@ -468,6 +512,7 @@ export function GarageSection() {
                           <span className="text-[10px] text-gray-400 font-mono w-20">{t.date}</span>
                           <span className="flex-1 text-xs text-gray-300 truncate">{[t.from, t.to].filter(Boolean).join(' → ') || '—'}</span>
                           <span className="text-xs font-mono text-white">{t.distance} mi</span>
+                          <button type="button" className="text-[10px] text-sky-300" onClick={() => editTrip(t)}>Edit</button>
                           <StickyDeleteConfirm onConfirm={() => delTrip(t.id)} armAriaLabel="Delete trip" confirmAriaLabel="Confirm delete trip" className="text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} />
                         </li>
                       ))}
@@ -495,6 +540,7 @@ export function GarageSection() {
                           </div>
                           {d.expired && <span className="text-[9px] uppercase text-rose-300">expired</span>}
                           {d.expiringSoon && <span className="text-[9px] uppercase text-amber-300">expiring</span>}
+                          <button type="button" className="text-[10px] text-sky-300" onClick={() => editDoc(d)}>Edit</button>
                           <StickyDeleteConfirm onConfirm={() => delDoc(d.id)} armAriaLabel="Delete document" confirmAriaLabel="Confirm delete document" className="text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} />
                         </li>
                       ))}

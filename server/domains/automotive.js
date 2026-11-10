@@ -119,7 +119,7 @@ export default function registerAutomotiveActions(registerLensAction) {
    * into make/model/year/trim/engine/transmission/safety features.
    * Free, no API key.
    */
-  registerLensAction("automotive", "vin-decode", async (_ctx, _artifact, params = {}) => {
+  registerLensAction("automotive", "vin-decode", async (ctx, _artifact, params = {}) => {
     const vin = String(params.vin || "").toUpperCase().trim();
     if (!vin) return { ok: false, error: "vin required (17 characters)" };
     if (vin.length !== 17) return { ok: false, error: `vin must be 17 characters (got ${vin.length})` };
@@ -136,9 +136,7 @@ export default function registerAutomotiveActions(registerLensAction) {
       if (!row) return { ok: false, error: "vpic returned no decoded data" };
       // Strip the dozens of empty fields vPIC always includes; keep
       // the ~25 most-useful ones to make the payload friendly.
-      return {
-        ok: true,
-        result: {
+      const decoded = {
           vin,
           make: row.Make || null,
           model: row.Model || null,
@@ -170,11 +168,27 @@ export default function registerAutomotiveActions(registerLensAction) {
           errorCode: row.ErrorCode || null,
           errorText: row.ErrorText || null,
           source: "nhtsa-vpic",
-        },
       };
+      const s = getAutoState();
+      const userId = aidAu(ctx);
+      if (s && userId && userId !== "anon") {
+        if (!s.vinReports) s.vinReports = new Map();
+        const reports = listAu(s.vinReports, userId);
+        reports.unshift({ id: uidAu("vin"), ...decoded, savedAt: isoAu() });
+        if (reports.length > 20) reports.length = 20;
+        saveAuto();
+      }
+      return { ok: true, result: decoded };
     } catch (e) {
       return { ok: false, error: `nhtsa vpic unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  registerLensAction("automotive", "vin-report-list", (ctx, _a, _params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!s.vinReports) s.vinReports = new Map();
+    const reports = listAu(s.vinReports, aidAu(ctx));
+    return { ok: true, result: { reports } };
   });
 
   /**
@@ -552,6 +566,32 @@ export default function registerAutomotiveActions(registerLensAction) {
     return { ok: true, result: { fuel: list.slice().sort((a, b) => b.date.localeCompare(a.date) || b.odometer - a.odometer) } };
   });
 
+  registerLensAction("automotive", "fuel-update", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const row = listAu(s.fuel, aidAu(ctx)).find(f => f.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "fuel entry not found" };
+    if (params.volume != null) {
+      const volume = Number(params.volume);
+      if (!(volume > 0)) return { ok: false, error: "invalid_input", message: "Volume must be a number greater than 0." };
+      row.volume = volume;
+    }
+    if (params.totalCost != null) {
+      const totalCost = Number(params.totalCost);
+      if (!(totalCost >= 0)) return { ok: false, error: "invalid_input", message: "Cost must be a number that is 0 or greater." };
+      row.totalCost = totalCost;
+      if (row.volume > 0) row.pricePerUnit = Math.round((totalCost / row.volume) * 1000) / 1000;
+    }
+    if (params.odometer != null) {
+      const odometer = Number(params.odometer);
+      if (!Number.isFinite(odometer) || odometer < 0) return { ok: false, error: "invalid_input", message: "Odometer must be a number that is 0 or greater." };
+      row.odometer = odometer;
+    }
+    if (params.station != null) row.station = String(params.station);
+    if (params.date != null && String(params.date).trim()) row.date = String(params.date);
+    saveAuto();
+    return { ok: true, result: { entry: row } };
+  });
+
   registerLensAction("automotive", "fuel-delete", (ctx, _a, params = {}) => {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidAu(ctx);
@@ -614,6 +654,32 @@ export default function registerAutomotiveActions(registerLensAction) {
     let list = listAu(s.service, aidAu(ctx));
     if (vehicleId) list = list.filter(x => x.vehicleId === vehicleId);
     return { ok: true, result: { service: list.slice().sort((a, b) => b.date.localeCompare(a.date)) } };
+  });
+
+  registerLensAction("automotive", "service-update", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const row = listAu(s.service, aidAu(ctx)).find(x => x.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "service entry not found" };
+    if (params.serviceType != null) {
+      const serviceType = String(params.serviceType).trim();
+      if (!serviceType) return { ok: false, error: "invalid_input", message: "Service type is required." };
+      row.serviceType = serviceType;
+    }
+    if (params.cost != null) {
+      const cost = Number(params.cost);
+      if (!(cost >= 0)) return { ok: false, error: "invalid_input", message: "Cost must be a number that is 0 or greater." };
+      row.cost = cost;
+    }
+    if (params.odometer != null && params.odometer !== "") {
+      const odometer = Number(params.odometer);
+      if (!Number.isFinite(odometer) || odometer < 0) return { ok: false, error: "invalid_input", message: "Odometer must be a number that is 0 or greater." };
+      row.odometer = odometer;
+    }
+    if (params.shop != null) row.shop = String(params.shop);
+    if (params.notes != null) row.notes = String(params.notes);
+    if (params.date != null && String(params.date).trim()) row.date = String(params.date);
+    saveAuto();
+    return { ok: true, result: { entry: row } };
   });
 
   registerLensAction("automotive", "service-delete", (ctx, _a, params = {}) => {
@@ -787,6 +853,22 @@ export default function registerAutomotiveActions(registerLensAction) {
     };
   });
 
+  registerLensAction("automotive", "expenses-update", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const row = listAu(s.expenses, aidAu(ctx)).find(x => x.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "expense not found" };
+    if (params.amount != null) {
+      const amount = Number(params.amount);
+      if (!(amount >= 0)) return { ok: false, error: "invalid_input", message: "Amount must be a number that is 0 or greater." };
+      row.amount = amount;
+    }
+    if (params.note != null) row.note = String(params.note);
+    if (params.category != null && String(params.category).trim()) row.category = String(params.category);
+    if (params.date != null && String(params.date).trim()) row.date = String(params.date);
+    saveAuto();
+    return { ok: true, result: { entry: row } };
+  });
+
   registerLensAction("automotive", "expenses-delete", (ctx, _a, params = {}) => {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = listAu(s.expenses, aidAu(ctx));
@@ -844,6 +926,24 @@ export default function registerAutomotiveActions(registerLensAction) {
     };
   });
 
+  registerLensAction("automotive", "trips-update", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const row = listAu(s.trips, aidAu(ctx)).find(x => x.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "trip not found" };
+    if (params.distance != null) {
+      const distance = Number(params.distance);
+      if (!(distance > 0)) return { ok: false, error: "invalid_input", message: "Distance must be a number greater than 0." };
+      row.distance = distance;
+    }
+    if (params.purpose != null && ['business', 'personal', 'commute', 'other'].includes(params.purpose)) row.purpose = params.purpose;
+    if (params.from != null) row.from = String(params.from);
+    if (params.to != null) row.to = String(params.to);
+    if (params.note != null) row.note = String(params.note);
+    if (params.date != null && String(params.date).trim()) row.date = String(params.date);
+    saveAuto();
+    return { ok: true, result: { trip: row } };
+  });
+
   registerLensAction("automotive", "trips-delete", (ctx, _a, params = {}) => {
     const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = listAu(s.trips, aidAu(ctx));
@@ -897,6 +997,26 @@ export default function registerAutomotiveActions(registerLensAction) {
     listAu(s.documents, userId).push(doc);
     saveAuto();
     return { ok: true, result: { document: doc } };
+  });
+
+  registerLensAction("automotive", "documents-update", (ctx, _a, params = {}) => {
+    const s = getAutoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const row = listAu(s.documents, aidAu(ctx)).find(x => x.id === String(params.id || ""));
+    if (!row) return { ok: false, error: "document not found" };
+    if (params.title != null) {
+      const title = String(params.title).trim();
+      if (!title) return { ok: false, error: "invalid_input", message: "Title is required." };
+      row.title = title;
+    }
+    if (params.provider != null) row.provider = String(params.provider);
+    if (params.note != null) row.note = String(params.note);
+    if (params.expiryDate != null && String(params.expiryDate).trim() !== "") {
+      const expiryDate = calendarDateOrNull(params.expiryDate);
+      if (!expiryDate) return { ok: false, error: "invalid_input", message: "Expiry must be a real date as YYYY-MM-DD." };
+      row.expiryDate = expiryDate;
+    }
+    saveAuto();
+    return { ok: true, result: { document: row } };
   });
 
   registerLensAction("automotive", "documents-delete", (ctx, _a, params = {}) => {

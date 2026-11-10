@@ -7,7 +7,7 @@
  * a vertical timeline rail with mixed event types (recalls /
  * maintenance / inspections), and severity-coded markers.
  *
- * Backend (no changes): uses already-wired
+ * Backend: uses already-wired
  *   • automotive.vin-decode — vehicle metadata
  *   • automotive.recall-lookup — NHTSA recall feed
  *   • automotive.maintenanceSchedule — interval-based service suggestions
@@ -16,13 +16,13 @@
  * (calc form). Timeline-rail layout is the Carfax signature.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
   Loader2, AlertTriangle, Wrench, Gauge, Car, ChevronDown, ChevronUp,
   ShieldAlert, ShieldCheck, FileText,
 } from 'lucide-react';
-import { apiHelpers } from '@/lib/api/client';
+import { apiHelpers, lensRun } from '@/lib/api/client';
 import { joinParts } from '@/lib/utils';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
@@ -59,6 +59,20 @@ export function VehicleHistory() {
   const [recalls, setRecalls] = useState<Recall[]>([]);
   const [schedule, setSchedule] = useState<ScheduleResult | null>(null);
   const [expandedRecall, setExpandedRecall] = useState<string | null>(null);
+  const [savedNote, setSavedNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void lensRun<{ reports?: Array<VinData & { savedAt?: string }> }>('automotive', 'vin-report-list', {}).then((res) => {
+      if (cancelled) return;
+      const latest = res.data?.result?.reports?.[0];
+      if (!latest) return;
+      setVin(latest.vin || '');
+      setVinData(latest);
+      setSavedNote(latest.savedAt ? `Saved ${new Date(latest.savedAt).toLocaleString()}. A new pull replaces this report.` : 'Saved from your last pull.');
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const pull = useMutation({
     mutationFn: async () => {
@@ -107,6 +121,7 @@ export function VehicleHistory() {
                 spellCheck={false}
                 maxLength={17}
               />
+              {savedNote && <p className="text-[10px] text-zinc-400">{savedNote}</p>}
               {vinData && (
                 <div className="text-[12px] text-zinc-300">
                   <span className="font-semibold text-white">{vinData.year} {vinData.make} {vinData.model}</span>
