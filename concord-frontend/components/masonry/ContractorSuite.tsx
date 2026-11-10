@@ -298,6 +298,7 @@ function ProposalsTab() {
     if (r) { setClient(''); setTitle(''); setScope(''); setLines([newLine()]); await load(); invalidateStats(); }
   };
   const setStatus = async (id: string, status: string) => { await run('proposal-update-status', { id, status }); await load(); invalidateStats(); };
+  const del = async (id: string) => { await run('proposal-delete', { id }); await load(); invalidateStats(); };
   const render = async (id: string) => {
     const r = await run<{ number: string; document: string }>('proposal-render', { id });
     if (r) setRendered(r);
@@ -352,6 +353,7 @@ function ProposalsTab() {
                 <button key={st} className={btnS} onClick={() => setStatus(p.id, st)}>{st}</button>
               ))}
               <button className={btnS} onClick={() => render(p.id)}><Copy className="h-3 w-3" />Render PDF text</button>
+              <ConfirmDelete name={`proposal ${p.number}`} ariaLabel={`Delete proposal ${p.number}`} className={btnS} onConfirm={() => del(p.id)}><Trash2 className="h-3 w-3" />Delete</ConfirmDelete>
             </div>
           </div>
         ))}
@@ -575,6 +577,7 @@ function ChangeOrdersTab() {
     if (r) { setDesc(''); setHours(0); setMatCost(0); setImpact(0); await load(); }
   };
   const sign = async (id: string, status: string) => { await run('change-order-sign', { id, status, signedBy: 'Client' }); await load(); };
+  const del = async (id: string) => { await run('change-order-delete', { id }); await load(); };
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_1.1fr]">
@@ -610,12 +613,15 @@ function ChangeOrdersTab() {
             <p className="mt-0.5 text-[10px] text-zinc-400">{co.description}</p>
             <p className="text-[10px] text-zinc-400">{co.laborHours}h labor · {money(co.materialCost)} materials · {co.scheduleImpactDays}d impact</p>
             {co.signedBy && <p className="text-[10px] text-emerald-400">Signed off by {co.signedBy}</p>}
-            {co.status === 'pending' && (
-              <div className="mt-1.5 flex gap-1.5">
-                <button className={btnS} onClick={() => sign(co.id, 'approved')}><CheckCircle2 className="h-3 w-3" />Approve & sign</button>
-                <button className={btnS} onClick={() => sign(co.id, 'rejected')}>Reject</button>
-              </div>
-            )}
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {co.status === 'pending' && (
+                <>
+                  <button className={btnS} onClick={() => sign(co.id, 'approved')}><CheckCircle2 className="h-3 w-3" />Approve & sign</button>
+                  <button className={btnS} onClick={() => sign(co.id, 'rejected')}>Reject</button>
+                </>
+              )}
+              <ConfirmDelete name={`change order ${co.number}`} ariaLabel={`Delete change order ${co.number}`} className={btnS} onConfirm={() => del(co.id)}><Trash2 className="h-3 w-3" />Delete</ConfirmDelete>
+            </div>
           </div>
         ))}
       </div>
@@ -1034,6 +1040,7 @@ function InspectionsTab() {
     setBusy(false);
     if (r) { setResultFor(null); await load(); }
   };
+  const del = async (id: string) => { await run('inspection-delete', { id }); await load(); };
 
   const badge = (i: Inspection) => {
     if (i.result === 'pass') return <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] uppercase text-emerald-300">Pass</span>;
@@ -1089,8 +1096,9 @@ function InspectionsTab() {
                 {i.reInspectionDate && <span className="text-rose-400"> · re-inspect {i.reInspectionDate}</span>}
               </div>
             )}
-            <div className="mt-1.5">
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
               <button className={btnS} onClick={() => openResult(i)}><CheckCircle2 className="h-3 w-3" />Record result</button>
+              <ConfirmDelete name={`inspection ${i.number}`} ariaLabel={`Delete inspection ${i.number}`} className={btnS} onConfirm={() => del(i.id)}><Trash2 className="h-3 w-3" />Delete</ConfirmDelete>
             </div>
           </div>
         ))}

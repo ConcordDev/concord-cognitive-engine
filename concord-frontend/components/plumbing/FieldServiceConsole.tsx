@@ -14,6 +14,7 @@ import { lensRun } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { ChartKit, TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ClientAutocomplete } from '@/components/plumbing/ClientAutocomplete';
 import type { ClientRecord } from '@/components/plumbing/ClientAutocomplete';
 import { TechCertifications } from '@/components/plumbing/TechCertifications';
@@ -485,6 +486,27 @@ export function FieldServiceConsole() {
     await Promise.all([refreshParts(), refreshOps()]);
   });
 
+  const deleteAssignment = (assignmentId: string) => guarded(async () => {
+    await run('dispatchDelete', { assignmentId });
+    await Promise.all([refreshDispatch(), refreshOps()]);
+  });
+  const deleteInvoice = (invoiceId: string) => guarded(async () => {
+    await run('invoiceDelete', { invoiceId });
+    await Promise.all([refreshInvoices(), refreshOps()]);
+  });
+  const deletePlan = (planId: string) => guarded(async () => {
+    await run('planDelete', { id: planId });
+    await refreshPlans();
+  });
+  const deleteInspection = (inspectionId: string) => guarded(async () => {
+    await run('inspectionDelete', { id: inspectionId });
+    await refreshInspections();
+  });
+  const deleteClient = (clientId: string) => guarded(async () => {
+    await run('clientDelete', { clientId });
+    await refreshClients();
+  });
+
   const completeJob = (assignmentId: string) => guarded(async () => {
     const sel = window.prompt('Parts used — comma-separated "name x qty" (blank for none)', '');
     if (sel == null) return;
@@ -684,7 +706,7 @@ export function FieldServiceConsole() {
                     <span className="text-zinc-400">{lane.loadHours}h scheduled</span>
                   </div>
                   <div className="divide-y divide-zinc-900">
-                    {lane.assignments.map((a) => <AssignmentRow key={a.id} a={a} onUpdate={updateAssignment} onComplete={completeJob} />)}
+                    {lane.assignments.map((a) => <AssignmentRow key={a.id} a={a} onUpdate={updateAssignment} onComplete={completeJob} onDelete={deleteAssignment} />)}
                     {lane.assignments.length === 0 && <p className="px-2 py-1.5 text-[11px] text-zinc-400">No jobs.</p>}
                   </div>
                 </div>
@@ -693,7 +715,7 @@ export function FieldServiceConsole() {
                 <div className="rounded border border-amber-500/30">
                   <div className="border-b border-amber-500/20 px-2 py-1.5 text-xs font-medium text-amber-300">Unassigned ({unassigned.length})</div>
                   <div className="divide-y divide-zinc-900">
-                    {unassigned.map((a) => <AssignmentRow key={a.id} a={a} techs={techs} onUpdate={updateAssignment} onComplete={completeJob} />)}
+                    {unassigned.map((a) => <AssignmentRow key={a.id} a={a} techs={techs} onUpdate={updateAssignment} onComplete={completeJob} onDelete={deleteAssignment} />)}
                   </div>
                 </div>
               )}
@@ -788,13 +810,28 @@ export function FieldServiceConsole() {
                     <div className="mt-1 text-zinc-400">{inv.lines.length} lines · subtotal ${inv.subtotal} · tax ${inv.tax} · <span className="text-white">total ${inv.total}</span></div>
                     <div className="mt-1.5 flex items-center justify-between">
                       <span className="text-zinc-400">Paid ${inv.amountPaid} · Balance <span className="text-amber-300">${balance}</span></span>
-                      {balance > 0 && <button onClick={() => recordPayment(inv.id, balance)} className={btnCls}><Check className="h-3.5 w-3.5" /> Record Payment</button>}
+                      <span className="flex items-center gap-2">
+                        {balance > 0 && <button onClick={() => recordPayment(inv.id, balance)} className={btnCls}><Check className="h-3.5 w-3.5" /> Record Payment</button>}
+                        <RowDelete label={`invoice ${inv.number}`} onConfirm={() => deleteInvoice(inv.id)} />
+                      </span>
                     </div>
                   </div>
                 );
               })}
               {invoices.length === 0 && <p className="text-xs text-zinc-400">No invoices yet.</p>}
             </div>
+          </div>
+          <div className={`${cardCls} lg:col-span-2`}>
+            <h4 className="mb-2 text-xs font-semibold text-white">Clients ({clients.length})</h4>
+            {clients.length === 0 && <p className="text-xs text-zinc-400">No clients yet. Add one from the client field above.</p>}
+            <ul className="space-y-1">
+              {clients.map((c) => (
+                <li key={c.id} className="flex items-center justify-between rounded border border-zinc-800 px-2 py-1.5 text-xs">
+                  <span className="text-zinc-200">{c.name}</span>
+                  <RowDelete label={`client “${c.name}”`} onConfirm={() => deleteClient(c.id)} />
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}
@@ -887,7 +924,10 @@ export function FieldServiceConsole() {
                     <span className="font-medium text-white">{p.client} · {p.title}</span>
                     <div className="text-zinc-400">{p.cadence} · ${p.fee} · next {p.nextVisit} · {p.visitsCompleted} visits done</div>
                   </div>
-                  <button onClick={() => logVisit(p.id)} className={btnCls}><Check className="h-3.5 w-3.5" /> Log Visit</button>
+                  <span className="flex items-center gap-2">
+                    <button onClick={() => logVisit(p.id)} className={btnCls}><Check className="h-3.5 w-3.5" /> Log Visit</button>
+                    <RowDelete label={`plan “${p.title}”`} onConfirm={() => deletePlan(p.id)} />
+                  </span>
                 </div>
               ))}
               {plans.length === 0 && <p className="text-xs text-zinc-400">No service plans yet.</p>}
@@ -1045,7 +1085,10 @@ export function FieldServiceConsole() {
                       </div>
                     </div>
                   ) : (
-                    <button className="mt-1.5 rounded border border-zinc-800 px-2 py-1 text-[11px] text-zinc-400 hover:text-white" onClick={() => openResult(i)}>Record Result</button>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <button className="rounded border border-zinc-800 px-2 py-1 text-[11px] text-zinc-400 hover:text-white" onClick={() => openResult(i)}>Record Result</button>
+                      <RowDelete label={`inspection ${i.number}`} onConfirm={() => deleteInspection(i.id)} />
+                    </div>
                   )}
                 </div>
               ))}
@@ -1068,13 +1111,29 @@ function Stat({ label, value, tone }: { label: string; value: string | number; t
   );
 }
 
+function RowDelete({ label, onConfirm }: { label: string; onConfirm: () => void }) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <StickyDeleteConfirm
+      armed={armed}
+      onArm={() => setArmed(true)}
+      onCancel={() => setArmed(false)}
+      onConfirm={() => { setArmed(false); onConfirm(); }}
+      armLabel="Delete"
+      confirmLabel={`Delete ${label}?`}
+      className="text-[11px] text-zinc-400 underline"
+    />
+  );
+}
+
 function AssignmentRow({
-  a, techs, onUpdate, onComplete,
+  a, techs, onUpdate, onComplete, onDelete,
 }: {
   a: Assignment;
   techs?: Tech[];
   onUpdate: (id: string, patch: Record<string, unknown>) => void;
   onComplete: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs">
@@ -1104,6 +1163,7 @@ function AssignmentRow({
         {a.status !== 'completed' && a.status !== 'cancelled' && (
           <button onClick={() => onComplete(a.id)} className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-500">Complete</button>
         )}
+        <RowDelete label={`job “${a.jobTitle}”`} onConfirm={() => onDelete(a.id)} />
       </div>
     </div>
   );

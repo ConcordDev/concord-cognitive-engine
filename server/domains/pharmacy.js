@@ -329,6 +329,14 @@ export default function registerPharmacyActions(registerLensAction) {
     const wantArchived = params.unarchive !== true;
     if (med.archived === wantArchived) return { ok: true, unchanged: true, result: { medication: med } };
     med.archived = wantArchived;
+    if (wantArchived) {
+      for (const rf of (s.refills.get(raid(ctx)) || [])) {
+        if (rf.medId === med.id && ["requested", "processing", "ready"].includes(rf.status)) {
+          rf.status = "cancelled";
+          rf.cancelledBecause = "medication_archived";
+        }
+      }
+    }
     saveRxState();
     return { ok: true, result: { medication: med } };
   });

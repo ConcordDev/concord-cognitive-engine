@@ -22,6 +22,7 @@ import {
   ClipboardList, DollarSign, Loader2, Plus, Trash2, ArrowRight, Check,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit, TimelineView, TreeDiagram, MapView } from '@/components/viz';
 import type { TreeNode, TimelineEvent, MapMarker } from '@/components/viz';
 import { cn } from '@/lib/utils';
@@ -521,7 +522,7 @@ function ScenarioPanel({ notify }: { notify: (f: Feedback) => void }) {
                   {s.resilient ? 'resilient' : 'at risk'}
                 </span>
               </div>
-              <button onClick={() => del(s.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete scenario"><Trash2 className="w-3.5 h-3.5" /></button>
+              <ScenarioDelete name={s.name} onConfirm={() => del(s.id)} />
             </div>
             <div className="text-[10px] text-emerald-300 mt-0.5">Recommendation: {s.recommendation}</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1.5">
@@ -936,5 +937,21 @@ export function SupplyChainPlanner() {
       {tab === 'workorders' && <WorkOrdersPanel notify={notify} />}
       {tab === 'spend' && <SpendPanel notify={notify} />}
     </div>
+  );
+}
+
+function ScenarioDelete({ name, onConfirm }: { name: string; onConfirm: () => void }) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <StickyDeleteConfirm
+      armed={armed}
+      onArm={() => setArmed(true)}
+      onCancel={() => setArmed(false)}
+      onConfirm={() => { setArmed(false); onConfirm(); }}
+      armLabel={<Trash2 className="w-3.5 h-3.5" />}
+      confirmLabel={`Delete scenario “${name}”?`}
+      armAriaLabel="Delete scenario"
+      className="text-zinc-600 hover:text-rose-400"
+    />
   );
 }

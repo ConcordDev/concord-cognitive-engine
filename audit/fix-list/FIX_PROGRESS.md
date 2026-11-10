@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 70 | 147 | 3 |
+| high | 83 | 134 | 3 |
 | medium | 284 | 661 | 0 |
 | low | 249 | 731 | 0 |
 | unrated | 0 | 6 | 0 |
-| **total** | **603** | **1545** | **3** |
+| **total** | **616** | **1532** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -745,5 +745,27 @@ Decrypt reads the downloaded JSON envelope and runs `concord-xor-fnv/v1` in the 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
 | FIX-export-001 | export | high | FIXED_PENDING_VERIFY | 8f2f24760 |
+
+## RCA-missing-delete-control
+
+Records the user can create now have a delete that stays armed until Confirm names the record or Cancel. Archiving a medication also cancels its open refill requests.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-creator-002 | creator | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-landscaping-002 | landscaping | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-001 | masonry | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-015 | masonry | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-017 | masonry | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-pharmacy-009 | pharmacy | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-pharmacy-013 | pharmacy | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-plumbing-001 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-plumbing-010 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-plumbing-011 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-plumbing-012 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-plumbing-013 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-supplychain-001 | supplychain | high | FIXED_PENDING_VERIFY | this commit |
+
+Still open in this group: classroom, creative-writing, disputes, education, legal, mental-health, move-builder, paper, and questmarket deletes. FIX-foundry-007 and FIX-world-creator-013 stay design calls.
 
 Still open in section 1g: FIX-cognition-009 (public and non-owner `/dtu/<id>` still needs a live response trace) and FIX-music-001 (export silence / start offset not yet located in the offline renderer).

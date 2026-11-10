@@ -277,6 +277,17 @@ export default function registerPlumbingActions(registerLensAction) {
       return { ok: true, result: { clients: enriched, count: enriched.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
+  registerLensAction("plumbing", "clientDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const clients = list(g.s.clients, actor(ctx));
+      const id = clean(params.clientId || params.id, 64);
+      const idx = clients.findIndex((c) => c.id === id);
+      if (idx < 0) return { ok: false, error: "client_not_found" };
+      clients.splice(idx, 1); savePlumb();
+      return { ok: true, result: { deleted: id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
 
   // ── Job scheduling + dispatch board ──────────────────────────────
   registerLensAction("plumbing", "dispatchAssign", (ctx, _artifact, params = {}) => {
@@ -306,6 +317,17 @@ export default function registerPlumbingActions(registerLensAction) {
       };
       dispatch.push(assignment); savePlumb();
       return { ok: true, result: { assignment } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "dispatchDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const dispatch = list(g.s.dispatch, actor(ctx));
+      const id = clean(params.assignmentId || params.id, 64);
+      const idx = dispatch.findIndex((d) => d.id === id);
+      if (idx < 0) return { ok: false, error: "assignment_not_found" };
+      dispatch.splice(idx, 1); savePlumb();
+      return { ok: true, result: { deleted: id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
   registerLensAction("plumbing", "dispatchBoard", (ctx, _artifact, params = {}) => {
@@ -498,6 +520,17 @@ export default function registerPlumbingActions(registerLensAction) {
       };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
+  registerLensAction("plumbing", "invoiceDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const invoices = list(g.s.invoices, actor(ctx));
+      const id = clean(params.invoiceId || params.id, 64);
+      const idx = invoices.findIndex((i) => i.id === id);
+      if (idx < 0) return { ok: false, error: "invoice_not_found" };
+      invoices.splice(idx, 1); savePlumb();
+      return { ok: true, result: { deleted: id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
   registerLensAction("plumbing", "invoiceRecordPayment", (ctx, _artifact, params = {}) => {
     try {
       const g = guard(); if (g.error) return g.error;
@@ -619,6 +652,17 @@ export default function registerPlumbingActions(registerLensAction) {
       };
       plans.push(plan); savePlumb();
       return { ok: true, result: { plan } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "planDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const plans = list(g.s.plans, actor(ctx));
+      const id = clean(params.planId || params.id, 64);
+      const idx = plans.findIndex((p) => p.id === id);
+      if (idx < 0) return { ok: false, error: "plan_not_found" };
+      plans.splice(idx, 1); savePlumb();
+      return { ok: true, result: { deleted: id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
   registerLensAction("plumbing", "planList", (ctx) => {
@@ -884,6 +928,17 @@ export default function registerPlumbingActions(registerLensAction) {
       };
       inspections.push(insp); savePlumb();
       return { ok: true, result: { inspection: deriveInspectionJobFields(insp, dispatchById) } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("plumbing", "inspectionDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const g = guard(); if (g.error) return g.error;
+      const inspections = list(g.s.inspections, actor(ctx));
+      const id = clean(params.inspectionId || params.id, 64);
+      const idx = inspections.findIndex((i) => i.id === id);
+      if (idx < 0) return { ok: false, error: "inspection_not_found" };
+      inspections.splice(idx, 1); savePlumb();
+      return { ok: true, result: { deleted: id } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
   registerLensAction("plumbing", "inspectionList", (ctx, _artifact, params = {}) => {

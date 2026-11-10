@@ -17,6 +17,7 @@ import { calendarDateKey } from '@/lib/calendar-date';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { CalendarClock, Plus, Loader2, CheckCircle2, AlertTriangle, Users } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Job {
   id: string;
@@ -112,6 +113,14 @@ export function JobDispatchBoard() {
       setTitle(''); setClient(''); setAddress(''); setNotes('');
       await load();
     } else setErr(r.data.error || 'job-schedule failed');
+  };
+
+  const deleteJob = async (id: string) => {
+    setBusy(true);
+    const r = await lensRun('landscaping', 'job-delete', { id });
+    setBusy(false);
+    if (!r.data.ok) setErr(r.data.error || 'job-delete failed');
+    await load();
   };
 
   const completeJob = async (id: string) => {
@@ -225,7 +234,7 @@ export function JobDispatchBoard() {
               <span className="text-zinc-400">{lane.loadHours}h scheduled</span>
             </div>
             <div className="divide-y divide-zinc-900">
-              {lane.jobs.map((j) => <JobRow key={j.id} job={j} onComplete={completeJob} />)}
+              {lane.jobs.map((j) => <JobRow key={j.id} job={j} onComplete={completeJob} onDelete={deleteJob} />)}
             </div>
           </div>
         ))}
@@ -236,7 +245,7 @@ export function JobDispatchBoard() {
               Unassigned ({board.unassigned.length})
             </div>
             <div className="divide-y divide-zinc-900">
-              {board.unassigned.map((j) => <JobRow key={j.id} job={j} onComplete={completeJob} />)}
+              {board.unassigned.map((j) => <JobRow key={j.id} job={j} onComplete={completeJob} onDelete={deleteJob} />)}
             </div>
           </div>
         )}
@@ -251,7 +260,8 @@ export function JobDispatchBoard() {
   );
 }
 
-function JobRow({ job, onComplete }: { job: Job; onComplete: (id: string) => void }) {
+function JobRow({ job, onComplete, onDelete }: { job: Job; onComplete: (id: string) => void; onDelete: (id: string) => void }) {
+  const [armed, setArmed] = useState(false);
   return (
     <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
       <div className="min-w-0">
@@ -266,14 +276,25 @@ function JobRow({ job, onComplete }: { job: Job; onComplete: (id: string) => voi
           <div className="mt-0.5 truncate text-[11px] text-emerald-300/80">✓ {job.completionNotes}</div>
         )}
       </div>
-      {job.status !== 'completed' && job.status !== 'cancelled' && (
-        <button
-          onClick={() => onComplete(job.id)}
-          className="inline-flex shrink-0 items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-500"
-        >
-          <CheckCircle2 className="h-3 w-3" /> Complete
-        </button>
-      )}
+      <div className="flex shrink-0 items-center gap-1.5">
+        <StickyDeleteConfirm
+          armed={armed}
+          onArm={() => setArmed(true)}
+          onCancel={() => setArmed(false)}
+          onConfirm={() => { setArmed(false); onDelete(job.id); }}
+          armLabel="Delete"
+          confirmLabel={`Delete “${job.title}”?`}
+          className="text-[11px] text-zinc-400 underline"
+        />
+        {job.status !== 'completed' && job.status !== 'cancelled' && (
+          <button
+            onClick={() => onComplete(job.id)}
+            className="inline-flex shrink-0 items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-500"
+          >
+            <CheckCircle2 className="h-3 w-3" /> Complete
+          </button>
+        )}
+      </div>
     </div>
   );
 }

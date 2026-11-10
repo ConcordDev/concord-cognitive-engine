@@ -343,6 +343,18 @@ export default function registerMasonryActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  registerLensAction("masonry", "proposal-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = mlist(s.proposals, maid(ctx));
+      const idx = list.findIndex((x) => x.id === params.id);
+      if (idx < 0) return { ok: false, error: "Proposal not found" };
+      const removed = list.splice(idx, 1)[0];
+      saveMasonState();
+      return { ok: true, result: { deleted: removed.id, number: removed.number } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   registerLensAction("masonry", "proposal-render", (ctx, _a, params = {}) => {
     try {
       const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -525,6 +537,18 @@ export default function registerMasonryActions(registerLensAction) {
       const approvedTotal = list.filter((c) => c.status === "approved").reduce((sm, c) => sm + c.amount, 0);
       const pendingTotal = list.filter((c) => c.status === "pending").reduce((sm, c) => sm + c.amount, 0);
       return { ok: true, result: { changeOrders: list, approvedTotal: Math.round(approvedTotal * 100) / 100, pendingTotal: Math.round(pendingTotal * 100) / 100 } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("masonry", "change-order-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = mlist(s.changeOrders, maid(ctx));
+      const idx = list.findIndex((c) => c.id === params.id);
+      if (idx < 0) return { ok: false, error: "Change order not found" };
+      const removed = list.splice(idx, 1)[0];
+      saveMasonState();
+      return { ok: true, result: { deleted: removed.id, number: removed.number } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -842,6 +866,18 @@ export default function registerMasonryActions(registerLensAction) {
       insp.completedAt = result === "pending" ? null : mnow();
       saveMasonState();
       return { ok: true, result: insp };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  registerLensAction("masonry", "inspection-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getMasonState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const list = mlist(s.inspections, maid(ctx));
+      const idx = list.findIndex((i) => i.id === params.id);
+      if (idx < 0) return { ok: false, error: "Inspection not found" };
+      const removed = list.splice(idx, 1)[0];
+      saveMasonState();
+      return { ok: true, result: { deleted: removed.id, number: removed.number } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

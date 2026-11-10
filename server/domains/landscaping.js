@@ -976,6 +976,18 @@ export default function registerLandscapingActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  registerLensAction("landscaping", "job-delete", (ctx, _a, params = {}) => {
+  try {
+    const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const jobs = lsJobs(s, lsActor(ctx));
+    const idx = jobs.findIndex((j) => j.id === params.id);
+    if (idx < 0) return { ok: false, error: "job not found" };
+    const removed = jobs.splice(idx, 1)[0];
+    saveLand();
+    return { ok: true, result: { deleted: removed.id, title: removed.title } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   // ─── Feature 10 — Proposal → invoice status machine ──────────────────
   // `proposal-build` (Feature 6) stops at a renderable document — there was
   // no way to turn a built proposal into a tracked, payable invoice. This

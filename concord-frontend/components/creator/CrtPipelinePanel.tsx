@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, ChevronRight, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 import { CreatorKeepMenu } from './CreatorKeepMenu';
@@ -119,9 +120,7 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
                         </button>
                       )}
                       <div className="flex-1" />
-                      <button aria-label="Delete" type="button" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400">
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      <PipelineDelete title={c.title} onConfirm={() => del(c.id)} />
                     </div>
                     <CreatorKeepMenu item={c} />
                   </li>
@@ -133,5 +132,21 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
         })}
       </div>
     </div>
+  );
+}
+
+function PipelineDelete({ title, onConfirm }: { title: string; onConfirm: () => void }) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <StickyDeleteConfirm
+      armed={armed}
+      onArm={() => setArmed(true)}
+      onCancel={() => setArmed(false)}
+      onConfirm={() => { setArmed(false); onConfirm(); }}
+      armLabel={<Trash2 className="w-3 h-3" />}
+      confirmLabel={`Delete “${title}”?`}
+      armAriaLabel="Delete"
+      className="text-zinc-600 hover:text-rose-400"
+    />
   );
 }
