@@ -444,6 +444,8 @@ export default function registerAnalyticsActions(registerLensAction) {
 
   registerLensAction("analytics", "dashboard-save", (ctx, _a, params = {}) => {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const rawName = String(params.name || "").trim();
+    if (rawName.length > 100) return { ok: false, error: "dashboard name must be at most 100 characters" };
     const name = anClean(params.name, 100);
     if (!name) return { ok: false, error: "dashboard name required" };
     const arr = anDashboards(s, anActor(ctx));

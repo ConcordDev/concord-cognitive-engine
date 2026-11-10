@@ -827,6 +827,7 @@ button, a, input, textarea, select {
   .fixed.bottom-10,
   .fixed.bottom-12 {
     bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    z-index: 60;
   }
   [role="tablist"] {
     max-width: 100%;

@@ -200,7 +200,7 @@ function FinanceTerminal() {
         category: 'navigation' as const,
         action: () => setGroup(g.id),
       })),
-      { id: 'refresh', keys: 'r', description: 'Refresh dashboard', category: 'actions', action: () => loadDashboard(true) },
+      { id: 'refresh', keys: 'r', description: 'Refresh dashboard', category: 'actions', action: () => { priceFeed?.reload(); void loadDashboard(true); } },
       { id: 'snapshot', keys: 's', description: 'Record net-worth snapshot', category: 'actions', action: () => setShowSnapshot(true) },
     ],
     { lensId: 'finance' },
@@ -326,7 +326,7 @@ function FinanceTerminal() {
 
         <button
           type="button"
-          onClick={() => loadDashboard(true)}
+          onClick={() => { priceFeed?.reload(); void loadDashboard(true); }}
           disabled={refreshing}
           title="Refresh dashboard (R)"
           className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"

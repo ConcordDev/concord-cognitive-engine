@@ -189,6 +189,13 @@ export default function PredictionMarkets() {
   // initial load
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void loadMarkets(); void loadPositions(); void loadLeaderboard(); }, []);
+  useEffect(() => {
+    const handle = window.setTimeout(() => { void loadMarkets(); }, 250);
+    return () => window.clearTimeout(handle);
+  }, [loadMarkets]);
+  useEffect(() => {
+    if (selected) document.getElementById('market-detail')?.scrollIntoView({ block: 'start' });
+  }, [selected]);
 
   useEffect(() => {
     if (tab === 'positions') void loadPositions();
@@ -275,12 +282,14 @@ export default function PredictionMarkets() {
       {tab === 'leaderboard' && <LeaderboardTab rows={leaderboard} />}
 
       {selected && (
+        <div id="market-detail">
         <MarketDetail
           marketId={selected}
           onClose={() => setSelected(null)}
           onChanged={refreshAll}
           flash={flash}
         />
+        </div>
       )}
     </section>
   );

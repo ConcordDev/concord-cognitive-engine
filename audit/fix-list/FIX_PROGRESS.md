@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 145 | 73 | 3 |
+| high | 152 | 66 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **686** | **1462** | **3** |
+| **total** | **693** | **1455** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -942,3 +942,15 @@ Choosing Terrain, Anomalies, Privacy, or Coverage scrolls that panel into view i
 | FIX-atlas-001 | atlas | high | FIXED_PENDING_VERIFY | 90b2eca5a |
 | FIX-markets-012 | markets | high | FIXED_PENDING_VERIFY | 90b2eca5a |
 | FIX-robotics-001 | robotics | high | FIXED_PENDING_VERIFY | 90b2eca5a |
+
+Corner actions sit above the mobile nav and receive the tap. A board card can move to another lane without a drag. A dashboard name longer than 100 characters is refused and the message is shown. Market search runs as you type, and opening a card scrolls its detail into view. Refresh retries the price feed as well as the dashboard.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-006 | board | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-012 | goals | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-015 | cross-cutting | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-board-012 | board | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-analytics-001 | analytics | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-markets-014 | markets | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-finance-001 | finance | high | FIXED_PENDING_VERIFY | this commit |

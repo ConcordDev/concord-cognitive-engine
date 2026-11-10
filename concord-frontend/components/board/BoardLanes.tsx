@@ -128,6 +128,18 @@ export function BoardLanes({
                       <span className={cn('h-1.5 w-1.5 rounded-full', STATUS_PILL[task.status] ?? 'bg-zinc-400')} aria-hidden="true" />
                       {statusName(task.status)}
                     </span>
+                    <div className="mt-2 flex flex-wrap gap-1 md:hidden">
+                      {LANES.filter((other) => other.id !== lane.id).map((other) => (
+                        <button
+                          key={other.id}
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onMove(task.id, other.dropStatus); }}
+                          className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-zinc-300"
+                        >
+                          Move to {other.name}
+                        </button>
+                      ))}
+                    </div>
                   </article>
                 ))}
                 {laneTasks.length === 0 && !(lane.id === 'todo' && adding) && (

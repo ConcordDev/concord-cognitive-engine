@@ -166,6 +166,7 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
     return d && typeof d === 'object' ? (d as Record<string, unknown>) : {};
   });
   const [name, setName] = useState(() => String(savedDashboardDraft.name ?? ''));
+  const [saveError, setSaveError] = useState<string | null>(null);
   useEffect(() => {
     persist({ ...(restore() ?? {}), dashboardDraft: { name } });
   }, [name, persist, restore]);
@@ -195,7 +196,12 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
 
   async function save() {
     if (!name.trim()) return;
+    if (name.trim().length > 100) {
+      setSaveError('Dashboard name must be at most 100 characters.');
+      return;
+    }
     setBusy(true);
+    setSaveError(null);
     const r = await lensRun('analytics', 'dashboard-save', {
       id: editingId || undefined,
       name: name.trim(),
@@ -207,6 +213,8 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
       setWidgets([]);
       setEditingId(null);
       await refresh();
+    } else {
+      setSaveError(r.data?.error || 'Could not save the dashboard.');
     }
   }
   async function open(id: string) {
@@ -260,6 +268,7 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
             {editingId ? 'Update' : 'Save'}
           </button>
         </div>
+        {saveError && <p className="mb-2 text-xs text-red-400">{saveError}</p>}
         <div className="flex flex-wrap gap-1 mb-2">
           {(['metric', 'trend', 'topEvents', 'segment', 'funnel'] as WidgetKind[]).map((k) => (
             <button key={k} onClick={() => addWidget(k)} className={BTN_GHOST}>
