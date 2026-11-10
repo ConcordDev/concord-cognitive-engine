@@ -133,6 +133,7 @@ export function FOIATracker() {
                 <div className="flex items-center gap-2">
                   {STATUS_ICON[r.status]}
                   <span className="text-sm text-white font-medium">{r.subject}</span>
+                  <button type="button" className="text-[10px] text-rose-300" onClick={async () => { await lensRun({ domain: 'government', action: 'foia-delete', input: { id: r.id } }); await refresh(); }}>Remove</button>
                   <span className={cn('ml-auto text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold',
                     r.status === 'fulfilled' ? 'bg-green-500/20 text-green-300' :
                     r.status === 'denied' ? 'bg-red-500/20 text-red-300' :

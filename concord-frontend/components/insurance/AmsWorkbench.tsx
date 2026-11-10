@@ -1301,7 +1301,15 @@ function ESignBinder({ policies }: { policies: PolicyLite[] }) {
                       {s.signed
                         ? <span className="ml-auto text-[9px] text-green-300">signed</span>
                         : (
-                          <button onClick={() => sign(env.id, s.name)} disabled={busy} className={cn(btnGhost, 'ml-auto')}>
+                          <button
+                            onClick={() => {
+                              const typed = window.prompt(`Type “${s.name}” to sign this envelope`);
+                              if (!typed || typed.trim() !== s.name) return;
+                              void sign(env.id, s.name);
+                            }}
+                            disabled={busy}
+                            className={cn(btnGhost, 'ml-auto')}
+                          >
                             Sign now
                           </button>
                         )}

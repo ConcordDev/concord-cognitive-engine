@@ -196,6 +196,7 @@ export function PaymentsPanel() {
                     <Gavel className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                     <span className="text-xs text-white flex-1 truncate">{f.reason} — {f.payerName}</span>
                     <span className="text-xs text-amber-300 font-mono">{money(f.amountUsd)}</span>
+                    <button type="button" className="text-[10px] text-rose-300" onClick={async () => { await lensRun({ domain: 'government', action: 'fines-delete', input: { id: f.id } }); await refresh(); }}>Remove</button>
                     {stripeConfigured && (
                       <button onClick={() => startCheckout('fine', f.id)} disabled={busy} className="px-2 py-1 text-[10px] rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40">Pay</button>
                     )}

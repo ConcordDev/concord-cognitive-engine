@@ -129,6 +129,7 @@ export function ServiceRequestsPanel() {
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', PRIORITY_COLOUR[r.priority])}>{r.priority}</span>
                   <span className="text-sm text-white truncate">{r.category.replace(/_/g, ' ')}</span>
                   <span className="ml-auto text-[10px] text-gray-400">{r.address || `${r.lat.toFixed(3)},${r.lng.toFixed(3)}`}</span>
+                  <button type="button" className="text-[10px] text-rose-300" onClick={async () => { await lensRun({ domain: 'government', action: 'service-requests-delete', input: { id: r.id } }); await refresh(); }}>Remove</button>
                 </div>
                 <div className="text-xs text-gray-300">{r.description}</div>
                 <div className="mt-1 flex items-center gap-2">

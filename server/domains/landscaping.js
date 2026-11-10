@@ -990,6 +990,29 @@ export default function registerLandscapingActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  registerLensAction("landscaping", "job-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const job = lsJobs(s, lsActor(ctx)).find((j) => j.id === params.id);
+      if (!job) return { ok: false, error: "job not found" };
+      if (job.status === "completed") return { ok: false, error: "a completed job cannot be edited" };
+      if (params.title != null) {
+        const title = lsClean(params.title, 120);
+        if (!title) return { ok: false, error: "job title required" };
+        job.title = title;
+      }
+      if (params.client != null) job.client = lsClean(params.client, 120) || "";
+      if (params.address != null) job.address = lsClean(params.address, 200) || "";
+      if (params.crew != null) job.crew = lsClean(params.crew, 120) || "";
+      if (params.date != null) job.date = lsClean(params.date, 16) || job.date;
+      if (params.notes != null) job.notes = lsClean(params.notes, 1000) || "";
+      if (params.startHour != null) job.startHour = Math.min(23, Math.max(0, Math.round(lsNum(params.startHour))));
+      if (params.durationHours != null) job.durationHours = Math.min(24, Math.max(0.5, lsNum(params.durationHours) || job.durationHours));
+      saveLand();
+      return { ok: true, result: { job } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
   registerLensAction("landscaping", "job-delete", (ctx, _a, params = {}) => {
   try {
     const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };

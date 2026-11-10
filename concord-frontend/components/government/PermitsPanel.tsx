@@ -100,6 +100,9 @@ export function PermitsPanel() {
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', STATUS_COLOUR[p.status])}>{p.status.replace(/_/g, ' ')}</span>
                   <span className="text-sm text-white">{p.kind}</span>
                   <span className="ml-auto text-[10px] text-gray-400">{p.applicantName} · ${p.feeUsd} {p.paid ? 'paid' : 'unpaid'}</span>
+                  {p.status !== 'issued' && (
+                    <button type="button" className="text-[10px] text-rose-300" onClick={async () => { await lensRun({ domain: 'government', action: 'permits-cancel', input: { id: p.id } }); await refresh(); }}>Cancel</button>
+                  )}
                 </div>
                 {p.description && <div className="text-[11px] text-gray-400 mb-1">{p.description}</div>}
                 <div className="flex items-center gap-1">

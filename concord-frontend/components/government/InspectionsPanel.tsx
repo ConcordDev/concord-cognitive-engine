@@ -90,6 +90,16 @@ export function InspectionsPanel() {
                       <button onClick={() => complete(i.id, 'fail')} className="p-1 text-rose-400 hover:text-rose-300" title="Fail"><X className="w-3 h-3" /></button>
                     </>
                   )}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await lensRun({ domain: 'government', action: 'inspections-delete', input: { id: i.id } });
+                      await refresh();
+                    }}
+                    className="text-[10px] text-rose-300"
+                  >
+                    Remove
+                  </button>
                 </li>
               );
             })}

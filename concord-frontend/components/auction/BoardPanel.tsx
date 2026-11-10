@@ -20,6 +20,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [owned, setOwned] = useState<Array<{ id: string; title?: string }>>([]);
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
     setFlash({ kind, msg });
@@ -97,9 +98,15 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
           durationS: Number(createForm.durationS) || 3600,
         }),
       });
-      const j = await r.json();
+      const j = await r.json().catch(() => ({}));
       if (j.ok) { showFlash('ok', 'Auction posted.'); setShowCreate(false); refresh(); }
-      else showFlash('err', j.error || 'create failed');
+      else {
+        const raw = j.error ?? j.message ?? j.reason;
+        const msg = typeof raw === 'string' ? raw : raw?.message || `Could not post the auction (${r.status}).`;
+        showFlash('err', msg);
+      }
+    } catch {
+      showFlash('err', 'Could not reach the auction house.');
     } finally { setBusy(null); }
   }, [createForm, refresh, showFlash]);
 
@@ -109,7 +116,16 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
         <button onClick={refresh} aria-label="Refresh" className="rounded-full border border-amber-500/30 bg-amber-500/10 p-1.5 text-amber-300 hover:bg-amber-500/20">
           <RefreshCcw className="h-3.5 w-3.5" />
         </button>
-        <button onClick={() => setShowCreate(true)} className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/30">
+        <button onClick={() => {
+          setShowCreate(true);
+          void fetch('/api/dtus/mine', { credentials: 'include' })
+            .then((res) => res.json())
+            .then((body) => {
+              const rows = body?.dtus || body?.items || body?.results || [];
+              if (Array.isArray(rows)) setOwned(rows.map((d: { id?: string; title?: string }) => ({ id: String(d.id || ''), title: d.title })).filter((d) => d.id));
+            })
+            .catch(() => setOwned([]));
+        }} className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/20 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/30">
           <Plus className="h-3 w-3" />
           List item
         </button>
@@ -230,8 +246,16 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
                 </select>
               </label>
               <label className="block">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400">Item id</span>
-                <input value={createForm.itemId} onChange={(e) => setCreateForm({ ...createForm, itemId: e.target.value })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
+                <span className="text-[10px] uppercase tracking-wider text-slate-400">Owned item</span>
+                <select
+                  value={owned.some((d) => d.id === createForm.itemId) ? createForm.itemId : ''}
+                  onChange={(e) => setCreateForm({ ...createForm, itemId: e.target.value, title: createForm.title || owned.find((d) => d.id === e.target.value)?.title || '' })}
+                  className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100"
+                >
+                  <option value="">{owned.length ? 'Pick one of your items' : 'No owned items loaded'}</option>
+                  {owned.map((d) => <option key={d.id} value={d.id}>{d.title || d.id}</option>)}
+                </select>
+                <input value={createForm.itemId} onChange={(e) => setCreateForm({ ...createForm, itemId: e.target.value })} placeholder="Or paste an item id" className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
               </label>
               <label className="block">
                 <span className="text-[10px] uppercase tracking-wider text-slate-400">Title (optional)</span>

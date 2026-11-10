@@ -833,6 +833,24 @@ export function LiveFloorPanel() {
               />
               {selectedDebateData ? (
                 <div className="space-y-4">
+                  {debatePhase === 'voting' && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void update(selectedDebateData.id, { data: { ...items.find((item) => item.id === selectedDebateData.id)?.data, proVotes: (selectedDebateData.proVotes || 0) + 1 } })}
+                        className="rounded bg-emerald-700 px-3 py-1.5 text-xs text-white"
+                      >
+                        Vote Pro
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void update(selectedDebateData.id, { data: { ...items.find((item) => item.id === selectedDebateData.id)?.data, conVotes: (selectedDebateData.conVotes || 0) + 1 } })}
+                        className="rounded bg-rose-800 px-3 py-1.5 text-xs text-white"
+                      >
+                        Vote Con
+                      </button>
+                    </div>
+                  )}
                   <ProConScale
                     proCount={selectedDebateData.proArguments?.length || 0}
                     conCount={selectedDebateData.conArguments?.length || 0}

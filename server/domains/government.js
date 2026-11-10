@@ -965,6 +965,53 @@ export default function registerGovernmentActions(registerLensAction) {
     return { ok: true, result: { inspection: insp } };
   });
 
+  function dropGovRow(bucket, ctx, id) {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = ensureGovBucket(s, bucket, govActor(ctx));
+    const i = arr.findIndex((row) => row.id === String(id || ""));
+    if (i < 0) return { ok: false, error: "not found" };
+    const [removed] = arr.splice(i, 1);
+    saveGovState();
+    return { ok: true, result: { deleted: removed.id } };
+  }
+
+  registerLensAction("government", "inspections-delete", (ctx, _a, params = {}) => dropGovRow("inspections", ctx, params.id));
+  registerLensAction("government", "fines-delete", (ctx, _a, params = {}) => dropGovRow("fines", ctx, params.id));
+  registerLensAction("government", "service-requests-delete", (ctx, _a, params = {}) => dropGovRow("serviceRequests", ctx, params.id));
+
+  registerLensAction("government", "foia-delete", (ctx, _a, params = {}) => {
+    const state = getGovState(); if (!state) return { ok: false, error: "STATE unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || "anon";
+    const arr = state.foiaRequests.get(userId) || [];
+    const i = arr.findIndex((row) => row.id === String(params.id || ""));
+    if (i < 0) return { ok: false, error: "not found" };
+    const [removed] = arr.splice(i, 1);
+    saveGovState();
+    return { ok: true, result: { deleted: removed.id } };
+  });
+
+  registerLensAction("government", "permits-cancel", (ctx, _a, params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = ensureGovBucket(s, "permits", govActor(ctx));
+    const permit = arr.find((p) => p.id === String(params.id || ""));
+    if (!permit) return { ok: false, error: "permit not found" };
+    if (permit.status === "issued") return { ok: false, error: "an issued permit cannot be cancelled here" };
+    permit.status = "cancelled";
+    permit.cancelledAt = new Date().toISOString();
+    saveGovState();
+    return { ok: true, result: { permit } };
+  });
+
+  registerLensAction("government", "voter-registration-withdraw", (ctx, _a, _params = {}) => {
+    const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    if (!(s.voterRegistrations instanceof Map)) return { ok: false, error: "not found" };
+    const userId = govActor(ctx);
+    if (!s.voterRegistrations.has(userId)) return { ok: false, error: "not found" };
+    s.voterRegistrations.delete(userId);
+    saveGovState();
+    return { ok: true, result: { withdrawn: true } };
+  });
+
   // ── Assets (streetlights, hydrants, signs, road segments) ────
 
   registerLensAction("government", "assets-list", (ctx, _a, params = {}) => {

@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 132 | 86 | 3 |
+| high | 137 | 81 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **673** | **1475** | **3** |
+| **total** | **678** | **1470** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -909,3 +909,13 @@ Empty or unparseable JSON and CSV are marked invalid, so Import stays off. Resol
 | FIX-board-002 | board | high | FIXED_PENDING_VERIFY | 6b9044dd3 |
 | FIX-calendar-005 | calendar | high | FIXED_PENDING_VERIFY | 6b9044dd3 |
 | FIX-staking-001 | staking | high | FIXED_PENDING_VERIFY | 6b9044dd3 |
+
+A scheduled landscaping job can be edited. Government inspections, fines, FOIA drafts, 311 requests, and voter registrations can be removed, and a permit that is not issued can be cancelled. The debate voting phase has Vote Pro and Vote Con. Sign now asks the signer to type their name before the envelope is signed. Listing an auction shows the server's error and offers the caller's own items.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-landscaping-001 | landscaping | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-government-018 | government | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-debate-015 | debate | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-insurance-011 | insurance | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-auction-001 | auction | high | FIXED_PENDING_VERIFY | this commit |
