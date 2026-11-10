@@ -883,11 +883,11 @@ A BOM compute tolerates a project whose materials array has not loaded. A shipme
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-diy-001 | diy | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-logistics-001 | logistics | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-graph-001 | graph | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-healthcare-003 | healthcare | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-self-001 | self | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-aviation-001 | aviation | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-black-market-005 | black-market | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-marketing-006 | marketing | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-diy-001 | diy | high | FIXED_PENDING_VERIFY | 82af5ece0 |
+| FIX-logistics-001 | logistics | high | FIXED_PENDING_VERIFY | 82af5ece0 |
+| FIX-graph-001 | graph | high | FIXED_PENDING_VERIFY | 82af5ece0 |
+| FIX-healthcare-003 | healthcare | high | FIXED_PENDING_VERIFY | 82af5ece0 |
+| FIX-self-001 | self | high | FIXED_PENDING_VERIFY | 82af5ece0 |
+| FIX-aviation-001 | aviation | high | FIXED_PENDING_VERIFY | 82af5ece0 |
+| FIX-black-market-005 | black-market | high | FIXED_PENDING_VERIFY | 82af5ece0 |
+| FIX-marketing-006 | marketing | high | FIXED_PENDING_VERIFY | 82af5ece0 |
