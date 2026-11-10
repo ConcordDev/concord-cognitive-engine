@@ -10,6 +10,7 @@ import {
   FolderSearch, Loader2, Trash2, GitFork, Flame, Map as MapIcon,
   DollarSign, Cloud, TrendingUp, Camera, FileCode, AlertTriangle,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface LanguageStat { language: string; linesOfCode: number; pctOfCodebase: number; legacy: boolean; }
 interface ScanSummary {
@@ -204,7 +205,7 @@ export function CodebaseScanner() {
                     ? 'border-neon-cyan/50 bg-neon-cyan/10'
                     : 'border-zinc-800 bg-black/40 hover:border-zinc-600'
                 }`}
-                onClick={() => { setActive(cb); setAnalysis({} as Record<Tab, any>); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                onClick={() => { setActive(cb); setAnalysis({} as Record<Tab, any>); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <span className="text-sm">{cb.name}</span>
                 <span className="text-[10px] text-zinc-400">{cb.summary.fileCount}f · {cb.summary.totalLinesOfCode} LOC</span>
                 <button

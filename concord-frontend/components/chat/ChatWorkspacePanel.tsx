@@ -169,6 +169,7 @@ import {
   type SessionContext,
   type SessionTelemetry,
 } from '@/lib/lenses/chat-lens-recommender';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ──────────────────────────────────────────────
 // Types
@@ -2911,7 +2912,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         {chatSidebarOpen && (
           <div
             className={cn('absolute inset-0 bg-black/50 z-30', !cleanEmpty && 'lg:hidden')}
-            onClick={() => setChatSidebarOpen(false)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+            onClick={() => setChatSidebarOpen(false)} tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
         )}
 
         {/* Sidebar — always a drawer under Claude-clean (never a second always-docked chat column) */}
@@ -3029,7 +3030,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 onClick={() => {
                   setSelectedConversation(conv.id);
                   setChatSidebarOpen(false);
-                }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                }} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-start gap-3">
                   <div
                     className={cn(

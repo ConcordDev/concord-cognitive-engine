@@ -11,6 +11,7 @@ import { useMusicStore } from '@/lib/music/store';
 import { getPlayer } from '@/lib/music/player';
 import type { MusicTrack, ArtifactTier } from '@/lib/music/types';
 import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -371,7 +372,7 @@ export function TrackCard({
         isCurrentTrack && 'bg-white/5',
         isPlaying && 'border-l-2 border-l-neon-cyan bg-neon-cyan/[0.04]',
       )}
-      onClick={handlePlay} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={handlePlay} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="w-4 text-center">
         {isPlaying ? (
           <Pause className="w-3 h-3 text-neon-cyan" />

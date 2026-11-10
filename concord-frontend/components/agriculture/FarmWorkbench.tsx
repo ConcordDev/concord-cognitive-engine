@@ -8,6 +8,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { AgricultureKeepMenu } from './AgricultureKeepMenu';
 import type { AgField } from './agricultureReport';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export interface Field {
   id: string;
@@ -316,7 +317,7 @@ function FieldsTab({
                 ? 'border-emerald-500/50 bg-emerald-500/10'
                 : 'border-white/10 bg-black/20 hover:bg-white/5',
             )}
-            onClick={() => onSelect(f)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={() => onSelect(f)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-100">{f.name}</p>

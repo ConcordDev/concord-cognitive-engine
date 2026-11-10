@@ -22,6 +22,7 @@ import { lensRun } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types — mirror the council-domain macro result shapes
@@ -679,9 +680,9 @@ export function MeetingsWorkspace() {
 
       {/* Schedule meeting modal */}
       {showCreate && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Schedule Meeting</h2>
                 <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white" aria-label="Close">

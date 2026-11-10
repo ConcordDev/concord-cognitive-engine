@@ -15,6 +15,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { calendarDateKey, shiftDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type Tab = 'recipes' | 'plan' | 'shopping' | 'pantry' | 'collections';
 
@@ -560,8 +561,8 @@ export function RecipeBoxSection() {
 
       {/* Recipe editor modal */}
       {editRecipe && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditRecipe(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-orange-500/30 rounded-lg w-full max-w-lg max-h-[85vh] overflow-y-auto" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditRecipe(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-orange-500/30 rounded-lg w-full max-w-lg max-h-[85vh] overflow-y-auto" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-[#0d1117]">
               <ChefHat className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">{editRecipe._new ? 'New recipe' : 'Edit recipe'}</span>
@@ -605,8 +606,8 @@ export function RecipeBoxSection() {
 
       {/* Scale modal */}
       {scaleFor && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setScaleFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-orange-500/30 rounded-lg w-full max-w-sm" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setScaleFor(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-orange-500/30 rounded-lg w-full max-w-sm" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <Scaling className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">Scale: {scaleFor.recipe.title}</span>

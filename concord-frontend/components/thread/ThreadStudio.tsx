@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const PLATFORMS = ['x', 'threads', 'linkedin', 'bluesky', 'mastodon'];
 const NUMBERING = ['slash', 'emoji', 'none', 'paren'];
@@ -747,8 +748,8 @@ function SyncModal({ thread, onClose, onDone }: { thread: PublishedThread; onClo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-      <div className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-950 p-3" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+      <div className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-950 p-3" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <p className="text-sm font-bold text-zinc-100 mb-2">Sync engagement · {thread.title}</p>
         <p className="text-[10px] text-zinc-400 mb-2">Enter the per-post numbers shown in {thread.platform}&apos;s own analytics.</p>
         <div className="space-y-1 max-h-64 overflow-y-auto">

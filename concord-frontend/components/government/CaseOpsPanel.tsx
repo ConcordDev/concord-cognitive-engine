@@ -61,6 +61,7 @@ import {
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -2565,7 +2566,7 @@ export function CaseOpsPanel({
         onClick={() => {
           setDetailId(item.id);
           setView('detail');
-        }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className={ds.sectionHeader}>
           <h3 className={cn(ds.heading3, 'text-base truncate mr-2')}>{item.title}</h3>
           {renderStatusBadge(item.meta.status)}
@@ -3372,9 +3373,9 @@ export function CaseOpsPanel({
 
       {/* Editor modal */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>

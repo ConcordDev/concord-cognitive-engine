@@ -53,6 +53,7 @@ import {
 } from 'lucide-react';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { OperationsBudgetPanel } from './OperationsBudgetPanel';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /** Adapts the bespoke SvgIcon (name-prop API) to the lucide-icon-component
  *  shape (`className`-prop, no `name`) this file's tab/type tables expect. */
@@ -1179,7 +1180,7 @@ export function EventsWorkbench({
                   onClick={() => {
                     onSelectMode('events');
                     setDetailId(evt.id);
-                  }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <EvtIcon className="w-5 h-5 text-neon-pink shrink-0" />
                   <span className={cn(ds.textMono, 'w-24 text-neon-cyan shrink-0')}>
                     {String(d.date || '').slice(5)}
@@ -1785,7 +1786,7 @@ export function EventsWorkbench({
               .split(',')
               .filter(Boolean);
             return (
-              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Building2 className="w-5 h-5 text-neon-cyan" />
@@ -1960,7 +1961,7 @@ export function EventsWorkbench({
               const payColor = STATUS_COLORS[String(d.paymentStatus)] || 'gray-400';
               const paidPct = pct(Number(d.paidAmount || 0), Number(d.contractCost || 1));
               return (
-                <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <CatIcon className="w-5 h-5 text-neon-cyan shrink-0" />
@@ -2281,7 +2282,7 @@ export function EventsWorkbench({
                       <div
                         key={t.id}
                         className={cn(ds.panelHover, 'relative')}
-                        onClick={() => openEdit(t.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                        onClick={() => openEdit(t.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                         {soldOut && (
                           <div className="absolute top-2 right-2">
                             <span className={ds.badge('red-400')}>SOLD OUT</span>
@@ -2374,7 +2375,7 @@ export function EventsWorkbench({
             const d = item.data as Record<string, unknown>;
             const st = item.meta?.status as string;
             return (
-              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <Users className="w-5 h-5 text-neon-cyan shrink-0" />
@@ -2566,7 +2567,7 @@ export function EventsWorkbench({
       {/* Editor modal */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[90vh] flex flex-col')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border shrink-0">

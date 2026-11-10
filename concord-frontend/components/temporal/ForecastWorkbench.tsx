@@ -22,6 +22,7 @@ import {
   Upload, Database, Activity, TrendingUp, ScanLine, GitCommitHorizontal,
   Waves, Gauge, Link2, Trash2, Loader2, BarChart3, GitFork,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface DatasetSummary {
   id: string;
@@ -301,7 +302,7 @@ export function ForecastWorkbench() {
                         ? 'border-sky-500/50 bg-sky-500/10'
                         : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700',
                     )}
-                    onClick={() => selectDataset(d.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                    onClick={() => selectDataset(d.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     <div className="min-w-0">
                       <p className="truncate font-medium text-zinc-100">{d.name}</p>
                       <p className="text-[10px] text-zinc-400">

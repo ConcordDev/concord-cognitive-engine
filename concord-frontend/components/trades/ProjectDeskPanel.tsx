@@ -59,6 +59,7 @@ import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import { showToast } from '@/components/common/Toasts';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1754,9 +1755,9 @@ export default function ProjectDeskPanel() {
   const renderEditor = () => {
     if (!editorOpen) return null;
     return (
-      <div className={ds.modalBackdrop} onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      <div className={ds.modalBackdrop} onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className={ds.modalContainer}>
-          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-center justify-between p-6 border-b border-lattice-border">
               <h2 className={ds.heading2}>
                 {editingItem ? `Edit ${activeArtifactType}` : `New ${activeArtifactType}`}
@@ -2006,7 +2007,7 @@ export default function ProjectDeskPanel() {
             }).map(item => {
               const d = item.data as unknown as TradesArtifact;
               return (
-                <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-elevated/30 hover:bg-lattice-elevated/50 cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-elevated/30 hover:bg-lattice-elevated/50 cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <MapPin className={cn('w-5 h-5 shrink-0', d.status === 'in_progress' ? 'text-yellow-400' : 'text-purple-400')} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">{item.title}</p>
@@ -2051,7 +2052,7 @@ export default function ProjectDeskPanel() {
           {items.slice(0, 5).map(item => {
             const d = item.data as unknown as TradesArtifact;
             return (
-              <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface/50 hover:bg-lattice-surface cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface/50 hover:bg-lattice-surface cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{item.title}</p>
                   <p className={ds.textMuted}>{d.client || d.type} {d.trade ? `- ${d.trade}` : ''}</p>

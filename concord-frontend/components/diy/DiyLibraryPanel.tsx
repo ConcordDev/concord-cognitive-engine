@@ -20,6 +20,7 @@ import {
   type ModeTab, type ArtifactType, type Status, type DIYArtifact,
   STATUS_CONFIG, CATEGORIES, DIFFICULTIES, TOOL_CONDITIONS, MATERIAL_UNITS,
 } from '@/components/diy/diy-shared';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const MODE_TABS: { id: ModeTab; label: string; icon: typeof Wrench; artifactType: ArtifactType }[] = [
   { id: 'projects', label: 'Projects', icon: Hammer, artifactType: 'Project' },
@@ -226,10 +227,10 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
     return (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div
           className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
-          onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="flex items-center justify-between mb-4">
             <h3 className={ds.heading3}>
               {editingItem ? 'Edit' : 'New'} {activeArtifactType}

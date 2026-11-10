@@ -30,6 +30,7 @@ import {
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type RecordingStatus = 'ready' | 'recording' | 'processing';
 type ExportFormat = 'wav' | 'mp3' | 'flac';
@@ -679,7 +680,7 @@ export function VoiceBoothPanel() {
                   resolvedActiveId === take.id
                     ? 'bg-neon-cyan/5 border-l-2 border-l-neon-cyan'
                     : 'hover:bg-white/[0.03] border-l-2 border-l-transparent'
-                )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-center justify-between mb-1.5">
                   {renamingId === take.id ? (
                     <div className="flex items-center gap-1 flex-1 mr-2">

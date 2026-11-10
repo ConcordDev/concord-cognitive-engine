@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { MarketplaceOrderMenu, PayOrderButton, type BuyerOrder } from '@/components/marketplace/MarketplaceOrderMenu';
 import { checkoutFromLensResult, paidSentence } from '@/components/marketplace/marketplaceOrder';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface StoreListing {
   listingId: string;
@@ -429,10 +430,10 @@ export function StorefrontPanel() {
 
       {/* Cart drawer */}
       {showCart && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex justify-end" onClick={() => setShowCart(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 bg-black/60 flex justify-end" onClick={() => setShowCart(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div
             className="w-full max-w-md bg-lattice-deep border-l border-orange-500/20 h-full overflow-y-auto"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-lattice-deep">
               <ShoppingCart className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200">Your cart</span>

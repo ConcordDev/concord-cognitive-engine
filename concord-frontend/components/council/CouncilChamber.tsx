@@ -79,6 +79,7 @@ import CouncilTheaterPanel from '@/components/council/CouncilTheaterPanel';
 import { EntityCard } from '@/components/entity/EntityCard';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { FileText as MobileTabFileText, Vote as MobileTabVote, MessageSquare as MobileTabMessage, DollarSign as MobileTabDollar, ScrollText as MobileTabScroll, UsersRound as MobileTabPeople, CalendarClock as MobileTabMeetings, Archive as MobileTabArchive, Gavel as MobileTabGavel } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1881,7 +1882,7 @@ export default function CouncilLensPage() {
               onClick={() => {
                 setSelectedProposalId(p.id);
                 setActiveTab('proposals');
-              }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -2935,9 +2936,9 @@ export default function CouncilLensPage() {
 
       {/* Create Proposal Modal */}
       {showCreateProposal && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreateProposal(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreateProposal(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>New Proposal</h2>
                 <button
@@ -3045,9 +3046,9 @@ export default function CouncilLensPage() {
 
       {/* Create Budget Item Modal */}
       {showCreateBudgetItem && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreateBudgetItem(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreateBudgetItem(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Add Budget Line Item</h2>
                 <button
@@ -3164,9 +3165,9 @@ export default function CouncilLensPage() {
 
       {/* Create Committee Modal */}
       {showCreateCommittee && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreateCommittee(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreateCommittee(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-md')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-md')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Create Committee</h2>
                 <button
@@ -3218,9 +3219,9 @@ export default function CouncilLensPage() {
 
       {/* Create Debate Modal */}
       {showCreateDebate && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreateDebate(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreateDebate(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-md')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-md')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Start Debate</h2>
                 <button

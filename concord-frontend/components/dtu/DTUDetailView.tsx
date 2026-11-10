@@ -353,7 +353,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
 
       {/* Modal */}
       <div className="relative w-full max-w-2xl max-h-[85vh] bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl overflow-hidden flex flex-col">
@@ -1237,5 +1237,6 @@ function LineageSection({
 }
 
 import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 const _WrappedDTUDetailView = withErrorBoundary(DTUDetailView);
 export { _WrappedDTUDetailView as DTUDetailView };

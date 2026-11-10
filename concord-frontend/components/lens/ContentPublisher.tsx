@@ -23,6 +23,7 @@ import {
   Link2, Rss, ChevronRight, Loader2, Globe, Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -244,7 +245,7 @@ export function ContentPublisher({
       <AnimatePresence>
         {open && (
           <>
-            <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+            <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setOpen(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

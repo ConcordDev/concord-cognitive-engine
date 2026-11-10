@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface ModalProps {
   isOpen: boolean;
@@ -91,7 +92,7 @@ export function Modal({
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
-        aria-hidden="true" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+        aria-hidden="true" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
 
       {/* Modal */}
       <div

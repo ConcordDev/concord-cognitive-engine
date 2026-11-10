@@ -45,6 +45,7 @@ import { WatchlistPanel } from './WatchlistPanel';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { useMarketplace } from './MarketplaceProvider';
 import type { CreatorInfo, MarketplaceItem, MarketplaceTabId } from './types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const TABS: { id: MarketplaceTabId; label: string; keys: string; icon: typeof Store }[] = [
   { id: 'browse', keys: 'B', label: 'Browse', icon: Store },
@@ -317,23 +318,13 @@ function MarketplacePalette() {
       aria-modal="true"
       aria-label="Quick search marketplace"
       tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          (e.currentTarget as HTMLElement).click();
-        }
-      }}
+      onKeyDown={activateOnEnterOrSpace}
     >
       <div
         className="bg-lattice-deep border border-emerald-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            (e.currentTarget as HTMLElement).click();
-          }
-        }}
+        onKeyDown={activateOnEnterOrSpace}
       >
         <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
           <ShoppingBag className="w-4 h-4 text-emerald-400" />

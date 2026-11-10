@@ -25,6 +25,7 @@ import {
   Ruler, Loader2, GraduationCap, SlidersHorizontal, Move, Box as BoxIcon,
   Circle as CircleIcon, Triangle, Anchor, Link2, Waves, X,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ─── Scene model (mirrors server/domains/physics.js normalize* shapes) ───
 
@@ -721,7 +722,7 @@ export function PhysicsLab() {
             onMouseUp={endDrag}
             onMouseLeave={endDrag}
             className="relative w-full rounded-lg border border-cyan-500/20 bg-[#070b14] overflow-hidden"
-            style={{ aspectRatio: `${BOUNDS.w} / ${BOUNDS.h}`, cursor: tool === 'select' ? 'default' : 'crosshair' }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            style={{ aspectRatio: `${BOUNDS.w} / ${BOUNDS.h}`, cursor: tool === 'select' ? 'default' : 'crosshair' }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             {/* Fluids */}
             {scene.fluids.map((f) => (
               <div

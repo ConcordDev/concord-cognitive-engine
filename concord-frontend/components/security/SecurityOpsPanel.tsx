@@ -37,6 +37,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { ErrorState } from '@/components/ui';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -599,7 +600,7 @@ export function SecurityOpsPanel() {
   const renderCard = (item: LensItem<ArtifactDataUnion>) => {
     const d = item.data as unknown as Record<string, unknown>;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className={ds.sectionHeader}>
           <h3 className={cn(ds.heading3, 'line-clamp-1')}>{item.title}</h3>
           {renderStatusBadge(item.meta.status)}
@@ -1292,9 +1293,9 @@ export function SecurityOpsPanel() {
 
       {/* Editor Modal */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-hidden flex flex-col')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-hidden flex flex-col')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {currentType}</h2>

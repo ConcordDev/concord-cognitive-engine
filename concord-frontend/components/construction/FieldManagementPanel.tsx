@@ -22,6 +22,7 @@ import {
   Layers, Wallet, GanttChartSquare, Plus, X, Trash2, RefreshCw,
   AlertCircle, CheckCircle2, Clock,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type FieldTab =
   | 'rfi' | 'submittals' | 'dailylog' | 'punch'
@@ -70,10 +71,10 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div
         className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
-        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className="flex items-center justify-between mb-4">
           <h3 className={ds.heading3}>{title}</h3>
           <button onClick={onClose} className={ds.btnGhost} aria-label="Close">
@@ -950,7 +951,7 @@ function DrawingsTab() {
           <p className={ds.textMuted}>No drawing sheets yet</p>
         </div>
       ) : rows.map((d) => (
-        <div key={d.id} className={ds.panelHover} onClick={() => setSelected(d)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div key={d.id} className={ds.panelHover} onClick={() => setSelected(d)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="text-white font-medium">

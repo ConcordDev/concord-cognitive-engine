@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { DrumPattern, DrumPad } from '@/lib/daw/types';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface DrumMachineProps {
   pattern: DrumPattern | null;
@@ -108,7 +109,7 @@ export function DrumMachine({
               className={cn(
                 'h-10 flex items-center gap-2 px-2 border-b border-white/5 cursor-pointer hover:bg-white/5',
                 selectedPadId === pad.id && 'bg-white/5'
-              )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div
                 className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-bold text-black"
                 style={{ backgroundColor: pad.color || DEFAULT_PAD_COLORS[i % DEFAULT_PAD_COLORS.length] }}
@@ -210,7 +211,7 @@ export function DrumMachine({
                     onClick={() => {
                       const newVel = step.velocity >= 120 ? 40 : step.velocity + 20;
                       onUpdateStepVelocity(selectedPadId, i, Math.min(127, newVel));
-                    }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+                    }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
                 )}
               </div>
             ))}

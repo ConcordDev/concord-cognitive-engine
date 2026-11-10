@@ -45,6 +45,7 @@ import { CardDetailModal } from './CardDetailModal';
 import { BoardSettingsPanel } from './BoardSettingsPanel';
 import { BoardKeepMenu } from './BoardKeepMenu';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 function isOverdue(due: string | null): boolean {
   if (!due) return false;
@@ -740,7 +741,7 @@ export function BoardWorkspace() {
                             onDragStart={() => setDragCardId(card.id)}
                             onDragEnd={() => setDragCardId(null)}
                             onClick={() => setOpenCardId(card.id)}
-                            className="rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-purple-500/40 cursor-pointer overflow-hidden transition-colors" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                            className="rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-purple-500/40 cursor-pointer overflow-hidden transition-colors" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                             {card.cover &&
                               (card.cover.type === 'color' ? (
                                 <div

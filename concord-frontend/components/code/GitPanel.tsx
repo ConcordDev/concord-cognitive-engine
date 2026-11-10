@@ -5,6 +5,7 @@ import { GitBranch, Loader2, GitCommit, GitMerge, Check, Plus, Archive, Undo2, F
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { QuietSuccessEdge, ShipItLine, isShipItCommit, DELIGHT_CSS } from './delight';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface GitStatus { branch: string; branches: string[]; modified: string[]; staged: string[]; head: string | null; clean: boolean }
 interface GitCommitRow { id: string; number: string; message: string; branch: string; committedAt: string; paths: string[] }
@@ -238,9 +239,9 @@ export function GitPanel({ projectId, onChanged, onDiscarded }: {
 
       {diff && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6"
-          onClick={() => setDiff(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={() => setDiff(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="bg-[#0d1117] border border-white/15 rounded-lg w-full max-w-2xl max-h-[80%] flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2">
               <FileDiff className="w-3.5 h-3.5 text-blue-400" />
               <span className="text-xs font-mono text-white flex-1 truncate">{diff.path}</span>

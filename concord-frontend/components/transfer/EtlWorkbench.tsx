@@ -19,6 +19,7 @@ import {
   Database, Plug, GitBranch, Play, FlaskConical, History, AlertTriangle,
   Plus, Trash2, RefreshCw, ArrowRight, Clock, ShieldCheck, X, Wand2, Download, Globe,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const DOMAIN = 'transfer';
 
@@ -387,7 +388,7 @@ export function EtlWorkbench() {
               <div
                 key={p.id}
                 className={`lens-card text-xs space-y-1.5 cursor-pointer ${selectedPipeline === p.id ? 'ring-1 ring-neon-purple/60' : ''}`}
-                onClick={() => setSelectedPipeline(p.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                onClick={() => setSelectedPipeline(p.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{p.name}</span>
                   <div className="flex items-center gap-1">

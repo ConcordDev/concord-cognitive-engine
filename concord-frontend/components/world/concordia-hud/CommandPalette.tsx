@@ -19,6 +19,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useHUDContext } from './HUDContextProvider';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export interface CommandItem {
   id: string;
@@ -175,7 +176,7 @@ export function CommandPalette() {
       data-testid="hud-command-palette"
       role="dialog"
       aria-label="Concordia command palette"
-      onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="w-[28rem] max-h-[60vh] bg-zinc-950 border border-zinc-700/60 rounded-lg shadow-2xl flex flex-col">
         <input
           ref={inputRef}

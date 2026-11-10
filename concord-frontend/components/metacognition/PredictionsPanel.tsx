@@ -12,6 +12,7 @@ import { lensRun } from '@/lib/api/client';
 import { useMetacognitionDesk } from '@/components/metacognition/useMetacognitionDesk';
 import { formatTimestamp } from '@/components/metacognition/metacog-model';
 import { ErrorState } from '@/components/common/EmptyState';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export function PredictionsPanel() {
   const {
@@ -262,7 +263,7 @@ export function PredictionsPanel() {
                     <div key={id} className="lens-card">
                       <div
                         className="flex items-center gap-3 cursor-pointer"
-                        onClick={() => { setConfirmDeleteId(null); setExpandedPrediction(expanded ? null : id); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                        onClick={() => { setConfirmDeleteId(null); setExpandedPrediction(expanded ? null : id); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                         {isResolved ? (
                           isCorrect ? (
                             <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />

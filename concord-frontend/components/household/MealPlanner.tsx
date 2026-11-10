@@ -11,6 +11,7 @@ import { UtensilsCrossed, Plus, Trash2, ShoppingCart, X, Loader2, ChevronLeft, C
 import { lensRun } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface Meal {
   id: string; date: string; slot: string; recipe: string;
@@ -145,8 +146,8 @@ export function MealPlanner() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditing(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl w-full max-w-md p-4 space-y-2.5" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditing(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div className="bg-zinc-950 border border-zinc-800 rounded-xl w-full max-w-md p-4 space-y-2.5" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-zinc-100">{editing.id ? 'Edit Meal' : 'Plan Meal'}</h4>
               <button onClick={() => setEditing(null)} className="text-zinc-400 hover:text-zinc-200" aria-label="Close"><X className="w-4 h-4" /></button>

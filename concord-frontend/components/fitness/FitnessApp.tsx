@@ -40,6 +40,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { WorkoutFinishPanel } from '@/components/fitness/WorkoutFinishPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1187,7 +1188,7 @@ export default function FitnessApp() {
                 <div key={item.id} className={ds.panelHover} onClick={() => {
                   if (activeTab === 'Clients') openClientDashboard(item);
                   else openEditEditor(item);
-                }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <div className="flex items-start justify-between mb-2">
                     <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                     <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -1493,7 +1494,7 @@ export default function FitnessApp() {
       {/* ========== Body Composition Calculator Modal ========== */}
       {showBodyComp && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowBodyComp(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+          <div className={ds.modalBackdrop} onClick={() => setShowBodyComp(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-4xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -1687,7 +1688,7 @@ export default function FitnessApp() {
       {/* ========== Editor Modal ========== */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-4xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">

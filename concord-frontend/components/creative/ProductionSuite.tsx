@@ -25,6 +25,7 @@ import {
   Plus, Trash2, X, CheckCircle2, Clock, Send, RotateCcw, Film, Image as ImageIcon,
   Copy, Check, ChevronRight, Tag, Users, MapPin,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -336,7 +337,7 @@ function ReviewTab() {
           <div
             key={a.id}
             onClick={() => setSelected(a.id)}
-            className={`${PANEL} cursor-pointer transition-colors ${selected === a.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            className={`${PANEL} cursor-pointer transition-colors ${selected === a.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2 min-w-0">
                 {a.kind === 'video' ? <Film className="w-4 h-4 text-violet-400 shrink-0" /> : <ImageIcon className="w-4 h-4 text-cyan-400 shrink-0" />}
@@ -535,7 +536,7 @@ function CallSheetTab() {
           <div
             key={cs.id}
             onClick={() => loadSheet(cs.id)}
-            className={`${PANEL} cursor-pointer transition-colors ${active?.id === cs.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            className={`${PANEL} cursor-pointer transition-colors ${active?.id === cs.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-zinc-100">{cs.project}</p>
@@ -719,7 +720,7 @@ function BreakdownTab() {
           <div
             key={b.id}
             onClick={() => loadOne(b.id)}
-            className={`${PANEL} cursor-pointer transition-colors ${active?.id === b.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            className={`${PANEL} cursor-pointer transition-colors ${active?.id === b.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-zinc-100">{b.title}</p>
@@ -927,7 +928,7 @@ function DeliverableTab() {
           <div
             key={d.id}
             onClick={() => loadOne(d.id)}
-            className={`${PANEL} cursor-pointer transition-colors ${active?.id === d.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            className={`${PANEL} cursor-pointer transition-colors ${active?.id === d.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-zinc-100">{d.name}</p>

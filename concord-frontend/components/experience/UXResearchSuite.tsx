@@ -17,6 +17,7 @@ import {
   Users, Film, MonitorPlay, CheckCircle2, XCircle, AlertTriangle,
   Target, Share2, ChevronRight, GitBranch, Trash2, ArrowRight,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type SuiteTab = 'tests' | 'heatmap' | 'cardsort' | 'survey' | 'panel' | 'clips' | 'prototype';
 
@@ -329,7 +330,7 @@ function HeatmapPanel() {
           </div>
           <div
             onClick={onCanvasClick}
-            className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair select-none flex items-center justify-center" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair select-none flex items-center justify-center" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <span className="text-[11px] text-gray-400">Click anywhere — green box = success target</span>
             {study.target && (
               <div
@@ -1229,7 +1230,7 @@ function PrototypePanel() {
                 className={`text-[11px] px-2 py-1 rounded ${activeFrame === f.id ? 'bg-neon-cyan text-black font-medium' : 'bg-zinc-800 text-gray-400'}`}>{f.name}</button>
             ))}
           </div>
-          <div onClick={onFrameClick} className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair flex items-center justify-center" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div onClick={onFrameClick} className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair flex items-center justify-center" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <span className="text-[11px] text-gray-400 text-center px-4">Click the frame to record an interaction — outer edge counts as a misclick</span>
             {frameHot && (
               <div className="absolute inset-0 grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)', gridTemplateRows: 'repeat(6, 1fr)' }}>

@@ -13,6 +13,7 @@ import {
   type PilotData, type AircraftData, type MaintenanceData, type CharterData,
   type WBData, type WeatherData,
 } from './aviation-ops';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type CardProps = { item: LensItem; onOpen: (item: LensItem) => void };
 
@@ -20,7 +21,7 @@ export function FlightCard({ item, onOpen }: CardProps) {
   const d = item.data as Record<string, unknown>;
   const hobbs = formatHobbs(d.hobbsStart as number, d.hobbsEnd as number);
   return (
-    <div key={item.id} className={ds.panelHover} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div key={item.id} className={ds.panelHover} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="flex items-start justify-between mb-2">
         <Plane className="w-5 h-5 text-sky-400" />
         <span className={statusBadge(item.meta?.status || 'planned')}>{item.meta?.status}</span>
@@ -63,7 +64,7 @@ export function PilotCard({ item, onOpen }: CardProps) {
   const medStatus = currencyStatus(d.medicalExpiry);
   const bfrStatus = currencyStatus(d.bfrDate);
   return (
-    <div key={item.id} className={ds.panelHover} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div key={item.id} className={ds.panelHover} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
           <UserCheck className="w-5 h-5 text-blue-400" />
@@ -106,7 +107,7 @@ export function AircraftOpsCard({ item, onOpen }: CardProps) {
   const d = item.data as unknown as AircraftData;
   const annualDays = daysUntil(d.nextAnnual);
   return (
-    <div key={item.id} className={ds.panelHover} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div key={item.id} className={ds.panelHover} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="flex items-start justify-between mb-2">
         <Navigation className="w-5 h-5 text-cyan-400" />
         <span className={statusBadge(item.meta?.status || 'airworthy')}>{item.meta?.status}</span>
@@ -157,7 +158,7 @@ export function AircraftOpsCard({ item, onOpen }: CardProps) {
 export function MaintenanceCard({ item, onOpen }: CardProps) {
   const d = item.data as unknown as MaintenanceData;
   return (
-    <div key={item.id} className={ds.panelHover} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div key={item.id} className={ds.panelHover} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="flex items-start justify-between mb-2">
         <Wrench className="w-5 h-5 text-orange-400" />
         <div className="flex gap-1">
@@ -200,7 +201,7 @@ export function MaintenanceCard({ item, onOpen }: CardProps) {
 export function CharterCard({ item, onOpen }: CardProps) {
   const d = item.data as unknown as CharterData;
   return (
-    <div key={item.id} className={ds.panelHover} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div key={item.id} className={ds.panelHover} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="flex items-start justify-between mb-2">
         <DollarSign className="w-5 h-5 text-emerald-400" />
         <span className={statusBadge(item.meta?.status || 'inquiry')}>{item.meta?.status}</span>
@@ -248,7 +249,7 @@ export function WeightBalanceCard({ item, onOpen }: CardProps) {
   const d = item.data as unknown as WBData;
   const withinLimits = d.withinLimits !== false && d.totalWeight <= (d.maxGross || 99999) && d.cg >= (d.fwdCGLimit || 0) && d.cg <= (d.aftCGLimit || 999);
   return (
-    <div key={item.id} className={cn(ds.panelHover, withinLimits ? '' : 'border-red-500/50')} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div key={item.id} className={cn(ds.panelHover, withinLimits ? '' : 'border-red-500/50')} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="flex items-start justify-between mb-2">
         <Weight className="w-5 h-5 text-violet-400" />
         {withinLimits ? (
@@ -295,7 +296,7 @@ export function WeatherOpsCard({ item, onOpen }: CardProps) {
   const catColor = cat === 'VFR' ? 'text-green-400' : cat === 'MVFR' ? 'text-blue-400' : cat === 'IFR' ? 'text-red-400' : 'text-purple-400';
   const catBg = cat === 'VFR' ? 'border-l-green-500' : cat === 'MVFR' ? 'border-l-blue-500' : cat === 'IFR' ? 'border-l-red-500' : 'border-l-purple-500';
   return (
-    <div key={item.id} className={cn(ds.panelHover, 'border-l-4', catBg)} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+    <div key={item.id} className={cn(ds.panelHover, 'border-l-4', catBg)} onClick={() => onOpen(item)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
           <CloudRain className="w-5 h-5 text-cyan-400" />

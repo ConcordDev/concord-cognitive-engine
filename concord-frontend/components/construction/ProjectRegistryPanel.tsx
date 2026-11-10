@@ -34,6 +34,7 @@ import {
   type RegistryMode,
   type Status,
 } from './construction-types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
@@ -285,24 +286,14 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
         onClick={() => setEditorOpen(false)}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            (e.currentTarget as HTMLElement).click();
-          }
-        }}
+        onKeyDown={activateOnEnterOrSpace}
       >
         <div
           className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
           onClick={(e) => e.stopPropagation()}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              (e.currentTarget as HTMLElement).click();
-            }
-          }}
+          onKeyDown={activateOnEnterOrSpace}
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className={ds.heading3}>

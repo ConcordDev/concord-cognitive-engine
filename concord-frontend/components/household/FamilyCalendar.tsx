@@ -11,6 +11,7 @@ import { CalendarDays, Plus, Trash2, Edit3, Bell, MapPin, X, Loader2, ChevronLef
 import { lensRun } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface CalEvent {
   id: string; title: string; date: string; time: string | null; endDate: string | null;
@@ -139,12 +140,12 @@ export function FamilyCalendar() {
               className={cn('min-h-[62px] rounded-lg border p-1 cursor-pointer transition-colors',
                 c.inMonth ? 'border-zinc-800 bg-zinc-900/40' : 'border-zinc-900 bg-zinc-950/40 opacity-50',
                 c.date === today && 'border-sky-600/60 bg-sky-950/30')}
-              onClick={() => setEditing({ ...emptyForm, date: c.date })} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              onClick={() => setEditing({ ...emptyForm, date: c.date })} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <p className={cn('text-[10px] mb-0.5', c.date === today ? 'text-sky-400 font-bold' : 'text-zinc-400')}>{c.day}</p>
               {dayEvents.slice(0, 3).map(e => (
                 <div key={e.id} className="text-[9px] px-1 py-0.5 rounded mb-0.5 truncate"
                   style={{ backgroundColor: `${e.color}26`, color: e.color }}
-                  onClick={ev => { ev.stopPropagation(); setEditing({ ...emptyForm, ...e, time: e.time || '', endDate: e.endDate || '', assignee: e.assignee || '', location: e.location || '', notes: e.notes || '' }); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  onClick={ev => { ev.stopPropagation(); setEditing({ ...emptyForm, ...e, time: e.time || '', endDate: e.endDate || '', assignee: e.assignee || '', location: e.location || '', notes: e.notes || '' }); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   {e.time ? `${e.time} ` : ''}{e.title}
                 </div>
               ))}
@@ -155,8 +156,8 @@ export function FamilyCalendar() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditing(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl w-full max-w-md p-4 space-y-2.5" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditing(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div className="bg-zinc-950 border border-zinc-800 rounded-xl w-full max-w-md p-4 space-y-2.5" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold text-zinc-100">{editing.id ? 'Edit Event' : 'New Event'}</h4>
               <button onClick={() => setEditing(null)} className="text-zinc-400 hover:text-zinc-200" aria-label="Close"><X className="w-4 h-4" /></button>

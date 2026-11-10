@@ -26,6 +26,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type Tab = 'overview' | 'console' | 'pipeline' | 'nerve' | 'empirical' | 'scope' | 'events' | 'analysis';
 
@@ -110,7 +111,7 @@ function EventStreamPanel({ events = [], connected }: { events?: Array<{ type: s
               <div key={`${event.timestamp}-${i}`}>
                 <div
                   className="flex items-center gap-3 px-4 py-2 bg-lattice-elevated rounded-lg border border-lattice-border cursor-pointer hover:border-lattice-border/80 transition-colors"
-                  onClick={() => setShowRaw(isExpanded ? null : i)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  onClick={() => setShowRaw(isExpanded ? null : i)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <Zap className={`w-3 h-3 ${colors[event.type] || 'text-gray-400'} shrink-0`} />
                   <span className={`text-xs font-mono ${colors[event.type] || 'text-gray-400'}`}>
                     {event.type}

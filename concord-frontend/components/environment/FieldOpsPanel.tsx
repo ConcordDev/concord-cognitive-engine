@@ -57,6 +57,7 @@ import {
   Minus,
   Map,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
@@ -2366,7 +2367,7 @@ export function FieldOpsPanel({
       <div
         key={item.id}
         className={cn(ds.panelHover, 'group relative')}
-        onClick={() => setDetailItem(detailItem === item.id ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={() => setDetailItem(detailItem === item.id ? null : item.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div className={ds.sectionHeader}>
           <h3 className={cn(ds.heading3, 'truncate pr-2')}>{item.title}</h3>
           <div className="flex items-center gap-2 shrink-0">
@@ -2819,7 +2820,7 @@ export function FieldOpsPanel({
         {detailItem === item.id && (
           <div
             className="mt-3 pt-3 border-t border-lattice-border space-y-2"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             {Boolean(d.notes) && (
               <div>
                 <p className={cn(ds.label, 'mb-0.5')}>Notes</p>
@@ -2838,7 +2839,7 @@ export function FieldOpsPanel({
           </div>
         )}
 
-        <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)}>
             <Edit3 className="w-3.5 h-3.5" /> Edit
           </button>
@@ -3437,9 +3438,9 @@ export function FieldOpsPanel({
 
       {/* ---- Editor Modal ---- */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>

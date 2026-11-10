@@ -4,6 +4,7 @@ import { useRef, useCallback, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DAWTrack, ArrangementSection, ArrangementMarker, SnapMode } from '@/lib/daw/types';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface ArrangementViewProps {
   tracks: DAWTrack[];
@@ -157,7 +158,7 @@ export function ArrangementView({
                   'border-b border-r border-white/10 bg-black/40 p-1.5 cursor-pointer hover:bg-white/[0.03] transition-colors',
                   selectedTrackId === track.id && 'bg-white/5 border-l-2 border-l-neon-cyan'
                 )}
-                style={{ height: track.height || 56 }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                style={{ height: track.height || 56 }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: track.color }} />
                   <span className="text-[11px] font-medium truncate flex-1">{track.name}</span>
@@ -224,7 +225,7 @@ export function ArrangementView({
           <div
             className="sticky top-0 z-10 bg-black/60 border-b border-white/10 cursor-pointer"
             style={{ height: RULER_HEIGHT, width: totalBeats * beatWidth }}
-            onClick={handleRulerClick} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={handleRulerClick} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             {/* Sections */}
             {sections.map(section => (
               <div
@@ -289,7 +290,7 @@ export function ArrangementView({
                       width: clip.lengthBeats * beatWidth,
                       backgroundColor: (clip.color || track.color) + '40',
                       borderColor: clip.color || track.color,
-                    }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                    }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     {/* Mini waveform or note display */}
                     {clip.type === 'midi' && clip.midiNotes && (
                       <div className="absolute inset-0 flex items-end px-0.5 pb-0.5 opacity-40 overflow-hidden">

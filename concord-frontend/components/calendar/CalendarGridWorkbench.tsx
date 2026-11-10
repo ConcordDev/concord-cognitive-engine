@@ -21,6 +21,7 @@ import { eventIdFromResult, eventNotSavedSentence, eventOnCalendarSentence, even
 import { browserTimeZone, calendarDateKey, COMMON_TIME_ZONES, fromZonedInputValue, nextHourSlotInZone, profileTimeZone, resolveCalendarTimeZone, shiftDateKey, toZonedInputValue, zoneAbbrev, zoneCityLabel } from '@/lib/calendar-date';
 import { RecurrenceEditor, RecurrenceScopeDialog, describeRecurrence, type RecurrenceScope, type UiRecurrence } from '@/components/calendar/RecurrenceEditor';
 import Link from 'next/link';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1348,7 +1349,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                         setNewEvent({ ...defaultNewEventForm(), startDate: newStart, endDate: newEnd });
                         setEditingEventId(null);
                         setShowCreateModal(true);
-                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       {hourEvents.map((event) => {
                         const start = new Date(event.startDate);
                         const end = new Date(event.endDate);
@@ -1465,7 +1466,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                     setNewEvent({ ...defaultNewEventForm(), startDate: newStart, endDate: newEnd });
                     setEditingEventId(null);
                     setShowCreateModal(true);
-                  }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   {hourEvents.map((event) => {
                     const start = new Date(event.startDate);
                     const end = new Date(event.endDate);
@@ -1560,7 +1561,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                       onClick={() => {
                         setSelectedEvent(event);
                         setShowEventModal(true);
-                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                      }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       {/* Artwork gradient */}
                       <div
                         className="w-full h-20 rounded-md mb-2 flex items-center justify-center"

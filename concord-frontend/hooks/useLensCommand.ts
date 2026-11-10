@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 
+import { shouldIgnoreLensHotkey } from '@/lib/a11y/editable-target';
 import { useKeyboard, type Shortcut } from '@/lib/keyboard';
 
 export interface LensCommand {
@@ -34,18 +35,6 @@ export interface LensCommand {
 export interface UseLensCommandOptions {
   /** Lens identifier; commands are namespaced under it. */
   lensId: string;
-}
-
-/**
- * Did this keystroke originate in a form field? Mirrors the tag set
- * react-hotkeys-hook's enableOnFormTags covers, plus contentEditable.
- */
-function isFormFieldEvent(event: KeyboardEvent): boolean {
-  const t = event.target as (HTMLElement & { isContentEditable?: boolean }) | null;
-  if (!t || typeof t !== 'object') return false;
-  if (t.isContentEditable) return true;
-  const tag = t.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
 /**
@@ -144,14 +133,14 @@ export function useLensCommand(commands: LensCommand[], options: UseLensCommandO
         c.keys === fired || c.keys.replace(/\s+/g, '') === fired
       );
       if (!matched || !(matched.enabled ?? true)) return;
-      // Per-command form-tag discipline (Q82): enableOnFormTags below
-      // must be on whenever ANY command in the instance is global, so
-      // this handler also receives form-field keystrokes for NON-global
-      // commands. Those keystrokes belong to the field — return without
-      // preventDefault or dispatch, and the character lands with focus
-      // untouched. Only a command that is itself global may fire from
-      // inside a form field.
-      if (!(matched.global ?? false) && isFormFieldEvent(event)) return;
+      // Per-command form-tag discipline (Q82 / RCA-form-hotkey-steal):
+      // enableOnFormTags below is on whenever ANY command is global, so
+      // this handler also receives field keystrokes for NON-global
+      // commands. Those belong to the field — return without
+      // preventDefault or dispatch. Also yield when focus sits on modal
+      // chrome (role=button) that contains a field, and when the library
+      // retargets the event away from the focused input.
+      if (!(matched.global ?? false) && shouldIgnoreLensHotkey(event)) return;
       event.preventDefault();
       liveActions.current.get(matched.namespacedId)?.();
     },
@@ -159,6 +148,13 @@ export function useLensCommand(commands: LensCommand[], options: UseLensCommandO
       enableOnFormTags: namespacedCommands.some((c) => c.global)
         ? ['INPUT', 'TEXTAREA', 'SELECT']
         : false,
+      // When this binding has no global command, drop field keystrokes
+      // before dispatch. Bindings that mix in a global still deliver
+      // every key and let the per-command check above sort them.
+      ignoreEventWhen: (event) => {
+        if (commandsRef.current.some((c) => c.global)) return false;
+        return shouldIgnoreLensHotkey(event);
+      },
       preventDefault: false,
     },
     [allKeys]

@@ -6,6 +6,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { catalogMatchesQuery } from '@/components/education/catalog-search';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export interface Lesson {
   id: string; title: string; videoUrl: string; durationMin: number;
@@ -256,7 +257,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                     <div className="w-16 h-12 bg-gradient-to-br from-cyan-900/40 to-violet-900/30 rounded flex items-center justify-center flex-shrink-0">
                       <BookOpen className="w-5 h-5 text-cyan-500/60" />
                     </div>
-                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleDetail(c)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleDetail(c)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       <div className="flex items-center gap-2">
                         {expanded ? <ChevronDown className="w-3 h-3 text-gray-400 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 text-gray-400 flex-shrink-0" />}
                         <span className="text-sm font-medium text-white truncate">{c.title}</span>

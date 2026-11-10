@@ -16,6 +16,7 @@ import {
   RefreshCw, AlertCircle, CheckCircle2, Timer, Link,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface UnifyResult {
   unifiable: boolean;
@@ -733,7 +734,7 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
               <div
                 key={entry.id}
                 className="lens-card cursor-pointer hover:bg-lattice-border/30 transition-colors"
-                onClick={() => setExpandedHistoryId(expandedHistoryId === entry.id ? null : (entry.id ?? null))} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                onClick={() => setExpandedHistoryId(expandedHistoryId === entry.id ? null : (entry.id ?? null))} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {entry.status === 'completed' ? (

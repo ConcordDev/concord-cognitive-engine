@@ -27,6 +27,7 @@ import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1122,7 +1123,7 @@ export function EditorPanel() {
       {/* ---- Create Modal ---- */}
       {createModalOpen && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setCreateModalOpen(false)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+          <div className={ds.modalBackdrop} onClick={() => setCreateModalOpen(false)} tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-lg p-6 space-y-4')}>
               <div className="flex items-center justify-between">
@@ -1258,10 +1259,10 @@ export function EditorPanel() {
           onClick={() => setPaletteOpen(false)}
           role="dialog"
           aria-modal="true"
-          aria-label="Quick search" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          aria-label="Quick search" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div
             className="bg-[#0d1117] border border-violet-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
               <Search className="w-4 h-4 text-violet-400" />
               <input
@@ -1660,7 +1661,7 @@ function HypothesesList({ items, onSelect, allEvidence: _allEvidence }: { items:
         const linkedCount = (d.linkedEvidence || []).length;
         const statusColor = STATUS_COLORS[d.status || 'proposed'] || 'gray-400';
         return (
-          <div key={item.id} className={cn(ds.panelHover)} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div key={item.id} className={cn(ds.panelHover)} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start gap-4">
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2">
@@ -1735,7 +1736,7 @@ function EvidenceBoard({ items, onSelect }: { items: LensItem[]; onSelect: (item
               const d = getData<EvidenceData>(item);
               const typeColor = STATUS_COLORS[d.type || 'empirical'];
               return (
-                <div key={item.id} className={cn(ds.panelHover, 'space-y-2')} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                <div key={item.id} className={cn(ds.panelHover, 'space-y-2')} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <h4 className="text-sm font-medium text-white">{item.title}</h4>
                   {d.summary && <p className={cn(ds.textMuted, 'text-xs line-clamp-2')}>{d.summary}</p>}
                   <div className="flex items-center gap-2">
@@ -1775,7 +1776,7 @@ function ExperimentLog({ items, onSelect }: { items: LensItem[]; onSelect: (item
         const d = getData<ExperimentData>(item);
         const statusColor = STATUS_COLORS[d.status || 'planned'];
         return (
-          <div key={item.id} className={cn(ds.panelHover)} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div key={item.id} className={cn(ds.panelHover)} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-start gap-4">
               <div className={cn('p-2 rounded-lg', `bg-${statusColor}/20`)}>
                 <Beaker className={`w-5 h-5 text-${statusColor}`} />
@@ -2063,7 +2064,7 @@ function BibliographyManager({ items, onSelect, citationStyle, onStyleChange }: 
           const d = getData<CitationData>(item);
           const formatted = formatCitation({ ...d, title: item.title }, citationStyle);
           return (
-            <div key={item.id} className={cn(ds.panelHover, 'space-y-2')} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div key={item.id} className={cn(ds.panelHover, 'space-y-2')} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="flex items-start gap-3">
                 <Library className="w-5 h-5 text-neon-purple mt-0.5" />
                 <div className="flex-1 space-y-1">

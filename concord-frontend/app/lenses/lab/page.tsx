@@ -21,6 +21,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export default function LabLensPage() {
   useLensNav('lab');
@@ -206,7 +207,7 @@ export default function LabLensPage() {
                 className={`lens-card cursor-pointer ${
                   selectedOrgan === (organ.name as string) ? 'border-neon-purple' : ''
                 }`}
-                onClick={() => setSelectedOrgan(organ.name as string)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                onClick={() => setSelectedOrgan(organ.name as string)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm">{String(organ.name)}</span>
                   <span

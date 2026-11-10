@@ -12,6 +12,7 @@ import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { Drill, Plus, Trash2, Layers, BarChart3, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface Interval { id: string; from: number; to: number; lithology: string; assayGrade: number; recovery: number; }
 interface Hole {
@@ -155,7 +156,7 @@ export function GeologyWorkbench() {
             <div key={h.id}
               onClick={() => setSelected(h.id)}
               className={cn('flex items-center justify-between gap-2 rounded border p-2 cursor-pointer transition-colors',
-                selected === h.id ? 'border-cyan-600 bg-cyan-500/10' : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                selected === h.id ? 'border-cyan-600 bg-cyan-500/10' : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700')} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 text-[12px] font-semibold text-white">
                   <Drill className="w-3 h-3 text-cyan-400" /> {h.name}

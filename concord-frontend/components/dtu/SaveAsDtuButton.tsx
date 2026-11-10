@@ -34,6 +34,7 @@ import {
   type ContentClass,
 } from '@/components/dtu/ContentClassLicenseFields';
 import { DtuId } from '@/components/dtu/DtuId';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export interface SaveAsDtuButtonProps {
   /**
@@ -368,7 +369,7 @@ function SaveModal(props: ModalProps) {
       >
         <div
           className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-          onClick={props.onCancel} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+          onClick={props.onCancel} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
         <motion.form
           onSubmit={props.onSubmit}
           initial={{ scale: 0.96, y: 8 }}

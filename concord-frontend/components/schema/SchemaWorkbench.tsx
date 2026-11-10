@@ -17,6 +17,7 @@ import {
   Network, Download, Loader2, X, Save, RefreshCw, AlertTriangle, Check,
   GitCompareArrows, History,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 export type FieldType = 'string' | 'integer' | 'number' | 'boolean' | 'array' | 'object';
 
@@ -368,8 +369,8 @@ function RegistryPanel({
       </div>
 
       {history && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setHistory(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-cyan-500/20 bg-zinc-950 p-4" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setHistory(null)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-cyan-500/20 bg-zinc-950 p-4" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{history.name} — version history</h4>
               <button aria-label="Close" onClick={() => setHistory(null)} className="text-zinc-400 hover:text-zinc-200"><X className="h-4 w-4" /></button>

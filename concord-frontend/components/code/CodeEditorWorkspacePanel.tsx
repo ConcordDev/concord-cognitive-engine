@@ -51,6 +51,7 @@ import { scriptDtuCreateCall, scriptDtuUpdateCall, savedArtifactId, dtuRunRefuse
 import { dtuRecordId, dtuReadBackCall, dtuReadBackMatches } from '@/components/wallet/walletReceipt';
 import { codeAiSessionId, fetchCodeAiHistory } from '@/components/code/codeAiHistory';
 import { LIVE_PROJECT_ID, LIVE_SNIPPET_PATH, snippetFromFilesRead, tabAfterSnippetRead } from '@/components/code/liveSnippet';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const MonacoWrapper = dynamic(() => import('@/components/code/MonacoWrapper'), { ssr: false });
 const MonacoDiffViewer = dynamic(() => import('@/components/code/MonacoDiffViewer'), { ssr: false });
@@ -1791,7 +1792,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
                   onClick={() => {
                     setActiveTabId(tab.id);
                     if (tab.scriptType) setActiveScriptType(tab.scriptType);
-                  }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  }} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                   <FileCode className="w-4 h-4 text-neon-blue" />
                   <span className="text-sm">{tab.name}</span>
                   {tab.isDirty && <span className="w-2 h-2 bg-neon-blue rounded-full" />}
@@ -2155,13 +2156,13 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
     {paletteOpen && (
       <div
         className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-[100] pt-[14vh]"
-        onClick={() => setPaletteOpen(false)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        onClick={() => setPaletteOpen(false)} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
         <div
           className="bg-[#0d1117] border border-cyan-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
-          aria-label="Command palette" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          aria-label="Command palette" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-cyan-400">
               <circle cx="11" cy="11" r="8" />

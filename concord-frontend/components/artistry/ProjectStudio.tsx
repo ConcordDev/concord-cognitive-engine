@@ -10,6 +10,7 @@ import {
   Pencil, PenTool,
 } from 'lucide-react';
 import { StudyCanvas } from './StudyCanvas';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface ProjImage { url: string; caption: string; order: number }
 interface ProcStep { title: string; detail: string }
@@ -340,8 +341,8 @@ export function ProjectStudio() {
 
       {/* Detail modal */}
       {openId && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => { setOpenId(null); setDetail(null); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="bg-gray-900 border border-white/10 rounded-lg w-full max-w-2xl max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => { setOpenId(null); setDetail(null); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          <div className="bg-gray-900 border border-white/10 rounded-lg w-full max-w-2xl max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             {!detail ? (
               <div className="flex justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-neon-pink" /></div>
             ) : (

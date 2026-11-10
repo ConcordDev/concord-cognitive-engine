@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { cn, formatBytes } from '@/lib/utils';
 import { api } from '@/lib/api/client';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -348,7 +349,7 @@ export function MediaUpload({
               isDragOver
                 ? 'border-neon-cyan bg-neon-cyan/5'
                 : 'border-lattice-border hover:border-gray-500 hover:bg-lattice-deep/50'
-            )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <input
               ref={fileInputRef}
               type="file"

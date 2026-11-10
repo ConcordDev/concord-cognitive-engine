@@ -7,6 +7,7 @@ import {
   Coins, Swords, Target, Search, Plus, Loader2, Tag, Filter,
   CheckCircle2, Clock, X,
 } from 'lucide-react';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 interface Quest {
   id: string;
@@ -268,9 +269,9 @@ export function QuestBoard({
 
       {showPost && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setShowPost(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          onClick={() => setShowPost(false)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-5"
-            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-white">
                 Post {kind === 'bounty' ? 'Bounty' : 'Quest'}

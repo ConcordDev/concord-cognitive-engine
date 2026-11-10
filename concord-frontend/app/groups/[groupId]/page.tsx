@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { cn, formatNumber, formatRelativeTime } from '@/lib/utils';
 import { api } from '@/lib/api/client';
+import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -246,7 +247,7 @@ function MembersSidebar({
           {/* Mobile backdrop */}
           <div
             className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-            onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+            onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
           <motion.div
             initial={{ x: 300, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
