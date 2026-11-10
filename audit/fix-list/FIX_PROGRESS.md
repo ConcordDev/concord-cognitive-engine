@@ -1209,15 +1209,15 @@ A bad fleet vehicle, load weight, invoice total, spot name, market stake, monito
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-logistics-006 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-accounting-002 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-accounting-015 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-law-005 | law | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-ocean-004 | ocean | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-observe-001 | observe | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-vote-002 | vote | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-markets-001 | markets | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-agriculture-003 | agriculture | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-logistics-006 | logistics | medium | FIXED_PENDING_VERIFY | 76cac608a |
+| FIX-accounting-002 | accounting | medium | FIXED_PENDING_VERIFY | 76cac608a |
+| FIX-accounting-015 | accounting | medium | FIXED_PENDING_VERIFY | 76cac608a |
+| FIX-law-005 | law | medium | FIXED_PENDING_VERIFY | 76cac608a |
+| FIX-ocean-004 | ocean | medium | FIXED_PENDING_VERIFY | 76cac608a |
+| FIX-observe-001 | observe | medium | FIXED_PENDING_VERIFY | 76cac608a |
+| FIX-vote-002 | vote | medium | FIXED_PENDING_VERIFY | 76cac608a |
+| FIX-markets-001 | markets | medium | FIXED_PENDING_VERIFY | 76cac608a |
+| FIX-agriculture-003 | agriculture | medium | FIXED_PENDING_VERIFY | 76cac608a |
 
 ## NEEDS_PRODUCT_SURFACE
 
