@@ -833,3 +833,32 @@ A payload field named `name` is no longer discarded when the request also has `a
 | FIX-mesh-001 | mesh | high | FIXED_PENDING_VERIFY | c5cbdea57 |
 | FIX-database-001 | database | high | FIXED_PENDING_VERIFY | c5cbdea57 |
 | FIX-meta-001 | meta | high | FIXED_PENDING_VERIFY | c5cbdea57 |
+
+## NEEDS_LIVE_REPRO
+
+These stay `OPEN`. The code that was checked does not show the reported failure, so a live re-walk has to confirm or retire them. `needs_live_repro` is set on the ticket. They are not `FIXED_PENDING_VERIFY`.
+
+| Ticket | What was checked |
+|---|---|
+| FIX-chat-002 | No single transcript loader found that blanks a selected thread after a successful load. |
+| FIX-code-001 | Scratch Save posts a lens artifact then dtu.create. "symbol or position required" is only returned by find-references, lsp-hover, and lsp-signature. |
+| FIX-services-002 | Desk artifacts and the booking-suite client store are separate. No create call was found that writes one and drops the other. |
+| FIX-finance-002 | net-worth-snapshot of cash 10, investments 5, and liabilities 3 returns 12. |
+| FIX-finance-003 | transactions-ingest of amount 5 stores 5. |
+| FIX-retail-001 | No product-create handler was found missing from the retail desk in this pass. |
+| FIX-whiteboard-004 | board-list renders an empty list. "Whiteboard not found" is the studio 404 mapper. |
+| FIX-podcast-006 | MediaUpload's drop zone clicks the hidden file input and handles drop. |
+| FIX-offline-001 | The lens connectivity card and the global offline banner were not found to share one status read. |
+| FIX-offline-002 | No queue drain was found that claims auto-replay and then skips it. |
+| FIX-achievements-001 | Sync unlocks was not found to ignore a real DTU count. |
+| FIX-announcements-001 | GET /api/announcements is a public list. The 403 is on the admin POST. |
+| FIX-mesh-002 | Mesh send is called with dtuId. "No DTU specified" lives in the test, not in mesh.js. |
+| FIX-realestate-001 | The 422 validation_failed was not matched to a field the desk form omits. |
+| FIX-security-001 | The 422 validation_failed was not matched to a field the case form omits. |
+| FIX-marketplace-001 | No publish path was found that marks a listing published and then hides it from Browse. |
+| FIX-aviation-002 | Log flight and the fleet dropdown were not found to be unwired no-ops. |
+| FIX-creatures-001 | Open the pen was not found as a button with an empty handler. |
+| FIX-creatures-002 | No creature-create macro was found missing from a create control that calls it. |
+| FIX-voice-001 | No renderer path was found that crashes on a long recording title. |
+| FIX-cognition-009 | A confirmed miss on /dtu/[id] already 404s via lookupOwnerDtu. The live 500 did not reduce to one throw. |
+| FIX-music-001 | renderProject schedules from beat 0. No start offset puts a 4-bar 100 BPM arrangement at 16.75s. |
