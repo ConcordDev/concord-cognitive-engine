@@ -1408,12 +1408,12 @@ A codebase and a team can be renamed and deleted by the owner. Teams you belong 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-dx-platform-001 | dx-platform | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-dx-platform-002 | dx-platform | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-dx-platform-013 | dx-platform | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-dx-platform-014 | dx-platform | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-dx-platform-015 | dx-platform | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-chat-004 | chat | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-dx-platform-001 | dx-platform | medium | FIXED_PENDING_VERIFY | 817ac01c5 |
+| FIX-dx-platform-002 | dx-platform | medium | FIXED_PENDING_VERIFY | 817ac01c5 |
+| FIX-dx-platform-013 | dx-platform | medium | FIXED_PENDING_VERIFY | 817ac01c5 |
+| FIX-dx-platform-014 | dx-platform | medium | FIXED_PENDING_VERIFY | 817ac01c5 |
+| FIX-dx-platform-015 | dx-platform | medium | FIXED_PENDING_VERIFY | 817ac01c5 |
+| FIX-chat-004 | chat | medium | FIXED_PENDING_VERIFY | 817ac01c5 |
 
 ## NEEDS_PRODUCT_SURFACE
 
