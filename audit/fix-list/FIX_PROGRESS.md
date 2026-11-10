@@ -1118,11 +1118,11 @@ Pest reports, replanting projects, sprints, the caller's own poll, observing ses
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-forestry-004 | forestry | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-projects-001 | projects | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-vote-001 | vote | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-astronomy-008 | astronomy | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-hvac-003 | hvac | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-forestry-004 | forestry | medium | FIXED_PENDING_VERIFY | 39bf2da56 |
+| FIX-projects-001 | projects | medium | FIXED_PENDING_VERIFY | 39bf2da56 |
+| FIX-vote-001 | vote | medium | FIXED_PENDING_VERIFY | 39bf2da56 |
+| FIX-astronomy-008 | astronomy | medium | FIXED_PENDING_VERIFY | 39bf2da56 |
+| FIX-hvac-003 | hvac | medium | FIXED_PENDING_VERIFY | 39bf2da56 |
 
 ## NEEDS_PRODUCT_SURFACE
 
