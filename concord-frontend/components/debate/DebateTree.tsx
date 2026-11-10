@@ -22,6 +22,7 @@ export function DebateTree() {
   const [score, setScore] = useState<Score | null>(null);
   const [loading, setLoading] = useState(true);
   const [newThesis, setNewThesis] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun('debate', 'debate-list', {});
@@ -37,7 +38,8 @@ export function DebateTree() {
   async function reload() { if (active) await open(active.id); }
 
   async function create() {
-    if (newThesis.trim().length < 8) return;
+    if (newThesis.trim().length < 8) { setCreateError('A thesis needs at least 8 characters.'); return; }
+    setCreateError(null);
     const r = await lensRun('debate', 'debate-create', { thesis: newThesis.trim() });
     setNewThesis('');
     await refresh();
@@ -78,9 +80,10 @@ export function DebateTree() {
         <input value={newThesis} onChange={e => setNewThesis(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void create(); }}
           placeholder="State a thesis to debate…"
           className="flex-1 bg-black/40 border border-white/15 rounded px-2 py-1.5 text-sm text-white" />
-        <button onClick={create} disabled={newThesis.trim().length < 8}
-          className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40">New debate</button>
+        <button onClick={create}
+          className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">New debate</button>
       </div>
+      {createError && <p role="alert" className="mb-3 text-xs text-rose-300">{createError}</p>}
 
       <div className="grid sm:grid-cols-[220px_1fr] gap-3">
         <ul className="space-y-1">

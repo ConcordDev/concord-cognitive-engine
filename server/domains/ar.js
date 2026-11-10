@@ -741,8 +741,12 @@ export default function registerArActions(registerLensAction) {
     try {
       const scenes = sceneStore(ctx);
       const input = (params && params.scene) || {};
-      if (!input.name || typeof input.name !== "string") {
-        return { ok: false, error: "scene.name is required" };
+      const sceneName = typeof input.name === "string" ? input.name.trim() : "";
+      if (!sceneName) {
+        return { ok: false, error: "scene name required", message: "Scene name is required." };
+      }
+      if (sceneName.length > 200) {
+        return { ok: false, error: "invalid_input", field: "name", message: "Scene name must be 200 characters or fewer." };
       }
       const now = new Date().toISOString();
       const existing = input.id ? scenes.get(input.id) : null;
@@ -801,7 +805,7 @@ export default function registerArActions(registerLensAction) {
 
       const scene = {
         id,
-        name: input.name,
+        name: sceneName,
         anchor: VALID_ANCHORS.includes(input.anchor) ? input.anchor : "plane",
         objects: normObjects,
         behaviors: normBehaviors,

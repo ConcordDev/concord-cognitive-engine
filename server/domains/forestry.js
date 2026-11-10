@@ -32,6 +32,7 @@ const VOLUME_SPECIES_FACTOR = {
 };
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 export default function registerForestryActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // timberVolume — the ForestryActionPanel sends { species, acres, avgAgeYears,
@@ -328,12 +329,18 @@ export default function registerForestryActions(registerLensAction) {
   registerLensAction("forestry", "stand-add", (ctx, _a, params = {}) => {
   try {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const name = frClean(params.name, 160);
-    if (!name) return { ok: false, error: "stand name required" };
+    const rawName = String(params.name ?? "").trim();
+    if (!rawName) return { ok: false, error: "stand name required", message: "Stand name is required." };
+    if (rawName.length > 160) return badNumber("name", "must be 160 characters or fewer");
+    const name = rawName;
+    const acres = params.acres === undefined || params.acres === null || params.acres === ""
+      ? 0
+      : readingOrNull(params.acres, { min: 0, max: 1_000_000, fallback: null });
+    if (acres === null) return badNumber("acres", "must be a number from 0 to 1000000");
     const stand = {
       id: frId("std"), name,
       species: SPECIES.includes(params.species) ? params.species : "mixed",
-      acres: Math.max(0, frNum(params.acres)),
+      acres,
       ageYears: Math.max(0, Math.round(frNum(params.ageYears))),
       treesPerAcre: Math.max(0, Math.round(frNum(params.treesPerAcre))),
       lat: Number.isFinite(Number(params.lat)) ? Number(params.lat) : null,

@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 316 | 629 | 0 |
+| medium | 327 | 618 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **737** | **1411** | **3** |
+| **total** | **748** | **1400** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1069,6 +1069,24 @@ Asset, vulnerability, alert-rule, and camera delete stay visible and armed until
 | FIX-sponsorship-002 | sponsorship | medium | FIXED_PENDING_VERIFY | 37ac58a18 |
 | FIX-environment-005 | environment | medium | FIXED_PENDING_VERIFY | 37ac58a18 |
 | FIX-art-007 | art | medium | FIXED_PENDING_VERIFY | 37ac58a18 |
+
+## Mediums — range checks on eleven more lenses
+
+A blank, over-long, or negative value is refused with a message on the form. Forestry acres, energy wattage, plumbing duration, civic-bond target, material density, electrical job name, carpentry quantity and project name, HVAC labor hours and material cost, a blank work order, a blank debate topic, and a blank AR scene name no longer get stored as zero or a default.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-forestry-002 | forestry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-energy-002 | energy | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-plumbing-005 | plumbing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-civic-bonds-002 | civic-bonds | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-materials-005 | materials | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-electrical-002 | electrical | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-carpentry-004 | carpentry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-hvac-008 | hvac | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-manufacturing-005 | manufacturing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-debate-001 | debate | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-ar-001 | ar | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

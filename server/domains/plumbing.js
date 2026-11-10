@@ -9,6 +9,7 @@ import { listCodeReferences, listCodeReferenceCategories, PLUMBING_CODE_DISCLAIM
 
 import { needNums, optNum, notComputed } from "../lib/lens-inputs.js";
 import { assertPayable } from "../lib/money-guards.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 
 export default function registerPlumbingActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -306,7 +307,10 @@ export default function registerPlumbingActions(registerLensAction) {
       const address = clean(params.address, 200) || (ref.client ? (ref.client.address || "") : "");
       const date = clean(params.date, 16) || new Date().toISOString().slice(0, 10);
       const startHour = Math.min(23, Math.max(0, num(params.startHour) || 8));
-      const durationHours = Math.min(12, Math.max(0.5, num(params.durationHours) || 2));
+      const durationHours = params.durationHours === undefined || params.durationHours === null || params.durationHours === ""
+        ? 2
+        : readingOrNull(params.durationHours, { min: 0.5, max: 12, fallback: null });
+      if (durationHours === null) return badNumber("durationHours", "must be a number from 0.5 to 12");
       const assignment = {
         id: pid("disp"), jobTitle, jobId: clean(params.jobId, 64) || null,
         client: clientName, clientId: ref.clientId, address,
@@ -382,7 +386,11 @@ export default function registerPlumbingActions(registerLensAction) {
       }
       if (params.date !== undefined) a.date = clean(params.date, 16);
       if (params.startHour !== undefined) a.startHour = Math.min(23, Math.max(0, num(params.startHour)));
-      if (params.durationHours !== undefined) a.durationHours = Math.min(12, Math.max(0.5, num(params.durationHours)));
+      if (params.durationHours !== undefined && params.durationHours !== null && params.durationHours !== "") {
+        const durationHours = readingOrNull(params.durationHours, { min: 0.5, max: 12, fallback: null });
+        if (durationHours === null) return badNumber("durationHours", "must be a number from 0.5 to 12");
+        a.durationHours = durationHours;
+      }
       if (params.status && ["scheduled", "en_route", "on_site", "completed", "cancelled"].includes(params.status)) a.status = params.status;
       if (params.priority && ["low", "normal", "high", "emergency"].includes(params.priority)) a.priority = params.priority;
       a.updatedAt = new Date().toISOString();

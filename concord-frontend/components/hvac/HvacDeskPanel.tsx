@@ -410,6 +410,20 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   };
 
   const handleSave = async () => {
+    if (formLaborHours.trim()) {
+      const hours = Number(formLaborHours);
+      if (!Number.isFinite(hours) || hours < 0 || hours > 1000) {
+        addToast({ type: 'error', message: 'Labor hours must be a number from 0 to 1000.' });
+        return;
+      }
+    }
+    if (formMaterialCost.trim()) {
+      const cost = Number(formMaterialCost);
+      if (!Number.isFinite(cost) || cost < 0 || cost > 1e12) {
+        addToast({ type: 'error', message: 'Material cost must be a number from 0 to 1000000000000.' });
+        return;
+      }
+    }
     const laborH = formLaborHours ? parseFloat(formLaborHours) : undefined;
     const laborR = formLaborRate ? parseFloat(formLaborRate) : undefined;
     const matC = formMaterialCost ? parseFloat(formMaterialCost) : undefined;

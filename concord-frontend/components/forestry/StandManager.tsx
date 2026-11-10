@@ -26,6 +26,7 @@ export function StandManager() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', species: 'mixed', acres: '', treesPerAcre: '' });
+  const [formError, setFormError] = useState<string | null>(null);
   const [actForm, setActForm] = useState({ kind: 'survey', notes: '' });
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
@@ -54,11 +55,23 @@ export function StandManager() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   async function addStand() {
-    if (!form.name.trim()) return;
-    await lensRun('forestry', 'stand-add', {
-      name: form.name.trim(), species: form.species,
-      acres: form.acres ? Number(form.acres) : 0, treesPerAcre: form.treesPerAcre ? Number(form.treesPerAcre) : 0,
+    const name = form.name.trim();
+    if (!name) { setFormError('Stand name is required.'); return; }
+    if (name.length > 160) { setFormError('Stand name must be 160 characters or fewer.'); return; }
+    const acres = form.acres.trim() === '' ? 0 : Number(form.acres);
+    if (!Number.isFinite(acres) || acres < 0 || acres > 1_000_000) {
+      setFormError('Acres must be a number from 0 to 1000000.');
+      return;
+    }
+    const r = await lensRun('forestry', 'stand-add', {
+      name, species: form.species,
+      acres, treesPerAcre: form.treesPerAcre ? Number(form.treesPerAcre) : 0,
     });
+    if (!r.data?.ok) {
+      setFormError(r.data?.message || r.data?.error || 'Could not add that stand.');
+      return;
+    }
+    setFormError(null);
     setForm({ name: '', species: 'mixed', acres: '', treesPerAcre: '' });
     await refresh();
   }
@@ -122,9 +135,10 @@ export function StandManager() {
           className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={form.treesPerAcre} onChange={e => setForm({ ...form, treesPerAcre: e.target.value })} placeholder="trees/ac"
           className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-        <button onClick={addStand} disabled={!form.name.trim()}
-          className="px-2.5 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-40">Add stand</button>
+        <button onClick={addStand}
+          className="px-2.5 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">Add stand</button>
       </div>
+      {formError && <p role="alert" className="mb-3 text-xs text-rose-300">{formError}</p>}
 
       <ul className="space-y-1">
         {stands.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No stands yet.</li>}

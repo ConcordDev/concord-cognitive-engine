@@ -328,6 +328,11 @@ export function FieldServiceConsole() {
 
   const assignJob = () => guarded(async () => {
     if (!jobTitle.trim()) { setErr('Job title required'); return; }
+    const duration = Number(jobDur);
+    if (!jobDur.trim() || !Number.isFinite(duration) || duration < 0.5 || duration > 12) {
+      setErr('Duration must be a number from 0.5 to 12 hours.');
+      return;
+    }
     const r = await run('dispatchAssign', {
       jobTitle, client: jobClient, clientId: jobClientId || undefined, address: jobAddr,
       techId: jobTech || undefined, date: jobDate,

@@ -420,6 +420,7 @@ export function LiveFloorPanel() {
   const [showCreate, setShowCreate] = useState(false);
   const [showDebateTools, setShowDebateTools] = useState(false);
   const [newDebate, setNewDebate] = useState<{ topic: string; description: string; format: DebateData['format']; timeLimit: number }>({ topic: '', description: '', format: 'open', timeLimit: 30 });
+  const [createError, setCreateError] = useState<string | null>(null);
   const [newArgument, setNewArgument] = useState('');
   const [argumentSide, setArgumentSide] = useState<'pro' | 'con'>('pro');
 
@@ -537,7 +538,8 @@ export function LiveFloorPanel() {
   }), [debates]);
 
   const handleCreate = useCallback(async () => {
-    if (!newDebate.topic.trim()) return;
+    if (!newDebate.topic.trim()) { setCreateError('A debate topic is required.'); return; }
+    setCreateError(null);
     await create({
       title: newDebate.topic,
       data: {
@@ -776,7 +778,8 @@ export function LiveFloorPanel() {
             </select>
             <input value={newDebate.description} onChange={e => setNewDebate(p => ({ ...p, description: e.target.value }))} placeholder="Description..." className="input-lattice md:col-span-2" />
           </div>
-          <button onClick={handleCreate} disabled={createMut.isPending || !newDebate.topic.trim()} className="btn-neon green w-full">
+          {createError && <p role="alert" className="text-xs text-rose-300">{createError}</p>}
+          <button onClick={handleCreate} disabled={createMut.isPending} className="btn-neon green w-full">
             {createMut.isPending ? 'Creating...' : 'Start Debate'}
           </button>
         </div>

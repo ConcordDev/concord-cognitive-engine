@@ -71,6 +71,7 @@ function num(v, fallback = 0, { min = 0, allowZero = true } = {}) {
 }
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber } from "../lib/finite-input.js";
 export default function registerElectricalActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── persistent per-user state ───────────────────────────────────────
@@ -878,11 +879,18 @@ export default function registerElectricalActions(registerLensAction) {
       if (!tpl) {
         return { ok: false, error: `unknown template — pick one of: ${Object.keys(templates).join(', ')}` };
       }
+      let jobName = tpl.label;
+      if (data.jobName !== undefined && data.jobName !== null) {
+        const trimmed = String(data.jobName).trim();
+        if (!trimmed) return { ok: false, error: "job name required", message: "Job name is required." };
+        if (trimmed.length > 120) return badNumber("jobName", "must be 120 characters or fewer");
+        jobName = trimmed;
+      }
       const checklist = {
         id: gid('chk', st),
         template: data.template,
         label: tpl.label,
-        jobName: data.jobName || tpl.label,
+        jobName,
         items: tpl.items.map((it) => ({
           id: gid('item', st),
           name: it.name, necCode: it.necCode,

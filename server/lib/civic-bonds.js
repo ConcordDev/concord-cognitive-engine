@@ -21,6 +21,7 @@ import { debitSparks, creditSparks } from "./sparks-service.js";
 import { makeConstraintSet, isFeasible } from "./viability/index.js";
 import { adjustTreasury, adjustLegitimacy } from "./kingdoms.js";
 import { proposeDecree } from "./kingdom-decrees.js";
+import { readingOrNull } from "./finite-input.js";
 
 export const MAX_SINGLE_ENTITY_RATIO = 0.05;     // 5% cap per entity per bond
 export const DEFAULT_SPILLOVER_RATE = 0.05;
@@ -44,8 +45,13 @@ export function createBond(db, opts = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   const worldId = String(opts.worldId || "").trim();
   const title = String(opts.title || "").trim();
-  const target = Math.max(1, Math.trunc(Number(opts.targetAmount) || 0));
-  if (!worldId || !title || target < 1) return { ok: false, reason: "missing_inputs" };
+  const targetMissing = opts.targetAmount === undefined || opts.targetAmount === null || opts.targetAmount === "";
+  const targetRaw = targetMissing ? 1 : readingOrNull(opts.targetAmount, { min: 1, max: 1e12, fallback: null });
+  const target = targetRaw === null ? null : Math.trunc(targetRaw);
+  if (target === null || target < 1) {
+    return { ok: false, reason: "invalid_input", field: "targetAmount", message: "targetAmount must be a whole number of at least 1" };
+  }
+  if (!worldId || !title) return { ok: false, reason: "missing_inputs" };
 
   const id = uid("cbond");
   const returnRate = Math.min(RETURN_RATE_MAX, Math.max(0, Number(opts.returnRate ?? RETURN_RATE_MAX)));

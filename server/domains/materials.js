@@ -18,6 +18,7 @@ import {
 import { checkDurabilityGate } from "../lib/asset-gen/durability-gate.js";
 import { HONEST_BOUNDARY as DEGRADATION_HONEST_BOUNDARY } from "../lib/simulation/degradation-kinetics.js";
 import { needNums, notComputed, requireList } from "../lib/lens-inputs.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 
 const MP_BASE = "https://api.materialsproject.org";
 
@@ -812,8 +813,15 @@ export default function registerMaterialsActions(registerLensAction) {
 
   registerLensAction("materials", "shortlist-add", (ctx, _a, params = {}) => {
     const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const name = mtClean(params.name, 160);
-    if (!name) return { ok: false, error: "material name required" };
+    const rawName = String(params.name ?? "").trim();
+    if (!rawName) return { ok: false, error: "material name required", message: "Material name is required." };
+    if (rawName.length > 160) return badNumber("name", "must be 160 characters or fewer");
+    const name = rawName;
+    if (params.density !== undefined && params.density !== null && params.density !== "") {
+      const density = readingOrNull(params.density, { min: 0, max: 50, fallback: null });
+      if (density === null) return badNumber("density", "must be a number from 0 to 50");
+      params = { ...params, density };
+    }
     const list = mtSaved(s, mtActor(ctx));
     const refId = mtClean(params.refId, 120) || name.toLowerCase();
     if (list.some((m) => m.refId === refId)) return { ok: false, error: "material already shortlisted" };

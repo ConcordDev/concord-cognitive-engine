@@ -180,6 +180,13 @@ function MaterialTakeoff({ onEstimate }: { onEstimate: (e: TakeoffResult) => voi
   const [busy, setBusy] = useState(false);
 
   const compute = async () => {
+    if (projectName.trim().length > 160) { setErr('Project name must be 160 characters or fewer.'); return; }
+    for (const it of items) {
+      if (!it.quantity.trim()) continue;
+      const qty = Number(it.quantity);
+      if (!Number.isFinite(qty) || qty <= 0) { setErr('Quantity must be a number greater than 0.'); return; }
+      if (it.name.trim().length > 120) { setErr('Item name must be 120 characters or fewer.'); return; }
+    }
     setBusy(true); setErr('');
     const r = await run<TakeoffResult>('materialTakeoff', {
       projectName,
@@ -192,7 +199,7 @@ function MaterialTakeoff({ onEstimate }: { onEstimate: (e: TakeoffResult) => voi
         name: it.name, quantity: parseFloat(it.quantity), unit: it.unit, unitCost: parseFloat(it.unitCost) || 0,
       })),
     });
-    if (r.ok) { setResult(r.result); if (r.result) onEstimate(r.result); } else { setErr(r.error || 'takeoff failed'); setResult(null); }
+    if (r.ok) { setResult(r.result); if (r.result) onEstimate(r.result); } else { setErr((r as { message?: string }).message || r.error || 'takeoff failed'); setResult(null); }
     setBusy(false);
   };
 

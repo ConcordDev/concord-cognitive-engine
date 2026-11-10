@@ -507,14 +507,17 @@ export function SceneStudio() {
 
   const saveScene = async () => {
     if (!scene) return;
+    const sceneName = String(scene.name || '').trim();
+    if (!sceneName) { flash('Scene name is required.'); return; }
+    if (sceneName.length > 200) { flash('Scene name must be 200 characters or fewer.'); return; }
     setBusy(true);
-    const r = await lensRun('ar', 'sceneSave', { scene });
+    const r = await lensRun('ar', 'sceneSave', { scene: { ...scene, name: sceneName } });
     setBusy(false);
     if (r.data?.ok) {
       setScene((r.data.result as any).scene);
       flash('Scene saved.');
       loadScenes();
-    } else { flash(r.data?.error || 'Save failed.'); }
+    } else { flash(r.data?.message || r.data?.error || 'Save failed.'); }
   };
 
   const deleteScene = async (id: string) => {

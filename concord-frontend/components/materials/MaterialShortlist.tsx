@@ -35,6 +35,7 @@ export function MaterialShortlist() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<Record<string, string>>({ name: '', category: '', density: '', tensileStrengthMPa: '', meltingPointC: '', youngsModulusGPa: '', costPerKg: '' });
+  const [formError, setFormError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [listRes, dashRes] = await Promise.all([
@@ -48,10 +49,22 @@ export function MaterialShortlist() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   async function add() {
-    if (!form.name.trim()) return;
+    if (!form.name.trim()) { setFormError('Material name is required.'); return; }
+    if (form.density.trim()) {
+      const density = Number(form.density);
+      if (!Number.isFinite(density) || density < 0 || density > 50) {
+        setFormError('Density must be a number from 0 to 50.');
+        return;
+      }
+    }
     const input: Record<string, unknown> = { name: form.name.trim(), category: form.category.trim() || 'general' };
     for (const f of FIELDS) if (form[f.key]) input[f.key] = Number(form[f.key]);
-    await lensRun('materials', 'shortlist-add', input);
+    const r = await lensRun('materials', 'shortlist-add', input);
+    if (!r.data?.ok) {
+      setFormError(r.data?.message || r.data?.error || 'Could not add that material.');
+      return;
+    }
+    setFormError(null);
     setForm({ name: '', category: '', density: '', tensileStrengthMPa: '', meltingPointC: '', youngsModulusGPa: '', costPerKg: '' });
     setComparison(null);
     await refresh();
@@ -92,11 +105,12 @@ export function MaterialShortlist() {
           <input key={f.key} value={form[f.key]} onChange={e => setForm({ ...form, [f.key]: e.target.value })} placeholder={f.label}
             className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         ))}
-        <button onClick={add} disabled={!form.name.trim()}
-          className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
+        <button onClick={add}
+          className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />Add
         </button>
       </div>
+      {formError && <p role="alert" className="mb-3 text-xs text-rose-300">{formError}</p>}
 
       {materials.length === 0 ? (
         <p className="text-xs text-zinc-400 italic">No materials shortlisted — add candidates above or from MP search.</p>

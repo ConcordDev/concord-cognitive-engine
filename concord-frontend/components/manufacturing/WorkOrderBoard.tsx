@@ -68,6 +68,9 @@ export function WorkOrderBoard() {
 
   async function createOrder(ev: FormEvent) {
     ev.preventDefault();
+    if (!product.trim()) { setError('Product is required.'); return; }
+    const qty = Number(quantity);
+    if (!Number.isFinite(qty) || qty <= 0) { setError('Quantity must be a number greater than 0.'); return; }
     setSaving(true);
     setError(null);
     try {
@@ -173,14 +176,14 @@ export function WorkOrderBoard() {
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Work orders</span>
         <span className="ml-auto text-[10px] text-gray-400">{activeCount} active</span>
       </header>
-      <form onSubmit={createOrder} className="px-3 py-2 border-b border-white/5 flex flex-wrap items-end gap-2">
+      <form noValidate onSubmit={createOrder} className="px-3 py-2 border-b border-white/5 flex flex-wrap items-end gap-2">
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Product
-          <input value={product} onChange={(e) => setProduct(e.target.value)} required className={fieldCls} />
+          <input value={product} onChange={(e) => setProduct(e.target.value)} className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Quantity
-          <input value={quantity} onChange={(e) => setQuantity(e.target.value)} inputMode="decimal" required className={fieldCls} />
+          <input value={quantity} onChange={(e) => setQuantity(e.target.value)} inputMode="decimal" className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Due date

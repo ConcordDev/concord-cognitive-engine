@@ -1,4 +1,5 @@
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { badNumber, readingOrNull } from "../lib/finite-input.js";
 import { newShareToken, isStrongShareToken } from "../lib/share-token.js";
 // server/domains/carpentry.js
 // Domain actions for carpentry: board foot calculation, joint strength analysis,
@@ -205,15 +206,20 @@ export default function registerCarpentryActions(registerLensAction) {
   // labor, overhead and margin applied. Deterministic.
   registerLensAction("carpentry", "materialTakeoff", (ctx, _a, params = {}) => {
     try {
+      const rawProject = String(params.projectName ?? "").trim();
+      if (rawProject.length > 160) return badNumber("projectName", "must be 160 characters or fewer");
       const rawItems = Array.isArray(params.items) ? params.items : [];
       const items = [];
       for (const it of rawItems) {
-        const qty = cpNum(it.quantity);
+        const rawName = String(it?.name ?? "").trim();
+        if (rawName.length > 120) return badNumber("name", "must be 120 characters or fewer");
+        if (it?.quantity === undefined || it?.quantity === null || it?.quantity === "") continue;
+        const qty = readingOrNull(it.quantity, { min: 0.0001, max: 1_000_000, fallback: null });
+        if (qty === null) return badNumber("quantity", "must be a number greater than 0");
         const unitCost = cpNum(it.unitCost);
-        if (qty <= 0) continue;
         const lineTotal = Math.round(qty * unitCost * 100) / 100;
         items.push({
-          name: cpClean(it.name || "item", 120) || "item",
+          name: rawName || "item",
           quantity: qty,
           unit: cpClean(it.unit || "ea", 16) || "ea",
           unitCost: Math.round(unitCost * 100) / 100,
@@ -235,7 +241,7 @@ export default function registerCarpentryActions(registerLensAction) {
       const margin = Math.round(subtotal * (marginPct / 100) * 100) / 100;
       const total = Math.round((subtotal + margin) * 100) / 100;
       const result = {
-        projectName: cpClean(params.projectName || "Untitled Project", 160),
+        projectName: rawProject || "Untitled Project",
         items,
         materialSubtotal: Math.round(materialSubtotal * 100) / 100,
         wastePct,

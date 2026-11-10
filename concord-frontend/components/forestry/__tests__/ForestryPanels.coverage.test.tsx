@@ -159,9 +159,12 @@ describe('forestry flows', () => {
   });
 
   it('stands are added, logged against, and deleted', async () => {
-    render(<StandManager />);
+    const view = render(<StandManager />);
     await settle();
     await exercise({ passes: 4, text: 'North 40', skip: /delete|remove|trash|discard|cancel|close|dismiss|reset|clear|^back|^×$/i });
+    const acres = view.container.querySelector('input[placeholder="acres"]') as HTMLInputElement;
+    fireEvent.change(acres, { target: { value: '40' } });
+    await press(/Add stand/i);
     await press(/Delete|Remove|Trash/i);
     expect(sent()).toEqual(expect.arrayContaining(['stand-list', 'forestry-dashboard']));
     expect(sent().some((x) => /stand-add|activity-log|stand-delete/.test(x))).toBe(true);

@@ -48,10 +48,15 @@ export function EnergyDevicesPanel({
 
   const add = async () => {
     if (!form.name.trim()) { setError('Device name is required.'); return; }
+    const watts = form.wattage.trim() === '' ? 0 : Number(form.wattage);
+    if (!Number.isFinite(watts) || watts < 0 || watts > 1_000_000) {
+      setError('Wattage must be a number from 0 to 1000000.');
+      return;
+    }
     const r = await lensRun('energy', 'device-add', {
-      name: form.name.trim(), category: form.category, wattage: Number(form.wattage) || 0,
+      name: form.name.trim(), category: form.category, wattage: watts,
     });
-    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    if (r.data?.ok === false) { setError(r.data?.message || r.data?.error || 'Failed'); return; }
     setForm({ name: '', category: 'appliance', wattage: '' });
     setShowAdd(false); setError(null);
     await Promise.all([refresh(), refreshConsumers()]);

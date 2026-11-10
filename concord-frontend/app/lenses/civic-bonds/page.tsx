@@ -190,19 +190,26 @@ export default function CivicBondsLens() {
       addToast({ type: 'error', message: 'create failed: title required' });
       return;
     }
+    const target = Number(draftTarget);
+    if (!Number.isFinite(target) || target < 1 || Math.trunc(target) < 1) {
+      setNote('create: target must be at least 1');
+      addToast({ type: 'error', message: 'Target amount must be a whole number of at least 1.' });
+      return;
+    }
     setCreating(true);
     try {
-      const envelope = (await lensRun<{ ok: boolean; reason?: string; bondId?: string }>('civic_bonds', 'create', {
+      const envelope = (await lensRun<{ ok: boolean; reason?: string; message?: string; bondId?: string }>('civic_bonds', 'create', {
         worldId,
         title,
         description: draftDescription.trim() || undefined,
-        targetAmount: Math.max(1, Math.trunc(Number(draftTarget) || 0)),
+        targetAmount: Math.trunc(target),
         denomination: 1,
         quorum: 1,
         returnRate: 0,
       })).data;
       const r = envelope.result;
       const reason =
+        (r && typeof r === 'object' && typeof r.message === 'string' && r.message) ||
         (r && typeof r === 'object' && typeof r.reason === 'string' && r.reason) ||
         (typeof envelope.error === 'string' && envelope.error) ||
         null;
