@@ -1298,16 +1298,16 @@ A persona tagline, personality, greeting, or tag that is out of range is refused
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-personas-001 | personas | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-personas-002 | personas | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-eco-001 | eco | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-eco-002 | eco | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-eco-003 | eco | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-eco-006 | eco | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-calendar-006 | calendar | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-construction-001 | construction | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-construction-002 | construction | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-construction-003 | construction | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-personas-001 | personas | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
+| FIX-personas-002 | personas | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
+| FIX-eco-001 | eco | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
+| FIX-eco-002 | eco | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
+| FIX-eco-003 | eco | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
+| FIX-eco-006 | eco | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
+| FIX-calendar-006 | calendar | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
+| FIX-construction-001 | construction | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
+| FIX-construction-002 | construction | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
+| FIX-construction-003 | construction | medium | FIXED_PENDING_VERIFY | 80ba8aedc |
 
 ## NEEDS_PRODUCT_SURFACE
 
