@@ -1157,9 +1157,9 @@ A blank song title and a tempo outside 30 to 300 show on the save control. A cus
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-studio-001 | studio | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-retail-006 | retail | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-game-002 | game | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-studio-001 | studio | medium | FIXED_PENDING_VERIFY | ca9341948 |
+| FIX-retail-006 | retail | medium | FIXED_PENDING_VERIFY | ca9341948 |
+| FIX-game-002 | game | medium | FIXED_PENDING_VERIFY | ca9341948 |
 
 ## NEEDS_PRODUCT_SURFACE
 
