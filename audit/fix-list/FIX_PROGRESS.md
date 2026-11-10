@@ -1042,10 +1042,10 @@ The literary library uses the shared empty state and no longer tells a reader to
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-literary-001 | literary | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-science-002 | science | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-manufacturing-010 | manufacturing | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-agents-002 | agents | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-literary-001 | literary | medium | FIXED_PENDING_VERIFY | 7af8c55c6 |
+| FIX-science-002 | science | medium | FIXED_PENDING_VERIFY | 7af8c55c6 |
+| FIX-manufacturing-010 | manufacturing | medium | FIXED_PENDING_VERIFY | 7af8c55c6 |
+| FIX-agents-002 | agents | medium | FIXED_PENDING_VERIFY | 7af8c55c6 |
 
 ## NEEDS_PRODUCT_SURFACE
 
