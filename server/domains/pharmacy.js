@@ -502,6 +502,25 @@ export default function registerPharmacyActions(registerLensAction) {
     return { ok: true, result: { dose: entry, quantityRemaining: med.quantity } };
   });
 
+  registerLensAction("pharmacy", "dose-undo", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const med = findMed(s, raid(ctx), params.medId);
+    if (!med) return { ok: false, error: "medication not found" };
+    const list = s.doses.get(med.id) || [];
+    let i = params.id ? list.findIndex((d) => d.id === params.id) : -1;
+    if (i < 0 && params.scheduledTime) {
+      for (let n = list.length - 1; n >= 0; n -= 1) {
+        if (list[n].scheduledTime === params.scheduledTime) { i = n; break; }
+      }
+    }
+    if (i < 0) i = list.length - 1;
+    if (i < 0) return { ok: false, error: "dose not found" };
+    const [dose] = list.splice(i, 1);
+    if (dose.status === "taken") med.quantity += 1;
+    saveRxState();
+    return { ok: true, result: { dose, quantityRemaining: med.quantity } };
+  });
+
   registerLensAction("pharmacy", "dose-history", (ctx, _a, params = {}) => {
   try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -934,6 +953,16 @@ export default function registerPharmacyActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  registerLensAction("pharmacy", "price-delete", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.prices.get(raid(ctx)) || [];
+    const i = list.findIndex((p) => p.id === params.id);
+    if (i < 0) return { ok: false, error: "price not found" };
+    list.splice(i, 1);
+    saveRxState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
   registerLensAction("pharmacy", "price-list", (ctx, _a, _params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const prices = [...(s.prices.get(raid(ctx)) || [])].sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
@@ -1051,6 +1080,16 @@ export default function registerPharmacyActions(registerLensAction) {
     return { ok: true, result: { entry } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  registerLensAction("pharmacy", "journal-delete", (ctx, _a, params = {}) => {
+    const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = s.journal.get(raid(ctx)) || [];
+    const i = list.findIndex((e) => e.id === params.id);
+    if (i < 0) return { ok: false, error: "journal entry not found" };
+    list.splice(i, 1);
+    saveRxState();
+    return { ok: true, result: { deleted: params.id } };
+  });
 
   registerLensAction("pharmacy", "journal-list", (ctx, _a, _params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };

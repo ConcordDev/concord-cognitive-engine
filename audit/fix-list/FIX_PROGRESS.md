@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 449 | 496 | 0 |
+| medium | 455 | 490 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **870** | **1278** | **3** |
+| **total** | **876** | **1272** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1348,6 +1348,19 @@ Deleting a persona also removes its chats and ratings, and the delete stays arme
 | FIX-agents-001 | agents | medium | FIXED_PENDING_VERIFY | 585a56bf6 |
 | FIX-agents-012 | agents | medium | FIXED_PENDING_VERIFY | 585a56bf6 |
 | FIX-marketing-010 | marketing | medium | FIXED_PENDING_VERIFY | 585a56bf6 |
+
+## Mediums — clinic records and footprint edit
+
+An unpaid veterinary invoice can be deleted. A paid one is voided and the payment stays. A prescription can be discontinued. Deleting a patient removes that patient's invoices and prescriptions. A pharmacy price, a journal note, and a taken dose can be removed, and undoing a taken dose puts the pill back. A footprint snapshot's label can be edited.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-veterinary-007 | veterinary | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-veterinary-008 | veterinary | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-pharmacy-010 | pharmacy | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-pharmacy-011 | pharmacy | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-pharmacy-012 | pharmacy | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-eco-005 | eco | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

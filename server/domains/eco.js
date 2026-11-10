@@ -975,6 +975,31 @@ If unsure, fall back to coarser ranks. Always include at least one suggestion ev
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  registerLensAction("eco", "footprint-update", (ctx, _artifact, params = {}) => {
+    const state = getEcoState();
+    if (!state) return { ok: false, error: "STATE unavailable" };
+    const list = state.footprintLog.get(ecoUserId(ctx)) || [];
+    const entry = list.find((e) => e.id === params.id);
+    if (!entry) return { ok: false, error: "snapshot not found" };
+    if (params.label != null) {
+      const label = String(params.label).trim();
+      if (label.length > 120) return { ok: false, error: "invalid_input", message: "Label must be at most 120 characters." };
+      entry.label = label;
+    }
+    if (params.totalKgCO2e != null && params.totalKgCO2e !== "") {
+      const total = Number(params.totalKgCO2e);
+      if (!isFinite(total) || total < 0) return { ok: false, error: "invalid_input", message: "Total must be a number that is 0 or greater." };
+      entry.totalKgCO2e = Math.round(total * 100) / 100;
+    }
+    if (params.netKgCO2e != null && params.netKgCO2e !== "") {
+      const net = Number(params.netKgCO2e);
+      if (!isFinite(net)) return { ok: false, error: "invalid_input", message: "Net must be a number." };
+      entry.netKgCO2e = Math.round(net * 100) / 100;
+    }
+    persistEco();
+    return { ok: true, result: { entry } };
+  });
+
   /**
    * footprint-history — chronological footprint snapshots + trend analysis.
    * params: { sinceDays? }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { Receipt, Plus, Loader2, Trash2, DollarSign } from 'lucide-react';
 import { VetInvoice, VetLineItem, PAY_METHODS } from './vet-types';
 
@@ -231,6 +232,14 @@ export function BillingPanel({ onChanged }: { onChanged?: () => void }) {
                 <div className="text-right">
                   <p className="font-mono text-sm text-white">${inv.total.toFixed(2)}</p>
                   <p className="text-[10px] text-zinc-400">due ${inv.balanceDue.toFixed(2)}</p>
+                  {inv.status !== 'void' && (
+                    <StickyDeleteConfirm
+                      onConfirm={async () => { await lensRun('veterinary', 'invoice-void', { id: inv.id }); await load(); onChanged?.(); }}
+                      armLabel={inv.amountPaid > 0 || inv.status === 'paid' ? 'Void' : 'Delete'}
+                      confirmLabel={inv.amountPaid > 0 || inv.status === 'paid' ? 'Void this invoice?' : 'Delete this invoice?'}
+                      className="mt-1 text-[11px] text-rose-300"
+                    />
+                  )}
                 </div>
               </div>
               <div className="mt-2 space-y-0.5">

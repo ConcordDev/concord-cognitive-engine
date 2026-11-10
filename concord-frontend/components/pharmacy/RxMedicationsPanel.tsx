@@ -178,7 +178,13 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
                     </button>
                   </div>
                 ) : (
-                  <span className={cn('text-[10px] capitalize', d.status === 'taken' ? 'text-emerald-400' : 'text-zinc-400')}>{d.status}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={cn('text-[10px] capitalize', d.status === 'taken' ? 'text-emerald-400' : 'text-zinc-400')}>{d.status}</span>
+                    {d.status === 'taken' && (
+                      <button type="button" onClick={() => { void lensRun('pharmacy', 'dose-undo', { medId: d.medId, scheduledTime: d.time }).then(() => refresh()); }}
+                        className="text-[10px] text-zinc-400 hover:text-white">Undo</button>
+                    )}
+                  </div>
                 )}
               </li>
             ))}

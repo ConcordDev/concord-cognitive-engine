@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { Pill, Plus, Loader2, RefreshCw } from 'lucide-react';
 import { VetPrescription } from './vet-types';
 
@@ -206,9 +207,17 @@ export function PharmacyPanel() {
                 <span className="text-xs text-zinc-400">
                   refills {rx.refillsRemaining}/{rx.refillsTotal}
                 </span>
+                {rx.status !== 'discontinued' && (
+                  <StickyDeleteConfirm
+                    onConfirm={async () => { await lensRun('veterinary', 'prescription-discontinue', { id: rx.id }); await load(); }}
+                    armLabel="Stop"
+                    confirmLabel="Discontinue?"
+                    className="text-[11px] text-rose-300"
+                  />
+                )}
                 <button
                   onClick={() => refill(rx.id)}
-                  disabled={rx.refillsRemaining <= 0}
+                  disabled={rx.refillsRemaining <= 0 || rx.status === 'discontinued'}
                   className="flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-xs text-violet-300 hover:bg-zinc-700 disabled:opacity-40"
                 >
                   <RefreshCw className="h-3 w-3" /> Refill

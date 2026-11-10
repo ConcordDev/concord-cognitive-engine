@@ -223,7 +223,17 @@ export default function registerVeterinaryActions(registerLensAction) {
     const arr = vtPatients(s, vtActor(ctx));
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "patient not found" };
-    arr.splice(i, 1);
+    const removed = arr.splice(i, 1)[0];
+    const userId = vtActor(ctx);
+    const dropNamed = (bucket, name) => {
+      const list = vtList(vtCollection(s, bucket), userId);
+      for (let n = list.length - 1; n >= 0; n -= 1) {
+        const row = list[n];
+        if (row.patientId === removed.id || (row.patientName && row.patientName === removed.name)) list.splice(n, 1);
+      }
+    };
+    dropNamed("invoices", removed.name);
+    dropNamed("prescriptions", removed.name);
     saveVet();
     return { ok: true, result: { deleted: params.id } };
   });
@@ -602,6 +612,26 @@ export default function registerVeterinaryActions(registerLensAction) {
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
+  registerLensAction("veterinary", "invoice-void", (ctx, _a, params = {}) => {
+    try {
+      const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = vtList(vtCollection(s, "invoices"), vtActor(ctx));
+      const i = arr.findIndex((iv) => iv.id === params.id);
+      if (i < 0) return { ok: false, error: "invoice not found" };
+      const inv = arr[i];
+      if ((inv.amountPaid || 0) > 0 || inv.status === "paid" || inv.status === "partial") {
+        inv.status = "void";
+        inv.balanceDue = 0;
+        inv.voidedAt = new Date().toISOString();
+        saveVet();
+        return { ok: true, result: { invoice: inv, voided: true } };
+      }
+      arr.splice(i, 1);
+      saveVet();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
   // ─── Vaccine-due reminders / overdue alerts ────────────────────────
   registerLensAction("veterinary", "vaccine-reminders", (ctx, _a, params = {}) => {
     try {
@@ -715,6 +745,19 @@ export default function registerVeterinaryActions(registerLensAction) {
         refillHistory: [],
       };
       vtList(col, vtActor(ctx)).push(rx);
+      saveVet();
+      return { ok: true, result: { prescription: rx } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("veterinary", "prescription-discontinue", (ctx, _a, params = {}) => {
+    try {
+      const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = vtList(vtCollection(s, "prescriptions"), vtActor(ctx));
+      const rx = arr.find((row) => row.id === params.id);
+      if (!rx) return { ok: false, error: "prescription not found" };
+      rx.status = "discontinued";
+      rx.discontinuedAt = new Date().toISOString();
       saveVet();
       return { ok: true, result: { prescription: rx } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }

@@ -41,6 +41,8 @@ export function FootprintTrend() {
   const [net, setNet] = useState('');
   const [label, setLabel] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -215,9 +217,22 @@ export function FootprintTrend() {
                 .map((e) => (
                   <div key={e.id} className="flex items-center gap-2 px-3 py-2">
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm text-white truncate">
-                        {e.label || 'Snapshot'}
-                      </div>
+                      {editId === e.id ? (
+                        <form className="flex gap-1" onSubmit={async (ev) => {
+                          ev.preventDefault();
+                          const r = await lensRun('eco', 'footprint-update', { id: e.id, label: editLabel });
+                          if (!r.data?.ok) { setError(r.data?.message || r.data?.error || 'That snapshot was not updated.'); return; }
+                          setEditId(null);
+                          await load();
+                        }}>
+                          <input value={editLabel} onChange={(ev) => setEditLabel(ev.target.value)} aria-label="Snapshot label" className="min-w-0 flex-1 rounded border border-white/10 bg-black/40 px-2 py-1 text-xs text-white" />
+                          <button type="submit" className="text-[11px] text-emerald-300">Save</button>
+                        </form>
+                      ) : (
+                        <button type="button" className="text-sm text-white truncate text-left" onClick={() => { setEditId(e.id); setEditLabel(e.label || ''); }}>
+                          {e.label || 'Snapshot'}
+                        </button>
+                      )}
                       <div className="text-[10px] text-gray-400">
                         {new Date(e.at).toLocaleDateString()} · net {e.netKgCO2e} kg · total{' '}
                         {e.totalKgCO2e} kg
