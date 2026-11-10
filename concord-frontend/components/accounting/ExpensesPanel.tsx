@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Receipt, Plus, Paperclip } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonTableRows } from '@/components/ui';
 
 interface Account { id: string; code: string; name: string; category: string; archived: boolean }
@@ -16,6 +17,7 @@ export function ExpensesPanel() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [draft, setDraft] = useState({ accountId: '', amount: '', vendor: '', memo: '', date: '', receiptUrl: '' });
 
   useEffect(() => { refresh(); }, []);
@@ -34,16 +36,21 @@ export function ExpensesPanel() {
   }
 
   async function create() {
-    if (!draft.accountId || !draft.amount) return;
+    if (!draft.accountId) { setFormError('Choose an expense account.'); return; }
+    const amount = Number(draft.amount);
+    if (!draft.amount.trim() || !Number.isFinite(amount) || amount <= 0) { setFormError('Amount must be a number greater than 0.'); return; }
+    if (draft.date.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(draft.date.trim())) { setFormError('Date must be a real day as YYYY-MM-DD.'); return; }
+    setFormError(null);
     try {
-      await lensRun({
+      const r = await lensRun({
         domain: 'accounting', action: 'expenses-create',
-        input: { ...draft, amount: Number(draft.amount) },
+        input: { ...draft, amount, date: draft.date.trim() || undefined },
       });
+      if (r.data?.ok === false) { setFormError(r.data?.message || r.data?.error || 'Could not post that expense.'); return; }
       setDraft({ accountId: '', amount: '', vendor: '', memo: '', date: '', receiptUrl: '' });
       setCreating(false);
       await refresh();
-    } catch (err) { console.error('[Expenses] create failed', err); }
+    } catch (err) { setFormError(err instanceof Error ? err.message : 'Could not post that expense.'); }
   }
 
   const accountById = new Map(accounts.map(a => [a.id, a]));
@@ -71,6 +78,7 @@ export function ExpensesPanel() {
           <input type="date" value={draft.date} onChange={e => setDraft({ ...draft, date: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
           <input value={draft.memo} onChange={e => setDraft({ ...draft, memo: e.target.value })} placeholder="Memo" className="col-span-8 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={draft.receiptUrl} onChange={e => setDraft({ ...draft, receiptUrl: e.target.value })} placeholder="Receipt URL" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          {formError && <p role="alert" className="col-span-12 text-xs text-rose-300">{formError}</p>}
           <button onClick={create} className="col-span-12 px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Post expense (auto Dr Expense / Cr Cash)</button>
         </div>
       )}
@@ -79,7 +87,7 @@ export function ExpensesPanel() {
         {loading ? (
           <SkeletonTableRows rows={5} columns={4} />
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-400"><Receipt className="w-6 h-6 mx-auto mb-2 opacity-30" />No expenses logged.</div>
+          <EmptyState compact title="No expenses logged" description="Post an expense above. A blank amount, a zero, or a date that is not YYYY-MM-DD is refused here." />
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(e => {

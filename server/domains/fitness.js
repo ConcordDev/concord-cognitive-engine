@@ -1126,7 +1126,9 @@ Generate the plan.`;
       // fall back to the best recent run in the athlete's log
       const runs = (s.activities.get(faid(ctx)) || [])
         .filter((a) => a.type === "run" && a.distanceKm >= 1.5 && a.durationSec > 0);
-      if (!runs.length) return { ok: false, error: "supply distanceKm + durationSec, or log a run ≥1.5km" };
+      if (!runs.length) {
+        return { ok: true, result: { empty: true, vo2max: null, reason: "Log a run of at least 1.5 km to estimate VO2max." } };
+      }
       const best = runs.reduce((m, a) => (vdotFromEffort(a.distanceKm * 1000, a.durationSec / 60)
         > vdotFromEffort(m.distanceKm * 1000, m.durationSec / 60) ? a : m));
       distanceMeters = best.distanceKm * 1000;
@@ -1162,7 +1164,9 @@ Generate the plan.`;
     if (vdot <= 0) {
       const runs = (s.activities.get(faid(ctx)) || [])
         .filter((a) => a.type === "run" && a.distanceKm >= 1.5 && a.durationSec > 0);
-      if (!runs.length) return { ok: false, error: "supply vo2max, or log a run ≥1.5km" };
+      if (!runs.length) {
+        return { ok: true, result: { empty: true, predictions: [], reason: "Log a run of at least 1.5 km for finish-time predictions." } };
+      }
       vdot = Math.max(...runs.map((a) => vdotFromEffort(a.distanceKm * 1000, a.durationSec / 60)));
       source = "best logged run";
     }

@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 365 | 580 | 0 |
+| medium | 369 | 576 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **786** | **1362** | **3** |
+| **total** | **790** | **1358** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1160,6 +1160,17 @@ A blank song title and a tempo outside 30 to 300 show on the save control. A cus
 | FIX-studio-001 | studio | medium | FIXED_PENDING_VERIFY | ca9341948 |
 | FIX-retail-006 | retail | medium | FIXED_PENDING_VERIFY | ca9341948 |
 | FIX-game-002 | game | medium | FIXED_PENDING_VERIFY | ca9341948 |
+
+## Mediums — empty reads and empty books
+
+VO2max and the race predictor return an empty result when no run is logged, and the training board says why. A studio presence check with no session returns no collaborators instead of a 400. Inventory, payroll, purchase orders, budgets, and sales tax use the shared empty state. Posting an expense shows a message for a blank account, a non-positive amount, or a bad date.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-fitness-004 | fitness | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-accounting-003 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-accounting-011 | accounting | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-music-007 | music | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

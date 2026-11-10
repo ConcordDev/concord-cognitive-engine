@@ -2357,7 +2357,7 @@ export default function registerStudioActions(registerLensAction) {
     const projectId = String(params.projectId || "");
     if (!s.collab) s.collab = new Map();
     const session = s.collab.get(projectId);
-    if (!session) return { ok: false, error: "no active session" };
+    if (!session) return { ok: true, result: { collaborators: [], session: null } };
     const me = session.collaborators.find(c => c.userId === userId);
     if (!me) return { ok: false, error: "not a collaborator — join first" };
     me.lastSeen = Date.now();

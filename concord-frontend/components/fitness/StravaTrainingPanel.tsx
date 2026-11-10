@@ -15,6 +15,7 @@ import {
   Loader2, Activity, Battery, HeartPulse, Gauge, Timer, TrendingUp, TrendingDown, Minus, Flame,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils';
 
 interface LoadDay { date: string; load: number; ctl: number; atl: number; tsb: number }
@@ -41,7 +42,9 @@ export function StravaTrainingPanel() {
   const [battery, setBattery] = useState<BodyBattery | null>(null);
   const [hrv, setHrv] = useState<HrvStatus | null>(null);
   const [vo2, setVo2] = useState<number | null>(null);
+  const [vo2Reason, setVo2Reason] = useState<string | null>(null);
   const [predictions, setPredictions] = useState<RacePrediction[]>([]);
+  const [raceReason, setRaceReason] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sleepHours, setSleepHours] = useState('7.5');
   const [rmssd, setRmssd] = useState('');
@@ -64,8 +67,10 @@ export function StravaTrainingPanel() {
     setReadiness(rd.data?.result as Readiness | null);
     setBattery(bb.data?.result as BodyBattery | null);
     setHrv(h.data?.result as HrvStatus | null);
-    setVo2(v.data?.ok === false ? null : (v.data?.result?.vo2max ?? null));
-    setPredictions(rp.data?.ok === false ? [] : (rp.data?.result?.predictions || []));
+    setVo2(v.data?.result?.empty ? null : (v.data?.result?.vo2max ?? null));
+    setVo2Reason(v.data?.result?.empty ? (v.data?.result?.reason || 'Log a run of at least 1.5 km to estimate VO2max.') : null);
+    setPredictions(rp.data?.result?.empty ? [] : (rp.data?.result?.predictions || []));
+    setRaceReason(rp.data?.result?.empty ? (rp.data?.result?.reason || 'Log a run of at least 1.5 km for finish-time predictions.') : null);
     setLoading(false);
   }, [sleepHours]);
 
@@ -96,7 +101,7 @@ export function StravaTrainingPanel() {
         <Tile icon={Battery} label="Body Battery" value={battery ? String(battery.battery) : '—'}
           accent={battery && battery.battery >= 50 ? 'text-emerald-400' : 'text-amber-400'}
           sub={battery?.state} />
-        <Tile icon={Gauge} label="VO₂max" value={vo2 != null ? String(vo2) : '—'} accent="text-orange-400" />
+        <Tile icon={Gauge} label="VO₂max" value={vo2 != null ? String(vo2) : '—'} accent="text-orange-400" sub={vo2Reason || undefined} />
       </div>
 
       {/* Training load chart */}
@@ -238,7 +243,7 @@ export function StravaTrainingPanel() {
               ))}
             </ul>
           ) : (
-            <p className="text-[11px] text-zinc-400 italic">Log a run of 1.5 km or more for finish-time predictions.</p>
+            <EmptyState compact title="No race prediction yet" description={raceReason || 'Log a run of at least 1.5 km for finish-time predictions.'} />
           )}
         </div>
       </div>
