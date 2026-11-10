@@ -1225,9 +1225,9 @@ Oversight counts open permit-desk permits and open service requests, and an empt
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-government-001 | government | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-government-003 | government | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-government-014 | government | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-government-001 | government | medium | FIXED_PENDING_VERIFY | 1a995b79a |
+| FIX-government-003 | government | medium | FIXED_PENDING_VERIFY | 1a995b79a |
+| FIX-government-014 | government | medium | FIXED_PENDING_VERIFY | 1a995b79a |
 
 ## NEEDS_PRODUCT_SURFACE
 
