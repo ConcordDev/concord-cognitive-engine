@@ -1505,15 +1505,15 @@ A world name over 64 characters is refused, and the field shows the count. Typin
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-world-creator-001 | world-creator | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-world-creator-002 | world-creator | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-world-creator-003 | world-creator | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-world-creator-004 | world-creator | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-world-creator-014 | world-creator | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-personas-008 | personas | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-personas-010 | personas | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-personas-014 | personas | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-personas-015 | personas | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-world-creator-001 | world-creator | medium | FIXED_PENDING_VERIFY | 0ce36b3b4 |
+| FIX-world-creator-002 | world-creator | medium | FIXED_PENDING_VERIFY | 0ce36b3b4 |
+| FIX-world-creator-003 | world-creator | medium | FIXED_PENDING_VERIFY | 0ce36b3b4 |
+| FIX-world-creator-004 | world-creator | medium | FIXED_PENDING_VERIFY | 0ce36b3b4 |
+| FIX-world-creator-014 | world-creator | medium | FIXED_PENDING_VERIFY | 0ce36b3b4 |
+| FIX-personas-008 | personas | medium | FIXED_PENDING_VERIFY | 0ce36b3b4 |
+| FIX-personas-010 | personas | medium | FIXED_PENDING_VERIFY | 0ce36b3b4 |
+| FIX-personas-014 | personas | medium | FIXED_PENDING_VERIFY | 0ce36b3b4 |
+| FIX-personas-015 | personas | medium | FIXED_PENDING_VERIFY | 0ce36b3b4 |
 
 ## NEEDS_PRODUCT_SURFACE
 
