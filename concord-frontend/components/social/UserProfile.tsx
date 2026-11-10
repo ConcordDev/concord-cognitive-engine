@@ -243,11 +243,13 @@ function FollowList({
   users,
   onClose,
   onNavigate,
+  onUnfollow,
 }: {
   title: string;
   users: Array<{ userId: string; displayName: string; username?: string | null }>;
   onClose: () => void;
   onNavigate?: (userId: string) => void;
+  onUnfollow?: (userId: string) => void;
 }) {
   return (
     <motion.div
@@ -275,9 +277,8 @@ function FollowList({
             <div className="p-8 text-center text-gray-400">No users yet</div>
           ) : (
             users.map((user) => (
-              <button
+              <div
                 key={user.userId}
-                onClick={() => onNavigate?.(user.userId)}
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-lattice-deep transition-colors text-left"
               >
                 <div
@@ -288,13 +289,22 @@ function FollowList({
                 >
                   {user.displayName.charAt(0).toUpperCase()}
                 </div>
-                <div>
+                <button type="button" onClick={() => onNavigate?.(user.userId)} className="min-w-0 flex-1 text-left">
                   <div className="text-white text-sm font-medium">{user.displayName && user.displayName !== user.userId ? user.displayName : 'Member'}</div>
                   {user.username && user.username !== user.userId && (
                     <div className="text-xs text-gray-400">@{user.username}</div>
                   )}
-                </div>
-              </button>
+                </button>
+                {onUnfollow && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onUnfollow(user.userId); }}
+                    className="ml-auto text-xs text-rose-300 hover:text-rose-200"
+                  >
+                    Unfollow
+                  </button>
+                )}
+              </div>
             ))
           )}
         </div>
@@ -877,6 +887,11 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, onOpenPost, clas
             users={followingQuery.data || []}
             onClose={() => setShowFollowing(false)}
             onNavigate={onNavigateToUser}
+            onUnfollow={currentUserId && currentUserId === userId ? async (id) => {
+              await api.post('/api/social/unfollow', { followerId: currentUserId, followedId: id });
+              await queryClient.invalidateQueries({ queryKey: ['following', userId] });
+              await queryClient.invalidateQueries({ queryKey: ['profile', userId] });
+            } : undefined}
           />
         )}
       </AnimatePresence>

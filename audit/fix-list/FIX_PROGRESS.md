@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 137 | 81 | 3 |
+| high | 138 | 80 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **678** | **1470** | **3** |
+| **total** | **679** | **1469** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -919,3 +919,9 @@ A scheduled landscaping job can be edited. Government inspections, fines, FOIA d
 | FIX-debate-015 | debate | high | FIXED_PENDING_VERIFY | b02a020bf |
 | FIX-insurance-011 | insurance | high | FIXED_PENDING_VERIFY | b02a020bf |
 | FIX-auction-001 | auction | high | FIXED_PENDING_VERIFY | b02a020bf |
+
+The Following list has an Unfollow control on the signed-in user's own list.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-social-013 | social | high | FIXED_PENDING_VERIFY | this commit |
