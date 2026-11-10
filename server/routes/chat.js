@@ -10,7 +10,7 @@ import { needsWindowCompression, compressRollingWindow, WINDOW_THRESHOLD, COMPRE
 import { attachConfidence } from '../lib/confidence-attacher.js';
 import { assertSessionAccessible } from '../lib/session-access.js';
 import { scrubChatFields } from '../lib/chat-governance-leak.js';
-import { visionImageGate } from '../lib/vision-inference.js';
+import { visionImageGate, callVision } from '../lib/vision-inference.js';
 
 function chatUserText(body) {
   const b = body || {};
@@ -55,6 +55,12 @@ export default function registerChatRoutes(app, {
       const visionGate = visionImageGate(req.body);
       if (!visionGate.ok) {
         return res.status(visionGate.status).json({ ok: false, error: visionGate.error });
+      }
+      if (String(req.body?.mode || "").trim().toLowerCase() === "vision") {
+        const img = (Array.isArray(req.body.images) && req.body.images[0]) || req.body.imageB64 || req.body.imageBase64;
+        const vision = await callVision(String(img || ""), String(req.body.message || req.body.prompt || ""));
+        if (!vision.ok) return res.status(200).json({ ok: false, error: vision.error || "vision failed" });
+        return res.json({ ok: true, reply: vision.content, content: vision.content });
       }
       req.body = enforceRequestInvariants(req, req.body || {});
       req._concordMode = req.body.mode || "chat";

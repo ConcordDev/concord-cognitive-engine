@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 152 | 66 | 3 |
+| high | 154 | 64 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **693** | **1455** | **3** |
+| **total** | **695** | **1453** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -954,3 +954,10 @@ Corner actions sit above the mobile nav and receive the tap. A board card can mo
 | FIX-analytics-001 | analytics | high | FIXED_PENDING_VERIFY | fe006d27f |
 | FIX-markets-014 | markets | high | FIXED_PENDING_VERIFY | fe006d27f |
 | FIX-finance-001 | finance | high | FIXED_PENDING_VERIFY | fe006d27f |
+
+A vision upload is sent to the vision model and the chosen image stays on the page. Submitting an assessment shows the grade or the error instead of staying silent.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-education-001 | education | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-education-002 | education | high | FIXED_PENDING_VERIFY | this commit |

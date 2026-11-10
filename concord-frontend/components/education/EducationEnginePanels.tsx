@@ -917,7 +917,9 @@ export function AssessmentPanel() {
         assessmentId: gen.data?.assessmentId,
         responses: Object.entries(responses).map(([questionId, answer]) => ({ questionId, answer })),
       });
-      return r.data as AssessmentGradeResponse;
+      const body = r.data as AssessmentGradeResponse & { ok?: boolean; result?: AssessmentGradeResponse; error?: string };
+      if (body?.ok === false) throw new Error(body.error || 'The assessment was not graded.');
+      return (body.result ?? body) as AssessmentGradeResponse;
     },
   });
 
@@ -983,6 +985,7 @@ export function AssessmentPanel() {
             </button>
           )}
 
+          {grade.error && <p className="text-xs text-red-400">{grade.error.message}</p>}
           {grade.data?.overall != null && (
             <div className="p-3 bg-neon-pink/10 border border-neon-pink/30 rounded-lg text-center">
               <p className="text-xs text-gray-400 uppercase">Overall</p>
