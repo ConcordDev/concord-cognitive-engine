@@ -107,6 +107,9 @@ export function GovernmentActionPanel() {
   }
   async function actDm() {
     if (!recipient.trim()) { err('Recipient required.'); return; }
+    const me = await lensRun<{ actor?: { userId?: string } }>('auth', 'whoami');
+    const mine = me.data?.result?.actor?.userId;
+    if (mine && recipient.trim() === mine) { err('A message to yourself is not delivered. Pick someone else.'); return; }
     setBusy('dm'); setFeedback(null);
     const body = [`🏛 Civic brief — ZIP ${zip}`, '',
       reps.length ? `Reps: ${reps.slice(0, 3).map(r => r.name).join(', ')}` : '',

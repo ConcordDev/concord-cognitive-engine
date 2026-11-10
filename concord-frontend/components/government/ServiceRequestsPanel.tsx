@@ -7,7 +7,7 @@ import { lensRun } from '@/lib/api/client';
 import { LocalRecordNotice } from './LocalRecordNotice';
 import { cn } from '@/lib/utils';
 
-const ServiceRequestsMap = dynamic(() => import('./ServiceRequestsMap').then(m => m.ServiceRequestsMap), { ssr: false });
+const PinDropMap = dynamic(() => import('./PinDropMap').then(m => m.PinDropMap), { ssr: false });
 
 interface Request {
   id: string; referenceNumber: string; category: string; description: string;
@@ -34,6 +34,7 @@ export function ServiceRequestsPanel() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [form, setForm] = useState({ category: 'pothole', description: '', lat: '', lng: '', address: '', reporterName: '', reporterEmail: '', priority: 'medium' as Request['priority'] });
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -51,10 +52,17 @@ export function ServiceRequestsPanel() {
   }
 
   async function create() {
-    if (!form.description.trim() || !form.lat || !form.lng) return;
+    if (!form.description.trim()) { setFormError('Describe the issue.'); return; }
+    const lat = Number(form.lat);
+    const lng = Number(form.lng);
+    if (!form.lat.trim() || !form.lng.trim() || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setFormError('Drop a pin on the map, or type a latitude and longitude.');
+      return;
+    }
+    setFormError(null);
     try {
-      const res = await lensRun({ domain: 'government', action: 'service-requests-create', input: { ...form, lat: Number(form.lat), lng: Number(form.lng) } });
-      if (res.data?.ok === false) alert(res.data?.error);
+      const res = await lensRun({ domain: 'government', action: 'service-requests-create', input: { ...form, lat, lng } });
+      if (res.data?.ok === false) { setFormError(res.data?.message || res.data?.error || 'Could not file that request.'); return; }
       setForm({ ...form, description: '', address: '', reporterName: '', reporterEmail: '' });
       await refresh();
     } catch (e) { console.error('[SR] create', e); }
@@ -89,8 +97,15 @@ export function ServiceRequestsPanel() {
         </select>
       </header>
 
-      <div className="border-b border-white/10">
-        <ServiceRequestsMap requests={filter ? requests.filter(r => r.status === filter) : requests} className="h-64 w-full" />
+      <div className="border-b border-white/10 p-3">
+        <p className="mb-1.5 text-[10px] text-gray-400">Click the map to fill latitude and longitude. The map stays on screen even when no requests are mapped yet.</p>
+        <PinDropMap
+          existing={(filter ? requests.filter(r => r.status === filter) : requests)
+            .filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng))
+            .map(r => ({ lat: r.lat, lng: r.lng, label: r.referenceNumber, category: r.category, status: r.status }))}
+          pin={form.lat && form.lng && Number.isFinite(Number(form.lat)) && Number.isFinite(Number(form.lng)) ? { lat: Number(form.lat), lng: Number(form.lng) } : null}
+          onPick={(lat, lng) => { setFormError(null); setForm((f) => ({ ...f, lat: lat.toFixed(5), lng: lng.toFixed(5) })); }}
+        />
       </div>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
@@ -111,6 +126,7 @@ export function ServiceRequestsPanel() {
         <input value={form.reporterEmail} onChange={e => setForm({ ...form, reporterEmail: e.target.value })} placeholder="Reporter email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Address" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Issue description" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        {formError && <p role="alert" className="col-span-6 text-xs text-rose-300">{formError}</p>}
         <button onClick={create} className="col-span-6 px-3 py-1.5 text-xs rounded bg-amber-500 text-black font-bold hover:bg-amber-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />File service request</button>
       </div>
 

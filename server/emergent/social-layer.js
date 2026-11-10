@@ -1372,6 +1372,7 @@ function dmDenied(error = "not found") {
 export function sendMessage(STATE, { fromUserId, toUserId, content, mediaUrl }) {
   const social = getSocialState(STATE);
   if (!fromUserId || !toUserId) return { ok: false, error: "fromUserId and toUserId required" };
+  if (fromUserId === toUserId) return { ok: false, error: "cannot message yourself", message: "A message to yourself is not delivered. Pick someone else." };
   if (!content && !mediaUrl) return { ok: false, error: "content or mediaUrl required" };
   if (isBlocked(STATE, fromUserId, toUserId)) return blockedResult();
   const dmLimit = assertSocialRate(social.profiles.get(fromUserId), fromUserId, "dm");

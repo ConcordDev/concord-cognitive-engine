@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 401 | 544 | 0 |
+| medium | 404 | 541 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **822** | **1326** | **3** |
+| **total** | **825** | **1323** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1238,6 +1238,16 @@ A saved takeoff and a scheduled job load back into the form and save under the s
 | FIX-masonry-005 | masonry | medium | FIXED_PENDING_VERIFY | 35f17daff |
 | FIX-masonry-014 | masonry | medium | FIXED_PENDING_VERIFY | 35f17daff |
 | FIX-automotive-012 | automotive | medium | FIXED_PENDING_VERIFY | 35f17daff |
+
+## Mediums — 311 pin and a message to yourself
+
+A click on the 311 map fills latitude and longitude, and the map keeps a size and a phone-sized zoom control. A direct message to yourself is refused and the recipient stays in the field.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-government-012 | government | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-government-022 | government | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-government-017 | government | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 
