@@ -966,9 +966,9 @@ A paper export is a one-page PDF that includes the body. A drain-slope question 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-paper-002 | paper | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-plumbing-003 | plumbing | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-integrations-001 | integrations | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-entity-008 | entity | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-black-market-007 | black-market | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-inheritance-004 | inheritance | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-paper-002 | paper | high | FIXED_PENDING_VERIFY | 01d93532d |
+| FIX-plumbing-003 | plumbing | high | FIXED_PENDING_VERIFY | 01d93532d |
+| FIX-integrations-001 | integrations | high | FIXED_PENDING_VERIFY | 01d93532d |
+| FIX-entity-008 | entity | high | FIXED_PENDING_VERIFY | 01d93532d |
+| FIX-black-market-007 | black-market | high | FIXED_PENDING_VERIFY | 01d93532d |
+| FIX-inheritance-004 | inheritance | high | FIXED_PENDING_VERIFY | 01d93532d |
