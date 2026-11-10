@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 407 | 538 | 0 |
+| medium | 410 | 535 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **828** | **1320** | **3** |
+| **total** | **831** | **1317** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -866,6 +866,12 @@ These stay `OPEN`. The code that was checked does not show the reported failure,
 | FIX-ethics-003 | Case titles render as text-white on the lattice surface. Archive Case opens the create form. The unreadable-title report was not reproduced from those classes. |
 | FIX-ghost-tracker-001 | The residue map reads a residues prop. The only lens call found in that folder is ghost-hunt advance. The six 400s were not reduced to one bad action. |
 | FIX-010 | GET /api/dtus/:id already maps a missing DTU to 404, and the page middleware rewrites a confirmed miss to /dtu-not-found with status 404. The live 500 was hypothesized as a front-door rewrite to localhost:3001, which this tree does not do. |
+| FIX-government-008 | Open-data search returns a missing-key message when DATA_GOV_API_KEY is unset, and the upstream error when the keyed catalog throws. A parks result needs that key and a live catalog. |
+| FIX-government-009 | Load 500/502s and the system-status failures were not reduced to one government handler. |
+| FIX-government-013 | The offline banner follows the socket and /health, not a spending HTTP 400. |
+| FIX-government-020 | Same open-data path as FIX-government-008. Ingest uses the same key and catalog. |
+| FIX-government-023 | No ask context builder was found that hides the government dashboard from the agent. |
+| FIX-masonry-012 | schedule-list, invoice-list, and proposal-list return ok with empty arrays. The repeated 400/422 was not reduced to one action. |
 
 ## Highs with a local root cause
 
@@ -1258,6 +1264,16 @@ Fuel, service, expense, trip, and document rows have an Edit control that update
 | FIX-automotive-007 | automotive | medium | FIXED_PENDING_VERIFY | c2b84e49a |
 | FIX-automotive-010 | automotive | medium | FIXED_PENDING_VERIFY | c2b84e49a |
 | FIX-automotive-011 | automotive | medium | FIXED_PENDING_VERIFY | c2b84e49a |
+
+## Mediums — masonry lists
+
+Takeoffs, proposals, jobs, and the price book say they are loading until the first read finishes. An empty price book says it has no rows. A rendered proposal can be copied or downloaded.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-masonry-008 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-011 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-masonry-013 | masonry | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

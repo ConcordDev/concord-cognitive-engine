@@ -142,6 +142,7 @@ function TakeoffTab() {
   const [segments, setSegments] = useState<Segment[]>([newSeg()]);
   const [openings, setOpenings] = useState<Opening[]>([]);
   const [saved, setSaved] = useState<Takeoff[]>([]);
+  const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<Takeoff | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -158,6 +159,7 @@ function TakeoffTab() {
   const load = useCallback(async () => {
     const r = await run<{ takeoffs: Takeoff[] }>('takeoff-list');
     if (r) setSaved(r.takeoffs || []);
+    setReady(true);
   }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
@@ -263,7 +265,7 @@ function TakeoffTab() {
         )}
         <div className={card}>
           <h4 className="mb-2 text-sm font-semibold text-white">Saved takeoffs ({saved.length})</h4>
-          {saved.length === 0 && <p className="text-xs text-zinc-400">No takeoffs yet.</p>}
+          {!ready ? <p className="text-xs text-zinc-400">Loading takeoffs…</p> : saved.length === 0 && <p className="text-xs text-zinc-400">No takeoffs yet.</p>}
           {saved.map((t) => (
             <div key={t.id} className="mt-2 flex items-center justify-between rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
               <button className="text-left" onClick={() => setPreview(t)}>
@@ -311,11 +313,14 @@ function ProposalsTab() {
   const [list, setList] = useState<Proposal[]>([]);
   const [busy, setBusy] = useState(false);
   const [rendered, setRendered] = useState<{ number: string; document: string } | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const invalidateStats = useInvalidateStats();
 
   const load = useCallback(async () => {
     const r = await run<{ proposals: Proposal[] }>('proposal-list');
     if (r) setList(r.proposals || []);
+    setReady(true);
   }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
@@ -332,8 +337,20 @@ function ProposalsTab() {
   const setStatus = async (id: string, status: string) => { await run('proposal-update-status', { id, status }); await load(); invalidateStats(); };
   const del = async (id: string) => { await run('proposal-delete', { id }); await load(); invalidateStats(); };
   const render = async (id: string) => {
+    setRenderError(null);
     const r = await run<{ number: string; document: string }>('proposal-render', { id });
-    if (r) setRendered(r);
+    if (!r?.document) { setRenderError('That proposal did not render.'); return; }
+    setRendered(r);
+  };
+  const downloadRender = () => {
+    if (!rendered?.document) return;
+    const blob = new Blob([rendered.document], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${rendered.number || 'proposal'}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -370,7 +387,8 @@ function ProposalsTab() {
 
       <div className={card}>
         <h4 className="mb-2 text-sm font-semibold text-white">Proposals ({list.length})</h4>
-        {list.length === 0 && <p className="text-xs text-zinc-400">No proposals yet.</p>}
+        {renderError && <p role="alert" className="mb-2 text-xs text-rose-300">{renderError}</p>}
+        {!ready ? <p className="text-xs text-zinc-400">Loading proposals…</p> : list.length === 0 && <p className="text-xs text-zinc-400">No proposals yet.</p>}
         {list.map((p) => (
           <div key={p.id} className="mt-2 rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
             <div className="flex items-center justify-between">
@@ -394,7 +412,10 @@ function ProposalsTab() {
       {rendered && (
         <Modal title={`Proposal ${rendered.number}`} onClose={() => setRendered(null)}>
           <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded border border-zinc-800 bg-zinc-950 p-3 font-mono text-[11px] text-zinc-200">{rendered.document}</pre>
-          <button className={`${btnS} mt-3`} onClick={() => navigator.clipboard?.writeText(rendered.document)}><Copy className="h-3 w-3" />Copy to clipboard</button>
+          <div className="mt-3 flex gap-2">
+            <button className={btnS} onClick={() => navigator.clipboard?.writeText(rendered.document)}><Copy className="h-3 w-3" />Copy</button>
+            <button className={btnS} onClick={downloadRender}><FileText className="h-3 w-3" />Download</button>
+          </div>
         </Modal>
       )}
     </div>
@@ -416,6 +437,7 @@ function ScheduleTab() {
   const [lowF, setLowF] = useState(55);
   const [precip, setPrecip] = useState(0);
   const [jobs, setJobs] = useState<SchedJob[]>([]);
+  const [ready, setReady] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [crewLoad, setCrewLoad] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
@@ -424,6 +446,7 @@ function ScheduleTab() {
   const load = useCallback(async () => {
     const r = await run<{ jobs: SchedJob[]; crewLoad: Record<string, number> }>('schedule-list');
     if (r) { setJobs(r.jobs || []); setCrewLoad(r.crewLoad || {}); }
+    setReady(true);
   }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
@@ -487,7 +510,7 @@ function ScheduleTab() {
       <div className={card}>
         <h4 className="mb-2 text-sm font-semibold text-white">Job calendar ({jobs.length})</h4>
         {jobs.length > 0 && <TimelineView events={timeline} height={110} />}
-        {jobs.length === 0 && <p className="text-xs text-zinc-400">No jobs scheduled.</p>}
+        {!ready ? <p className="text-xs text-zinc-400">Loading jobs…</p> : jobs.length === 0 && <p className="text-xs text-zinc-400">No jobs scheduled.</p>}
         {jobs.map((j) => (
           <div key={j.id} className="mt-2 rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
             <div className="flex items-center justify-between">
@@ -680,12 +703,14 @@ interface PriceItem { id: string; sku: string; name: string; unit: string; unitC
 
 function PriceBookTab() {
   const [list, setList] = useState<PriceItem[]>([]);
+  const [ready, setReady] = useState(false);
   const [editing, setEditing] = useState<Partial<PriceItem> | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const r = await run<{ items: PriceItem[] }>('pricebook-list');
+    const r = await run<{ items: PriceItem[]; note?: string | null }>('pricebook-list');
     if (r) setList(r.items || []);
+    setReady(true);
   }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
@@ -727,7 +752,7 @@ function PriceBookTab() {
           </tbody>
         </table>
       </div>
-      {list.length === 0 && <p className="mt-2 text-xs text-zinc-400">No price-book items.</p>}
+      {!ready ? <p className="mt-2 text-xs text-zinc-400">Loading the price book…</p> : list.length === 0 && <p className="mt-2 text-xs text-zinc-400">This price book has no rows. Add an item. Ask reads this list, not a built-in catalog.</p>}
 
       {editing && (
         <Modal title={editing.id ? 'Edit price item' : 'New price item'} onClose={() => setEditing(null)}>

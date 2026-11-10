@@ -213,7 +213,8 @@ export default function registerMasonryActions(registerLensAction) {
       if (!s.priceBook.has(userId)) {
         s.priceBook.set(userId, DEFAULT_PRICE_BOOK.map((p) => ({ id: mid("pb"), ...p, updatedAt: mnow() })));
       }
-      return { ok: true, result: { items: s.priceBook.get(userId) } };
+      const items = s.priceBook.get(userId);
+      return { ok: true, result: { items, count: items.length, note: items.length ? null : "This caller's price book has no rows." } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
