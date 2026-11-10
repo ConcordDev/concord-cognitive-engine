@@ -256,6 +256,7 @@ export default function ProjectDeskPanel() {
 
   // ----- Editor form state -----
   const [formName, setFormName] = useState('');
+  const [saveError, setSaveError] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formClient, setFormClient] = useState('');
   const [formAddress, setFormAddress] = useState('');
@@ -399,6 +400,11 @@ export default function ProjectDeskPanel() {
   };
 
   const handleSave = async () => {
+    if (!formName.trim()) {
+      setSaveError('A job needs a name.');
+      return;
+    }
+    setSaveError('');
     const payload = {
       title: formName,
       data: {
@@ -1769,7 +1775,8 @@ export default function ProjectDeskPanel() {
             <div className="p-6 space-y-4">
               <div>
                 <label className={ds.label}>Name / Title</label>
-                <input value={formName} onChange={e => setFormName(e.target.value)} className={ds.input} placeholder="Job name..." />
+                <input value={formName} onChange={e => { setFormName(e.target.value); setSaveError(''); }} className={ds.input} placeholder="Job name..." />
+                {saveError && <p className="mt-1 text-xs text-rose-300" role="alert">{saveError}</p>}
               </div>
               <div>
                 <label className={ds.label}>Description</label>

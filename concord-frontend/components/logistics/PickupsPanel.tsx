@@ -87,6 +87,12 @@ export function PickupsPanel() {
                   </div>
                   <div className="text-[10px] text-gray-400 truncate">{p.address}</div>
                   <div className="text-[10px] text-gray-400">{p.date} · {p.timeWindow} · {p.packageCount} pkg</div>
+                  <input defaultValue={p.confirmationNumber || ''} aria-label="Carrier confirmation" placeholder="Carrier confirmation" onBlur={async (e) => {
+                    const confirmationNumber = e.target.value.trim();
+                    if (confirmationNumber === (p.confirmationNumber || '')) return;
+                    await lensRun({ domain: 'logistics', action: 'pickups-update', input: { id: p.id, confirmationNumber } });
+                    await refresh();
+                  }} className="mt-1 w-full bg-transparent text-[10px] text-gray-300 border-b border-transparent focus:border-cyan-500/40 outline-none" />
                 </div>
                 <StickyDeleteConfirm onConfirm={() => remove(p.id)} armLabel={<X className="w-3 h-3" />} armAriaLabel="Delete pickup" confirmLabel="Delete pickup?" className="p-1 text-rose-400 hover:text-rose-300" />
               </li>

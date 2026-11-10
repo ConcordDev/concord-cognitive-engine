@@ -131,7 +131,13 @@ export function FoodActionPanel() {
     setBusy('waste'); setFeedback(null);
     try {
       const r = await callMacro<WasteResult>('wasteReport', { window: 'week' });
-      if (r.ok && r.result) { setWasteResult(r.result); pipe.publish('food.waste', r.result, { label: `Waste ${r.result.weeklyWasteKg}kg` }); ok(`Waste: ${r.result.weeklyWasteKg}kg.`); } else err(r.error ?? 'waste failed');
+      if (r.ok && r.result) {
+        setWasteResult(r.result);
+        const kg = r.result.weeklyWasteKg;
+        const label = kg == null ? 'Waste recorded' : `Waste ${kg}kg`;
+        pipe.publish('food.waste', r.result, { label });
+        ok(kg == null ? 'Waste recorded. Quantity is not all in kilograms.' : `Waste: ${kg}kg.`);
+      } else err(r.error ?? 'waste failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {
@@ -254,7 +260,7 @@ export function FoodActionPanel() {
         {wasteResult && (
           <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-rose-300 font-semibold">Waste</div>
-            <div className="text-2xl font-bold text-rose-300 tabular-nums">{wasteResult.weeklyWasteKg}kg<span className="text-xs text-gray-400 ml-1">/wk</span></div>
+            <div className="text-2xl font-bold text-rose-300 tabular-nums">{wasteResult.weeklyWasteKg == null ? '—' : `${wasteResult.weeklyWasteKg}kg`}<span className="text-xs text-gray-400 ml-1">/wk</span></div>
             {wasteResult.suggestion && <div className="text-[11px] text-gray-400 italic">{wasteResult.suggestion}</div>}
           </div>
         )}

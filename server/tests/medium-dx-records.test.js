@@ -33,7 +33,10 @@ describe("dx-platform records", () => {
     assert.equal(listed.result.teams[0].name, "Platform");
     const huge = call("createTeam", ctx, { name: "x".repeat(81) });
     assert.equal(huge.ok, false);
-    assert.match(huge.message, /80/);
+    assert.match(huge.message, /2 to 80/);
+    const tiny = call("createTeam", ctx, { name: "T" });
+    assert.equal(tiny.ok, false);
+    assert.match(tiny.message, /2 to 80/);
     assert.equal(call("deleteTeam", ctx, { teamId: team.result.teamId }).ok, true);
     assert.equal(call("listMyTeams", ctx, {}).result.count, 0);
   });

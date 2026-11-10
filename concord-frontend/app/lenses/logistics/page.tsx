@@ -5,7 +5,7 @@
  * Thin shell + single `active` union. Accordion workbench/visibility folded into tabs.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
@@ -56,6 +56,7 @@ export default function LogisticsLensPage() {
   const [active, setActive] = useState<LogView>('fleet');
   const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('logistics');
   const { data: summary, isLoading, isError, refetch } = useDashboardSummary();
+  useEffect(() => { void refetch(); }, [active, refetch]);
 
   useLensCommand(
     VIEWS.map((v) => ({

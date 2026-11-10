@@ -372,7 +372,7 @@ export default function registerFoodActions(registerLensAction) {
   try {
     const wasteLog = artifact.data.wasteLog || [];
     if (wasteLog.length === 0) {
-      return { ok: true, result: { totalEntries: 0, totalWasteCost: 0, message: "No waste data recorded." } };
+      return { ok: true, result: { totalEntries: 0, totalWasteCost: 0, totalWasteQuantity: 0, weeklyWasteKg: 0, message: "No waste data recorded." } };
     }
 
     let totalCost = 0;
@@ -422,11 +422,16 @@ export default function registerFoodActions(registerLensAction) {
     if (reasons.find(r => r.reason === "trim")) suggestions.push("Evaluate trim utilization — stocks, purees, or staff meals");
     if (categories.length > 0) suggestions.push(`Focus on ${categories[0].category} — highest waste cost category`);
 
+    const kgEntries = wasteLog.filter((entry) => String(entry.unit || "kg").toLowerCase() === "kg");
+    const weeklyWasteKg = kgEntries.length === wasteLog.length
+      ? Math.round(totalQuantity * 100) / 100
+      : null;
     const result = {
       generatedAt: new Date().toISOString(),
       totalEntries: wasteLog.length,
       totalWasteCost: totalCost,
       totalWasteQuantity: Math.round(totalQuantity * 100) / 100,
+      weeklyWasteKg,
       byCategory: categories,
       byReason: reasons,
       reductionSuggestions: suggestions,

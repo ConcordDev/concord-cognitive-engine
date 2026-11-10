@@ -267,7 +267,7 @@ function GpsPanel() {
           <input
             value={initForm.shipmentId}
             onChange={(e) => setInitForm({ ...initForm, shipmentId: e.target.value })}
-            placeholder="Shipment ID"
+            placeholder="Shipment ID or SHP- reference"
             className={INPUT}
           />
           <div className="grid grid-cols-2 gap-2">
@@ -285,7 +285,7 @@ function GpsPanel() {
           <input
             value={pingForm.shipmentId}
             onChange={(e) => setPingForm({ ...pingForm, shipmentId: e.target.value })}
-            placeholder="Shipment ID"
+            placeholder="Shipment ID or SHP- reference"
             className={INPUT}
           />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -371,7 +371,7 @@ function RiskPanel() {
         <input
           value={shipmentId}
           onChange={(e) => setShipmentId(e.target.value)}
-          placeholder="Shipment ID (created in Shipments panel)"
+          placeholder="Shipment ID, SHP- reference, or PO"
           className={INPUT}
         />
         <button onClick={score} disabled={!shipmentId.trim() || busy} className={BTN}>
@@ -632,7 +632,7 @@ function ScorecardPanel() {
           <input
             value={damage.shipmentId}
             onChange={(e) => setDamage({ ...damage, shipmentId: e.target.value })}
-            placeholder="Shipment ID"
+            placeholder="Shipment ID or SHP- reference"
             className={INPUT}
           />
           <div className="grid grid-cols-2 gap-2">
@@ -789,7 +789,7 @@ function GeofencePanel() {
         </div>
         <div className="p-3 bg-lattice-deep/40 border border-white/10 rounded space-y-2">
           <p className="text-[10px] uppercase font-semibold text-gray-400">Evaluate a GPS position</p>
-          <input value={evalForm.shipmentId} onChange={(e) => setEvalForm({ ...evalForm, shipmentId: e.target.value })} placeholder="Shipment ID" className={INPUT} />
+          <input value={evalForm.shipmentId} onChange={(e) => setEvalForm({ ...evalForm, shipmentId: e.target.value })} placeholder="Shipment ID or SHP- reference" className={INPUT} />
           <div className="grid grid-cols-2 gap-2">
             <input value={evalForm.lat} onChange={(e) => setEvalForm({ ...evalForm, lat: e.target.value })} placeholder="lat" className={INPUT} />
             <input value={evalForm.lng} onChange={(e) => setEvalForm({ ...evalForm, lng: e.target.value })} placeholder="lng" className={INPUT} />
@@ -1076,7 +1076,7 @@ function ExceptionsPanel() {
         <input
           value={form.shipmentId}
           onChange={(e) => setForm({ ...form, shipmentId: e.target.value })}
-          placeholder="Shipment ID"
+          placeholder="Shipment ID or SHP- reference"
           className={INPUT}
         />
         <div className="grid grid-cols-2 gap-2">

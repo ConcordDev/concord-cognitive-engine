@@ -119,7 +119,8 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
             {shipments.map(s => (
               <li key={s.id} className="px-3 py-2 hover:bg-white/[0.03] group cursor-pointer" onClick={() => onSelect?.(s)}>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-mono text-cyan-300" title={s.trackingNumber ? 'Carrier tracking number' : 'Internal reference (no carrier tracking number recorded)'}>{s.poNumber ? `PO ${s.poNumber}` : (s.trackingNumber || s.reference || 'No tracking #')}</span>
+                  <span className="text-xs font-mono text-cyan-300" title="Use this reference in exceptions and GPS">{s.reference || s.id}</span>
+                  {s.poNumber ? <span className="text-[10px] text-gray-300">PO {s.poNumber}</span> : null}
                   <span className="text-[9px] uppercase text-gray-400">{s.mode}</span>
                   <select value={s.status} onChange={e => { e.stopPropagation(); setStatus(s.id, e.target.value); }} onClick={e => e.stopPropagation()} className={cn('text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border-0 cursor-pointer', STATUS_COLOUR[s.status])}>
                     {STATUSES.map(st => <option key={st} value={st}>{st.replace(/_/g, ' ')}</option>)}

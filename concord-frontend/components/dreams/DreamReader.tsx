@@ -81,6 +81,7 @@ export function DreamReader({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tagDraft, setTagDraft] = useState('');
+  const [tagNote, setTagNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -111,8 +112,12 @@ export function DreamReader({
   const saveTags = async () => {
     setBusy(true);
     const tags = tagDraft.split(',').map((t) => t.trim()).filter(Boolean);
-    const r = await lensRun('dreams', 'tag', { dreamId, tags });
-    if (r.data.ok) { await load(); onChanged?.(); }
+    const r = await lensRun<{ message?: string }>('dreams', 'tag', { dreamId, tags });
+    if (r.data.ok) {
+      setTagNote(r.data.result?.message || r.data.message || null);
+      await load();
+      onChanged?.();
+    }
     setBusy(false);
   };
 
@@ -255,6 +260,7 @@ export function DreamReader({
                     Save tags
                   </button>
                 </div>
+                {tagNote && <p className="mt-2 text-[11px] text-amber-200" role="status">{tagNote}</p>}
               </section>
 
               {/* Withdrawal — rendered only for a dream already listed

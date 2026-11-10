@@ -385,13 +385,17 @@ export default function registerDreamsMacros(register) {
       const loaded = loadDream(db, userId, dreamId);
       if (!loaded) return { ok: false, reason: "dream_not_found" };
       const raw = Array.isArray(input?.tags) ? input.tags : [];
-      const tags = [...new Set(
-        raw.map((t) => String(t || "").trim().toLowerCase())
-          .filter((t) => t.length > 0 && t.length <= 32),
-      )].slice(0, 12);
+      const cleaned = raw.map((t) => String(t || "").trim().toLowerCase()).filter((t) => t.length > 0);
+      const dropped = cleaned.filter((t) => t.length > 32).length + Math.max(0, new Set(cleaned.filter((t) => t.length <= 32)).size - 12);
+      const tags = [...new Set(cleaned.filter((t) => t.length <= 32))].slice(0, 12);
       const tagMap = tagsForUser(userId);
       tagMap.set(String(dreamId), tags);
-      return { ok: true, dreamId: String(dreamId), tags };
+      return {
+        ok: true,
+        dreamId: String(dreamId),
+        tags,
+        ...(dropped > 0 ? { message: `${dropped} tag${dropped === 1 ? " was" : "s were"} not saved. Use at most 12 tags, each 32 characters or fewer.` } : {}),
+      };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   }, { note: "Set (replace) the tag list on one of your dreams. Up to 12 tags, ≤32 chars each." });
 

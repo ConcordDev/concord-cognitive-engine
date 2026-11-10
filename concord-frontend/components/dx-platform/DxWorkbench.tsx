@@ -807,8 +807,12 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
   const [teamRename, setTeamRename] = useState('');
 
   const create = async () => {
-    if (!teamName.trim()) return;
-    const r = await lensRun('dx-platform', 'createTeam', { name: teamName.trim() });
+    const name = teamName.trim();
+    if (name.length < 2 || name.length > 80) {
+      setMsg('A team name must be 2 to 80 characters.');
+      return;
+    }
+    const r = await lensRun('dx-platform', 'createTeam', { name });
     if (r.data?.ok && r.data.result) {
       const result = r.data.result as { teamId: string; inviteCode?: string };
       setTeamId(result.teamId);
@@ -893,11 +897,12 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
               maxLength={80}
               className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
             />
-            <button type="button" onClick={create} disabled={!teamName.trim()}
+            <button type="button" onClick={create} disabled={teamName.trim().length < 2 || teamName.trim().length > 80}
               className="rounded bg-amber-500 px-3 py-1.5 text-xs font-medium text-zinc-950 disabled:opacity-40">
               Create
             </button>
           </div>
+          {teamName.trim().length === 1 && <p className="text-[11px] text-amber-200">A team name must be 2 to 80 characters.</p>}
           {teamId && (
             <button type="button" onClick={mintInvite}
               className="rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-200 hover:border-amber-500/50">

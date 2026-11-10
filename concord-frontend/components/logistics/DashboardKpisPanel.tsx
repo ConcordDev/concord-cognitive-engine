@@ -46,7 +46,8 @@ export function useDashboardSummary() {
       if (!res.data?.ok) throw new Error(res.data?.error || 'Failed to load dashboard summary');
       return res.data.result as DashboardSummary;
     },
-    staleTime: 15000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 }
 

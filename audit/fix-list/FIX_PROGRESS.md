@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 480 | 465 | 0 |
-| low | 251 | 729 | 0 |
+| medium | 486 | 459 | 0 |
+| low | 252 | 728 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **901** | **1247** | **3** |
+| **total** | **908** | **1240** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1414,6 +1414,20 @@ A codebase and a team can be renamed and deleted by the owner. Teams you belong 
 | FIX-dx-platform-014 | dx-platform | medium | FIXED_PENDING_VERIFY | 817ac01c5 |
 | FIX-dx-platform-015 | dx-platform | medium | FIXED_PENDING_VERIFY | 817ac01c5 |
 | FIX-chat-004 | chat | medium | FIXED_PENDING_VERIFY | 817ac01c5 |
+
+## Mediums — shipment reference, names, and waste
+
+Exceptions, damage, delay risk, and GPS accept the SHP reference, tracking number, or PO the list shows. A carrier, pickup confirmation, and dock name can be edited. The logistics dashboard refetches when you change views, and on-time stays a dash when nothing has been delivered. A team name has to be 2 to 80 characters, and a one-character name says so. A waste report shows kilograms only when the log is in kilograms, otherwise a dash. A trades job needs a name. A dream tag that is too long or past the twelfth is named instead of disappearing.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-logistics-005 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-logistics-003 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-logistics-004 | logistics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-food-004 | food | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-trades-009 | trades | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-dreams-002 | dreams | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-dx-platform-003 | dx-platform | low | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

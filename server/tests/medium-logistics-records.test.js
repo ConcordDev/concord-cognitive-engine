@@ -51,6 +51,16 @@ describe("logistics records can be removed by their owner", () => {
   });
 });
 
+describe("logistics lookups accept the reference the list shows", () => {
+  it("flags an exception by the SHP reference", () => {
+    const made = call("logistics", "shipments-create", { origin: "A", destination: "B" });
+    const reference = made.result.shipment.reference;
+    const flagged = call("logistics", "exceptions-flag", { shipmentId: reference, kind: "delay", severity: "high" });
+    assert.equal(flagged.ok, true);
+    assert.equal(flagged.result.exception.shipmentId, made.result.shipment.id);
+  });
+});
+
 describe("insurance quotes refuse a blank zip before the broker", () => {
   it("says the zip must be 5 digits", () => {
     const blank = call("insurance", "quotes-compare", { kind: "auto", zip: "", coverage: "standard" });

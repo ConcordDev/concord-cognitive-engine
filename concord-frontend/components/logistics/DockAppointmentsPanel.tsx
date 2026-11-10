@@ -83,7 +83,13 @@ export function DockAppointmentsPanel() {
         <button onClick={addDock} className="px-3 py-1 rounded bg-amber-500/30 text-amber-300 hover:bg-amber-500/50 inline-flex items-center justify-center gap-1"><Anchor className="w-3 h-3" />Add dock</button>
         {docks.map(d => (
           <div key={d.id} className="col-span-2 sm:col-span-4 flex items-center gap-2 text-[11px] text-gray-300">
-            <span className="truncate">{d.name} · {d.facility}</span>
+            <input defaultValue={d.name} aria-label={`Rename dock ${d.name}`} onBlur={async (e) => {
+              const name = e.target.value.trim();
+              if (!name || name === d.name) return;
+              await lensRun({ domain: 'logistics', action: 'docks-update', input: { id: d.id, name } });
+              await refresh();
+            }} className="bg-transparent text-[11px] text-gray-100 border-b border-transparent focus:border-amber-500/40 outline-none w-28" />
+            <span className="truncate">{d.facility}</span>
             <StickyDeleteConfirm onConfirm={() => removeDock(d.id)} armLabel="Delete" armAriaLabel={`Delete dock ${d.name}`} confirmLabel="Delete dock?" className="text-rose-300" />
           </div>
         ))}

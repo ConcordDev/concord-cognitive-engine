@@ -665,8 +665,8 @@ export default function registerDxPlatformActions(register) {
     if (!userId) return { ok: false, error: "auth_required" };
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "no_name" };
-    if (name.length > 80) {
-      return { ok: false, error: "invalid_input", message: "A team name must be 80 characters or fewer." };
+    if (name.length < 2 || name.length > 80) {
+      return { ok: false, error: "invalid_input", message: "A team name must be 2 to 80 characters." };
     }
     const s = getState();
     const teamId = uid("team");
