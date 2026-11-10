@@ -1076,17 +1076,17 @@ A blank, over-long, or negative value is refused with a message on the form. For
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-forestry-002 | forestry | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-energy-002 | energy | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-plumbing-005 | plumbing | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-civic-bonds-002 | civic-bonds | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-materials-005 | materials | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-electrical-002 | electrical | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-carpentry-004 | carpentry | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-hvac-008 | hvac | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-manufacturing-005 | manufacturing | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-debate-001 | debate | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-ar-001 | ar | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-forestry-002 | forestry | medium | FIXED_PENDING_VERIFY | efa1dde7d |
+| FIX-energy-002 | energy | medium | FIXED_PENDING_VERIFY | efa1dde7d |
+| FIX-plumbing-005 | plumbing | medium | FIXED_PENDING_VERIFY | efa1dde7d |
+| FIX-civic-bonds-002 | civic-bonds | medium | FIXED_PENDING_VERIFY | efa1dde7d |
+| FIX-materials-005 | materials | medium | FIXED_PENDING_VERIFY | efa1dde7d |
+| FIX-electrical-002 | electrical | medium | FIXED_PENDING_VERIFY | efa1dde7d |
+| FIX-carpentry-004 | carpentry | medium | FIXED_PENDING_VERIFY | efa1dde7d |
+| FIX-hvac-008 | hvac | medium | FIXED_PENDING_VERIFY | efa1dde7d |
+| FIX-manufacturing-005 | manufacturing | medium | FIXED_PENDING_VERIFY | efa1dde7d |
+| FIX-debate-001 | debate | medium | FIXED_PENDING_VERIFY | efa1dde7d |
+| FIX-ar-001 | ar | medium | FIXED_PENDING_VERIFY | efa1dde7d |
 
 ## NEEDS_PRODUCT_SURFACE
 
