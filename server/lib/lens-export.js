@@ -26,7 +26,23 @@
 //   - The result reports its provenance (sources + stateBacked) so the
 //     UI can be honest about what an export does and does not include.
 
+import { dtuMatchesDomain } from "./art-dtu-filter.js";
+
 const SCAFFOLDING_TYPES = new Set(["domain_action"]);
+
+/** A DTU may ride in this lens's export only when it is this domain, or untagged and not another lens's exhaust. */
+export function dtuBelongsInLensExport(dtu, domain, callerId) {
+  if (!dtu || typeof dtu !== "object") return false;
+  const owner = dtu.ownerId || dtu.userId || dtu.meta?.ownerId || null;
+  if (owner && callerId && String(owner) !== String(callerId)) return false;
+  if (owner === "system") return false;
+  const tagged = String(dtu.domain || dtu.meta?.lens || dtu.machine?.kind || dtu.kind || "").trim();
+  if (tagged) return dtuMatchesDomain(dtu, domain);
+  const title = String(dtu.title || "");
+  if (title.startsWith("Lens:")) return false;
+  if (/chat context/i.test(title) && String(domain) !== "chat") return false;
+  return true;
+}
 
 const providers = new Map(); // domain -> (ctx) => rows[] | Promise<rows[]>
 
@@ -236,7 +252,7 @@ export async function collectLensExport({ runMacro, domain, ctx, limit = 1000 })
     const list = Array.isArray(mine?.dtus) ? mine.dtus : (Array.isArray(mine?.items) ? mine.items : []);
     const seen = new Set([...artifacts, ...providerRows].map((r) => r?.id).filter(Boolean));
     dtuRows = list
-      .filter((d) => d && d.id && !seen.has(d.id))
+      .filter((d) => d && d.id && !seen.has(d.id) && dtuBelongsInLensExport(d, domain, callerId))
       .map((d) => normalizeRow({
         id: d.id,
         type: "dtu",

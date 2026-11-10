@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 60 | 157 | 3 |
+| high | 61 | 156 | 3 |
 | medium | 284 | 661 | 0 |
 | low | 249 | 731 | 0 |
 | unrated | 0 | 6 | 0 |
-| **total** | **593** | **1555** | **3** |
+| **total** | **594** | **1554** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -672,3 +672,11 @@ Ask about a lens reuses a thread already filed under that lens, or starts a new 
 | FIX-meta-004 | meta | low | FIXED_PENDING_VERIFY | 545ed1873 |
 | FIX-mining-006 | mining | low | FIXED_PENDING_VERIFY | 545ed1873 |
 | FIX-timeline-008 | timeline | low | FIXED_PENDING_VERIFY | 545ed1873 |
+
+## SEC-finance-export-scope
+
+FIX-finance-004. A lens export's DTU leg keeps rows that belong to this caller and this domain. Other owners, other domains, `Lens:` exhaust, and Chat Context are dropped. Untagged notes the caller owns still export.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-finance-004 | finance | high | FIXED_PENDING_VERIFY | this commit |

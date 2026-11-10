@@ -18,6 +18,7 @@ const {
   registerLensExportProvider,
   hasLensExportProvider,
   exportCallerLensState,
+  dtuBelongsInLensExport,
   _clearLensExportProvidersForTests,
 } = await import("../lib/lens-export.js");
 
@@ -263,6 +264,29 @@ describe("lens-export (Q79)", () => {
     const anon = await collectLensExport({ runMacro, domain: "nonprofit", ctx: {} });
     assert.equal(anon.sources.stateRecords, 0, "no actor means no panel rows");
     delete globalThis._concordSTATE;
+  });
+
+  it("finance export drops other domains, other owners, and Chat Context", async () => {
+    const runMacro = async (domain, action) => {
+      if (domain === "lens") return { ok: true, artifacts: [] };
+      if (domain === "dtu" && action === "list") {
+        return {
+          ok: true,
+          dtus: [
+            { id: "fin", title: "Cash", domain: "finance", ownerId: "u1" },
+            { id: "chat", title: "Chat Context: someone else", domain: "chat", ownerId: "u2" },
+            { id: "other", title: "Analogy pack", domain: "analogy", ownerId: "u1" },
+            { id: "exhaust", title: "Lens:goals delete goal", ownerId: "u1" },
+            { id: "mine", title: "Untagged note", ownerId: "u1" },
+          ],
+        };
+      }
+      return { ok: false, error: "unexpected" };
+    };
+    const out = await collectLensExport({ runMacro, domain: "finance", ctx: { actor: { userId: "u1" } } });
+    const ids = out.artifacts.map((a) => a.id);
+    assert.deepEqual(ids.sort(), ["fin", "mine"]);
+    assert.equal(dtuBelongsInLensExport({ id: "x", title: "Chat Context", ownerId: "u1" }, "finance", "u1"), false);
   });
 
 });
