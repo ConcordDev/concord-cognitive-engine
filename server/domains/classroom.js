@@ -245,8 +245,8 @@ export default function registerClassroomActions(registerLensAction) {
       let other = [];
       if (params.cohortId !== undefined && params.cohortId !== null && params.cohortId !== "") {
         const c = Number(params.cohortId);
-        other = list.filter((a) => a.cohortId !== c);
-        list = list.filter((a) => a.cohortId === c);
+        other = list.filter((a) => Number(a.cohortId) !== c);
+        list = list.filter((a) => Number(a.cohortId) === c);
       }
       const subs = state.submissions.get(userId) || [];
       const grades = state.grades.get(userId) || [];
@@ -517,9 +517,11 @@ export default function registerClassroomActions(registerLensAction) {
       if (!state) return { ok: false, error: "STATE unavailable" };
       const userId = uid(ctx);
       let list = state.materials.get(userId) || [];
+      let other = [];
       if (params.cohortId !== undefined && params.cohortId !== null && params.cohortId !== "") {
         const c = Number(params.cohortId);
-        list = list.filter((m) => m.cohortId === c);
+        other = list.filter((m) => Number(m.cohortId) !== c);
+        list = list.filter((m) => Number(m.cohortId) === c);
       }
       // group by topic for a tabbed materials view
       const byTopic = {};
@@ -528,7 +530,7 @@ export default function registerClassroomActions(registerLensAction) {
         if (!byTopic[t]) byTopic[t] = [];
         byTopic[t].push(m);
       }
-      return { ok: true, result: { materials: [...list].reverse(), byTopic } };
+      return { ok: true, result: { materials: [...list].reverse(), other: [...other].reverse(), byTopic } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }

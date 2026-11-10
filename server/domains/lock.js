@@ -12,7 +12,10 @@ export default function registerLockActions(registerLensAction) {
    */
   registerLensAction("lock", "deadlockDetect", (ctx, artifact, params) => {
   try {
-    const locks = artifact.data?.locks || [];
+    const locks = (Array.isArray(params?.locks) && params.locks)
+      || (Array.isArray(params?.data?.locks) && params.data.locks)
+      || artifact?.data?.locks
+      || [];
     if (locks.length === 0) {
       return { ok: true, result: { deadlocked: false, cycles: [], message: "No lock data provided." } };
     }

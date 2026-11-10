@@ -109,14 +109,14 @@ export function AnalysisPanel() {
   }, [tablesPayload, history]);
 
   const applyRec = useCallback(async (column: string) => {
-    const target = tables.find((t) => t.columns.some((c) => c.name === column));
+    const target = tables.find((t) => (t.columns || []).some((c) => c.name === column));
     if (!target) return;
     await ws.createIndex(target.connectionId, target.name, column);
     setApplied((s) => new Set(s).add(column));
   }, [tables, ws]);
 
   const totalRows = tables.reduce((n, t) => n + t.rowCount, 0);
-  const relationCount = tables.reduce((n, t) => n + t.columns.filter((c) => c.isForeign).length, 0);
+  const relationCount = tables.reduce((n, t) => n + (t.columns || []).filter((c) => c.isForeign).length, 0);
 
   return (
     <div className="space-y-4">

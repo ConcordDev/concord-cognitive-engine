@@ -20,6 +20,27 @@
 // Idempotent: peeling already-flat input is a no-op, so the per-domain unwrap
 // helpers the earlier fixes added remain correct (they no-op on flat input).
 
+/**
+ * Params for POST /api/lens/run.
+ * `{ domain, action, input }` wins. A legacy body spreads fields beside
+ * action. `name` is the action only when `action` is absent — a payload
+ * field named name (mesh addNode, createChannel) must survive.
+ */
+export function lensRunParams(body) {
+  const b = body && typeof body === "object" && !Array.isArray(body) ? body : {};
+  const domain = b.domain;
+  const action = b.action || b.name;
+  let rest;
+  if (b.input && typeof b.input === "object" && !Array.isArray(b.input)) {
+    rest = b.input;
+  } else {
+    const { domain: _d, action: _a, input: _i, ...r } = b;
+    if (!b.action) delete r.name;
+    rest = r;
+  }
+  return { domain, action, rest: peelRedundantArtifactWrapper(rest) };
+}
+
 export function peelRedundantArtifactWrapper(rest) {
   if (
     rest && typeof rest === "object" && !Array.isArray(rest) &&

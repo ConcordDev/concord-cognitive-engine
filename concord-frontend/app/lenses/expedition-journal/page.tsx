@@ -46,7 +46,7 @@ const WORLD_LABELS: Record<string, string> = {
 
 export default function ExpeditionJournalPage() {
   const [worlds, setWorlds] = useState<WorldCatalogEntry[]>([]);
-  const [activeWorld, setActiveWorld] = useState<string>('');
+  const [activeWorld, setActiveWorld] = useState<string>('concordia-hub');
   const [progress, setProgress] = useState<WorldProgress | null>(null);
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);

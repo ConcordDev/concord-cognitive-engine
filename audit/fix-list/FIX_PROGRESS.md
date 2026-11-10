@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 100 | 118 | 3 |
+| high | 107 | 111 | 3 |
 | medium | 290 | 655 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **641** | **1507** | **3** |
+| **total** | **648** | **1500** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -821,3 +821,15 @@ A fixture for FIX-finance-002 and FIX-finance-003 passes on the current macros: 
 | FIX-healthcare-002 | healthcare | high | FIXED_PENDING_VERIFY | c6dd576e9 |
 | FIX-landscaping-009 | landscaping | high | FIXED_PENDING_VERIFY | c6dd576e9 |
 | FIX-legal-002 | legal | high | FIXED_PENDING_VERIFY | c6dd576e9 |
+
+A payload field named `name` is no longer discarded when the request also has `action`. Mesh add-node and create-channel were posting that shape. Deadlock detection reads the locks on the call, not only an artifact bag. The database analysis tab tolerates a table with no columns array. The meta components list renders the first 48 names and a count of the rest. A voice take delete confirms, then removes the stored take. Expedition writes start on concordia-hub instead of an empty world id. Classroom lists compare cohort ids as numbers, and materials from another cohort stay on the page.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-classroom-001 | classroom | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-voice-002 | voice | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-expedition-journal-001 | expedition-journal | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-lock-007 | lock | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-mesh-001 | mesh | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-database-001 | database | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-meta-001 | meta | high | FIXED_PENDING_VERIFY | this commit |

@@ -140,7 +140,7 @@ import { dtuMatchesDomain, dtuKind } from "./lib/art-dtu-filter.js";
 import { MACRO_INPUT_HINTS } from "./lib/macro-input-hints.js";
 import { deriveConkayVerdictEmit as _deriveConkayVerdictEmit } from "./lib/conkay-verdict-bridge.js";
 import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
-import { peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
+import { lensRunParams as _lensRunParams, peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
 import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
 import { createLensRunLogger as _createLensRunLogger } from "./lib/lens-run-log.js";
@@ -51606,18 +51606,10 @@ app.post("/api/lens/run", async (req, res) => {
   };
   try {
     const body = req.body || {};
-    const { domain } = body;
     // Accept both macro-style {domain, name, input} and legacy lens-action
-    // {domain, action, ...rest}. `name` and `action` are aliases.
-    const action = body.action || body.name;
-    const rest = _peelRedundantArtifactWrapper(
-      body.input && typeof body.input === "object"
-        ? body.input
-        : (() => {
-            const { domain: _d, action: _a, name: _n, input: _i, ...r } = body;
-            return r;
-          })()
-    );
+    // {domain, action, ...rest}. `name` is the action only when `action`
+    // is absent, so a payload field named name is not discarded.
+    const { domain, action, rest } = _lensRunParams(body);
     if (!domain || !action) { _lrNote("pre_dispatch", false, "domain_action_required"); return res.status(400).json({ ok: false, error: "domain and action required" }); }
     if (enforcePlatformInternalLensRole(req, res, domain, requireRole)) { _lrNote("pre_dispatch", false, "platform_internal_role"); return; }
     // Non-finite guard for BOTH the lens-action and macro paths (1e999 → Infinity).

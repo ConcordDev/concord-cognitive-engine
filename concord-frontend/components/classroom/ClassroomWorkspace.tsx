@@ -515,13 +515,15 @@ function GradebookTab({ cohortId, flash }: TabProps) {
 /* ── Materials ──────────────────────────────────────────────────────── */
 function MaterialsTab({ cohortId, flash }: TabProps) {
   const [byTopic, setByTopic] = useState<Record<string, Material[]>>({});
+  const [other, setOther] = useState<Material[]>([]);
   const [form, setForm] = useState({ title: '', kind: 'link', url: '', topic: '', notes: '' });
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
-    const r = await run<{ byTopic: Record<string, Material[]> }>('material-list',
+    const r = await run<{ byTopic: Record<string, Material[]>; other?: Material[] }>('material-list',
       cohortId != null ? { cohortId } : {});
     setByTopic(r?.byTopic ?? {});
+    setOther(r?.other ?? []);
   }, [cohortId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -602,6 +604,19 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
           </ul>
         </div>
       ))}
+      {other.length > 0 && (
+        <div className={cardCls}>
+          <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">From other or archived cohorts</h4>
+          <ul className="space-y-1">
+            {other.map((m) => (
+              <li key={m.id} className="flex justify-between items-start gap-2 text-xs">
+                <span className="text-zinc-200">{m.title} <span className="text-zinc-500">cohort #{m.cohortId}</span></span>
+                <button type="button" onClick={() => remove(m.id)} className="text-[10px] text-rose-300">Delete</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

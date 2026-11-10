@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { VoiceRecorder } from '@/components/voice/VoiceRecorder';
@@ -15,7 +16,6 @@ import {
   SkipBack,
   SkipForward,
   Star,
-  Trash2,
   Edit3,
   Check,
   X,
@@ -221,7 +221,7 @@ export function VoiceBoothPanel() {
   const wantPlayRef = useRef(false);
 
   // Takes — persisted artifacts plus this-session overlays (no sync-effect).
-  const { isLoading, isError: isError, error: error, refetch: refetch, items: takeItems, create: createTake } = useLensData<Take>('voice', 'take', {
+  const { isLoading, isError: isError, error: error, refetch: refetch, items: takeItems, create: createTake, remove: removeTake } = useLensData<Take>('voice', 'take', {
     seed: [],
   });
   const persistedTakes = takeItems.map((i) => ({ ...(i.data as unknown as Take), id: i.id }));
@@ -234,6 +234,7 @@ export function VoiceBoothPanel() {
     });
   };
   const [activeTakeId, setActiveTakeId] = useState<string | null>(null);
+  const [armedTakeId, setArmedTakeId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
 
@@ -544,6 +545,8 @@ export function VoiceBoothPanel() {
   const deleteTake = (id: string) => {
     setTakes((prev) => prev.filter((t) => t.id !== id));
     if (resolvedActiveId === id) setActiveTakeId(null);
+    setArmedTakeId(null);
+    void removeTake(id).catch(() => { void refetch(); });
   };
 
   const startRename = (take: Take) => {
@@ -728,12 +731,17 @@ export function VoiceBoothPanel() {
                     aria-label="Award">
                       <Award className="w-3 h-3" />
                     </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteTake(take.id); }}
-                      className="p-1 rounded text-gray-600 hover:text-red-400"
-                    aria-label="Delete">
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                    <span onClick={(e) => e.stopPropagation()}>
+                    <StickyDeleteConfirm
+                      armed={armedTakeId === take.id}
+                      onArm={() => setArmedTakeId(take.id)}
+                      onCancel={() => setArmedTakeId(null)}
+                      onConfirm={() => deleteTake(take.id)}
+                      armLabel="Delete"
+                      confirmLabel="Delete this take?"
+                      className="p-1 text-gray-600 hover:text-red-400"
+                    />
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-[11px] text-gray-400 mb-2">
