@@ -1130,11 +1130,11 @@ Studio Recent projects call the existing owner-scoped project delete after confi
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-studio-008 | studio | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-music-003 | music | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-mentorship-001 | mentorship | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-forge-006 | forge | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-lab-001 | lab | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-studio-008 | studio | medium | FIXED_PENDING_VERIFY | b97869307 |
+| FIX-music-003 | music | medium | FIXED_PENDING_VERIFY | b97869307 |
+| FIX-mentorship-001 | mentorship | medium | FIXED_PENDING_VERIFY | b97869307 |
+| FIX-forge-006 | forge | medium | FIXED_PENDING_VERIFY | b97869307 |
+| FIX-lab-001 | lab | medium | FIXED_PENDING_VERIFY | b97869307 |
 
 ## NEEDS_PRODUCT_SURFACE
 
