@@ -774,11 +774,11 @@ Header export now reads a domain bag that is not named `<domain>Lens`: `writingL
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-sentinel-008 | sentinel | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-creative-writing-003 | creative-writing | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-insurance-003 | insurance | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-cognitive-replay-001 | cognitive-replay | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-construction-006 | construction | low | FIXED_PENDING_VERIFY | this commit |
+| FIX-sentinel-008 | sentinel | medium | FIXED_PENDING_VERIFY | 176548acd |
+| FIX-creative-writing-003 | creative-writing | medium | FIXED_PENDING_VERIFY | 176548acd |
+| FIX-insurance-003 | insurance | medium | FIXED_PENDING_VERIFY | 176548acd |
+| FIX-cognitive-replay-001 | cognitive-replay | medium | FIXED_PENDING_VERIFY | 176548acd |
+| FIX-construction-006 | construction | low | FIXED_PENDING_VERIFY | 176548acd |
 
 FIX-creative-writing-007 stays open: that one is the per-row CSV omitting the body column, not the header pack. Lenses that keep records only in SQL, or in a map that is not keyed by the caller, are still open.
 
