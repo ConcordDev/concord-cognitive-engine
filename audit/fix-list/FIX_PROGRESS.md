@@ -1008,10 +1008,10 @@ Tab and Shift+Tab move focus in the studio. Arrange and Session are buttons. The
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-foundry-002 | foundry | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-sub-worlds-002 | sub-worlds | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-agents-014 | agents | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-government-019 | government | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-foundry-002 | foundry | medium | FIXED_PENDING_VERIFY | 7531a0d8f |
+| FIX-sub-worlds-002 | sub-worlds | medium | FIXED_PENDING_VERIFY | 7531a0d8f |
+| FIX-agents-014 | agents | medium | FIXED_PENDING_VERIFY | 7531a0d8f |
+| FIX-government-019 | government | medium | FIXED_PENDING_VERIFY | 7531a0d8f |
 
 ## NEEDS_PRODUCT_SURFACE
 
