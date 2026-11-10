@@ -61,6 +61,8 @@ Shared fix: `shouldIgnoreLensHotkey` in `concord-frontend/lib/a11y/editable-targ
 | FIX-marketplace-007 | marketplace | low | FIXED_PENDING_VERIFY | ffdc6205c |
 | FIX-voice-016 | voice | low | FIXED_PENDING_VERIFY | ffdc6205c |
 
+The header Export menu's Ctrl+E binding yields to a focused field as well.
+
 Reviewed and left open (not this root cause): command-palette Ctrl+K in fields (global by design: FIX-creator-004, FIX-energy-004, FIX-genesis-002, FIX-poetry-003, FIX-understanding-001), Escape-led FIX-government-004, arrow-key tablists, FIX-council-002 (`QAQAQA` is not explained by the hotkey map), FIX-game-010 (shortcuts while focus is outside a field), FIX-ml-010 (no steal observed; tab URL), FIX-finance-002/003 (math; the word "keystroke" is a caveat only).
 
 ## RCA-missing-delete-confirm (vanishing confirm only)

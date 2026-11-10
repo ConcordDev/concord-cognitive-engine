@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Download, FileJson, FileSpreadsheet, ChevronDown, X } from 'lucide-react';
 import { apiHelpers, lensRun } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
+import { shouldIgnoreLensHotkey } from '@/lib/a11y/editable-target';
 import { downloadFile, downloadFromUrl } from '@/lib/utils';
 import { buildConkayExport, conkayExportCsv, getConkayCurrentModel, type ConkayExportModel } from '@/lib/conkay/model-export';
 
@@ -103,7 +104,9 @@ export function ExportMenu({ domain }: ExportMenuProps) {
   // Keyboard shortcut: Cmd/Ctrl + E
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'e' || e.key === 'E')) {
+        // Same rule as lens hotkeys: Ctrl+E belongs to the field while typing.
+        if (shouldIgnoreLensHotkey(e)) return;
         e.preventDefault();
         setIsOpen(prev => !prev);
       }
