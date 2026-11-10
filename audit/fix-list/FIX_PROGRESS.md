@@ -902,10 +902,10 @@ Empty or unparseable JSON and CSV are marked invalid, so Import stays off. Resol
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-import-001 | import | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-creatures-004 | creatures | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-fitness-002 | fitness | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-graph-002 | graph | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-board-002 | board | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-calendar-005 | calendar | high | FIXED_PENDING_VERIFY | this commit |
-| FIX-staking-001 | staking | high | FIXED_PENDING_VERIFY | this commit |
+| FIX-import-001 | import | high | FIXED_PENDING_VERIFY | 6b9044dd3 |
+| FIX-creatures-004 | creatures | high | FIXED_PENDING_VERIFY | 6b9044dd3 |
+| FIX-fitness-002 | fitness | high | FIXED_PENDING_VERIFY | 6b9044dd3 |
+| FIX-graph-002 | graph | high | FIXED_PENDING_VERIFY | 6b9044dd3 |
+| FIX-board-002 | board | high | FIXED_PENDING_VERIFY | 6b9044dd3 |
+| FIX-calendar-005 | calendar | high | FIXED_PENDING_VERIFY | 6b9044dd3 |
+| FIX-staking-001 | staking | high | FIXED_PENDING_VERIFY | 6b9044dd3 |
