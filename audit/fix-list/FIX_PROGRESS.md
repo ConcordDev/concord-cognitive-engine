@@ -1494,10 +1494,10 @@ A booth take shows elapsed time against its duration while it plays, and Best to
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-voice-006 | voice | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-voice-007 | voice | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-voice-008 | voice | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-education-004 | education | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-voice-006 | voice | medium | FIXED_PENDING_VERIFY | 5f94ffe27 |
+| FIX-voice-007 | voice | medium | FIXED_PENDING_VERIFY | 5f94ffe27 |
+| FIX-voice-008 | voice | medium | FIXED_PENDING_VERIFY | 5f94ffe27 |
+| FIX-education-004 | education | medium | FIXED_PENDING_VERIFY | 5f94ffe27 |
 
 ## NEEDS_PRODUCT_SURFACE
 
