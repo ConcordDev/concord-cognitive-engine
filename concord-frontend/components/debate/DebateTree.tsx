@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Scale, Plus, Trash2, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Claim { id: string; parentId: string | null; stance: string; text: string; weight: number; voteCount: number }
@@ -95,7 +96,7 @@ export function DebateTree() {
                 <p className="text-xs font-semibold text-white line-clamp-2">{d.thesis}</p>
                 <p className="text-[10px] text-gray-400">{d.claimCount} claims · {d.score.supportPct}% for</p>
               </button>
-              <button aria-label="Delete" onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => del(d.id)} armAriaLabel="Delete debate" confirmAriaLabel="Confirm delete debate" className="p-1 text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
             </li>
           ))}
         </ul>

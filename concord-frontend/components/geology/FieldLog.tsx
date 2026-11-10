@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Mountain, Plus, Trash2, MapPin, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Observation {
@@ -157,7 +158,7 @@ export function FieldLog() {
                 <span className={cn('text-[9px] px-1.5 py-0.5 rounded capitalize', KIND_COLOR[o.kind] || KIND_COLOR.other)}>{o.kind}</span>
                 <span className="text-xs font-semibold text-zinc-100 flex-1 truncate">{o.name}</span>
                 <span className="text-[10px] text-zinc-400">{o.collectedAt}</span>
-                <button aria-label="Delete" onClick={() => del(o.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <StickyDeleteConfirm onConfirm={() => del(o.id)} armAriaLabel={`Delete ${o.name}`} confirmAriaLabel={`Confirm delete ${o.name}`} className="text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
               </div>
               {(o.locationName || o.formation || o.notes) && (
                 <p className="text-[11px] text-zinc-400 mt-0.5">

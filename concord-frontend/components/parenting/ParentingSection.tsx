@@ -14,6 +14,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { PgTodayPanel } from './PgTodayPanel';
 import { PgSleepPanel } from './PgSleepPanel';
 import { PgSchedulePanel } from './PgSchedulePanel';
@@ -110,7 +111,7 @@ export function ParentingSection() {
                   activeChild === c.id ? 'bg-rose-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
                   <button type="button" onClick={() => setActiveChild(c.id)}>{c.name} · {c.ageDisplay}{c.shared ? ' · shared' : ''}</button>
                   {!c.shared && (
-                    <button type="button" onClick={() => delChild(c.id)} aria-label={`Remove ${c.name}`} className="text-zinc-300/70 hover:text-rose-200">×</button>
+                    <StickyDeleteConfirm onConfirm={() => delChild(c.id)} armLabel="×" armAriaLabel={`Remove ${c.name}`} confirmAriaLabel={`Confirm remove ${c.name}`} className="text-zinc-300/70 hover:text-rose-200" />
                   )}
                 </span>
               ))}

@@ -13,6 +13,7 @@ import {
   Database, Beaker, Scale,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 type ModeTab = 'library' | 'tests' | 'comparisons' | 'suppliers' | 'composites' | 'standards';
@@ -299,7 +300,7 @@ export function MaterialsLibraryPanel({ mode, onModeChange }: { mode: MaterialsC
                 {d.meltingPoint && <span className="text-xs text-orange-400">{d.meltingPoint}&deg;C</span>}
                 {d.pricePerUnit && <span className="text-xs text-green-400">${d.pricePerUnit}/unit</span>}
                 <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>{sc.label}</span>
-                <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                <StickyDeleteConfirm onConfirm={() => remove(item.id)} armAriaLabel="Delete material" confirmAriaLabel="Confirm delete material" className={ds.btnGhost} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} />
               </div>
             </div>
           </motion.div>

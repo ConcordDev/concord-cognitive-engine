@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 327 | 618 | 0 |
+| medium | 344 | 601 | 0 |
 | low | 251 | 729 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **748** | **1400** | **3** |
+| **total** | **765** | **1383** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1087,6 +1087,30 @@ A blank, over-long, or negative value is refused with a message on the form. For
 | FIX-manufacturing-005 | manufacturing | medium | FIXED_PENDING_VERIFY | efa1dde7d |
 | FIX-debate-001 | debate | medium | FIXED_PENDING_VERIFY | efa1dde7d |
 | FIX-ar-001 | ar | medium | FIXED_PENDING_VERIFY | efa1dde7d |
+
+## Mediums — confirm before delete on seventeen more lenses
+
+The existing owner-scoped delete stays armed until confirm. Spot and session, field-log, robot, mission, saved search, child, campaign, export schedule, destination disconnect, workflow, mechanic, debate, feed post, materials row, garage child record, and saved dashboard.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-ocean-003 | ocean | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-geology-002 | geology | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-robotics-003 | robotics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-robotics-007 | robotics | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-genesis-001 | genesis | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-parenting-008 | parenting | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-marketing-009 | marketing | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-export-004 | export | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-integrations-006 | integrations | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-game-design-002 | game-design | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-debate-013 | debate | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-creatures-006 | creatures | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-quests-004 | quests | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-staking-007 | staking | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-materials-001 | materials | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-automotive-008 | automotive | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-analytics-002 | analytics | medium | FIXED_PENDING_VERIFY | this commit |
 
 ## NEEDS_PRODUCT_SURFACE
 

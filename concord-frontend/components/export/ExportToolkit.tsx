@@ -15,6 +15,7 @@ import {
   Unlock, Upload,
 } from 'lucide-react';
 import { lensRun, api } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { decryptEncEnvelope, packEncEnvelope, readEncEnvelope } from '@/lib/export/xor-fnv-archive';
 import { loadExportDtus } from '@/lib/dtu/list-pages';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
@@ -181,9 +182,7 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
                 className={`rounded p-1 ${s.enabled ? 'text-teal-400' : 'text-zinc-600'} hover:bg-zinc-800`}>
                 <Power className="h-3.5 w-3.5" />
               </button>
-              <button onClick={() => remove(s.id)} title="Delete" className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => remove(s.id)} armAriaLabel={`Delete schedule ${s.name}`} confirmAriaLabel={`Confirm delete schedule ${s.name}`} className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400" armLabel={<Trash2 className="h-3.5 w-3.5" />} />
             </li>
           ))}
         </ul>
@@ -544,9 +543,7 @@ function CloudDestinations() {
               <button onClick={() => push(c.id)} className="rounded border border-zinc-700 px-2 py-1 text-[10px] text-zinc-300 hover:border-teal-500">
                 Record delivery
               </button>
-              <button onClick={() => disconnect(c.id)} title="Disconnect" className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400">
-                <X className="h-3.5 w-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => disconnect(c.id)} armLabel="Disconnect" confirmLabel="Confirm disconnect?" armAriaLabel={`Disconnect ${c.accountLabel}`} confirmAriaLabel={`Confirm disconnect ${c.accountLabel}`} className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400" />
             </li>
           ))}
         </ul>

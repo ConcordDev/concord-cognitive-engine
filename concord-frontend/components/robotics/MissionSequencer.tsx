@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ListChecks, Plus, Trash2, Play, RotateCcw, Square, CheckCircle2, Circle, XCircle, Loader2 } from 'lucide-react';
 import type { RobotRow } from './FleetManager';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface MissionStep { index: number; command: string; status: string; durationMs: number; executedAt?: string }
 interface Mission {
@@ -142,10 +143,7 @@ export function MissionSequencer({ robots }: { robots: RobotRow[] }) {
                       className="p-1.5 rounded bg-red-400/20 text-red-400 hover:bg-red-400/30 disabled:opacity-40" aria-label="Abort mission">
                       <Square className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => remove(m.id)} disabled={busy === m.id}
-                      className="p-1.5 rounded text-gray-400 hover:text-red-400" aria-label="Delete mission">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <StickyDeleteConfirm onConfirm={() => remove(m.id)} disabled={busy === m.id} armAriaLabel={`Delete mission ${m.name || m.id}`} confirmAriaLabel={`Confirm delete mission ${m.name || m.id}`} className="p-1.5 rounded text-gray-400 hover:text-red-400" armLabel={<Trash2 className="w-3.5 h-3.5" />} />
                   </div>
                 </div>
                 <div className="h-1.5 bg-white/10 rounded-full mb-2">

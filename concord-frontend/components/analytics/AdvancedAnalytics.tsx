@@ -20,6 +20,7 @@ import {
   CalendarRange, Plus, Trash2, RefreshCw, Loader2, Play, Pause, Save,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
@@ -250,9 +251,7 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
                 {d.name}
               </button>
               <span className="text-[10px] text-zinc-400">{d.widgetCount} widgets</span>
-              <button onClick={() => remove(d.id)} aria-label={`Delete ${d.name}`} className="text-zinc-600 hover:text-red-400">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => remove(d.id)} armAriaLabel={`Delete ${d.name}`} confirmAriaLabel={`Confirm delete ${d.name}`} className="text-zinc-600 hover:text-red-400" armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
           ))}
         </div>

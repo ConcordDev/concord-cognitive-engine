@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Layers, Plus, Trash2, Loader2, Trophy } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Material {
@@ -155,7 +156,7 @@ export function MaterialShortlist() {
               <span className="text-[10px] text-zinc-400 ml-auto">
                 {FIELDS.filter(f => m.properties[f.key] != null).map(f => `${f.label} ${m.properties[f.key]}`).join(' · ')}
               </span>
-              <button aria-label="Delete" onClick={() => remove(m.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => remove(m.id)} armAriaLabel={`Delete ${m.name}`} confirmAriaLabel={`Confirm delete ${m.name}`} className="text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
             </li>
           ))}
         </ul>

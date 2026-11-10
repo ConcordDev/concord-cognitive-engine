@@ -11,6 +11,7 @@ import { lensRun } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { MarketingGmailSendPanel } from './MarketingGmailSendPanel';
 
 interface Kpis { impressions: number; clicks: number; conversions: number; spend: number; revenue: number; ctr: number; cpc: number; cpa: number; roas: number; conversionRate: number }
@@ -268,9 +269,7 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
                   </p>
                 </div>
               </button>
-              <button aria-label="Delete" type="button" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => del(c.id)} armAriaLabel={`Delete ${c.name}`} confirmAriaLabel={`Confirm delete ${c.name}`} className="text-zinc-600 hover:text-rose-400" armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </li>
           ))}
         </ul>

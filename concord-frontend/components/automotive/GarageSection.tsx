@@ -15,6 +15,7 @@ import {
 import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 type Tab = 'overview' | 'fuel' | 'service' | 'expenses' | 'trips' | 'documents';
@@ -377,7 +378,7 @@ export function GarageSection() {
                             <td className="text-right font-mono text-white">${f.totalCost.toFixed(2)}</td>
                             <td className="text-right font-mono text-gray-400">{f.pricePerUnit}</td>
                             <td className="text-right font-mono text-sky-300">{f.mpg !== null ? f.mpg : '—'}</td>
-                            <td className="text-right"><button aria-label="Delete" onClick={() => delFuel(f.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></button></td>
+                            <td className="text-right"><StickyDeleteConfirm onConfirm={() => delFuel(f.id)} armAriaLabel="Delete fuel entry" confirmAriaLabel="Confirm delete fuel entry" className="text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} /></td>
                           </tr>
                         ))}
                       </tbody>
@@ -404,7 +405,7 @@ export function GarageSection() {
                             <div className="text-[10px] text-gray-400">{sv.date} · {sv.odometer.toLocaleString()} mi{sv.shop && ` · ${sv.shop}`}</div>
                           </div>
                           <span className="text-xs font-mono text-white">{sv.cost > 0 ? `$${sv.cost.toFixed(2)}` : '—'}</span>
-                          <button aria-label="Delete" onClick={() => delService(sv.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                          <StickyDeleteConfirm onConfirm={() => delService(sv.id)} armAriaLabel="Delete service" confirmAriaLabel="Confirm delete service" className="text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} />
                         </li>
                       ))}
                     </ul>
@@ -428,7 +429,7 @@ export function GarageSection() {
                           <span className="text-[10px] text-gray-400 font-mono w-20">{e.date}</span>
                           <span className="flex-1 text-xs text-gray-300 truncate">{e.note}</span>
                           <span className="text-xs font-mono text-white">${e.amount.toFixed(2)}</span>
-                          <button aria-label="Delete" onClick={() => delExpense(e.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                          <StickyDeleteConfirm onConfirm={() => delExpense(e.id)} armAriaLabel="Delete expense" confirmAriaLabel="Confirm delete expense" className="text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} />
                         </li>
                       ))}
                     </ul>
@@ -452,7 +453,7 @@ export function GarageSection() {
                           <span className="text-[10px] text-gray-400 font-mono w-20">{t.date}</span>
                           <span className="flex-1 text-xs text-gray-300 truncate">{[t.from, t.to].filter(Boolean).join(' → ') || '—'}</span>
                           <span className="text-xs font-mono text-white">{t.distance} mi</span>
-                          <button aria-label="Delete" onClick={() => delTrip(t.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                          <StickyDeleteConfirm onConfirm={() => delTrip(t.id)} armAriaLabel="Delete trip" confirmAriaLabel="Confirm delete trip" className="text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} />
                         </li>
                       ))}
                     </ul>
@@ -479,7 +480,7 @@ export function GarageSection() {
                           </div>
                           {d.expired && <span className="text-[9px] uppercase text-rose-300">expired</span>}
                           {d.expiringSoon && <span className="text-[9px] uppercase text-amber-300">expiring</span>}
-                          <button aria-label="Delete" onClick={() => delDoc(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                          <StickyDeleteConfirm onConfirm={() => delDoc(d.id)} armAriaLabel="Delete document" confirmAriaLabel="Confirm delete document" className="text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} />
                         </li>
                       ))}
                     </ul>

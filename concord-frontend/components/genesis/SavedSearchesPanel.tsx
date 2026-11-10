@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Search, Bookmark, Play, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import type { RosterFilters } from './RosterExplorer';
 
@@ -132,8 +133,7 @@ export function SavedSearchesPanel({
                 {s.label}
               </button>
               {summary && <span className="truncate max-w-[10rem] font-mono text-zinc-500">{summary}</span>}
-              <button type="button" onClick={() => void remove(s.id)} aria-label={`Delete saved search "${s.label}"`}
-                className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => void remove(s.id)} armAriaLabel={`Delete saved search ${s.label}`} confirmAriaLabel={`Confirm delete saved search ${s.label}`} className="p-1 text-rose-300 hover:bg-rose-500/20 rounded" armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
           );
         })}

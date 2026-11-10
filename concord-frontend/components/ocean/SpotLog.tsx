@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Waves, Plus, Trash2, Loader2, Star } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Spot { id: string; name: string; kind: string; notes: string; sessionCount: number; lat: number | null; lon: number | null }
@@ -117,7 +118,7 @@ export function SpotLog() {
                   {sp.kind} · {sp.sessionCount} sessions{sp.lat != null && sp.lon != null ? ' · geo' : ''}
                 </p>
               </button>
-              <button aria-label="Delete" onClick={() => delSpot(sp.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => delSpot(sp.id)} armAriaLabel={`Delete ${sp.name}`} confirmAriaLabel={`Confirm delete ${sp.name}`} className="text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
             </li>
           ))}
         </ul>
@@ -151,7 +152,7 @@ export function SpotLog() {
                     {[1, 2, 3, 4, 5].map(n => <Star key={n} className={cn('w-2.5 h-2.5', se.rating! >= n ? 'text-amber-400' : 'text-zinc-700')} fill={se.rating! >= n ? 'currentColor' : 'none'} />)}
                   </span>
                 )}
-                <button aria-label="Delete" onClick={() => delSession(se.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <StickyDeleteConfirm onConfirm={() => delSession(se.id)} armAriaLabel={`Delete session ${se.date}`} confirmAriaLabel={`Confirm delete session ${se.date}`} className="text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
               </li>
             ))}
           </ul>

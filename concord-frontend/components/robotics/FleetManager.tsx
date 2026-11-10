@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { Bot, Plus, Trash2, RefreshCw, Power, Activity, AlertCircle, Loader2 } from 'lucide-react';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export interface RobotRow {
   id: string;
@@ -206,10 +207,7 @@ export function FleetManager({ onSelect, selectedId, onFleetChange }: { onSelect
                   className="bg-black/30 border border-white/10 rounded px-2 py-1 text-[11px]">
                   {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
-                <button onClick={() => remove(robot.id)} disabled={busy === robot.id}
-                  className="text-gray-400 hover:text-red-400" aria-label="Remove robot">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => remove(robot.id)} disabled={busy === robot.id} armAriaLabel="Remove robot" confirmAriaLabel={`Confirm remove ${robot.name}`} className="text-gray-400 hover:text-red-400" armLabel={<Trash2 className="w-4 h-4" />} />
               </div>
             </div>
           ))}

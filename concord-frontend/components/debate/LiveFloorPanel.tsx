@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { DebateActionPanel } from '@/components/debate/DebateActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
@@ -918,9 +919,7 @@ export function LiveFloorPanel() {
                     <span>{d.format}</span>
                   </div>
                 </button>
-                <button onClick={() => remove(d.id)} disabled={deleteMut.isPending} className="mt-2 text-gray-400 hover:text-red-400 text-xs flex items-center gap-1">
-                  {deleteMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Remove
-                </button>
+                <StickyDeleteConfirm onConfirm={() => remove(d.id)} disabled={deleteMut.isPending} armLabel={<><Trash2 className="w-3 h-3" /> Remove</>} armAriaLabel={`Remove ${d.topic}`} confirmAriaLabel={`Confirm remove ${d.topic}`} className="mt-2 text-gray-400 hover:text-red-400 text-xs flex items-center gap-1" />
               </div>
             ))}
           </div>
