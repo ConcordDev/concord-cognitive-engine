@@ -1481,12 +1481,12 @@ A wellness reading outside its range is refused, including sleep past 24 hours, 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-wellness-002 | wellness | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-self-002 | self | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-tools-003 | tools | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-education-008 | education | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-staking-011 | staking | medium | FIXED_PENDING_VERIFY | this commit |
-| FIX-creatures-003 | creatures | medium | FIXED_PENDING_VERIFY | this commit |
+| FIX-wellness-002 | wellness | medium | FIXED_PENDING_VERIFY | e71ac66ec |
+| FIX-self-002 | self | medium | FIXED_PENDING_VERIFY | e71ac66ec |
+| FIX-tools-003 | tools | medium | FIXED_PENDING_VERIFY | e71ac66ec |
+| FIX-education-008 | education | medium | FIXED_PENDING_VERIFY | e71ac66ec |
+| FIX-staking-011 | staking | medium | FIXED_PENDING_VERIFY | e71ac66ec |
+| FIX-creatures-003 | creatures | medium | FIXED_PENDING_VERIFY | e71ac66ec |
 
 ## NEEDS_PRODUCT_SURFACE
 
