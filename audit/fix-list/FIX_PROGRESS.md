@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 544 | 401 | 0 |
+| medium | 546 | 399 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **970** | **1178** | **3** |
+| **total** | **972** | **1176** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1553,6 +1553,16 @@ Ratios count revenue in the same year-to-date window as the P&L. The manuscript 
 | FIX-fitness-014 | fitness | medium | FIXED_PENDING_VERIFY | 660c04b7e |
 | FIX-fitness-015 | fitness | medium | FIXED_PENDING_VERIFY | 660c04b7e |
 | FIX-creatures-010 | creatures | medium | FIXED_PENDING_VERIFY | 660c04b7e |
+
+
+## Mediums — a glossary term, and formal Spanish
+
+A glossary term the model left in English is written as the target. A target the model wrote without its accent gets the accent back. A term the model rendered as different wording stays a miss. Formal Spanish uses usted. Neutral is left as the model wrote it.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-translation-003 | translation | medium | FIXED_PENDING_VERIFY | dc43b1d5b |
+| FIX-translation-004 | translation | medium | FIXED_PENDING_VERIFY | dc43b1d5b |
 
 ## NEEDS_PRODUCT_SURFACE
 
