@@ -3,6 +3,14 @@
 
 const EXTENDED_DOMAIN_RULES = new Map();
 
+// A free status dropdown has no workflow. Every status can move to every
+// other status, so an edit is not refused as invalid_transition.
+function freeTransitions(statuses) {
+  const transitions = {};
+  for (const from of statuses) transitions[from] = statuses.filter((s) => s !== from);
+  return transitions;
+}
+
 // === Data (Datasets & Data Science) ===
 EXTENDED_DOMAIN_RULES.set("data", {
   types: ["dataset", "pipeline", "query", "report", "dashboard"],
@@ -1404,10 +1412,25 @@ EXTENDED_DOMAIN_RULES.set("questmarket", {
 });
 
 // === Realestate ===
+// The desk (ArtifactDeskPanel STATUSES_BY_TYPE) sends meta.status values
+// such as active, prospecting, and vacant. The old list
+// (draft/listed/under-contract/sold/leased/archived) shared almost none of
+// those words, so every New Record create was validation_failed. The union
+// keeps the old words so a record already stored under them still validates.
+// The dropdown is free, so transitions are a complete graph.
+const REALESTATE_STATUSES = [
+  "draft", "listed", "under-contract", "sold", "leased", "archived",
+  "coming_soon", "active", "pending", "contingent", "withdrawn", "expired",
+  "listing_prep", "offer", "under_contract", "inspection", "appraisal", "clear_to_close", "closed", "fell_through",
+  "in_progress", "completed", "presented",
+  "vacant", "application", "month_to_month", "notice_given", "eviction",
+  "prospecting", "analysis", "due_diligence", "passed",
+  "scheduled", "confirmed", "cancelled", "no_show",
+];
 EXTENDED_DOMAIN_RULES.set("realestate", {
   types: ["listing", "property", "appraisal", "contract", "inspection"],
-  validStatuses: ["draft", "listed", "under-contract", "sold", "leased", "archived"],
-  transitions: { draft: ["listed", "archived"], listed: ["under-contract", "archived"], "under-contract": ["sold", "leased", "listed"], sold: ["archived"], leased: ["archived"], archived: [] },
+  validStatuses: REALESTATE_STATUSES,
+  transitions: freeTransitions(REALESTATE_STATUSES),
   requiredFields: { listing: ["title"] },
   computedFields: (type, data) => { data.sqft = data.sqft || 0; data.pricePerSqft = data.sqft > 0 ? Math.round((data.price || 0) / data.sqft) : 0; return data; },
   scoring: (type, data) => Math.round(((data.price || 0) > 0 ? 0.4 : 0.1) * 100) / 100,
@@ -1439,10 +1462,24 @@ EXTENDED_DOMAIN_RULES.set("science", {
 });
 
 // === Security ===
+// Cases (SecurityOpsPanel getStatusesForTab) send detected/active/online
+// and the rest of the per-tab lists. The old list
+// (draft/identified/triaging/mitigated/resolved/archived) rejected every
+// default, so Incident, Asset, and Access creates were validation_failed
+// with the form filled in. Old words stay valid. The dropdown is free.
+const SECURITY_STATUSES = [
+  "draft", "identified", "triaging", "mitigated", "resolved", "archived",
+  "detected", "triaged", "contained", "eradicated", "recovered", "closed",
+  "active", "inactive", "maintenance",
+  "completed", "scheduled", "cancelled",
+  "online", "offline",
+  "expired", "suspended", "revoked",
+  "monitoring",
+];
 EXTENDED_DOMAIN_RULES.set("security", {
   types: ["vulnerability", "incident", "policy", "audit", "scan"],
-  validStatuses: ["draft", "identified", "triaging", "mitigated", "resolved", "archived"],
-  transitions: { draft: ["identified", "archived"], identified: ["triaging"], triaging: ["mitigated", "resolved"], mitigated: ["resolved", "triaging"], resolved: ["archived"], archived: [] },
+  validStatuses: SECURITY_STATUSES,
+  transitions: freeTransitions(SECURITY_STATUSES),
   requiredFields: { vulnerability: ["title"] },
   computedFields: (type, data) => { data.severity = data.severity || "medium"; data.cvss = data.cvss || null; return data; },
   scoring: (type, data) => Math.round(((data.cvss || 0) > 0 ? 0.5 : 0.2) * 100) / 100,

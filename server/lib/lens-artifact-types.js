@@ -56,7 +56,7 @@ export const FRONTEND_ARTIFACT_TYPES = {
   "reflection": ["entry"],
   "resonance": ["signal"],
   "science": ["Analysis", "Equipment", "Experiment", "Protocol", "Publication", "Sample"],
-  "security": ["Asset", "Incident", "Patrol", "Surveillance", "ThreatIntel"],
+  "security": ["AccessControl", "Asset", "Incident", "Patrol", "Surveillance", "ThreatIntel"],
   "sim": ["run"],
   "voice": ["take"],
   "world": ["building"],
