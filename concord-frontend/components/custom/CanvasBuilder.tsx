@@ -502,7 +502,7 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
                   onChange={(e) => setPublishLabel(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); publishCanvas(); } }}
                   className="input-lattice text-xs flex-1 min-w-[160px]" />
-                <span className="text-[10px] text-gray-500">Recorded under Published lenses here — not added to the main sidebar.</span>
+                <span className="text-[10px] text-zinc-200">Recorded under Published lenses here — not added to the main sidebar.</span>
                 <button onClick={publishCanvas} className="btn-neon purple text-xs">Publish</button>
                 <button onClick={() => setPublishLabel(null)} className="btn-neon text-xs">Cancel</button>
               </div>

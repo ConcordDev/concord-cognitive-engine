@@ -312,7 +312,7 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
             )}
           </p>
           <p className="text-sm text-zinc-200 leading-relaxed">
-            {session.words.length === 0 && <span className="text-zinc-600 italic">no data yet — start speaking</span>}
+            {session.words.length === 0 && <span className="text-zinc-200 italic">no data yet — start speaking</span>}
             {session.words.map(w => (
               <span key={w.id} className={cn(w.isFinal ? 'text-zinc-100' : 'text-zinc-400 italic')}>{w.text} </span>
             ))}

@@ -596,7 +596,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
           <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-center justify-between p-6 border-b border-lattice-border">
               <div>
-                <h2 className={ds.heading2}>Recipe Scaler</h2>
+                <h2 className={cn(ds.heading2, 'text-zinc-100')}>Recipe Scaler</h2>
                 <p className={ds.textMuted}>{item.title}</p>
               </div>
               <button onClick={() => setRecipeScaleId(null)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
@@ -707,7 +707,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <PieChart className="w-5 h-5 text-neon-cyan" /> Menu Engineering Matrix
           </h2>
           <button onClick={() => setShowMenuMatrix(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
@@ -785,7 +785,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <Trash2 className="w-5 h-5 text-red-400" /> Waste Log
           </h2>
           <button onClick={() => setShowWasteLog(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
@@ -883,7 +883,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <ClipboardList className="w-5 h-5 text-cyan-400" /> Inventory Count Sheet
           </h2>
           <div className="flex items-center gap-2">
@@ -953,7 +953,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <DollarSign className="w-5 h-5 text-green-400" /> Supplier Price Comparison
           </h2>
           <button onClick={() => setShowSupplierCompare(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
@@ -1010,7 +1010,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <ClipboardList className="w-5 h-5 text-green-400" /> Prep List
           </h2>
           <div className="flex items-center gap-2">
@@ -1117,7 +1117,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <Armchair className="w-5 h-5 text-blue-400" /> Floor Plan & Tables
           </h2>
           <button onClick={() => setShowFloorPlan(false)} className={ds.btnGhost}><X className="w-4 h-4" /> Close</button>
@@ -1261,7 +1261,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <CalendarDays className="w-5 h-5 text-purple-400" /> Labor Schedule
           </h2>
           <div className="flex items-center gap-2">
@@ -1394,7 +1394,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-6">
         <div className={ds.sectionHeader}>
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <CalendarDays className="w-5 h-5 text-neon-cyan" /> Weekly Meal Plan
           </h2>
           <div className="flex items-center gap-2">
@@ -1564,7 +1564,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
       <div className="space-y-6">
         <div className={ds.sectionHeader}>
           <div>
-            <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+            <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
               <ShoppingCart className="w-5 h-5 text-green-400" /> Shopping List
             </h2>
             <p className={ds.textMuted}>{checkedCount}/{totalItems} items checked off</p>
@@ -1662,7 +1662,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
 
     return (
       <div className="space-y-6">
-        <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+        <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
           <Flame className="w-5 h-5 text-orange-400" /> Nutrition Tracker
         </h2>
 
@@ -1781,7 +1781,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
     return (
       <div className="space-y-6">
         <div className={ds.sectionHeader}>
-          <h2 className={cn(ds.heading2, 'flex items-center gap-2')}>
+          <h2 className={cn(ds.heading2, 'flex items-center gap-2 text-zinc-100')}>
             <Package className="w-5 h-5 text-neon-cyan" /> Pantry Inventory
           </h2>
           <button onClick={openCreate} className={ds.btnPrimary}><Plus className="w-4 h-4" /> Add Item</button>
@@ -1791,7 +1791,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
         <div className={ds.grid3}>
           <div className={cn(ds.panel, 'border-l-4 border-l-neon-cyan')}>
             <p className={ds.textMuted}>Total Items</p>
-            <p className={ds.heading2}>{pantryItems.length}</p>
+            <p className={cn(ds.heading2, 'text-zinc-100')}>{pantryItems.length}</p>
           </div>
           <div className={cn(ds.panel, 'border-l-4 border-l-yellow-400')}>
             <p className={ds.textMuted}>Expiring Soon</p>
@@ -2238,7 +2238,7 @@ export function FoodKitchenWorkbench({ group }: { group: KitchenGroup }) {
         <div className={ds.modalContainer}>
           <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <div className="flex items-center justify-between p-6 border-b border-lattice-border">
-              <h2 className={ds.heading2}>{editingItem ? `Edit ${activeArtifactType}` : `New ${activeArtifactType}`}</h2>
+              <h2 className={cn(ds.heading2, 'text-zinc-100')}>{editingItem ? `Edit ${activeArtifactType}` : `New ${activeArtifactType}`}</h2>
               <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">

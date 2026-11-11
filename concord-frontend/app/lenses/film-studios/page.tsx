@@ -452,7 +452,7 @@ export default function FilmStudiosPage() {
           className="grid min-h-[22rem] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 sm:grid-cols-2"
         >
           {phase === 'loading' && (
-            <p data-testid="film-loading" role="status" aria-busy="true" className="col-span-full px-6 py-5 text-[14px] text-zinc-500">
+            <p data-testid="film-loading" role="status" aria-busy="true" className="col-span-full px-6 py-5 text-[14px] text-zinc-200">
               Opening the production.
             </p>
           )}
@@ -468,7 +468,7 @@ export default function FilmStudiosPage() {
             <>
               <div className="min-h-[22rem] border-b border-white/10 px-6 py-5 sm:border-b-0 sm:border-r">
                 {productions.length === 0 && !composing ? (
-                  <p data-testid="film-empty" className="text-[14px] text-zinc-500">No production open.</p>
+                  <p data-testid="film-empty" className="text-[14px] text-zinc-200">No production open.</p>
                 ) : null}
                 {productions.length > 0 && (
                   <ul data-testid="film-productions" className="space-y-2">
@@ -560,7 +560,7 @@ export default function FilmStudiosPage() {
               </div>
               <div className="min-h-[22rem] px-6 py-5">
                 {!selected && !composingScene ? (
-                  <p data-testid="film-unselected" className="text-[14px] text-zinc-500">Nothing selected.</p>
+                  <p data-testid="film-unselected" className="text-[14px] text-zinc-200">Nothing selected.</p>
                 ) : null}
                 {selected ? (
                   <div>

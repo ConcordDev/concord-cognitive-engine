@@ -151,7 +151,7 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
               <button type="button" onClick={() => setAspect(a, alloc[a] - 1)} aria-label={`Decrease ${a}`} className="transition-colors hover:brightness-125" style={stepBtn}>−</button>
               <span style={{ width: 24, textAlign: 'center' }} aria-label={`${a} points`}>{alloc[a]}</span>
               <button type="button" onClick={() => setAspect(a, alloc[a] + 1)} disabled={spent >= budget} aria-label={`Increase ${a}`} className="transition-colors hover:brightness-125 disabled:opacity-40" style={stepBtn}>+</button>
-              <span style={{ opacity: 0.5, fontSize: 12 }}>eff {composed?.budget?.effective?.[a] ?? 0}</span>
+              <span className="text-xs text-zinc-200">eff {composed?.budget?.effective?.[a] ?? 0}</span>
             </div>
           ))}
           {!balanced && (
