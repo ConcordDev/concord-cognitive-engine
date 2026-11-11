@@ -137,6 +137,15 @@ export default function registerMentalhealthActions(registerLensAction) {
   const mhListB = (map, k) => { if (!map.has(k)) map.set(k, []); return map.get(k); };
   const mhNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const mhClean = (v, max = 500) => String(v == null ? "" : v).trim().slice(0, max);
+  const gratitudeLine = (v) => {
+    if (typeof v === "string") return mhClean(v, 200);
+    if (v && typeof v === "object") {
+      for (const k of ["text", "entry", "body", "content", "item", "note", "value"]) {
+        if (typeof v[k] === "string" && v[k].trim()) return mhClean(v[k], 200);
+      }
+    }
+    return "";
+  };
   const mhDay = (v) => mhClean(v, 10).slice(0, 10);
   const MH_DAY = 86400000;
   const SESSION_TYPES = ["meditation", "sleep", "breathing", "focus", "body_scan", "movement"];
@@ -437,7 +446,7 @@ export default function registerMentalhealthActions(registerLensAction) {
   registerLensAction("mental-health", "gratitude-add", (ctx, _a, params = {}) => {
     const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const items = Array.isArray(params.entries)
-      ? params.entries.map((x) => mhClean(x, 200)).filter(Boolean).slice(0, 10) : [];
+      ? params.entries.map(gratitudeLine).filter(Boolean).slice(0, 10) : [];
     if (!items.length) return { ok: false, error: "at least one gratitude entry required" };
     const entry = { id: mhId("grt"), items, date: mhDay(mhNow()), at: mhNow() };
     mhListB(s.gratitude, mhAid(ctx)).push(entry);
@@ -447,7 +456,10 @@ export default function registerMentalhealthActions(registerLensAction) {
 
   registerLensAction("mental-health", "gratitude-list", (ctx, _a, _params = {}) => {
     const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const entries = [...(s.gratitude.get(mhAid(ctx)) || [])].sort((a, b) => b.at.localeCompare(a.at));
+    const entries = [...(s.gratitude.get(mhAid(ctx)) || [])].sort((a, b) => b.at.localeCompare(a.at)).map((e) => ({
+      ...e,
+      items: (Array.isArray(e.items) ? e.items : []).map(gratitudeLine).filter(Boolean),
+    }));
     return { ok: true, result: { entries, count: entries.length } };
   });
 
@@ -468,7 +480,7 @@ export default function registerMentalhealthActions(registerLensAction) {
     const entry = list.find((e) => e.id === String(params.id || ""));
     if (!entry) return { ok: false, error: "gratitude entry not found" };
     const items = Array.isArray(params.entries)
-      ? params.entries.map((x) => mhClean(x, 200)).filter(Boolean).slice(0, 10) : [];
+      ? params.entries.map(gratitudeLine).filter(Boolean).slice(0, 10) : [];
     if (!items.length) return { ok: false, error: "at least one gratitude entry required" };
     entry.items = items;
     saveMhState();

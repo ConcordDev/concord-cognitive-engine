@@ -33,17 +33,17 @@ const monthYear = new RegExp(`\\b${MONTH}\\s+(\\d{3,4})\\s?(BCE?|BC)?\\b`, "i");
 const bceYear = /\b(\d{1,4})\s?(BCE|BC)\b/;
 const UNIT_AFTER = /^\s?(million|billion|thousand|km|kilomet|miles|mi\b|%|percent|people|men|women|children|soldiers|officers|defectors|prisoners|deaths|casualties|dollars|euros|tonnes|tons|kg|hours|minutes|seconds)\b/i;
 const CURRENT_YEAR = new Date().getFullYear();
-export function extractHistoryYear(sent) {
+export function classifyHistoryYear(sent) {
   for (const re of [fullDateA, fullDateB, monthYear]) {
     const m = sent.match(re);
     if (m) {
       let y = parseInt(m[1], 10);
       if (m[2]) y = -Math.abs(y);
-      if (y !== 0 && y <= CURRENT_YEAR + 1) return y;
+      if (y !== 0 && y <= CURRENT_YEAR + 1) return { year: y, calendar: true };
     }
   }
   const bce = sent.match(bceYear);
-  if (bce) return -Math.abs(parseInt(bce[1], 10));
+  if (bce) return { year: -Math.abs(parseInt(bce[1], 10)), calendar: true };
   for (const m of sent.matchAll(/(?<![\d,])(\d{3,4})(?![\d,])/g)) {
     const y = parseInt(m[1], 10);
     if (y < 1000 || y > CURRENT_YEAR + 1) continue;
@@ -52,9 +52,27 @@ export function extractHistoryYear(sent) {
     if (/\d:\s?$/.test(before) || after.startsWith(":")) continue; // clock fragment
     if (/\.$/.test(before) || after.startsWith(".")) continue; // decimal fragment
     if (UNIT_AFTER.test(after)) continue; // a quantity, not a year
-    return y;
+    const near = sent.slice(Math.max(0, m.index - 40), m.index + m[1].length + 40);
+    if (/\b(alarm|alarms|error code|program alarm)\b/i.test(near)) continue;
+    return { year: y, calendar: false };
   }
   return null;
+}
+
+export function extractHistoryYear(sent) {
+  const hit = classifyHistoryYear(sent);
+  return hit ? hit.year : null;
+}
+
+/** Keep calendar dates when the cap is tight, then the latest bare years. */
+export function pickHistoryEvents(extracted, maxEvents) {
+  const max = Math.max(1, Math.min(120, Number(maxEvents) || 60));
+  const dated = extracted.filter((e) => e.calendar);
+  const bare = extracted.filter((e) => !e.calendar);
+  const datedKept = dated.length > max ? dated.slice(dated.length - max) : dated;
+  const room = max - datedKept.length;
+  const bareKept = room > 0 ? bare.slice(Math.max(0, bare.length - room)) : [];
+  return [...datedKept, ...bareKept].sort((a, b) => a.year - b.year);
 }
 
 export default function registerHistoryActions(registerLensAction) {
@@ -850,25 +868,26 @@ export default function registerHistoryActions(registerLensAction) {
       .replace(/\n+/g, " ")
       .split(/(?<=[.!?])\s+/)
       .map((x) => x.trim())
-      .filter((x) => x.length >= 12 && x.length <= 400);
+      .filter((x) => x.length >= 12 && x.length <= 1200);
     const seenYears = new Set();
     const extracted = [];
     for (const sent of sentences) {
-      const year = extractHistoryYear(sent);
-      if (year == null) continue;
+      const hit = classifyHistoryYear(sent);
+      if (!hit) continue;
+      const year = hit.year;
       const key = `${year}|${sent.slice(0, 40)}`;
       if (seenYears.has(key)) continue;
       seenYears.add(key);
       extracted.push({
         year,
+        calendar: hit.calendar,
         dateLabel: year < 0 ? `${Math.abs(year)} BCE` : String(year),
         title: sent.length > 120 ? `${sent.slice(0, 117)}…` : sent,
         description: sent,
       });
     }
     extracted.sort((a, b) => a.year - b.year);
-    const maxEvents = Math.max(1, Math.min(120, Number(params.maxEvents) || 60));
-    const picked = extracted.slice(0, maxEvents);
+    const picked = pickHistoryEvents(extracted, params.maxEvents);
     if (picked.length === 0) {
       return { ok: false, error: `No dated events could be extracted from "${page.title}".` };
     }

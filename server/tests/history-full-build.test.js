@@ -3,7 +3,7 @@
 
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import registerHistoryActions, { extractHistoryYear } from "../domains/history.js";
+import registerHistoryActions, { extractHistoryYear, classifyHistoryYear, pickHistoryEvents } from "../domains/history.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -39,6 +39,21 @@ describe("history S1 — extractHistoryYear (the Berlin Wall battery)", () => {
   it("BCE years go negative", () => {
     assert.equal(extractHistoryYear("The city was founded in 753 BC by tradition."), -753);
     assert.equal(extractHistoryYear("By 44 BCE the republic was failing."), -44);
+  });
+  it("an alarm code is not a year, and a calendar date is", () => {
+    assert.equal(extractHistoryYear("1201 alarm"), null);
+    assert.equal(extractHistoryYear("The 1201 and 1202 program alarms were expected."), null);
+    assert.equal(extractHistoryYear("Apollo 11 landed on July 20, 1969."), 1969);
+    assert.equal(classifyHistoryYear("Apollo 11 landed on July 20, 1969.").calendar, true);
+  });
+  it("keeps a late calendar date when earlier bare years fill the cap", () => {
+    const extracted = [];
+    for (let y = 1000; y < 1080; y++) extracted.push({ year: y, calendar: false });
+    extracted.push({ year: 1969, calendar: true, title: "landing" });
+    const picked = pickHistoryEvents(extracted, 60);
+    assert.equal(picked.length, 60);
+    assert.equal(picked.some((e) => e.year === 1969 && e.calendar), true);
+    assert.equal(picked.filter((e) => !e.calendar).every((e) => e.year >= 1021), true);
   });
 });
 

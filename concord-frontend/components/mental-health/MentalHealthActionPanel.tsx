@@ -38,7 +38,19 @@ interface MoodEntryIn { mood: number; date?: string }
 interface MoodResult { entries: number; avgMood: number; trend: string; lowest: number; highest: number; variance: number }
 interface PromptResult { mood: string; prompts: string[]; instruction: string; reminder?: string }
 interface TrackedMood { entries: number; average: number | null; trend: string }
-interface GratitudeEntry { id: string; items: string[]; date: string }
+interface GratitudeEntry { id: string; items: unknown[]; date: string }
+
+function gratitudeItemText(it: unknown): string {
+  if (typeof it === 'string') return it;
+  if (it && typeof it === 'object') {
+    const row = it as Record<string, unknown>;
+    for (const key of ['text', 'entry', 'body', 'content', 'item', 'note', 'value']) {
+      const value = row[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+  }
+  return '';
+}
 
 // No seeded mood csv — enter real values.
 export function MentalHealthActionPanel() {
@@ -271,7 +283,7 @@ export function MentalHealthActionPanel() {
         {promptResult && journalEntries.length > 0 && (
           <div className="rounded-md border border-zinc-700 bg-zinc-900/40 p-2.5 md:col-span-2">
             <div className="text-[10px] uppercase tracking-wider text-zinc-300 font-semibold">Your recent journal entries</div>
-            {journalEntries.slice(0, 3).map((e) => <div key={e.id} className="text-[11px] text-zinc-300 mt-1">{e.date} — {e.items.join(' · ')}</div>)}
+            {journalEntries.slice(0, 3).map((e) => <div key={e.id} className="text-[11px] text-zinc-300 mt-1">{e.date} — {e.items.map(gratitudeItemText).filter(Boolean).join(' · ')}</div>)}
           </div>
         )}
       </div>

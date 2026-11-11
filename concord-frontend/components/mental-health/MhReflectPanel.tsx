@@ -10,7 +10,19 @@ import { lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ErrorState } from '@/components/ui';
 
-interface GratitudeEntry { id: string; items: string[]; date: string }
+interface GratitudeEntry { id: string; items: unknown[]; date: string }
+
+function gratitudeItemText(it: unknown): string {
+  if (typeof it === 'string') return it;
+  if (it && typeof it === 'object') {
+    const row = it as Record<string, unknown>;
+    for (const key of ['text', 'entry', 'body', 'content', 'item', 'note', 'value']) {
+      const value = row[key];
+      if (typeof value === 'string' && value.trim()) return value.trim();
+    }
+  }
+  return '';
+}
 interface GoalStatus { dailyMinutes: number; todayMinutes: number; pct: number; met: boolean; isDefault: boolean }
 
 export function MhReflectPanel({ onChange }: { onChange: () => void }) {
@@ -136,7 +148,7 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
                   <p className="text-[10px] text-zinc-400">{e.date}</p>
                   <span className="flex items-center gap-2">
                   {editingId !== e.id && (
-                    <button type="button" className="text-[11px] text-zinc-300 underline" onClick={() => { setEditingId(e.id); setEditText(e.items.join('\n')); }}>Edit</button>
+                    <button type="button" className="text-[11px] text-zinc-300 underline" onClick={() => { setEditingId(e.id); setEditText(e.items.map(gratitudeItemText).filter(Boolean).join('\n')); }}>Edit</button>
                   )}
                   <StickyDeleteConfirm
                     armed={armedId === e.id}
@@ -165,11 +177,15 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
                   </div>
                 ) : (
                 <ul className="space-y-0.5">
-                  {e.items.map((it, i) => (
+                  {e.items.map((it, i) => {
+                    const line = gratitudeItemText(it);
+                    if (!line) return null;
+                    return (
                     <li key={i} className="flex items-start gap-1.5 text-xs text-zinc-200">
-                      <Heart className="w-3 h-3 text-sky-500 mt-0.5 shrink-0" /> {it}
+                      <Heart className="w-3 h-3 text-sky-500 mt-0.5 shrink-0" /> {line}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
                 )}
               </li>
