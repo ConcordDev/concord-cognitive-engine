@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { Globe2, BarChart3, GitCompareArrows, BookOpen, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, councilRejectSentence } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
@@ -25,7 +25,13 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'indicator' | 'country' | 'compare' | 'catalog' | 'mint' | 'dm' | 'publish' | 'agent';
-function pickMessage(e: unknown): string { const ax = e as { response?: { data?: { error?: string } }; message?: string }; return ax?.response?.data?.error ?? ax?.message ?? 'request failed'; }
+function pickMessage(e: unknown): string {
+  const ax = e as { response?: { data?: { error?: string; reason?: string; score?: number; minScore?: number } }; message?: string };
+  const data = ax?.response?.data;
+  const why = councilRejectSentence(data?.reason, data?.score, data?.minScore);
+  if (data?.error && why) return `${data.error}. ${why}`;
+  return data?.error ?? ax?.message ?? 'request failed';
+}
 
 interface IndicatorPoint { year: number; value: number; countryName?: string }
 interface IndicatorResult { country: string; indicator: string; alias?: string | null; countryName?: string; series: IndicatorPoint[]; latest: IndicatorPoint | null; count: number }

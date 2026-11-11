@@ -209,16 +209,48 @@ export function unreachableApiMessage(hostname?: string): string {
     : 'Concord did not respond. This is not a local API. Check your connection and try again.';
 }
 
+const COUNCIL_REJECT_REASON: Record<string, string> = {
+  knowledge_insufficient_structure: 'This public note needs more structure, such as a claim or a definition, before it can be shared.',
+  media_missing_asset_or_title: 'This public media item needs a title or the file it points at.',
+  formula_missing_composition: 'This public formula needs its composition before it can be shared.',
+  dataset_insufficient_structure: 'This public dataset needs more structure before it can be shared.',
+  software_insufficient_structure: 'This public software note needs more structure before it can be shared.',
+  world_asset_missing_identity: 'This public world asset needs a name or an id before it can be shared.',
+  low_value: 'This public save does not have enough content to share yet.',
+};
+
+/** Plain words for a council refusal. The score line is included only when the server sent both numbers. */
+export function councilRejectSentence(
+  reason: string | undefined,
+  score?: number,
+  minScore?: number,
+): string | null {
+  if (!reason) return null;
+  const known = COUNCIL_REJECT_REASON[reason];
+  const bar = typeof score === 'number' && typeof minScore === 'number'
+    ? ` It scored ${score} and this save needs ${minScore}.`
+    : '';
+  if (known) return known + bar;
+  if (reason === 'Council rejected DTU') return null;
+  return reason.replace(/_/g, ' ') + bar;
+}
+
 /** Message for a rejected write. GETs stay quiet so a background poll does not toast. */
 export function rejectedWriteMessage(
   status: number | undefined,
-  data: { error?: string; message?: string } | undefined,
+  data: { error?: string; message?: string; reason?: string; score?: number; minScore?: number } | undefined,
   method: string | undefined,
 ): string | null {
   if ((method || 'GET').toUpperCase() === 'GET') return null;
   if (status !== 400) return null;
   const msg = data?.message || data?.error;
-  return msg ? String(msg).replace(/_/g, ' ') : 'That request was rejected.';
+  if (!msg) return 'That request was rejected.';
+  const base = String(msg).replace(/_/g, ' ');
+  if (base === 'Council rejected DTU') {
+    const why = councilRejectSentence(data?.reason, data?.score, data?.minScore);
+    if (why) return `${base}. ${why}`;
+  }
+  return base;
 }
 const RETRY_BASE_DELAY_MS = 1000;
 

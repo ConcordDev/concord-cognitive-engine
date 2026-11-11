@@ -13,7 +13,7 @@ import {
   Loader2, Check, AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, councilRejectSentence } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
@@ -33,8 +33,12 @@ type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'deliberate' | 'vote' | 'minutes' | 'resolve' | 'mint' | 'dm' | 'publish' | 'agent';
 
 function pickMessage(e: unknown): string {
-  const ax = e as { response?: { data?: { error?: string } }; message?: string };
-  return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
+  const ax = e as { response?: { data?: { error?: string; reason?: string; score?: number; minScore?: number } }; message?: string };
+  const data = ax?.response?.data;
+  const error = data?.error;
+  const why = councilRejectSentence(data?.reason, data?.score, data?.minScore);
+  if (error && why) return `${error}. ${why}`;
+  return error ?? ax?.message ?? 'request failed';
 }
 
 // Shapes mirror the REAL server/domains/council.js handler RETURNS (the canonical
@@ -153,11 +157,33 @@ export function CouncilActionPanel() {
   async function actPublish() {
     if (!minutesResult) { err('Generate minutes first.'); return; }
     setBusy('publish'); setFeedback(null);
+    const decisions = (minutesResult.decisions || []).map((d) => d.decision).filter(Boolean);
+    const actions = (minutesResult.actionItems || []).map((a) => [a.assignee, a.task].filter(Boolean).join(': ')).filter(Boolean);
+    const motion = motionText.trim();
+    const body = [
+      motion ? `Motion: ${motion}` : '',
+      decisions.length ? `Decisions: ${decisions.join('; ')}` : '',
+      actions.length ? `Action items: ${actions.join('; ')}` : '',
+    ].filter(Boolean).join('\n');
+    const claims = decisions.length ? decisions : (motion ? [motion] : []);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Public minutes — ${motionText.slice(0, 60)}`, tags: ['council', 'minutes', 'public'], source: 'council:minutes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, minutes: { motion: motionText, decisions: minutesResult.decisions, actionItems: minutesResult.actionItems, voteOutcome: voteResult?.passed ? 'passed' : 'failed' } } }, 'knowledge', ['private', 'public_view', 'social_post']) });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({
+          title: `Public minutes — ${motion.slice(0, 60) || 'meeting'}`,
+          content: body,
+          visibility: 'public',
+          human: { summary: body.slice(0, 320) },
+          core: { claims, nextActions: actions },
+          tags: ['council', 'minutes', 'public'],
+          source: 'council:minutes:publish',
+          meta: { visibility: 'public', consent: { allowCitations: true }, minutes: { motion, decisions: minutesResult.decisions, actionItems: minutesResult.actionItems, voteOutcome: voteResult?.passed ? 'passed' : 'failed' } },
+        }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
-        if (!newId) throw new Error('No DTU id.');
+        if (!newId) {
+          const data = r.data as { error?: string; reason?: string; score?: number; minScore?: number } | undefined;
+          const why = councilRejectSentence(data?.reason, data?.score, data?.minScore);
+          throw new Error(data?.error && why ? `${data.error}. ${why}` : (data?.error || 'No DTU id.'));
+        }
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);
         if (pub.data?.ok === false) throw new Error(pub.data?.error ?? 'publish failed');
         return newId as string;
