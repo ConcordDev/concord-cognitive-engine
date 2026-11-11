@@ -37,6 +37,36 @@ export function tagFilterTerms(raw) {
   return s.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
 }
 
+/**
+ * Kinds that are bookkeeping, not something a person saved.
+ * chat_output and chat_mega are automatic replies. user_forged is a
+ * person asking to keep a message, so it stays listed.
+ */
+export const LIST_HIDDEN_KINDS = new Set([
+  "shadow",
+  "pattern_shadow",
+  "repair_record",
+  "royalty_record",
+  "session_context",
+  "linguistic_map",
+  "audit_trail",
+  "system_metric",
+  "repair_dtu",
+  "client_error",
+  "chat_output",
+  "chat_mega",
+]);
+
+/** True when a vault or corpus list should omit this row. */
+export function dtuExcludedFromUserList(d) {
+  if (!d || typeof d !== "object") return true;
+  if (String(d.tier || "").toLowerCase() === "shadow") return true;
+  const tags = Array.isArray(d.tags) ? d.tags : [];
+  if (tags.some((t) => String(t).trim().toLowerCase() === "shadow")) return true;
+  const kind = String(d.machine?.kind || "").toLowerCase();
+  return LIST_HIDDEN_KINDS.has(kind);
+}
+
 /** OR match, case-insensitive, against d.tags. */
 export function dtuMatchesTagFilter(d, terms) {
   if (!terms || terms.length === 0) return true;

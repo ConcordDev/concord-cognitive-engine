@@ -2021,7 +2021,7 @@ import { shouldPauseHeavyBackground, shouldRunConsolidation, shouldPauseBackgrou
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
 import * as dtuSidecar from "./lib/sidecars/dtu-sidecar-client.js"; // Concurrency Refactor Phase 3 — DTU get/list off the event loop (CONCORD_DTU_SIDECAR=1)
 import { detectContentInjection } from "./lib/dtu-content-injection.js";
-import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal, sidecarCandidatePageIsComplete, resolveListLimit, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter } from "./lib/dtu-list-source.js";
+import { noteDtuWrite, shouldFallbackFromSidecarList, sidecarListTotal, sidecarCandidatePageIsComplete, resolveListLimit, dtuListedOwner, tagFilterTerms, dtuMatchesTagFilter, dtuExcludedFromUserList } from "./lib/dtu-list-source.js";
 // Concurrency Refactor (2026-09-08, session 2 finding): the sidecar's UDS
 // double-hop is a WIN under normal load but a LOSS under loop starvation — a
 // starved loop can't schedule the `await fetch(sidecar)` continuation promptly,
@@ -27860,15 +27860,22 @@ register("dtu", "list", async (ctx, input) => {
           // quarantine:* rows are never listed to anyone but their owner
           // (lib/dtu-read-access.js); the sidecar filter predates that rule.
           const narrowed = narrowListedDtus(r.dtus.filter((d) => !(isQuarantined(d) && privateDtuHiddenFrom(d, userId))));
-          const items = narrowed.slice(0, limit);
+          const visible = narrowed.filter((d) => !dtuExcludedFromUserList(d));
+          // A partial sidecar page that still holds automatic chat rows
+          // cannot be recounted here. Fall through to the in-process list.
+          if (visible.length !== narrowed.length && !pageComplete) {
+            /* fall through */
+          } else {
+          const items = visible.slice(0, limit);
           if (typeof calculateFreshness === "function") {
             for (const d of items) {
               d._freshness = calculateFreshness(d);
               d._freshnessLabel = freshnessLabel(d._freshness);
             }
           }
-          const total = postFilter ? narrowed.length : sidecarListTotal(r);
+          const total = (postFilter || visible.length !== narrowed.length) ? visible.length : sidecarListTotal(r);
           return { ok: true, dtus: items, limit, offset, total, _source: "dtu-sidecar" };
+          }
         }
       }
     } catch (_e) { logger.debug("server", "dtu-sidecar list unavailable — inline fallback", { error: _e?.message }); }
@@ -27876,8 +27883,7 @@ register("dtu", "list", async (ctx, input) => {
 
   // Filter out shadow/repair/system DTUs - internal, not real user content.
   // Pass viewer ID so private/user-scoped uploads by other users are hidden.
-  const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
-  let items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
+    let items = userVisibleDTUs(userId).filter(d => !dtuExcludedFromUserList(d));
 
   // ── Scope Hierarchy Enforcement ──────────────────────────────────
   // Scopes: local → regional → national → global (strict containment)
@@ -27987,8 +27993,7 @@ register("dtu", "recent", (ctx, input = {}) => {
   try {
     const limit = clamp(Number(input.limit || 20), 1, 200);
     const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-    const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
-    let items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
+        let items = userVisibleDTUs(userId).filter(d => !dtuExcludedFromUserList(d));
     items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||"")).slice(0, limit);
     return { ok: true, dtus: items, limit, total: items.length };
   } catch (e) {
@@ -27999,8 +28004,7 @@ register("dtu", "recent", (ctx, input = {}) => {
 register("dtu", "count", (ctx, input = {}) => {
   try {
     const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-    const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
-    const items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
+        const items = userVisibleDTUs(userId).filter(d => !dtuExcludedFromUserList(d));
     return { ok: true, count: items.length };
   } catch (e) {
     return { ok: false, error: "handler_error", message: String(e?.message || e) };
@@ -28037,8 +28041,7 @@ register("dtu", "paginated", (ctx, input = {}) => {
     // list is already registered above; but MACROS may not be populated until after all registers.
     // Safer: compute via direct filter like list.
     const userId = ctx?.actor?.id || ctx?.actor?.userId || ctx?.actor?.odId || null;
-    const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
-    let items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
+        let items = userVisibleDTUs(userId).filter(d => !dtuExcludedFromUserList(d));
     items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
     const total = items.length;
     items = items.slice(offset, offset + pageSize);

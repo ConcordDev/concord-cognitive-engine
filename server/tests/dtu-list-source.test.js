@@ -8,6 +8,7 @@ import {
   dtuMatchesQuery,
   dtuListedOwner,
   dtuMatchesTagFilter,
+  dtuExcludedFromUserList,
   tagFilterTerms,
   resolveListLimit,
   shapePaginatedBody,
@@ -80,6 +81,17 @@ describe("dtu list source", () => {
     assert.equal(resolveListLimit("200"), 200);
     assert.equal(resolveListLimit(9000), MAX_LIST_LIMIT);
     assert.equal(DEFAULT_LIST_LIMIT, 50);
+  });
+
+  it("hides automatic chat rows and keeps a message the person asked to keep", () => {
+    assert.equal(dtuExcludedFromUserList({ tier: "regular", machine: { kind: "chat_output" }, tags: ["chat"] }), true);
+    assert.equal(dtuExcludedFromUserList({ tier: "regular", machine: { kind: "chat_mega" }, tags: ["chat"] }), true);
+    assert.equal(dtuExcludedFromUserList({ tier: "shadow", machine: { kind: "note" } }), true);
+    assert.equal(dtuExcludedFromUserList({ tier: "regular", tags: ["Shadow"], machine: { kind: "note" } }), true);
+    assert.equal(dtuExcludedFromUserList({ tier: "regular", tags: ["shadow-chat"], machine: { kind: "note" } }), false);
+    assert.equal(dtuExcludedFromUserList({ tier: "regular", machine: { kind: "user_forged" }, tags: ["kept"] }), false);
+    assert.equal(dtuExcludedFromUserList({ tier: "regular", title: "Note" }), false);
+    assert.equal(dtuExcludedFromUserList(null), true);
   });
 
   it("matches an owner on author or ownerId and a tag case-insensitively", () => {
