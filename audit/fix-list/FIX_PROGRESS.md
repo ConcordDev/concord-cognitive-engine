@@ -1668,14 +1668,14 @@ The file includes this person's estate, earned achievements, fish in inventory, 
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-inheritance-006 | inheritance | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
-| FIX-achievements-002 | achievements | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
-| FIX-fishing-001 | fishing | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
-| FIX-garage-002 | garage | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
-| FIX-vault-003 | vault | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
-| FIX-logistics-007 | logistics | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
-| FIX-pets-002 | pets | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
-| FIX-schema-008 | schema | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
+| FIX-inheritance-006 | inheritance | medium | FIXED_PENDING_VERIFY | 8137e8ca6 |
+| FIX-achievements-002 | achievements | medium | FIXED_PENDING_VERIFY | 8137e8ca6 |
+| FIX-fishing-001 | fishing | medium | FIXED_PENDING_VERIFY | 8137e8ca6 |
+| FIX-garage-002 | garage | medium | FIXED_PENDING_VERIFY | 8137e8ca6 |
+| FIX-vault-003 | vault | medium | FIXED_PENDING_VERIFY | 8137e8ca6 |
+| FIX-logistics-007 | logistics | medium | FIXED_PENDING_VERIFY | 8137e8ca6 |
+| FIX-pets-002 | pets | medium | FIXED_PENDING_VERIFY | 8137e8ca6 |
+| FIX-schema-008 | schema | medium | FIXED_PENDING_VERIFY | 8137e8ca6 |
 
 ## Mediums — a calendar day stays the day you typed
 
