@@ -271,6 +271,14 @@ describe("welding — weld photo documentation", () => {
     assert.equal(r.ok, false);
     assert.equal(r.error, "url_required");
   });
+
+  it("photo-attach rejects a value that is not an http address", () => {
+    const j = call("job-schedule", ctxA, { title: "Bad url" });
+    const r = call("photo-attach", ctxA, { jobId: j.result.job.id, url: "not a url" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "url_must_be_http");
+    assert.equal(call("photo-attach", ctxA, { jobId: j.result.job.id, url: "javascript:alert(1)" }).ok, false);
+  });
 });
 
 // ─── Code reference library ──────────────────────────────────────────

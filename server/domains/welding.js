@@ -705,6 +705,11 @@ export default function registerWeldingActions(registerLensAction) {
       if (!Array.isArray(job.photos)) job.photos = [];
       const url = wClean(params.url, 2000);
       if (!url) return { ok: false, error: "url_required" };
+      let parsedUrl;
+      try { parsedUrl = new URL(url); } catch { parsedUrl = null; }
+      if (!parsedUrl || (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:")) {
+        return { ok: false, error: "url_must_be_http" };
+      }
       const photo = {
         id: wId("ph"),
         url,

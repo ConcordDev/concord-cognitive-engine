@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 const DOMAIN = 'black-market';
 const TIERS = ['none', 'basic', 'high', 'shadow'] as const;
@@ -869,13 +870,15 @@ export function UndergroundExchange() {
                       {w.maxPrice != null && <span className="text-slate-400"> · ≤{w.maxPrice}✦</span>}
                       {w.tier && <span className="text-slate-400"> · {w.tier}</span>}
                     </span>
-                    <button
-                      onClick={() => void removeWatch(w)}
+                    <StickyDeleteConfirm
+                      onConfirm={() => void removeWatch(w)}
                       disabled={busy === `rm-watch-${w.id}`}
-                      className="text-slate-400 hover:text-rose-300 disabled:opacity-50"
-                    >
-                      remove
-                    </button>
+                      armLabel="remove"
+                      confirmLabel="Remove this search?"
+                      armAriaLabel={`Remove watch ${w.keyword}`}
+                      confirmAriaLabel={`Confirm remove watch ${w.keyword}`}
+                      className="text-slate-400 hover:text-rose-300"
+                    />
                   </div>
                 ))}
               </div>

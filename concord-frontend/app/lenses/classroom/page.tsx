@@ -19,6 +19,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { OpenLibrarySearch } from '@/components/classroom/OpenLibrarySearch';
 import { ClassroomWorkspace } from '@/components/classroom/ClassroomWorkspace';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cohortStillListed, parseClassroomCohort } from '@/components/classroom/quiz-attempt';
 
 const COHORT_SCOPE_KEY = 'classroom-active-cohort';
@@ -229,13 +230,14 @@ export default function ClassroomPage() {
         <span className="truncate text-zinc-100"><span className="font-mono text-zinc-500">#{c.id}</span> {c.name}</span>
         <span className="shrink-0 text-zinc-500">{right}</span>
       </button>
-      <button
-        type="button"
-        onClick={action.onClick}
+      <StickyDeleteConfirm
+        onConfirm={action.onClick}
+        armLabel={action.label}
+        confirmLabel={`${action.label} this cohort?`}
+        armAriaLabel={`${action.label} ${c.name}`}
+        confirmAriaLabel={`Confirm ${action.label.toLowerCase()} ${c.name}`}
         className="shrink-0 rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-zinc-300 hover:border-rose-400/40 hover:text-rose-100"
-      >
-        {action.label}
-      </button>
+      />
     </li>
   );
 

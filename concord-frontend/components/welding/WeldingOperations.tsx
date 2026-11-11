@@ -945,10 +945,19 @@ function PhotosTab() {
   }, []);
   useEffect(() => { void loadPhotos(jobId); }, [jobId, loadPhotos]);
 
+  const urlProblem = (() => {
+    const t = url.trim();
+    if (!t) return '';
+    try {
+      const u = new URL(t);
+      if (u.protocol === 'http:' || u.protocol === 'https:') return '';
+    } catch { /* not a url */ }
+    return 'Photo address must start with http:// or https://';
+  })();
   const attach = async () => {
-    if (!jobId || !url.trim()) return;
+    if (!jobId || !url.trim() || urlProblem) return;
     setBusy(true);
-    await run('photo-attach', { jobId, url, stage, caption, weldId });
+    await run('photo-attach', { jobId, url: url.trim(), stage, caption, weldId });
     setUrl(''); setCaption(''); setWeldId('');
     await loadPhotos(jobId);
   };
@@ -966,13 +975,14 @@ function PhotosTab() {
 
       {jobId && (
         <div className="grid gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 sm:grid-cols-4">
-          <input className={`${inputCls} sm:col-span-2`} placeholder="Photo URL" value={url} onChange={(e) => setUrl(e.target.value)} />
+          <input className={`${inputCls} sm:col-span-2`} placeholder="Photo URL" aria-label="Photo URL" value={url} onChange={(e) => setUrl(e.target.value)} />
           <select className={inputCls} value={stage} onChange={(e) => setStage(e.target.value)}>
             {['before', 'fit-up', 'root-pass', 'fill', 'cap', 'after', 'ndt'].map((s) => <option key={s}>{s}</option>)}
           </select>
           <input className={inputCls} placeholder="Weld ID" value={weldId} onChange={(e) => setWeldId(e.target.value)} />
           <input className={`${inputCls} sm:col-span-3`} placeholder="Caption" value={caption} onChange={(e) => setCaption(e.target.value)} />
-          <button type="button" className={btnCls} onClick={attach} disabled={busy || !url.trim()}><Camera className="h-3.5 w-3.5" /> Attach photo</button>
+          <button type="button" className={btnCls} onClick={attach} disabled={busy || !url.trim() || !!urlProblem}><Camera className="h-3.5 w-3.5" /> Attach photo</button>
+          {urlProblem && <p className="sm:col-span-4 text-[11px] text-rose-300">{urlProblem}</p>}
         </div>
       )}
 
@@ -992,7 +1002,7 @@ function PhotosTab() {
             <div className="p-1.5">
               <div className="flex items-center justify-between">
                 <span className="rounded bg-orange-500/20 px-1.5 py-0.5 text-[9px] text-orange-200">{p.stage}</span>
-                <button type="button" className="text-zinc-400 hover:text-rose-300" onClick={() => remove(p.id)} aria-label="Remove photo"><Trash2 className="h-3 w-3" /></button>
+                <DeleteButton onDelete={() => remove(p.id)} label="Remove" />
               </div>
               {p.caption && <div className="mt-0.5 line-clamp-2 text-[10px] text-zinc-400">{p.caption}</div>}
               {p.weldId && <div className="text-[9px] text-zinc-400">weld {p.weldId}</div>}

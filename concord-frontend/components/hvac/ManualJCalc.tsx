@@ -105,18 +105,22 @@ function LoadCalculator() {
   }, [refreshHistory, restore]);
 
   const compute = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (save: boolean) => {
       setError('');
       const r = await lensRun<LoadResult & { loadId?: string }>('hvac', 'loadCalculation', {
-        squareFootage: sqft, stories, insulation, climate, save: true,
+        squareFootage: sqft, stories, insulation, climate, save,
       });
       if (!r.data?.ok || !r.data.result) {
         setError(`Not calculated. ${r.data?.error || 'The HVAC service returned no result.'}`);
         return null;
       }
       setResult(r.data.result);
-      setLoadId(r.data.result.loadId || '');
-      await refreshHistory();
+      if (save) {
+        setLoadId(r.data.result.loadId || '');
+        await refreshHistory();
+      } else {
+        setLoadId('');
+      }
       return r.data.result;
     },
   });
@@ -163,8 +167,11 @@ function LoadCalculator() {
               <option value="very-cold">Very cold (MN/MT/AK)</option>
             </select>
           </label>
-          <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || sqft <= 0} className="w-full rounded bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-400 disabled:opacity-50">
+          <button type="button" onClick={() => compute.mutate(false)} disabled={compute.isPending || sqft <= 0} className="w-full rounded bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-400 disabled:opacity-50">
             {compute.isPending ? <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /> : 'Calculate load'}
+          </button>
+          <button type="button" onClick={() => compute.mutate(true)} disabled={compute.isPending || !result || sqft <= 0} className="w-full rounded border border-blue-500/40 px-3 py-1.5 text-xs font-semibold text-blue-100 hover:bg-blue-500/10 disabled:opacity-50">
+            Save estimate
           </button>
         </div>
 

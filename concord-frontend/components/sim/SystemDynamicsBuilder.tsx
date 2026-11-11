@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { recordStudioRun, recordStudioModelSave } from '@/lib/sim/studio-activity';
 import { useLensDraft } from '@/hooks/useLensDraft';
 import { useUIStore } from '@/store/ui';
@@ -154,6 +155,8 @@ export function SystemDynamicsBuilder() {
       setModelId(r.data.result.id);
       setResult(null);
       currentModelDraft.setValue(r.data.result.id);
+    } else if (currentModelDraft.value === id) {
+      await currentModelDraft.clear();
     }
   }, [currentModelDraft]);
 
@@ -170,9 +173,10 @@ export function SystemDynamicsBuilder() {
   }, [currentModelDraft.status]);
 
   const remove = useCallback(async (id: string) => {
-    await lensRun('sim', 'deleteModel', { id });
+    const r = await lensRun('sim', 'deleteModel', { id });
+    if (!r.data?.ok) return;
     if (id === modelId) setModelId(null);
-    if (id === currentModelDraft.value) currentModelDraft.setValue(null);
+    if (id === currentModelDraft.value) await currentModelDraft.clear();
     void refreshSaved();
   }, [modelId, refreshSaved, currentModelDraft]);
 
@@ -205,9 +209,7 @@ export function SystemDynamicsBuilder() {
                   <FolderOpen className="w-3 h-3" /> {m.name}
                   <span className="text-gray-600">({m.stockCount}S/{m.flowCount}F)</span>
                 </button>
-                <button aria-label="Delete" onClick={() => remove(m.id)} className="text-gray-600 hover:text-red-400">
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => void remove(m.id)} armAriaLabel={`Delete ${m.name}`} confirmAriaLabel={`Confirm delete ${m.name}`} className="text-gray-600 hover:text-red-400" armLabel={<Trash2 className="w-3 h-3" />} />
               </div>
             ))}
           </div>

@@ -614,10 +614,7 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
                   ) : <span className="text-zinc-200">{m.title}</span>}
                   {m.notes && <div className="text-[10px] text-zinc-400 mt-0.5">{m.notes}</div>}
                 </div>
-                <button aria-label="Delete" onClick={() => remove(m.id)}
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60">
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => void remove(m.id)} armAriaLabel={`Delete ${m.title}`} confirmAriaLabel={`Confirm delete ${m.title}`} className="text-[10px] px-1.5 py-0.5 rounded bg-rose-900/40 text-rose-300 hover:bg-rose-900/60" armLabel={<Trash2 className="w-3 h-3" />} />
               </li>
             ))}
           </ul>
@@ -630,7 +627,7 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
             {other.map((m) => (
               <li key={m.id} className="flex justify-between items-start gap-2 text-xs">
                 <span className="text-zinc-200">{m.title} <span className="text-zinc-500">cohort #{m.cohortId}</span></span>
-                <button type="button" onClick={() => remove(m.id)} className="text-[10px] text-rose-300">Delete</button>
+                <StickyDeleteConfirm onConfirm={() => void remove(m.id)} armLabel="Delete" confirmLabel={`Delete “${m.title}”?`} armAriaLabel={`Delete ${m.title}`} confirmAriaLabel={`Confirm delete ${m.title}`} className="text-[10px] text-rose-300" />
               </li>
             ))}
           </ul>

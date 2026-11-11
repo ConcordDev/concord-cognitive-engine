@@ -38,6 +38,7 @@ export function OpsRecordsPanel({ kind }: { kind: OpsKind }) {
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormFields>({});
+  const [flightDraftScope, setFlightDraftScope] = useState('new');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
 
   const query = useLensData('aviation', type, {
@@ -60,11 +61,13 @@ export function OpsRecordsPanel({ kind }: { kind: OpsKind }) {
   const openNew = useCallback(() => {
     setForm({});
     setEditingId(null);
+    setFlightDraftScope(`new-${Date.now()}`);
     setShowEditor(true);
   }, []);
 
   const openEdit = useCallback((item: LensItem) => {
     setEditingId(item.id);
+    setFlightDraftScope(item.id);
     const d = item.data as Record<string, unknown>;
     setForm({ ...d, _title: item.title, _status: item.meta?.status || '' });
     setShowEditor(true);
@@ -177,7 +180,7 @@ export function OpsRecordsPanel({ kind }: { kind: OpsKind }) {
       onCloseEditor={resetForm}
       onSave={handleSave}
       onDelete={handleDelete}
-      editor={<KindEditor kind={kind} form={form} setField={setField} />}
+      editor={<KindEditor kind={kind} form={form} setField={setField} flightDraftScope={flightDraftScope} />}
       editorActions={editingId ? <KindEditorActions kind={kind} onAction={(a) => handleAction(a, editingId)} /> : null}
       renderCard={(item) => <KindCard kind={kind} item={item} onOpen={openEdit} />}
     />
@@ -211,9 +214,9 @@ function KindCard({ kind, item, onOpen }: { kind: OpsKind; item: LensItem; onOpe
   }
 }
 
-function KindEditor({ kind, form, setField }: { kind: OpsKind; form: FormFields; setField: (k: string, v: unknown) => void }) {
+function KindEditor({ kind, form, setField, flightDraftScope }: { kind: OpsKind; form: FormFields; setField: (k: string, v: unknown) => void; flightDraftScope: string }) {
   switch (kind) {
-    case 'flights': return <FlightEditor form={form} setField={setField} />;
+    case 'flights': return <FlightEditor form={form} setField={setField} draftScope={flightDraftScope} />;
     case 'pilots': return <PilotEditor form={form} setField={setField} />;
     case 'fleet': return <AircraftOpsEditor form={form} setField={setField} />;
     case 'maintenance': return <MaintenanceEditor form={form} setField={setField} />;
