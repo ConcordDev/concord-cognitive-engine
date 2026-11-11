@@ -129,6 +129,14 @@ describe("repos — repo lifecycle", () => {
     assert.equal(call("repo-create", ctxA, {}).ok, false);
   });
 
+  it("rejects a repo name with characters outside letters, numbers, spaces, dots, dashes, and underscores", () => {
+    const bad = call("repo-create", ctxA, { name: "qa bad name!!" });
+    assert.equal(bad.ok, false);
+    assert.equal(bad.error, "invalid_name");
+    const ok = call("repo-create", ctxA, { name: "Round Trip" });
+    assert.equal(ok.ok, true);
+  });
+
   it("lists repos for the user", () => {
     freshRepo("one");
     freshRepo("two");

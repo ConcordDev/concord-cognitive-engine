@@ -353,9 +353,15 @@ const seedItems: { title: string; data: RealEstateArtifact }[] = [];
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
+const LISTING_PRICE_MAX = 100_000_000;
+
 const fmt = (v: number) => {
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
-  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
+  if (!Number.isFinite(v)) return '—';
+  const sign = v < 0 ? '-' : '';
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000_000) return `${sign}$${(abs / 1_000_000_000).toFixed(2)}B`;
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(0)}K`;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -433,6 +439,7 @@ export function ArtifactDeskPanel() {
   const [formDesc, setFormDesc] = useState('');
   const [formAddress, setFormAddress] = useState('');
   const [formPrice, setFormPrice] = useState('');
+  const [deskError, setDeskError] = useState<string | null>(null);
   const [formAgent, setFormAgent] = useState('');
   const [formClient, setFormClient] = useState('');
   const [formClientPhone, setFormClientPhone] = useState('');
@@ -775,6 +782,14 @@ export function ArtifactDeskPanel() {
   };
 
   const handleSave = async () => {
+    setDeskError(null);
+    if (formPrice.trim()) {
+      const price = Number(formPrice);
+      if (!Number.isFinite(price) || price < 0 || price > LISTING_PRICE_MAX) {
+        setDeskError('Price has to be a number from 0 to 100,000,000.');
+        return;
+      }
+    }
     const payload = {
       title: formTitle,
       data: {
@@ -1003,7 +1018,7 @@ export function ArtifactDeskPanel() {
           ).length;
           return [
             { label: 'Listings', value: reListings ? reListings.length : '—', icon: Building2 },
-            { label: 'Avg Price', value: reListings ? (reListings.length > 0 ? `$${(Math.round(reListings.reduce((s, l) => s + (l.price || 0), 0) / reListings.length) / 1000).toFixed(0)}K` : '$0K') : '—', icon: DollarSign },
+            { label: 'Avg Price', value: reListings ? (reListings.length > 0 ? fmt(reListings.reduce((s, l) => s + (l.price || 0), 0) / reListings.length) : '$0') : '—', icon: DollarSign },
             { label: 'Pending Offers', value: pending, icon: KeyRound },
             {
               label: 'Active',
@@ -3325,10 +3340,11 @@ export function ArtifactDeskPanel() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  {deskError && <p role="alert" className="text-xs text-rose-300">{deskError}</p>}
                   <button onClick={() => setShowEditor(false)} className={ds.btnSecondary}>
                     Cancel
                   </button>
-                  <button onClick={handleSave} className={ds.btnPrimary}>
+                  <button onClick={handleSave} className={ds.btnPrimary} disabled={formPrice.trim() !== '' && (!Number.isFinite(Number(formPrice)) || Number(formPrice) < 0 || Number(formPrice) > LISTING_PRICE_MAX)}>
                     {editingItem ? 'Update' : 'Create'}
                   </button>
                 </div>

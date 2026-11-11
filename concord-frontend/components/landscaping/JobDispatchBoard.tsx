@@ -182,6 +182,9 @@ export function JobDispatchBoard() {
           </div>
           <input className={`${inputCls} md:col-span-4`} placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
+        {!title.trim() && (
+          <p role="alert" className="mt-2 text-[11px] text-rose-300">Enter a job title. Schedule stays off until there is one.</p>
+        )}
         <button onClick={scheduleJob} disabled={!title.trim() || busy} className={`${btnCls} mt-2`}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Schedule job
         </button>

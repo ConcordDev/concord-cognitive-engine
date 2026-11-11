@@ -472,6 +472,12 @@ export default function registerQuestmarketActions(registerLensAction) {
     }
     if (title.length > 140) return { ok: false, error: "title too long" };
     const kind = params.kind === "bounty" ? "bounty" : "quest";
+    if (params.reward !== undefined && params.reward !== null && String(params.reward).trim() !== "") {
+      const typed = Number(params.reward);
+      if (!Number.isFinite(typed) || typed < 0) {
+        return { ok: false, error: "reward must be a number that is 0 or more" };
+      }
+    }
     const reward = Math.max(0, Math.round(Number(params.reward) || 0));
     const difficulty = ["easy", "medium", "hard", "legendary"].includes(params.difficulty)
       ? params.difficulty : "medium";

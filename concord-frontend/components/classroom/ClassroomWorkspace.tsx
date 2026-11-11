@@ -244,10 +244,20 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
       flash('err', 'Points must be a number from 0 to 1000.');
       return;
     }
+    const dueRaw = form.dueAt.trim();
+    let dueAt: string | undefined;
+    if (dueRaw) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dueRaw)) dueAt = `${dueRaw}T23:59`;
+      else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dueRaw) && !Number.isNaN(Date.parse(dueRaw))) dueAt = dueRaw;
+      else {
+        flash('err', 'Due date needs a day and a time, like 2026-11-10T15:00.');
+        return;
+      }
+    }
     setBusy(true);
     const r = await run('assignment-create', {
       cohortId, title: form.title.trim(), instructions: form.instructions,
-      dueAt: form.dueAt || undefined, points,
+      dueAt, points,
       topic: form.topic || undefined,
     });
     setBusy(false);
@@ -310,8 +320,12 @@ function AssignmentsTab({ cohortId, flash }: TabProps) {
             onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <input className={inputCls} placeholder="Topic (optional)" value={form.topic}
             onChange={(e) => setForm({ ...form, topic: e.target.value })} />
-          <input className={inputCls} type="datetime-local" value={form.dueAt}
-            onChange={(e) => setForm({ ...form, dueAt: e.target.value })} />
+          <label className="block text-[10px] text-zinc-400">
+            Due
+            <input className={inputCls} type="datetime-local" value={form.dueAt}
+              onChange={(e) => setForm({ ...form, dueAt: e.target.value })} />
+            <span className="mt-0.5 block">Leave blank for no due date. A day with no time is due at 11:59pm.</span>
+          </label>
           <input className={inputCls} type="number" min={0} max={1000} placeholder="Points" value={form.points}
             onChange={(e) => setForm({ ...form, points: e.target.value })} />
           <textarea className={`${inputCls} sm:col-span-2`} rows={2} placeholder="Instructions"

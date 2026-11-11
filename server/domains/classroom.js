@@ -193,6 +193,15 @@ export default function registerClassroomActions(registerLensAction) {
     }
   }
   function uid(ctx) { return ctx?.actor?.userId || ctx?.userId || "anon"; }
+  // A day with no time is the end of that day. A blank due date stays unset.
+  // Anything else is refused instead of stored as a string the board cannot read.
+  function normalizeDue(raw) {
+    if (raw == null || String(raw).trim() === "") return { dueAt: null };
+    const s = String(raw).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return { dueAt: `${s}T23:59` };
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !Number.isNaN(Date.parse(s))) return { dueAt: s };
+    return { error: "Due date needs a day and a time, like 2026-11-10T15:00." };
+  }
   function rid(prefix) { return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; }
   function pushTo(map, key, item) {
     if (!map.has(key)) map.set(key, []);
@@ -218,6 +227,8 @@ export default function registerClassroomActions(registerLensAction) {
         ? 100
         : readingOrNull(params.points, { min: 0, max: 1000, fallback: null });
       if (points === null) return badNumber("points", "must be a number from 0 to 1000");
+      const due = normalizeDue(params.dueAt);
+      if (due.error) return { ok: false, error: "invalid_due", message: due.error };
       const assignment = {
         id: rid("asg"),
         cohortId,
@@ -226,7 +237,7 @@ export default function registerClassroomActions(registerLensAction) {
         attachments: Array.isArray(params.attachments)
           ? params.attachments.slice(0, 20).map((a) => String(a).slice(0, 300))
           : [],
-        dueAt: params.dueAt ? String(params.dueAt) : null,
+        dueAt: due.dueAt,
         points,
         topic: String(params.topic || "").slice(0, 80) || null,
         status: "published",
@@ -650,12 +661,14 @@ export default function registerClassroomActions(registerLensAction) {
           points: Math.max(1, Math.min(100, Number(q.points) || 1)),
         });
       }
+      const quizDue = normalizeDue(params.dueAt);
+      if (quizDue.error) return { ok: false, error: "invalid_due", message: quizDue.error };
       const quiz = {
         id: rid("qz"),
         cohortId,
         title,
         description: String(params.description || "").slice(0, 2000),
-        dueAt: params.dueAt ? String(params.dueAt) : null,
+        dueAt: quizDue.dueAt,
         questions,
         totalPoints: questions.reduce((s, q) => s + q.points, 0),
         createdAt: new Date().toISOString(),

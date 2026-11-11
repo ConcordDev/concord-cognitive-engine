@@ -438,6 +438,7 @@ export function EventsWorkbench({
   const [formTitle, setFormTitle] = useState('');
   const [formStatus, setFormStatus] = useState('planning');
   const [formFields, setFormFields] = useState<Record<string, string>>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Determine current artifact type
   const typeMap: Record<ModeTab, ArtifactType> = {
@@ -767,6 +768,15 @@ export function EventsWorkbench({
   };
 
   const handleSave = async () => {
+    setSaveError(null);
+    if (mode === 'tickets') {
+      const saleStart = String(formFields.saleStart || '').trim();
+      const saleEnd = String(formFields.saleEnd || '').trim();
+      if (saleStart && saleEnd && saleEnd < saleStart) {
+        setSaveError('Sale end has to be on or after the sale start.');
+        return;
+      }
+    }
     const { create, update } = getCrud();
     const data: Record<string, unknown> = {};
     Object.entries(formFields).forEach(([k, v]) => {
@@ -2716,6 +2726,9 @@ export function EventsWorkbench({
                   </div>
                 ))}
               </div>
+              {saveError && (
+                <p role="alert" className="px-4 pt-3 text-xs text-rose-300">{saveError}</p>
+              )}
               <div className="flex items-center justify-between gap-2 p-4 border-t border-lattice-border shrink-0">
                 <div>
                   {editing && (
@@ -2740,7 +2753,7 @@ export function EventsWorkbench({
                   <button
                     onClick={handleSave}
                     className={ds.btnPrimary}
-                    disabled={!formTitle.trim()}
+                    disabled={!formTitle.trim() || (mode === 'tickets' && !!formFields.saleStart && !!formFields.saleEnd && formFields.saleEnd < formFields.saleStart)}
                   >
                     {editing ? 'Update' : 'Create'}
                   </button>

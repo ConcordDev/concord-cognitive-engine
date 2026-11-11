@@ -1229,7 +1229,10 @@ export default function registerReposActions(registerLensAction) {
     try {
       const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const name = rpClean(params.name, 100);
-      if (!name) return { ok: false, error: "name required" };
+      if (!name) return { ok: false, error: "name required", message: "Enter a name. The button stays off until there is one." };
+      if (/[^\p{L}\p{N} ._'-]/u.test(name)) {
+        return { ok: false, error: "invalid_name", message: "Repo names use letters, numbers, spaces, dots, dashes, and underscores." };
+      }
       // S6 guard: one account, one repo per name — a silent duplicate
       // pair is indistinguishable in the list (Review F5/C48).
       const mine = rpList(s.repos, rpUid(ctx));

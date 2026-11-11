@@ -67,6 +67,7 @@ export function QuestBoard({
   const [mine, setMine] = useState(false);
 
   const [showPost, setShowPost] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
   const [pTitle, setPTitle] = useState('');
   const [pDesc, setPDesc] = useState('');
   const [pReward, setPReward] = useState('');
@@ -102,14 +103,33 @@ export function QuestBoard({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [kind, sort, difficulty, status, minReward, tag, mine, guildId]);
 
+  useEffect(() => {
+    if (!showPost) return;
+    let cancel = false;
+    void lensRun<any>('questmarket', 'walletGet', {}).then((r) => {
+      if (cancel) return;
+      const next = r.data?.result?.balance;
+      setBalance(typeof next === 'number' ? next : null);
+    });
+    return () => { cancel = true; };
+  }, [showPost]);
+
+  const rewardError = (() => {
+    if (!pReward.trim()) return 'Enter a reward of at least 1.';
+    const n = Number(pReward);
+    if (!Number.isFinite(n) || n < 1) return 'Reward has to be at least 1.';
+    if (balance != null && n > balance) return `Reward is above your balance of ${balance}.`;
+    return null;
+  })();
+
   const post = async () => {
-    if (!pTitle.trim()) return;
+    if (!pTitle.trim() || rewardError) return;
     setBusy('post');
     const r = await lensRun<any>('questmarket', 'postQuest', {
       title: pTitle.trim(),
       description: pDesc.trim(),
       kind,
-      reward: Number(pReward) || 0,
+      reward: Number(pReward),
       difficulty: pDiff,
       tags: pTags.split(',').map((t) => t.trim()).filter(Boolean),
       maxClaimants: Number(pMax) || 1,
@@ -355,18 +375,20 @@ export function QuestBoard({
                     className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white" />
                 </div>
               </div>
-              {Number(pReward) > 0 && (
+              {rewardError ? (
+                <p role="alert" className="text-[10px] text-rose-300">{rewardError}</p>
+              ) : Number(pReward) > 0 ? (
                 <p className="text-[10px] text-amber-400/80">
                   {pReward} QC will be locked in escrow and released to the verified claimant.
                 </p>
-              )}
+              ) : null}
             </div>
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setShowPost(false)}
                 className="rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300">
                 Cancel
               </button>
-              <button onClick={post} disabled={!pTitle.trim() || busy === 'post'}
+              <button onClick={post} disabled={!pTitle.trim() || !!rewardError || busy === 'post'}
                 className="rounded bg-amber-500/20 px-4 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-500/30 disabled:opacity-50">
                 {busy === 'post' ? 'Posting…' : 'Post'}
               </button>

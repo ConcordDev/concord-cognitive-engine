@@ -386,7 +386,15 @@ export function MineHousesPanel({
                 <input value={claimZ} onChange={(e) => setClaimZ(e.target.value)} placeholder="z" inputMode="numeric" aria-label="Anchor z" className="w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
                 <input value={claimRadius} onChange={(e) => setClaimRadius(e.target.value)} placeholder="radius m" inputMode="numeric" aria-label="Radius (metres)" className="w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
                 <button
-                  onClick={() => submitClaim(Number(claimX) || 0, Number(claimZ) || 0)}
+                  onClick={() => {
+                    const x = claimX.trim();
+                    const z = claimZ.trim();
+                    if (x === '' || z === '' || !Number.isFinite(Number(x)) || !Number.isFinite(Number(z))) {
+                      setLandError('Enter the plot x and z before claiming.');
+                      return;
+                    }
+                    void submitClaim(Number(x), Number(z));
+                  }}
                   disabled={claimingLand}
                   className="shrink-0 rounded bg-emerald-500/80 px-2 py-1 text-[11px] font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50">
                   {claimingLand ? 'claiming…' : 'Claim plot'}

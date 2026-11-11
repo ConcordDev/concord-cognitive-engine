@@ -15,7 +15,8 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
   const [loading, setLoading] = useState(true);
   const [bidTarget, setBidTarget] = useState<AuctionRow | null>(null);
   const [bidAmount, setBidAmount] = useState('');
-  const [createForm, setCreateForm] = useState({ title: '', itemKind: 'dtu' as 'dtu' | 'inventory', itemId: '', startCc: 1, buyoutCc: '', durationS: 3600 });
+  const [createForm, setCreateForm] = useState({ title: '', itemKind: 'dtu' as 'dtu' | 'inventory', itemId: '', startCc: '1', buyoutCc: '', durationS: '3600' });
+  const [createError, setCreateError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
@@ -82,20 +83,38 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
     } finally { setBusy(null); }
   }, [refresh, showFlash]);
 
+  const listingError = (form: typeof createForm): string | null => {
+    if (!form.itemId.trim()) return 'Pick an item, or paste its id.';
+    if (form.title.trim().length > 120) return 'Title has to be 120 characters or fewer.';
+    const start = Number(form.startCc);
+    if (form.startCc.trim() === '' || !Number.isFinite(start) || start <= 0) return 'Starting price has to be more than 0 CC.';
+    const duration = Number(form.durationS);
+    if (form.durationS.trim() === '' || !Number.isFinite(duration) || duration < 60 || duration > 86400) {
+      return 'Duration has to be between 60 seconds and 24 hours.';
+    }
+    if (form.buyoutCc.trim() !== '') {
+      const buyout = Number(form.buyoutCc);
+      if (!Number.isFinite(buyout) || buyout < start) return 'Buyout has to be at least the starting price.';
+    }
+    return null;
+  };
+
   const handleCreate = useCallback(async () => {
-    if (!createForm.itemId.trim()) return;
+    const problem = listingError(createForm);
+    setCreateError(problem);
+    if (problem) return;
     setBusy('create');
     try {
       const r = await fetch('/api/auctions', {
         method: 'POST', credentials: 'include',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          title: createForm.title || createForm.itemId,
+          title: createForm.title.trim() || createForm.itemId,
           itemKind: createForm.itemKind,
-          itemId: createForm.itemId,
-          startCc: Number(createForm.startCc) || 0,
-          buyoutCc: createForm.buyoutCc ? Number(createForm.buyoutCc) : null,
-          durationS: Number(createForm.durationS) || 3600,
+          itemId: createForm.itemId.trim(),
+          startCc: Number(createForm.startCc),
+          buyoutCc: createForm.buyoutCc.trim() ? Number(createForm.buyoutCc) : null,
+          durationS: Number(createForm.durationS),
         }),
       });
       const j = await r.json().catch(() => ({}));
@@ -264,7 +283,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <label className="block">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">Start CC</span>
-                  <input type="number" value={createForm.startCc} onChange={(e) => setCreateForm({ ...createForm, startCc: Number(e.target.value) || 0 })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
+                  <input type="number" value={createForm.startCc} onChange={(e) => setCreateForm({ ...createForm, startCc: e.target.value })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
                 </label>
                 <label className="block">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">Buyout (opt)</span>
@@ -272,10 +291,11 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
                 </label>
                 <label className="block">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">Duration (s)</span>
-                  <input type="number" value={createForm.durationS} onChange={(e) => setCreateForm({ ...createForm, durationS: Number(e.target.value) || 3600 })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
+                  <input type="number" value={createForm.durationS} onChange={(e) => setCreateForm({ ...createForm, durationS: e.target.value })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
                 </label>
               </div>
-              <button onClick={handleCreate} disabled={!createForm.itemId.trim() || busy === 'create'} className="w-full rounded-md border border-amber-500/40 bg-amber-500/20 px-3 py-1.5 text-[12px] text-amber-100 hover:bg-amber-500/30 disabled:opacity-40">
+              {createError && <p role="alert" className="text-[11px] text-rose-300">{createError}</p>}
+              <button onClick={handleCreate} disabled={busy === 'create' || listingError(createForm) != null} className="w-full rounded-md border border-amber-500/40 bg-amber-500/20 px-3 py-1.5 text-[12px] text-amber-100 hover:bg-amber-500/30 disabled:opacity-40">
                 Post auction
               </button>
             </div>

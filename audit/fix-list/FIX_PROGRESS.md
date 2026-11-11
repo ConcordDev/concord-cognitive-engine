@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 568 | 377 | 0 |
+| medium | 576 | 369 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **994** | **1155** | **2** |
+| **total** | **1002** | **1147** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1645,6 +1645,21 @@ Quest tabs keep the full word, including Available, and the row scrolls sideways
 | FIX-creatures-011 | creatures | medium | FIXED_PENDING_VERIFY | 4fe37407c |
 | FIX-quests-007 | quests | medium | FIXED_PENDING_VERIFY | 4fe37407c |
 | FIX-quests-008 | quests | medium | FIXED_PENDING_VERIFY | 4fe37407c |
+
+## Mediums — a form says why it will not save
+
+A ticket sale cannot end before it starts. A housing claim needs an x and a z. A listing price above 100,000,000 is refused, and a huge price reads as billions instead of a broken K. An auction needs an item, a start above 0, a duration from 60 seconds to 24 hours, a buyout at least the start, and a title of at most 120 characters. A quest reward under 1, or above the balance, keeps Post off. A repo name that is blank or full of punctuation says so, and letters, spaces, and café still work. An assignment dated as a day with no time is due at 11:59pm, and a broken due string is refused. Schedule a job says the title is required while that button is off.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-events-002 | events | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
+| FIX-housing-002 | housing | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
+| FIX-realestate-003 | realestate | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
+| FIX-auction-003 | auction | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
+| FIX-questmarket-002 | questmarket | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
+| FIX-repos-001 | repos | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
+| FIX-classroom-009 | classroom | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
+| FIX-landscaping-003 | landscaping | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
 
 ## Mediums — a calendar day stays the day you typed
 

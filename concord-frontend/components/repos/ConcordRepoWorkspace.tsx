@@ -177,8 +177,14 @@ export function ConcordRepoWorkspace() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadRepos(); }, []);
 
+  const repoNameProblem = !newRepoName.trim()
+    ? 'Enter a name. The button stays off until there is one.'
+    : /[^\p{L}\p{N} ._'-]/u.test(newRepoName.trim())
+      ? 'Repo names use letters, numbers, spaces, dots, dashes, and underscores.'
+      : null;
+
   const createRepo = async () => {
-    if (!newRepoName.trim()) return;
+    if (repoNameProblem) return;
     const name = newRepoName.trim();
     setBusy('create-repo');
     setListNotice(null);
@@ -220,13 +226,16 @@ export function ConcordRepoWorkspace() {
           />
           <button
             onClick={createRepo}
-            disabled={busy === 'create-repo' || !newRepoName.trim()}
+            disabled={busy === 'create-repo' || !!repoNameProblem}
             className="flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
           >
             {busy === 'create-repo' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
             New repo
           </button>
         </div>
+        {repoNameProblem && (
+          <p role="alert" className="w-full text-[11px] text-rose-300">{repoNameProblem}</p>
+        )}
       </header>
 
       {!activeRepo && (
