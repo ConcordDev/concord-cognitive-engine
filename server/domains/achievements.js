@@ -15,6 +15,27 @@ import {
   listEarned,
   listRecent,
 } from "../lib/achievement-engine.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+function achievementsExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.userId || null;
+  if (!db || !userId) return [];
+  return listEarned(db, userId).map((row) => ({
+    id: row.achievement_id,
+    type: "achievement",
+    title: row.title || row.achievement_id,
+    createdAt: row.earned_at || null,
+    updatedAt: row.earned_at || null,
+    data: {
+      achievementId: row.achievement_id,
+      title: row.title || null,
+      category: row.category || null,
+      earnedAt: row.earned_at || null,
+      rarity: row.rarity || null,
+    },
+  }));
+}
 
 /** Shape one catalog entry exactly as GET /api/achievements/catalog does. */
 function shapeCatalogEntry(a) {
@@ -32,6 +53,7 @@ function shapeCatalogEntry(a) {
 }
 
 export default function registerAchievementMacros(register) {
+  registerLensExportProvider("achievements", achievementsExportRows);
   /**
    * achievements.list — the full authored catalog (display fields only).
    * Public-read: the catalog is the same data the catalog REST route serves.

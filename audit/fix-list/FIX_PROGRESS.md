@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 576 | 369 | 0 |
+| medium | 584 | 361 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1002** | **1147** | **2** |
+| **total** | **1010** | **1139** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -140,7 +140,7 @@ Muted-on-dark tickets that are not this invert (Lighthouse-only, FIX-education-0
 
 `collectLensExport` now reads the caller's own `STATE.<lens>Lens` panel records (per-user maps, and owned rows in arrays). Shared maps that are not keyed by the caller are not exported. Domains that already register a provider are deduped by id.
 
-Lenses with no `*Lens` state bag are still open (their records live somewhere else): FIX-move-builder-014, FIX-lfg-007, FIX-inheritance-006, FIX-achievements-002, FIX-creatures-005, FIX-garage-002, FIX-quests-002, FIX-forecast-002, FIX-sentinel-008, FIX-creative-writing-003, FIX-vault-003, FIX-construction-006, and the other no-bag skips in this pass. FIX-finance-004 (unscoped dump), FIX-export-001 (decrypt), FIX-music-001, and FIX-paper-002 are different bugs and stay open.
+Lenses with no `*Lens` state bag are still open (their records live somewhere else): FIX-move-builder-014, FIX-lfg-007, FIX-creatures-005, FIX-quests-002, FIX-forecast-002, FIX-sentinel-008, FIX-creative-writing-003, FIX-construction-006, and the other no-bag skips in this pass. Estate, earned achievements, the garage fleet, and vault submissions now have their own export rows. FIX-finance-004 (unscoped dump), FIX-export-001 (decrypt), FIX-music-001, and FIX-paper-002 are different bugs and stay open.
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
@@ -872,6 +872,7 @@ These stay `OPEN`. The code that was checked does not show the reported failure,
 | FIX-government-020 | Same open-data path as FIX-government-008. Ingest uses the same key and catalog. |
 | FIX-government-023 | No ask context builder was found that hides the government dashboard from the agent. |
 | FIX-masonry-012 | schedule-list, invoice-list, and proposal-list return ok with empty arrays. The repeated 400/422 was not reduced to one action. |
+| FIX-lfg-003 | Post request is disabled only while the post is in flight. The note is labeled optional, and a blank note is stored as an empty string. |
 
 ## Highs with a local root cause
 
@@ -1661,6 +1662,21 @@ A ticket sale cannot end before it starts. A housing claim needs an x and a z. A
 | FIX-classroom-009 | classroom | medium | FIXED_PENDING_VERIFY | 6fe52060d |
 | FIX-landscaping-003 | landscaping | medium | FIXED_PENDING_VERIFY | 6fe52060d |
 
+## Mediums — the caller's own records are in the export
+
+The file includes this person's estate, earned achievements, fish in inventory, and vehicles in every world. It includes vault submissions they filed. A logistics shipment keeps its origin, destination, consignee, and reference. A pet keeps its name. A schema registry entry they own keeps its name. Another person's rows stay out. System feed posts can still sit beside a fishing export. Chat notes the caller already owns can still sit beside a schema export.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-inheritance-006 | inheritance | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
+| FIX-achievements-002 | achievements | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
+| FIX-fishing-001 | fishing | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
+| FIX-garage-002 | garage | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
+| FIX-vault-003 | vault | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
+| FIX-logistics-007 | logistics | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
+| FIX-pets-002 | pets | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
+| FIX-schema-008 | schema | medium | FIXED_PENDING_VERIFY | PENDING_EXPORT |
+
 ## Mediums — a calendar day stays the day you typed
 
 A gift, a shift, a filed date, a deadline, and a welding job dated YYYY-MM-DD show that day. They no longer slip back one day in US timezones. A law case can be deleted after a confirm click.
@@ -1699,3 +1715,5 @@ These stay `OPEN`. Each one needs a product surface this pass did not build. `ne
 | FIX-art-008 | Lasso stores a polygon on the artwork. There is no list of selected marks and no move or delete of that content. | A selection can move or delete the marks it contains. |
 | FIX-code-002 | Scratch tabs are in-memory editor buffers that start as untitled.js. There is no saved scratch-script list. | Name, rename, and remove a saved scratch script. |
 | FIX-ar-016 | Sketchfab Save as DTU does not land on a library row the caller can open. There is no list item to delete. | Show that saved DTU in the caller's library, with delete. |
+| FIX-forecast-002 | `world_forecasts` is keyed by world, with no user id. Exporting the table would include other worlds. | A per-user forecast store, then export only that caller's rows. |
+| FIX-lattice-003 | There is no lattice domain store and no lattice panel bag. lattice-seed is a different domain. | Caller-owned corpus, brain, or schedule records, then an export of those. |

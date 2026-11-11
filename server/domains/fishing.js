@@ -28,6 +28,36 @@ import {
   measureReactionMs,
 } from "../lib/fishing.js";
 import { actorId as authzActorId, isAdmin } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+function fishingExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = actorId(ctx);
+  if (!db || !userId) return [];
+  try {
+    const catches = db.prepare(`
+      SELECT id, world_id, item_id, item_name, quantity, acquired_at
+      FROM player_inventory
+      WHERE user_id = ? AND item_type = 'raw_fish'
+      ORDER BY acquired_at DESC LIMIT 200
+    `).all(userId);
+    return catches.map((row) => ({
+      id: String(row.id || row.item_id),
+      type: "catch",
+      title: row.item_name || "Catch",
+      createdAt: row.acquired_at || null,
+      updatedAt: row.acquired_at || null,
+      data: {
+        name: row.item_name || null,
+        quantity: row.quantity,
+        itemId: row.item_id,
+        worldId: row.world_id,
+      },
+    }));
+  } catch {
+    return [];
+  }
+}
 
 function actorId(ctx) {
   return authzActorId(ctx);
@@ -39,6 +69,7 @@ function clampStr(v, n, fallback) {
 }
 
 export default function registerFishingMacros(register) {
+  registerLensExportProvider("fishing", fishingExportRows);
   // ── reads (headless-safe) ──────────────────────────────────────────────
 
   /**

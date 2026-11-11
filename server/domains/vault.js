@@ -110,6 +110,7 @@
 
 import crypto from "node:crypto";
 import { registerCitation } from "../economy/royalty-cascade.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 // The world every Vault record is placed in. Set explicitly on the DTU —
 // see the DTU-convention note above for why leaving it NULL is not an option.
@@ -753,7 +754,31 @@ export function mySubmissions(db, submitterId, opts = {}) {
 // LENS_ACTIONS are declared thousands of lines into that file and top-level
 // references to either TDZ at boot; see CLAUDE.md's boot-order hazard note).
 
+function vaultExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.userId || null;
+  if (!db || !userId) return [];
+  const listed = mySubmissions(db, userId, { limit: 200 });
+  if (!listed?.ok) return [];
+  return (listed.submissions || []).map((row) => ({
+    id: row.id,
+    type: "submission",
+    title: row.title || "Submission",
+    createdAt: row.submittedAt || null,
+    updatedAt: row.admittedAt || row.declinedAt || row.submittedAt || null,
+    data: {
+      id: row.id,
+      title: row.title,
+      workKind: row.workKind,
+      status: row.status,
+      description: row.description,
+      submittedAt: row.submittedAt,
+    },
+  }));
+}
+
 export default function registerVaultActions(registerLensAction) {
+  registerLensExportProvider("vault", vaultExportRows);
   // The /api/lens/run path mirrors `input` onto BOTH artifact.data and
   // params; the harness passes params. Read both, params winning.
   const payload = (artifact, params) => ({

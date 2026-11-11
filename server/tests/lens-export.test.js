@@ -342,4 +342,120 @@ describe("lens-export (Q79)", () => {
     delete globalThis._concordSTATE;
   });
 
+  it("exports estate, earned achievements, catches, fleet, and vault submissions for the caller", async () => {
+    _clearLensExportProvidersForTests();
+    const runMacro = async (domain) => {
+      if (domain === "lens") return { ok: true, artifacts: [] };
+      if (domain === "dtu") return { ok: true, dtus: [] };
+      return { ok: false, error: "unexpected" };
+    };
+    const rowsDb = (rows) => ({ prepare: () => ({ all: () => rows }) });
+
+    globalThis._concordSTATE = {
+      inheritanceEstates: new Map([
+        ["u1", { userId: "u1", beneficiaries: [{ id: "b1", name: "Mira" }], assets: [], wills: [{ version: 1, title: "Will of u1" }], executors: [], locks: [], createdAt: 1, updatedAt: 2 }],
+        ["u2", { userId: "u2", beneficiaries: [{ id: "b2", name: "Secret heir" }], assets: [], wills: [], executors: [], locks: [] }],
+      ]),
+      logisticsLens: {
+        shipments: new Map([
+          ["u1", [{ id: "shp1", origin: "Dock", destination: "Yard", consignee: "QA LT4", reference: "SHP-1" }]],
+          ["u2", [{ id: "shp2", origin: "Hidden", destination: "Other", consignee: "Secret consignee" }]],
+        ]),
+      },
+      petsLens: {
+        pets: new Map([
+          ["u1", [{ id: "pet1", name: "QA pet", species: "dog" }]],
+          ["u2", [{ id: "pet2", name: "Secret pet", species: "cat" }]],
+        ]),
+      },
+      schemaLens: {
+        registry: new Map([
+          ["u1", [{ id: "sch1", name: "qa5", versions: [{ version: 1 }] }]],
+          ["u2", [{ id: "sch2", name: "Secret schema" }]],
+        ]),
+      },
+    };
+
+    const { default: registerInheritance } = await import("../domains/inheritance.js");
+    registerInheritance(() => {});
+    const estate = await collectLensExport({ runMacro, domain: "inheritance", ctx: { actor: { userId: "u1" } } });
+    const estateText = JSON.stringify(estate.artifacts);
+    assert.ok(estateText.includes("Mira"), "caller estate is in the file");
+    assert.ok(estateText.includes("Will of u1"));
+    assert.ok(!estateText.includes("Secret heir"));
+
+    const { default: registerAchievements } = await import("../domains/achievements.js");
+    registerAchievements(() => {});
+    const earned = await collectLensExport({
+      runMacro,
+      domain: "achievements",
+      ctx: {
+        actor: { userId: "u1" },
+        db: rowsDb([{ achievement_id: "first_catch", title: "First catch", earned_at: 10, category: "exploration" }]),
+      },
+    });
+    assert.ok(JSON.stringify(earned.artifacts).includes("First catch"));
+
+    const { default: registerFishing } = await import("../domains/fishing.js");
+    registerFishing(() => {});
+    const catches = await collectLensExport({
+      runMacro,
+      domain: "fishing",
+      ctx: {
+        actor: { userId: "u1" },
+        db: rowsDb([{ id: "fish1", item_id: "trout", item_name: "River Trout", quantity: 1, world_id: "concordia-hub", acquired_at: 10 }]),
+      },
+    });
+    assert.ok(JSON.stringify(catches.artifacts).includes("River Trout"));
+
+    const { default: registerGarage } = await import("../domains/garage.js");
+    registerGarage(() => {});
+    const fleet = await collectLensExport({
+      runMacro,
+      domain: "garage",
+      ctx: {
+        actor: { userId: "u1" },
+        db: rowsDb([{ id: "veh1", world_id: "sere", kind: "cart", capacity: 2, fare_cc: 0, condition_pct: 100, created_at: 10 }]),
+      },
+    });
+    const fleetText = JSON.stringify(fleet.artifacts);
+    assert.ok(fleetText.includes("cart"));
+    assert.ok(fleetText.includes("sere"), "a vehicle outside the hub world is included");
+
+    const { default: registerVault } = await import("../domains/vault.js");
+    registerVault(() => {});
+    const vault = await collectLensExport({
+      runMacro,
+      domain: "vault",
+      ctx: {
+        actor: { userId: "u1" },
+        db: rowsDb([{
+          id: "sub1", title: "QA vault work", work_kind: "text", description: "notes",
+          status: "submitted", submitted_at: 10, admitted_at: null, decline_reason: null,
+          declined_at: null, curator_statement: null, admitted_by: null, admitted_by_role: null,
+          record_dtu_id: null, body: "",
+        }]),
+      },
+    });
+    assert.ok(JSON.stringify(vault.artifacts).includes("QA vault work"));
+
+    const logistics = await collectLensExport({ runMacro, domain: "logistics", ctx: { actor: { userId: "u1" } } });
+    const ship = JSON.stringify(logistics.artifacts);
+    assert.ok(ship.includes("QA LT4"));
+    assert.ok(ship.includes("Dock"));
+    assert.ok(!ship.includes("Secret consignee"));
+
+    const pets = await collectLensExport({ runMacro, domain: "pets", ctx: { actor: { userId: "u1" } } });
+    const petText = JSON.stringify(pets.artifacts);
+    assert.ok(petText.includes("QA pet"));
+    assert.ok(!petText.includes("Secret pet"));
+
+    const schema = await collectLensExport({ runMacro, domain: "schema", ctx: { actor: { userId: "u1" } } });
+    const schemaText = JSON.stringify(schema.artifacts);
+    assert.ok(schemaText.includes("qa5"));
+    assert.ok(!schemaText.includes("Secret schema"));
+
+    delete globalThis._concordSTATE;
+  });
+
 });

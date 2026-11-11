@@ -25,6 +25,35 @@
 // pattern. See that lib file's header for the full honesty rationale.
 
 import { getIntestacyForState, listIntestacyStateSummaries } from "../lib/intestacy-reference.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+function inheritanceExportRows(ctx) {
+  const userId = actorId(ctx);
+  if (!userId) return [];
+  const estate = globalThis._concordSTATE?.inheritanceEstates?.get(userId);
+  if (!estate) return [];
+  const has =
+    (estate.beneficiaries || []).length
+    || (estate.assets || []).length
+    || (estate.wills || []).length
+    || (estate.executors || []).length
+    || (estate.locks || []).length;
+  if (!has) return [];
+  return [{
+    id: `estate_${userId}`,
+    type: "estate",
+    title: "Estate",
+    createdAt: estate.createdAt || null,
+    updatedAt: estate.updatedAt || null,
+    data: {
+      beneficiaries: estate.beneficiaries || [],
+      assets: estate.assets || [],
+      wills: estate.wills || [],
+      executors: estate.executors || [],
+      locks: estate.locks || [],
+    },
+  }];
+}
 
 function estateState() {
   const g = globalThis;
@@ -99,6 +128,7 @@ function pushNotice(heirUserId, notice) {
 
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerInheritanceActions(registerLensAction) {
+  registerLensExportProvider("inheritance", inheritanceExportRows);
   registerLensAction = saveAfterWrites(registerLensAction); // persist STATE after a successful write (lib/lens-save-on-write.js)
   // ── Estate overview ───────────────────────────────────────────────
   registerLensAction("inheritance", "estate_overview", (ctx) => {
