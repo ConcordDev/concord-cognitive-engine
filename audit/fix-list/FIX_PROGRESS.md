@@ -1652,10 +1652,10 @@ A gift, a shift, a filed date, a deadline, and a welding job dated YYYY-MM-DD sh
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-nonprofit-002 | nonprofit | medium | FIXED_PENDING_VERIFY | PENDING |
-| FIX-legal-003 | legal | medium | FIXED_PENDING_VERIFY | PENDING |
-| FIX-law-004 | law | medium | FIXED_PENDING_VERIFY | PENDING |
-| FIX-welding-003 | welding | medium | FIXED_PENDING_VERIFY | PENDING |
+| FIX-nonprofit-002 | nonprofit | medium | FIXED_PENDING_VERIFY | 488325c97 |
+| FIX-legal-003 | legal | medium | FIXED_PENDING_VERIFY | 488325c97 |
+| FIX-law-004 | law | medium | FIXED_PENDING_VERIFY | 488325c97 |
+| FIX-welding-003 | welding | medium | FIXED_PENDING_VERIFY | 488325c97 |
 
 ## NEEDS_PRODUCT_SURFACE
 
