@@ -534,7 +534,7 @@ export default function FilmStudiosPage() {
                           <button
                             type="button"
                             onClick={() => setRenamingProduction(false)}
-                            className="text-[13px] text-zinc-400"
+                            className="inline-flex min-h-11 items-center text-[13px] text-zinc-400"
                           >
                             Cancel
                           </button>
@@ -542,14 +542,14 @@ export default function FilmStudiosPage() {
                       </div>
                     ) : (
                       <div className="flex gap-4">
-                        <button type="button" onClick={startRenameProduction} className="text-[13px] text-zinc-300 underline">
+                        <button type="button" onClick={startRenameProduction} className="inline-flex min-h-11 items-center text-[13px] text-zinc-300 underline">
                           Rename
                         </button>
                         <button
                           type="button"
                           onClick={() => { void deleteProduction(); }}
                           disabled={busy}
-                          className="text-[13px] text-zinc-300 underline disabled:opacity-60"
+                          className="inline-flex min-h-11 items-center text-[13px] text-zinc-300 underline disabled:opacity-60"
                         >
                           {confirmDeleteProduction ? 'Delete this production?' : 'Delete'}
                         </button>
@@ -584,7 +584,7 @@ export default function FilmStudiosPage() {
                             />
                           </label>
                           <div className="flex gap-3">
-                            <label className="text-[13px] text-zinc-400">
+                            <label className="inline-flex min-h-11 items-center text-[13px] text-zinc-400">
                               INT./EXT.
                               <select
                                 data-testid="film-edit-intext"
@@ -595,7 +595,7 @@ export default function FilmStudiosPage() {
                                 {INT_EXT_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
                               </select>
                             </label>
-                            <label className="text-[13px] text-zinc-400">
+                            <label className="inline-flex min-h-11 items-center text-[13px] text-zinc-400">
                               When
                               <select
                                 data-testid="film-edit-timeofday"
@@ -616,21 +616,21 @@ export default function FilmStudiosPage() {
                             >
                               Save
                             </button>
-                            <button type="button" onClick={() => setRenamingScene(false)} className="text-[13px] text-zinc-400">
+                            <button type="button" onClick={() => setRenamingScene(false)} className="inline-flex min-h-11 items-center text-[13px] text-zinc-400">
                               Cancel
                             </button>
                           </div>
                         </div>
                       ) : (
                         <div className="flex gap-4">
-                          <button type="button" onClick={startEditScene} className="text-[13px] text-zinc-300 underline">
+                          <button type="button" onClick={startEditScene} className="inline-flex min-h-11 items-center text-[13px] text-zinc-300 underline">
                             Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => { void deleteScene(selected.id); }}
                             disabled={busy}
-                            className="text-[13px] text-zinc-300 underline disabled:opacity-60"
+                            className="inline-flex min-h-11 items-center text-[13px] text-zinc-300 underline disabled:opacity-60"
                           >
                             {confirmDeleteSceneId === selected.id ? 'Delete this scene?' : 'Delete'}
                           </button>
@@ -674,7 +674,7 @@ export default function FilmStudiosPage() {
                       />
                     </label>
                     <div className="flex gap-3">
-                      <label className="text-[13px] text-zinc-400">
+                      <label className="inline-flex min-h-11 items-center text-[13px] text-zinc-400">
                         INT./EXT.
                         <select
                           data-testid="film-intext"
@@ -685,7 +685,7 @@ export default function FilmStudiosPage() {
                           {INT_EXT_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
                       </label>
-                      <label className="text-[13px] text-zinc-400">
+                      <label className="inline-flex min-h-11 items-center text-[13px] text-zinc-400">
                         When
                         <select
                           data-testid="film-timeofday"

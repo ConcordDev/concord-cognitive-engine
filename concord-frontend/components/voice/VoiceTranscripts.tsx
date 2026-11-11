@@ -149,7 +149,7 @@ export function VoiceTranscripts() {
                     {r.highlightCount > 0 && <span className="text-amber-400"> · ★{r.highlightCount}</span>}
                   </p>
                 </button>
-                <button aria-label="Delete" onClick={() => del(r.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button aria-label="Delete" onClick={() => del(r.id)} className="inline-flex min-h-11 min-w-11 items-center justify-center text-rose-400"><Trash2 className="h-4 w-4" /></button>
               </li>
             ))}
           </ul>

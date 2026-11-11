@@ -771,7 +771,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
         {TOOLS.map((t) => {
           const Icon = t.icon;
           return (
-            <button key={t.id} type="button" onClick={() => { setTool(t.id); if (t.id !== 'select' && t.id !== 'lasso') setSelectedIds(new Set()); }}
+            <button key={t.id} type="button" aria-label={t.label} onClick={() => { setTool(t.id); if (t.id !== 'select' && t.id !== 'lasso') setSelectedIds(new Set()); }}
               className={cn(toolBtn, tool === t.id ? on : off)}>
               <Icon className="w-3 h-3" />{t.label}
             </button>
@@ -969,8 +969,8 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   );
 }
 
-const topBtn = 'flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg';
-const toolBtn = 'flex items-center gap-1 px-2 py-1 text-[11px] rounded-lg';
+const topBtn = 'flex min-h-11 items-center gap-1 rounded-lg bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300';
+const toolBtn = 'flex min-h-11 items-center gap-1 rounded-lg px-2 py-1 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300';
 const miniBtn = 'flex items-center gap-1 px-2 py-0.5 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded capitalize';
 const on = 'bg-violet-600 text-white';
 const off = 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700';

@@ -371,8 +371,8 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
                         <MessageSquare className="w-3 h-3 text-violet-400 mt-0.5 shrink-0" />
                         <span className="text-violet-300 font-medium">{c.authorId}</span>
                         <span className="text-zinc-300 flex-1">{c.body}</span>
-                        <button onClick={() => deleteComment(c.id)} className="text-rose-400 hover:text-rose-300" aria-label="Delete comment">
-                          <Trash2 className="w-2.5 h-2.5" />
+                        <button onClick={() => deleteComment(c.id)} className="inline-flex min-h-11 min-w-11 items-center justify-center text-rose-400 hover:text-rose-300" aria-label="Delete comment">
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     ))}

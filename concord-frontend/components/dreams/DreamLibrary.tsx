@@ -118,7 +118,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
         <button
           type="button"
           onClick={() => setMode('search')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+          className={`inline-flex min-h-11 items-center rounded-lg px-3 py-1.5 text-xs font-medium ${
             mode === 'search' ? 'bg-purple-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
           }`}
         >
@@ -127,7 +127,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
         <button
           type="button"
           onClick={() => setMode('timeline')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+          className={`inline-flex min-h-11 items-center rounded-lg px-3 py-1.5 text-xs font-medium ${
             mode === 'timeline' ? 'bg-purple-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
           }`}
         >
@@ -136,7 +136,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
         <button
           type="button"
           onClick={() => setMode('busiest')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+          className={`inline-flex min-h-11 items-center rounded-lg px-3 py-1.5 text-xs font-medium ${
             mode === 'busiest' ? 'bg-purple-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
           }`}
         >
@@ -158,7 +158,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
             <select
               value={scope}
               onChange={(e) => setScope(e.target.value as '' | 'public' | 'personal')}
-              className="rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-300"
+              className="min-h-11 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-300"
             >
               <option value="">All scopes</option>
               <option value="personal">Personal</option>
@@ -168,7 +168,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
               type="button"
               onClick={() => void runSearch()}
               disabled={searching}
-              className="rounded-lg bg-purple-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-600 disabled:opacity-50"
+              className="inline-flex min-h-11 items-center rounded-lg bg-purple-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-600 disabled:opacity-50"
             >
               {searching ? '…' : 'Search'}
             </button>
@@ -279,7 +279,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
                       key={dr.id}
                       type="button"
                       onClick={() => onOpen(dr.id)}
-                      className="rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1 text-[11px] text-zinc-300 hover:border-purple-700/60 hover:text-zinc-100"
+                      className="inline-flex min-h-11 items-center rounded-lg border border-zinc-800 bg-zinc-950 px-3 text-[11px] text-zinc-300 hover:border-purple-700/60 hover:text-zinc-100"
                     >
                       {dr.title || 'Dream'} · {dr.fragmentCount ?? 0} events
                     </button>

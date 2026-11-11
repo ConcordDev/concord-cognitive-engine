@@ -248,7 +248,7 @@ function FinanceTerminal() {
               type="button"
               onClick={() => setShowSnapshot(true)}
               title="Record a net-worth snapshot (S)"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[14px] text-zinc-300 transition-colors hover:text-white"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[14px] text-zinc-300 transition-colors hover:text-white"
             >
               <Plus className="h-4 w-4" /> Snapshot
             </button>
@@ -256,14 +256,14 @@ function FinanceTerminal() {
         </div>
 
         <nav className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1 text-[13px]" aria-label="Books">
-          <span className="rounded-full bg-white/10 px-3 py-1 text-zinc-50" aria-current="page">Finance</span>
-          <Link href="/lenses/markets" className="rounded-full px-3 py-1 text-zinc-500 hover:text-zinc-200">Markets</Link>
-          <Link href="/lenses/wallet" className="rounded-full px-3 py-1 text-zinc-500 hover:text-zinc-200">Wallet</Link>
+          <span className="inline-flex min-h-11 items-center rounded-full bg-white/10 px-3 text-zinc-50" aria-current="page">Finance</span>
+          <Link href="/lenses/markets" className="inline-flex min-h-11 items-center rounded-full px-3 text-zinc-500 hover:text-zinc-200">Markets</Link>
+          <Link href="/lenses/wallet" className="inline-flex min-h-11 items-center rounded-full px-3 text-zinc-500 hover:text-zinc-200">Wallet</Link>
           <button
             type="button"
             onClick={() => setMoreOpen((v) => !v)}
             aria-expanded={moreOpen}
-            className="rounded-full px-3 py-1 text-zinc-500 hover:text-zinc-200"
+            className="inline-flex min-h-11 items-center rounded-full px-3 text-zinc-500 hover:text-zinc-200"
           >
             More
           </button>
@@ -275,7 +275,7 @@ function FinanceTerminal() {
                 key={g.id}
                 type="button"
                 onClick={() => { setGroup(g.id); setMoreOpen(false); }}
-                className="rounded-full border border-white/10 px-3 py-1 text-[13px] text-zinc-400 hover:text-zinc-100"
+                className="inline-flex min-h-11 items-center rounded-full border border-white/10 px-3 text-[13px] text-zinc-400 hover:text-zinc-100"
               >
                 {g.label}
               </button>

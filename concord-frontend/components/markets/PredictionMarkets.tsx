@@ -437,7 +437,7 @@ function BrowseTab({
       <div className="mb-3 flex flex-wrap gap-1">
         <button
           type="button" onClick={() => { setCategory(''); onApply(); }}
-          className={`rounded-full px-2 py-0.5 text-[10px] ${
+          className={`min-h-11 rounded-full px-3 text-[10px] ${
             category === '' ? 'bg-indigo-500/25 text-indigo-100' : 'bg-lattice-elevated/60 text-gray-400'
           }`}
         >
@@ -446,7 +446,7 @@ function BrowseTab({
         {categories.map((c) => (
           <button
             key={c} type="button" onClick={() => { setCategory(c); onApply(); }}
-            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${
+            className={`inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-[10px] ${
               category === c ? 'bg-indigo-500/25 text-indigo-100' : 'bg-lattice-elevated/60 text-gray-400'
             }`}
           >
@@ -694,7 +694,7 @@ function MarketDetail({
                   <div className="mb-2 flex items-center gap-2">
                     <button
                       type="button" onClick={() => setSide('yes')}
-                      className={`flex-1 rounded py-1.5 text-xs font-medium ${
+                      className={`flex-1 min-h-11 rounded py-1.5 text-xs font-medium ${
                         side === 'yes' ? 'bg-emerald-700 text-white' : 'bg-lattice-elevated text-gray-400'
                       }`}
                     >
@@ -702,7 +702,7 @@ function MarketDetail({
                     </button>
                     <button
                       type="button" onClick={() => setSide('no')}
-                      className={`flex-1 rounded py-1.5 text-xs font-medium ${
+                      className={`flex-1 min-h-11 rounded py-1.5 text-xs font-medium ${
                         side === 'no' ? 'bg-rose-700 text-white' : 'bg-lattice-elevated text-gray-400'
                       }`}
                     >
@@ -815,13 +815,13 @@ function MarketDetail({
                     <div className="flex gap-2">
                       <button
                         type="button" onClick={() => setResolveOutcome('yes')}
-                        className={`flex-1 rounded py-1 text-xs ${resolveOutcome === 'yes' ? 'bg-emerald-700 text-white' : 'bg-lattice-elevated text-gray-400'}`}
+                        className={`min-h-11 flex-1 rounded py-1 text-xs ${resolveOutcome === 'yes' ? 'bg-emerald-700 text-white' : 'bg-lattice-elevated text-gray-400'}`}
                       >
                         YES
                       </button>
                       <button
                         type="button" onClick={() => setResolveOutcome('no')}
-                        className={`flex-1 rounded py-1 text-xs ${resolveOutcome === 'no' ? 'bg-rose-700 text-white' : 'bg-lattice-elevated text-gray-400'}`}
+                        className={`min-h-11 flex-1 rounded py-1 text-xs ${resolveOutcome === 'no' ? 'bg-rose-700 text-white' : 'bg-lattice-elevated text-gray-400'}`}
                       >
                         NO
                       </button>

@@ -251,7 +251,7 @@ function LoadGate({
         <span>Could not load {emptyLabel}: {error}</span>
         <button
           onClick={onRetry}
-          className="flex items-center gap-1 px-2 py-1 rounded border border-red-500/40 text-red-300 hover:bg-red-500/10 whitespace-nowrap"
+          className="inline-flex min-h-11 items-center gap-1 rounded border border-red-500/40 px-3 text-red-300 hover:bg-red-500/10 whitespace-nowrap"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Retry
         </button>

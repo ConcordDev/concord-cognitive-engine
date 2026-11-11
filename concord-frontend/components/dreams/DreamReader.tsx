@@ -148,7 +148,7 @@ export function DreamReader({
           <button
             type="button"
             onClick={onClose}
-            className="rounded px-2 py-1 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+            className="inline-flex min-h-11 items-center rounded px-3 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
           >
             Close
           </button>
@@ -205,7 +205,7 @@ export function DreamReader({
                     type="button"
                     onClick={() => interpret(!!interpretation)}
                     disabled={interpreting}
-                    className="rounded bg-indigo-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-600 disabled:opacity-50"
+                    className="inline-flex min-h-11 items-center rounded bg-indigo-700 px-3 text-xs font-medium text-white hover:bg-indigo-600 disabled:opacity-50"
                   >
                     {interpreting ? 'Summarising…' : interpretation ? 'Re-summarise' : 'Summarise the substrate'}
                   </button>
@@ -255,7 +255,7 @@ export function DreamReader({
                     type="button"
                     onClick={saveTags}
                     disabled={busy}
-                    className="rounded-lg bg-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-100 hover:bg-zinc-600 disabled:opacity-50"
+                    className="inline-flex min-h-11 items-center rounded-lg bg-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-100 hover:bg-zinc-600 disabled:opacity-50"
                   >
                     Save tags
                   </button>
@@ -279,7 +279,7 @@ export function DreamReader({
                     type="button"
                     onClick={doUnpublish}
                     disabled={busy}
-                    className="rounded-lg bg-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-100 hover:bg-zinc-600 disabled:opacity-50"
+                    className="inline-flex min-h-11 items-center rounded-lg bg-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-100 hover:bg-zinc-600 disabled:opacity-50"
                   >
                     Withdraw from marketplace
                   </button>
