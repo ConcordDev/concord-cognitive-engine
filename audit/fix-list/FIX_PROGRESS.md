@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 616 | 329 | 0 |
+| medium | 622 | 323 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1042** | **1107** | **2** |
+| **total** | **1048** | **1101** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1754,6 +1754,19 @@ A 12 AWG ampacity line shows 25A, the ampacity of that gauge. ISS speed is the l
 | FIX-calendar-004 | calendar | medium | FIXED_PENDING_VERIFY | b376d6dad |
 | FIX-expedition-journal-002 | expedition-journal | medium | FIXED_PENDING_VERIFY | b376d6dad |
 | FIX-social-016 | social | medium | FIXED_PENDING_VERIFY | b376d6dad |
+
+## Mediums — a bad number is refused
+
+A forecast point that is blank, not a number, or dated with text that is not a date shows that error and no slope. A plan price or a tax amount that is not a finite number from 0 to 1,000,000,000 is refused, and a tax rate outside 0 to 1 is refused. An omitted plan price stays 0. Typing a job title clears the "Job title required" banner. A DIY hours, cost, budget, quantity, or price field that is filled with junk or a negative number shows the problem and Save stays off. A bridge flow refuses a negative record count. A negative alert threshold was already refused. Supply chain refuses a score outside 0 to 100, a missing inventory number, an alpha below 0.05, a season length below 2, a service-level Z outside 0 to 5, and a negative demand, lead time, stock, quantity, or unit cost. An alpha above 0.95 is still clamped to 0.95.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-analytics-003 | analytics | medium | FIXED_PENDING_VERIFY | e5b76baba |
+| FIX-billing-002 | billing | medium | FIXED_PENDING_VERIFY | e5b76baba |
+| FIX-plumbing-006 | plumbing | medium | FIXED_PENDING_VERIFY | e5b76baba |
+| FIX-diy-005 | diy | medium | FIXED_PENDING_VERIFY | e5b76baba |
+| FIX-bridge-004 | bridge | medium | FIXED_PENDING_VERIFY | e5b76baba |
+| FIX-supplychain-003 | supplychain | medium | FIXED_PENDING_VERIFY | e5b76baba |
 
 ## NEEDS_PRODUCT_SURFACE
 
