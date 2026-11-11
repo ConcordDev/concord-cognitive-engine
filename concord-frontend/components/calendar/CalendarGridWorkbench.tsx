@@ -1692,7 +1692,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
                       style={{ borderLeft: `4px solid ${event.color}` }}
                     >
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-zinc-100 flex items-center gap-2">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
                           <CategoryIcon type={event.eventType} className="w-4 h-4" />
                           {event.title}
                         </h4>

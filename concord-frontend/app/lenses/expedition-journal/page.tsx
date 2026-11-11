@@ -48,6 +48,8 @@ export default function ExpeditionJournalPage() {
   const [worlds, setWorlds] = useState<WorldCatalogEntry[]>([]);
   const [activeWorld, setActiveWorld] = useState<string>('concordia-hub');
   const [progress, setProgress] = useState<WorldProgress | null>(null);
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [progressError, setProgressError] = useState<string | null>(null);
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,9 +87,22 @@ export default function ExpeditionJournalPage() {
   useEffect(() => {
     if (!activeWorld) return;
     let cancelled = false;
+    setProgress(null);
+    setProgressError(null);
+    setProgressLoading(true);
     lensRun('expedition-journal', 'progress', { worldId: activeWorld })
-      .then((r) => { if (!cancelled && r.data?.ok && r.data.result) setProgress(r.data.result as WorldProgress); })
-      .catch(() => { /* the stage list keeps its last good state */ });
+      .then((r) => {
+        if (cancelled) return;
+        const next = r.data?.ok ? (r.data.result as WorldProgress | undefined) : undefined;
+        if (next && (!next.worldId || next.worldId === activeWorld)) {
+          setProgress(next);
+        } else {
+          setProgress(null);
+          setProgressError(r.data?.error || 'Could not load this world\'s stages.');
+        }
+      })
+      .catch(() => { if (!cancelled) setProgressError('Could not load this world\'s stages.'); })
+      .finally(() => { if (!cancelled) setProgressLoading(false); });
     return () => { cancelled = true; };
   }, [activeWorld, dataKey]);
 
@@ -202,27 +217,35 @@ export default function ExpeditionJournalPage() {
               })}
             </nav>
 
-            {progress && (
-              <>
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
-                  <div>
-                    <h2 className="text-lg font-medium text-emerald-200">{WORLD_LABELS[progress.worldId] || progress.worldId}</h2>
-                    <p className="text-xs text-gray-400">
-                      {progress.completed}/{progress.total} stages complete
-                      {progress.expeditionComplete && <span className="ml-2 text-emerald-400">· Expedition complete</span>}
-                    </p>
-                  </div>
-                  <div className="h-2 w-40 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${progress.percent}%` }} />
-                  </div>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
+              <div>
+                <h2 className="text-lg font-medium text-emerald-200">{WORLD_LABELS[activeWorld] || activeWorld}</h2>
+                {progress && progress.worldId === activeWorld ? (
+                  <p className="text-xs text-gray-400">
+                    {progress.completed}/{progress.total} stages complete
+                    {progress.expeditionComplete && <span className="ml-2 text-emerald-400">· Expedition complete</span>}
+                  </p>
+                ) : progressLoading ? (
+                  <p className="text-xs text-gray-400">Loading stages…</p>
+                ) : progressError ? (
+                  <p className="text-xs text-rose-300" role="alert">{progressError}</p>
+                ) : (
+                  <p className="text-xs text-gray-400">No stages loaded for this world.</p>
+                )}
+              </div>
+              {progress && progress.worldId === activeWorld && (
+                <div className="h-2 w-40 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${progress.percent}%` }} />
                 </div>
+              )}
+            </div>
 
-                <div className="space-y-3">
-                  {progress.stages.map((s) => (
-                    <StageCard key={s.id} worldId={progress.worldId} stage={s} onChange={onStageChange} />
-                  ))}
-                </div>
-              </>
+            {progress && progress.worldId === activeWorld && (
+              <div className="space-y-3">
+                {progress.stages.map((s) => (
+                  <StageCard key={s.id} worldId={activeWorld} stage={s} onChange={onStageChange} />
+                ))}
+              </div>
             )}
 
             <section className="mt-6 rounded-2xl border border-white/10 bg-[#111] p-4">

@@ -398,6 +398,9 @@ export default function registerElectricalActions(registerLensAction) {
         result: {
           loadAmps, continuous, designAmps: round(designAmps, 1),
           ampacityRequiredWire: `${ampacityWire} AWG`,
+          // Ampacity of the minimum gauge, not the upsized wire. The UI used
+          // to print recommendedAmpacity next to this gauge (12 AWG (35A)).
+          ampacityOfRequiredWire: AMPACITY_75C[ampacityWire],
           minBreaker: `${breakerForAmps(designAmps)}A`,
           recommendedWire: `${finalWire} AWG`,
           recommendedAmpacity: AMPACITY_75C[finalWire],

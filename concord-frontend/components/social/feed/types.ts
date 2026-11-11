@@ -66,6 +66,7 @@ export interface SocialReply {
 export interface DMThreadSummary {
   threadKey: string;
   with: string;
+  withName?: string;
   lastMessage: { id: string; from: string; body: string; createdAt: string } | null;
   messageCount: number;
   unread: number;

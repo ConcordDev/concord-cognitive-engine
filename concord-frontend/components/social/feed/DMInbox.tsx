@@ -13,6 +13,12 @@ import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import type { DMThreadSummary, DMMessage } from './types';
 
+function personLabel(name: string | null | undefined, id: string): string {
+  const trimmed = (name || '').trim();
+  if (trimmed && trimmed !== id) return trimmed;
+  return id;
+}
+
 function relTime(iso: string): string {
   const d = Date.now() - new Date(iso).getTime();
   if (d < 60_000) return 'now';
@@ -30,6 +36,7 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
   const [loadingInbox, setLoadingInbox] = useState(true);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [activeWith, setActiveWith] = useState<string | null>(null);
+  const [activeWithName, setActiveWithName] = useState<string | null>(null);
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [loadingThread, setLoadingThread] = useState(false);
   const [draft, setDraft] = useState('');
@@ -55,18 +62,20 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
     }
   }, []);
 
-  const openThread = useCallback(async (key: string | null, withUser: string) => {
+  const openThread = useCallback(async (key: string | null, withUser: string, withName?: string | null) => {
     setActiveKey(key);
     setActiveWith(withUser);
+    setActiveWithName(withName ?? null);
     setComposing(false);
     setLoadingThread(true);
-    const r = await lensRun<{ messages: DMMessage[]; threadKey: string; with: string }>(
+    const r = await lensRun<{ messages: DMMessage[]; threadKey: string; with: string; withName?: string }>(
       'social', 'conversation', key ? { threadKey: key } : { with: withUser },
     );
     setLoadingThread(false);
     if (r.data?.ok && r.data.result) {
       setMessages(r.data.result.messages || []);
       if (r.data.result.threadKey) setActiveKey(r.data.result.threadKey);
+      if (r.data.result.withName) setActiveWithName(r.data.result.withName);
     }
   }, []);
 
@@ -107,7 +116,7 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
             <span className="text-sm font-medium text-zinc-200">Messages</span>
             <button
               type="button"
-              onClick={() => { setComposing(true); setActiveWith(null); setActiveKey(null); setMessages([]); }}
+              onClick={() => { setComposing(true); setActiveWith(null); setActiveWithName(null); setActiveKey(null); setMessages([]); }}
               className="ml-auto rounded p-1 text-zinc-400 hover:bg-zinc-900 hover:text-indigo-300"
               aria-label="New message"
             >
@@ -143,14 +152,14 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                 <li key={t.threadKey}>
                   <button
                     type="button"
-                    onClick={() => void openThread(t.threadKey, t.with)}
+                    onClick={() => void openThread(t.threadKey, t.with, t.withName)}
                     className={cn(
                       'flex w-full flex-col gap-0.5 border-b border-zinc-900 px-3 py-2 text-left hover:bg-zinc-900/60',
                       activeKey === t.threadKey && 'bg-zinc-900/80',
                     )}
                   >
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium text-zinc-200">@{t.with}</span>
+                      <span className="text-xs font-medium text-zinc-200">{personLabel(t.withName, t.with)}</span>
                       {t.unread > 0 && (
                         <span className="rounded-full bg-indigo-500 px-1.5 text-[10px] font-bold text-white">{t.unread}</span>
                       )}
@@ -204,7 +213,7 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                   <li key={person.id}>
                     <button
                       type="button"
-                      onClick={() => void openThread(null, person.id)}
+                      onClick={() => void openThread(null, person.id, person.displayName || person.username)}
                       className="w-full rounded px-2 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-900"
                     >
                       {person.displayName || person.username}
@@ -222,13 +231,13 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
               <div className="flex items-center gap-2 border-b border-zinc-800 px-3 py-2">
                 <button
                   type="button"
-                  onClick={() => { setActiveWith(null); setActiveKey(null); }}
+                  onClick={() => { setActiveWith(null); setActiveWithName(null); setActiveKey(null); }}
                   className="rounded p-0.5 text-zinc-400 hover:text-zinc-200 sm:hidden"
                   aria-label="Back to inbox"
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
-                <span className="text-sm font-medium text-zinc-200">@{activeWith}</span>
+                <span className="text-sm font-medium text-zinc-200">{personLabel(activeWithName, activeWith || '')}</span>
               </div>
               <div className="flex-1 space-y-2 overflow-y-auto p-3">
                 {loadingThread ? (

@@ -63,9 +63,10 @@ export function HealthPanel() {
               },
               {
                 label: 'Stress Level',
-                value: Math.max(0, 100 - stats.avgStress * 200),
+                value: Math.min(100, Math.max(0, stats.avgStress * 100)),
                 good: 'Low stress',
                 bad: 'Elevated stress',
+                higherIsWorse: true,
                 icon: Activity,
               },
               {
@@ -78,10 +79,11 @@ export function HealthPanel() {
               {
                 label: 'Error Rate',
                 value: stats.totalTicks > 0
-                  ? Math.max(0, 100 - ((stats.typeBreakdown['error'] || 0) / stats.totalTicks) * 500)
-                  : 100,
+                  ? Math.min(100, ((stats.typeBreakdown['error'] || 0) / stats.totalTicks) * 100)
+                  : 0,
                 good: 'No errors',
                 bad: 'Errors detected',
+                higherIsWorse: true,
                 icon: AlertTriangle,
               },
               {
@@ -100,8 +102,16 @@ export function HealthPanel() {
               },
             ].map(indicator => {
               const pct = Math.min(100, Math.max(0, indicator.value));
-              const statusColor = pct >= 80 ? 'text-green-400' : pct >= 50 ? 'text-yellow-400' : 'text-red-400';
-              const barColor = pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+              const worse = 'higherIsWorse' in indicator && indicator.higherIsWorse === true;
+              const statusColor = worse
+                ? (pct <= 20 ? 'text-green-400' : pct <= 50 ? 'text-yellow-400' : 'text-red-400')
+                : (pct >= 80 ? 'text-green-400' : pct >= 50 ? 'text-yellow-400' : 'text-red-400');
+              const barColor = worse
+                ? (pct <= 20 ? 'bg-green-500' : pct <= 50 ? 'bg-yellow-500' : 'bg-red-500')
+                : (pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500');
+              const caption = worse
+                ? (pct <= 30 ? indicator.good : indicator.bad)
+                : (pct >= 70 ? indicator.good : indicator.bad);
               return (
                 <div key={indicator.label} className="panel p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -117,7 +127,7 @@ export function HealthPanel() {
                     <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
                   </div>
                   <p className="text-[10px] text-gray-400 mt-2">
-                    {pct >= 70 ? indicator.good : indicator.bad}
+                    {caption}
                   </p>
                 </div>
               );

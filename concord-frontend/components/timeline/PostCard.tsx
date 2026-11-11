@@ -140,7 +140,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
   const isOwner = post.authorId === viewerId;
 
   return (
-    <article className="bg-[#242526] rounded-lg">
+    <article className="bg-[#242526] rounded-lg min-w-0 overflow-hidden">
       {/* Header */}
       <div className="p-4 pb-2 flex items-start justify-between">
         <div className="flex gap-3">
@@ -300,7 +300,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
         </div>
       ) : post.content ? (
         <div className="px-4 py-2">
-          <p className="text-white text-sm whitespace-pre-wrap">{post.content}</p>
+          <p className="text-white text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{post.content}</p>
         </div>
       ) : null}
 
@@ -314,7 +314,7 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
                 Replaced {new Date(v.editedAt).toLocaleString()} · audience: {v.privacy}
                 {v.media?.length ? ` · ${v.media.length} media` : ''}
               </p>
-              <p className="text-sm text-gray-400 whitespace-pre-wrap">{v.content || '(no text)'}</p>
+              <p className="text-sm text-gray-400 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{v.content || '(no text)'}</p>
             </div>
           ))}
         </div>

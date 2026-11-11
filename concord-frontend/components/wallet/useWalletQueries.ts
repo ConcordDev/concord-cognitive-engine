@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
+import { signedLedgerAmount } from '@/lib/economy/signed-ledger';
 import {
   TX_PAGE_SIZE,
   pageTransactions,
@@ -68,7 +69,12 @@ export function flattenHistoryPages(
   pages: TransactionPage[] | undefined,
 ): WalletTransaction[] {
   if (!pages) return [];
-  return pages.flatMap(pageTransactions);
+  return pages.flatMap((page) =>
+    pageTransactions(page).map((tx) => ({
+      ...tx,
+      amount: signedLedgerAmount(tx, page.userId),
+    })),
+  );
 }
 
 export function deriveEarnings(

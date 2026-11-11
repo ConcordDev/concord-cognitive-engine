@@ -115,7 +115,7 @@ export function IssLiveTracker() {
             { label: 'Latitude', value: `${pos.latitude.toFixed(2)}°` },
             { label: 'Longitude', value: `${pos.longitude.toFixed(2)}°` },
             { label: 'Altitude', value: `${pos.altitudeKm.toFixed(1)} km` },
-            { label: 'Velocity', value: `${(pos.velocityKmH / 1000).toFixed(2)} km/s` },
+            { label: 'Velocity', value: `${(pos.velocityKmH / 3600).toFixed(2)} km/s` },
           ].map((s) => (
             <div key={s.label} className="p-2.5 bg-zinc-900 rounded-lg border border-zinc-800">
               <p className="text-[11px] text-zinc-400">{s.label}</p>
@@ -138,6 +138,7 @@ export function IssLiveTracker() {
           <span className="flex items-center gap-1.5">
             <Gauge className="w-3.5 h-3.5" /> footprint {pos.footprintKm.toFixed(0)} km
           </span>
+          <span>Catalog orbit inclination 51.6°. The live feed does not report inclination.</span>
           <span className={cn('ml-auto', track.length > 0 ? 'text-cyan-400' : 'text-zinc-600')}>
             {track.length > 0 ? `${track.length}-point ground track` : 'computing track…'}
           </span>
