@@ -619,9 +619,16 @@ function WpsTab() {
   }, []);
   useEffect(() => { void reload(); }, [reload]);
 
+  const rangeNegative = [form.amperageRange, form.voltageRange, form.travelSpeed, form.thicknessRange, form.preheat].some((v) => /(?:^|[^\d])-\d/.test(v));
+  const wpsError = !form.fillerMetal.trim() || !form.amperageRange.trim() || !form.thicknessRange.trim()
+    ? 'Filler metal, amperage range, and thickness range are required.'
+    : rangeNegative ? 'Ranges and temperatures cannot be negative.' : null;
+
   const create = async () => {
+    if (wpsError) return;
     setBusy(true);
-    await run('wps-create', { ...form, positions: form.positions.split(',').map((p) => p.trim()).filter(Boolean) });
+    const r = await run('wps-create', { ...form, positions: form.positions.split(',').map((p) => p.trim()).filter(Boolean) });
+    if (!r) { setBusy(false); return; }
     setForm((f) => ({ ...f, wpsNumber: '', fillerMetal: '', amperageRange: '', voltageRange: '', thicknessRange: '', preheat: '' }));
     await reload();
     bumpOps();
@@ -660,7 +667,8 @@ function WpsTab() {
         <input className={inputCls} placeholder="Preheat" value={form.preheat} onChange={set('preheat')} />
         <input className={inputCls} placeholder="Interpass temp" value={form.interpassTemp} onChange={set('interpassTemp')} />
         <select className={inputCls} value={form.code} onChange={set('code')}>{['AWS D1.1', 'AWS D1.6', 'ASME IX', 'API 1104'].map((c) => <option key={c}>{c}</option>)}</select>
-        <button type="button" className={btnCls} onClick={create} disabled={busy}><Plus className="h-3.5 w-3.5" /> Create WPS</button>
+        <button type="button" className={btnCls} onClick={create} disabled={busy || !!wpsError}><Plus className="h-3.5 w-3.5" /> Create WPS</button>
+        {wpsError && <p role="alert" className="sm:col-span-4 text-[11px] text-rose-300">{wpsError}</p>}
       </div>
 
       <div className="space-y-1.5">
@@ -706,9 +714,17 @@ function PqrSection() {
   }, []);
   useEffect(() => { void reload(); }, [reload]);
 
+  const pqrError = !form.welder.trim() || !form.wpsNumber.trim()
+    ? 'Welder and the WPS number this record supports are required.'
+    : (/(?:^|[^\d])-\d/.test(form.couponThickness) || /(?:^|[^\d])-\d/.test(form.qualifiedRange))
+      ? 'Coupon thickness and qualified range cannot be negative.'
+      : null;
+
   const create = async () => {
+    if (pqrError) return;
     setBusy(true);
-    await run('pqr-create', { ...form });
+    const r = await run('pqr-create', { ...form });
+    if (!r) { setBusy(false); return; }
     setForm({ pqrNumber: '', wpsNumber: '', process: 'SMAW', baseMetal: '', couponThickness: '', welder: '', testDate: '', tensileResult: 'not_recorded', bendResult: 'not_recorded', qualifiedRange: '' });
     await reload();
   };
@@ -741,7 +757,8 @@ function PqrSection() {
             <option value="not_recorded">not recorded</option><option value="pass">pass</option><option value="fail">fail</option>
           </select>
         </label>
-        <button type="button" className={`${btnCls} sm:col-span-2`} onClick={create} disabled={busy}><Plus className="h-3.5 w-3.5" /> Record PQR</button>
+        <button type="button" className={`${btnCls} sm:col-span-2`} onClick={create} disabled={busy || !!pqrError}><Plus className="h-3.5 w-3.5" /> Record PQR</button>
+        {pqrError && <p role="alert" className="sm:col-span-4 text-[11px] text-rose-300">{pqrError}</p>}
       </div>
 
       <div className="space-y-1.5">

@@ -175,7 +175,7 @@ describe("welding — invoice payments", () => {
 // ─── WPS builder ─────────────────────────────────────────────────────
 describe("welding — WPS builder", () => {
   it("wps-create + wps-list round-trip", () => {
-    const c = call("wps-create", ctxA, { process: "GMAW", baseMetal: "stainless-steel", code: "ASME IX" });
+    const c = call("wps-create", ctxA, { process: "GMAW", baseMetal: "stainless-steel", code: "ASME IX", fillerMetal: "ER308L", amperageRange: "80-140", thicknessRange: "2-10mm" });
     assert.equal(c.ok, true);
     assert.match(c.result.wps.wpsNumber, /^WPS-/);
     const l = call("wps-list", ctxA, {});
@@ -183,12 +183,16 @@ describe("welding — WPS builder", () => {
     assert.equal(l.result.wps.length, 1);
   });
 
-  it("wps-approve blocks an incomplete WPS", () => {
-    const c = call("wps-create", ctxA, { process: "SMAW" });
-    const a = call("wps-approve", ctxA, { wpsId: c.result.wps.id });
-    assert.equal(a.ok, false);
-    assert.equal(a.error, "incomplete_wps");
-    assert.ok(Array.isArray(a.result.missing));
+  it("wps-create rejects a blank or negative procedure", () => {
+    const blank = call("wps-create", ctxA, { process: "SMAW" });
+    assert.equal(blank.ok, false);
+    assert.equal(blank.error, "invalid_wps");
+    assert.ok(blank.result.missing.includes("fillerMetal"));
+    const neg = call("wps-create", ctxA, { fillerMetal: "E7018", amperageRange: "-100", thicknessRange: "3-12" });
+    assert.equal(neg.ok, false);
+    assert.ok(neg.result.negative.includes("amperageRange"));
+    const l = call("wps-list", ctxA, {});
+    assert.equal(l.result.wps.length, 0);
   });
 
   it("wps-approve passes a complete WPS", () => {

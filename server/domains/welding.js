@@ -165,6 +165,8 @@ export default function registerWeldingActions(registerLensAction) {
   const wActorName = (ctx) => ctx?.actor?.name || ctx?.actor?.displayName || ctx?.userName || wActor(ctx);
   const wClean = (v, max = 400) => String(v == null ? "" : v).trim().slice(0, max);
   const wNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  // A hyphen between two numbers is a range ("90-140"). A leading minus is a negative.
+  const wHasNegative = (v) => /(?:^|[^\d])-\d/.test(String(v ?? ""));
   const wList = (s, key, userId) => { if (!s[key].has(userId)) s[key].set(userId, []); return s[key].get(userId); };
   const noState = { ok: false, error: "state_unavailable" };
   const DAY_MS = 86400000;
@@ -457,6 +459,14 @@ export default function registerWeldingActions(registerLensAction) {
       const s = getWeldState(); if (!s) return noState;
       const userId = wActor(ctx);
       const list = wList(s, "wps", userId);
+      const missing = [];
+      if (!wClean(params.fillerMetal, 80)) missing.push("fillerMetal");
+      if (!wClean(params.amperageRange, 60)) missing.push("amperageRange");
+      if (!wClean(params.thicknessRange, 60)) missing.push("thicknessRange");
+      const negative = ["amperageRange", "voltageRange", "travelSpeed", "thicknessRange", "preheat"].filter((k) => wHasNegative(params[k]));
+      if (missing.length || negative.length) {
+        return { ok: false, error: "invalid_wps", result: { missing, negative } };
+      }
       const wps = {
         id: wId("wps"),
         wpsNumber: wClean(params.wpsNumber, 60) || `WPS-${String(list.length + 1).padStart(3, "0")}`,
@@ -526,6 +536,12 @@ export default function registerWeldingActions(registerLensAction) {
       const s = getWeldState(); if (!s) return noState;
       const userId = wActor(ctx);
       const list = wList(s, "pqr", userId);
+      if (!wClean(params.welder, 160) || !wClean(params.wpsNumber, 60)) {
+        return { ok: false, error: "invalid_pqr", result: { missing: [!wClean(params.welder, 160) ? "welder" : null, !wClean(params.wpsNumber, 60) ? "wpsNumber" : null].filter(Boolean) } };
+      }
+      if (wHasNegative(params.couponThickness) || wHasNegative(params.qualifiedRange)) {
+        return { ok: false, error: "negative_value" };
+      }
       const outcome = (v) => (v === "pass" || v === "fail" ? v : "not_recorded");
       const pqr = {
         id: wId("pqr"),
