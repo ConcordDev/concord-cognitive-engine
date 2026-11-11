@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useId } from 'react';
 import NextImage from 'next/image';
 import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,8 +25,6 @@ import {
 } from 'lucide-react';
 import { cn, formatBytes } from '@/lib/utils';
 import { api } from '@/lib/api/client';
-import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
-
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type MediaType = 'audio' | 'video' | 'image' | 'document' | 'stream';
@@ -132,6 +130,7 @@ export function MediaUpload({
   const [uploadFile, setUploadFile] = useState<UploadFile | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputId = useId();
 
   // Form state
   const [title, setTitle] = useState('');
@@ -339,23 +338,24 @@ export function MediaUpload({
       <div className="p-5 space-y-5">
         {/* Drop zone */}
         {!uploadFile ? (
-          <div
+          <label
+            htmlFor={fileInputId}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
-            onClick={() => fileInputRef.current?.click()}
             className={cn(
-              'relative border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all',
+              'relative border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all block',
               isDragOver
                 ? 'border-neon-cyan bg-neon-cyan/5'
                 : 'border-lattice-border hover:border-gray-500 hover:bg-lattice-deep/50'
-            )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+            )}>
             <input
+              id={fileInputId}
               ref={fileInputRef}
               type="file"
               accept={allAccepted}
               onChange={handleFileSelect}
-              className="hidden"
+              className="sr-only"
             />
 
             <motion.div
@@ -387,7 +387,7 @@ export function MediaUpload({
                 ))}
               </div>
             </motion.div>
-          </div>
+          </label>
         ) : (
           /* File preview */
           <div className="rounded-xl bg-lattice-deep border border-lattice-border p-4">
