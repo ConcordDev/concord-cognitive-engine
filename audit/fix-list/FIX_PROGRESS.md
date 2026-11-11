@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 659 | 286 | 0 |
+| medium | 666 | 279 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1085** | **1064** | **2** |
+| **total** | **1092** | **1057** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1881,6 +1881,20 @@ A stand, robot, landscaping client, and sky target can be changed from the row t
 | FIX-landscaping-010 | landscaping | medium | FIXED_PENDING_VERIFY | ed7d9ea10 |
 | FIX-analytics-004 | analytics | medium | FIXED_PENDING_VERIFY | ed7d9ea10 |
 | FIX-security-003 | security | medium | FIXED_PENDING_VERIFY | ed7d9ea10 |
+
+## Mediums — ask before a destructive change, and do not save a preview
+
+Watchlist remove asks before the search is deleted. A weld photo has to be an http or https link, and Remove asks first. A photo is still a link. Calculate load shows the numbers and leaves history alone until Save estimate. Deleting a saved model asks first and clears that model's reopen id, so Studio does not toast that a deleted model was not found. Restore asks before it replaces the current world. Squawks and remarks stay with the flight that was open. Archive, Leave, and Delete material ask before they run.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-black-market-013 | black-market | medium | FIXED_PENDING_VERIFY | 12de88a84 |
+| FIX-welding-012 | welding | medium | FIXED_PENDING_VERIFY | 12de88a84 |
+| FIX-hvac-014 | hvac | medium | FIXED_PENDING_VERIFY | 12de88a84 |
+| FIX-sim-006 | sim | medium | FIXED_PENDING_VERIFY | 12de88a84 |
+| FIX-worldmodel-002 | worldmodel | medium | FIXED_PENDING_VERIFY | 12de88a84 |
+| FIX-aviation-006 | aviation | medium | FIXED_PENDING_VERIFY | 12de88a84 |
+| FIX-classroom-004 | classroom | medium | FIXED_PENDING_VERIFY | 12de88a84 |
 
 ## NEEDS_PRODUCT_SURFACE
 
