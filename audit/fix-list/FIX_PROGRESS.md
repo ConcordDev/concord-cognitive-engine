@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 648 | 297 | 0 |
+| medium | 653 | 292 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1074** | **1075** | **2** |
+| **total** | **1079** | **1070** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1856,6 +1856,18 @@ Reloading the code-quality page brings back the last analyze when that scan stor
 |---|---|---|---|---|
 | FIX-code-quality-004 | code-quality | medium | FIXED_PENDING_VERIFY | 7fcc64fb8 |
 | FIX-code-quality-007 | code-quality | medium | FIXED_PENDING_VERIFY | 7fcc64fb8 |
+
+## Mediums — the number on screen is the one the action computed
+
+Volume and growth share one board-foot curve. At site index 80 a 20-year Douglas-fir is 143 board feet per tree, and both screens show that formula. Growth multiplies by trees per acre (100 if you leave it blank). Discover lists the higher favorite count first, and recent uses the real created date. The card labels the star as favorites and the other number as pop. A price-book markup shows the new price as you type and saves when you leave the field. A lead score shows opens × 2, clicks × 6, views × 3, and submits × 20. A welding job with no estimate, contract, or amount does not become a $0 invoice. An amount you enter is a line, the invoice lists its lines, and an unpaid invoice can change its due date.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-forestry-006 | forestry | medium | FIXED_PENDING_VERIFY | 34da5468e |
+| FIX-sub-worlds-005 | sub-worlds | medium | FIXED_PENDING_VERIFY | 34da5468e |
+| FIX-plumbing-014 | plumbing | medium | FIXED_PENDING_VERIFY | 34da5468e |
+| FIX-marketing-011 | marketing | medium | FIXED_PENDING_VERIFY | 34da5468e |
+| FIX-welding-011 | welding | medium | FIXED_PENDING_VERIFY | 34da5468e |
 
 ## NEEDS_PRODUCT_SURFACE
 
