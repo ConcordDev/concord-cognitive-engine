@@ -280,6 +280,8 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [formName, setFormName] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
+  const NAME_MAX = 120;
   const [formDescription, setFormDescription] = useState('');
   const [formStatus, setFormStatus] = useState<Status>('scheduled');
   const [formNotes, setFormNotes] = useState('');
@@ -328,8 +330,14 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
     }
     if (filterStatus !== 'all')
       result = result.filter((i) => (i.data as unknown as TradeArtifact).status === filterStatus);
-    return result;
-  }, [items, searchQuery, filterStatus]);
+    const sorted = [...result].sort((a, b) => {
+      if (sortBy === 'name') return (a.title || '').localeCompare(b.title || '');
+      const ta = String(a.updatedAt || '');
+      const tb = String(b.updatedAt || '');
+      return sortBy === 'oldest' ? ta.localeCompare(tb) : tb.localeCompare(ta);
+    });
+    return sorted;
+  }, [items, searchQuery, filterStatus, sortBy]);
 
   const resetForm = () => {
     setFormName('');
@@ -532,7 +540,8 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
           <div className="space-y-3">
             <div>
               <label className={ds.label}>Name</label>
-              <input className={ds.input} value={formName} onChange={(e) => setFormName(e.target.value)} />
+              <input className={ds.input} value={formName} maxLength={NAME_MAX} onChange={(e) => setFormName(e.target.value.slice(0, NAME_MAX))} aria-describedby="hvac-name-limit" />
+              <p id="hvac-name-limit" className={formName.length >= NAME_MAX ? 'text-[11px] text-amber-300' : 'text-[11px] text-gray-500'}>{formName.length}/{NAME_MAX} characters. Longer names are cut off.</p>
             </div>
             <div>
               <label className={ds.label}>Description</label>
@@ -768,6 +777,11 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
           {statusOptions.map((k) => (
             <option key={k} value={k}>{statusLabel(activeArtifactType, k)}</option>
           ))}
+        </select>
+        <select className={cn(ds.select, 'w-auto')} value={sortBy} onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'name')} aria-label="Sort records">
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="name">Name</option>
         </select>
         <button onClick={openCreate} className={ds.btnPrimary}>
           <Plus className="w-4 h-4" /> New
