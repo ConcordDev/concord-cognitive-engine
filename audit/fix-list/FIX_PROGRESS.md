@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 624 | 321 | 0 |
+| medium | 626 | 319 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1050** | **1099** | **2** |
+| **total** | **1052** | **1097** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1776,6 +1776,15 @@ My Vault no longer lists automatic chat replies or the megas built from them. A 
 |---|---|---|---|---|
 | FIX-chat-011 | chat | medium | FIXED_PENDING_VERIFY | adc77b53d |
 | FIX-global-001 | global | medium | FIXED_PENDING_VERIFY | adc77b53d |
+
+## Mediums — the date and the gratitude words
+
+A Wikipedia timeline skips a bare number next to an alarm code, such as 1201. A sentence with a calendar date, including July 20, 1969, is kept when the list is capped, and a long lead sentence is still read. A gratitude entry stored as an object shows the words in its text, note, or body. A line that was already saved as the literal text "[object Object]" has no words left to recover.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-history-001 | history | medium | FIXED_PENDING_VERIFY | df722f571 |
+| FIX-mental-health-003 | mental-health | medium | FIXED_PENDING_VERIFY | df722f571 |
 
 ## NEEDS_PRODUCT_SURFACE
 
