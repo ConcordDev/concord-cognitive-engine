@@ -22,6 +22,18 @@ import {
 import { buildCreaturePortraitSvg, summarizePartCounts } from "../lib/creature-portrait.js";
 import { registerCitation } from "../economy/royalty-cascade.js";
 import { announceCreatureBorn } from "../lib/concordia-creatures.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+export function creaturesCodexExportRows() {
+  return speciesCatalog().map((s) => ({
+    id: s.species_id,
+    type: "species",
+    title: s.species_id,
+    createdAt: null,
+    updatedAt: null,
+    data: s,
+  }));
+}
 
 // Deterministic coat colour from species id + dominant affinity, so a steam
 // variant reads cool-grey, a magma variant red, etc. — no per-species art asset.
@@ -174,6 +186,7 @@ function csResolveOwnedCreatureParent(db, parentInput) {
 }
 
 export default function registerCreatureMacros(register) {
+  registerLensExportProvider("creatures", () => creaturesCodexExportRows());
   register("creatures", "for_world", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };

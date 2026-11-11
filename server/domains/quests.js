@@ -10,6 +10,7 @@
 // All macros are pure delegations; the engine owns the SQL + the
 // "rewards claimed exactly once" invariant (player_quests.rewarded_at gate).
 
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import {
   getActiveQuests,
   getCompletedQuests,
@@ -99,7 +100,40 @@ function reshapeQuestForLens(db, userId, worldId, q) {
   };
 }
 
+export function questExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.userId || null;
+  if (!db || !userId) return [];
+  try {
+    const rows = db.prepare(`
+      SELECT q.id, q.title, q.description, pq.status, pq.world_id, pq.completed_at
+      FROM player_quests pq
+      JOIN world_quests q ON q.id = pq.quest_id
+      WHERE pq.user_id = ?
+      ORDER BY COALESCE(pq.completed_at, 0) DESC
+      LIMIT 200
+    `).all(userId);
+    return rows.map((r) => ({
+      id: `${r.world_id || "world"}:${r.id}`,
+      type: "quest",
+      title: r.title || String(r.id),
+      createdAt: r.completed_at || null,
+      updatedAt: r.completed_at || null,
+      data: {
+        questId: r.id,
+        title: r.title || String(r.id),
+        description: r.description || "",
+        status: r.status || "active",
+        worldId: r.world_id || null,
+      },
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export default function registerQuestsMacros(register) {
+  registerLensExportProvider("quests", questExportRows);
   /**
    * quests.accept — write a player_quests row for an authored world_quests
    * catalog id. Does NOT flip world_quests.status (multiplayer: catalog stays

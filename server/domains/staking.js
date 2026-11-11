@@ -28,6 +28,7 @@
 // { ok: boolean, result?, error? }.
 
 import { randomUUID } from "crypto";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import { getBalance } from "../economy/balances.js";
 import { recordTransaction } from "../economy/ledger.js";
 import { PLATFORM_ACCOUNT_ID } from "../economy/fees.js";
@@ -145,7 +146,70 @@ function publicPositionRow(row, now) {
   };
 }
 
+export function stakingExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.userId || ctx?.actor?.id || null;
+  if (!db || !userId || !hasStakingTables(db)) return [];
+  const now = Math.floor(Date.now() / 1000);
+  const rows = [];
+  let positions = [];
+  try {
+    positions = db.prepare("SELECT * FROM staking_positions WHERE user_id=? ORDER BY locked_at DESC").all(userId);
+  } catch {
+    return [];
+  }
+  for (const r of positions) {
+    const pub = publicPositionRow(r, now);
+    rows.push({
+      id: pub.id,
+      type: "staking-position",
+      title: `${pub.poolName || "Stake"} · ${pub.principalCc} CC`,
+      createdAt: pub.lockedAt,
+      updatedAt: pub.unlocksAt,
+      data: pub,
+    });
+    if (r.status === "redeemed" && Number(r.final_yield_cc) > 0) {
+      rows.push({
+        id: `earn_${r.id}`,
+        type: "staking-earning",
+        title: `Yield ${r.final_yield_cc} CC`,
+        createdAt: r.redeemed_at || r.locked_at,
+        updatedAt: r.redeemed_at || r.locked_at,
+        data: { stakeId: r.id, poolId: r.pool_id, yieldCc: r.final_yield_cc, kind: "stake_redeemed" },
+      });
+    }
+    if (r.status === "early_exited") {
+      rows.push({
+        id: `earn_${r.id}`,
+        type: "staking-earning",
+        title: `Early exit penalty ${r.penalty_cc || 0} CC`,
+        createdAt: r.exited_at || r.locked_at,
+        updatedAt: r.exited_at || r.locked_at,
+        data: { stakeId: r.id, poolId: r.pool_id, penaltyCc: r.penalty_cc || 0, kind: "early_unstake" },
+      });
+    }
+  }
+  try {
+    const receipts = db.prepare("SELECT * FROM staking_receipts WHERE user_id=? ORDER BY minted_at DESC").all(userId);
+    for (const r of receipts) {
+      rows.push({
+        id: r.id,
+        type: "staking-receipt",
+        title: r.symbol || "Receipt",
+        createdAt: r.minted_at,
+        updatedAt: r.unlocks_at,
+        data: {
+          id: r.id, stakeId: r.stake_id, symbol: r.symbol, faceValueCc: r.face_value_cc,
+          mintedAt: r.minted_at, unlocksAt: r.unlocks_at, status: r.status,
+        },
+      });
+    }
+  } catch { /* receipts table is optional on a partial db */ }
+  return rows;
+}
+
 export default function registerStakingActions(registerLensAction) {
+  registerLensExportProvider("staking", stakingExportRows);
   // ── list_pools ──────────────────────────────────────────────────────────
   registerLensAction("staking", "list_pools", (ctx, artifact, params = {}) => {
     try {

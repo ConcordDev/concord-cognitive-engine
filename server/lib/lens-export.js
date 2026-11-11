@@ -79,6 +79,7 @@ const LENS_BAG_ALIASES = {
   creativewriting: "writingLens",
   construction: "conLens",
   insurance: "insLens",
+  telecommunications: "telecom",
 };
 
 /**

@@ -14,6 +14,7 @@ import {
   failBond, cancelBond, getSpillover, raidBondEscrow,
 } from "../lib/civic-bonds.js";
 import { isAdmin, requireActor } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 // GOVERNANCE_SCOPES is the canonical town->city->county->state->national->
 // international hierarchy (the same single conceptual source the migration
 // 305 `civic_bonds.scope` column comment points at: "-- GOVERNANCE_SCOPES").
@@ -79,7 +80,43 @@ function requireBondManager(ctx, bondId) {
   return { ok: false, reason: "forbidden" };
 }
 
+export function civicBondExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.userId || null;
+  if (!db || !userId) return [];
+  try {
+    const bonds = db.prepare(`
+      SELECT DISTINCT b.* FROM civic_bonds b
+      LEFT JOIN civic_bond_pledges p ON p.bond_id = b.id AND p.entity_id = ?
+      WHERE b.proposer_id = ? OR p.id IS NOT NULL
+      LIMIT 200
+    `).all(userId, userId);
+    const pledges = db.prepare(`SELECT * FROM civic_bond_pledges WHERE entity_id = ? LIMIT 200`).all(userId);
+    return [
+      ...bonds.map((b) => ({
+        id: b.id,
+        type: "civic-bond",
+        title: b.title || b.id,
+        createdAt: b.created_at || null,
+        updatedAt: b.completed_at || b.funded_at || b.created_at || null,
+        data: b,
+      })),
+      ...pledges.map((p) => ({
+        id: p.id,
+        type: "civic-pledge",
+        title: `Pledge ${p.amount}`,
+        createdAt: p.pledged_at || null,
+        updatedAt: p.pledged_at || null,
+        data: p,
+      })),
+    ];
+  } catch {
+    return [];
+  }
+}
+
 export default function registerCivicBondsMacros(register) {
+  registerLensExportProvider("civic-bonds", civicBondExportRows);
   // ── reads ──────────────────────────────────────────────────────────────
   register("civic_bonds", "list", async (ctx, input = {}) => {
     const g = gate(ctx); if (g) return g;
