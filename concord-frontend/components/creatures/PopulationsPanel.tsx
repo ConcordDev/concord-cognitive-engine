@@ -112,7 +112,7 @@ export function PopulationsPanel({ worldId }: { worldId: string }) {
           <div className="rounded border border-red-500/30 bg-red-500/[0.06] p-4 text-xs" role="alert">
             <div className="mb-2 flex items-center gap-2 text-red-300"><AlertCircle size={14} aria-hidden /> Couldn’t load populations.</div>
             <p className="mb-3 text-zinc-400">{error}</p>
-            <button onClick={refresh} className="rounded bg-red-500/20 px-3 py-1 text-red-100 hover:bg-red-500/30">Retry</button>
+            <button onClick={refresh} className="min-h-11 rounded bg-red-500/20 px-3 text-red-100 hover:bg-red-500/30">Retry</button>
           </div>
         ) : pops.length === 0 ? (
           <div className="rounded border border-dashed border-zinc-700 bg-zinc-900/30 p-6 text-center text-xs text-zinc-500">
@@ -132,7 +132,7 @@ export function PopulationsPanel({ worldId }: { worldId: string }) {
                     else { setPickA(p); setPickB(null); setBreedResult(null); }
                   }}
                   className={[
-                    'flex items-center gap-2 rounded border p-2 text-left text-xs',
+                    'flex min-h-11 items-center gap-2 rounded border p-2 text-left text-xs',
                     sel ? 'border-violet-300 bg-violet-500/30 text-violet-50' : 'border-violet-500/20 bg-violet-950/20 text-violet-200 hover:border-violet-400/50',
                   ].join(' ')}
                 >
@@ -155,7 +155,7 @@ export function PopulationsPanel({ worldId }: { worldId: string }) {
             <p className="mb-2 text-[11px] text-emerald-300/80">Same biome ({pickA.biome}) — crossbreeding bonus applies.</p>
           )}
           <button onClick={breed} disabled={breeding} title="Breed (B)"
-            className="rounded bg-violet-500/30 px-3 py-1.5 text-xs text-violet-100 hover:bg-violet-500/50 disabled:opacity-50">
+            className="min-h-11 rounded bg-violet-500/30 px-3 text-xs text-violet-100 hover:bg-violet-500/50 disabled:opacity-50">
             {breeding ? <Loader2 className="inline animate-spin" size={11} aria-hidden /> : <Sparkles className="inline" size={11} aria-hidden />} Breed
             <kbd className="ml-1.5 rounded border border-violet-400/30 bg-violet-950/40 px-1 text-[9px] text-violet-300">B</kbd>
           </button>

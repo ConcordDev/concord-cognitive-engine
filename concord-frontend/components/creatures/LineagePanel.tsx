@@ -51,8 +51,8 @@ export function LineagePanel() {
           onChange={(e) => { setLineageId(e.target.value); setLineageSearched(false); setLineageError(null); }}
           onKeyDown={(e) => { if (e.key === 'Enter') fetchLineage(); }}
           placeholder="creature id  ·  L focuses"
-          className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100" />
-        <button onClick={fetchLineage} className="rounded bg-zinc-800 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-700">View</button>
+          className="min-h-11 flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100" />
+        <button onClick={fetchLineage} className="min-h-11 rounded bg-zinc-800 px-3 text-xs text-zinc-200 hover:bg-zinc-700">View</button>
       </div>
       {lineage.length > 0 ? (
         <div className="mt-2 space-y-1">

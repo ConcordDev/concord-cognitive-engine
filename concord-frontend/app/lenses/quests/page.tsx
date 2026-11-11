@@ -170,7 +170,7 @@ export default function QuestsLensPage() {
         crumb="Quest log"
         subtitle={`${quests.length} total quest${quests.length === 1 ? '' : 's'}${partyId ? ' · in a party, so active quests can be shared' : ''}`}
         actions={
-          <button onClick={refresh} aria-label="Refresh quests" title="Refresh quests" className="rounded-full border border-white/10 bg-white/[0.03] p-2 text-zinc-400 hover:text-zinc-100">
+          <button onClick={refresh} aria-label="Refresh quests" title="Refresh quests" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] p-2 text-zinc-400 hover:text-zinc-100">
             <RefreshCcw className="h-3.5 w-3.5" />
           </button>
         }
@@ -204,7 +204,7 @@ export default function QuestsLensPage() {
               <AlertCircle className="h-8 w-8 text-rose-400" />
               <p className="text-sm font-medium text-rose-200">Couldn&apos;t load your quests</p>
               <p className="text-[12px] text-slate-400">{errMsg}</p>
-              <button onClick={refresh} className="mt-1 flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-[12px] font-medium text-amber-200 hover:bg-amber-500/20">
+              <button onClick={refresh} className="mt-1 flex min-h-11 items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-[12px] font-medium text-amber-200 hover:bg-amber-500/20">
                 <RefreshCcw className="h-3.5 w-3.5" /> Try again
               </button>
             </div>
@@ -232,13 +232,13 @@ export default function QuestsLensPage() {
                       {q.description && <p className="mt-0.5 text-[11px] text-amber-200/80">{q.description}</p>}
                     </div>
                     {tab === 'active' && partyId && (
-                      <button onClick={() => handleShare(q.id)} disabled={busy === `share-${q.id}`} aria-label={`Share ${q.title || q.id} with party`} className="flex items-center gap-1 rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-40">
+                      <button onClick={() => handleShare(q.id)} disabled={busy === `share-${q.id}`} aria-label={`Share ${q.title || q.id} with party`} className="flex min-h-11 shrink-0 items-center gap-1 rounded bg-cyan-500/20 px-3 text-[10px] text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-40">
                         <Users2 className="h-3 w-3" />
                         Share
                       </button>
                     )}
                     {tab === 'completed' && q.status === 'completed' && (
-                      <button onClick={() => handleClaim(q.id)} disabled={busy === `claim-${q.id}`} aria-label={`Claim rewards for ${q.title || q.id}`} className="flex shrink-0 items-center gap-1 rounded bg-yellow-500/20 px-2 py-0.5 text-[10px] text-yellow-200 hover:bg-yellow-500/30 disabled:opacity-40">
+                      <button onClick={() => handleClaim(q.id)} disabled={busy === `claim-${q.id}`} aria-label={`Claim rewards for ${q.title || q.id}`} className="flex min-h-11 shrink-0 items-center gap-1 rounded bg-yellow-500/20 px-3 text-[10px] text-yellow-200 hover:bg-yellow-500/30 disabled:opacity-40">
                         <Gift className="h-3 w-3" />
                         Claim
                       </button>

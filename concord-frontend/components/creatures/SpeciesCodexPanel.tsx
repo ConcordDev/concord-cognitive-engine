@@ -112,7 +112,7 @@ export function SpeciesCodexPanel() {
           <label className="sr-only" htmlFor="codex-search">Search species codex</label>
           <input id="codex-search" ref={codexSearchRef} value={codexQuery} onChange={(e) => setCodexQuery(e.target.value)}
             placeholder="filter by species, clade, topology, diet…  ·  / focuses"
-            className="w-64 rounded border border-zinc-700 bg-zinc-950 py-1 pl-6 pr-2 text-[11px] text-zinc-100" />
+            className="min-h-11 w-64 rounded border border-zinc-700 bg-zinc-950 py-1 pl-6 pr-2 text-[11px] text-zinc-100" />
         </div>
       </div>
 
@@ -124,7 +124,7 @@ export function SpeciesCodexPanel() {
         <div className="rounded border border-red-500/30 bg-red-500/[0.06] p-4 text-xs" role="alert">
           <div className="mb-2 flex items-center gap-2 text-red-300"><AlertCircle size={14} aria-hidden /> Couldn’t load the codex.</div>
           <p className="mb-3 text-zinc-400">{codexError}</p>
-          <button onClick={refreshCodex} className="rounded bg-red-500/20 px-3 py-1 text-red-100 hover:bg-red-500/30">Retry</button>
+          <button onClick={refreshCodex} className="min-h-11 rounded bg-red-500/20 px-3 text-red-100 hover:bg-red-500/30">Retry</button>
         </div>
       ) : (
         <DataTable<SpeciesRecord>
@@ -146,9 +146,9 @@ export function SpeciesCodexPanel() {
           <input id="codex-tax-lookup" value={taxQuery} onChange={(e) => setTaxQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') lookupTaxonomy(); }}
             placeholder="e.g. a bred hybrid's species_id"
-            className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100" />
+            className="min-h-11 flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100" />
           <button onClick={lookupTaxonomy} disabled={taxLoading || !taxQuery.trim()}
-            className="rounded bg-zinc-800 px-3 py-1 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-50">
+            className="min-h-11 rounded bg-zinc-800 px-3 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-50">
             {taxLoading ? <Loader2 className="inline animate-spin" size={11} aria-hidden /> : 'Resolve'}
           </button>
         </div>
