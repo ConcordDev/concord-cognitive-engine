@@ -329,4 +329,36 @@ describe("translation glossary", () => {
     await h.call("translate", { text: "hello", targetLanguage: "es" });
     assert.doesNotMatch(h.calls[0].system, /Glossary/);
   });
+
+  it("writes a glossary target the model left in English, and restores a stripped accent", async () => {
+    const h = makeHarness({ llm: { reply: { content: "Abre el dashboard y la reticula" } } });
+    const r = await h.call("translate", {
+      text: "Open the dashboard and the lattice",
+      targetLanguage: "es",
+      glossary: [
+        { source: "dashboard", target: "panel" },
+        { source: "lattice", target: "retícula" },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.translated, "Abre el panel y la retícula");
+    assert.deepEqual(r.result.glossaryMisses, []);
+  });
+
+  it("formal Spanish uses usted when the model stays informal; neutral does not", async () => {
+    const informal = "QA LT3, ¿cómo estás?";
+    const formal = await makeHarness({ llm: { reply: { content: informal } } }).call("translate", {
+      text: "QA LT3, how are you?",
+      targetLanguage: "es",
+      formality: "formal",
+    });
+    const neutral = await makeHarness({ llm: { reply: { content: informal } } }).call("translate", {
+      text: "QA LT3, how are you?",
+      targetLanguage: "es",
+      formality: "neutral",
+    });
+    assert.equal(formal.result.translated, "QA LT3, ¿cómo está usted?");
+    assert.equal(neutral.result.translated, informal);
+    assert.match(formal.result.formality ? "formal" : "", /formal/);
+  });
 });
