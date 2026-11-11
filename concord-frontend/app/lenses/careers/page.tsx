@@ -104,6 +104,7 @@ export default function CareersLens() {
   const [lastAccuracy, setLastAccuracy] = useState<number | null>(null);
   const [last, setLast] = useState<WorkResult | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [wageError, setWageError] = useState<Record<string, string>>({});
   const [working, setWorking] = useState(false);
   const [negBusy, setNegBusy] = useState<string | null>(null);
   const [counterWage, setCounterWage] = useState<Record<string, string>>({});
@@ -446,13 +447,24 @@ export default function CareersLens() {
                           aria-label={`Counter wage for contract ${c.id}`}
                           placeholder={String(c.base_wage_sparks)}
                           value={counterWage[c.id] ?? ''}
-                          onChange={(e) => setCounterWage((m) => ({ ...m, [c.id]: e.target.value }))}
+                          onChange={(e) => {
+                            setCounterWage((m) => ({ ...m, [c.id]: e.target.value }));
+                            setWageError((m) => ({ ...m, [c.id]: '' }));
+                          }}
+                          aria-invalid={wageError[c.id] ? true : undefined}
+                          aria-describedby={wageError[c.id] ? `wage-error-${c.id}` : undefined}
                           className="w-16 px-1.5 py-0.5 rounded bg-black/60 border border-white/10 text-gray-100"
                         />
                         <button
                           onClick={() => {
-                            const wage = Number(counterWage[c.id]);
-                            void negotiate('counter', c.id, { baseWage: Number.isFinite(wage) && wage > 0 ? wage : undefined });
+                            const raw = (counterWage[c.id] ?? '').trim();
+                            const wage = Number(raw);
+                            if (!raw || !Number.isFinite(wage) || wage < 0 || wage > 1_000_000) {
+                              setWageError((m) => ({ ...m, [c.id]: 'Wage has to be a number from 0 to 1,000,000.' }));
+                              return;
+                            }
+                            setWageError((m) => ({ ...m, [c.id]: '' }));
+                            void negotiate('counter', c.id, { baseWage: wage });
                           }}
                           disabled={negBusy === c.id}
                           aria-label={`Send counter-offer for contract ${c.id}`}
@@ -466,6 +478,9 @@ export default function CareersLens() {
                         ><X className="w-3 h-3" aria-hidden="true" /> reject</button>
                       </div>
                     )}
+                    {wageError[c.id] ? (
+                      <p id={`wage-error-${c.id}`} role="alert" className="mt-1 text-rose-300">{wageError[c.id]}</p>
+                    ) : null}
                   </li>
                 ))}
               </ul>
