@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 183 | 36 | 2 |
-| medium | 688 | 257 | 0 |
+| medium | 696 | 249 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1127** | **1022** | **2** |
+| **total** | **1135** | **1014** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -2054,6 +2054,22 @@ Add supplier and Add project say when a name is missing. Burndown says how to gi
 | FIX-realestate-004 | realestate | medium | FIXED_PENDING_VERIFY | 6593a26c5 |
 | FIX-tournaments-002 | tournaments | medium | FIXED_PENDING_VERIFY | 6593a26c5 |
 | FIX-anon-003 | anon | medium | FIXED_PENDING_VERIFY | 6593a26c5 |
+
+
+## Mediums — dark labels are light enough to read
+
+Headings, helper lines, inactive chips, and empty-state notes on these screens use a lighter zinc on the dark surface.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-food-006 | food | medium | FIXED_PENDING_VERIFY | d29d142de |
+| FIX-film-studios-003 | film-studios | medium | FIXED_PENDING_VERIFY | d29d142de |
+| FIX-move-builder-003 | move-builder | medium | FIXED_PENDING_VERIFY | d29d142de |
+| FIX-creative-005 | creative | medium | FIXED_PENDING_VERIFY | d29d142de |
+| FIX-custom-007 | custom | medium | FIXED_PENDING_VERIFY | d29d142de |
+| FIX-export-010 | export | medium | FIXED_PENDING_VERIFY | d29d142de |
+| FIX-science-004 | science | medium | FIXED_PENDING_VERIFY | d29d142de |
+| FIX-voice-012 | voice | medium | FIXED_PENDING_VERIFY | d29d142de |
 
 ## NEEDS_PRODUCT_SURFACE
 
