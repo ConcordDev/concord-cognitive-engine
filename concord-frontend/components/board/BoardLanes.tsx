@@ -95,7 +95,7 @@ export function BoardLanes({
               <header className="mb-3 flex items-center gap-2 px-1">
                 <span className={cn('h-2 w-2 rounded-full', lane.dot)} aria-hidden="true" />
                 <h2 className="text-[15px] text-zinc-200">{lane.name}</h2>
-                <span className="ml-auto text-[13px] text-zinc-500">{laneTasks.length}</span>
+                <span className="ml-auto text-[13px] text-zinc-300">{laneTasks.length}</span>
               </header>
 
               {lane.id === 'todo' && adding && (
@@ -152,7 +152,7 @@ export function BoardLanes({
                   </article>
                 ))}
                 {laneTasks.length === 0 && !(lane.id === 'todo' && adding) && (
-                  <p className="px-1 pt-2 text-[13px] text-zinc-600">
+                  <p className="px-1 pt-2 text-[13px] text-zinc-300">
                     {lane.id === 'todo' ? 'Nothing queued.' : lane.id === 'doing' ? 'Drag a task here to start it.' : 'Finished work lands here.'}
                   </p>
                 )}

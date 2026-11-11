@@ -847,7 +847,11 @@ export function ArtifactDeskPanel() {
 
   const handleAction = async (action: string, artifactId?: string) => {
     const targetId = artifactId || selectedActionItem || editingItem?.id || filtered[0]?.id;
-    if (!targetId) return;
+    if (!targetId) {
+      setShowActionPanel(true);
+      setActionResult({ message: 'Select a record first. Cap rate and cash flow read that record.' });
+      return;
+    }
 
     // Field-shape bridge: the persisted artifact schema (RealEstateArtifact)
     // predates the capRate/cashFlow/closingTimeline/vacancyReport macros and
@@ -860,8 +864,20 @@ export function ArtifactDeskPanel() {
     const d = targetItem?.data as unknown as RealEstateArtifact | undefined;
     let params: Record<string, unknown> = {};
     if (d && action === 'capRate') {
-      params = { noi: d.noi, purchasePrice: d.purchasePrice ?? d.price };
+      const purchase = d.purchasePrice ?? d.price;
+      if (purchase == null || !Number.isFinite(Number(purchase))) {
+        setShowActionPanel(true);
+        setActionResult({ message: 'This record has no purchase price, so cap rate cannot be computed.' });
+        return;
+      }
+      params = { noi: d.noi, purchasePrice: purchase };
     } else if (d && action === 'cashFlow') {
+      const rent = d.grossRent ?? d.monthlyRent;
+      if (rent == null || !Number.isFinite(Number(rent))) {
+        setShowActionPanel(true);
+        setActionResult({ message: 'This record has no rent, so cash flow cannot be computed.' });
+        return;
+      }
       const loanAmount = (d.purchasePrice ?? d.price ?? 0) - (d.downPayment ?? 0);
       params = {
         monthlyRent: d.grossRent ?? d.monthlyRent,

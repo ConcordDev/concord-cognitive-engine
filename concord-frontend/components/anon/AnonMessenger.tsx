@@ -115,6 +115,7 @@ export function AnonMessenger() {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [rotating, setRotating] = useState(false);
+  const [rotateArmed, setRotateArmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // True only when this browser holds the private key the server has the
@@ -439,12 +440,16 @@ export function AnonMessenger() {
             <Radio className="h-3 w-3" /> {isConnected ? 'live' : 'offline'}
           </span>
           <button
-            onClick={rotateIdentity}
+            onClick={() => {
+              if (!rotateArmed) { setRotateArmed(true); return; }
+              setRotateArmed(false);
+              void rotateIdentity();
+            }}
             disabled={rotating}
             className="flex items-center gap-1 rounded-lg border border-lattice-border bg-lattice-deep px-3 py-1.5 text-xs text-gray-200 hover:border-neon-purple/50 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${rotating ? 'animate-spin' : ''}`} />
-            Rotate
+            {rotateArmed ? 'Confirm rotate' : 'Rotate'}
           </button>
         </div>
       </div>

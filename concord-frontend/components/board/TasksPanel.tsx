@@ -291,7 +291,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                 >
                   <s.icon className={cn('w-4 h-4', s.color)} />
                   <span className="text-lg font-semibold text-white">{s.value}</span>
-                  <span className="text-xs text-gray-400">{s.label}</span>
+                  <span className="text-xs text-zinc-200">{s.label}</span>
                 </div>
               ))}
             </div>
@@ -472,7 +472,12 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                   !actionResult.cycleTime &&
                   !actionResult.rankedCards &&
                   !actionResult.forecast && (
-                    <p className="text-sm text-gray-400">{actionResult.message as string}</p>
+                    <p className="text-sm text-zinc-200">
+                      {actionResult.message as string}
+                      {String(actionResult.message).toLowerCase().includes('sprint history')
+                        ? ' Mark a task done and give it a due date. The forecast uses those finished weeks.'
+                        : ''}
+                    </p>
                   )}
 
                 {/* ---- Workflow Analysis ---- */}
