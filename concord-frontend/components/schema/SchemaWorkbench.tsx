@@ -42,6 +42,7 @@ interface RegistryEntry {
   description: string;
   versionCount: number;
   latestVersion: string;
+  versionLabels?: string[];
   fieldCount: number;
   createdAt: string;
   updatedAt: string;
@@ -586,6 +587,46 @@ function SchemaPicker({
   );
 }
 
+/** Diff and migration pick one saved version, not only the latest. Value is `id::version`. */
+function VersionPicker({
+  registry, value, onChange, label,
+}: {
+  registry: RegistryEntry[];
+  value: string;
+  onChange: (key: string) => void;
+  label: string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+    >
+      <option value="">{label}</option>
+      {registry.flatMap((s) => {
+        const labels = s.versionLabels?.length ? s.versionLabels : [s.latestVersion];
+        return labels.map((v) => (
+          <option key={`${s.id}::${v}`} value={`${s.id}::${v}`}>{s.name} v{v}</option>
+        ));
+      })}
+    </select>
+  );
+}
+
+async function fetchSchemaVersion(key: string): Promise<{ fields: Record<string, any> } | null> {
+  const sep = key.lastIndexOf('::');
+  const id = sep >= 0 ? key.slice(0, sep) : key;
+  const version = sep >= 0 ? key.slice(sep + 2) : '';
+  if (!id) return null;
+  const r = await lensRun('schema', 'registryGet', { id });
+  if (!r.data?.ok || !r.data.result) return null;
+  const entry = r.data.result as FullEntry;
+  const hit = version
+    ? entry.versions.find((v) => v.version === version)
+    : entry.versions[entry.versions.length - 1];
+  return hit?.schema ?? null;
+}
+
 function SamplePanel({
   registry, editorFields, editorName,
 }: {
@@ -663,23 +704,13 @@ function MigrationPanel({ registry }: { registry: RegistryEntry[] }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Resolve a registry id to its latest schema fields object.
-  const fetchSchema = async (id: string) => {
-    const r = await lensRun('schema', 'registryGet', { id });
-    if (r.data?.ok && r.data.result) {
-      const entry = r.data.result as FullEntry;
-      return entry.versions[entry.versions.length - 1].schema;
-    }
-    return null;
-  };
-
   const run = async () => {
     setBusy(true);
     setErr(null);
     setResult(null);
     if (!fromId || !toId) { setErr('Pick a source and target schema'); setBusy(false); return; }
-    const a = await fetchSchema(fromId);
-    const b = await fetchSchema(toId);
+    const a = await fetchSchemaVersion(fromId);
+    const b = await fetchSchemaVersion(toId);
     if (!a || !b) { setErr('Failed to resolve schemas'); setBusy(false); return; }
     const r = await lensRun('schema', 'migrationGenerate', { schemaA: a, schemaB: b, dialect, table });
     if (r.data?.ok && r.data.result) setResult(r.data.result);
@@ -694,9 +725,9 @@ function MigrationPanel({ registry }: { registry: RegistryEntry[] }) {
         <h3 className="text-sm font-semibold text-white">Migration Generator</h3>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <SchemaPicker registry={registry} value={fromId} onChange={setFromId} label="From schema" />
+        <VersionPicker registry={registry} value={fromId} onChange={setFromId} label="From version" />
         <span className="text-zinc-600">→</span>
-        <SchemaPicker registry={registry} value={toId} onChange={setToId} label="To schema" />
+        <VersionPicker registry={registry} value={toId} onChange={setToId} label="To version" />
         <select value={dialect} onChange={(e) => setDialect(e.target.value as 'sql' | 'json')} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
           <option value="sql">SQL</option>
           <option value="json">JSON ops</option>
@@ -744,22 +775,13 @@ function DiffPanel({ registry }: { registry: RegistryEntry[] }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const fetchSchema = async (id: string) => {
-    const r = await lensRun('schema', 'registryGet', { id });
-    if (r.data?.ok && r.data.result) {
-      const entry = r.data.result as FullEntry;
-      return entry.versions[entry.versions.length - 1].schema;
-    }
-    return null;
-  };
-
   const run = async () => {
     setBusy(true);
     setErr(null);
     setResult(null);
     if (!fromId || !toId) { setErr('Pick a source and target schema'); setBusy(false); return; }
-    const schemaA = await fetchSchema(fromId);
-    const schemaB = await fetchSchema(toId);
+    const schemaA = await fetchSchemaVersion(fromId);
+    const schemaB = await fetchSchemaVersion(toId);
     if (!schemaA || !schemaB) { setErr('Failed to resolve schemas'); setBusy(false); return; }
     const r = await lensRun('schema', 'schemaDiff', { schemaA, schemaB });
     if (r.data?.ok && r.data.result) setResult(r.data.result);
@@ -778,9 +800,9 @@ function DiffPanel({ registry }: { registry: RegistryEntry[] }) {
         changes, a backward-compatibility verdict, and an estimated migration effort.
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        <SchemaPicker registry={registry} value={fromId} onChange={setFromId} label="From schema" />
+        <VersionPicker registry={registry} value={fromId} onChange={setFromId} label="From version" />
         <span className="text-zinc-600">→</span>
-        <SchemaPicker registry={registry} value={toId} onChange={setToId} label="To schema" />
+        <VersionPicker registry={registry} value={toId} onChange={setToId} label="To version" />
         <button onClick={run} disabled={busy} className="flex items-center gap-1 rounded bg-cyan-500/20 border border-cyan-500/40 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-50">
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <GitCompareArrows className="h-3 w-3" />}
           Diff

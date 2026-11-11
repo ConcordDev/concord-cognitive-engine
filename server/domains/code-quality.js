@@ -164,6 +164,7 @@ const RULE_EFFORT_MIN = {
   "trailing-whitespace": 2,
   "many-params": 25,
   "commented-code": 8,
+  "no-eval": 20,
 };
 
 function analyzeFile({ file, source, language }) {
@@ -236,6 +237,13 @@ function analyzeFile({ file, source, language }) {
 
     const code = masked[idx];
 
+    // eval / new Function — the Issues detector already names no-eval;
+    // the file analyzer has to emit the same finding or Analyze stays quiet.
+    if (/\beval\s*\(/.test(code) || /\bnew\s+Function\s*\(/.test(code)) {
+      findings.push(mkFinding("no-eval", "high", lineNo, raw,
+        "eval() or new Function() runs code from a string.",
+        "Remove it, or run that code through a reviewed interpreter."));
+    }
     // debug statements
     if (/\bconsole\.(log|debug|trace)\s*\(/.test(code) ||
         /\bprint\s*\(/.test(code) && lang === "python" ||

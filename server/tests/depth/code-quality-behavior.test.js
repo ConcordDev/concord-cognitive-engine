@@ -43,6 +43,21 @@ describe("code-quality — analyze (exact findings + metrics + grade)", () => {
     assert.deepEqual(rules, ["debug-statement", "loose-equality", "magic-number", "var-declaration"]);
   });
 
+  it("analyze: flags eval() and new Function as no-eval", async () => {
+    const src = [
+      "function danger(input) {",
+      "  const a = eval(input);",
+      "  const b = new Function('return 1');",
+      "  return a || b;",
+      "}",
+    ].join("\n");
+    const r = await lensRun("code-quality", "analyze", { params: { source: src, file: "danger.js" } });
+    assert.equal(r.ok, true);
+    const rules = r.result.files[0].findings.filter((f) => f.rule === "no-eval");
+    assert.equal(rules.length, 2);
+    assert.ok(rules.every((f) => f.severity === "high"));
+  });
+
   it("analyze: an empty catch block is flagged high severity", async () => {
     const src = [
       "function risky() {",

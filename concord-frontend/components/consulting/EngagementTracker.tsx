@@ -53,9 +53,14 @@ export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}
     await refetch();
     onChanged?.();
   }
-  async function delEng(id: string) {
-    await lensRun('consulting', 'engagement-delete', { id });
-    if (active === id) setActive(null);
+  async function delEng(e: Engagement) {
+    const hours = (e.timeEntries || []).reduce((n, t) => n + (Number(t.hours) || 0), 0);
+    if (hours > 0) {
+      const ok = window.confirm(`Delete “${e.name}”? This also deletes ${hours}h of logged time. Those hours leave the practice total.`);
+      if (!ok) return;
+    }
+    await lensRun('consulting', 'engagement-delete', { id: e.id, confirmDeleteTime: hours > 0 });
+    if (active === e.id) setActive(null);
     await refetch();
     onChanged?.();
   }
@@ -137,7 +142,7 @@ export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}
                 <p className="text-[10px] text-zinc-400">{e.client} · {e.loggedHours}h logged · ${e.billed.toLocaleString()} billed · {e.utilizationPct}% of budget · {e.status}</p>
               </button>
               <button aria-label={`Edit ${e.name}`} onClick={() => openEdit(e)} className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-indigo-300"><Pencil className="w-3 h-3" /></button>
-              <button aria-label="Delete" onClick={() => delEng(e.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <button aria-label={`Delete ${e.name}`} onClick={() => void delEng(e)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
             {editingId === e.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800 flex flex-wrap items-center gap-1.5">

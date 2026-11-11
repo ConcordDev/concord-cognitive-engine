@@ -110,8 +110,17 @@ export default function registerConsultingActions(registerLensAction) {
     const arr = csEng(s, csActor(ctx));
     const i = arr.findIndex((x) => x.id === params.id);
     if (i < 0) return { ok: false, error: "engagement not found" };
+    const hours = (arr[i].timeEntries || []).reduce((n, t) => n + (Number(t.hours) || 0), 0);
+    if (hours > 0 && params.confirmDeleteTime !== true) {
+      return {
+        ok: false,
+        error: "engagement_has_time",
+        hours: csRound2(hours),
+        message: `This engagement has ${csRound2(hours)}h logged. Deleting it also deletes those time records.`,
+      };
+    }
     arr.splice(i, 1); saveConsulting();
-    return { ok: true, result: { deleted: params.id } };
+    return { ok: true, result: { deleted: params.id, deletedHours: csRound2(hours) } };
   });
   registerLensAction("consulting", "time-log", (ctx, _a, params = {}) => {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -140,6 +149,13 @@ export default function registerConsultingActions(registerLensAction) {
     return s[key].get(u);
   }
   const csRound2 = (n) => Math.round(n * 100) / 100;
+  // A forgotten timer must not bill days. The clock and the logged entry
+  // both stop at 12 hours; the caller can still discard instead of logging.
+  function csTimerElapsed(startedAt, now = Date.now()) {
+    const raw = Math.max(0, (now - Number(startedAt || 0)) / 3600000);
+    const capped = raw > 12;
+    return { raw, hours: csRound2(capped ? 12 : raw), capped };
+  }
 
   // ═══════════════════════════════════════════════════════════════════
   // [M] Invoice generation from logged time — paid/overdue states
@@ -467,8 +483,9 @@ export default function registerConsultingActions(registerLensAction) {
     if (!(s.timers instanceof Map)) s.timers = new Map();
     const timer = s.timers.get(csActor(ctx));
     if (!timer) return { ok: true, result: { running: false } };
+    const elapsed = csTimerElapsed(timer.startedAt);
     return { ok: true, result: { running: true, timer,
-      elapsedHours: csRound2((Date.now() - timer.startedAt) / 3600000) } };
+      elapsedHours: elapsed.hours, capped: elapsed.capped, capHours: 12 } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
   registerLensAction("consulting", "timer-stop", (ctx, _a, params = {}) => {
@@ -480,7 +497,8 @@ export default function registerConsultingActions(registerLensAction) {
     if (!timer) return { ok: false, error: "no timer running" };
     const eng = csEng(s, u).find((x) => x.id === timer.engagementId);
     if (!eng) { s.timers.delete(u); return { ok: false, error: "engagement no longer exists" }; }
-    const hours = Math.max(0.01, csRound2((Date.now() - timer.startedAt) / 3600000));
+    const elapsed = csTimerElapsed(timer.startedAt);
+    const hours = Math.max(0.01, elapsed.hours);
     const entry = { id: csId("te"), hours, note: csClean(params.note, 300) || timer.note,
       date: new Date().toISOString().slice(0, 10) };
     eng.timeEntries.push(entry); s.timers.delete(u); saveConsulting();

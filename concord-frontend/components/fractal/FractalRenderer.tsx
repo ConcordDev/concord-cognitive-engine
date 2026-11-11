@@ -425,7 +425,7 @@ export function FractalRenderer() {
     setBusy(null);
     if (res.data?.ok) {
       setPresetName('');
-      setStatus(`Saved preset "${name}"`);
+      setStatus(`${res.data.result?.updated ? 'Updated' : 'Saved'} preset "${name}"`);
       await loadPresets();
     } else setStatus(res.data?.error || 'Save failed');
   };
