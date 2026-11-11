@@ -125,3 +125,27 @@ describe('Task detail editing + attribution (F2/F6)', () => {
     ));
   });
 });
+
+describe('Task row edit (FIX-productivity-005)', () => {
+  it('opens the saved task from the list and renames it', async () => {
+    const open = task({ id: 't1', content: 'Old title', priority: 2, dueDate: '2026-11-12' });
+    lensRunMock.mockImplementation(async (_d: string, action: string) => {
+      if (action === 'task-list') return { data: { ok: true, result: { tasks: [open] } } };
+      if (action === 'project-list') return { data: { ok: true, result: { projects: [] } } };
+      if (action === 'task-detail') return { data: { ok: true, result: { task: { ...open, subtasks: [], recurring: null, labels: [] } } } };
+      if (action === 'task-comments') return { data: { ok: true, result: { comments: [] } } };
+      return { data: { ok: true, result: {} } };
+    });
+    render(<ProductivityTasksPanel onChange={() => {}} />);
+    expect(await screen.findByText('Old title')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Old title' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit task' }));
+    const titleInput = await screen.findByLabelText('Task title');
+    fireEvent.change(titleInput, { target: { value: 'New title' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith(
+      'productivity', 'task-update',
+      expect.objectContaining({ id: 't1', content: 'New title' }),
+    ));
+  });
+});

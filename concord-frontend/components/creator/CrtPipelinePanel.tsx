@@ -35,6 +35,8 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', format: 'video', scheduledDate: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [edit, setEdit] = useState({ title: '', format: 'video', scheduledDate: '' });
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -63,6 +65,24 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
     await refresh();
   };
 
+  const startEdit = (c: Content) => {
+    setEditingId(c.id);
+    setEdit({ title: c.title, format: c.format || 'video', scheduledDate: (c.scheduledDate || '').slice(0, 10) });
+    setError(null);
+  };
+  const saveEdit = async (id: string) => {
+    if (!edit.title.trim()) { setError('Content title is required.'); return; }
+    const r = await lensRun('creator', 'content-update', {
+      id,
+      title: edit.title.trim(),
+      format: edit.format,
+      scheduledDate: edit.scheduledDate || null,
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not save this item.'); return; }
+    setEditingId(null);
+    setError(null);
+    await refresh();
+  };
   const advance = async (id: string) => {
     await lensRun('creator', 'content-advance', { id });
     await refresh();
@@ -111,17 +131,40 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
                 {stageItems.map((c) => (
                   <li key={c.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-2">
                     <p className="text-xs text-zinc-100">{c.title}</p>
-                    <p className="text-[10px] text-zinc-400 capitalize">{c.format}{c.platform && ` · ${c.platform}`}</p>
-                    <div className="flex items-center gap-1 mt-1.5">
-                      {stage.id !== 'published' && (
-                        <button type="button" onClick={() => advance(c.id)}
-                          className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
-                          Advance <ChevronRight className="w-3 h-3" />
+                    <p className="text-[10px] text-zinc-400 capitalize">{c.format}{c.platform && ` · ${c.platform}`}{c.scheduledDate ? ` · ${c.scheduledDate.slice(0, 10)}` : ''}</p>
+                    {editingId === c.id ? (
+                      <div className="mt-1.5 space-y-1">
+                        <input aria-label={`Title for ${c.title}`} value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })}
+                          className="w-full bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100" />
+                        <select aria-label={`Format for ${c.title}`} value={edit.format} onChange={(e) => setEdit({ ...edit, format: e.target.value })}
+                          className="w-full bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100 capitalize">
+                          {FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
+                        </select>
+                        <input type="date" aria-label={`Date for ${c.title}`} value={edit.scheduledDate} onChange={(e) => setEdit({ ...edit, scheduledDate: e.target.value })}
+                          className="w-full bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100" />
+                        <div className="flex gap-1">
+                          <button type="button" onClick={() => saveEdit(c.id)}
+                            className="text-[10px] px-1.5 py-0.5 bg-red-600 hover:bg-red-500 text-white rounded">Save</button>
+                          <button type="button" onClick={() => setEditingId(null)}
+                            className="text-[10px] px-1.5 py-0.5 bg-zinc-800 text-zinc-300 rounded">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 mt-1.5">
+                        <button type="button" onClick={() => startEdit(c)} aria-label={`Edit ${c.title}`}
+                          className="text-[10px] px-1.5 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
+                          Edit
                         </button>
-                      )}
-                      <div className="flex-1" />
-                      <PipelineDelete title={c.title} onConfirm={() => del(c.id)} />
-                    </div>
+                        {stage.id !== 'published' && (
+                          <button type="button" onClick={() => advance(c.id)}
+                            className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
+                            Advance <ChevronRight className="w-3 h-3" />
+                          </button>
+                        )}
+                        <div className="flex-1" />
+                        <PipelineDelete title={c.title} onConfirm={() => del(c.id)} />
+                      </div>
+                    )}
                     <CreatorKeepMenu item={c} />
                   </li>
                 ))}
