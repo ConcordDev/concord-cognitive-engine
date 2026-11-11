@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 643 | 302 | 0 |
+| medium | 646 | 299 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1069** | **1080** | **2** |
+| **total** | **1072** | **1077** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1837,6 +1837,16 @@ A counter-offer wage that is blank, not a number, negative, or above 1,000,000 s
 |---|---|---|---|---|
 | FIX-careers-001 | careers | medium | FIXED_PENDING_VERIFY | 49ac1a477 |
 | FIX-law-002 | law | medium | FIXED_PENDING_VERIFY | 49ac1a477 |
+
+## Mediums — move through the photos, and a map list that can fail out loud
+
+The photo viewer has Previous and Next, shows which photo this is, and the left and right arrow keys move through the photos on screen. Tab stays inside the open viewer instead of reaching the page behind it. Maps and Mind map show the load error when the list call fails, and the spinner stops. An empty list with no error still says no maps yet.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-photos-002 | photos | medium | FIXED_PENDING_VERIFY | 88e56a83c |
+| FIX-photos-003 | photos | medium | FIXED_PENDING_VERIFY | 88e56a83c |
+| FIX-graph-006 | graph | medium | FIXED_PENDING_VERIFY | 88e56a83c |
 
 ## NEEDS_PRODUCT_SURFACE
 
