@@ -20,6 +20,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
+  const [bidError, setBidError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [owned, setOwned] = useState<Array<{ id: string; title?: string }>>([]);
 
@@ -78,7 +79,9 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
         setBidAmount('');
         refresh();
       } else {
-        showFlash('err', j.error || 'bid failed');
+        const msg = j.error || 'bid failed';
+        setBidError(msg);
+        showFlash('err', msg);
       }
     } finally { setBusy(null); }
   }, [refresh, showFlash]);
@@ -191,7 +194,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
               </div>
               <div className="mt-3 flex gap-1">
                 <button
-                  onClick={() => { setBidTarget(a); setBidAmount(String(nextBid)); }}
+                  onClick={() => { setBidError(null); setBidTarget(a); setBidAmount(String(nextBid)); }}
                   aria-label={`Bid on ${a.title || a.itemId}, minimum ${nextBid} CC`}
                   className="flex-1 rounded-md bg-amber-500/30 px-3 py-1 text-[11px] text-amber-100 hover:bg-amber-500/40 focus:outline-none focus:ring-2 focus:ring-amber-400">
                   Bid {nextBid}+
@@ -220,7 +223,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
 
       {bidTarget && (
         <div role="button" tabIndex={0} aria-label="Close bid dialog"
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur"
           onClick={() => setBidTarget(null)}
           onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') setBidTarget(null); }}>
           <div role="dialog" aria-modal="true" tabIndex={-1}
@@ -235,6 +238,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
             <input type="number" min={bidTarget.currentBidCc + 1} step={1} value={bidAmount}
               onChange={(e) => setBidAmount(e.target.value)}
               className="block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100 focus:border-amber-500/50 focus:outline-none" />
+            {bidError && <p role="alert" className="mt-2 text-[12px] text-rose-200">{bidError}</p>}
             <button onClick={() => handleBid(bidTarget.id, Number(bidAmount))}
               disabled={busy === `bid-${bidTarget.id}` || Number(bidAmount) <= bidTarget.currentBidCc}
               className="mt-3 w-full rounded-md border border-amber-500/40 bg-amber-500/20 px-3 py-1.5 text-[12px] text-amber-100 hover:bg-amber-500/30 disabled:opacity-40">
@@ -246,7 +250,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
 
       {showCreate && (
         <div role="button" tabIndex={0} aria-label="Close listing dialog"
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur"
           onClick={() => setShowCreate(false)}
           onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') setShowCreate(false); }}>
           <div role="dialog" aria-modal="true" tabIndex={-1} aria-label="List an item"

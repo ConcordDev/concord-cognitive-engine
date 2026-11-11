@@ -86,6 +86,9 @@ type ActivatorEvent = {
  */
 export function activateOnEnterOrSpace(event: ActivatorEvent): void {
   if (isEditableElement(event.target)) return;
+  // A role="button" wrapper can receive the key while the caret is still
+  // in a nested field. Space and Enter belong to that field.
+  if (typeof document !== 'undefined' && isEditableElement(document.activeElement)) return;
   if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
   event.preventDefault();
   const el = event.currentTarget as HTMLElement | null;

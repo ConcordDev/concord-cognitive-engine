@@ -108,8 +108,17 @@ export default function ForkLensPage() {
     await update(forkItem.id, { data: { ...forkItem.data, status: 'merged' as const } });
   }, [selectedFork, forkItems, update]);
 
+  const [forkNote, setForkNote] = useState<string | null>(null);
+
   const handleFork = useCallback(async () => {
-    if (!selectedFork) return;
+    if (!selectedFork) {
+      setForkNote(forks.length === 0
+        ? 'There is no fork in Lineage yet.'
+        : 'Pick a fork in Lineage, then branch it.');
+      setActiveView('lineage');
+      return;
+    }
+    setForkNote(null);
     const parent = forks.find((f) => f.id === selectedFork);
     if (!parent) return;
     await create({
@@ -241,9 +250,11 @@ export default function ForkLensPage() {
           icon: GitFork,
           onClick: () => { void handleFork(); },
           title: selectedForkData ? 'Create a child fork of the selected fork' : 'Pick a fork in Lineage first',
-          disabled: !selectedForkData,
         }}
       >
+      {forkNote && (
+        <p role="status" className="mb-3 text-sm text-amber-200">{forkNote}</p>
+      )}
       <div data-lens-theme="fork" className="space-y-5">
       {activeView === 'lineage' && (
         <div className="flex flex-wrap items-center gap-2">

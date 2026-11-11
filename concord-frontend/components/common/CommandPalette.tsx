@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { shouldIgnoreLensHotkey } from '@/lib/a11y/editable-target';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -451,6 +452,8 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        // A search or label field keeps Ctrl/Cmd+K.
+        if (shouldIgnoreLensHotkey(e)) return;
         e.preventDefault();
         setOpen(!isOpen);
       }

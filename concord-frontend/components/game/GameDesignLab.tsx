@@ -299,6 +299,7 @@ function PlaytestSessions() {
   const [balanceForm, setBalanceForm] = useState({ base: 100, growthRate: 1.5, maxLevel: 20 });
   const [analysis, setAnalysis] = useState<{ kind: 'simulate' | 'balance'; data: Record<string, unknown> } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actNote, setActNote] = useState<string | null>(null);
 
   const selected = useMemo(() => items.find((i) => i.id === selectedId) || null, [items, selectedId]);
 
@@ -321,6 +322,12 @@ function PlaytestSessions() {
       if (res.ok === false) { setError((res as unknown as { error?: string }).error || `${action} failed`); }
       else if (action === 'simulate' || action === 'balance') {
         setAnalysis({ kind: action, data: res.result as Record<string, unknown> });
+      } else if (action === 'levelup' || action === 'claim') {
+        const result = (res.result || {}) as Record<string, unknown>;
+        const msg = typeof result.message === 'string' ? result.message : null;
+        setActNote(msg || (action === 'levelup'
+          ? 'Level up finished. The level on this session is shown above.'
+          : 'Claim finished. XP on this session changes only when the reward is recorded.'));
       }
       await refetch();
     } catch (e) { setError(e instanceof Error ? e.message : `${action} failed`); }
@@ -372,6 +379,7 @@ function PlaytestSessions() {
       )}
 
       {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded px-3 py-2">{error}</p>}
+      {actNote && <p role="status" className="text-xs text-amber-200">{actNote}</p>}
 
       {selected && (
         <div className="lens-card space-y-4">

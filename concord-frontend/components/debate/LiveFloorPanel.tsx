@@ -424,6 +424,23 @@ export function LiveFloorPanel() {
   });
   const [showCreate, setShowCreate] = useState(false);
   const [showDebateTools, setShowDebateTools] = useState(false);
+  const createRef = useRef<HTMLDivElement>(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
+
+  const revealCreate = useCallback(() => {
+    setShowCreate(true);
+    requestAnimationFrame(() => createRef.current?.scrollIntoView({ block: 'center' }));
+  }, []);
+  const revealTools = useCallback(() => {
+    setShowDebateTools(true);
+    requestAnimationFrame(() => toolsRef.current?.scrollIntoView({ block: 'center' }));
+  }, []);
+
+  useEffect(() => {
+    const open = () => revealCreate();
+    window.addEventListener('debate:open-floor', open);
+    return () => window.removeEventListener('debate:open-floor', open);
+  }, [revealCreate]);
   const [newDebate, setNewDebate] = useState<{ topic: string; description: string; format: DebateData['format']; timeLimit: number }>({ topic: '', description: '', format: 'open', timeLimit: 30 });
   const [createError, setCreateError] = useState<string | null>(null);
   const [newArgument, setNewArgument] = useState('');
@@ -622,11 +639,11 @@ export function LiveFloorPanel() {
     <>
     <div className="space-y-6">
       <header className="flex items-center justify-end gap-2 flex-wrap">
-        <button onClick={() => setShowDebateTools(t => !t)}
+        <button onClick={revealTools}
           className={cn('btn-neon', showDebateTools && 'bg-purple-500/20 border-purple-500/40')}>
           <Timer className="w-4 h-4 mr-1 inline" /> Tools
         </button>
-        <button onClick={() => setShowCreate(!showCreate)} className="btn-neon purple">
+        <button onClick={revealCreate} className="btn-neon purple">
           <Plus className="w-4 h-4 mr-2 inline" /> New Debate
         </button>
       </header>
@@ -815,7 +832,7 @@ export function LiveFloorPanel() {
       </div>
 
       {showCreate && (
-        <div className="panel p-4 space-y-3">
+        <div ref={createRef} className="panel p-4 space-y-3">
           <h3 className="font-semibold">Start a Debate</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input value={newDebate.topic} onChange={e => setNewDebate(p => ({ ...p, topic: e.target.value }))} placeholder="Debate topic..." className="input-lattice" />
@@ -868,6 +885,7 @@ export function LiveFloorPanel() {
       <AnimatePresence>
         {showDebateTools && (
           <motion.div
+            ref={toolsRef}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}

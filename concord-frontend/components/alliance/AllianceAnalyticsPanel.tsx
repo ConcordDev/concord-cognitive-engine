@@ -28,7 +28,7 @@
  * in the capability map as a deliberately out-of-scope customization.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   HeartHandshake, Network, ShieldAlert, Loader2, Play, Plus, X, AlertTriangle,
 } from 'lucide-react';
@@ -356,8 +356,25 @@ const RISK_COLOR: Record<string, string> = {
   critical: 'text-rose-300 bg-rose-500/10 border-rose-500/30',
 };
 
+const RISK_ROWS_KEY = 'concord.alliance.risk-rows';
+
+function loadRiskRows(): AllianceRow[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(RISK_ROWS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((row) => row && typeof row.partnerName === 'string' && dependencyPctError(String(row.dependencyPct || '')) === null);
+  } catch {
+    return [];
+  }
+}
+
 function RiskTool() {
-  const [rows, setRows] = useState<AllianceRow[]>([]);
+  const [rows, setRows] = useState<AllianceRow[]>(loadRiskRows);
+  useEffect(() => {
+    try { window.localStorage.setItem(RISK_ROWS_KEY, JSON.stringify(rows)); } catch { /* this device refused the write */ }
+  }, [rows]);
   const [draft, setDraft] = useState<AllianceRow>({ partnerId: '', partnerName: '', dependencyPct: '', categories: '', revenue: '', critical: false });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

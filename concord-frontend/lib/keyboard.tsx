@@ -214,6 +214,9 @@ export function useGlobalShortcuts(handlers: Record<string, () => void>) {
 
   // Navigation
   useHotkeys('mod+k', (e) => {
+    // A search or label field keeps Ctrl/Cmd+K. The palette stays on the
+    // same shortcut everywhere else.
+    if (shouldIgnoreLensHotkey(e)) return;
     e.preventDefault();
     handlers['command-palette']?.();
   });

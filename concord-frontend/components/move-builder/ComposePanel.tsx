@@ -20,6 +20,7 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
   const [composed, setComposed] = useState<Composed | null>(null);
   const [minting, setMinting] = useState(false);
   const [mintMsg, setMintMsg] = useState<string | null>(null);
+  const [composeBlock, setComposeBlock] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,7 +44,15 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
     let cancelled = false;
     (async () => {
       const res = await lensRun('move-builder', 'compose', { skillKind, element, allocation: alloc, skillLevel });
-      if (!cancelled) setComposed((res.data?.result as Composed) ?? null);
+      if (cancelled) return;
+      const failed = res.data?.ok === false || !res.data?.result;
+      if (failed) {
+        const why = res.data?.message || res.data?.error || 'This allocation is over the modifier budget, so it cannot be minted.';
+        setComposeBlock(why);
+        return;
+      }
+      setComposeBlock(null);
+      setComposed(res.data?.result as Composed);
     })();
     return () => { cancelled = true; };
   }, [skillKind, element, alloc, skillLevel]);
@@ -63,8 +72,8 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
   }
 
   const canMint = useMemo(
-    () => !!name.trim() && !overspent && !minting,
-    [name, overspent, minting],
+    () => !!name.trim() && !overspent && !composeBlock && !minting,
+    [name, overspent, composeBlock, minting],
   );
 
   async function mint() {
@@ -158,6 +167,11 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
             <div style={{ color: '#e0a030', fontSize: 13, marginTop: 4 }}>
               Over-invested in {composed?.budget?.dominantAspect} — diminishing returns (spread for a stronger move).
             </div>
+          )}
+          {(overspent || composeBlock) && (
+            <p role="status" style={{ color: '#e05050', fontSize: 13, marginTop: 6 }}>
+              {composeBlock || 'This move is over the modifier budget, so it cannot be minted.'}
+            </p>
           )}
         </div>
       </section>
