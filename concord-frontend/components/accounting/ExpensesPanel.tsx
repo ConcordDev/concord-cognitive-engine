@@ -9,7 +9,8 @@ import { SkeletonTableRows } from '@/components/ui';
 interface Account { id: string; code: string; name: string; category: string; archived: boolean }
 interface Expense {
   id: string; number: string; date: string; vendor: string; accountId: string;
-  amount: number; memo: string; receiptUrl: string;
+  amount: number; memo: string; receiptUrl: string; status?: string;
+  jeEntryId?: string; reversalJeId?: string;
 }
 
 export function ExpensesPanel() {
@@ -23,6 +24,9 @@ export function ExpensesPanel() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [edit, setEdit] = useState<Expense | null>(null);
+  const [voidArmed, setVoidArmed] = useState<string | null>(null);
 
   useEffect(() => { refresh(); }, []);
 
@@ -55,6 +59,34 @@ export function ExpensesPanel() {
       setCreating(false);
       await refresh();
     } catch (err) { setFormError(err instanceof Error ? err.message : 'Could not post that expense.'); }
+  }
+
+  async function saveEdit() {
+    if (!edit) return;
+    setFormError(null);
+    try {
+      const r = await lensRun({
+        domain: 'accounting', action: 'expenses-update',
+        input: {
+          id: edit.id, vendor: edit.vendor, memo: edit.memo, date: edit.date,
+          amount: Number(edit.amount), accountId: edit.accountId, receiptUrl: edit.receiptUrl,
+        },
+      });
+      if (r.data?.ok === false) { setFormError(r.data?.error || 'Could not update that expense.'); return; }
+      setEdit(null);
+      await refresh();
+    } catch (err) { setFormError(err instanceof Error ? err.message : 'Could not update that expense.'); }
+  }
+
+  async function voidExpense(id: string) {
+    setFormError(null);
+    try {
+      const r = await lensRun({ domain: 'accounting', action: 'expenses-void', input: { id } });
+      if (r.data?.ok === false) { setFormError(r.data?.error || 'Could not void that expense.'); return; }
+      setVoidArmed(null);
+      setOpenId(null);
+      await refresh();
+    } catch (err) { setFormError(err instanceof Error ? err.message : 'Could not void that expense.'); }
   }
 
   const accountById = new Map(accounts.map(a => [a.id, a]));
@@ -116,18 +148,54 @@ export function ExpensesPanel() {
               return true;
             }).sort((a, b) => sort === 'newest' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)).map(e => {
               const a = accountById.get(e.accountId);
+              const open = openId === e.id;
+              const voided = e.status === 'void';
               return (
-                <li key={e.id} className="px-4 py-2 hover:bg-white/[0.02] flex items-center gap-3">
-                  <span className="font-mono tabular-nums text-[10px] text-gray-400 w-20">{e.date}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-white flex items-center gap-2">
-                      {e.vendor && <span>{e.vendor}</span>}
-                      <span className="text-[10px] text-gray-400">{a ? `${a.code} ${a.name}` : ''}</span>
-                    </div>
-                    {e.memo && <div className="text-[10px] text-gray-400 truncate">{e.memo}</div>}
+                <li key={e.id} className="px-4 py-2 hover:bg-white/[0.02]">
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => { setOpenId(open ? null : e.id); setEdit(null); setVoidArmed(null); }} className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left">
+                      <span className="font-mono tabular-nums text-[10px] text-gray-400 w-20">{e.date}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-white flex items-center gap-2">
+                          {e.vendor && <span>{e.vendor}</span>}
+                          <span className="text-[10px] text-gray-400">{a ? `${a.code} ${a.name}` : ''}</span>
+                          {voided && <span className="text-[10px] uppercase text-amber-300">void</span>}
+                        </div>
+                        {e.memo && <div className="text-[10px] text-gray-400 truncate">{e.memo}</div>}
+                      </div>
+                      <span className={`text-sm font-mono tabular-nums w-20 text-right ${voided ? 'text-gray-500 line-through' : 'text-rose-300'}`}>−${e.amount.toFixed(2)}</span>
+                    </button>
+                    {e.receiptUrl && <a href={e.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 min-w-11 items-center justify-center text-cyan-300 hover:text-cyan-200" title="Receipt"><Paperclip className="w-3 h-3" /></a>}
                   </div>
-                  {e.receiptUrl && <a href={e.receiptUrl} target="_blank" rel="noreferrer" className="p-1 text-cyan-300 hover:text-cyan-200" title="Receipt"><Paperclip className="w-3 h-3" /></a>}
-                  <span className="text-sm font-mono tabular-nums text-rose-300 w-20 text-right">−${e.amount.toFixed(2)}</span>
+                  {open && (
+                    <div className="mt-2 rounded border border-white/10 bg-black/20 p-2 text-[11px] text-gray-300">
+                      <p>{e.number}{e.jeEntryId ? ` · journal ${e.jeEntryId}` : ''}{e.reversalJeId ? ` · reversal ${e.reversalJeId}` : ''}</p>
+                      {edit?.id === e.id ? (
+                        <div className="mt-2 grid grid-cols-12 gap-2">
+                          <select aria-label="Expense account" value={edit.accountId} onChange={(ev) => setEdit({ ...edit, accountId: ev.target.value })} className="col-span-4 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+                            {expenseAccounts.map((acct) => <option key={acct.id} value={acct.id}>{acct.code} {acct.name}</option>)}
+                          </select>
+                          <input aria-label="Expense amount" type="number" step="0.01" value={edit.amount} onChange={(ev) => setEdit({ ...edit, amount: Number(ev.target.value) })} className="col-span-2 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                          <input aria-label="Expense vendor" value={edit.vendor} onChange={(ev) => setEdit({ ...edit, vendor: ev.target.value })} className="col-span-3 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                          <input aria-label="Expense date" type="date" value={edit.date} onChange={(ev) => setEdit({ ...edit, date: ev.target.value })} className="col-span-3 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                          <input aria-label="Expense memo" value={edit.memo} onChange={(ev) => setEdit({ ...edit, memo: ev.target.value })} className="col-span-8 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                          <button type="button" onClick={saveEdit} className="col-span-4 rounded bg-emerald-500 px-2 py-1 text-xs font-semibold text-black">Save</button>
+                        </div>
+                      ) : !voided && (
+                        <div className="mt-2 flex gap-2">
+                          <button type="button" onClick={() => setEdit({ ...e })} className="rounded border border-white/15 px-2 py-1 text-xs text-white">Edit</button>
+                          {voidArmed === e.id ? (
+                            <>
+                              <button type="button" onClick={() => voidExpense(e.id)} className="rounded bg-rose-500 px-2 py-1 text-xs font-semibold text-black">Confirm void</button>
+                              <button type="button" onClick={() => setVoidArmed(null)} className="rounded border border-white/15 px-2 py-1 text-xs text-gray-300">Cancel</button>
+                            </>
+                          ) : (
+                            <button type="button" onClick={() => setVoidArmed(e.id)} className="rounded border border-rose-500/40 px-2 py-1 text-xs text-rose-200">Void</button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}
