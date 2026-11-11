@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 622 | 323 | 0 |
+| medium | 624 | 321 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1048** | **1101** | **2** |
+| **total** | **1050** | **1099** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1767,6 +1767,15 @@ A forecast point that is blank, not a number, or dated with text that is not a d
 | FIX-diy-005 | diy | medium | FIXED_PENDING_VERIFY | e5b76baba |
 | FIX-bridge-004 | bridge | medium | FIXED_PENDING_VERIFY | e5b76baba |
 | FIX-supplychain-003 | supplychain | medium | FIXED_PENDING_VERIFY | e5b76baba |
+
+## Mediums — the list uses the filter the screen asked for
+
+My Vault no longer lists automatic chat replies or the megas built from them. A message you chose to keep still appears. The global explorer applies the tag you typed, including a tag that matches nothing, so an unknown tag shows an empty page instead of the unfiltered list.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-chat-011 | chat | medium | FIXED_PENDING_VERIFY | adc77b53d |
+| FIX-global-001 | global | medium | FIXED_PENDING_VERIFY | adc77b53d |
 
 ## NEEDS_PRODUCT_SURFACE
 
