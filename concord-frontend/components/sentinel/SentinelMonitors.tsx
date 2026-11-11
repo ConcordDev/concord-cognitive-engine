@@ -53,6 +53,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [runStatus, setRunStatus] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const [name, setName] = useState('');
   const [minSeverity, setMinSeverity] = useState<(typeof SEVERITIES)[number]>('medium');
@@ -222,14 +223,22 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
                     >
                       <Power className="h-3 w-3" />
                     </button>
-                    <button
-                      disabled={busy}
-                      onClick={() => remove(m)}
-                      className="rounded bg-blue-950/40 px-1.5 py-0.5 text-blue-400 hover:text-rose-400 disabled:opacity-40"
-                      aria-label="Delete monitor"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                    {confirmId === m.monitorId ? (
+                      <>
+                        <button type="button" disabled={busy} onClick={() => { setConfirmId(null); void remove(m); }} className="min-h-11 rounded bg-rose-500/20 px-2 text-[11px] text-rose-200">Confirm</button>
+                        <button type="button" onClick={() => setConfirmId(null)} className="min-h-11 rounded px-2 text-[11px] text-blue-300">Cancel</button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setConfirmId(m.monitorId)}
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded bg-blue-950/40 text-blue-400 hover:text-rose-400 disabled:opacity-40"
+                        aria-label="Delete monitor"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </li>

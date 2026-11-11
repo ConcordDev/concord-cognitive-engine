@@ -350,6 +350,7 @@ function SitesTab({ towers, run, busy, refreshTowers, flash, onChanged }: {
   // form and saves it back under its id — a power change no longer means
   // delete-and-recreate.
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const startEdit = (t: Tower) => {
     setEditingId(t.id);
@@ -472,14 +473,22 @@ function SitesTab({ towers, run, busy, refreshTowers, flash, onChanged }: {
               >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
-              <button
-                onClick={() => del(t.id)}
-                disabled={!!busy}
-                className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
-                aria-label="Delete site"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {confirmId === t.id ? (
+                <>
+                  <button type="button" onClick={() => { setConfirmId(null); void del(t.id); }} className="min-h-11 rounded px-2 text-[11px] text-red-300">Confirm</button>
+                  <button type="button" onClick={() => setConfirmId(null)} className="min-h-11 rounded px-2 text-[11px] text-zinc-400">Cancel</button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmId(t.id)}
+                  disabled={!!busy}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
+                  aria-label="Delete site"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </span>
           </div>
         ))}
@@ -863,6 +872,7 @@ function SpectrumTab({ allocations, run, busy, refreshSpectrum, flash, onChanged
   onChanged?: () => void;
 }) {
   const [plan, setPlan] = useState<SpectrumPlan | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [f, setF] = useState({
     band: '', startMhz: '', widthMhz: '', technology: '5G',
     licenseType: 'licensed', region: 'national', guardBandMhz: '1',
@@ -934,14 +944,22 @@ function SpectrumTab({ allocations, run, busy, refreshSpectrum, flash, onChanged
             <span className="text-zinc-400 font-mono">
               {a.startMhz}–{a.endMhz} MHz · {a.widthMhz}MHz · {a.technology} · {a.licenseType} · guard {a.guardBandMhz}MHz
             </span>
-            <button
-              onClick={() => del(a.id)}
-              disabled={!!busy}
-              className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
-              aria-label="Delete allocation"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {confirmId === a.id ? (
+              <>
+                <button type="button" onClick={() => { setConfirmId(null); void del(a.id); }} className="min-h-11 rounded px-2 text-[11px] text-red-300">Confirm</button>
+                <button type="button" onClick={() => setConfirmId(null)} className="min-h-11 rounded px-2 text-[11px] text-zinc-400">Cancel</button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmId(a.id)}
+                disabled={!!busy}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center hover:bg-zinc-800 rounded text-zinc-400 hover:text-red-400"
+                aria-label="Delete allocation"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         ))}
         {allocations.length === 0 && (

@@ -176,15 +176,28 @@ const errBox = 'text-xs text-red-400 bg-red-500/10 border border-red-500/30 roun
  * visible affordance.
  */
 function SavedRecordDelete({ label, onDelete }: { label: string; onDelete: () => void }) {
+  const [armed, setArmed] = useState(false);
+  if (armed) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1">
+        <button type="button" className={cn(ds.btnGhost, 'min-h-11 text-rose-300')} onClick={() => { setArmed(false); onDelete(); }}>
+          Confirm
+        </button>
+        <button type="button" className={cn(ds.btnGhost, 'min-h-11')} onClick={() => setArmed(false)}>
+          Cancel
+        </button>
+      </span>
+    );
+  }
   return (
     <button
       type="button"
-      onClick={onDelete}
+      onClick={() => setArmed(true)}
       aria-label={label}
       title={label}
       className={cn(
         ds.btnGhost,
-        'shrink-0 opacity-0 transition-opacity',
+        'min-h-11 shrink-0 opacity-0 transition-opacity',
         'group-hover:opacity-100 group-focus-within:opacity-100',
         'focus:opacity-100 focus-visible:opacity-100',
       )}
