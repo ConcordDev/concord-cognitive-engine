@@ -105,8 +105,8 @@ export function VoiceTranscripts() {
 
       {showNew && (
         <div className="bg-zinc-900/70 border border-sky-800/40 rounded-lg p-3 mb-3 space-y-2">
-          <input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="Recording title"
-            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100" />
+          <input value={draft.title} maxLength={120} onChange={e => setDraft({ ...draft, title: e.target.value.slice(0, 120) })} placeholder="Recording title (120 characters)"
+            className="w-full min-w-0 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100" />
           <textarea value={draft.transcript} onChange={e => setDraft({ ...draft, transcript: e.target.value })} rows={4}
             placeholder="Paste a transcript — sentences become segments"
             className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100" />
@@ -142,8 +142,8 @@ export function VoiceTranscripts() {
             {recordings.map(r => (
               <li key={r.id} className="group flex items-center gap-1">
                 <button onClick={() => open(r.id)}
-                  className={cn('flex-1 text-left rounded-lg px-2.5 py-2 border', active?.id === r.id ? 'bg-sky-600/15 border-sky-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
-                  <p className="text-xs font-semibold text-zinc-100 truncate">{r.title}</p>
+                  className={cn('min-w-0 flex-1 text-left rounded-lg px-2.5 py-2 border', active?.id === r.id ? 'bg-sky-600/15 border-sky-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
+                  <p className="text-xs font-semibold text-zinc-100 truncate break-all">{r.title}</p>
                   <p className="text-[10px] text-zinc-400 inline-flex items-center gap-1">
                     <Clock className="w-2.5 h-2.5" />{ts(r.durationSec)} · {r.speakerCount} spk
                     {r.highlightCount > 0 && <span className="text-amber-400"> · ★{r.highlightCount}</span>}
@@ -157,7 +157,7 @@ export function VoiceTranscripts() {
           {active ? (
             <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
               <div className="flex items-center gap-2 mb-2">
-                <h4 className="text-sm font-bold text-zinc-100 flex-1 truncate">{active.title}</h4>
+                <h4 className="text-sm font-bold text-zinc-100 flex-1 min-w-0 break-all">{active.title}</h4>
                 <button onClick={summarize} className="px-2.5 py-1 text-xs rounded bg-violet-600/20 text-violet-300 hover:bg-violet-600/30 inline-flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />Summarize
                 </button>
