@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 653 | 292 | 0 |
+| medium | 659 | 286 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1079** | **1070** | **2** |
+| **total** | **1085** | **1064** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1868,6 +1868,19 @@ Volume and growth share one board-foot curve. At site index 80 a 20-year Douglas
 | FIX-plumbing-014 | plumbing | medium | FIXED_PENDING_VERIFY | 34da5468e |
 | FIX-marketing-011 | marketing | medium | FIXED_PENDING_VERIFY | 34da5468e |
 | FIX-welding-011 | welding | medium | FIXED_PENDING_VERIFY | 34da5468e |
+
+## Mediums — edit the record that is already saved
+
+A stand, robot, landscaping client, and sky target can be changed from the row that lists it. Event delete stays on the row and asks first. Open a case opens a blank case.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-forestry-001 | forestry | medium | FIXED_PENDING_VERIFY | ed7d9ea10 |
+| FIX-astronomy-001 | astronomy | medium | FIXED_PENDING_VERIFY | ed7d9ea10 |
+| FIX-robotics-002 | robotics | medium | FIXED_PENDING_VERIFY | ed7d9ea10 |
+| FIX-landscaping-010 | landscaping | medium | FIXED_PENDING_VERIFY | ed7d9ea10 |
+| FIX-analytics-004 | analytics | medium | FIXED_PENDING_VERIFY | ed7d9ea10 |
+| FIX-security-003 | security | medium | FIXED_PENDING_VERIFY | ed7d9ea10 |
 
 ## NEEDS_PRODUCT_SURFACE
 
