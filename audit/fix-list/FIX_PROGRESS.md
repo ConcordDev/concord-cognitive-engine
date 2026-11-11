@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 641 | 304 | 0 |
+| medium | 643 | 302 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1067** | **1082** | **2** |
+| **total** | **1069** | **1080** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1828,6 +1828,15 @@ The consulting timer stops counting at 12 hours and says to stop and log those h
 | FIX-code-quality-002 | code-quality | medium | FIXED_PENDING_VERIFY | be2038094 |
 | FIX-fractal-002 | fractal | medium | FIXED_PENDING_VERIFY | be2038094 |
 | FIX-schema-007 | schema | medium | FIXED_PENDING_VERIFY | be2038094 |
+
+## Mediums — a refused wage, and a contract that can hold a value
+
+A counter-offer wage that is blank, not a number, negative, or above 1,000,000 stays on the form and says the wage has to be a number from 0 to 1,000,000. The server refuses the same numbers and does not change the standing offer. A new contract has fields for value, effective date, and expiry date. An empty title says a contract needs a title. A value that is not a number, or is negative, is refused before the call.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-careers-001 | careers | medium | FIXED_PENDING_VERIFY | 49ac1a477 |
+| FIX-law-002 | law | medium | FIXED_PENDING_VERIFY | 49ac1a477 |
 
 ## NEEDS_PRODUCT_SURFACE
 
