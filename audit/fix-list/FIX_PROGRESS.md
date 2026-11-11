@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 668 | 277 | 0 |
+| medium | 670 | 275 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1094** | **1055** | **2** |
+| **total** | **1096** | **1053** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1904,6 +1904,15 @@ Edit on a task opens the title, date, and priority form that was already on the 
 |---|---|---|---|---|
 | FIX-productivity-005 | productivity | medium | FIXED_PENDING_VERIFY | 0e9a7ce64 |
 | FIX-creator-001 | creator | medium | FIXED_PENDING_VERIFY | 0e9a7ce64 |
+
+## Mediums — publish the minutes you wrote, and say why a public save was refused
+
+Public minutes send the motion, the decisions, and the action items as the note. A council refusal names the reason and the score the server returned. The society publish panel shows that same sentence.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-council-010 | council | medium | FIXED_PENDING_VERIFY | 6f278ce3c |
+| FIX-society-003 | society | medium | FIXED_PENDING_VERIFY | 6f278ce3c |
 
 ## NEEDS_PRODUCT_SURFACE
 
