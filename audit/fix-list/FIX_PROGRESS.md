@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 183 | 36 | 2 |
-| medium | 681 | 264 | 0 |
+| medium | 688 | 257 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1120** | **1029** | **2** |
+| **total** | **1127** | **1022** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -2039,6 +2039,21 @@ A heir-slot price of 0 is saved as 0, and the mentor can delist it. A new sub-wo
 | FIX-kingdoms-002 | kingdoms | medium | FIXED_PENDING_VERIFY | 1a51019f4 |
 
 The seven highs left open now carry a re-test note on the ticket: FIX-music-001, FIX-finance-002, FIX-finance-003, FIX-retail-001, FIX-aviation-002, FIX-services-002, FIX-announcements-001.
+
+
+## Mediums — a quiet button says what it needs
+
+Add supplier and Add project say when a name is missing. Burndown says how to give it a finished week. Quote shopping says a broker key is required. Cap rate and cash flow say when the record cannot be computed. Start, Cancel, and Rotate ask first. Board labels are lighter.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-environment-002 | environment | medium | FIXED_PENDING_VERIFY | 6593a26c5 |
+| FIX-board-016 | board | medium | FIXED_PENDING_VERIFY | 6593a26c5 |
+| FIX-board-013 | board | medium | FIXED_PENDING_VERIFY | 6593a26c5 |
+| FIX-insurance-008 | insurance | medium | FIXED_PENDING_VERIFY | 6593a26c5 |
+| FIX-realestate-004 | realestate | medium | FIXED_PENDING_VERIFY | 6593a26c5 |
+| FIX-tournaments-002 | tournaments | medium | FIXED_PENDING_VERIFY | 6593a26c5 |
+| FIX-anon-003 | anon | medium | FIXED_PENDING_VERIFY | 6593a26c5 |
 
 ## NEEDS_PRODUCT_SURFACE
 
