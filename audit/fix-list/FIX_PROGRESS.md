@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 646 | 299 | 0 |
+| medium | 648 | 297 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1072** | **1077** | **2** |
+| **total** | **1074** | **1075** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1847,6 +1847,15 @@ The photo viewer has Previous and Next, shows which photo this is, and the left 
 | FIX-photos-002 | photos | medium | FIXED_PENDING_VERIFY | 88e56a83c |
 | FIX-photos-003 | photos | medium | FIXED_PENDING_VERIFY | 88e56a83c |
 | FIX-graph-006 | graph | medium | FIXED_PENDING_VERIFY | 88e56a83c |
+
+## Mediums — the last scan comes back, and Issues can track one
+
+Reloading the code-quality page brings back the last analyze when that scan stored its source, and the editor fills with that source if it is still empty. Older scans that did not store source stay as findings only. The Issues tab has a form for a rule, a message, and a severity. Tracking one adds it to the list.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-code-quality-004 | code-quality | medium | FIXED_PENDING_VERIFY | 7fcc64fb8 |
+| FIX-code-quality-007 | code-quality | medium | FIXED_PENDING_VERIFY | 7fcc64fb8 |
 
 ## NEEDS_PRODUCT_SURFACE
 
