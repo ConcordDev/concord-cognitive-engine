@@ -1652,14 +1652,14 @@ A ticket sale cannot end before it starts. A housing claim needs an x and a z. A
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-events-002 | events | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
-| FIX-housing-002 | housing | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
-| FIX-realestate-003 | realestate | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
-| FIX-auction-003 | auction | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
-| FIX-questmarket-002 | questmarket | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
-| FIX-repos-001 | repos | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
-| FIX-classroom-009 | classroom | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
-| FIX-landscaping-003 | landscaping | medium | FIXED_PENDING_VERIFY | PENDING_FORM |
+| FIX-events-002 | events | medium | FIXED_PENDING_VERIFY | 6fe52060d |
+| FIX-housing-002 | housing | medium | FIXED_PENDING_VERIFY | 6fe52060d |
+| FIX-realestate-003 | realestate | medium | FIXED_PENDING_VERIFY | 6fe52060d |
+| FIX-auction-003 | auction | medium | FIXED_PENDING_VERIFY | 6fe52060d |
+| FIX-questmarket-002 | questmarket | medium | FIXED_PENDING_VERIFY | 6fe52060d |
+| FIX-repos-001 | repos | medium | FIXED_PENDING_VERIFY | 6fe52060d |
+| FIX-classroom-009 | classroom | medium | FIXED_PENDING_VERIFY | 6fe52060d |
+| FIX-landscaping-003 | landscaping | medium | FIXED_PENDING_VERIFY | 6fe52060d |
 
 ## Mediums — a calendar day stays the day you typed
 
