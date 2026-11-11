@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 172 | 47 | 2 |
+| high | 183 | 36 | 2 |
 | medium | 675 | 270 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1103** | **1046** | **2** |
+| **total** | **1114** | **1035** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1935,6 +1935,94 @@ A realestate deal, listing, or rental saves with the status the desk offers, inc
 |---|---|---|---|---|
 | FIX-realestate-001 | realestate | high | FIXED_PENDING_VERIFY | c857bf35c |
 | FIX-security-001 | security | high | FIXED_PENDING_VERIFY | c857bf35c |
+
+## Highs — a scratch save keeps the script
+
+Hover on a scratch file no longer answers "symbol or position required" when the cursor is already placed. Save writes the buffer immediately, and a reload restores the latest saved script when the live file is empty.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-code-001 | code | high | FIXED_PENDING_VERIFY | a3de11723 |
+
+## Highs — send the DTU you picked
+
+Transmit finds a DTU in your own list as well as the shared store. Someone else's private DTU is still refused.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-mesh-002 | mesh | high | FIXED_PENDING_VERIFY | 1de6f7c28 |
+
+## Highs — Sync unlocks counts the DTUs you have
+
+Sync unlocks counts DTUs this account owns. One unlocks First DTU. Twenty-five unlocks Creator. Sparks follow the catalog. A new DTU carries the owner so the check can see who created it.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-achievements-001 | achievements | high | FIXED_PENDING_VERIFY | cdb569e6e |
+
+## Highs — a published listing is on Browse
+
+Browse lists published storefront listings. Checkout buys that listing. The extra list no longer says the listing is waiting on an approval step.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-marketplace-001 | marketplace | high | FIXED_PENDING_VERIFY | 629edd61b |
+
+## Highs — a thought unit you cannot open is a page
+
+A direct link to a missing or private thought unit explains that, instead of the browser saying the site cannot be reached. A public thought unit still opens.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-cognition-009 | cognition | high | FIXED_PENDING_VERIFY | 93043a929 |
+
+## Highs — the upload zone opens a file
+
+The episode upload zone is a label for a real file input. A click opens the chooser. A drop attaches the file.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-podcast-006 | podcast | high | FIXED_PENDING_VERIFY | cdaab0129 |
+
+## Highs — a recording title stays on the card
+
+A new title stops at 120 characters. A long title wraps inside the row.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-voice-001 | voice | high | FIXED_PENDING_VERIFY | 8d0792e52 |
+
+## Highs — offline matches the banner, and the queue drains
+
+The connectivity card says Offline when the browser or the live link is down. Coming back online pushes the pending writes.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-offline-001 | offline | high | FIXED_PENDING_VERIFY | 4e4f69c44 |
+| FIX-offline-002 | offline | high | FIXED_PENDING_VERIFY | 4e4f69c44 |
+
+## Highs — the pen opens, and a creature can be published
+
+Open the pen shows the crossbreeding pen and says when it is empty. Publish creature takes a species id, creates the creature, and refreshes the roster.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-creatures-001 | creatures | high | FIXED_PENDING_VERIFY | e002f0047 |
+| FIX-creatures-002 | creatures | high | FIXED_PENDING_VERIFY | e002f0047 |
+
+## Highs left open
+
+These stayed OPEN. The note is the reason.
+
+| Ticket | Why it is still open |
+|---|---|
+| FIX-music-001 | Export schedules from beat 0. The 16.75s silence was not reproduced from the renderer alone. |
+| FIX-finance-002 | Cash 10 + investments 5 − liabilities 3 is 12 in the snapshot. The header Net worth is the account total. The audit inputs were unreadable. |
+| FIX-finance-003 | An amount of 5 is stored as 5. Nothing in the save path produces −55. |
+| FIX-retail-001 | Product create is on the Catalog tab inside the workbench, which starts closed. A Products tab on the main page was not mounted. |
+| FIX-aviation-002 | Fleet aircraft and the logbook dropdown are different lists, and Log flight is quiet when a field is empty. The two stores were not joined. |
+| FIX-services-002 | A booking-suite client and a desk client are two records. One save does not write both yet. |
+| FIX-announcements-001 | GET /api/announcements is public, and a failed load shows an error. The 403 is the admin compose action. A signed-in GET 403 was not found. |
 
 ## NEEDS_PRODUCT_SURFACE
 
