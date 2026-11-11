@@ -3,9 +3,11 @@
  
 
 import { TimelineView, ChartKit } from '@/components/viz';
+import { useAuth } from '@/hooks/useAuth';
 import { useEstate } from './EstateContext';
 
 export function MarketPanel() {
+  const { user } = useAuth();
   const {
     status,
     setStatus,
@@ -94,6 +96,7 @@ export function MarketPanel() {
     inp,
     btn,
     openListing,
+    closeListing,
     claimSlot,
   } = useEstate();
 
@@ -134,7 +137,11 @@ export function MarketPanel() {
                           </div>
                           <div className="shrink-0 text-right">
                             <div className="mb-1 text-xs text-zinc-400">{l.heir_slot_price_cc} CC</div>
-                            <button type="button" onClick={() => claimSlot(l)} className={btn}>Lock heir slot</button>
+                            {user?.id && l.mentor_user_id === user.id ? (
+                              <button type="button" onClick={() => closeListing(l)} className={btn}>Delist</button>
+                            ) : (
+                              <button type="button" onClick={() => claimSlot(l)} className={btn}>Lock heir slot</button>
+                            )}
                           </div>
                         </div>
                       </li>

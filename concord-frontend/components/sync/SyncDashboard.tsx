@@ -170,7 +170,7 @@ export function SyncDashboard() {
     const label = newLabel.trim();
     if (!label) return;
     setBusy('register');
-    const r = await lensRun(DOMAIN, 'register_device', { deviceLabel: label, autoSync: true });
+    const r = await lensRun(DOMAIN, 'register_device', { deviceLabel: label, autoSync: false });
     setBusy(null);
     if (r.data?.ok) {
       setNewLabel('');

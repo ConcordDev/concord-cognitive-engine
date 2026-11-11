@@ -27,8 +27,8 @@ describe("sync — device lifecycle round-trips (shared ctx)", () => {
     const dev = reg.result.device;
     assert.equal(dev.label, "Laptop A");
     assert.equal(dev.online, true);
-    assert.equal(dev.autoSync, true);
-    assert.deepEqual(dev.scopes, ["personal", "public", "artifacts"]);
+    assert.equal(dev.autoSync, false);
+    assert.deepEqual(dev.scopes, ["public", "artifacts"]);
     assert.equal(dev.quotaBytes, 50 * 1024 * 1024 * 1024);
     assert.equal(dev.revoked, false);
 

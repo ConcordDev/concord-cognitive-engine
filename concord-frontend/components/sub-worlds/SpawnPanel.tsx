@@ -12,7 +12,7 @@ export function SpawnPanel({ onSpawned }: { onSpawned?: () => void }) {
   const [form, setForm] = useState({
     name: '',
     kind: 'physics_simulator',
-    privacy: 'public',
+    privacy: 'private',
     description: '',
     forgeAppDtuId: '',
     capacity: 16,
@@ -82,13 +82,14 @@ export function SpawnPanel({ onSpawned }: { onSpawned?: () => void }) {
           ))}
         </select>
         <select
+          aria-label="Privacy"
           value={form.privacy}
           onChange={(e) => setForm({ ...form, privacy: e.target.value })}
           className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-sm text-zinc-100"
         >
-          <option value="public">public</option>
-          <option value="unlisted">unlisted</option>
-          <option value="private">private</option>
+          <option value="private">private — not on Discover</option>
+          <option value="unlisted">unlisted — link only</option>
+          <option value="public">public — listed on Discover</option>
         </select>
         <input
           type="number"

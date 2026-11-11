@@ -92,13 +92,13 @@ function ensureDevice(userId, deviceId, label) {
     devs.set(deviceId, {
       id: deviceId,
       label: label || `Device ${deviceId}`,
-      autoSync: true,
+      autoSync: false,
       online: false,
       lastSeenAt: null,
       lastSyncAt: null,
       lastSyncStatus: "never",
       // selective sync — collections this device pulls
-      scopes: ["personal", "public", "artifacts"],
+      scopes: ["public", "artifacts"],
       // quota (bytes) — soft, advisory; usage updated on each sync
       quotaBytes: 50 * 1024 * 1024 * 1024, // 50 GB
       usedBytes: 0,
@@ -126,7 +126,7 @@ export default function registerSyncActions(registerLensAction) {
       if (!label) return { ok: false, error: "missing_label" };
       const id = nextId(userId, "dev");
       const dev = ensureDevice(userId, id, label);
-      dev.autoSync = p.autoSync !== false;
+      dev.autoSync = p.autoSync === true;
       dev.online = true;
       dev.lastSeenAt = Date.now();
       pushLog(userId, {

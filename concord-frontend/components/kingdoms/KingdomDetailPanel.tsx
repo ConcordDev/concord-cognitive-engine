@@ -6,7 +6,8 @@ import { WarCampaignSession } from '@/components/kingdoms/WarCampaignSession';
 import type { Decree, DecreeKindMeta, Kingdom, Resident } from './types';
 
 export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
-  const [detail, setDetail] = useState<{ kingdom: Kingdom; decrees: Decree[]; residents: Resident[] } | null>(null);
+  const [detail, setDetail] = useState<{ kingdom: Kingdom; decrees: Decree[]; residents: Resident[]; viewer?: { resident: boolean; role: string | null } } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [decreeKinds, setDecreeKinds] = useState<Record<string, DecreeKindMeta>>({});
   const [decreeKind, setDecreeKind] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -16,7 +17,7 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
     try {
       const r = await fetch(`/api/kingdoms/${id}`, { credentials: 'same-origin' });
       const j = await r.json();
-      if (j?.ok) setDetail({ kingdom: j.kingdom, decrees: j.decrees, residents: j.residents });
+      if (j?.ok) setDetail({ kingdom: j.kingdom, decrees: j.decrees, residents: j.residents, viewer: j.viewer });
     } catch { /* ok */ }
   }, []);
 
@@ -36,7 +37,7 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">Loading kingdom…</div>;
   }
 
-  const { kingdom, decrees, residents } = detail;
+  const { kingdom, decrees, residents, viewer } = detail;
   const onRefresh = () => fetchDetail(kingdomId);
 
   const enact = async () => {
@@ -55,19 +56,28 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
 
   const contest = async () => {
     setSubmitting(true);
+    setNotice(null);
     try {
-      await fetch(`/api/kingdoms/${kingdom.id}/contest`, {
+      const r = await fetch(`/api/kingdoms/${kingdom.id}/contest`, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contestKind }),
       });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || j?.ok === false) setNotice(j?.error || j?.reason || 'Contest was not started.');
+      else setNotice(`Contest started (${contestKind}).`);
       onRefresh();
     } finally { setSubmitting(false); }
   };
 
   const join = async () => {
-    await fetch(`/api/kingdoms/${kingdom.id}/join`, { method: 'POST', credentials: 'same-origin' });
+    setNotice(null);
+    const r = await fetch(`/api/kingdoms/${kingdom.id}/join`, { method: 'POST', credentials: 'same-origin' });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || j?.ok === false) setNotice(j?.error || j?.reason || 'Could not join.');
+    else if (j?.alreadyResident) setNotice(j.role === 'ruler' ? 'You already rule this kingdom.' : 'You already live here.');
+    else setNotice('Joined as a citizen.');
     onRefresh();
   };
 
@@ -88,11 +98,16 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
             </p>
           </div>
           <div className="flex gap-2">
-            <button onClick={join} className="flex items-center gap-1 rounded bg-emerald-700 px-3 py-1.5 text-sm hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-amber-500">
-              <Users className="h-3.5 w-3.5" /> Join
-            </button>
+            {viewer?.resident ? (
+              <span className="rounded bg-slate-800 px-3 py-1.5 text-sm capitalize text-slate-300">You are {viewer.role || 'a resident'}</span>
+            ) : (
+              <button onClick={join} className="flex items-center gap-1 rounded bg-emerald-700 px-3 py-1.5 text-sm hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                <Users className="h-3.5 w-3.5" /> Join
+              </button>
+            )}
           </div>
         </div>
+        {notice && <p className="mt-3 text-sm text-amber-200" role="status">{notice}</p>}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -166,10 +181,11 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
             </div>
             <button
               onClick={contest}
-              disabled={submitting}
+              disabled={submitting || viewer?.role === 'ruler'}
+              title={viewer?.role === 'ruler' ? 'You already rule this kingdom' : 'Start a contest'}
               className="mt-2 w-full rounded bg-rose-700 px-3 py-1.5 text-sm font-medium hover:bg-rose-600 disabled:opacity-50"
             >
-              Begin contest
+              {viewer?.role === 'ruler' ? 'You rule this kingdom' : 'Begin contest'}
             </button>
           </div>
 

@@ -18,6 +18,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { useAuth } from '@/hooks/useAuth';
+import { lfgPostDisabled } from '@/lib/lfg-post';
 
 /** Server refusal codes → the words the surface answers with. */
 const ERROR_COPY: Record<string, string> = {
@@ -290,7 +291,7 @@ export default function LfgLensPage() {
               <span className="text-[10px] uppercase tracking-wider text-slate-400">Note (optional)</span>
               <textarea ref={noteRef} aria-label="Request note" value={postForm.note} onChange={(e) => setPostForm({ ...postForm, note: e.target.value })} rows={3} maxLength={240} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
             </label>
-            <button onClick={handlePost} disabled={busy === 'post'} className="flex w-full items-center justify-center gap-1 rounded-md border border-fuchsia-500/40 bg-fuchsia-500/20 px-2 py-1 text-[11px] text-fuchsia-100 hover:bg-fuchsia-500/30 disabled:opacity-40">
+            <button onClick={handlePost} disabled={lfgPostDisabled(busy)} className="flex w-full items-center justify-center gap-1 rounded-md border border-fuchsia-500/40 bg-fuchsia-500/20 px-2 py-1 text-[11px] text-fuchsia-100 hover:bg-fuchsia-500/30 disabled:opacity-40">
               {busy === 'post' && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
               Post request
             </button>

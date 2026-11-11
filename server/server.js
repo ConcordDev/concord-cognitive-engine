@@ -93694,6 +93694,22 @@ register("inheritance", "open_listing", (ctx, input = {}) => {
   } catch (err) { return { ok: false, error: String(err?.message || err) }; }
 }, { note: "Mentor opens an heir-slot listing for a dying NPC. Currency: CC." });
 
+register("inheritance", "close_listing", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const listingId = input?.listingId ?? input?.id;
+  if (!listingId) return { ok: false, reason: "missing_listing" };
+  try {
+    const listing = db.prepare(`SELECT * FROM inheritance_market_listings WHERE id = ?`).get(listingId);
+    if (!listing) return { ok: false, reason: "listing_not_found" };
+    if (listing.mentor_user_id !== userId) return { ok: false, reason: "not_your_listing" };
+    if (listing.status !== "open") return { ok: false, reason: "not_open" };
+    db.prepare(`UPDATE inheritance_market_listings SET status = 'withdrawn' WHERE id = ?`).run(listingId);
+    return { ok: true, listingId, status: "withdrawn" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Mentor withdraws their own open heir-slot listing." });
+
 register("inheritance", "claim_slot", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
   const userId = ctx?.actor?.userId;

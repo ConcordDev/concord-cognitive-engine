@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import type { TimelineEvent } from '@/components/viz';
 import {
   run,
+  heirSlotPriceCc,
   type Listing, type Beneficiary, type WillVersion, type Asset,
   type Executor, type Lock, type Notice, type Overview,
   type IntestacyStateSummary, type IntestacyLookupResult,
@@ -217,12 +218,20 @@ function useEstateValue(onNavigate?: (tab: string) => void) {
   const [olBusy, setOlBusy] = useState(false);
   const openListing = async () => {
     if (!olNpc.trim()) return flash('Enter the dying NPC id to list.');
+    const price = heirSlotPriceCc(olPrice);
+    if (price == null) return flash('Price has to be a number from 0 to 1,000,000. 0 is allowed.');
     setOlBusy(true);
     const r = (await run('open_listing', {
-      dyingNpcId: olNpc.trim(), heirSlotPriceCc: Number(olPrice) || 10,
+      dyingNpcId: olNpc.trim(), heirSlotPriceCc: price,
     })) as any;
     setOlBusy(false);
     if (r?.ok) { setOlNpc(''); setOlPrice('10'); flash(`✓ Heir slot listed (#${r.result?.listingId ?? ''}).`); void loadAll(); }
+    else flash(`Failed: ${r?.error || r?.reason || 'unknown'}`);
+  };
+
+  const closeListing = async (listing: Listing) => {
+    const r = (await run('close_listing', { listingId: listing.id })) as any;
+    if (r?.ok) { flash('Listing withdrawn.'); void loadAll(); }
     else flash(`Failed: ${r?.error || r?.reason || 'unknown'}`);
   };
 
@@ -392,6 +401,7 @@ function useEstateValue(onNavigate?: (tab: string) => void) {
     revokeLock,
     respondNotice,
     openListing,
+    closeListing,
     claimSlot,
     lookupIntestacy,
   };

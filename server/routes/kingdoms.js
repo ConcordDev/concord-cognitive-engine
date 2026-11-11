@@ -61,8 +61,16 @@ export default function createKingdomsRouter({ requireAuth, db, state, realtimeE
       const k = getKingdom(db, req.params.id);
       if (!k) return res.status(404).json({ ok: false, error: "kingdom_not_found" });
       const decrees  = listDecrees(db, req.params.id, { activeOnly: false });
-      const residents = listResidents(db, req.params.id).map((r) => presentResident(db, r));
-      res.json({ ok: true, kingdom: presentKingdom(db, k), decrees, residents });
+      const rawResidents = listResidents(db, req.params.id);
+      const mine = rawResidents.find((r) => r.user_id === req.user.id);
+      const residents = rawResidents.map((r) => presentResident(db, r));
+      res.json({
+        ok: true,
+        kingdom: presentKingdom(db, k),
+        decrees,
+        residents,
+        viewer: { resident: !!mine, role: mine?.role || null },
+      });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
 
