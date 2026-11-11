@@ -232,6 +232,18 @@ function interpretDream(dtu, row) {
 
 // ── registration ────────────────────────────────────────────────────────────
 
+// Calendar day in the caller's zone. tzOffsetMin is Date.getTimezoneOffset()
+// (minutes to add to local time to get UTC). Omitted offset stays on UTC,
+// which is what the existing noon-UTC fixtures assert.
+function dreamCalendarDay(composedAt, tzOffsetMin) {
+  const offset = Number(tzOffsetMin);
+  const minutes = Number.isFinite(offset) ? Math.max(-14 * 60, Math.min(14 * 60, Math.trunc(offset))) : 0;
+  const ms = Number(composedAt) * 1000 - minutes * 60_000;
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return "unknown";
+  return d.toISOString().slice(0, 10);
+}
+
 export default function registerDreamsMacros(register) {
   register("dreams", "recent", async (ctx, input = {}) => {
     const db = ctx?.db;
@@ -477,7 +489,7 @@ export default function registerDreamsMacros(register) {
   }, { note: "Search your dream history by free text (title/prose/fragment kinds), tag, or scope." });
 
   // ── dreams.timeline — dreams grouped by calendar day ─────────────────────
-  register("dreams", "timeline", async (ctx, _input = {}) => {
+  register("dreams", "timeline", async (ctx, input = {}) => {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
     if (!db) return { ok: false, reason: "no_db" };
@@ -501,8 +513,9 @@ export default function registerDreamsMacros(register) {
         } catch { /* dtus absent */ }
       }
       const byDay = new Map();
+      const tzOffsetMin = input?.tzOffsetMin;
       for (const row of rows) {
-        const day = new Date(Number(row.composed_at) * 1000).toISOString().slice(0, 10);
+        const day = dreamCalendarDay(row.composed_at, tzOffsetMin);
         const dtu = dtuTitleById.get(row.dream_dtu_id) || null;
         if (!byDay.has(day)) byDay.set(day, []);
         byDay.get(day).push({
@@ -568,8 +581,9 @@ export default function registerDreamsMacros(register) {
       }
 
       const byDay = new Map();
+      const tzOffsetMin = input?.tzOffsetMin;
       for (const row of rows) {
-        const day = new Date(Number(row.composed_at) * 1000).toISOString().slice(0, 10);
+        const day = dreamCalendarDay(row.composed_at, tzOffsetMin);
         if (!byDay.has(day)) {
           byDay.set(day, { day, dreamCount: 0, activityIntensity: 0, dreamIds: [] });
         }

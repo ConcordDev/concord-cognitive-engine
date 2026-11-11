@@ -83,12 +83,17 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
   }, []);
 
   const loadTimeline = useCallback(async () => {
-    const r = await lensRun<{ ok: boolean; days?: TimelineDay[] }>('dreams', 'timeline', {});
+    const r = await lensRun<{ ok: boolean; days?: TimelineDay[] }>('dreams', 'timeline', {
+      tzOffsetMin: new Date().getTimezoneOffset(),
+    });
     if (r.data.ok) setDays(r.data.result?.days || []);
   }, []);
 
   const loadBusiest = useCallback(async () => {
-    const r = await lensRun<BusiestNightResult>('dreams', 'busiest-night', { limit: 20 });
+    const r = await lensRun<BusiestNightResult>('dreams', 'busiest-night', {
+      limit: 20,
+      tzOffsetMin: new Date().getTimezoneOffset(),
+    });
     if (r.data.ok) setBusiest(r.data.result ?? null);
   }, []);
 

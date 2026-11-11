@@ -5,6 +5,29 @@ import type { useCourtshipDesk } from './useCourtshipDesk';
 
 type Desk = ReturnType<typeof useCourtshipDesk>;
 
+/** Propose stays available on an estranged courtship once affinity is high enough to reconcile. Widowed does not. */
+export function courtshipActions(
+  status: string | undefined,
+  affinity: number,
+  engageThreshold: number,
+  marryThreshold: number,
+  engagePct: number,
+): { canPropose: boolean; canWed: boolean; hint: string | null } {
+  const canPropose = affinity >= engageThreshold
+    && status !== 'engaged' && status !== 'married' && status !== 'widowed';
+  const canWed = status === 'engaged' && affinity >= marryThreshold;
+  if (canPropose || status === 'engaged' || status === 'married') {
+    return { canPropose, canWed, hint: null };
+  }
+  if (status === 'estranged') {
+    return { canPropose, canWed, hint: `This courtship is estranged. Affinity has to reach ${engagePct}% before you can propose again.` };
+  }
+  if (status === 'widowed') {
+    return { canPropose, canWed, hint: 'This courtship ended.' };
+  }
+  return { canPropose, canWed, hint: `Reach ${engagePct}% affinity to propose.` };
+}
+
 export function CourtshipsPanel({ desk }: { desk: Desk }) {
   const {
     courtships, pending, engageThreshold, marryThreshold, engagePct,
@@ -25,11 +48,11 @@ export function CourtshipsPanel({ desk }: { desk: Desk }) {
         <ul data-testid="courtship-list" className="space-y-2">
           {courtships.map((c) => {
             const partnerId = String(c?.partner_id ?? '');
-            const pct = Math.round(Number(c?.affinity || 0) * 100);
-            const canPropose =
-              Number(c?.affinity || 0) >= engageThreshold && c.status !== 'engaged' &&
-              c.status !== 'married' && c.status !== 'estranged' && c.status !== 'widowed';
-            const canWed = c.status === 'engaged' && Number(c?.affinity || 0) >= marryThreshold;
+            const affinity = Number(c?.affinity || 0);
+            const pct = Math.round(affinity * 100);
+            const { canPropose, canWed, hint } = courtshipActions(
+              c.status, affinity, engageThreshold, marryThreshold, engagePct,
+            );
             return (
               <li key={`${c.partner_kind}:${partnerId || 'unknown'}`} className="rounded-lg border border-pink-500/30 bg-zinc-900/50 p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
@@ -63,8 +86,8 @@ export function CourtshipsPanel({ desk }: { desk: Desk }) {
                     </button>
                   )}
                 </div>
-                {!canPropose && c.status !== 'engaged' && c.status !== 'married' && (
-                  <p className="mt-1 text-[10px] text-zinc-500">Reach {engagePct}% affinity to propose.</p>
+                {hint && (
+                  <p className="mt-1 text-[10px] text-zinc-500">{hint}</p>
                 )}
               </li>
             );

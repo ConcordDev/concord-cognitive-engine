@@ -35,6 +35,8 @@ export interface AgFarmShellProps {
   fields: AgField[];
   equipment: AgEquipment[];
   workOrders: AgWorkOrder[];
+  /** Lists are still loading. Show that instead of a settled zero. */
+  deskLoading?: boolean;
   className?: string;
 }
 
@@ -49,13 +51,13 @@ const EQUIP_STATUS_COLOUR: Record<AgEquipment['status'], string> = {
 export function AgFarmShell({
   totalFields, totalAcres, equipmentCount, equipmentWorking,
   seasonYieldBushels, avgYieldPerAcre, grainStored, grainCapacity, grainUtilizationPct,
-  fields, equipment, workOrders, className,
+  fields, equipment, workOrders, deskLoading = false, className,
 }: AgFarmShellProps) {
   return (
     <div className={cn('flex flex-col gap-3 p-4 bg-[#0d1117] text-gray-100', className)}>
       {/* Metric strip */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <Metric icon={Wheat} label="Acres farmed" value={totalAcres.toFixed(0)} caption={`${totalFields} fields`} tone="emerald" />
+        <Metric icon={Wheat} label="Acres farmed" value={deskLoading ? '…' : totalAcres.toFixed(0)} caption={deskLoading ? 'Loading fields' : `${totalFields} fields`} tone="emerald" />
         <Metric icon={Tractor} label="Equipment" value={`${equipmentWorking}/${equipmentCount}`} caption="working" tone="amber" />
         <Metric icon={BarChart3} label="Season yield" value={`${(seasonYieldBushels / 1000).toFixed(1)}K bu`} caption={`${avgYieldPerAcre}/ac avg`} tone="cyan" />
         <Metric icon={Warehouse} label="Grain stored" value={`${grainUtilizationPct}%`} caption={`${(grainStored / 1000).toFixed(1)}K / ${(grainCapacity / 1000).toFixed(1)}K bu`} tone="violet" />
@@ -81,7 +83,7 @@ export function AgFarmShell({
             );
           })}
           <div className="absolute bottom-2 left-2 text-[10px] uppercase tracking-wider text-emerald-300/70 inline-flex items-center gap-1">
-            <MapPin className="w-3 h-3" /> {fields.length} fields
+            <MapPin className="w-3 h-3" /> {deskLoading ? 'Loading fields' : `${fields.length} fields`}
           </div>
         </section>
 
@@ -121,9 +123,11 @@ export function AgFarmShell({
           <header className="px-3 py-2 bg-white/[0.03] border-b border-white/10 flex items-center gap-2">
             <Calendar className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-xs uppercase font-semibold tracking-wider text-gray-300">Today's work</span>
-            <span className="ml-auto text-[10px] text-gray-400">{workOrders.length}</span>
+            <span className="ml-auto text-[10px] text-gray-400">{deskLoading ? '…' : workOrders.length}</span>
           </header>
-          {workOrders.length === 0 ? (
+          {deskLoading ? (
+            <div className="p-6 text-center text-xs text-gray-400">Loading today’s work.</div>
+          ) : workOrders.length === 0 ? (
             <div className="p-6 text-center text-xs text-gray-400">No work orders.</div>
           ) : (
             <ul className="divide-y divide-white/5 max-h-64 overflow-y-auto">

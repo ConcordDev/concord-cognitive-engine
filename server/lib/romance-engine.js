@@ -165,6 +165,7 @@ export function propose(db, playerUserId, partnerKind, partnerId) {
   if (!c) return { ok: false, reason: "no_courtship" };
   if (c.affinity < ENGAGE_THRESHOLD) return { ok: false, reason: "affinity_too_low", required: ENGAGE_THRESHOLD, got: c.affinity };
   if (c.status === "married") return { ok: false, reason: "already_married" };
+  if (c.status === "widowed") return { ok: false, reason: "widowed" };
   if (partnerKind === "player") return openPlayerProposal(db, playerUserId, String(partnerId));
   db.prepare(`
     UPDATE player_courtship SET status = 'engaged', last_interaction = unixepoch()

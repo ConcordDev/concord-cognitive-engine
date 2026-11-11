@@ -249,11 +249,19 @@ export default function registerNonprofitActions(registerLensAction) {
   });
   registerLensAction("nonprofit", "nonprofit-dashboard", (ctx, _a, _p = {}) => {
     const s = getNonprofitState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const campaigns = npCampaigns(s, npActor(ctx));
+    const actor = npActor(ctx);
+    const campaigns = npCampaigns(s, actor);
     const allDonations = campaigns.flatMap((c) => c.donations);
+    const recurringKeys = new Set();
+    for (const gift of allDonations) {
+      if (gift.recurring) recurringKeys.add(`gift:${String(gift.donor || "anonymous").trim().toLowerCase()}`);
+    }
+    for (const donor of npList(npMap(s, "donors"), actor)) {
+      if ((donor.pledges || []).some((p) => p.status === "active")) recurringKeys.add(`donor:${donor.id}`);
+    }
     return { ok: true, result: { campaigns: campaigns.length, active: campaigns.filter((c) => c.status === "active").length,
       totalRaised: allDonations.reduce((n, d) => n + d.amount, 0), donations: allDonations.length,
-      recurringDonors: allDonations.filter((d) => d.recurring).length } };
+      recurringDonors: recurringKeys.size } };
   });
 
   // ─── Extended STATE accessors (donor CRM, recurring, comms, vols, events) ──
