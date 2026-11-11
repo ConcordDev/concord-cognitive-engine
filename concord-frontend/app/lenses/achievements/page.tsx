@@ -43,6 +43,7 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
+import { lensRun } from '@/lib/api/client';
 import { subscribe } from '@/lib/realtime/socket';
 import { StatTile, StatTileGrid } from '@/components/ui/StatTile';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -125,6 +126,20 @@ function AchievementsLensInner() {
   const refresh = useCallback(async () => {
     setState('loading');
     setError(null);
+    await load();
+  }, [load]);
+
+  const syncUnlocks = useCallback(async () => {
+    setState('loading');
+    setError(null);
+    try {
+      const r = await lensRun<{ count: number }>('achievements', 'sync', {});
+      if (r.data.ok === false) {
+        setError(r.data.error || 'Sync could not check your DTUs.');
+      }
+    } catch {
+      setError('Sync could not check your DTUs.');
+    }
     await load();
   }, [load]);
 
@@ -294,9 +309,9 @@ function AchievementsLensInner() {
         cta={{
           label: 'Sync unlocks',
           icon: RefreshCw,
-          onClick: () => void refresh(),
+          onClick: () => void syncUnlocks(),
           disabled: state === 'loading',
-          title: 'Re-read the catalog and your unlocks (r)',
+          title: 'Check the DTUs you already created and unlock what that count earns',
         }}
       >
         {state === 'ready' && (

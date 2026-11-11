@@ -19794,6 +19794,8 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
         title: dtu.title,
         tier: dtu.tier,
         tags: dtu.tags,
+        userId: dtu.ownerUserId || dtu.ownerId || dtu.createdBy || dtu.author || null,
+        creatorId: dtu.ownerUserId || dtu.ownerId || dtu.createdBy || dtu.author || null,
       };
       if (isNew) {
         realtimeEmit("dtu:created", dtuBroadcastPayload);
@@ -26779,6 +26781,8 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
     // Broadcast DTU birth so LiveDTUFeed, ActivityFeed, and lens views see pipeline-committed DTUs
     realtimeEmit("dtu:created", {
       dtuId: dtu.id, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
+      userId: dtu.ownerUserId || dtu.ownerId || dtu.createdBy || dtu.author || null,
+      creatorId: dtu.ownerUserId || dtu.ownerId || dtu.createdBy || dtu.author || null,
     });
     // v2.0 Workstream 6c: realtime fast-path for public timeline posts so
     // they appear instantly in other players' feeds (and so the
@@ -49989,6 +49993,7 @@ function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
       }, exhaustRoom);
       realtimeEmit("dtu:created", {
         dtuId, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
+        userId: ownerId || null, creatorId: ownerId || null,
       }, exhaustRoom);
       realtimeEmit("lens:dtu_generated", {
         dtuId, domain, action, artifactType, artifactId: artifact.id,
