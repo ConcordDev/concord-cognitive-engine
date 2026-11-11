@@ -19,6 +19,7 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { formatCalendarDate } from '@/lib/calendar-date';
 import {
   CalendarDays, FileText, Receipt, BookOpen, Award, Camera,
   Search, Loader2, Plus, Trash2, Send, ArrowRightCircle,
@@ -240,10 +241,9 @@ function ScheduleTab() {
 
           <div className="grid grid-cols-7 gap-1">
             {cal.days.map((d) => {
-              const day = new Date(d.date);
               return (
                 <div key={d.date} className={`min-h-[64px] rounded border p-1 ${d.jobs.length ? 'border-orange-500/30 bg-orange-500/5' : 'border-zinc-800 bg-zinc-950/40'}`}>
-                  <div className="text-[9px] text-zinc-400">{day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</div>
+                  <div className="text-[9px] text-zinc-400">{formatCalendarDate(d.date, { year: false }) || d.date}</div>
                   {d.jobs.map((j) => (
                     <button key={j.id} type="button" onClick={() => setSelectedId(j.id)} className="mt-0.5 block w-full truncate rounded bg-orange-500/20 px-1 py-0.5 text-left text-[9px] text-orange-100 hover:bg-orange-500/30" title={`${j.title}${j.client ? ` · ${j.client}` : ''} — open job`}>{j.title}</button>
                   ))}

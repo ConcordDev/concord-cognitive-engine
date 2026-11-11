@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Gavel, Plus, Calendar, Clock } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { daysUntilCalendarDate, formatCalendarDate } from '@/lib/calendar-date';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
@@ -11,6 +12,15 @@ export interface CaseEvent {
   date: string;
   kind: 'filed' | 'served' | 'motion' | 'hearing' | 'order' | 'ruling' | 'settled' | 'dismissed' | 'appeal';
   description: string;
+}
+
+function filedLabel(raw?: string | null): string {
+  if (!raw) return '—';
+  const calendar = formatCalendarDate(raw);
+  if (calendar) return calendar;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return '—';
+  return parsed.toLocaleDateString();
 }
 
 export interface Case {
@@ -66,8 +76,8 @@ export function CaseTracker() {
 
   const upcomingDeadlines = cases.filter(c => {
     if (!c.nextDeadline) return false;
-    const days = (new Date(c.nextDeadline).getTime() - Date.now()) / 86400000;
-    return days > 0 && days < 14;
+    const days = daysUntilCalendarDate(c.nextDeadline);
+    return days != null && days > 0 && days < 14;
   });
 
   return (
@@ -104,7 +114,7 @@ export function CaseTracker() {
         ) : (
           <ul className="divide-y divide-white/5">
             {cases.map(c => {
-              const days = c.nextDeadline ? Math.floor((new Date(c.nextDeadline).getTime() - Date.now()) / 86400000) : null;
+              const days = c.nextDeadline ? daysUntilCalendarDate(c.nextDeadline) : null;
               return (
                 <li key={c.id} className="px-3 py-2 hover:bg-white/[0.03]">
                   <div className="flex items-center gap-2">
@@ -134,11 +144,11 @@ export function CaseTracker() {
                   <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-3 flex-wrap">
                     <span className="capitalize">{c.matterType}</span>
                     <span>{c.court}</span>
-                    <span className="font-mono tabular-nums">Filed {new Date(c.filedAt).toLocaleDateString()}</span>
+                    <span className="font-mono tabular-nums">Filed {filedLabel(c.filedAt)}</span>
                     {c.nextDeadline && (
                       <span className={cn('inline-flex items-center gap-1 font-mono tabular-nums', days !== null && days < 7 && 'text-red-300', days !== null && days < 14 && days >= 7 && 'text-yellow-300')}>
                         <Calendar className="w-3 h-3" />
-                        {c.nextDeadlineKind || 'Deadline'}: {new Date(c.nextDeadline).toLocaleDateString()}{days !== null && ` (${days}d)`}
+                        {c.nextDeadlineKind || 'Deadline'}: {filedLabel(c.nextDeadline)}{days !== null && ` (${days}d)`}
                       </span>
                     )}
                     <span className="inline-flex items-center gap-1 font-mono tabular-nums"><Clock className="w-3 h-3" /> {c.events.length} events</span>

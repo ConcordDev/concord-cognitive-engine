@@ -26,6 +26,7 @@ import {
   CheckCircle2, FileText, Send, PauseCircle, PlayCircle, Pencil, Target,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { formatCalendarDate } from '@/lib/calendar-date';
 import { ChartKit } from '@/components/viz';
 import { commSendFeedback, commStatusLabel, thankYouSweepLines } from '@/components/nonprofit/nonprofitMail';
 
@@ -69,7 +70,11 @@ const TABS = WB_TABS;
 function money(n: number): string { return `$${(n || 0).toLocaleString()}`; }
 function shortDate(d: string | null | undefined): string {
   if (!d) return '—';
-  try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return String(d); }
+  const calendar = formatCalendarDate(d);
+  if (calendar) return calendar;
+  const parsed = new Date(d);
+  if (Number.isNaN(parsed.getTime())) return d;
+  return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // Small shared input style

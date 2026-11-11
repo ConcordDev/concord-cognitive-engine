@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 564 | 381 | 0 |
+| medium | 568 | 377 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **990** | **1159** | **2** |
+| **total** | **994** | **1155** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1645,6 +1645,17 @@ Quest tabs keep the full word, including Available, and the row scrolls sideways
 | FIX-creatures-011 | creatures | medium | FIXED_PENDING_VERIFY | 4fe37407c |
 | FIX-quests-007 | quests | medium | FIXED_PENDING_VERIFY | 4fe37407c |
 | FIX-quests-008 | quests | medium | FIXED_PENDING_VERIFY | 4fe37407c |
+
+## Mediums — a calendar day stays the day you typed
+
+A gift, a shift, a filed date, a deadline, and a welding job dated YYYY-MM-DD show that day. They no longer slip back one day in US timezones. A law case can be deleted after a confirm click.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-nonprofit-002 | nonprofit | medium | FIXED_PENDING_VERIFY | PENDING |
+| FIX-legal-003 | legal | medium | FIXED_PENDING_VERIFY | PENDING |
+| FIX-law-004 | law | medium | FIXED_PENDING_VERIFY | PENDING |
+| FIX-welding-003 | welding | medium | FIXED_PENDING_VERIFY | PENDING |
 
 ## NEEDS_PRODUCT_SURFACE
 
