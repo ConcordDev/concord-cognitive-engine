@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { FORMAT_LABELS } from '@/components/tournaments/types';
 import type { Tournament, TFormat } from '@/components/tournaments/types';
+import { tournamentTitleError } from '@/lib/form-guards';
 
 const FORMATS: TFormat[] = ['single_elimination', 'double_elimination', 'round_robin', 'swiss'];
 
@@ -19,10 +20,12 @@ export function TournamentCreatePanel({
   busy,
   run,
   onCreated,
+  actionError,
 }: {
   busy: boolean;
   run: (action: string, input: Record<string, unknown>) => Promise<Tournament | null>;
   onCreated: (t: Tournament) => void;
+  actionError?: string | null;
 }) {
   const [title, setTitle] = useState('Untitled Tournament');
   const [game, setGame] = useState('Concord PvP');
@@ -33,8 +36,15 @@ export function TournamentCreatePanel({
   const [teamSize, setTeamSize] = useState(3);
   const [swissRounds, setSwissRounds] = useState(5);
   const [payoutSplit, setPayoutSplit] = useState('60, 25, 15');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const submit = async () => {
+    const titleProblem = tournamentTitleError(title);
+    if (titleProblem) {
+      setFormError(titleProblem);
+      return;
+    }
+    setFormError(null);
     const split = payoutSplit.split(',').map((x) => Number(x.trim())).filter((n) => Number.isFinite(n) && n >= 0);
     const t = await run('create', {
       title,
@@ -54,7 +64,7 @@ export function TournamentCreatePanel({
       <h2 className="mb-4 text-lg font-semibold text-amber-100">Create Tournament</h2>
       <div className="space-y-4">
         <Field label="Title">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded bg-slate-800 px-2 py-1 text-sm" />
+          <input value={title} onChange={(e) => { setFormError(null); setTitle(e.target.value); }} className="w-full rounded bg-slate-800 px-2 py-1 text-sm" />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Game / discipline">
@@ -129,6 +139,9 @@ export function TournamentCreatePanel({
             className="w-full rounded bg-slate-800 px-2 py-1 text-sm"
           />
         </Field>
+        {(formError || actionError) && (
+          <p role="alert" className="text-sm text-rose-300">{formError || actionError}</p>
+        )}
         <button
           onClick={submit}
           disabled={busy || !title.trim()}

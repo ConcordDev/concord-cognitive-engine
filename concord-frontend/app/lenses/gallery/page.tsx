@@ -18,6 +18,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
+import { absoluteHttpUrlError } from '@/lib/form-guards';
 
 interface Work {
   id: string;
@@ -135,6 +136,11 @@ export default function GalleryPage() {
     const trimmed = title.trim();
     if (!trimmed) {
       setActionError('A title is required.');
+      return;
+    }
+    const imageError = absoluteHttpUrlError(imageUrl);
+    if (imageError) {
+      setActionError(imageError);
       return;
     }
     setBusy(true);

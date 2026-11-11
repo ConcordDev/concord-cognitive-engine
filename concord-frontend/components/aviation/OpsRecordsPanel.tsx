@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { showToast } from '@/components/common/Toasts';
+import { artifactTitleError } from '@/lib/form-guards';
 import { ArtifactBench } from './ArtifactBench';
 import {
   OpsKind, getTypeForKind, getStatusesForKind, computeWbTotals, type FormFields,
@@ -87,7 +88,12 @@ export function OpsRecordsPanel({ kind }: { kind: OpsKind }) {
 
   const handleSave = async () => {
     let data = { ...form };
-    const title = (data._title as string) || `New ${type}`;
+    const title = ((data._title as string) || `New ${type}`).trim();
+    const titleProblem = artifactTitleError(title);
+    if (titleProblem) {
+      showToast('error', titleProblem);
+      return;
+    }
     const status = (data._status as string) || defaultStatus(kind);
     delete data._title;
     delete data._status;
@@ -120,18 +126,23 @@ export function OpsRecordsPanel({ kind }: { kind: OpsKind }) {
     if (kind === 'wb') {
       data = { ...data, ...computeWbTotals(form) };
     }
-    if (editingId) {
-      await update(editingId, {
-        title,
-        data: data as Record<string, unknown>,
-        meta: { status },
-      });
-    } else {
-      await create({
-        title,
-        data: data as Record<string, unknown>,
-        meta: { status, tags: [] },
-      });
+    try {
+      if (editingId) {
+        await update(editingId, {
+          title,
+          data: data as Record<string, unknown>,
+          meta: { status },
+        });
+      } else {
+        await create({
+          title,
+          data: data as Record<string, unknown>,
+          meta: { status, tags: [] },
+        });
+      }
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Could not save that record.');
+      return;
     }
     resetForm();
   };

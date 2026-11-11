@@ -38,6 +38,7 @@ import { KeyHealthPanel } from '@/components/byo-keys/KeyHealthPanel';
 import { OrgKeysPanel } from '@/components/byo-keys/OrgKeysPanel';
 import { ModelPickerModal } from '@/components/byo-keys/ModelPickerModal';
 import { brainRecordForSlot, slotRouteCopy, type PodBrain } from '@/components/byo-keys/slotRouteCopy';
+import { apiKeyError } from '@/lib/form-guards';
 
 interface OverrideRow {
   slot: string;
@@ -162,15 +163,18 @@ export default function ByoKeysLens() {
   };
 
   const save = async (slot: string) => {
-    if (form.provider !== 'concord_default' && form.provider !== 'ollama' && (!form.apiKey || form.apiKey.length < 8)) {
-      useUIStore.getState().addToast({ type: 'warning', message: 'API key must be at least 8 characters. Paste it from your provider\'s dashboard.' });
+    const allowBlank = form.provider === 'concord_default' || form.provider === 'ollama';
+    const keyProblem = apiKeyError(form.apiKey, { allowBlank });
+    if (keyProblem) {
+      useUIStore.getState().addToast({ type: 'warning', message: keyProblem });
       return;
     }
+    const apiKey = form.apiKey.trim();
     setBusy(true);
     const r = await macro('byo_keys', 'set', {
       slot, provider: form.provider,
       modelId: form.modelId || null,
-      apiKey: form.apiKey || null,
+      apiKey: apiKey || null,
     });
     setBusy(false);
     if (r?.ok) {

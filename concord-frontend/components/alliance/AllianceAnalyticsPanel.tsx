@@ -35,6 +35,7 @@ import {
 import { apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
+import { dependencyPctError, parseCsvList } from '@/lib/form-guards';
 import { DataTable } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 
@@ -62,7 +63,7 @@ async function runAllianceMacro<T>(action: string, data: Record<string, unknown>
 }
 
 function csv(v: string): string[] {
-  return v.split(',').map((s) => s.trim()).filter(Boolean);
+  return parseCsvList(v);
 }
 
 function ScoreGauge({ value, max = 100, label }: { value: number; max?: number; label: string }) {
@@ -364,6 +365,8 @@ function RiskTool() {
 
   const addRow = () => {
     if (!draft.partnerName.trim() || !draft.dependencyPct.trim()) { setError('Partner name and dependency % are required.'); return; }
+    const pctProblem = dependencyPctError(draft.dependencyPct);
+    if (pctProblem) { setError(pctProblem); return; }
     setRows((p) => [...p, { ...draft, partnerId: draft.partnerId || `partner_${p.length + 1}` }]);
     setDraft({ partnerId: '', partnerName: '', dependencyPct: '', categories: '', revenue: '', critical: false });
     setError(null);

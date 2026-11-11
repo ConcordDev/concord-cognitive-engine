@@ -27,6 +27,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
+import { sceneLocationError } from '@/lib/form-guards';
 
 const INT_EXT_OPTIONS = ['INT', 'EXT', 'INT/EXT'] as const;
 const TIME_OF_DAY_OPTIONS = ['DAY', 'NIGHT', 'DUSK', 'DAWN', 'MORNING', 'EVENING', 'CONTINUOUS'] as const;
@@ -372,8 +373,9 @@ export default function FilmStudiosPage() {
   const saveEditScene = useCallback(async () => {
     if (busy || !openId || !selectedId) return;
     const trimmed = sceneEditLocation.trim();
-    if (!trimmed) {
-      setActionError('A location is required.');
+    const locationError = sceneLocationError(trimmed);
+    if (locationError) {
+      setActionError(locationError);
       return;
     }
     setBusy(true);

@@ -175,6 +175,13 @@ export function ForgeWorkbench() {
 
   const validateMutation = useMutation({
     mutationFn: async () => {
+      const localErrors: string[] = [];
+      const name = appName.trim();
+      if (name.length > 64) localErrors.push('appName must be 64 characters or fewer');
+      if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        localErrors.push('port must be an integer from 1 to 65535');
+      }
+      if (localErrors.length) return { ok: true, valid: false, errors: localErrors };
       const res = await fetch('/api/forge/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -396,8 +403,8 @@ export function ForgeWorkbench() {
                 <label className="block text-xs font-medium text-gray-400 mb-1">Port</label>
                 <input
                   type="number"
-                  value={port}
-                  onChange={e => setPort(parseInt(e.target.value) || 3000)}
+                  value={Number.isFinite(port) ? port : ''}
+                  onChange={e => setPort(e.target.value === '' ? Number.NaN : Number(e.target.value))}
                   className="w-full px-3 py-2 bg-lattice-deep border border-lattice-border rounded-lg text-sm text-white focus:outline-none focus:border-orange-500/50"
                 />
               </div>

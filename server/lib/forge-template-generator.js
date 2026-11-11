@@ -1548,9 +1548,19 @@ export function generateForgeApp(options = {}) {
 /**
  * Validate a Forge app configuration.
  */
+export const FORGE_APP_NAME_MAX = 64;
+
 export function validateForgeConfig(config) {
   const errors = [];
-  if (!config.appName) errors.push("appName is required");
+  const appName = typeof config.appName === "string" ? config.appName.trim() : "";
+  if (!appName) errors.push("appName is required");
+  else if (appName.length > FORGE_APP_NAME_MAX) errors.push(`appName must be ${FORGE_APP_NAME_MAX} characters or fewer`);
+  if (config.port !== undefined && config.port !== null && config.port !== "") {
+    const port = Number(config.port);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      errors.push("port must be an integer from 1 to 65535");
+    }
+  }
   if (!config.database?.path && config.database?.driver !== "postgres") errors.push("database.path is required for SQLite");
   if (config.auth?.jwtSecret === "CHANGE_ME_IN_PRODUCTION") errors.push("auth.jwtSecret must be changed for production");
   if (config.stripe?.secretKey && !config.stripe.secretKey.startsWith("sk_")) errors.push("stripe.secretKey must start with sk_");
