@@ -2266,6 +2266,7 @@ import {
 } from "./lib/chat/turn-pipeline.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
 import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
+import { resolveMeshSendDtu } from "./lib/mesh-send-dtu.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
 import { reconcileArtifactTypes } from "./lib/lens-artifact-types.js";
 import { pickLegacyShadow } from "./lib/whiteboard-board-artifacts.js";
@@ -32105,20 +32106,20 @@ register("mesh", "send", async (ctx, input) => {
   // — the caller already has whatever content they put in it — so only the
   // id-resolved path is gated. Mirrors the dtu.create lineage-consent check
   // above: owner, system/founder-authored, or public/global-scope all pass.
-  let dtu = input.dtu || null;
-  if (!dtu && input.dtuId) {
-    const stored = STATE.dtus?.get(input.dtuId);
-    if (stored) {
-      const _meshUserId = ctx?.actor?.userId || ctx?.actor?.id || "anon";
-      const isOwner = !stored.ownerId || stored.ownerId === _meshUserId ||
-        stored.ownerId === "system" || stored.ownerId === "founder";
-      const vis = stored.meta?.visibility || stored.visibility;
-      const isPublic = vis === "published" || vis === "public" || stored.scope === "global";
-      if (!isOwner && !isPublic) return { ok: false, error: "not_your_dtu" };
-      dtu = stored;
-    }
+  const _meshUserId = ctx?.actor?.userId || ctx?.actor?.id || "anon";
+  let _meshLocal = null;
+  if (_meshUserId && _meshUserId !== "anon") {
+    try { _meshLocal = getUserUniverse(_meshUserId)?.localDTUs || null; } catch { _meshLocal = null; }
   }
-  if (!dtu) return { ok: false, error: "No DTU specified. Provide dtu or dtuId." };
+  const _meshResolved = resolveMeshSendDtu({
+    stateDtus: STATE.dtus,
+    localDtus: _meshLocal,
+    dtuId: input?.dtuId,
+    inlineDtu: input?.dtu || null,
+    userId: _meshUserId,
+  });
+  if (!_meshResolved.ok) return _meshResolved;
+  const dtu = _meshResolved.dtu;
   const result = meshSendDTU(dtu, input.destination || input.destinationNodeId || "broadcast", {
     proximity: input.proximity,
     priorityClass: input.priorityClass,
