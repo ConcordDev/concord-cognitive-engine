@@ -1801,9 +1801,9 @@ A series with a clear repeating period reports that period and a seasonal share.
 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
-| FIX-temporal-001 | temporal | medium | FIXED_PENDING_VERIFY | be925e2da |
-| FIX-wellness-003 | wellness | medium | FIXED_PENDING_VERIFY | be925e2da |
-| FIX-anon-001 | anon | medium | FIXED_PENDING_VERIFY | be925e2da |
+| FIX-temporal-001 | temporal | medium | FIXED_PENDING_VERIFY | 7410edd72 |
+| FIX-wellness-003 | wellness | medium | FIXED_PENDING_VERIFY | 7410edd72 |
+| FIX-anon-001 | anon | medium | FIXED_PENDING_VERIFY | 7410edd72 |
 
 ## NEEDS_PRODUCT_SURFACE
 
