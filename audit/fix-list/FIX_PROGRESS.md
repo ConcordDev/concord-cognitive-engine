@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 170 | 49 | 2 |
+| high | 172 | 47 | 2 |
 | medium | 675 | 270 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1101** | **1048** | **2** |
+| **total** | **1103** | **1046** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1925,6 +1925,16 @@ Mesh Overview counts this node in the online total, and the Messages tab uses th
 | FIX-sponsorship-001 | sponsorship | medium | FIXED_PENDING_VERIFY | 15dc2ffe2 |
 | FIX-fork-005 | fork | medium | FIXED_PENDING_VERIFY | 15dc2ffe2 |
 | FIX-tools-005 | tools | medium | FIXED_PENDING_VERIFY | 15dc2ffe2 |
+
+
+## Highs — a desk save uses the status the form sends
+
+A realestate deal, listing, or rental saves with the status the desk offers, including prospecting, active, and vacant. A security incident, asset, or access record saves too, including detected and active. Access is a record type the server accepts. A save that is still refused names the status in the error, instead of only saying validation failed.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-realestate-001 | realestate | high | FIXED_PENDING_VERIFY | c857bf35c |
+| FIX-security-001 | security | high | FIXED_PENDING_VERIFY | c857bf35c |
 
 ## NEEDS_PRODUCT_SURFACE
 
