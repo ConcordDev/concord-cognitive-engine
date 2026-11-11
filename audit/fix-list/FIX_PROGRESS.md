@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 670 | 275 | 0 |
+| medium | 675 | 270 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1096** | **1053** | **2** |
+| **total** | **1101** | **1048** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1913,6 +1913,18 @@ Public minutes send the motion, the decisions, and the action items as the note.
 |---|---|---|---|---|
 | FIX-council-010 | council | medium | FIXED_PENDING_VERIFY | 6f278ce3c |
 | FIX-society-003 | society | medium | FIXED_PENDING_VERIFY | 6f278ce3c |
+
+## Mediums — counts that match the screen, and a compile that refuses bad source
+
+Mesh Overview counts this node in the online total, and the Messages tab uses the same message total as Overview. Unread stays its own number. All messages is the opening view, and Send stays off until a conversation is picked. Queueing theory Analyze says it needs at least two arrivals or two completions. A cancelled sponsorship stays on My Sponsorships with Dispatch history, and Resume is only for a paused one. Total pledged is the sum of recorded pledge charges, including cancelled ones, and the page says the monthly figure is the next active pledge. Fork lab says divergence is how much of the file changed, and merge complexity is overlapping edits. Tools compile reports a syntax error for source that is not valid JavaScript and does not save that attempt as a success. This build still has no esbuild, so valid TypeScript uses the strip-types fallback and says so.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-mesh-004 | mesh | medium | FIXED_PENDING_VERIFY | 15dc2ffe2 |
+| FIX-queue-013 | queue | medium | FIXED_PENDING_VERIFY | 15dc2ffe2 |
+| FIX-sponsorship-001 | sponsorship | medium | FIXED_PENDING_VERIFY | 15dc2ffe2 |
+| FIX-fork-005 | fork | medium | FIXED_PENDING_VERIFY | 15dc2ffe2 |
+| FIX-tools-005 | tools | medium | FIXED_PENDING_VERIFY | 15dc2ffe2 |
 
 ## NEEDS_PRODUCT_SURFACE
 
