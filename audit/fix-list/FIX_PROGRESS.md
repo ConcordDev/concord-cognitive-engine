@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 559 | 386 | 0 |
+| medium | 560 | 385 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **985** | **1163** | **3** |
+| **total** | **986** | **1162** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1616,6 +1616,15 @@ An ethics result, a sentinel monitor, and a telecom site stay armed until Confir
 | FIX-ethics-007 | ethics | medium | FIXED_PENDING_VERIFY | ad1c4cbea |
 | FIX-sentinel-003 | sentinel | medium | FIXED_PENDING_VERIFY | ad1c4cbea |
 | FIX-telecommunications-002 | telecommunications | medium | FIXED_PENDING_VERIFY | ad1c4cbea |
+
+
+## Mediums — a stale market snapshot
+
+When CoinGecko is down, Markets says the live feed is unavailable and offers Retry. Prices from the last snapshot stay hidden until Show last snapshot. An error with no snapshot still shows nothing in its place.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-staking-008 | staking | medium | FIXED_PENDING_VERIFY | 0fa0929d8 |
 
 ## NEEDS_PRODUCT_SURFACE
 
