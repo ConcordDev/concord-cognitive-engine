@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 553 | 392 | 0 |
+| medium | 554 | 391 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **979** | **1169** | **3** |
+| **total** | **980** | **1168** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1586,6 +1586,15 @@ An expense row opens its number and journal id. Edit saves vendor, memo, date, a
 |---|---|---|---|---|
 | FIX-accounting-010 | accounting | medium | FIXED_PENDING_VERIFY | cf73a03d2 |
 | FIX-accounting-014 | accounting | medium | FIXED_PENDING_VERIFY | cf73a03d2 |
+
+
+## Mediums — a welding procedure
+
+A WPS does not save until filler metal, amperage range, and thickness range are filled in. A leading minus is refused, and the form says so. A range written as 90-140 is accepted. A PQR needs the welder and the WPS it supports.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-welding-001 | welding | medium | FIXED_PENDING_VERIFY | cca126343 |
 
 ## NEEDS_PRODUCT_SURFACE
 
