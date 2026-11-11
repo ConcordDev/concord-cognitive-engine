@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 183 | 36 | 2 |
-| medium | 706 | 239 | 0 |
+| medium | 713 | 232 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1145** | **1004** | **2** |
+| **total** | **1152** | **997** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -2088,6 +2088,21 @@ Typing in a field keeps the command palette and the form closed. Debate, fork, l
 | FIX-auction-002 | auction | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
 | FIX-game-003 | game | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
 | FIX-alliance-002 | alliance | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
+
+
+## Mediums — controls are at least 44 pixels and show a focus ring
+
+Yes and no, dream tabs, finance links, ethics filters, voice delete, film actions, and canvas tools are tall enough to tap. Canvas tools also draw a ring when focused.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-markets-013 | markets | medium | FIXED_PENDING_VERIFY | 3a84d975b |
+| FIX-dreams-007 | dreams | medium | FIXED_PENDING_VERIFY | 3a84d975b |
+| FIX-finance-009 | finance | medium | FIXED_PENDING_VERIFY | 3a84d975b |
+| FIX-ethics-010 | ethics | medium | FIXED_PENDING_VERIFY | 3a84d975b |
+| FIX-voice-014 | voice | medium | FIXED_PENDING_VERIFY | 3a84d975b |
+| FIX-film-studios-004 | film-studios | medium | FIXED_PENDING_VERIFY | 3a84d975b |
+| FIX-art-005 | art | medium | FIXED_PENDING_VERIFY | 3a84d975b |
 
 ## NEEDS_PRODUCT_SURFACE
 
