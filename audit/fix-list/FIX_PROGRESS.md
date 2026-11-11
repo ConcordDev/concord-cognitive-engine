@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 183 | 36 | 2 |
-| medium | 696 | 249 | 0 |
+| medium | 706 | 239 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1135** | **1014** | **2** |
+| **total** | **1145** | **1004** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -2070,6 +2070,24 @@ Headings, helper lines, inactive chips, and empty-state notes on these screens u
 | FIX-export-010 | export | medium | FIXED_PENDING_VERIFY | d29d142de |
 | FIX-science-004 | science | medium | FIXED_PENDING_VERIFY | d29d142de |
 | FIX-voice-012 | voice | medium | FIXED_PENDING_VERIFY | d29d142de |
+
+
+## Mediums — a click that looks dead says what happened
+
+Typing in a field keeps the command palette and the form closed. Debate, fork, level-up, claim, an over-budget move, a meal plan, a bid, and alliance risk rows each say what happened.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-diy-002 | diy | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
+| FIX-genesis-002 | genesis | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
+| FIX-debate-002 | debate | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
+| FIX-fork-010 | fork | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
+| FIX-move-builder-010 | move-builder | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
+| FIX-podcast-007 | podcast | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
+| FIX-food-002 | food | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
+| FIX-auction-002 | auction | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
+| FIX-game-003 | game | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
+| FIX-alliance-002 | alliance | medium | FIXED_PENDING_VERIFY | 521c4ac67 |
 
 ## NEEDS_PRODUCT_SURFACE
 
