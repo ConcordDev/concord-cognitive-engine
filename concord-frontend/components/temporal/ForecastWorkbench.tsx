@@ -737,7 +737,7 @@ function ResultPanel({ result, activeData }: { result: any; activeData: DatasetF
         </h3>
         <div className="mb-3 flex flex-wrap gap-2">
           {result.dominant && <Stat label="Dominant period" value={result.dominant.period} />}
-          <Stat label="Total seasonal share" value={`${(result.totalSeasonalShare * 100).toFixed(0)}%`} />
+          <Stat label="Total seasonal share" value={`${((Number(result.totalSeasonalShare) || 0) * 100).toFixed(0)}%`} />
           <Stat label="Residual var" value={result.residualVariance} />
         </div>
         {seasons.map((s: any, i: number) => (

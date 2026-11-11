@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Compass, Loader2, RefreshCw } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { WELLNESS_CHANGED } from '@/lib/wellness/refresh';
 
 interface Recommendation { priority: number; area: string; text: string }
 interface Signals {
@@ -46,6 +47,11 @@ export function DailyRecommendationPanel() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    const onChange = () => { void refresh(); };
+    window.addEventListener(WELLNESS_CHANGED, onChange);
+    return () => window.removeEventListener(WELLNESS_CHANGED, onChange);
+  }, [refresh]);
 
   const colour = rec ? BAND_COLOUR[rec.band] : '#71717a';
 

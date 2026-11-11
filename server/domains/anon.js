@@ -653,6 +653,33 @@ export default function registerAnonActions(registerLensAction) {
       return { ok: true, result: { message: "No values or queries to process." } };
     }
 
+    // Refuse before recording when this call would push the caller past
+    // the configured ceiling. An exact fill still succeeds; the next
+    // query does not, and the ledger stays where it was.
+    const s = getAnonState();
+    const userId = anUid(ctx);
+    const totalBudget = anResolveTotalBudget(params);
+    const priorBucket = s.budgets.get(userId);
+    const previouslyUsed = priorBucket ? priorBucket.totalSpent : 0;
+    if (previouslyUsed + totalEpsilonUsed > totalBudget + 1e-9) {
+      const remaining = Math.max(0, Math.round((totalBudget - previouslyUsed) * 10000) / 10000);
+      return {
+        ok: false,
+        error: "privacy_budget_exhausted",
+        message: `This query needs ${totalEpsilonUsed} epsilon and ${remaining} of ${totalBudget} is left. Reset the privacy budget to run it.`,
+        budgetTracking: {
+          refused: true,
+          thisInvocation: 0,
+          cumulative: Math.round(previouslyUsed * 10000) / 10000,
+          previouslyUsed: Math.round(previouslyUsed * 10000) / 10000,
+          totalBudget,
+          remaining,
+          callCount: priorBucket ? priorBucket.totalCalls : 0,
+          exhausted: previouslyUsed + 1e-9 >= totalBudget,
+        },
+      };
+    }
+
     // Budget tracking — REAL cross-session accumulation. Prior code here
     // only read/wrote artifact.data.epsilonBudgetUsed, which is an
     // ephemeral field on a throwaway virtual artifact (`/api/lens/run`'s
@@ -662,12 +689,9 @@ export default function registerAnonActions(registerLensAction) {
     // `getAnonState().budgets` (see recordBudgetSpend above), the same
     // persistent-state idiom every other stateful macro in this file
     // uses (identities/conversations/userConvs).
-    const s = getAnonState();
-    const userId = anUid(ctx);
     const purpose = params?.purpose ? anClean(params.purpose, 120) : "differentialPrivacy";
     const bucket = recordBudgetSpend(s, userId, totalEpsilonUsed, purpose);
     saveAnonState();
-    const totalBudget = anResolveTotalBudget(params);
     const cumulativeBudget = bucket.totalSpent;
 
     // Privacy guarantee assessment

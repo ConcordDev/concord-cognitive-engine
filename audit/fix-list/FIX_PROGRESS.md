@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 628 | 317 | 0 |
+| medium | 631 | 314 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1054** | **1095** | **2** |
+| **total** | **1057** | **1092** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1794,6 +1794,16 @@ Manual brain refresh stays off unless you are signed in as an owner, admin, or s
 |---|---|---|---|---|
 | FIX-lattice-006 | lattice | medium | FIXED_PENDING_VERIFY | 8a0a46311 |
 | FIX-event-timeline-001 | event-timeline | medium | FIXED_PENDING_VERIFY | 8a0a46311 |
+
+## Mediums — the number on screen matches the records
+
+A series with a clear repeating period reports that period and a seasonal share. A flat series reports a share of zero. An outlier that stands away from its neighbors is flagged. The wellness trend average is the mean of every sample in the window, including two logs on the same day. Saving a log updates the overview counts and the daily recommendation. A differential-privacy call that would spend more than the remaining budget is refused, and that call adds nothing to the spent total. A call that uses exactly the remaining budget still goes through.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-temporal-001 | temporal | medium | FIXED_PENDING_VERIFY | be925e2da |
+| FIX-wellness-003 | wellness | medium | FIXED_PENDING_VERIFY | be925e2da |
+| FIX-anon-001 | anon | medium | FIXED_PENDING_VERIFY | be925e2da |
 
 ## NEEDS_PRODUCT_SURFACE
 

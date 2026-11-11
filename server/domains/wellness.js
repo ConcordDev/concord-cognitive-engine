@@ -321,14 +321,16 @@ export default function registerWellnessMacros(_register) {
       const days = Math.max(1, Math.min(365, Number(input.days) || 30));
       const cutoff = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
       const byDay = new Map();
+      const samples = [];
       for (const m of listWl(s.metrics, aidWl(ctx))) {
         if (m.type !== type || m.date < cutoff) continue;
-        // last write per day wins
+        samples.push(m.value);
+        // last write per day wins on the chart; the average uses every log
         byDay.set(m.date, m.value);
       }
       const series = Array.from(byDay.entries()).map(([date, value]) => ({ date, value })).sort((a, b) => a.date.localeCompare(b.date));
       const vals = series.map(p => p.value);
-      const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      const avg = samples.length ? samples.reduce((a, b) => a + b, 0) / samples.length : 0;
       // simple trend: compare last-third avg to first-third avg
       let trend = 'flat';
       if (vals.length >= 3) {
