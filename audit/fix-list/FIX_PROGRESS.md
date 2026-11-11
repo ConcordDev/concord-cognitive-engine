@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 584 | 361 | 0 |
+| medium | 587 | 358 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1010** | **1139** | **2** |
+| **total** | **1013** | **1136** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1687,6 +1687,16 @@ A gift, a shift, a filed date, a deadline, and a welding job dated YYYY-MM-DD sh
 | FIX-legal-003 | legal | medium | FIXED_PENDING_VERIFY | 488325c97 |
 | FIX-law-004 | law | medium | FIXED_PENDING_VERIFY | 488325c97 |
 | FIX-welding-003 | welding | medium | FIXED_PENDING_VERIFY | 488325c97 |
+
+## Mediums — the study desk tells the truth
+
+Rating a due card shows the next card that is still due. The session says all caught up only when none remain. Adding a note that is already scheduled says when it comes back, and notes that are waiting can be removed from the list. A learning step that is not a number of minutes is refused and the old steps stay. Move deck under does not offer the deck or its own children.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-srs-001 | srs | medium | FIXED_PENDING_VERIFY | 9405332a2 |
+| FIX-srs-004 | srs | medium | FIXED_PENDING_VERIFY | 9405332a2 |
+| FIX-srs-002 | srs | medium | FIXED_PENDING_VERIFY | 9405332a2 |
 
 ## NEEDS_PRODUCT_SURFACE
 

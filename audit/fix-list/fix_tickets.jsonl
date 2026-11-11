@@ -2561,3 +2561,7 @@
 {"id":"FIX-lfg-003","status":"OPEN","needs_live_repro":true,"builder_note":"Post request is disabled only while the post is in flight. The note is labeled optional, and a blank note is stored as an empty string."}
 {"id":"FIX-forecast-002","status":"OPEN","needs_product_surface":true,"builder_note":"world_forecasts is keyed by world and has no user id. Exporting it would include other worlds."}
 {"id":"FIX-lattice-003","status":"OPEN","needs_product_surface":true,"builder_note":"There is no lattice domain store and no lattice panel bag. lattice-seed is a different domain."}
+
+{"id":"FIX-srs-001","status":"FIXED_PENDING_VERIFY","fixed_commit":"9405332a2","fixed_by":"grok-audit-sweep","fix_note":"Rating a due card shows the next card that is still due. All caught up appears only when the queue is empty.","root_cause_group":"study-desk"}
+{"id":"FIX-srs-002","status":"FIXED_PENDING_VERIFY","fixed_commit":"9405332a2","fixed_by":"grok-audit-sweep","fix_note":"A learning step that is not a number of minutes is refused, and the old steps stay. Move deck under does not list the deck or its children.","root_cause_group":"study-desk"}
+{"id":"FIX-srs-004","status":"FIXED_PENDING_VERIFY","fixed_commit":"9405332a2","fixed_by":"grok-audit-sweep","fix_note":"Adding a note that is already scheduled says when it comes back. Notes that are waiting are listed and can be removed.","root_cause_group":"study-desk"}
