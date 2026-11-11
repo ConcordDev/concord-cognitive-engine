@@ -32,7 +32,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
  * showing a broken empty picker.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { RefreshCw } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
@@ -132,6 +132,19 @@ export default function CivicBondsLens() {
 
   useEffect(() => { void Promise.resolve().then(fetchSpillover); }, [fetchSpillover]);
 
+  const expandedRef = useRef(expanded);
+  expandedRef.current = expanded;
+
+  const loadLedger = useCallback(async (bondId: string) => {
+    setLedgerLoading((m) => ({ ...m, [bondId]: true }));
+    try {
+      const r = (await lensRun<{ ok: boolean; pledges?: Pledge[]; milestones?: Milestone[] }>('civic_bonds', 'ledger', { bondId })).data.result;
+      if (r?.ok) setLedgers((m) => ({ ...m, [bondId]: { pledges: r.pledges || [], milestones: r.milestones || [] } }));
+    } finally {
+      setLedgerLoading((m) => ({ ...m, [bondId]: false }));
+    }
+  }, []);
+
   const act = useCallback(async (action: string, input: Record<string, unknown>) => {
     setNote(null);
     try {
@@ -155,35 +168,29 @@ export default function CivicBondsLens() {
       } else {
         setNote(`${action} ✓`);
         addToast({ type: 'success', message: `${action} succeeded`, duration: 2500 });
+        const bondId = typeof input.bondId === 'string' ? input.bondId : null;
+        if (bondId && (action === 'pledge' || action === 'unpledge')) {
+          if (expandedRef.current[bondId]) await loadLedger(bondId);
+          else setLedgers((m) => { const n = { ...m }; delete n[bondId]; return n; });
+        }
       }
       await refresh();
     } catch {
       setNote(`${action}: error`);
       addToast({ type: 'error', message: `${action} request failed` });
     }
-  }, [refresh, addToast]);
+  }, [refresh, addToast, loadLedger]);
 
   // The public ledger (every pledge + milestone) — lazy-loaded per bond so the
   // list view stays cheap; toggled open with the "Ledger" disclosure below.
   const toggleLedger = useCallback(async (bondId: string) => {
     const willOpen = !expanded[bondId];
     setExpanded((m) => ({ ...m, [bondId]: willOpen }));
-    if (willOpen && !ledgers[bondId]) {
-      setLedgerLoading((m) => ({ ...m, [bondId]: true }));
-      try {
-        const r = (await lensRun<{ ok: boolean; pledges?: Pledge[]; milestones?: Milestone[] }>('civic_bonds', 'ledger', { bondId })).data.result;
-        if (r?.ok) setLedgers((m) => ({ ...m, [bondId]: { pledges: r.pledges || [], milestones: r.milestones || [] } }));
-      } finally {
-        setLedgerLoading((m) => ({ ...m, [bondId]: false }));
-      }
-    }
-  }, [expanded, ledgers]);
+    if (willOpen && !ledgers[bondId]) await loadLedger(bondId);
+  }, [expanded, ledgers, loadLedger]);
 
   const unpledge = useCallback(async (bondId: string) => {
     await act('unpledge', { bondId });
-    // an unpledge changes the pledge ledger too — drop the cached copy so
-    // the next expand re-fetches instead of showing stale escrow rows.
-    setLedgers((m) => { const n = { ...m }; delete n[bondId]; return n; });
   }, [act]);
 
   const createDrive = useCallback(async () => {

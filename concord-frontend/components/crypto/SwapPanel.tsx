@@ -62,10 +62,29 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
   const fromToken = tokens.find(t => t.id === fromId);
   const toToken = tokens.find(t => t.id === toId);
 
-  // Debounced quote
+  // Debounced quote. 0, negative, and absurd amounts stay on screen as an error
+  // and never ask the price service for a quote.
   useEffect(() => {
-    if (!fromToken || !toToken || !amountIn || Number(amountIn) <= 0 || fromId === toId) {
+    const raw = amountIn.trim();
+    if (!raw) {
       setQuote(null);
+      setError(null);
+      return;
+    }
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) {
+      setQuote(null);
+      setError('Amount has to be greater than zero.');
+      return;
+    }
+    if (n > 1e12) {
+      setQuote(null);
+      setError('Amount is too large to quote. The maximum is 1,000,000,000,000.');
+      return;
+    }
+    if (!fromToken || !toToken || fromId === toId) {
+      setQuote(null);
+      setError(fromToken && toToken && fromId === toId ? 'Pick two different tokens.' : null);
       return;
     }
     const ac = new AbortController();

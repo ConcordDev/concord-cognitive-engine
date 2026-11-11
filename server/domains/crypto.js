@@ -497,10 +497,13 @@ export default function registerCryptoActions(registerLensAction) {
   registerLensAction("crypto", "swap-quote", async (_ctx, _artifact, params = {}) => {
     const fromId = String(params.fromId || "");
     const toId = String(params.toId || "");
-    const amountIn = Number(params.amountIn) || 0;
+    const amountIn = Number(params.amountIn);
     const slippagePercent = Math.max(0.01, Math.min(50, Number(params.slippagePercent) || 0.5));
-    if (!fromId || !toId || amountIn <= 0) {
+    if (!fromId || !toId) {
       return { ok: false, error: "fromId, toId, positive amountIn required" };
+    }
+    if (!Number.isFinite(amountIn) || amountIn <= 0 || amountIn > 1e12) {
+      return { ok: false, error: "amountIn must be a positive number up to 1e12" };
     }
     if (fromId === toId) return { ok: false, error: "from and to must differ" };
 

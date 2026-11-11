@@ -126,7 +126,7 @@ export function BeneficiariesPanel() {
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-semibold text-zinc-100">{b.name} <span className="text-xs font-normal text-zinc-400">· {b.relationship}</span></div>
                             {b.contingent && <div className="text-[10px] text-amber-400">contingent on: {b.contingentOn}</div>}
-                            {b.heirUserId && <div className="text-[10px] text-zinc-500">heir: {b.heirUserId.slice(0, 16)}</div>}
+                            {b.heirUserId && <div className="break-all text-[10px] text-zinc-500">heir: {b.heirUserId}</div>}
                             {b.acceptanceStatus
                               ? <div className={`text-[10px] ${tone(b.acceptanceStatus)}`}>designation {b.acceptanceStatus}</div>
                               : <div className="text-[10px] text-zinc-500">designation not yet sent</div>}

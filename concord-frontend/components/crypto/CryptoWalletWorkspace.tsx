@@ -40,6 +40,7 @@ import { TokenSearch, loadWatchlist, saveWatchlist } from '@/components/crypto/T
 import { QRCodeReceive } from '@/components/crypto/QRCodeReceive';
 import { SwapPanel, type SwappableToken } from '@/components/crypto/SwapPanel';
 import { PriceAlerts } from '@/components/crypto/PriceAlerts';
+import { COINGECKO_QUOTE_TOKENS } from '@/lib/crypto/quote-tokens';
 import { ApprovalsManager } from '@/components/crypto/ApprovalsManager';
 import { PortfolioWorkbench } from '@/components/crypto/PortfolioWorkbench';
 
@@ -1182,8 +1183,8 @@ export function CryptoWalletWorkspace() {
                     onChange={(e) => setChartTokenId(e.target.value)}
                     className="px-3 py-1.5 bg-lattice-deep border border-lattice-border rounded text-sm text-white"
                   >
-                    {['bitcoin','ethereum','solana','binancecoin','cardano','ripple','dogecoin','polkadot','usd-coin','tether']
-                      .concat(watchlist.filter(w => !['bitcoin','ethereum','solana','binancecoin','cardano','ripple','dogecoin','polkadot','usd-coin','tether'].includes(w)))
+                    {COINGECKO_QUOTE_TOKENS.map((t) => t.id)
+                      .concat(watchlist.filter((w) => !COINGECKO_QUOTE_TOKENS.some((t) => t.id === w)))
                       .map(id => <option key={id} value={id}>{id.toUpperCase()}</option>)}
                   </select>
                   <div className="flex items-center gap-1">
@@ -1223,15 +1224,19 @@ export function CryptoWalletWorkspace() {
           {activeTab === 'swap' && (
             <div className="flex flex-col lg:flex-row items-start gap-6">
               {(() => {
-                const swappableTokens: SwappableToken[] = chains.map(c => ({
+                const fromWallet: SwappableToken[] = chains.map(c => ({
                   id: c.id, symbol: c.symbol, name: c.name,
                   priceUsd: c.price, balance: c.balance, iconUrl: undefined,
                 }));
+                const swappableTokens: SwappableToken[] = fromWallet.length
+                  ? fromWallet
+                  : COINGECKO_QUOTE_TOKENS.map((t) => ({ id: t.id, symbol: t.symbol, name: t.name, priceUsd: 0 }));
                 return (
                   <SwapPanel
+                    key={fromWallet.length ? 'wallet' : 'catalog'}
                     tokens={swappableTokens}
-                    defaultFromSymbol={chains[0]?.symbol || 'CC'}
-                    defaultToSymbol={chains[1]?.symbol || 'USDC'}
+                    defaultFromSymbol={fromWallet[0]?.symbol || 'BTC'}
+                    defaultToSymbol={fromWallet[1]?.symbol || 'ETH'}
                   />
                 );
               })()}
@@ -1253,7 +1258,9 @@ export function CryptoWalletWorkspace() {
           {activeTab === 'alerts' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <PriceAlerts
-                tokenOptions={chains.map(c => ({ id: c.id, symbol: c.symbol, priceUsd: c.price }))}
+                tokenOptions={chains.length
+                  ? chains.map(c => ({ id: c.id, symbol: c.symbol, priceUsd: c.price }))
+                  : COINGECKO_QUOTE_TOKENS.map((t) => ({ id: t.id, symbol: t.symbol }))}
               />
               <div className="lens-card space-y-2 text-xs text-gray-400">
                 <h3 className="text-sm font-bold text-gray-200">How alerts work</h3>

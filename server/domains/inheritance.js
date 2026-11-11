@@ -118,6 +118,19 @@ function actorId(ctx) {
   return ctx?.actor?.userId || ctx?.userId || null;
 }
 
+const HEIR_USER_ID = /^[A-Za-z0-9_.:@+-]{1,80}$/;
+function normalizeHeirUserId(raw, { required }) {
+  const s = String(raw ?? "").trim();
+  if (!s) return required ? { error: "missing_heir" } : { heirUserId: null };
+  if (!HEIR_USER_ID.test(s)) {
+    return {
+      error: "invalid_heir_user_id",
+      message: "Heir user ID can only use letters, numbers, and . _ : @ + - (up to 80 characters).",
+    };
+  }
+  return { heirUserId: s };
+}
+
 function pushNotice(heirUserId, notice) {
   if (!heirUserId) return;
   const S = estateState();
@@ -168,6 +181,8 @@ export default function registerInheritanceActions(registerLensAction) {
       const share = sharePctValue(params.sharePct);
       if (share.error) return { ok: false, error: "invalid_input", field: "sharePct", message: share.error };
       const sharePct = share.sharePct;
+      const heir = normalizeHeirUserId(params.heirUserId, { required: false });
+      if (heir.error) return { ok: false, error: heir.error, message: heir.message };
       const e = getEstate(userId);
       const ben = {
         id: uid("ben"),
@@ -176,7 +191,7 @@ export default function registerInheritanceActions(registerLensAction) {
         sharePct,
         contingent: !!params.contingent,
         contingentOn: params.contingentOn ? String(params.contingentOn).trim() : null,
-        heirUserId: params.heirUserId ? String(params.heirUserId) : null,
+        heirUserId: heir.heirUserId,
         addedAt: Date.now(),
       };
       e.beneficiaries.push(ben);
@@ -587,8 +602,9 @@ export default function registerInheritanceActions(registerLensAction) {
     try {
       const userId = actorId(ctx);
       if (!userId) return { ok: false, error: "no_actor" };
-      const heirUserId = String(params.heirUserId || "").trim();
-      if (!heirUserId) return { ok: false, error: "missing_heir" };
+      const heir = normalizeHeirUserId(params.heirUserId, { required: true });
+      if (heir.error) return { ok: false, error: heir.error, message: heir.message };
+      const heirUserId = heir.heirUserId;
       const e = getEstate(userId);
       const ben = params.beneficiaryId
         ? e.beneficiaries.find((b) => b.id === params.beneficiaryId)

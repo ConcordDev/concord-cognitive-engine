@@ -764,9 +764,9 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
             )}
           </span>
         ))}
-        <button type="button" onClick={() => void saveBrush()} title="Save current tool/size/opacity as a brush preset"
+        <button type="button" onClick={() => void saveBrush()} title="Save the current tool, size, and opacity as a brush preset. The artwork itself saves on its own."
           className={cn(toolBtn, off)}>
-          <Brush className="w-3 h-3" />+ Save
+          <Brush className="w-3 h-3" />Save brush
         </button>
         {TOOLS.map((t) => {
           const Icon = t.icon;

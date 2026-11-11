@@ -312,6 +312,22 @@ describe("inheritance — heir notification + acceptance reflection (cross-user)
     heirCtx = await depthCtx("inheritance-heir");   // distinct userId === the heir
   });
 
+  it("add_beneficiary and notify_heir reject a malformed heir user id", async () => {
+    const bad = await lensRun("inheritance", "add_beneficiary", {
+      params: { name: "Typo", sharePct: 10, heirUserId: "not a user" },
+    }, ownerCtx);
+    assert.equal(bad.ok, false);
+    assert.equal(bad.result.error, "invalid_heir_user_id");
+    const listed = await lensRun("inheritance", "list_beneficiaries", {}, ownerCtx);
+    assert.ok(!(listed.result.beneficiaries || []).some((b) => b.name === "Typo"));
+
+    const notice = await lensRun("inheritance", "notify_heir", {
+      params: { heirUserId: "x".repeat(81) },
+    }, ownerCtx);
+    assert.equal(notice.ok, false);
+    assert.equal(notice.result.error, "invalid_heir_user_id");
+  });
+
   it("notify_heir delivers a notice the heir can list, respond to, and have reflected onto the owner's beneficiary", async () => {
     // Owner designates the heir as a beneficiary with a 30% share.
     const ben = await lensRun("inheritance", "add_beneficiary", {

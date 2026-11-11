@@ -92,6 +92,9 @@ function useEstateValue(onNavigate?: (tab: string) => void) {
       const share = Number(bShare);
       if (!Number.isFinite(share) || share < 0 || share > 100) return flash('Share must be a number from 0 to 100.');
     }
+    if (bHeir.trim() && !/^[A-Za-z0-9_.:@+-]{1,80}$/.test(bHeir.trim())) {
+      return flash('Heir user ID can only use letters, numbers, and . _ : @ + - (up to 80 characters).');
+    }
     const r = await run('add_beneficiary', {
       name: bName, relationship: bRel, sharePct: Number(bShare) || 0,
       contingent: !!bContingentOn.trim(), contingentOn: bContingentOn.trim() || null,
@@ -115,6 +118,9 @@ function useEstateValue(onNavigate?: (tab: string) => void) {
   const notifyHeir = async (b: Beneficiary, heirUserId: string) => {
     const heir = heirUserId.trim();
     if (!heir) return flash('Enter the heir’s user ID first.');
+    if (!/^[A-Za-z0-9_.:@+-]{1,80}$/.test(heir)) {
+      return flash('Heir user ID can only use letters, numbers, and . _ : @ + - (up to 80 characters).');
+    }
     setNotifyBusy(b.id);
     flash(`Notifying ${b.name}…`);
     const r = await run('notify_heir', { heirUserId: heir, beneficiaryId: b.id });
