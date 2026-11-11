@@ -65,9 +65,11 @@ function MarketplaceTab({ domain, className }: MarketplaceTabProps) {
     return (
       <div className={cn('p-8 text-center', className)}>
         <Store className="w-10 h-10 mx-auto mb-3 text-gray-600" />
-        <p className="text-gray-400 text-sm">No marketplace items in this domain yet.</p>
+        <p className="text-gray-400 text-sm">No marketplace-ready artifacts in this domain yet.</p>
         <p className="text-gray-400 text-xs mt-1">
-          Create artifacts and they&apos;ll appear here once approved.
+          {domain === 'marketplace'
+            ? 'Published listings are in the catalog above. This list is only artifacts marked ready, and there are none.'
+            : 'Artifacts show up here when they are marked ready. Nothing is waiting on a hidden approval step.'}
         </p>
       </div>
     );

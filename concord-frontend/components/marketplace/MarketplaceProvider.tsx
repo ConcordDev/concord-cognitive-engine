@@ -224,18 +224,43 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
   } = useQuery({
     queryKey: ['marketplace-browse', category, search],
     queryFn: async () => {
-      try {
-        const res = await api.get('/api/marketplace/browse', {
-          params: {
-            category: category !== 'all' ? category : undefined,
-            search: search || undefined,
-          },
-        });
-        return res.data;
-      } catch (e) {
-        console.warn('Marketplace browse API unavailable, falling back to lens data:', e);
-        return { ok: true, items: listingItems || [] };
+      // Published seller listings live in the storefront catalog. The
+      // plugin browse route is a different store, so a listing that
+      // just published never appeared here.
+      const res = await lensRun<{ listings?: Array<Record<string, unknown>> }>('marketplace', 'storefront-browse', {
+        search: search || undefined,
+      });
+      const body = res.data;
+      if (!body || body.ok === false) {
+        throw new Error(body?.error || 'Browse failed');
       }
+      const listings = body.result?.listings || [];
+      const plugins: { items?: unknown[]; results?: unknown[] } = await api.get('/api/marketplace/browse', {
+        params: {
+          category: category !== 'all' ? category : undefined,
+          search: search || undefined,
+        },
+      }).then((r) => (r.data ?? {}) as { items?: unknown[]; results?: unknown[] }).catch(() => ({ items: [] }));
+      const pluginItems = (Array.isArray(plugins.items) ? plugins.items : Array.isArray(plugins.results) ? plugins.results : []) as Record<string, unknown>[];
+      return {
+        ok: true,
+        items: [
+          ...listings.map((l) => ({
+            id: String(l.listingId || ''),
+            name: l.title,
+            description: l.description || '',
+            author: l.shopName || l.sellerId,
+            price: typeof l.priceUsd === 'number' ? l.priceUsd : 0,
+            category: l.kind || 'listing',
+            submittedAt: l.publishedAt,
+            downloads: typeof l.salesCount === 'number' ? l.salesCount : 0,
+            rating: typeof l.avgRating === 'number' ? l.avgRating : 0,
+            storefrontSellerId: l.sellerId,
+            listing: true,
+          })),
+          ...pluginItems,
+        ],
+      };
     },
   });
 
@@ -318,7 +343,7 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
   const userBalance = balanceData?.balance ?? 0;
 
   const allItems = useMemo(() => {
-    const browseItems = normalizePlugins(browseData?.items ?? browseData?.results ?? []);
+    const browseItems = normalizePlugins((browseData?.items ?? []) as Record<string, unknown>[]);
     const artItems = [
       ...normalizeItems(templatesData?.beats ?? []),
       ...normalizeComponents(componentsData?.stems ?? []),
@@ -447,11 +472,12 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
       }
       setShowNewListing(false);
       setNewListingForm(EMPTY_LISTING_FORM);
+      queryClient.invalidateQueries({ queryKey: ['marketplace-browse'] });
       useUIStore.getState().addToast({
         type: 'success',
-        message: 'Listing published — find it under Sell.',
+        message: 'Listing published. It is on Browse.',
       });
-      setTab('sell');
+      setTab('browse');
     } catch (err) {
       setListingError(err instanceof Error ? err.message : 'Failed to publish listing');
     } finally {
@@ -473,6 +499,30 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
 
     for (const ci of cart) {
       try {
+        if (ci.item.storefrontSellerId) {
+          const added = await lensRun('marketplace', 'cart-add', {
+            sellerId: ci.item.storefrontSellerId,
+            listingId: ci.item.id,
+            qty: 1,
+          });
+          if (added.data?.ok === false) {
+            errors.push(`${ci.item.title}: ${added.data.error || 'Could not add the listing'}`);
+            continue;
+          }
+          const placed = await lensRun('marketplace', 'checkout-create', {});
+          if (placed.data?.ok === false || !placed.data?.result) {
+            errors.push(`${ci.item.title}: ${placed.data?.error || 'Checkout did not place an order'}`);
+            continue;
+          }
+          completed.push({
+            id: `listing-${ci.item.id}-${Date.now()}`,
+            item: ci.item,
+            license: 'basic',
+            price: ci.price,
+            purchasedAt: new Date().toISOString(),
+          });
+          continue;
+        }
         if (ci.item.type === 'plugin') {
           const isFree = ci.item.prices.basic <= 0;
           const r = isFree

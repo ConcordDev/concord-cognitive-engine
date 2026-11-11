@@ -25,7 +25,9 @@ export interface MarketplaceItem {
   id: string;
   title: string;
   description: string;
-  type: 'template' | 'component' | 'dataset' | 'artwork' | 'plugin' | 'preset';
+  type: 'template' | 'component' | 'dataset' | 'artwork' | 'plugin' | 'preset' | 'listing';
+  /** Set when this row is a published storefront listing, so checkout uses that cart. */
+  storefrontSellerId?: string;
   genre?: string;
   version?: string;
   key?: string;
@@ -243,9 +245,10 @@ export function normalizeArt(art: Record<string, unknown>[]): MarketplaceItem[] 
 export function normalizePlugins(items: Record<string, unknown>[]): MarketplaceItem[] {
   return (items || []).map((p: Record<string, unknown>) => ({
     id: String(p.id || ''),
-    title: String(p.name || 'Untitled Plugin'),
+    title: String(p.name || p.title || 'Untitled'),
     description: String(p.description || ''),
-    type: 'plugin' as const,
+    type: (p.listing === true ? 'listing' : 'plugin') as MarketplaceItem['type'],
+    storefrontSellerId: typeof p.storefrontSellerId === 'string' ? p.storefrontSellerId : undefined,
     genre: p.category ? String(p.category) : undefined,
     version: typeof p.version === 'string' ? p.version : undefined,
     creator: { name: String(p.author || 'Unknown') },
@@ -305,6 +308,8 @@ export function typeIcon(type: MarketplaceItem['type']) {
       return Plug;
     case 'preset':
       return Settings2;
+    case 'listing':
+      return ShoppingBag;
   }
 }
 
@@ -322,6 +327,8 @@ export function typeBadgeColor(type: MarketplaceItem['type']) {
       return 'bg-blue-500/20 text-blue-400';
     case 'preset':
       return 'bg-orange-500/20 text-orange-400';
+    case 'listing':
+      return 'bg-teal-500/20 text-teal-300';
   }
 }
 
