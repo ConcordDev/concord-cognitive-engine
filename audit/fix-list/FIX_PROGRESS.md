@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 593 | 352 | 0 |
+| medium | 601 | 344 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1019** | **1130** | **2** |
+| **total** | **1027** | **1122** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1711,6 +1711,21 @@ Overview recurring donors include people with an active pledge. Harvest progress
 | FIX-courtship-006 | courtship | medium | FIXED_PENDING_VERIFY | 899e2b000 |
 | FIX-ocean-001 | ocean | medium | FIXED_PENDING_VERIFY | 899e2b000 |
 
+## Mediums — a bad value stays on the form
+
+A scene location longer than 120 characters is refused and the scene keeps its old location. A tournament title longer than 120 characters stays on the create form, and the list does not turn into a load error. A gallery image has to be an http or https link. A webhook has to be https. An API key with spaces, or longer than 256 characters, is not saved. Forge validate names a port outside 1–65535 and an app name longer than 64 characters. Compatibility capabilities keep every term around a comma, so x, y against y, z overlaps on y. An aviation title longer than 200 characters shows the limit and the editor stays open. Alliance risk still does not save its rows: there is no dependency record to reload, so FIX-alliance-002 stays open.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-film-studios-001 | film-studios | medium | FIXED_PENDING_VERIFY | 1add00938 |
+| FIX-tournaments-001 | tournaments | medium | FIXED_PENDING_VERIFY | 1add00938 |
+| FIX-gallery-002 | gallery | medium | FIXED_PENDING_VERIFY | 1add00938 |
+| FIX-integrations-002 | integrations | medium | FIXED_PENDING_VERIFY | 1add00938 |
+| FIX-byo-keys-005 | byo-keys | medium | FIXED_PENDING_VERIFY | 1add00938 |
+| FIX-forge-004 | forge | medium | FIXED_PENDING_VERIFY | 1add00938 |
+| FIX-alliance-001 | alliance | medium | FIXED_PENDING_VERIFY | 1add00938 |
+| FIX-aviation-003 | aviation | medium | FIXED_PENDING_VERIFY | 1add00938 |
+
 ## NEEDS_PRODUCT_SURFACE
 
 These stay `OPEN`. Each one needs a product surface this pass did not build. `needs_product_surface` is set on the ticket.
@@ -1740,3 +1755,4 @@ These stay `OPEN`. Each one needs a product surface this pass did not build. `ne
 | FIX-ar-016 | Sketchfab Save as DTU does not land on a library row the caller can open. There is no list item to delete. | Show that saved DTU in the caller's library, with delete. |
 | FIX-forecast-002 | `world_forecasts` is keyed by world, with no user id. Exporting the table would include other worlds. | A per-user forecast store, then export only that caller's rows. |
 | FIX-lattice-003 | There is no lattice domain store and no lattice panel bag. lattice-seed is a different domain. | Caller-owned corpus, brain, or schedule records, then an export of those. |
+| FIX-alliance-002 | Risk rows live in the open page. The form now refuses a dependency outside 0–100, and there is no saved dependency record to show again after reload. | A caller-owned dependency list the risk tool reads back. |
