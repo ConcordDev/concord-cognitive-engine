@@ -201,6 +201,15 @@ describe("tools — compile (deterministic strip-types fallback)", () => {
     assert.equal(hist.result.history[0].loader, "ts");
   });
 
+  it("rejects a syntax error instead of recording a successful compile", async () => {
+    const r = await call("compile", ctxA, { source: "const broken = ;", loader: "ts" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /compile error/);
+    assert.equal(r.engine, "strip-types-fallback");
+    const hist = await call("compile-history", ctxA, {});
+    assert.equal(hist.result.total, 0);
+  });
+
   it("rejects empty and oversized source", async () => {
     assert.equal((await call("compile", ctxA, { source: "   " })).error, "source required");
     const big = "a".repeat(200_001);

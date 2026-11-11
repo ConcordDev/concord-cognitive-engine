@@ -82,12 +82,15 @@ describe("sponsorship — subscribe / list / cancel", () => {
     assert.equal(call("list_for_user", ctxB).result.count, 0);
   });
 
-  it("cancel flips status and removes it from the active list", () => {
+  it("cancel flips status and keeps the row listed", () => {
     const tiers = call("list_tiers", ctxA, { creatorId: "npc_arden" }).result.tiers;
     const sp = call("subscribe", ctxA, { creatorId: "npc_arden", tierId: tiers[0].tierId }).result.sponsorship;
     const c = call("cancel", ctxA, { sponsorshipId: sp.id });
     assert.equal(c.ok, true);
-    assert.equal(call("list_for_user", ctxA).result.count, 0);
+    const list = call("list_for_user", ctxA);
+    assert.equal(list.result.count, 1);
+    assert.equal(list.result.sponsorships[0].status, "cancelled");
+    assert.equal(list.result.sponsorships[0].totalContributed, tiers[0].monthlyCc);
   });
 });
 

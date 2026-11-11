@@ -172,11 +172,16 @@ export function QueueAnalyticsPanel({
             <button
               onClick={runTheory}
               disabled={busy || (arrivals.length < 2 && completions.length < 2)}
-              className="flex items-center gap-1.5 rounded-lg bg-neon-purple/20 px-3 py-1.5 text-xs text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40"
+              className="flex min-h-11 items-center gap-1.5 rounded-lg bg-neon-purple/20 px-3 py-1.5 text-xs text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40"
             >
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />} Analyze
             </button>
           </div>
+          {arrivals.length < 2 && completions.length < 2 && (
+            <p className="text-[11px] text-amber-200/90">
+              Analyze needs at least 2 arrivals or 2 completions. A single scheduled job is not enough; enqueue or finish another job, then run it again.
+            </p>
+          )}
           {theoryResult && (
             <div className="grid grid-cols-1 gap-3 rounded-lg border border-white/10 bg-black/30 p-3 sm:grid-cols-2">
               <div className="space-y-1.5">

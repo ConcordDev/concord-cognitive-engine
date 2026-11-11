@@ -108,7 +108,7 @@ describe('mesh lens — four UX states', () => {
     await waitFor(() => expect(view!.getByTestId('mesh-overview-grid')).toBeInTheDocument());
     const grid = view!.getByTestId('mesh-overview-grid');
     // real counts from the overview shape are surfaced, not fabricated
-    expect(grid.textContent).toMatch(/2 online/);
+    expect(grid.textContent).toMatch(/3 online, including this node/);
     expect(grid.textContent).toMatch(/1 unread/);
     expect(grid.textContent).toMatch(/1 encrypted/);
 

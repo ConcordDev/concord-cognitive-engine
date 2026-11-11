@@ -163,7 +163,10 @@ export default function registerSponsorshipActions(registerLensAction) {
     try {
       const userId = actor(ctx);
       const s = getState();
-      const sponsorships = (s.sponsorships.get(userId) || []).filter((sp) => sp.status !== "cancelled");
+      const rank = { active: 0, paused: 1, cancelled: 2 };
+      const sponsorships = (s.sponsorships.get(userId) || []).slice().sort(
+        (a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3) || b.startedAt - a.startedAt,
+      );
       return { ok: true, result: { sponsorships, count: sponsorships.length } };
     } catch (e) { return { ok: false, error: String(e.message || e) }; }
   });
@@ -366,6 +369,8 @@ export default function registerSponsorshipActions(registerLensAction) {
           monthlyCommitted, totalContributed,
           activeCount: active.length,
           pausedCount: sponsorships.filter((sp) => sp.status === "paused").length,
+          cancelledCount: sponsorships.filter((sp) => sp.status === "cancelled").length,
+          pledgedOnSponsorships: round2(sponsorships.reduce((sum, sp) => sum + (Number(sp.totalContributed) || 0), 0)),
           upcomingCharges: upcoming,
           paymentHistory: history,
           trend,

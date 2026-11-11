@@ -258,12 +258,27 @@ export default function registerToolsActions(register) {
     }
 
     if (!result) {
-      // Fallback: naive strip-types.
+      // Fallback: naive strip-types. Parse the result and refuse it when it
+      // is not JavaScript — a syntax error must not look like a successful compile.
       const stripped = source
         .replace(/:\s*[A-Za-z_<>[\]|&,?.\s]+(?=[=,)\]\s])/g, "")
         .replace(/<[A-Z][^>]*>/g, "")
         .replace(/\binterface\s+\w+\s*\{[^}]*\}/g, "")
         .replace(/\btype\s+\w+\s*=\s*[^;\n]+;?/g, "");
+      let syntaxError = null;
+      try {
+        const acorn = await import("acorn");
+        acorn.parse(stripped, { ecmaVersion: "latest", sourceType: "module" });
+      } catch (e) {
+        syntaxError = String(e?.message || e).slice(0, 400);
+      }
+      if (syntaxError) {
+        return {
+          ok: false,
+          error: `compile error: ${syntaxError}`,
+          engine: "strip-types-fallback",
+        };
+      }
       result = {
         code: stripped,
         map: null,
