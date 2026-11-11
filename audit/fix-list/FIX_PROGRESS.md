@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 183 | 36 | 2 |
-| medium | 675 | 270 | 0 |
+| medium | 681 | 264 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1114** | **1035** | **2** |
+| **total** | **1120** | **1029** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -2023,6 +2023,22 @@ These stayed OPEN. The note is the reason.
 | FIX-aviation-002 | Fleet aircraft and the logbook dropdown are different lists, and Log flight is quiet when a field is empty. The two stores were not joined. |
 | FIX-services-002 | A booking-suite client and a desk client are two records. One save does not write both yet. |
 | FIX-announcements-001 | GET /api/announcements is public, and a failed load shows an error. The 403 is the admin compose action. A signed-in GET 403 was not found. |
+
+
+## Mediums — a typed zero stays zero, and a new world starts private
+
+A heir-slot price of 0 is saved as 0, and the mentor can delist it. A new sub-world starts private. A new sync device starts with auto-sync off and without personal DTUs. An LFG note can be blank. A saved title opens its link. Join says when you already live in the kingdom.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-inheritance-003 | inheritance | medium | FIXED_PENDING_VERIFY | 1a51019f4 |
+| FIX-sub-worlds-001 | sub-worlds | medium | FIXED_PENDING_VERIFY | 1a51019f4 |
+| FIX-sync-001 | sync | medium | FIXED_PENDING_VERIFY | 1a51019f4 |
+| FIX-lfg-003 | lfg | medium | FIXED_PENDING_VERIFY | 1a51019f4 |
+| FIX-saved-001 | saved | medium | FIXED_PENDING_VERIFY | 1a51019f4 |
+| FIX-kingdoms-002 | kingdoms | medium | FIXED_PENDING_VERIFY | 1a51019f4 |
+
+The seven highs left open now carry a re-test note on the ticket: FIX-music-001, FIX-finance-002, FIX-finance-003, FIX-retail-001, FIX-aviation-002, FIX-services-002, FIX-announcements-001.
 
 ## NEEDS_PRODUCT_SURFACE
 
