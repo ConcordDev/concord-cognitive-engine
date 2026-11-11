@@ -31,6 +31,13 @@ const MODE_TABS: { id: ModeTab; label: string; icon: typeof Wrench; artifactType
   { id: 'gallery', label: 'Gallery', icon: Camera, artifactType: 'GalleryItem' },
 ];
 
+function optionalNonNegative(label: string, raw: string): string | null {
+  if (!raw.trim()) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return `${label} has to be a number that is 0 or more.`;
+  return null;
+}
+
 export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,6 +67,15 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   const [formInstruction, setFormInstruction] = useState('');
   const [formSafetyNotes, setFormSafetyNotes] = useState('');
   const [formTags, setFormTags] = useState('');
+
+  const formProblems = [
+    optionalNonNegative('Estimated hours', formEstimatedHours),
+    optionalNonNegative('Hours spent', formHoursSpent),
+    optionalNonNegative('Cost', formCost),
+    optionalNonNegative('Budget', formBudget),
+    optionalNonNegative('Quantity', formQuantity),
+    optionalNonNegative('Unit price', formUnitPrice),
+  ].filter((msg): msg is string => !!msg);
 
   const activeArtifactType = MODE_TABS.find((t) => t.id === (mode === 'dashboard' ? 'projects' : mode))?.artifactType || 'Project';
   const { items, isLoading, isError, error, refetch, create, update, remove } =
@@ -152,6 +168,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
   };
 
   const handleSave = async () => {
+    if (!formName.trim() || formProblems.length > 0) return;
     const data: Record<string, unknown> = {
       name: formName,
       type: activeArtifactType,
@@ -518,11 +535,14 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
               />
             </div>
           </div>
+          {formProblems.length > 0 && (
+            <p role="alert" className="mt-3 text-xs text-rose-300">{formProblems[0]}</p>
+          )}
           <div className="flex justify-end gap-2 mt-4">
             <button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>
               Cancel
             </button>
-            <button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim()}>
+            <button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim() || formProblems.length > 0}>
               Save
             </button>
           </div>

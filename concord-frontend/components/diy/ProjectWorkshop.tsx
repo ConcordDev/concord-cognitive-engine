@@ -1021,14 +1021,18 @@ function BomEditor({
 
   const addLine = async () => {
     if (!item.trim()) return;
+    const quantity = Number(qty);
+    const unitPrice = price.trim() ? Number(price) : 0;
+    if (!Number.isFinite(quantity) || quantity <= 0) return;
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) return;
     await run(
       'bom-add',
       {
         projectId: project.id,
         item: item.trim(),
-        quantity: parseFloat(qty) || 1,
+        quantity,
         unit,
-        unitPrice: parseFloat(price) || 0,
+        unitPrice,
         supplier: supplier.trim(),
       },
       apply,
@@ -1162,7 +1166,13 @@ function BomEditor({
             onChange={(e) => setSupplier(e.target.value)}
           />
         </div>
-        <button onClick={addLine} className={ds.btnPrimary} disabled={!item.trim() || busy}>
+        {(!Number.isFinite(Number(qty)) || Number(qty) <= 0) && (
+          <p role="alert" className="text-xs text-rose-300">Quantity has to be a number greater than 0.</p>
+        )}
+        {Number.isFinite(Number(qty)) && Number(qty) > 0 && price.trim() !== '' && (!Number.isFinite(Number(price)) || Number(price) < 0) && (
+          <p role="alert" className="text-xs text-rose-300">Unit price has to be a number that is 0 or more.</p>
+        )}
+        <button onClick={addLine} className={ds.btnPrimary} disabled={!item.trim() || busy || !Number.isFinite(Number(qty)) || Number(qty) <= 0 || (price.trim() !== '' && (!Number.isFinite(Number(price)) || Number(price) < 0))}>
           <Plus className="h-4 w-4" /> Add to BOM
         </button>
       </div>

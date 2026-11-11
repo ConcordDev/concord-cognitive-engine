@@ -293,14 +293,25 @@ describe("analytics.trendForecast — component-exact shape + growth-rate trend"
     assert.ok(r.result.message);
   });
 
-  it("fail-CLOSED poison: 1e999/Infinity values keep slope + every forecast FINITE", () => {
+  it("refuses a non-finite point instead of forecasting from it", () => {
     const r = callViaComponentShape("trendForecast", ctxA, {
       dataPoints: [{ value: "1e999" }, { value: "Infinity" }, { value: 3 }],
     });
     assert.equal(r.ok, true);
-    assert.ok(Number.isFinite(r.result.slope), `slope not finite: ${r.result.slope}`);
-    assert.ok(Number.isFinite(r.result.lastValue));
-    assert.ok(["upward", "downward", "flat"].includes(r.result.trend));
-    for (const f of r.result.forecast) assert.ok(Number.isFinite(f.predicted), `predicted not finite: ${f.predicted}`);
+    assert.equal(r.result.forecast, undefined);
+    assert.match(r.result.message, /Point 1 needs a finite value/);
+  });
+
+  it("refuses a date that cannot be read", () => {
+    const r = callViaComponentShape("trendForecast", ctxA, {
+      dataPoints: [
+        { value: 1, date: "not-a-date" },
+        { value: 2, date: "2026-01-02" },
+        { value: 3, date: "2026-01-03" },
+      ],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.forecast, undefined);
+    assert.match(r.result.message, /Point 1 has a date that cannot be read/);
   });
 });

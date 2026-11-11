@@ -366,9 +366,14 @@ function FlowsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null)
 
   const record = async () => {
     if (!peerId) { setErr('select a peer to record a flow against'); return; }
+    const recordsN = records.trim() === '' ? 0 : Number(records);
+    if (!Number.isFinite(recordsN) || recordsN < 0) {
+      setErr('Records must be a number that is 0 or more.');
+      return;
+    }
     const r = await lensRun('bridge', 'recordFlow', {
       peerId, action,
-      records: parseInt(records, 10) || 0,
+      records: recordsN,
       durationMs: parseInt(duration, 10) || 1000,
       status: outcome,
       error: outcome === 'failed' ? recErr : undefined,

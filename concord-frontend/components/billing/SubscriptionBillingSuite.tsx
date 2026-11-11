@@ -37,6 +37,15 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
 
+function boundedMoney(raw: string): { ok: true; value: number } | { ok: false; error: string } {
+  if (!raw.trim()) return { ok: true, value: 0 };
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 1e9) {
+    return { ok: false, error: 'Amount has to be a number from 0 to 1,000,000,000.' };
+  }
+  return { ok: true, value: n };
+}
+
 async function run(action: string, input: Record<string, unknown> = {}): Promise<MacroJSON | null> {
   const r = await lensRun('billing', action, input);
   if (!r.data.ok) throw new Error(r.data.error || `${action} failed`);
@@ -199,9 +208,11 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
 
   const createPlan = async () => {
     if (!pName.trim()) { onError('plan name required'); return; }
+    const priced = boundedMoney(pAmount);
+    if (!priced.ok) { onError(priced.error); return; }
     setBusy(true);
     try {
-      await run('plan-create', { name: pName, interval: pInterval, amount: Number(pAmount), trialDays: Number(pTrial) });
+      await run('plan-create', { name: pName, interval: pInterval, amount: priced.value, trialDays: Number(pTrial) });
       setPName('');
       await reload();
     } catch (e) { onError(e instanceof Error ? e.message : 'create failed'); }
@@ -771,9 +782,11 @@ function TaxPanel({ onError }: { onError: (e: string) => void }) {
   }, []);
 
   const calculate = async () => {
+    const priced = boundedMoney(amount);
+    if (!priced.ok) { onError(priced.error); return; }
     setBusy(true);
     try {
-      setResult(await run('tax-calculate', { jurisdiction: jur, amount: Number(amount), b2b, taxId }));
+      setResult(await run('tax-calculate', { jurisdiction: jur, amount: priced.value, b2b, taxId }));
     } catch (e) { onError(e instanceof Error ? e.message : 'calc failed'); }
     setBusy(false);
   };

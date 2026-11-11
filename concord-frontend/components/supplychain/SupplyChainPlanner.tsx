@@ -378,18 +378,39 @@ function EchelonPanel({ notify }: { notify: (f: Feedback) => void }) {
 
   // line: location | tier | dailyDemand | leadTimeDays | currentStock | demandStdDev
   const optimize = async () => {
-    const echelons = text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const z = Number(zText);
+    if (!Number.isFinite(z) || z < 0 || z > 5) {
+      notify({ kind: 'err', text: 'Service level Z must be a number from 0 to 5.' });
+      return;
+    }
+    const echelons: Array<Record<string, unknown>> = [];
+    for (const l of text.split('\n').map((line) => line.trim()).filter(Boolean)) {
       const [location, tier, dd, lt, cur, sd] = l.split('|').map((x) => x.trim());
-      return {
-        location, tier, dailyDemand: Number(dd) || 0, leadTimeDays: Number(lt) || 7,
-        currentStock: Number(cur) || 0, demandStdDev: sd ? Number(sd) : undefined,
-      };
-    });
+      const who = location || 'Echelon';
+      const fields: Array<[string, string, number]> = [
+        ['daily demand', dd, 0],
+        ['lead time', lt, 0],
+        ['current stock', cur, 0],
+      ];
+      if (sd) fields.push(['demand std dev', sd, 0]);
+      for (const [label, raw, min] of fields) {
+        const n = Number(raw);
+        if (!raw || !Number.isFinite(n) || n < min) {
+          notify({ kind: 'err', text: `${who} ${label} must be a number of at least ${min}.` });
+          return;
+        }
+      }
+      echelons.push({
+        location, tier, dailyDemand: Number(dd), leadTimeDays: Number(lt),
+        currentStock: Number(cur), demandStdDev: sd ? Number(sd) : undefined,
+      });
+    }
     if (echelons.length === 0) { notify({ kind: 'err', text: 'Add at least one echelon line.' }); return; }
     setBusy(true);
     try {
-      setResult(await run<EchelonResult>('multiEchelonOptimize', { echelons, serviceLevelZ: num(zText, 1.65) }));
-      notify({ kind: 'ok', text: 'Multi-echelon optimization complete.' });
+      const result = await run<EchelonResult & { message?: string }>('multiEchelonOptimize', { echelons, serviceLevelZ: z });
+      if (result?.message && !result.echelons) { notify({ kind: 'err', text: result.message }); setResult(null); }
+      else { setResult(result); notify({ kind: 'ok', text: 'Multi-echelon optimization complete.' }); }
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
   };
 
@@ -557,12 +578,23 @@ function ForecastPanel({ notify }: { notify: (f: Feedback) => void }) {
   const forecast = async () => {
     const values = parseNumberList(text);
     if (values.length < 4) { notify({ kind: 'err', text: 'Enter at least 4 demand values.' }); return; }
+    const seasonLength = Number(season);
+    const horizonN = Number(horizon);
+    if (!Number.isFinite(seasonLength) || seasonLength < 2) {
+      notify({ kind: 'err', text: 'Season length must be a number of at least 2.' });
+      return;
+    }
+    if (!Number.isFinite(horizonN) || horizonN < 1) {
+      notify({ kind: 'err', text: 'Horizon must be a number of at least 1.' });
+      return;
+    }
     setBusy(true);
     try {
-      setResult(await run<SeasonalResult>('seasonalForecast', {
-        history: values, seasonLength: num(season, 4), horizon: num(horizon, 4),
-      }));
-      notify({ kind: 'ok', text: 'Holt-Winters forecast computed.' });
+      const result = await run<SeasonalResult & { message?: string }>('seasonalForecast', {
+        history: values, seasonLength, horizon: horizonN,
+      });
+      if (result?.message && !result.forecast) { setResult(null); notify({ kind: 'err', text: result.message }); }
+      else { setResult(result); notify({ kind: 'ok', text: 'Holt-Winters forecast computed.' }); }
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
   };
 
@@ -803,13 +835,27 @@ function SpendPanel({ notify }: { notify: (f: Feedback) => void }) {
   // No mount auto-run: an untouched editor must not silently produce
   // work-order-only analytics beside its example lines.
   const analyze = useCallback(async () => {
-    const orders = text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+    const orders: Array<Record<string, unknown>> = [];
+    for (const l of text.split('\n').map((line) => line.trim()).filter(Boolean)) {
       const [supplier, category, qty, unit] = l.split('|').map((x) => x.trim());
-      return { supplier, category, quantity: Number(qty) || 0, unitCost: Number(unit) || 0 };
-    });
+      const who = supplier || 'Order';
+      const quantity = Number(qty);
+      const unitCost = Number(unit);
+      if (!Number.isFinite(quantity) || quantity < 0) {
+        notify({ kind: 'err', text: `${who} quantity must be a number that is 0 or more.` });
+        return;
+      }
+      if (!Number.isFinite(unitCost) || unitCost < 0) {
+        notify({ kind: 'err', text: `${who} unit cost must be a number that is 0 or more.` });
+        return;
+      }
+      orders.push({ supplier, category, quantity, unitCost });
+    }
     setBusy(true);
     try {
-      setResult(await run<SpendResult>('spendAnalytics', { orders }));
+      const result = await run<SpendResult>('spendAnalytics', { orders });
+      if (result?.message && !(result.bySupplier?.length)) notify({ kind: 'err', text: result.message });
+      setResult(result);
     } catch (e) { notify({ kind: 'err', text: (e as Error).message }); } finally { setBusy(false); }
   }, [text, notify]);
 

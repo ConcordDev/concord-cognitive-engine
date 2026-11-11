@@ -254,7 +254,12 @@ export default function registerBridgeActions(registerLensAction) {
       const peer = peers.find(p => p.id === params.peerId);
       if (!peer) return { ok: false, error: "peer not found" };
       const action = String(params.action || "sync").trim() || "sync";
-      const records = Math.max(0, parseInt(params.records, 10) || 0);
+      const recordsRaw = params.records;
+      const recordsN = recordsRaw === undefined || recordsRaw === null || recordsRaw === "" ? 0 : Number(recordsRaw);
+      if (!Number.isFinite(recordsN) || recordsN < 0) {
+        return { ok: false, error: "records must be a number that is 0 or more" };
+      }
+      const records = Math.trunc(recordsN);
       const status = ["succeeded", "failed", "pending"].includes(params.status)
         ? params.status : "succeeded";
       const flows = listFor(s.flows, userId);

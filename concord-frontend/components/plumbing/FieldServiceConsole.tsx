@@ -688,7 +688,7 @@ export function FieldServiceConsole() {
             <div className={cardCls}>
               <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-white"><Calendar className="h-3.5 w-3.5 text-blue-400" /> Schedule a Job</h4>
               <div className="grid grid-cols-2 gap-2">
-                <input className={`${inputCls} col-span-2`} placeholder="Job title" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+                <input className={`${inputCls} col-span-2`} placeholder="Job title" value={jobTitle} onChange={(e) => { setJobTitle(e.target.value); if (e.target.value.trim()) setErr((cur) => (cur === 'Job title required' ? '' : cur)); }} />
                 <ClientAutocomplete clients={clients} value={jobClient} clientId={jobClientId} onSelect={selectJobClient} onCreated={handleClientCreated} />
                 <input className={inputCls} placeholder="Address" value={jobAddr} onChange={(e) => setJobAddr(e.target.value)} />
                 <select className={inputCls} value={jobTech} onChange={(e) => setJobTech(e.target.value)}>

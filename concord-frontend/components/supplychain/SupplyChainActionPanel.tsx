@@ -39,14 +39,12 @@ interface LeadResult { ordersAnalyzed: number; avgLeadTimeDays: number; minDays:
 interface InvItem { item: string; currentStock: number; reorderPoint: number; safetyStock: number; eoq: number; daysOfStock: number; needsReorder: boolean }
 interface InvResult { items: InvItem[]; needsReorder: number; totalItems: number }
 interface ScoredSup { supplier: string; quality: number | null; delivery: number | null; price: number | null; responsiveness: number | null; totalScore: number | null; tier: string | null; scoredOn?: string[]; missingInputs?: string[] }
-interface SupResult { suppliers: ScoredSup[]; topSupplier: string | null; atRisk: number; method?: string }
+interface SupResult { suppliers: ScoredSup[]; topSupplier: string | null; atRisk: number; method?: string; message?: string }
 interface ForecastPt { period: string; predicted: number; confidence: string }
 interface ForecastResult { historicalPeriods: number; avgDemand: number; trend: string; forecast: ForecastPt[]; method?: string; alpha?: number; mapePct?: number; accuracy?: string }
 
 const AREA = 'w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-white font-mono placeholder:text-zinc-600';
 const FIELD_LABEL = 'text-[10px] uppercase tracking-wider font-semibold';
-
-function num(v: string, d = 0): number { const n = Number(v); return Number.isFinite(n) ? n : d; }
 
 /* Example lines for a bulk editor, shown OUTSIDE the input so example
    content can never be mistaken for the user's own data. Loading one is a
@@ -71,18 +69,65 @@ function parseOrders(text: string) {
   });
 }
 // item line: name | dailyDemand | leadTimeDays | currentStock | orderCost | holdingCost
-function parseInvItems(text: string) {
-  return text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+function scoreField(raw: string | undefined, label: string): { value?: number; error?: string } {
+  if (!raw) return {};
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 100) return { error: `${label} must be a number from 0 to 100.` };
+  return { value: n };
+}
+function countField(raw: string | undefined, label: string, min: number): { value?: number; error?: string } {
+  if (!raw) return { error: `${label} is required.` };
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < min) return { error: `${label} must be a number of at least ${min}.` };
+  return { value: n };
+}
+function parseInvItems(text: string): { items: Array<Record<string, unknown>>; error?: string } {
+  const items: Array<Record<string, unknown>> = [];
+  for (const l of text.split('\n').map((line) => line.trim()).filter(Boolean)) {
     const [name, dd, lt, cur, oc, hc] = l.split('|').map((x) => x.trim());
-    return { name, dailyDemand: num(dd, 1), leadTimeDays: num(lt, 7), currentStock: num(cur), orderCost: oc ? num(oc) : undefined, holdingCost: hc ? num(hc) : undefined };
-  });
+    const who = name || 'Item';
+    const fields = [
+      countField(dd, `${who} daily demand`, 0),
+      countField(lt, `${who} lead time`, 0),
+      countField(cur, `${who} current stock`, 0),
+      countField(oc, `${who} order cost`, 0),
+      countField(hc, `${who} holding cost`, 0),
+    ];
+    const bad = fields.find((f) => f.error);
+    if (bad?.error) return { items: [], error: bad.error };
+    items.push({
+      name,
+      dailyDemand: fields[0].value,
+      leadTimeDays: fields[1].value,
+      currentStock: fields[2].value,
+      orderCost: fields[3].value,
+      holdingCost: fields[4].value,
+    });
+  }
+  return { items };
 }
 // supplier line: name | qualityScore | onTimePercent | priceCompetitiveness | responsiveness
-function parseSuppliers(text: string) {
-  return text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+function parseSuppliers(text: string): { suppliers: Array<Record<string, unknown>>; error?: string } {
+  const suppliers: Array<Record<string, unknown>> = [];
+  for (const l of text.split('\n').map((line) => line.trim()).filter(Boolean)) {
     const [name, q, ot, price, resp] = l.split('|').map((x) => x.trim());
-    return { name, qualityScore: num(q, 70), onTimePercent: num(ot, 80), priceCompetitiveness: price ? num(price) : undefined, responsiveness: resp ? num(resp) : undefined };
-  });
+    const who = name || 'Supplier';
+    const fields = [
+      scoreField(q, `${who} quality`),
+      scoreField(ot, `${who} on-time`),
+      scoreField(price, `${who} price`),
+      scoreField(resp, `${who} responsiveness`),
+    ];
+    const bad = fields.find((f) => f.error);
+    if (bad?.error) return { suppliers: [], error: bad.error };
+    const row: Record<string, unknown> = { name };
+    if (fields[0].value !== undefined) row.qualityScore = fields[0].value;
+    if (fields[1].value !== undefined) row.onTimePercent = fields[1].value;
+    if (fields[2].value !== undefined) row.priceCompetitiveness = fields[2].value;
+    if (fields[3].value !== undefined) row.responsiveness = fields[3].value;
+    suppliers.push(row);
+  }
+  return { suppliers };
 }
 // demand history: space/comma separated values, oldest first
 function parseHistory(text: string) {
@@ -125,7 +170,9 @@ export function SupplyChainActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actInv() {
-    const items = parseInvItems(invText);
+    const parsed = parseInvItems(invText);
+    if (parsed.error) { err(parsed.error); return; }
+    const items = parsed.items;
     if (items.length === 0) { err('Add at least one inventory item line.'); return; }
     setBusy('inv'); setFeedback(null);
     try {
@@ -134,21 +181,28 @@ export function SupplyChainActionPanel() {
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actSup() {
-    const suppliers = parseSuppliers(supText);
+    const parsed = parseSuppliers(supText);
+    if (parsed.error) { err(parsed.error); return; }
+    const suppliers = parsed.suppliers;
     if (suppliers.length === 0) { err('Add at least one supplier line.'); return; }
     setBusy('sup'); setFeedback(null);
     try {
       const r = await callMacro<SupResult>('supplierScore', { artifact: { data: { suppliers } } });
-      if (r.ok && r.result) { setSupResult(r.result); pipe.publish('supplychain.sup', r.result, { label: `Top: ${r.result.topSupplier ?? 'none scored'}` }); ok(`Top: ${r.result.topSupplier ?? 'none scored'} · at-risk ${r.result.atRisk}.`); } else err(r.error ?? 'sup failed');
+      if (r.ok && r.result?.message && !r.result.suppliers) { setSupResult(null); err(r.result.message); }
+      else if (r.ok && r.result && r.result.topSupplier == null && (r.result.suppliers || []).every((s) => s.totalScore == null)) { setSupResult(r.result); err('No supplier could be scored. Add a quality or on-time number from 0 to 100.'); }
+      else if (r.ok && r.result) { setSupResult(r.result); pipe.publish('supplychain.sup', r.result, { label: `Top: ${r.result.topSupplier ?? 'none scored'}` }); ok(`Top: ${r.result.topSupplier ?? 'none scored'} · at-risk ${r.result.atRisk}.`); } else err(r.error ?? 'sup failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actFore() {
     const history = parseHistory(histText);
     if (history.length < 3) { err('Enter at least 3 demand values.'); return; }
+    const alpha = Number(alphaText);
+    if (!Number.isFinite(alpha) || alpha < 0.05 || alpha > 0.95) { err('Alpha must be a number from 0.05 to 0.95.'); return; }
     setBusy('fore'); setFeedback(null);
     try {
-      const r = await callMacro<ForecastResult>('demandForecast', { artifact: { data: { history, alpha: num(alphaText, 0.3) } } });
-      if (r.ok && r.result) { setForeResult(r.result); pipe.publish('supplychain.fore', r.result, { label: `Forecast ${r.result.trend}` }); ok(`${r.result.trend} · avg ${r.result.avgDemand}.`); } else err(r.error ?? 'forecast failed');
+      const r = await callMacro<ForecastResult & { message?: string }>('demandForecast', { artifact: { data: { history, alpha } } });
+      if (r.ok && r.result?.message && !r.result.forecast) { setForeResult(null); err(r.result.message); }
+      else if (r.ok && r.result) { setForeResult(r.result); pipe.publish('supplychain.fore', r.result, { label: `Forecast ${r.result.trend}` }); ok(`${r.result.trend} · avg ${r.result.avgDemand}.`); } else err(r.error ?? 'forecast failed');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
   async function actMint() {

@@ -38,6 +38,12 @@ export default function registerBillingActions(registerLensAction) {
     if (!Array.isArray(pricingTiers)) return pricingTiers;
     const discountRules = requireList(artifact.data.discountRules, "discountRules");
     if (!Array.isArray(discountRules)) return discountRules;
+    if (params.taxRate !== undefined && params.taxRate !== null && params.taxRate !== "") {
+      const tr = Number(params.taxRate);
+      if (!Number.isFinite(tr) || tr < 0 || tr > 1) {
+        return { ok: false, error: "taxRate must be a decimal from 0 to 1" };
+      }
+    }
     const taxRate = finNum(params.taxRate);
     const currency = params.currency || "USD";
     const exchangeRates = params.exchangeRates || {};
@@ -543,6 +549,17 @@ export default function registerBillingActions(registerLensAction) {
   const billAid = (ctx) => ctx?.actor?.userId || ctx?.userId || "anon";
   const billId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const billNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const MONEY_MAX = 1e9;
+  // Omitted amount stays 0. A present value that is not a finite number
+  // from 0 through one billion is refused, so 1e20 cannot become MRR.
+  function billMoney(v) {
+    if (v === undefined || v === null || v === "") return { ok: true, value: 0 };
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0 || n > MONEY_MAX) {
+      return { ok: false, error: "amount must be a number from 0 to 1,000,000,000" };
+    }
+    return { ok: true, value: round2(n) };
+  }
   const round2 = (v) => Math.round(v * 100) / 100;
   const CYCLE_DAYS = { monthly: 30, quarterly: 91, annual: 365, weekly: 7 };
   function cycleDays(interval) { return CYCLE_DAYS[interval] || 30; }
@@ -563,11 +580,13 @@ export default function registerBillingActions(registerLensAction) {
       const name = String(params.name || "").trim();
       if (!name) return { ok: false, error: "name required" };
       const interval = ["monthly", "quarterly", "annual", "weekly"].includes(params.interval) ? params.interval : "monthly";
+      const priced = billMoney(params.amount);
+      if (!priced.ok) return priced;
       const plan = {
         id: billId("plan"),
         name,
         interval,
-        amount: Math.max(0, round2(billNum(params.amount))),
+        amount: priced.value,
         currency: String(params.currency || "USD").toUpperCase(),
         trialDays: Math.max(0, Math.round(billNum(params.trialDays))),
         meteredComponent: params.meteredComponent ? String(params.meteredComponent) : null,
@@ -937,7 +956,9 @@ export default function registerBillingActions(registerLensAction) {
       const jurisdiction = String(params.jurisdiction || "").trim().toUpperCase();
       const entry = TAX_RATES[jurisdiction];
       if (!entry) return { ok: false, error: `unknown jurisdiction: ${jurisdiction || "(none)"}` };
-      const amount = Math.max(0, billNum(params.amount));
+      const priced = billMoney(params.amount);
+      if (!priced.ok) return priced;
+      const amount = priced.value;
       // EU/GB VAT reverse charge for B2B with a valid VAT id.
       const reverseCharge = entry.kind === "vat" && params.b2b === true && !!String(params.taxId || "").trim();
       const effectiveRate = reverseCharge ? 0 : entry.rate;
