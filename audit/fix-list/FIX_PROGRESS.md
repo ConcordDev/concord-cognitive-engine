@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 183 | 36 | 2 |
-| medium | 713 | 232 | 0 |
+| medium | 724 | 221 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1152** | **997** | **2** |
+| **total** | **1163** | **986** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -2103,6 +2103,24 @@ Yes and no, dream tabs, finance links, ethics filters, voice delete, film action
 | FIX-voice-014 | voice | medium | FIXED_PENDING_VERIFY | 3a84d975b |
 | FIX-film-studios-004 | film-studios | medium | FIXED_PENDING_VERIFY | 3a84d975b |
 | FIX-art-005 | art | medium | FIXED_PENDING_VERIFY | 3a84d975b |
+
+## Mediums — a phone width no longer covers or squeezes the work
+
+Refresh sits above the bottom bar. The calendar list stacks over the month. The storefront nav sits above its content. Live resonance, sentinel rules, billing amounts, escrow fields, and the entity delete row wrap. Lens pages leave room under the floating action.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-command-center-001 | command-center | medium | FIXED_PENDING_VERIFY | 9d67c01af |
+| FIX-calendar-011 | calendar | medium | FIXED_PENDING_VERIFY | 9d67c01af |
+| FIX-telecommunications-006 | telecommunications | medium | FIXED_PENDING_VERIFY | 9d67c01af |
+| FIX-billing-005 | billing | medium | FIXED_PENDING_VERIFY | 9d67c01af |
+| FIX-crisis-ops-005 | crisis-ops | medium | FIXED_PENDING_VERIFY | 9d67c01af |
+| FIX-disputes-007 | disputes | medium | FIXED_PENDING_VERIFY | 9d67c01af |
+| FIX-entity-007 | entity | medium | FIXED_PENDING_VERIFY | 9d67c01af |
+| FIX-parenting-002 | parenting | medium | FIXED_PENDING_VERIFY | 9d67c01af |
+| FIX-resonance-004 | resonance | medium | FIXED_PENDING_VERIFY | 9d67c01af |
+| FIX-retail-003 | retail | medium | FIXED_PENDING_VERIFY | 9d67c01af |
+| FIX-sentinel-011 | sentinel | medium | FIXED_PENDING_VERIFY | 9d67c01af |
 
 ## NEEDS_PRODUCT_SURFACE
 
