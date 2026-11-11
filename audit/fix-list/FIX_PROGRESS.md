@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 554 | 391 | 0 |
+| medium | 556 | 389 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **980** | **1168** | **3** |
+| **total** | **982** | **1166** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1595,6 +1595,16 @@ A WPS does not save until filler metal, amperage range, and thickness range are 
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
 | FIX-welding-001 | welding | medium | FIXED_PENDING_VERIFY | cca126343 |
+
+
+## Mediums — an HVAC name, and a sort
+
+A job name stops at 120 characters. The field shows how many are used and says a longer name is cut off. The list sorts newest, oldest, or by name.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-hvac-009 | hvac | medium | FIXED_PENDING_VERIFY | a2ad101c3 |
+| FIX-hvac-010 | hvac | medium | FIXED_PENDING_VERIFY | a2ad101c3 |
 
 ## NEEDS_PRODUCT_SURFACE
 
