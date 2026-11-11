@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 546 | 399 | 0 |
+| medium | 551 | 394 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **972** | **1176** | **3** |
+| **total** | **977** | **1171** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1563,6 +1563,19 @@ A glossary term the model left in English is written as the target. A target the
 |---|---|---|---|---|
 | FIX-translation-003 | translation | medium | FIXED_PENDING_VERIFY | dc43b1d5b |
 | FIX-translation-004 | translation | medium | FIXED_PENDING_VERIFY | dc43b1d5b |
+
+
+## Mediums — stakes, species, quests, outages, and bonds
+
+Export downloads the caller's staking positions, receipts, and yield. It downloads the authored species codex. It downloads quests this account accepted, telecom outages on this account, and civic bonds and pledges on this account.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-staking-005 | staking | medium | FIXED_PENDING_VERIFY | bcc898ff4 |
+| FIX-creatures-005 | creatures | medium | FIXED_PENDING_VERIFY | bcc898ff4 |
+| FIX-quests-002 | quests | medium | FIXED_PENDING_VERIFY | bcc898ff4 |
+| FIX-telecommunications-004 | telecommunications | medium | FIXED_PENDING_VERIFY | bcc898ff4 |
+| FIX-civic-bonds-007 | civic-bonds | medium | FIXED_PENDING_VERIFY | bcc898ff4 |
 
 ## NEEDS_PRODUCT_SURFACE
 
