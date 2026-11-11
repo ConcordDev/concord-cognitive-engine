@@ -241,6 +241,27 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     if (s.favorites instanceof Map) for (const set of s.favorites.values()) if (set.has(id)) n += 1;
     return n;
   }
+  // created_at arrives as unix seconds, unix ms, or an ISO string.
+  // Number("2026-11-01") is NaN, which used to stamp every table row at 0
+  // and make "recent" a no-op.
+  function epochMs(v) {
+    if (v == null || v === "") return 0;
+    if (typeof v === "number" && Number.isFinite(v)) {
+      if (v <= 0) return 0;
+      return v < 1e12 ? Math.round(v * 1000) : Math.round(v);
+    }
+    const text = String(v).trim();
+    if (/^\d+(\.\d+)?$/.test(text)) {
+      const n = Number(text);
+      if (!Number.isFinite(n) || n <= 0) return 0;
+      return n < 1e12 ? Math.round(n * 1000) : Math.round(n);
+    }
+    const parsed = Date.parse(text);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  function byName(a, b) {
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  }
   function draftView(s, creatorId, d, viewerId) {
     const enterId = d.publishedWorldId || null;
     const counts = bridgeCount(s, `draft:${d.id}`);
@@ -283,13 +304,13 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
       status: "active",
       capacity: 16,
       spawned_by_user_id: row.created_by || "",
-      spawned_at: (Number(row.created_at) || 0) * 1000,
-      updated_at: (Number(row.created_at) || 0) * 1000,
+      spawned_at: epochMs(row.created_at),
+      updated_at: epochMs(row.created_at),
       visits: counts.visits,
       unique_visitors: counts.unique_visitors,
       favorites: favCount(s, row.id),
       editors: [],
-      popularity: Math.round(10 * Math.max(0, 30 - (now() / 1000 - (Number(row.created_at) || now() / 1000)) / 86400) / 30),
+      popularity: Math.round(10 * Math.max(0, 30 - (epochMs(row.created_at) ? (now() - epochMs(row.created_at)) / 86_400_000 : 0)) / 30),
       is_owner: false,
       can_edit: false,
       source: "worlds_table",
@@ -403,14 +424,21 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     const me = actor(ctx);
     const query = clean(params.query, 120).toLowerCase();
     const kindFilter = KINDS.has(params.kind) ? params.kind : null;
-    const sort = ["popular", "recent", "favorites"].includes(params.sort) ? params.sort : "popular";
+    const sortKey = String(params.sort || "popular").toLowerCase().replace(/[\s-]+/g, "_");
+    const sort = sortKey === "recent" || sortKey === "newest" ? "recent"
+      : (sortKey === "favorites" || sortKey === "most_favorited") ? "favorites"
+      : "popular";
     let all = [];
     for (const list of s.worlds.values()) {
       for (const w of list) {
         if (w.status === "archived") continue;
         // Discovery surfaces public always, unlisted/private only to owner/editors.
         if (w.privacy !== "public" && !canEdit(w, me)) continue;
-        all.push({ ...publicView(w, me), source: "sub_worlds", enterId: w.world_id, enterable: true, enterNote: null });
+        const view = { ...publicView(w, me), source: "sub_worlds", enterId: w.world_id, enterable: true, enterNote: null };
+        // The per-user sets are the count "most favorited" sorts. favoriteCount
+        // can drift from that set, so the card shows the larger honest count.
+        view.favorites = Math.max(favCount(s, w.world_id), Number(w.favoriteCount) || 0);
+        all.push(view);
       }
     }
     // B15 union — the other two populations, visibility at the read:
@@ -434,9 +462,12 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     if (query) {all = all.filter((w) =>
       w.name.toLowerCase().includes(query) || (w.description || "").toLowerCase().includes(query));}
     if (kindFilter) all = all.filter((w) => w.kind === kindFilter);
-    if (sort === "recent") all.sort((a, b) => (b.spawned_at || 0) - (a.spawned_at || 0));
-    else if (sort === "favorites") all.sort((a, b) => (b.favorites || 0) - (a.favorites || 0));
-    else all.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+    const favN = (w) => Number(w.favorites) || 0;
+    const when = (w) => Number(w.spawned_at) || Number(w.updated_at) || 0;
+    const popN = (w) => Number(w.popularity) || 0;
+    if (sort === "recent") all.sort((a, b) => when(b) - when(a) || popN(b) - popN(a) || byName(a, b));
+    else if (sort === "favorites") all.sort((a, b) => favN(b) - favN(a) || popN(b) - popN(a) || byName(a, b));
+    else all.sort((a, b) => popN(b) - popN(a) || favN(b) - favN(a) || byName(a, b));
     return {
       ok: true,
       result: {

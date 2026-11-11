@@ -270,6 +270,20 @@ describe("forestry.growth-projection — Chapman-Richards yield curve", () => {
     assert.ok(Number.isFinite(r.result.peakMai));
   });
 
+  it("uses the same per-tree curve as timberVolume at site index 80", () => {
+    const vol = call("timberVolume", ctxA, { species: "douglas-fir", acres: 1.25, avgAgeYears: 20, treeCount: 25 });
+    assert.equal(vol.result.boardFeetPerTree, 143);
+    assert.equal(vol.result.boardFeet, 3575);
+    assert.match(vol.result.formula, /site index/i);
+    const growth = call("growth-projection", ctxA, {
+      species: "douglas_fir", acres: 1.25, currentAge: 20, siteIndex: 80, treesPerAcre: 100,
+    });
+    assert.equal(growth.ok, true);
+    assert.equal(growth.result.boardFeetPerTree, 143);
+    assert.equal(growth.result.currentVolumePerAcre, 143 * 100);
+    assert.match(growth.result.formula, /trees per acre/i);
+  });
+
   it("validation: acres <= 0 is rejected cleanly", () => {
     const r = call("growth-projection", ctxA, { species: "oak", acres: 0 });
     assert.equal(r.ok, false);

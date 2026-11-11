@@ -58,6 +58,7 @@ interface Estimate {
 interface Payment { id: string; amount: number; method: string; reference?: string; recordedAt: string }
 interface Invoice {
   id: string; invoiceNumber: string; jobId: string; client?: string; title?: string;
+  lineItems?: LineItem[];
   amount: number; amountPaid: number; balance: number; status: string;
   issuedDate: string; dueDate: string; payments: Payment[]; portalToken?: string;
   overdue?: boolean;
@@ -494,6 +495,7 @@ function InvoicesTab() {
   const [jobId, setJobId] = useState('');
   const [amount, setAmount] = useState('');
   const [portal, setPortal] = useState<string | null>(null);
+  const [invoiceErr, setInvoiceErr] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setBusy(true);
@@ -513,8 +515,16 @@ function InvoicesTab() {
   const createInvoice = async () => {
     if (!jobId) return;
     setBusy(true);
-    const r = await run<{ invoice: Invoice }>('invoice-from-job', { jobId, amount: Number(amount) || 0 });
-    if (r?.invoice?.portalToken) setPortal(r.invoice.portalToken);
+    setInvoiceErr(null);
+    const payload: Record<string, unknown> = { jobId };
+    if (amount.trim() !== '') payload.amount = Number(amount);
+    const r = await lensRun<{ invoice: Invoice }>('welding', 'invoice-from-job', payload);
+    if (!r.data?.ok || !r.data.result?.invoice) {
+      setInvoiceErr(r.data?.error || 'Could not generate an invoice. Enter an amount when the job has no estimate.');
+      setBusy(false);
+      return;
+    }
+    if (r.data.result.invoice.portalToken) setPortal(r.data.result.invoice.portalToken);
     setJobId(''); setAmount('');
     await reload();
     bumpOps();
@@ -530,6 +540,7 @@ function InvoicesTab() {
         <input type="number" min={0} className={inputCls} placeholder="Amount (if no estimate)" value={amount} onChange={(e) => setAmount(e.target.value)} />
         <button type="button" className={btnCls} onClick={createInvoice} disabled={busy || !jobId}><Receipt className="h-3.5 w-3.5" /> Generate invoice</button>
       </div>
+      {invoiceErr && <p className="text-xs text-rose-400">{invoiceErr}</p>}
 
       {portal && <PortalLinkBanner token={portal} label="Send to client:" />}
 
@@ -553,6 +564,8 @@ function InvoicesTab() {
 function InvoiceRow({ invoice, onPaid }: { invoice: Invoice; onPaid: () => void }) {
   const [amt, setAmt] = useState('');
   const [method, setMethod] = useState('card');
+  const [due, setDue] = useState(invoice.dueDate || '');
+  const [dueErr, setDueErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const bumpOps = useContext(OpsRefreshCtx);
   const pay = async () => {
@@ -570,18 +583,40 @@ function InvoiceRow({ invoice, onPaid }: { invoice: Invoice; onPaid: () => void 
     bumpOps();
     onPaid();
   };
+  const saveDue = async () => {
+    setBusy(true);
+    setDueErr(null);
+    const r = await lensRun('welding', 'invoice-update', { invoiceId: invoice.id, dueDate: due });
+    if (!r.data?.ok) setDueErr(r.data?.error || 'Could not save the due date.');
+    setBusy(false);
+    onPaid();
+  };
   return (
     <div className={`rounded-lg border p-2.5 ${invoice.overdue ? 'border-rose-500/30 bg-rose-500/5' : 'border-zinc-800 bg-zinc-950/40'}`}>
       <div className="flex items-center justify-between">
         <div className="min-w-0">
           <div className="truncate text-[12px] font-medium text-white">{invoice.invoiceNumber} · {invoice.title || invoice.client}</div>
           <div className="text-[10px] text-zinc-400">due {invoice.dueDate}{invoice.overdue ? ' · OVERDUE' : ''}</div>
+          {invoice.lineItems && invoice.lineItems.length > 0 && (
+            <ul className="mt-1 space-y-0.5 text-[10px] text-zinc-400">
+              {invoice.lineItems.map((li, i) => (
+                <li key={i}>{li.description} · {li.quantity} × {fmt(li.unitPrice)}</li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <span className="font-mono text-[11px] text-zinc-400">{fmt(invoice.amountPaid)} / {fmt(invoice.amount)}</span>
           <span className={`rounded px-1.5 py-0.5 text-[10px] ${invoice.status === 'paid' ? 'bg-emerald-500/20 text-emerald-200' : invoice.status === 'partial' ? 'bg-amber-500/20 text-amber-200' : 'bg-zinc-700 text-zinc-300'}`}>{invoice.status}</span>
         </div>
       </div>
+      {invoice.status !== 'paid' && (
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <input type="date" className={inputCls} aria-label="Due date" value={due} onChange={(e) => setDue(e.target.value)} />
+          <button type="button" className={ghostBtn} onClick={saveDue} disabled={busy || due === invoice.dueDate}>Save due date</button>
+          {dueErr && <span className="text-[10px] text-rose-400">{dueErr}</span>}
+        </div>
+      )}
       {invoice.status !== 'paid' && (
         <div className="mt-1.5 flex items-center gap-1.5">
           <input type="number" min={0} className={`${inputCls} w-28`} placeholder={`Balance ${fmt(invoice.balance)}`} value={amt} onChange={(e) => setAmt(e.target.value)} />

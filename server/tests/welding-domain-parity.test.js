@@ -134,6 +134,21 @@ describe("welding — quote-to-invoice workflow", () => {
     assert.equal(inv.result.invoice.balance, 400);
     assert.match(inv.result.invoice.invoiceNumber, /^INV-/);
   });
+
+  it("refuses a zero invoice when the job has no price, and keeps an explicit amount as a line", () => {
+    const bare = call("job-schedule", ctxA, { title: "Day job", durationDays: 1 });
+    const refused = call("invoice-from-job", ctxA, { jobId: bare.result.job.id });
+    assert.equal(refused.ok, false);
+    assert.match(refused.error, /amount/i);
+    const priced = call("invoice-from-job", ctxA, { jobId: bare.result.job.id, amount: 80 });
+    assert.equal(priced.ok, true);
+    assert.equal(priced.result.invoice.amount, 80);
+    assert.equal(priced.result.invoice.lineItems.length, 1);
+    assert.equal(priced.result.invoice.lineItems[0].unitPrice, 80);
+    const due = call("invoice-update", ctxA, { invoiceId: priced.result.invoice.id, dueDate: "2026-12-01" });
+    assert.equal(due.ok, true);
+    assert.equal(due.result.invoice.dueDate, "2026-12-01");
+  });
 });
 
 // ─── Payment processing ──────────────────────────────────────────────

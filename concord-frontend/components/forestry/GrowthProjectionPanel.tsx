@@ -29,6 +29,10 @@ interface ProjResult {
   biologicalRotationAge: number;
   peakMai: number;
   projection: ProjRow[];
+  formula?: string;
+  boardFeetPerTree?: number;
+  treesPerAcre?: number;
+  siteIndex?: number;
 }
 
 const SPECIES = ['douglas_fir', 'ponderosa_pine', 'loblolly_pine', 'oak', 'maple', 'spruce', 'mixed', 'other'];
@@ -38,6 +42,7 @@ export function GrowthProjectionPanel() {
   const [acres, setAcres] = useState('');
   const [age, setAge] = useState('');
   const [siteIndex, setSiteIndex] = useState('');
+  const [tpa, setTpa] = useState('');
   const [curVol, setCurVol] = useState('');
   const [result, setResult] = useState<ProjResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,12 +57,13 @@ export function GrowthProjectionPanel() {
       acres: a,
       currentAge: Number(age) || 0,
       siteIndex: Number(siteIndex) || 0,
+      treesPerAcre: Number(tpa) || 0,
       currentVolumePerAcre: Number(curVol) || 0,
     });
     if (r.data?.ok && r.data.result) setResult(r.data.result);
     else setErr(r.data?.error || 'Projection failed.');
     setBusy(false);
-  }, [species, acres, age, siteIndex, curVol]);
+  }, [species, acres, age, siteIndex, tpa, curVol]);
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
@@ -76,6 +82,8 @@ export function GrowthProjectionPanel() {
         <input value={age} onChange={(e) => setAge(e.target.value.replace(/\D/g, ''))} placeholder="age yrs"
           className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={siteIndex} onChange={(e) => setSiteIndex(e.target.value.replace(/\D/g, ''))} placeholder="site index"
+          className="w-24 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+        <input value={tpa} onChange={(e) => setTpa(e.target.value.replace(/\D/g, ''))} placeholder="trees/ac"
           className="w-24 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={curVol} onChange={(e) => setCurVol(e.target.value.replace(/[^\d.]/g, ''))} placeholder="cur. bf/ac (opt)"
           className="w-32 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
@@ -113,9 +121,10 @@ export function GrowthProjectionPanel() {
             height={220}
           />
           <p className="text-[10px] text-zinc-400">
-            Peak mean annual increment of {result.peakMai.toLocaleString()} bf/ac/yr at age {result.biologicalRotationAge} —
-            the economically optimal rotation point for {result.species.replace(/_/g, ' ')}.
+            {result.boardFeetPerTree?.toLocaleString() ?? '—'} bf/tree now · {result.treesPerAcre ?? 100} trees/ac · site index {result.siteIndex ?? 80}.
+            Peak mean annual increment of {result.peakMai.toLocaleString()} bf/ac/yr at age {result.biologicalRotationAge} for {result.species.replace(/_/g, ' ')}.
           </p>
+          {result.formula && <p className="text-[10px] text-zinc-500 leading-snug">{result.formula}</p>}
         </div>
       )}
       {!result && !busy && <p className="text-xs text-zinc-400 italic">No projection yet. Enter stand details above.</p>}

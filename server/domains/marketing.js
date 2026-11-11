@@ -429,13 +429,20 @@ export default function registerMarketingActions(registerLensAction) {
     const clicks = mkNum(params.linkClicks);
     const pageViews = mkNum(params.pageViews);
     const formSubmits = mkNum(params.formSubmits);
-    const raw = opens * 2 + clicks * 6 + pageViews * 3 + formSubmits * 20;
+    const weights = { emailOpens: 2, linkClicks: 6, pageViews: 3, formSubmits: 20 };
+    const points = {
+      emailOpens: opens * weights.emailOpens,
+      linkClicks: clicks * weights.linkClicks,
+      pageViews: pageViews * weights.pageViews,
+      formSubmits: formSubmits * weights.formSubmits,
+    };
+    const raw = points.emailOpens + points.linkClicks + points.pageViews + points.formSubmits;
     const score = Math.max(0, Math.min(100, Math.round(raw)));
     lead.score = score;
     lead.scoreSignals = { opens, clicks, pageViews, formSubmits };
     const grade = score >= 75 ? "A" : score >= 50 ? "B" : score >= 25 ? "C" : "D";
     saveMktState();
-    return { ok: true, result: { leadId: lead.id, score, grade } };
+    return { ok: true, result: { leadId: lead.id, score, grade, weights, points } };
   });
 
   registerLensAction("marketing", "lead-delete", (ctx, _a, params = {}) => {

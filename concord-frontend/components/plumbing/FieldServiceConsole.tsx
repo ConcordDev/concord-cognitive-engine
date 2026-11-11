@@ -367,16 +367,44 @@ export function FieldServiceConsole() {
   });
 
   const [confirmRemovePb, setConfirmRemovePb] = useState<string | null>(null);
+  const [markupDraft, setMarkupDraft] = useState<Record<string, string>>({});
+  const [markupErr, setMarkupErr] = useState<string | null>(null);
   const removePriceItem = (id: string) => guarded(async () => {
     await run('priceItemRemove', { itemId: id });
     setConfirmRemovePb(null);
     await refreshPriceBook();
   });
 
-  const updateMarkup = (id: string, markupPct: number) => guarded(async () => {
-    await run('priceItemUpdate', { itemId: id, markupPct });
-    await refreshPriceBook();
-  });
+  const previewPrice = (cost: number, raw: string) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
+    const pct = Math.max(0, Math.min(500, n));
+    return Math.round(cost * (1 + pct / 100) * 100) / 100;
+  };
+  const persistMarkup = (id: string, raw: string, current: number) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) {
+      setMarkupDraft((d) => ({ ...d, [id]: String(current) }));
+      setMarkupErr('Markup has to be a number from 0 to 500.');
+      return;
+    }
+    const pct = Math.max(0, Math.min(500, n));
+    if (pct === current) return;
+    guarded(async () => {
+      const { data } = await lensRun('plumbing', 'priceItemUpdate', { itemId: id, markupPct: pct });
+      if (!data?.ok) {
+        setMarkupErr(data?.error || data?.message || 'Could not save that markup.');
+        return;
+      }
+      setMarkupErr(null);
+      setMarkupDraft((d) => {
+        const next = { ...d };
+        delete next[id];
+        return next;
+      });
+      await refreshPriceBook();
+    });
+  };
 
   const setLine = (idx: number, patch: Partial<{ name: string; quantity: string; unitPrice: string; priceItemId: string | null }>) => {
     setInvLines((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -764,24 +792,33 @@ export function FieldServiceConsole() {
             <button className={`${btnCls} mt-2`} onClick={addPriceItem} disabled={busy}><Plus className="h-3.5 w-3.5" /> Add Item</button>
           </div>
           <div className={cardCls}>
+            {markupErr && <p className="mb-2 text-xs text-rose-400">{markupErr}</p>}
             <table className="w-full text-xs">
               <thead><tr className="text-left text-zinc-400"><th className="py-1">Item</th><th>Kind</th><th>Cost</th><th>Markup</th><th>Price</th><th /></tr></thead>
               <tbody>
-                {priceItems.map((i) => (
+                {priceItems.map((i) => {
+                  const draft = markupDraft[i.id] ?? String(i.markupPct);
+                  const preview = previewPrice(i.cost, draft);
+                  const shown = preview ?? i.price;
+                  return (
                   <tr key={i.id} className="border-t border-zinc-900 text-white">
                     <td className="py-1.5">{i.name} <span className="text-zinc-600">{i.sku}</span></td>
                     <td className="text-zinc-400">{i.kind}/{i.unit}</td>
                     <td>${i.cost.toFixed(2)}</td>
                     <td>
-                      <input type="number" className={`${inputCls} w-16`} defaultValue={i.markupPct}
-                        onBlur={(e) => { const v = Number(e.target.value); if (v !== i.markupPct) updateMarkup(i.id, v); }} />
+                      <input type="number" min={0} max={500} className={`${inputCls} w-16`} value={draft}
+                        aria-label={`Markup for ${i.name}`}
+                        onChange={(e) => setMarkupDraft((d) => ({ ...d, [i.id]: e.target.value }))}
+                        onBlur={() => persistMarkup(i.id, draft, i.markupPct)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }} />
                     </td>
-                    <td className="font-medium text-emerald-300">${i.price.toFixed(2)}</td>
+                    <td className="font-medium text-emerald-300">${shown.toFixed(2)}{preview != null && preview !== i.price ? ' preview' : ''}</td>
                     <td>{confirmRemovePb === i.id
                       ? <button onClick={() => removePriceItem(i.id)} className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-medium text-white hover:bg-rose-500">Confirm remove?</button>
                       : <button onClick={() => setConfirmRemovePb(i.id)} aria-label="Remove item" className="text-zinc-600 hover:text-rose-400"><Trash2 className="h-3.5 w-3.5" /></button>}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             {priceItems.length === 0 && <p className="text-xs text-zinc-400">No price book items yet.</p>}

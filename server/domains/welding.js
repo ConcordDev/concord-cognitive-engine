@@ -374,7 +374,34 @@ export default function registerWeldingActions(registerLensAction) {
       if (!job) return { ok: false, error: "job_not_found" };
       const est = job.estimateId ? wList(s, "estimates", userId).find((e) => e.id === job.estimateId) : null;
       const invoices = wList(s, "invoices", userId);
-      const amount = est ? est.total : Math.max(0, wNum(params.amount));
+      const explicit = wNum(params.amount);
+      const hasExplicit = params.amount != null && String(params.amount).trim() !== "" && explicit > 0;
+      const contract = wNum(job.contractValue);
+      let lineItems;
+      let subtotal;
+      let tax;
+      let amount;
+      if (est) {
+        lineItems = est.lineItems;
+        subtotal = est.subtotal;
+        tax = est.tax;
+        amount = est.total;
+      } else if (hasExplicit) {
+        lineItems = [{ description: job.title || "Job", quantity: 1, unitPrice: explicit, kind: "labor" }];
+        subtotal = explicit;
+        tax = 0;
+        amount = explicit;
+      } else if (contract > 0) {
+        lineItems = [{ description: "Contract", quantity: 1, unitPrice: contract, kind: "labor" }];
+        subtotal = contract;
+        tax = 0;
+        amount = contract;
+      } else {
+        return { ok: false, error: "This job has no estimate, contract value, or amount. Enter an amount before generating an invoice." };
+      }
+      if (!(amount > 0)) {
+        return { ok: false, error: "Invoice total must be greater than zero. Enter an amount or use an estimate that has a price." };
+      }
       const seq = invoices.length + 1;
       const token = wPortalToken();
       const inv = {
@@ -384,9 +411,9 @@ export default function registerWeldingActions(registerLensAction) {
         estimateId: job.estimateId || null,
         client: job.client,
         title: job.title,
-        lineItems: est ? est.lineItems : [],
-        subtotal: est ? est.subtotal : amount,
-        tax: est ? est.tax : 0,
+        lineItems,
+        subtotal,
+        tax,
         amount,
         amountPaid: 0,
         balance: amount,
@@ -401,6 +428,23 @@ export default function registerWeldingActions(registerLensAction) {
       s.portal.set(token, { ownerId: userId, kind: "invoice", refId: inv.id });
       job.invoiceId = inv.id;
       job.status = "completed";
+      saveWeld();
+      return { ok: true, result: { invoice: inv } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // Unpaid invoices can change their due date. Paid ones stay as recorded.
+  registerLensAction("welding", "invoice-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getWeldState(); if (!s) return noState;
+      const inv = wList(s, "invoices", wActor(ctx)).find((i) => i.id === params.invoiceId);
+      if (!inv) return { ok: false, error: "invoice_not_found" };
+      if (inv.status === "paid") return { ok: false, error: "Paid invoices can't be edited." };
+      if (params.dueDate != null && String(params.dueDate).trim() !== "") {
+        const d = wClean(params.dueDate, 40);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return { ok: false, error: "Due date must be YYYY-MM-DD." };
+        inv.dueDate = d;
+      }
       saveWeld();
       return { ok: true, result: { invoice: inv } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }

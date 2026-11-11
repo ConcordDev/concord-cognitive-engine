@@ -91,8 +91,8 @@ export function WorldCard({
         <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-zinc-400">
           <span className="flex items-center gap-0.5"><Eye className="h-3 w-3" />{world.visits}</span>
           <span className="flex items-center gap-0.5"><Users className="h-3 w-3" />{world.unique_visitors}</span>
-          <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{world.favorites}</span>
-          <span className="text-cyan-400/70">★{world.popularity}</span>
+          <span className="flex items-center gap-0.5" title="Favorites"><Star className="h-3 w-3" />{world.favorites}</span>
+          <span className="text-cyan-400/70" title="Popularity">pop {world.popularity}</span>
         </div>
         <div className="flex items-center gap-1.5 pt-1">
           <button

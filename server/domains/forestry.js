@@ -31,6 +31,28 @@ const VOLUME_SPECIES_FACTOR = {
   oak: 0.85, maple: 0.8, aspen: 0.7, mixed: 1.0, other: 0.9,
 };
 
+// One board-foot curve for the volume calculator and the growth projection.
+// Site index 80 is the base (scale 1), so timberVolume's published numbers
+// stay exactly the same. Growth multiplies by trees per acre.
+function volumeSpeciesFactor(species) {
+  const raw = String(species || "mixed").trim().toLowerCase();
+  const underscored = raw.replace(/-/g, "_");
+  const hyphenated = raw.replace(/_/g, "-");
+  return VOLUME_SPECIES_FACTOR[raw] ?? VOLUME_SPECIES_FACTOR[underscored] ?? VOLUME_SPECIES_FACTOR[hyphenated] ?? 1.0;
+}
+function volumeSiteScale(siteIndex) {
+  const si = frFinite(siteIndex, 80);
+  const base = si > 0 ? si : 80;
+  return Math.max(0.4, Math.min(1.8, base / 80));
+}
+function boardFeetPerTree(species, ageYears, siteIndex = 80) {
+  const factor = volumeSpeciesFactor(species);
+  const age = Math.max(0, frFinite(ageYears, 0));
+  const ageMaturity = 1 - Math.exp(-age / 35);
+  return Math.round(220 * factor * (0.15 + 0.85 * ageMaturity) * volumeSiteScale(siteIndex));
+}
+const BOARD_FOOT_FORMULA = "Board feet per tree = round(220 × species factor × (0.15 + 0.85 × (1 − e^(−age/35))) × site index ÷ 80). Site index 80 is the base. Per acre = that figure × trees per acre.";
+
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { badNumber, readingOrNull } from "../lib/finite-input.js";
 export default function registerForestryActions(registerLensAction) {
@@ -49,11 +71,8 @@ export default function registerForestryActions(registerLensAction) {
       if (treeCount <= 0 || acres <= 0) {
         return { ok: true, result: { message: "Enter species + acres + average age + tree count to estimate timber volume." } };
       }
-      const factor = VOLUME_SPECIES_FACTOR[species] ?? 1.0;
-      // Mean board feet per tree rises with stand age toward a ~mature plateau.
-      // (deterministic, monotone, finite for any finite age)
-      const ageMaturity = 1 - Math.exp(-ageYears / 35); // 0..~1
-      const bfPerTree = Math.round(220 * factor * (0.15 + 0.85 * ageMaturity));
+      // Site index 80 keeps this identical to the historical curve.
+      const bfPerTree = boardFeetPerTree(species, ageYears, 80);
       const boardFeet = Math.round(bfPerTree * treeCount);
       const cubicFeet = Math.round(boardFeet / 6); // ≈6 bf per cubic foot (Int'l ¼")
       const pricePerMBF = Math.max(0, frFinite(src.pricePerMBF, 400));
@@ -63,8 +82,11 @@ export default function registerForestryActions(registerLensAction) {
         result: {
           species, acres, avgAgeYears: ageYears, treeCount,
           boardFeetPerTree: bfPerTree,
+          boardFeetPerAcre: Math.round(boardFeet / acres),
           boardFeet, cubicFeet, valuation, pricePerMBF,
+          siteIndex: 80,
           mbf: Math.round((boardFeet / 1000) * 10) / 10,
+          formula: BOARD_FOOT_FORMULA,
         },
       };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -428,18 +450,14 @@ export default function registerForestryActions(registerLensAction) {
     const currentAge = Math.max(0, Math.round(frNum(params.currentAge)));
     const currentVolumePerAcre = Math.max(0, frNum(params.currentVolumePerAcre));
     const siteIndex = frNum(params.siteIndex) > 0 ? frNum(params.siteIndex) : 80;
+    const treesPerAcre = Math.max(1, Math.round(frNum(params.treesPerAcre) || 100));
     if (acres <= 0) return { ok: false, error: "acres must be > 0" };
     const g = SPECIES_GROWTH[species];
-    // Site-index scaling: SI 80 is the base; scale MAI linearly.
-    const siteFactor = Math.max(0.4, Math.min(1.8, siteIndex / 80));
     const rotation = Math.max(5, Math.round(frNum(params.rotationYears) || g.rotation));
-    // Volume at a given age — Chapman-Richards style sigmoid anchored to MAI.
+    // Same per-tree curve as timberVolume, scaled by site index and stocking.
     const volAtAge = (age) => {
       if (age <= 0) return 0;
-      const peak = g.maiPeak * siteFactor;
-      // cumulative = MAI * age * growth-shape factor (rises then plateaus)
-      const shape = 1 - Math.exp(-2.0 * age / g.peakAge);
-      return Math.round(peak * age * shape / g.peakAge * 1.0 + peak * Math.min(age, g.peakAge) * 0.2);
+      return boardFeetPerTree(species, age, siteIndex) * treesPerAcre;
     };
     const baseVol = currentVolumePerAcre > 0 ? currentVolumePerAcre : volAtAge(currentAge);
     const offset = currentVolumePerAcre > 0 ? currentVolumePerAcre - volAtAge(currentAge) : 0;
@@ -461,7 +479,9 @@ export default function registerForestryActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        species, acres, currentAge, siteIndex, rotationYears: rotation,
+        species, acres, currentAge, siteIndex, treesPerAcre, rotationYears: rotation,
+        boardFeetPerTree: boardFeetPerTree(species, currentAge, siteIndex),
+        formula: BOARD_FOOT_FORMULA,
         currentVolumePerAcre: Math.round(baseVol),
         currentTotalVolume: Math.round(baseVol * acres),
         projection,
