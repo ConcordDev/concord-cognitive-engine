@@ -311,11 +311,14 @@ export function WorkoutFinishPanel() {
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 4 },
       });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      const result = r.data?.result as { answer?: unknown; reply?: unknown; summary?: unknown; output?: unknown; reason?: string } | string | null;
+      const reply = result && typeof result === 'object'
+        ? (result.answer ?? result.reply ?? result.summary ?? result.output)
+        : result;
       if (reply) {
         setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Next workout drafted.');
-      } else err('Agent returned empty.');
+      } else err(r.data?.message || r.data?.error || (result && typeof result === 'object' ? result.reason : null) || 'Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
