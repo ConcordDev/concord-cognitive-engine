@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 551 | 394 | 0 |
+| medium | 553 | 392 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **977** | **1171** | **3** |
+| **total** | **979** | **1169** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1576,6 +1576,16 @@ Export downloads the caller's staking positions, receipts, and yield. It downloa
 | FIX-quests-002 | quests | medium | FIXED_PENDING_VERIFY | bcc898ff4 |
 | FIX-telecommunications-004 | telecommunications | medium | FIXED_PENDING_VERIFY | bcc898ff4 |
 | FIX-civic-bonds-007 | civic-bonds | medium | FIXED_PENDING_VERIFY | bcc898ff4 |
+
+
+## Mediums — an expense, a void, and a credit note
+
+An expense row opens its number and journal id. Edit saves vendor, memo, date, amount, and account. Changing the amount or the account posts a reversing entry and a new one. Void keeps the expense on the list and posts the reversal. An open invoice can be voided after confirm. A paid invoice can take a credit note for its total after confirm.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-accounting-010 | accounting | medium | FIXED_PENDING_VERIFY | cf73a03d2 |
+| FIX-accounting-014 | accounting | medium | FIXED_PENDING_VERIFY | cf73a03d2 |
 
 ## NEEDS_PRODUCT_SURFACE
 
