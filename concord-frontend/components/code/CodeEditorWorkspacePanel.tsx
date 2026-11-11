@@ -50,7 +50,7 @@ import { isLocallyRunnable, runLocalScript, resolveTabLanguage, RUNNABLE_LANGUAG
 import { scriptDtuCreateCall, scriptDtuUpdateCall, savedArtifactId, dtuRunRefused } from '@/components/code/scriptDtu';
 import { dtuRecordId, dtuReadBackCall, dtuReadBackMatches } from '@/components/wallet/walletReceipt';
 import { codeAiSessionId, fetchCodeAiHistory } from '@/components/code/codeAiHistory';
-import { LIVE_PROJECT_ID, LIVE_SNIPPET_PATH, snippetFromFilesRead, tabAfterSnippetRead } from '@/components/code/liveSnippet';
+import { LIVE_PROJECT_ID, LIVE_SNIPPET_PATH, scratchContentFromScripts, snippetFromFilesRead, tabAfterSnippetRead } from '@/components/code/liveSnippet';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
 const MonacoWrapper = dynamic(() => import('@/components/code/MonacoWrapper'), { ssr: false });
@@ -299,19 +299,33 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
     })();
     return () => { cancelled = true; };
   }, [runCodeMacro]);
+  // The live file can be empty when Save landed in the script list but the
+  // debounced workspace write had not flushed. Fill the blank pad from that
+  // save. tabAfterSnippetRead leaves a buffer the user already typed.
+  useEffect(() => {
+    if (!liveReady) return;
+    const fromSave = scratchContentFromScripts(savedScripts, LIVE_SNIPPET_PATH);
+    if (!fromSave) return;
+    setTabs((prev) => tabAfterSnippetRead(prev, 'main', fromSave).map((t) => (
+      t.id === 'main' && t.content === fromSave ? { ...t, isDirty: false } : t
+    )));
+  }, [liveReady, savedScripts]);
   // Debounced mirror of the active buffer → backend, so hover/completions/
   // diagnostics reflect what's on screen (LSP didChange semantics).
+  // An untouched empty pad must not write "" over a file the read missed.
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!liveReady) return;
     if (syncTimer.current) clearTimeout(syncTimer.current);
-    const path = activeTab.name;
+    const path = activeTab.id === 'main' ? LIVE_SNIPPET_PATH : activeTab.name;
     const content = activeTab.content;
+    const dirty = activeTab.isDirty;
     syncTimer.current = setTimeout(() => {
+      if (!content && !dirty) return;
       void runCodeMacro('files-write', { projectId: LIVE_PROJECT_ID, path, content });
     }, 350);
     return () => { if (syncTimer.current) clearTimeout(syncTimer.current); };
-  }, [activeTab.name, activeTab.content, runCodeMacro, liveReady]);
+  }, [activeTab.id, activeTab.name, activeTab.content, activeTab.isDirty, runCodeMacro, liveReady]);
   const [exec, setExec] = useState<CodeExecStatus | null>(() => readExecStatus());
   useEffect(() => subscribeExecStatus(setExec), []);
   const execOff = exec?.enabled === false;
@@ -662,6 +676,11 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
     const tab = tabs.find(t => t.id === activeTabId);
     if (!tab) return;
     setSaveError('');
+    // Flush the buffer to the path a reload reads, before the artifact
+    // call. The debounced mirror can still be waiting, and a reload in
+    // that window used to come back blank.
+    const livePath = tab.id === 'main' ? LIVE_SNIPPET_PATH : tab.name;
+    await runCodeMacro('files-write', { projectId: LIVE_PROJECT_ID, path: livePath, content: tab.content });
     // Phase 1 — the lens artifact (the save's original contract).
     let artifactId = '';
     try {
@@ -729,7 +748,7 @@ export function CodeEditorWorkspacePanel({ onOpenExtras }: {
       const reason = err instanceof Error ? err.message : 'the DTU step failed';
       setSaveError(`Saved to the lens, but the library DTU was not ${tab.dtuId ? 'updated' : 'created'} — ${reason}. The script itself is saved; save again to retry the DTU.`);
     }
-  }, [tabs, activeTabId, saveScript, updateScript, refetch]);
+  }, [tabs, activeTabId, saveScript, updateScript, refetch, runCodeMacro]);
 
   const handleCodeAction = async (action: string) => {
     const targetId = savedScripts[0]?.id;
