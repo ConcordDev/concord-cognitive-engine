@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 556 | 389 | 0 |
+| medium | 559 | 386 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **982** | **1166** | **3** |
+| **total** | **985** | **1163** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1605,6 +1605,17 @@ A job name stops at 120 characters. The field shows how many are used and says a
 |---|---|---|---|---|
 | FIX-hvac-009 | hvac | medium | FIXED_PENDING_VERIFY | a2ad101c3 |
 | FIX-hvac-010 | hvac | medium | FIXED_PENDING_VERIFY | a2ad101c3 |
+
+
+## Mediums — confirm before those deletes
+
+An ethics result, a sentinel monitor, and a telecom site stay armed until Confirm or Cancel. A spectrum allocation uses the same confirm.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-ethics-007 | ethics | medium | FIXED_PENDING_VERIFY | ad1c4cbea |
+| FIX-sentinel-003 | sentinel | medium | FIXED_PENDING_VERIFY | ad1c4cbea |
+| FIX-telecommunications-002 | telecommunications | medium | FIXED_PENDING_VERIFY | ad1c4cbea |
 
 ## NEEDS_PRODUCT_SURFACE
 
