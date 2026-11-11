@@ -10,6 +10,7 @@ import { Loader2, Plus, Star, Sparkles, ChevronLeft, Trash2, Check } from 'lucid
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { AstronomyKeepMenu } from './AstronomyKeepMenu';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { AstroObservation } from './astronomyReport';
 
 interface Target {
@@ -237,9 +238,7 @@ export function AstroTargetsPanel({ onChange }: { onChange: () => void }) {
                   </p>
                 </div>
               </button>
-              <button aria-label="Delete" type="button" onClick={() => del(t.id)} className="text-zinc-600 hover:text-rose-400">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void del(t.id); }} armLabel={<Trash2 className="w-3.5 h-3.5" />} armAriaLabel={`Delete ${t.name}`} confirmAriaLabel={`Confirm delete ${t.name}`} className="text-zinc-600 hover:text-rose-400" />
             </li>
           ))}
         </ul>

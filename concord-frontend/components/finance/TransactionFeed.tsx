@@ -6,6 +6,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { BooksPostMenu, type PostedEntry } from '@/components/finance/BooksPostMenu';
 import { indexPostedEntries, type CoaAccount } from '@/components/finance/financeLedgerEntry';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Transaction {
   id: string;
@@ -267,13 +268,13 @@ export function TransactionFeed() {
                   >
                     {t.amount >= 0 ? '+' : '-'}${Math.abs(t.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
-                  <button
-                    onClick={() => remove(t.id)}
+                  <StickyDeleteConfirm
+                    onConfirm={() => remove(t.id)}
+                    armLabel={<Trash2 className="w-3 h-3" />}
+                    armAriaLabel={`Delete transaction ${t.description}`}
+                    confirmAriaLabel={`Confirm delete transaction ${t.description}`}
                     className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"
-                    aria-label="Delete transaction"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  />
                 </div>
                 <BooksPostMenu
                   row={t}

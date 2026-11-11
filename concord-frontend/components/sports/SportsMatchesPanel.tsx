@@ -18,6 +18,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { EmptyState, ErrorState, StatTile } from '@/components/ui';
 import { ds } from '@/lib/design-system';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import {
   badgeForStored,
@@ -469,19 +470,15 @@ export function SportsMatchesPanel() {
                   >
                     {editingId === g.id ? 'Close' : 'Score'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(g.id)}
+                  <StickyDeleteConfirm
+                    onConfirm={() => remove(g.id)}
                     disabled={deleteMut.isPending}
+                    armLabel={deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    armAriaLabel={`Delete match ${g.title}`}
+                    confirmAriaLabel={`Confirm delete match ${g.title}`}
+                    confirmLabel={`Delete ${g.title}?`}
                     className="text-gray-500 hover:text-red-400 p-1"
-                    aria-label="Delete match"
-                  >
-                    {deleteMut.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </button>
+                  />
                 </div>
               </div>
               {editingId === g.id && (

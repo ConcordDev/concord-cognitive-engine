@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Repeat, Loader2, Trash2, Plus, Receipt, Pause, Play } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Period { id: string; amount: number; hoursUsed: number; includedHours: number; overageHours: number; billedAt: string; status: string; invoiceId?: string; invoiceNumber?: string }
 interface Retainer {
@@ -103,7 +104,7 @@ export function RetainerManager() {
                   {r.status === 'active' ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                 </button>
               )}
-              <button onClick={() => del(r.id)} aria-label="Delete" className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void del(r.id); }} armLabel={<Trash2 className="w-3.5 h-3.5" />} armAriaLabel={`Delete retainer ${r.label}`} confirmAriaLabel={`Confirm delete retainer ${r.label}`} className="opacity-0 group-hover:opacity-100 text-rose-400" />
             </div>
             {expanded === r.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800 space-y-1.5">

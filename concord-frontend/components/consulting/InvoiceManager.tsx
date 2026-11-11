@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileText, Loader2, Trash2, Check, Download, Plus } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface LineItem { timeEntryId: string; hours: number; date: string; note: string; rate: number; amount: number }
 interface Invoice {
@@ -141,7 +142,7 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
               {inv.status !== 'paid' && (
                 <button onClick={() => markPaid(inv.id)} aria-label="Mark paid" className="text-zinc-400 hover:text-emerald-400"><Check className="w-3.5 h-3.5" /></button>
               )}
-              <button onClick={() => del(inv.id)} aria-label="Delete" className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void del(inv.id); }} armLabel={<Trash2 className="w-3.5 h-3.5" />} armAriaLabel={`Delete invoice ${inv.number}`} confirmAriaLabel={`Confirm delete invoice ${inv.number}`} className="opacity-0 group-hover:opacity-100 text-rose-400" />
             </div>
           </li>
         ))}

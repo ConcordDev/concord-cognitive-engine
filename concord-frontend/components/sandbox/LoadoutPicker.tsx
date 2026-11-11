@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { Swords, Save, Trash2, Loader2 } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface WeaponDef { id: string; label: string; baseLight: number; baseHeavy: number; reach: number; armorPierce: number; }
 interface SkillDef { id: string; label: string; element: string; tier: number; }
@@ -193,9 +194,7 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
                 <div className="truncate text-slate-200">{l.name}</div>
                 <div className="text-[9px] text-slate-400">{l.weaponId} · {l.skillId} · {l.lightDamage}/{l.heavyDamage}</div>
               </button>
-              <button onClick={() => remove(l.id)} aria-label="Delete loadout" className="text-slate-400 hover:text-rose-400">
-                <Trash2 className="h-3 w-3" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void remove(l.id); }} armLabel={<Trash2 className="h-3 w-3" />} armAriaLabel={`Delete loadout ${l.name}`} confirmAriaLabel={`Confirm delete loadout ${l.name}`} className="text-slate-400 hover:text-rose-400" />
             </li>
           ))}
         </ul>

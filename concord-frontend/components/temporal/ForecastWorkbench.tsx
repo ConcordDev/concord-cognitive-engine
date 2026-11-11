@@ -23,6 +23,7 @@ import {
   Waves, Gauge, Link2, Trash2, Loader2, BarChart3, GitFork,
 } from 'lucide-react';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface DatasetSummary {
   id: string;
@@ -309,13 +310,13 @@ export function ForecastWorkbench() {
                         {d.count} pts {d.hasTimestamps ? '· dated' : ''}
                       </p>
                     </div>
-                    <button
+                    <StickyDeleteConfirm
+                      onConfirm={() => { void handleDelete(d.id); }}
+                      armLabel={<Trash2 className="h-3.5 w-3.5" />}
+                      armAriaLabel={`Delete dataset ${d.name}`}
+                      confirmAriaLabel={`Confirm delete dataset ${d.name}`}
                       className="shrink-0 text-rose-400 hover:text-rose-300"
-                      onClick={(e) => { e.stopPropagation(); handleDelete(d.id); }}
-                      aria-label="Delete dataset"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    />
                   </div>
                 ))}
               </div>

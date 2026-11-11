@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { ErrorState } from '@/components/common/EmptyState';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   type ArtifactType, type Status, type TradeArtifact,
   STATUS_CONFIG, ELECTRICAL_CERTS, ARTIFACT_TABS,
@@ -546,15 +547,13 @@ export function ElectricalDeskPanel({
                   aria-label="Activate">
                     <Zap className="w-4 h-4 text-neon-cyan" />
                   </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(item.id);
-                    }}
+                  <StickyDeleteConfirm
+                    onConfirm={() => remove(item.id)}
+                    armLabel={<Trash2 className="w-4 h-4 text-red-400" />}
+                    armAriaLabel={`Delete ${d.name || item.title}`}
+                    confirmAriaLabel={`Confirm delete ${d.name || item.title}`}
                     className={ds.btnGhost}
-                  aria-label="Delete">
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                  </button>
+                  />
                 </div>
               </div>
             </motion.div>

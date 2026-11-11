@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Users, Loader2, Trash2, Plus, AlertTriangle } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 
 interface WeekRow { week: string; hours: number; capacity: number; utilizationPct: number; overbooked: boolean }
@@ -175,8 +176,7 @@ export function StaffingPlanner({ engagements }: { engagements: EngagementOption
             {allocations.map(a => (
               <li key={a.id} className="group flex items-center gap-2 text-[11px] text-zinc-300">
                 <span className="flex-1 truncate">{a.consultantName} → {a.engagementName}{engagements.some(e => e.id === a.engagementId) ? '' : ' (deleted engagement)'} · {a.week} · {a.hours}h</span>
-                <button onClick={() => delAllocation(a.id)} aria-label="Remove allocation"
-                  className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <StickyDeleteConfirm onConfirm={() => { void delAllocation(a.id); }} armLabel={<Trash2 className="w-3 h-3" />} armAriaLabel={`Remove allocation ${a.consultantName} ${a.week}`} confirmAriaLabel={`Confirm remove allocation ${a.consultantName} ${a.week}`} className="opacity-0 group-hover:opacity-100 text-rose-400" />
               </li>
             ))}
           </ul>

@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileSignature, Loader2, Trash2, Plus, PenTool } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Section { key: string; prompt: string; content: string }
 interface Signature { signerName: string; signedAt: string; ip: string }
@@ -112,7 +113,7 @@ export function ProposalBuilder() {
                   <PenTool className="w-3 h-3" />Sign
                 </button>
               )}
-              <button onClick={() => del(p.id)} aria-label="Delete" className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void del(p.id); }} armLabel={<Trash2 className="w-3.5 h-3.5" />} armAriaLabel={`Delete proposal ${p.title}`} confirmAriaLabel={`Confirm delete proposal ${p.title}`} className="opacity-0 group-hover:opacity-100 text-rose-400" />
             </div>
             <div className="mt-1.5 h-1 rounded-full bg-zinc-800 overflow-hidden">
               <div className="h-full bg-indigo-500" style={{ width: `${p.completeness}%` }} />
