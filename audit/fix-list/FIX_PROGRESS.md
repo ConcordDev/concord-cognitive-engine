@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 608 | 337 | 0 |
+| medium | 616 | 329 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1034** | **1115** | **2** |
+| **total** | **1042** | **1107** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1739,6 +1739,21 @@ The first click on these rows only arms the confirm. The record stays until Conf
 | FIX-consulting-010 | consulting | medium | FIXED_PENDING_VERIFY | 87d6789a8 |
 | FIX-electrical-006 | electrical | medium | FIXED_PENDING_VERIFY | 87d6789a8 |
 | FIX-finance-007 | finance | medium | FIXED_PENDING_VERIFY | 87d6789a8 |
+
+## Mediums — the screen shows the value it measured
+
+A 12 AWG ampacity line shows 25A, the ampacity of that gauge. ISS speed is the live km/h reading divided by 3600, and 51.6° is labeled as the catalog orbit because the live feed does not send inclination. Stress and error rate show the measured percent, so a high number says elevated stress or that errors were detected. A ledger row you paid, including a stake escrow, shows as a debit. A long unbroken timeline post wraps inside the card. The agenda title uses the same weight as the day row, so it stays readable beside the description. Switching expedition worlds clears the previous world's stages and the heading is the world you selected. Inbox rows and the conversation header use the display name the server resolved.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-electrical-001 | electrical | medium | FIXED_PENDING_VERIFY | b376d6dad |
+| FIX-space-001 | space | medium | FIXED_PENDING_VERIFY | b376d6dad |
+| FIX-tick-001 | tick | medium | FIXED_PENDING_VERIFY | b376d6dad |
+| FIX-wallet-004 | wallet | medium | FIXED_PENDING_VERIFY | b376d6dad |
+| FIX-timeline-003 | timeline | medium | FIXED_PENDING_VERIFY | b376d6dad |
+| FIX-calendar-004 | calendar | medium | FIXED_PENDING_VERIFY | b376d6dad |
+| FIX-expedition-journal-002 | expedition-journal | medium | FIXED_PENDING_VERIFY | b376d6dad |
+| FIX-social-016 | social | medium | FIXED_PENDING_VERIFY | b376d6dad |
 
 ## NEEDS_PRODUCT_SURFACE
 
