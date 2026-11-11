@@ -14,6 +14,10 @@ export function PopulationsPanel({ worldId }: { worldId: string }) {
   const [pickA, setPickA] = useState<Population | null>(null);
   const [pickB, setPickB] = useState<Population | null>(null);
   const [breeding, setBreeding] = useState(false);
+  const [publishSpecies, setPublishSpecies] = useState('');
+  const [publishName, setPublishName] = useState('');
+  const [publishNote, setPublishNote] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
   const [breedResult, setBreedResult] = useState<BreedResult | null>(null);
   const [affect, setAffect] = useState<{ histogram: Record<string, number>; recent: Array<{ species_id?: string; dominant_drive?: string; reason?: string; v?: number }>; total: number } | null>(null);
 
@@ -42,6 +46,36 @@ export function PopulationsPanel({ worldId }: { worldId: string }) {
   }, [worldId]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  const publishCreature = async () => {
+    const speciesId = publishSpecies.trim();
+    if (!speciesId) {
+      setPublishNote('A species id is required.');
+      return;
+    }
+    setPublishing(true);
+    setPublishNote(null);
+    try {
+      const r = await lensRun('creatures', 'creature-publish', {
+        speciesId,
+        name: publishName.trim() || undefined,
+        worldId,
+      });
+      if (r.data?.ok === false || (r.data?.result as { ok?: boolean } | null)?.ok === false) {
+        const reason = r.data?.error || (r.data?.result as { error?: string } | null)?.error || 'publish failed';
+        setPublishNote(String(reason));
+        return;
+      }
+      setPublishNote(`Published ${publishName.trim() || speciesId}. The roster refreshes from this world.`);
+      setPublishSpecies('');
+      setPublishName('');
+      await refresh();
+    } catch (e) {
+      setPublishNote(e instanceof Error ? e.message : 'publish failed');
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   const breed = async () => {
     if (!pickA || !pickB) return;
@@ -148,8 +182,30 @@ export function PopulationsPanel({ worldId }: { worldId: string }) {
         )}
       </section>
 
+      <section id="crossbreeding-pen" aria-label="Crossbreeding pen" className="rounded-lg border border-violet-500/40 bg-zinc-900/50 p-3">
+        <h3 className="mb-2 text-sm font-semibold text-violet-200">Crossbreeding pen</h3>
+        {!(pickA && pickB) && (
+          <p className="text-xs text-zinc-400">
+            {pops.length === 0
+              ? 'The pen is empty. Publish a creature below, or wait until this world has two populations to cross.'
+              : 'Pick two populations above. The cross stays closed until both are selected.'}
+          </p>
+        )}
+        <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <input value={publishSpecies} onChange={(e) => setPublishSpecies(e.target.value)} placeholder="Species id" aria-label="Species id"
+            className="min-h-11 rounded border border-zinc-700 bg-zinc-950 px-2 text-xs text-zinc-100" />
+          <input value={publishName} onChange={(e) => setPublishName(e.target.value)} placeholder="Name (optional)" aria-label="Creature name"
+            className="min-h-11 rounded border border-zinc-700 bg-zinc-950 px-2 text-xs text-zinc-100" />
+          <button type="button" onClick={() => void publishCreature()} disabled={publishing}
+            className="min-h-11 rounded bg-violet-500/30 px-3 text-xs text-violet-100 hover:bg-violet-500/50 disabled:opacity-50">
+            {publishing ? 'Publishing…' : 'Publish creature'}
+          </button>
+        </div>
+        {publishNote && <p className="mt-2 text-xs text-zinc-300" role="status">{publishNote}</p>}
+      </section>
+
       {pickA && pickB && (
-        <section aria-label="Crossbreeding pen" className="rounded-lg border border-violet-500/40 bg-zinc-900/50 p-3">
+        <section aria-label="Cross pair" className="rounded-lg border border-violet-500/40 bg-zinc-900/50 p-3">
           <h3 className="mb-2 text-sm font-semibold text-violet-200">Cross: {pickA.species_id} × {pickB.species_id}</h3>
           {pickA.biome === pickB.biome && (
             <p className="mb-2 text-[11px] text-emerald-300/80">Same biome ({pickA.biome}) — crossbreeding bonus applies.</p>
