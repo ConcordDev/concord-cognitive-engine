@@ -272,10 +272,10 @@ export function FirehosePanel() {
 
   const toggleCategory = (cat: string) => {
     setActiveCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat);
-      else next.add(cat);
-      return next;
+      const all = new Set([...Object.keys(CHANNEL_CATEGORIES), 'Other']);
+      const onlyThis = prev.size === 1 && prev.has(cat);
+      if (onlyThis) return all;
+      return new Set([cat]);
     });
   };
 

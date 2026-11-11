@@ -111,6 +111,14 @@ describe('event-timeline flows', () => {
     if (box) { fireEvent.change(box, { target: { value: 'sale' } }); fireEvent.keyDown(box, { key: 'Enter' }); }
     await press(/Search/i);
     await press(/Pause/i); await press(/Play|Resume/i);
+    const rowList = () => document.querySelector('ul')?.textContent || '';
+    await press(/^Combat$/);
+    expect(screen.getByText('1 event')).toBeTruthy();
+    expect(rowList()).toContain('combat:hit');
+    expect(rowList()).not.toContain('economy:sale');
+    await press(/^Combat$/);
+    expect(screen.getByText('3 events')).toBeTruthy();
+    expect(rowList()).toContain('world:weather');
     await press(/Combat|Economy|World/i);
     await press(/combat:hit/);
     await press(/detail-panel/);
