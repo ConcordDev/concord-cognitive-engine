@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 48 | 3 |
-| medium | 560 | 385 | 0 |
+| medium | 561 | 384 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **986** | **1162** | **3** |
+| **total** | **987** | **1161** | **3** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1625,6 +1625,15 @@ When CoinGecko is down, Markets says the live feed is unavailable and offers Ret
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
 | FIX-staking-008 | staking | medium | FIXED_PENDING_VERIFY | 0fa0929d8 |
+
+
+## Mediums — the next workout
+
+Next workout shows the answer the agent returned. When that answer is missing, the panel shows the reason.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-fitness-016 | fitness | medium | FIXED_PENDING_VERIFY | 07da7d7be |
 
 ## NEEDS_PRODUCT_SURFACE
 
