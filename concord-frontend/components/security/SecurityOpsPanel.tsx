@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { motion } from 'framer-motion';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -225,7 +225,9 @@ function getStatusesForTab(tab: ModeTab): string[] {
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-export function SecurityOpsPanel() {
+let seenCaseNonce = 0;
+
+export function SecurityOpsPanel({ openCaseNonce = 0 }: { openCaseNonce?: number }) {
   const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
@@ -282,6 +284,18 @@ export function SecurityOpsPanel() {
     setFormData({});
     setShowEditor(true);
   };
+
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  useEffect(() => {
+    if (openCaseNonce <= seenCaseNonce) return;
+    seenCaseNonce = openCaseNonce;
+    setEditingId(null);
+    setFormTitle('');
+    setFormStatus(getStatusesForTab(modeRef.current)[0] || 'active');
+    setFormData({});
+    setShowEditor(true);
+  }, [openCaseNonce]);
 
   const openEdit = (item: LensItem<ArtifactDataUnion>) => {
     setEditingId(item.id);

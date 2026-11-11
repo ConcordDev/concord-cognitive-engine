@@ -680,8 +680,7 @@ function LiveStream({ eventNames }: { eventNames: string[] }) {
                 <span className="text-amber-300 font-semibold">{e.name}</span>
                 <span className="text-zinc-400">{e.distinctId}</span>
                 <span className="text-zinc-600 ml-auto">{new Date(e.at).toLocaleTimeString()}</span>
-                <button type="button" onClick={() => void remove(e.id)} aria-label="Delete event"
-                  className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
+                <StickyDeleteConfirm onConfirm={() => void remove(e.id)} armAriaLabel={`Delete event ${e.name}`} confirmAriaLabel={`Confirm delete event ${e.name}`} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded" armLabel={<Trash2 className="w-3 h-3" />} />
               </div>
               {Object.keys(e.properties || {}).length > 0 && (
                 <div className="text-zinc-400 mt-0.5 truncate">

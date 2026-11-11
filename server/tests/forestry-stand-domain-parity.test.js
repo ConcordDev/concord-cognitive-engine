@@ -34,6 +34,17 @@ describe("forestry.stand management", () => {
     assert.equal(call("stand-add", ctxA, {}).ok, false);
     assert.equal(call("stand-add", ctxA, { name: "X", species: "weird" }).result.stand.species, "mixed");
   });
+  it("stand-update renames a stand and changes acres and species", () => {
+    const st = call("stand-add", ctxA, { name: "S", species: "oak", acres: 10, treesPerAcre: 100 }).result.stand;
+    const upd = call("stand-update", ctxA, { id: st.id, name: "South ridge", species: "maple", acres: 12, treesPerAcre: 80 });
+    assert.equal(upd.ok, true);
+    assert.equal(upd.result.stand.name, "South ridge");
+    assert.equal(upd.result.stand.species, "maple");
+    assert.equal(upd.result.stand.acres, 12);
+    assert.equal(upd.result.stand.treesPerAcre, 80);
+    assert.equal(call("stand-update", ctxA, { id: st.id, name: "  " }).ok, false);
+    assert.equal(call("stand-update", ctxB, { id: st.id, name: "Stolen" }).ok, false);
+  });
   it("logs activities and deletes a stand", () => {
     const st = call("stand-add", ctxA, { name: "S" }).result.stand;
     call("activity-log", ctxA, { standId: st.id, kind: "thinning", notes: "removed 20%" });

@@ -23,8 +23,9 @@
  */
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Search, UserPlus, Check, Loader2 } from 'lucide-react';
+import { Search, UserPlus, Check, Loader2, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export interface LandscapingClientRecord {
   id: string;
@@ -45,6 +46,8 @@ interface ClientAutocompleteProps {
   clientId: string | null;
   onSelect: (client: LandscapingClientRecord | null, text: string) => void;
   onCreated?: (client: LandscapingClientRecord) => void;
+  onUpdated?: (client: LandscapingClientRecord) => void;
+  onDeleted?: (id: string) => void;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
@@ -54,11 +57,15 @@ const inputCls =
   'w-full rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500/40';
 
 export function ClientAutocomplete({
-  clients, value, clientId, onSelect, onCreated, placeholder = 'Client name', className, disabled,
+  clients, value, clientId, onSelect, onCreated, onUpdated, onDeleted, placeholder = 'Client name', className, disabled,
 }: ClientAutocompleteProps) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ name: '', phone: '', email: '', address: '' });
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
+  const [rowErr, setRowErr] = useState<string | null>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
   const listboxId = useId();
   const optionId = (idx: number) => `${listboxId}-opt-${idx}`;
@@ -86,6 +93,47 @@ export function ClientAutocomplete({
   const pick = (client: LandscapingClientRecord) => {
     onSelect(client, client.name);
     setOpen(false);
+  };
+
+  const saveClient = async (id: string) => {
+    if (!draft.name.trim()) { setRowErr('Client name is required.'); return; }
+    setRowBusy(id);
+    setRowErr(null);
+    try {
+      const { data } = await lensRun<{ client: LandscapingClientRecord }>('landscaping', 'client-update', {
+        id,
+        name: draft.name.trim(),
+        phone: draft.phone.trim(),
+        email: draft.email.trim(),
+        address: draft.address.trim(),
+      });
+      if (data.ok && data.result?.client) {
+        onUpdated?.(data.result.client);
+        if (clientId === id) onSelect(data.result.client, data.result.client.name);
+        setEditingId(null);
+      } else {
+        setRowErr(data.error || 'Could not save that client.');
+      }
+    } finally {
+      setRowBusy(null);
+    }
+  };
+
+  const deleteClient = async (id: string) => {
+    setRowBusy(id);
+    setRowErr(null);
+    try {
+      const { data } = await lensRun('landscaping', 'client-delete', { id });
+      if (data.ok) {
+        onDeleted?.(id);
+        if (clientId === id) onSelect(null, '');
+        setEditingId(null);
+      } else {
+        setRowErr(data.error || 'Could not delete that client.');
+      }
+    } finally {
+      setRowBusy(null);
+    }
   };
 
   const createInline = async () => {
@@ -155,24 +203,54 @@ export function ClientAutocomplete({
       {open && (matches.length > 0 || canCreate) && (
         <div id={listboxId} role="listbox" className="absolute z-30 mt-1 max-h-64 w-full min-w-[240px] overflow-auto rounded-md border border-zinc-800 bg-zinc-950 py-1 shadow-xl">
           {matches.map((c, idx) => (
-            <button
+            <div
               key={c.id}
               id={optionId(idx)}
               role="option"
               aria-selected={idx === highlight}
-              type="button"
-              onClick={() => pick(c)}
+              onClick={() => { if (editingId !== c.id) pick(c); }}
               onMouseEnter={() => setHighlight(idx)}
               className={`flex w-full flex-col items-start gap-0.5 px-2.5 py-1.5 text-left text-xs ${
                 idx === highlight ? 'bg-emerald-500/15 text-emerald-100' : 'text-zinc-300 hover:bg-zinc-900'
               }`}
             >
-              <span className="font-medium text-white">{c.name}</span>
+              <div className="flex w-full items-center gap-1">
+                <span className="font-medium text-white">{c.name}</span>
+                <span className="ml-auto inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <button type="button" aria-label={`Edit ${c.name}`}
+                    onClick={() => {
+                      setEditingId(c.id);
+                      setDraft({ name: c.name, phone: c.phone || '', email: c.email || '', address: c.address || '' });
+                      setRowErr(null);
+                    }}
+                    className="rounded p-0.5 text-zinc-400 hover:bg-zinc-800 hover:text-emerald-200">
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <StickyDeleteConfirm onConfirm={() => void deleteClient(c.id)} disabled={rowBusy === c.id}
+                    armAriaLabel={`Delete ${c.name}`} confirmAriaLabel={`Confirm delete ${c.name}`}
+                    className="p-0.5 text-zinc-400 hover:text-rose-300" armLabel={<span className="text-[10px]">Delete</span>} />
+                </span>
+              </div>
               <span className="text-[10px] text-zinc-500">
                 {[c.phone, c.email, c.address].filter(Boolean).join(' · ') || 'No contact info yet'}
                 {typeof c.jobsCount === 'number' && c.jobsCount > 0 ? ` · ${c.jobsCount} job${c.jobsCount === 1 ? '' : 's'}` : ''}
               </span>
-            </button>
+              {editingId === c.id && (
+                <div className="mt-1 grid w-full grid-cols-2 gap-1" onClick={(e) => e.stopPropagation()}>
+                  <input aria-label="Client name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className={inputCls} />
+                  <input aria-label="Phone" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} placeholder="Phone" className={inputCls} />
+                  <input aria-label="Email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} placeholder="Email" className={inputCls} />
+                  <input aria-label="Address" value={draft.address} onChange={(e) => setDraft({ ...draft, address: e.target.value })} placeholder="Address" className={inputCls} />
+                  {rowErr && <p className="col-span-2 text-[10px] text-rose-300">{rowErr}</p>}
+                  <div className="col-span-2 flex gap-1">
+                    <button type="button" onClick={() => void saveClient(c.id)} disabled={rowBusy === c.id}
+                      className="rounded bg-emerald-600 px-2 py-1 text-[11px] text-white">Save</button>
+                    <button type="button" onClick={() => setEditingId(null)}
+                      className="rounded bg-zinc-800 px-2 py-1 text-[11px] text-zinc-300">Cancel</button>
+                  </div>
+                </div>
+              )}
+            </div>
           ))}
           {canCreate && (
             <button

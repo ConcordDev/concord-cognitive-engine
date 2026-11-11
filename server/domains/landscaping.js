@@ -1261,6 +1261,36 @@ export default function registerLandscapingActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  registerLensAction("landscaping", "client-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const client = lsClients(s, lsActor(ctx)).find((c) => c.id === params.id);
+      if (!client) return { ok: false, error: "client not found" };
+      if (params.name != null) {
+        const name = lsClean(params.name, 80);
+        if (!name) return { ok: false, error: "name required" };
+        client.name = name;
+      }
+      if (params.phone != null) client.phone = lsClean(params.phone, 40);
+      if (params.email != null) client.email = lsClean(params.email, 120);
+      if (params.address != null) client.address = lsClean(params.address, 200);
+      saveLand();
+      return { ok: true, result: { client } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("landscaping", "client-delete", (ctx, _a, params = {}) => {
+    try {
+      const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const arr = lsClients(s, lsActor(ctx));
+      const i = arr.findIndex((c) => c.id === params.id);
+      if (i < 0) return { ok: false, error: "client not found" };
+      arr.splice(i, 1);
+      saveLand();
+      return { ok: true, result: { deleted: params.id } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
   // ─── Feature 12 — Job inspections ────────────────────────────────────
   // Closes the "Inspections" gap (docs/lens-specs/landscaping-capability-
   // map.md — "no macro, no table — nothing in the domain models a

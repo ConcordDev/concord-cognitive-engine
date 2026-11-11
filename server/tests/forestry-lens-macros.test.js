@@ -57,7 +57,7 @@ beforeEach(() => {
 
 const CALCULATORS = ["timberVolume", "fireRisk", "harvestPlan", "carbonSequestration"];
 const STATE_MACROS = [
-  "stand-add", "stand-list", "stand-delete", "activity-log", "forestry-dashboard",
+  "stand-add", "stand-list", "stand-update", "stand-delete", "activity-log", "forestry-dashboard",
   "growth-projection",
   "stand-polygon-save", "stand-polygon-list", "stand-polygon-delete",
   "cruise-plot-add", "cruise-plot-list", "cruise-plot-delete", "cruise-summary",

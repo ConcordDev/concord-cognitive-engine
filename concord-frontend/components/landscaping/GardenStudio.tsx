@@ -1134,6 +1134,16 @@ function ProposalBuilder({ onConverted }: { onConverted?: (invoiceNumber: string
   const handleClientCreated = (c: LandscapingClientRecord) => {
     setClients((cs) => (cs.some((existing) => existing.id === c.id) ? cs : [...cs, c]));
   };
+  const handleClientUpdated = (c: LandscapingClientRecord) => {
+    setClients((cs) => cs.map((existing) => (existing.id === c.id ? { ...existing, ...c } : existing)));
+  };
+  const handleClientDeleted = (id: string) => {
+    setClients((cs) => cs.filter((existing) => existing.id !== id));
+    if (clientId === id) {
+      setClientId(null);
+      setClient('');
+    }
+  };
 
   const setItem = (i: number, patch: Partial<LineItem>) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
@@ -1221,6 +1231,8 @@ function ProposalBuilder({ onConverted }: { onConverted?: (invoiceNumber: string
           clientId={clientId}
           onSelect={selectClient}
           onCreated={handleClientCreated}
+          onUpdated={handleClientUpdated}
+          onDeleted={handleClientDeleted}
           placeholder="Client name"
         />
         <input

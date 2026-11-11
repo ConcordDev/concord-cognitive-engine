@@ -53,6 +53,7 @@ export default function SecurityLensPage() {
     useRealtimeLens('security');
   const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<SecurityView>('soc');
+  const [caseNonce, setCaseNonce] = useState(0);
 
   useLensCommand(
     VIEWS.map((v) => ({
@@ -102,12 +103,14 @@ export default function SecurityLensPage() {
         activeTab={active}
         onTab={(id) => setActive(id as SecurityView)}
         tabsLabel="Security views"
-        cta={{ label: 'Open a case', icon: Plus, onClick: () => setActive('ops') }}
+        cta={{ label: 'Open a case', icon: Plus, onClick: () => { setActive('ops'); setCaseNonce((n) => n + 1); } }}
       >
         <div id="security-skip">
           <AnimatePresence mode="wait">
             <motion.div key={active} {...motionProps} className="pt-4">
-              <Panel />
+              {active === 'ops'
+                ? <SecurityOpsPanel openCaseNonce={caseNonce} />
+                : <Panel />}
             </motion.div>
           </AnimatePresence>
         </div>

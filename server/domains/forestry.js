@@ -385,6 +385,28 @@ export default function registerForestryActions(registerLensAction) {
     return { ok: true, result: { stands, count: stands.length, totalAcres: stands.reduce((n, st) => n + st.acres, 0) } };
   });
 
+  registerLensAction("forestry", "stand-update", (ctx, _a, params = {}) => {
+    const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const stand = frResolveStand(s, frActor(ctx), params.id || params.standId);
+    if (!stand) return { ok: false, error: "stand not found" };
+    if (params.name != null) {
+      const rawName = String(params.name).trim();
+      if (!rawName) return { ok: false, error: "stand name required", message: "Stand name is required." };
+      if (rawName.length > 160) return badNumber("name", "must be 160 characters or fewer");
+      stand.name = rawName;
+    }
+    if (params.species != null && SPECIES.includes(params.species)) stand.species = params.species;
+    if (params.acres != null && params.acres !== "") {
+      const acres = readingOrNull(params.acres, { min: 0, max: 1_000_000, fallback: null });
+      if (acres === null) return badNumber("acres", "must be a number from 0 to 1000000");
+      stand.acres = acres;
+    }
+    if (params.treesPerAcre != null && params.treesPerAcre !== "") stand.treesPerAcre = Math.max(0, Math.round(frNum(params.treesPerAcre)));
+    if (params.ageYears != null && params.ageYears !== "") stand.ageYears = Math.max(0, Math.round(frNum(params.ageYears)));
+    saveForestry();
+    return { ok: true, result: { stand } };
+  });
+
   registerLensAction("forestry", "stand-delete", (ctx, _a, params = {}) => {
     const s = getForestryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const arr = frStands(s, frActor(ctx));
