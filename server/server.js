@@ -20887,8 +20887,36 @@ function addToSRS(dtuId) {
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
 
+  if (SRS.cards.has(dtuId)) {
+    const card = SRS.cards.get(dtuId);
+    return {
+      ok: true,
+      already: true,
+      dtuId,
+      nextReview: card.nextReview,
+      message: "Already scheduled",
+    };
+  }
   getSRSCard(dtuId); // Initialize if not exists
-  return { ok: true, dtuId, message: "Added to SRS" };
+  const created = SRS.cards.get(dtuId);
+  return { ok: true, dtuId, nextReview: created?.nextReview, message: "Added to SRS" };
+}
+
+function listScheduledSRS() {
+  const now = new Date().toISOString();
+  const items = [];
+  for (const [dtuId, card] of SRS.cards) {
+    const dtu = STATE.dtus.get(dtuId);
+    if (!dtu) continue;
+    items.push({
+      dtuId,
+      title: dtu.title || dtu.human?.title || dtuId,
+      nextReview: card.nextReview,
+      due: String(card.nextReview || "") <= now,
+    });
+  }
+  items.sort((a, b) => String(a.nextReview).localeCompare(String(b.nextReview)));
+  return { ok: true, items, total: items.length };
 }
 
 function removeFromSRS(dtuId) {
@@ -61926,6 +61954,10 @@ app.post("/api/ai/chat", asyncHandler(async (req, res) => {
 app.get("/api/srs/due", (req, res) => {
   const result = getDueCards(Number(req.query.limit || 20));
   res.json(result);
+});
+
+app.get("/api/srs/scheduled", (_req, res) => {
+  res.json(listScheduledSRS());
 });
 
 app.post("/api/srs/:dtuId/add", (req, res) => {

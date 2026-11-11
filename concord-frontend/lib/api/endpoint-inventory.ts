@@ -246,6 +246,7 @@ export const ENDPOINT_INVENTORY: EndpointEntry[] = [
 
   // SRS
   { method: 'GET', path: '/api/srs/due', usedBy: ['srs'], helperKey: 'srs.due' },
+  { method: 'GET', path: '/api/srs/scheduled', usedBy: ['srs'], helperKey: 'srs.scheduled' },
   { method: 'POST', path: '/api/srs/:id/add', usedBy: ['srs'], helperKey: 'srs.add' },
   { method: 'POST', path: '/api/srs/:id/review', usedBy: ['srs'], helperKey: 'srs.review' },
   { method: 'DELETE', path: '/api/srs/:id', usedBy: ['srs'], helperKey: 'srs.remove' },

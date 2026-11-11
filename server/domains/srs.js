@@ -902,6 +902,18 @@ export default function registerSrsActions(registerLensAction) {
       if (!q) return { ok: false, error: "filter query required (e.g. tag:hard, is:due)" };
       deck.filterQuery = q;
     }
+    if (params.options && Object.prototype.hasOwnProperty.call(params.options, "learningSteps")) {
+      const raw = params.options.learningSteps;
+      if (!Array.isArray(raw) || raw.length === 0 || raw.length > 8) {
+        return { ok: false, error: "Learning steps must be 1 to 8 positive minutes, like 1 10." };
+      }
+      for (const step of raw) {
+        const text = String(step).trim();
+        if (!/^\d+(\.\d+)?$/.test(text) || !(Number(text) > 0)) {
+          return { ok: false, error: `"${text || step}" is not a number of minutes. Use steps like 1 10.` };
+        }
+      }
+    }
     deck.options = normaliseOptions({ ...(deck.options || {}), ...(params.options || {}) });
     saveSrs();
     return { ok: true, result: { deckId: deck.id, name: deck.name, filterQuery: deck.filterQuery || null, options: deck.options } };

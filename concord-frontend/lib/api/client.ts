@@ -1736,6 +1736,7 @@ export const apiHelpers = {
   // Spaced repetition (SRS)
   srs: {
     due: () => api.get('/api/srs/due'),
+    scheduled: () => api.get('/api/srs/scheduled'),
     add: (dtuId: string) => api.post(`/api/srs/${dtuId}/add`, {}),
     review: (dtuId: string, data: { quality: number }) =>
       api.post(`/api/srs/${dtuId}/review`, data),
