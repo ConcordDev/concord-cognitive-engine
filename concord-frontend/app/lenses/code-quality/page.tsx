@@ -146,6 +146,17 @@ export default function CodeQualityLensPage() {
     void Promise.resolve().then(loadDetectors);
   }, []);
 
+  // The last analyze lives on the server. Put it back after a reload.
+  useEffect(() => {
+    let cancelled = false;
+    postLensRun<{ latest?: CQScan | null }>('code-quality', 'trend', {})
+      .then((result) => {
+        if (!cancelled && result?.latest) setScan(result.latest);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   const severityRank = (s: Severity) => SEVERITIES.indexOf(s);
   const visible = useMemo(() => {
     const minRank = severityRank(minSeverity);

@@ -607,11 +607,15 @@ export default function registerCodeQualityActions(registerLensAction) {
       for (const f of files) {
         const content = String(f.content ?? f.source ?? "");
         if (!content) continue;
-        fileReports.push(analyzeFile({
-          file: f.path || f.file || "untitled",
+        fileReports.push({
+          ...analyzeFile({
+            file: f.path || f.file || "untitled",
+            source: content,
+            language: f.language,
+          }),
+          // Kept so a reload can put the same source back in the editor.
           source: content,
-          language: f.language,
-        }));
+        });
       }
       if (!fileReports.length) return { ok: false, error: "all_files_empty" };
 
@@ -742,7 +746,12 @@ export default function registerCodeQualityActions(registerLensAction) {
       }
       return {
         ok: true,
-        result: { points, scanCount: scans.length, delta },
+        result: {
+          points,
+          scanCount: scans.length,
+          delta,
+          latest: scans.length ? scans[scans.length - 1] : null,
+        },
       };
     } catch (e) {
       return { ok: false, error: `trend_failed: ${e.message}` };
