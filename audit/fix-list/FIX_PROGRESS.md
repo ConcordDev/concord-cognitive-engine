@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 601 | 344 | 0 |
+| medium | 608 | 337 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1027** | **1122** | **2** |
+| **total** | **1034** | **1115** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1725,6 +1725,20 @@ A scene location longer than 120 characters is refused and the scene keeps its o
 | FIX-forge-004 | forge | medium | FIXED_PENDING_VERIFY | 1add00938 |
 | FIX-alliance-001 | alliance | medium | FIXED_PENDING_VERIFY | 1add00938 |
 | FIX-aviation-003 | aviation | medium | FIXED_PENDING_VERIFY | 1add00938 |
+
+## Mediums — delete asks first
+
+The first click on these rows only arms the confirm. The record stays until Confirm. A forecast dataset row click does not delete the dataset. Consulting still has no void or credit note. The electrical job list can still lag one reload after a confirmed delete; that lag was not changed.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-temporal-002 | temporal | medium | FIXED_PENDING_VERIFY | 87d6789a8 |
+| FIX-sandbox-003 | sandbox | medium | FIXED_PENDING_VERIFY | 87d6789a8 |
+| FIX-astronomy-002 | astronomy | medium | FIXED_PENDING_VERIFY | 87d6789a8 |
+| FIX-sports-001 | sports | medium | FIXED_PENDING_VERIFY | 87d6789a8 |
+| FIX-consulting-010 | consulting | medium | FIXED_PENDING_VERIFY | 87d6789a8 |
+| FIX-electrical-006 | electrical | medium | FIXED_PENDING_VERIFY | 87d6789a8 |
+| FIX-finance-007 | finance | medium | FIXED_PENDING_VERIFY | 87d6789a8 |
 
 ## NEEDS_PRODUCT_SURFACE
 
