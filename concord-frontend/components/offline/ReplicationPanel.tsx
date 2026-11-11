@@ -116,9 +116,11 @@ function summarizeFilter(f: SavedFilter): string {
 export function ReplicationPanel({
   onConflicts,
   onStateChange,
+  onReady,
 }: {
   onConflicts: (c: PushResult['conflicts']) => void;
   onStateChange?: () => void;
+  onReady?: (api: { syncBoth: () => Promise<void> }) => void;
 }) {
   const [docs, setDocs] = useState<LocalDoc[]>([]);
   const [serverStatus, setServerStatus] = useState<StatusResult | null>(null);
@@ -308,6 +310,10 @@ export function ReplicationPanel({
     await push();
     await pull();
   }, [push, pull]);
+
+  useEffect(() => {
+    onReady?.({ syncBoth });
+  }, [onReady, syncBoth]);
 
   // Continuous replication — PouchDB-style live changes feed on a poll loop.
   useEffect(() => {
