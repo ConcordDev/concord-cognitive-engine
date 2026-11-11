@@ -8,11 +8,11 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
-| high | 170 | 48 | 3 |
-| medium | 561 | 384 | 0 |
+| high | 170 | 49 | 2 |
+| medium | 564 | 381 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **987** | **1161** | **3** |
+| **total** | **990** | **1159** | **2** |
 
 "Closed another way" is NOT_REPRODUCED / RETRACTED / SUPERSEDED / REVERIFIED_OK (FIX-automotive-001, FIX-hvac-002, and one other high follow-up). Two of the 40 pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1634,6 +1634,17 @@ Next workout shows the answer the agent returned. When that answer is missing, t
 | Ticket | Lens | Severity | Status | Commit |
 |---|---|---|---|---|
 | FIX-fitness-016 | fitness | medium | FIXED_PENDING_VERIFY | 07da7d7be |
+
+
+## Mediums — tabs and tap targets
+
+Quest tabs keep the full word, including Available, and the row scrolls sideways. Refresh, share, claim, export, and the lens tools menu are at least 44px on a phone. Codex search, resolve, lineage view, population rows, and breed are at least 44px.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-creatures-011 | creatures | medium | FIXED_PENDING_VERIFY | 4fe37407c |
+| FIX-quests-007 | quests | medium | FIXED_PENDING_VERIFY | 4fe37407c |
+| FIX-quests-008 | quests | medium | FIXED_PENDING_VERIFY | 4fe37407c |
 
 ## NEEDS_PRODUCT_SURFACE
 
