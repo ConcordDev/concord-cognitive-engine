@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 587 | 358 | 0 |
+| medium | 593 | 352 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1013** | **1136** | **2** |
+| **total** | **1019** | **1130** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1697,6 +1697,19 @@ Rating a due card shows the next card that is still due. The session says all ca
 | FIX-srs-001 | srs | medium | FIXED_PENDING_VERIFY | 9405332a2 |
 | FIX-srs-004 | srs | medium | FIXED_PENDING_VERIFY | 9405332a2 |
 | FIX-srs-002 | srs | medium | FIXED_PENDING_VERIFY | 9405332a2 |
+
+## Mediums — a count matches the records behind it
+
+Overview recurring donors include people with an active pledge. Harvest progress stays at 0% while the only lot is still planned, and the farm field count is the Fields list. While those lists are still loading the desk says Loading instead of 0. A dream composed at 02:22 UTC groups on the previous evening in US time, the same evening the card shows. An estranged courtship at 93% offers Propose. Below that line it says affinity has to reach the engage percent before you can propose again. A widowed courtship does not offer Propose. Wave energy for a 1 m significant height is about 1257 J/m².
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-nonprofit-003 | nonprofit | medium | FIXED_PENDING_VERIFY | 899e2b000 |
+| FIX-agriculture-002 | agriculture | medium | FIXED_PENDING_VERIFY | 899e2b000 |
+| FIX-dreams-009 | dreams | medium | FIXED_PENDING_VERIFY | 899e2b000 |
+| FIX-courtship-002 | courtship | medium | FIXED_PENDING_VERIFY | 899e2b000 |
+| FIX-courtship-006 | courtship | medium | FIXED_PENDING_VERIFY | 899e2b000 |
+| FIX-ocean-001 | ocean | medium | FIXED_PENDING_VERIFY | 899e2b000 |
 
 ## NEEDS_PRODUCT_SURFACE
 
