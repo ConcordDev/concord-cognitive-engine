@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 666 | 279 | 0 |
+| medium | 668 | 277 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1092** | **1057** | **2** |
+| **total** | **1094** | **1055** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1895,6 +1895,15 @@ Watchlist remove asks before the search is deleted. A weld photo has to be an ht
 | FIX-worldmodel-002 | worldmodel | medium | FIXED_PENDING_VERIFY | 12de88a84 |
 | FIX-aviation-006 | aviation | medium | FIXED_PENDING_VERIFY | 12de88a84 |
 | FIX-classroom-004 | classroom | medium | FIXED_PENDING_VERIFY | 12de88a84 |
+
+## Mediums — edit a task from the list and a pipeline item from its card
+
+Edit on a task opens the title, date, and priority form that was already on the task detail. Edit on a pipeline card changes the title, format, and date, and Save writes them.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-productivity-005 | productivity | medium | FIXED_PENDING_VERIFY | 0e9a7ce64 |
+| FIX-creator-001 | creator | medium | FIXED_PENDING_VERIFY | 0e9a7ce64 |
 
 ## NEEDS_PRODUCT_SURFACE
 
