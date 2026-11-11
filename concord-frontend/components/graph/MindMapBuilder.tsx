@@ -166,6 +166,7 @@ export function MindMapBuilder() {
   const [active, setActive] = useState<GMap | null>(null);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [newMap, setNewMap] = useState('');
   const [addParent, setAddParent] = useState<Record<string, string>>({});
   const [linkFrom, setLinkFrom] = useState('');
@@ -195,13 +196,24 @@ export function MindMapBuilder() {
   const [dashboard, setDashboard] = useState<{ maps: number; totalNodes: number; totalEdges: number } | null>(null);
 
   const refresh = useCallback(async () => {
-    const [l, d] = await Promise.all([
-      lensRun('graph', 'map-list', {}),
-      lensRun('graph', 'graph-dashboard', {}),
-    ]);
-    setMaps((l.data?.result?.maps as MapMeta[]) || []);
-    if (d.data?.ok) setDashboard(d.data.result as { maps: number; totalNodes: number; totalEdges: number });
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const [l, d] = await Promise.all([
+        lensRun('graph', 'map-list', {}),
+        lensRun('graph', 'graph-dashboard', {}),
+      ]);
+      if (l.data?.ok === false) {
+        setLoadError(l.data.error || 'Could not load mind maps.');
+        setMaps([]);
+      } else {
+        setMaps((l.data?.result?.maps as MapMeta[]) || []);
+      }
+      if (d.data?.ok) setDashboard(d.data.result as { maps: number; totalNodes: number; totalEdges: number });
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Could not load mind maps.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -335,7 +347,7 @@ export function MindMapBuilder() {
     await reload(); await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /> <span className="sr-only">Loading mind maps</span></div>;
 
   // children of a node (tree rendering via edges)
   const findPath = async () => {
@@ -383,6 +395,7 @@ export function MindMapBuilder() {
           <span className="ml-auto text-[10px] text-zinc-500">{dashboard.maps} map{dashboard.maps === 1 ? '' : 's'} · {dashboard.totalNodes} nodes · {dashboard.totalEdges} edges</span>
         )}
       </div>
+      {loadError && <p role="alert" className="mb-3 text-[11px] text-rose-300">{loadError}</p>}
 
       <div className="flex gap-1.5 mb-3 flex-wrap">
         {maps.map(m => (

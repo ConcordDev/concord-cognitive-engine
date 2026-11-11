@@ -677,7 +677,12 @@ export default function PhotosLensPage() {
           {importing ? 'Importing…' : 'Import'}
         </button>
       </div>
-      <PhotoLightboxModal photoId={lightboxId} onClose={() => setLightboxId(null)} />
+      <PhotoLightboxModal
+        photoId={lightboxId}
+        photoIds={visible.map((f) => f.id)}
+        onClose={() => setLightboxId(null)}
+        onSelect={setLightboxId}
+      />
     </LensShell>
   );
 }

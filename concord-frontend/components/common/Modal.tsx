@@ -48,32 +48,43 @@ export function Modal({
     };
   }, [isOpen, onClose]);
 
-  // Focus trap
+  // Focus trap. Tab stays inside the dialog even if focus has slipped
+  // onto the page behind it (a click on the photo, for example).
   useEffect(() => {
-    if (isOpen && modalRef.current) {
-      const focusableElements = modalRef.current.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      const firstElement = focusableElements[0] as HTMLElement;
-      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+    if (!isOpen || !modalRef.current) return;
+    const root = modalRef.current;
+    const focusable = () => Array.from(root.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    )).filter((el) => !el.hasAttribute('disabled'));
 
-      const handleTab = (e: KeyboardEvent) => {
-        if (e.key === 'Tab') {
-          if (e.shiftKey && document.activeElement === firstElement) {
-            e.preventDefault();
-            lastElement?.focus();
-          } else if (!e.shiftKey && document.activeElement === lastElement) {
-            e.preventDefault();
-            firstElement?.focus();
-          }
-        }
-      };
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const list = focusable();
+      if (list.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = list[0];
+      const last = list[list.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      const inside = !!active && root.contains(active);
+      if (!inside) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+        return;
+      }
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
 
-      document.addEventListener('keydown', handleTab);
-      firstElement?.focus();
-
-      return () => document.removeEventListener('keydown', handleTab);
-    }
+    document.addEventListener('keydown', handleTab);
+    focusable()[0]?.focus();
+    return () => document.removeEventListener('keydown', handleTab);
   }, [isOpen]);
 
   if (!isOpen) return null;
