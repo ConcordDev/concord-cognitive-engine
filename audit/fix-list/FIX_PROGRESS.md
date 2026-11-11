@@ -9,10 +9,10 @@ Counts are merged from `fix_tickets.jsonl` (later lines override earlier fields 
 | Severity | Fixed pending verify | Remaining open | Closed another way |
 |---|---:|---:|---:|
 | high | 170 | 49 | 2 |
-| medium | 631 | 314 | 0 |
+| medium | 636 | 309 | 0 |
 | low | 256 | 724 | 0 |
 | unrated | 0 | 5 | 0 |
-| **total** | **1057** | **1092** | **2** |
+| **total** | **1062** | **1087** | **2** |
 
 "Closed another way" is a status flag on a ticket that stays out of the open count: FIX-automotive-001 is NOT_REPRODUCED and FIX-hvac-002 is RETRACTED/REVERIFIED_OK. FIX-plumbing-007 is SUPERSEDED and already pending verify, so it is counted there. Two of the pending tickets (FIX-chat-006, FIX-chat-007) were already pending before this sweep.
 
@@ -1804,6 +1804,18 @@ A series with a clear repeating period reports that period and a seasonal share.
 | FIX-temporal-001 | temporal | medium | FIXED_PENDING_VERIFY | 7410edd72 |
 | FIX-wellness-003 | wellness | medium | FIXED_PENDING_VERIFY | 7410edd72 |
 | FIX-anon-001 | anon | medium | FIXED_PENDING_VERIFY | 7410edd72 |
+
+## Mediums — the control matches the record it changes
+
+An open pledge ledger reloads after a pledge or an unpledge, so a bond that just received a pledge no longer says none were recorded. The canvas button says Save brush, and it saves the tool, size, and opacity. The artwork still saves on its own. When the wallet has no holdings, price alerts and the swap form list Bitcoin, Ether, Solana, and the other quoted tokens. A swap amount that is empty, zero, negative, or above 1e12 is refused before a quote. A heir id that is blank, longer than 80 characters, or full of characters a user id does not use is refused, and a saved id is shown in full.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-civic-bonds-003 | civic-bonds | medium | FIXED_PENDING_VERIFY | 93935a096 |
+| FIX-art-002 | art | medium | FIXED_PENDING_VERIFY | 93935a096 |
+| FIX-crypto-005 | crypto | medium | FIXED_PENDING_VERIFY | 93935a096 |
+| FIX-crypto-006 | crypto | medium | FIXED_PENDING_VERIFY | 93935a096 |
+| FIX-inheritance-002 | inheritance | medium | FIXED_PENDING_VERIFY | 93935a096 |
 
 ## NEEDS_PRODUCT_SURFACE
 
