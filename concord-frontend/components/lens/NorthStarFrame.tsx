@@ -46,7 +46,7 @@ export function NorthStarFrame({
 }: NorthStarFrameProps) {
   const CtaIcon = cta?.icon;
   return (
-    <div data-lens-theme={theme ?? lensId} className="relative min-h-full px-4 pb-28 pt-6 sm:px-6 lg:px-8">
+    <div data-lens-theme={theme ?? lensId} className="relative min-h-full px-4 pb-36 pt-6 sm:px-6 lg:px-8">
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className={cn('font-vault mt-1 text-[1.75rem] leading-tight text-zinc-100 sm:text-5xl', subtitle ? 'mb-1' : 'mb-5')}>

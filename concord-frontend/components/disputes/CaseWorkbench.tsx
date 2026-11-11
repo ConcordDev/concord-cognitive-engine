@@ -591,7 +591,7 @@ function CaseDetailPanel({
   const closed = c.status === 'resolved' || c.status === 'dismissed';
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950/40">
+    <div className="min-w-0 overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950/40 [&_button:focus-visible]:outline [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-amber-300 [&_input:focus-visible]:outline [&_input:focus-visible]:outline-2 [&_input:focus-visible]:outline-amber-300 [&_select:focus-visible]:outline [&_select:focus-visible]:outline-2 [&_select:focus-visible]:outline-amber-300">
       {/* header */}
       <div className="border-b border-zinc-800 px-4 py-3">
         <div className="flex items-start justify-between gap-3">

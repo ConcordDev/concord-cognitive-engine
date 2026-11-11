@@ -1749,10 +1749,10 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
     <AnimatePresence>
       {showSidebar && (
         <motion.aside
-          initial={{ width: 0 }}
-          animate={{ width: 280 }}
-          exit={{ width: 0 }}
-          className="border-r border-lattice-border bg-lattice-surface/30 overflow-hidden flex-shrink-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="max-h-64 w-full shrink-0 overflow-y-auto border-b border-lattice-border bg-lattice-surface/30 md:max-h-none md:w-[280px] md:border-b-0 md:border-r"
         >
           <div className="w-70 p-4 space-y-6">
             {/* Mini calendar */}
@@ -2124,7 +2124,7 @@ export function CalendarGridWorkbench({ headerExtra }: { headerExtra?: ReactNode
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         {renderSidebar()}
 
         <main className="relative flex flex-1 flex-col overflow-hidden px-8">

@@ -107,7 +107,7 @@ export function TeamPanel({ crisisId }: { crisisId?: string }) {
           type="button"
           disabled={busy || !name.trim()}
           onClick={assign}
-          className="flex items-center gap-1 rounded bg-rose-600/30 px-2 py-1 text-xs text-rose-100 hover:bg-rose-600/50 disabled:opacity-40"
+          className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded bg-rose-600/30 px-3 text-xs text-rose-100 hover:bg-rose-600/50 disabled:opacity-40"
         >
           <UserPlus className="h-3 w-3" /> Assign
         </button>

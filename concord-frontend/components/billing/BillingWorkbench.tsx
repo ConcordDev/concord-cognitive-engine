@@ -287,7 +287,7 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
               </div>
               <div>
                 <p className="text-sm text-gray-400">{stat.label}</p>
-                <p className={`text-2xl font-bold text-white ${stat.capitalize ? 'capitalize' : ''}`}>{stat.value}</p>
+                <p className={`min-w-0 break-all text-2xl font-bold text-white ${stat.capitalize ? 'capitalize' : ''}`}>{stat.value}</p>
               </div>
             </div>
           </motion.div>
@@ -402,7 +402,7 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
       {tab === 'transactions' && (
         <div className="space-y-4">
           {/* Filter + Export bar */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex gap-2">
               {(['all', 'purchase', 'usage', 'credit'] as const).map((f) => (
                 <button

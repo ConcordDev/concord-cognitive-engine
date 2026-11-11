@@ -185,7 +185,7 @@ export function SwarmRegistryPanel({ createOpen = false, onCreateClose }: { crea
             <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Supply chain resilience" aria-label="Entity name" className={fieldCls} />
             <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" aria-label="Entity description" className={fieldCls} />
           </div>
-          <button type="submit" disabled={!name.trim() || create.isPending} className="mt-3 rounded-full bg-teal-400 px-4 py-1.5 text-[13px] font-medium text-black transition-colors hover:bg-teal-300 disabled:opacity-40">
+          <button type="submit" disabled={!name.trim() || create.isPending} className="mt-3 inline-flex min-h-11 items-center rounded-full bg-teal-400 px-4 text-[13px] font-medium text-black transition-colors hover:bg-teal-300 disabled:opacity-40">
             {create.isPending ? 'Spawning…' : 'Spawn'}
           </button>
         </form>

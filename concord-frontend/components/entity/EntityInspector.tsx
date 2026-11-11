@@ -156,7 +156,7 @@ function OverviewTab({ entity, onFork, forking, onDeleted }: { entity: WorldEnti
           <Copy className="h-3.5 w-3.5" />Copy id
         </button>
         {confirmDelete ? (
-          <span className="ml-auto inline-flex items-center gap-2 text-[12px]">
+          <span className="flex w-full flex-wrap items-center gap-2 text-[12px]">
             <span className="text-rose-300">Delete and drop its relations?</span>
             <button type="button" onClick={() => del.mutate()} disabled={del.isPending} className="text-rose-300 hover:text-rose-200">{del.isPending ? 'Deleting…' : 'Yes'}</button>
             <button type="button" onClick={() => setConfirmDelete(false)} className="text-zinc-400 hover:text-zinc-200">No</button>

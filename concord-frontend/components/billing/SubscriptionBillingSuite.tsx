@@ -126,7 +126,7 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
       <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
-      <div className={`mt-0.5 font-mono text-lg ${accent || 'text-cyan-300'}`}>{value}</div>
+      <div className={`mt-0.5 min-w-0 break-all font-mono text-lg ${accent || 'text-cyan-300'}`}>{value}</div>
     </div>
   );
 }

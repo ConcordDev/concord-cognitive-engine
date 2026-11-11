@@ -142,7 +142,7 @@ export function SentinelScanConfig() {
           <p className="mt-3 mb-1.5 text-[10px] uppercase tracking-wider text-blue-700">
             Auto-triage threshold
           </p>
-          <div className="flex gap-1.5">
+          <div className="flex min-w-0 flex-wrap gap-1.5">
             {SEVERITIES.map((s) => (
               <button
                 key={s}
@@ -181,7 +181,7 @@ export function SentinelScanConfig() {
               className="w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 font-mono text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
               aria-label="Rule pattern"
             />
-            <div className="flex gap-2">
+            <div className="flex min-w-0 flex-wrap gap-2">
               <select
                 value={ruleSeverity}
                 onChange={(e) => setRuleSeverity(e.target.value as (typeof SEVERITIES)[number])}
