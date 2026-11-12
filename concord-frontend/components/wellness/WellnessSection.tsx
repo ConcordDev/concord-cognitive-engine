@@ -305,7 +305,7 @@ export function WellnessSection() {
             <div className="rounded border border-white/10 bg-black/30 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Trend</span>
-                <select value={trendType} onChange={e => setTrendType(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
+                <select value={trendType} onChange={e => setTrendType(e.target.value)} aria-label="Trend metric" className="text-[10px] px-1.5 py-0.5 min-h-[40px] bg-lattice-deep border border-lattice-border rounded text-white">
                   {TREND_METRICS.map(m => <option key={m.type} value={m.type}>{m.label}</option>)}
                 </select>
                 {trend && trend.latest !== null && (
@@ -343,8 +343,8 @@ export function WellnessSection() {
             <div className="rounded border border-white/10 bg-black/30 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">All entries (90d)</span>
-                <select value={metricsLogFilter} onChange={e => setMetricsLogFilter(e.target.value)}
-                  className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
+                <select value={metricsLogFilter} onChange={e => setMetricsLogFilter(e.target.value)} aria-label="Filter entries by type"
+                  className="text-[10px] px-1.5 py-0.5 min-h-[40px] bg-lattice-deep border border-lattice-border rounded text-white">
                   <option value="all">All types</option>
                   {Object.entries(METRIC_TYPE_LABELS).map(([type, label]) => <option key={type} value={type}>{label}</option>)}
                 </select>

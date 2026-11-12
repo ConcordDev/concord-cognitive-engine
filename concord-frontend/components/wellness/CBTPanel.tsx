@@ -116,7 +116,7 @@ export function CBTPanel() {
     <div className="rounded-lg border border-indigo-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-indigo-500/10 pb-2">
         <Brain className="h-4 w-4 text-indigo-400" />
-        <h3 className="text-sm font-semibold text-white">Guided CBT thought records</h3>
+        <h2 className="text-sm font-semibold text-white">Guided CBT thought records</h2>
         {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />}
         {list && (
           <span className="ml-auto text-[10px] text-zinc-400">

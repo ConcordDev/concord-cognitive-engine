@@ -401,8 +401,8 @@ export default function WorldObservatoryPage() {
             {lastRefresh && <span>scanned {lastRefresh.toLocaleTimeString()}</span>}
             {lastManualRefresh && <span className="text-cyan-300">manual refresh {lastManualRefresh.toLocaleTimeString()}</span>}
             <span>{overview.filter((w) => !w.isTestWorld).length} world{overview.filter((w) => !w.isTestWorld).length === 1 ? '' : 's'}{overview.some((w) => w.isTestWorld) ? ` · ${overview.filter((w) => w.isTestWorld).length} test` : ''}</span>
-            <button type="button" onClick={() => exportObservatory('json', overview, detail)} className="rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10" title="Download the displayed observatory state as JSON">Export JSON</button>
-            <button type="button" onClick={() => exportObservatory('csv', overview, detail)} className="rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10" title="Download the world grid as CSV">Export CSV</button>
+            <button type="button" onClick={() => exportObservatory('json', overview, detail)} className="inline-flex min-h-[40px] items-center rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10" title="Download the displayed observatory state as JSON">Export JSON</button>
+            <button type="button" onClick={() => exportObservatory('csv', overview, detail)} className="inline-flex min-h-[40px] items-center rounded-full border border-white/15 px-2.5 py-1 hover:bg-white/10" title="Download the world grid as CSV">Export CSV</button>
             <span>{totalActiveUsers} active user{totalActiveUsers === 1 ? '' : 's'}</span>
           </div>
         }
@@ -422,7 +422,7 @@ export default function WorldObservatoryPage() {
           {overviewError && (
             <div role="alert" className="flex items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-200">
               <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> <span className="flex-1 break-words">{overviewError}</span>
-              <button onClick={refreshOverview} disabled={overviewLoading} className="shrink-0 rounded border border-red-400/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-100 hover:bg-red-500/20 disabled:opacity-50">
+              <button onClick={refreshOverview} disabled={overviewLoading} className="inline-flex min-h-[40px] shrink-0 items-center justify-center rounded border border-red-400/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-100 hover:bg-red-500/20 disabled:opacity-50">
                 Retry
               </button>
             </div>
@@ -434,9 +434,9 @@ export default function WorldObservatoryPage() {
               <Radar className="h-4 w-4" /> Worlds
             </h2>
             {overview.length === 0 ? (
-              <p className="text-[11px] text-slate-500">No worlds detected on this instance.</p>
+              <p className="text-[11px] text-slate-400">No worlds detected on this instance.</p>
             ) : (
-              <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" role="list" aria-label="World summary grid">
+              <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" role="group" aria-label="World summary grid">
                 {overview.map((w) => {
                   const selected = w.worldId === selectedWorldId;
                   const stuck = w.stuckFactionSchedulers > 0;
@@ -471,7 +471,7 @@ export default function WorldObservatoryPage() {
                           </span>
                         )}
                       </div>
-                      <p className="truncate font-mono text-[10px] text-slate-500">{w.worldId}</p>
+                      <p className="truncate font-mono text-[10px] text-slate-400">{w.worldId}</p>
                       <div className="grid grid-cols-4 gap-1.5 text-center">
                         <MiniStat icon={Users} value={w.activeUsers} label="users" />
                         <MiniStat icon={Flag} value={w.factionCount} label="factions" />
@@ -490,14 +490,14 @@ export default function WorldObservatoryPage() {
           {view !== 'worlds' && (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Choose a world">
-                {overview.length === 0 && <span className="text-[11px] text-zinc-500">No worlds detected on this instance.</span>}
+                {overview.length === 0 && <span className="text-[11px] text-zinc-400">No worlds detected on this instance.</span>}
                 {overview.map((w) => (
                   <button
                     key={w.worldId}
                     type="button"
                     onClick={() => selectWorld(w.worldId)}
                     aria-pressed={w.worldId === selectedWorldId}
-                    className={`rounded-full border px-3 py-1 text-[12px] transition-colors ${
+                    className={`inline-flex min-h-[40px] items-center rounded-full border px-3 py-1 text-[12px] transition-colors ${
                       w.worldId === selectedWorldId
                         ? 'border-cyan-400/70 bg-cyan-500/10 text-cyan-100'
                         : 'border-white/10 text-zinc-400 hover:text-zinc-100'
@@ -542,7 +542,7 @@ export default function WorldObservatoryPage() {
                       <Flag className="h-3.5 w-3.5" /> Factions
                     </h3>
                     {detail.factions.count === 0 ? (
-                      <p className="text-[11px] text-slate-500">No factions have a living presence in this world.</p>
+                      <p className="text-[11px] text-slate-400">No factions have a living presence in this world.</p>
                     ) : (
                       <div className="space-y-2">
                         {/* F3: card factionCount = living presence; this tab lists stance rows only. */}
@@ -569,7 +569,7 @@ export default function WorldObservatoryPage() {
                           ))}
                         </div>
                         {detail.factions.relations.length === 0 ? (
-                          <p className="text-[11px] text-slate-500">No tracked relations between these factions yet.</p>
+                          <p className="text-[11px] text-slate-400">No tracked relations between these factions yet.</p>
                         ) : (
                           <div className="space-y-2">
                             <p className="text-[11px] text-slate-400">
@@ -617,7 +617,7 @@ export default function WorldObservatoryPage() {
                       <Crown className="h-3.5 w-3.5" /> Realms
                     </h3>
                     {detail.realms.length === 0 ? (
-                      <p className="text-[11px] text-slate-500">No realms have formed in this world yet.</p>
+                      <p className="text-[11px] text-slate-400">No realms have formed in this world yet.</p>
                     ) : (
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                         {detail.realms.map((r) => (
@@ -663,7 +663,7 @@ export default function WorldObservatoryPage() {
                       <Building2 className="h-3.5 w-3.5" /> Districts
                     </h3>
                     {detail.districts.length === 0 ? (
-                      <p className="text-[11px] text-slate-500">No districts platted in this world yet.</p>
+                      <p className="text-[11px] text-slate-400">No districts platted in this world yet.</p>
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="w-full text-[11px]" aria-label="District density">
@@ -737,7 +737,7 @@ function MiniStat({ icon: Icon, value, label }: { icon: React.ComponentType<{ cl
     <div className="flex flex-col items-center gap-0.5 rounded bg-black/20 py-1">
       <Icon className="h-3 w-3 text-slate-400" aria-hidden="true" />
       <span className="font-mono text-[11px] font-semibold text-slate-100">{value}</span>
-      <span className="text-[8px] uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="text-[8px] uppercase tracking-wide text-slate-400">{label}</span>
     </div>
   );
 }
@@ -745,7 +745,7 @@ function MiniStat({ icon: Icon, value, label }: { icon: React.ComponentType<{ cl
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-slate-400">{label}</div>
       <div className="mt-0.5 text-sm font-semibold tabular-nums text-slate-100">{value}</div>
     </div>
   );

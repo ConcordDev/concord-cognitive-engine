@@ -303,14 +303,14 @@ export default function CognitionPage() {
           className="min-h-[22rem] rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5"
         >
           {phase === 'loading' && (
-            <p data-testid="cg-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+            <p data-testid="cg-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-400">
               Opening your question log.
             </p>
           )}
           {phase === 'error' && (
             <div data-testid="cg-error" role="alert">
               <p className="text-[14px] text-zinc-300">{loadError || 'Could not load your question log.'}</p>
-              <button type="button" onClick={load} className="mt-4 text-[14px] text-zinc-100 underline">
+              <button type="button" onClick={load} className="mt-4 inline-flex min-h-[40px] items-center text-[14px] text-zinc-100 underline">
                 Retry
               </button>
             </div>
@@ -318,7 +318,7 @@ export default function CognitionPage() {
           {empty && (
             <div data-testid="cg-empty">
               <p className="text-[14px] text-zinc-400">No questions logged yet.</p>
-              <p className="mt-2 max-w-md text-[13px] leading-relaxed text-zinc-500">
+              <p className="mt-2 max-w-md text-[13px] leading-relaxed text-zinc-400">
                 Write down a question you&apos;re carrying — a decision you&apos;re circling, a thing you don&apos;t yet understand.
                 It stays here in your words. When you settle it, mark it answered and note what you concluded.
               </p>
@@ -340,7 +340,7 @@ export default function CognitionPage() {
                       Answered{trace.answered.at ? ` · ${trace.answered.at.slice(0, 10)}` : ''} — {trace.answered.note}
                     </p>
                   ) : (
-                    <p className="mt-2 text-[12px] text-zinc-500">Still open.</p>
+                    <p className="mt-2 text-[12px] text-zinc-400">Still open.</p>
                   )}
                   {editingId === trace.id ? (
                     <div className="mt-3 space-y-2">
@@ -349,8 +349,8 @@ export default function CognitionPage() {
                       <input value={editQuestion} onChange={(e) => setEditQuestion(e.target.value)} aria-label="Edit question"
                         className="w-full border-b border-white/15 bg-transparent pb-1 text-[14px] text-zinc-100 outline-none" />
                       <div className="flex gap-3 text-[13px]">
-                        <button type="button" onClick={() => { void saveEdit(trace.id); }} className="text-teal-300 underline">Save</button>
-                        <button type="button" onClick={() => setEditingId(null)} className="text-zinc-400 underline">Cancel</button>
+                        <button type="button" onClick={() => { void saveEdit(trace.id); }} className="inline-flex min-h-[40px] items-center text-teal-300 underline">Save</button>
+                        <button type="button" onClick={() => setEditingId(null)} className="inline-flex min-h-[40px] items-center text-zinc-400 underline">Cancel</button>
                       </div>
                     </div>
                   ) : answeringId === trace.id ? (
@@ -359,31 +359,31 @@ export default function CognitionPage() {
                         placeholder="What did you settle on?"
                         className="w-full border-b border-white/15 bg-transparent pb-1 text-[14px] text-zinc-100 outline-none" />
                       <div className="flex gap-3 text-[13px]">
-                        <button type="button" onClick={() => { void saveAnswer(trace.id); }} className="text-teal-300 underline">Mark answered</button>
-                        <button type="button" onClick={() => setAnsweringId(null)} className="text-zinc-400 underline">Cancel</button>
+                        <button type="button" onClick={() => { void saveAnswer(trace.id); }} className="inline-flex min-h-[40px] items-center text-teal-300 underline">Mark answered</button>
+                        <button type="button" onClick={() => setAnsweringId(null)} className="inline-flex min-h-[40px] items-center text-zinc-400 underline">Cancel</button>
                       </div>
                     </div>
                   ) : (
                     <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px] text-zinc-400">
-                      <button type="button" onClick={() => { setEditingId(trace.id); setEditTitle(trace.title); setEditQuestion(trace.question); }} className="underline hover:text-zinc-200">Edit</button>
+                      <button type="button" onClick={() => { setEditingId(trace.id); setEditTitle(trace.title); setEditQuestion(trace.question); }} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200">Edit</button>
                       {trace.answered ? (
-                        <button type="button" onClick={() => { void clearAnswer(trace.id); }} className="underline hover:text-zinc-200">Reopen</button>
+                        <button type="button" onClick={() => { void clearAnswer(trace.id); }} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200">Reopen</button>
                       ) : (
-                        <button type="button" onClick={() => { setAnsweringId(trace.id); setAnswerText(''); }} className="underline hover:text-zinc-200">Mark answered</button>
+                        <button type="button" onClick={() => { setAnsweringId(trace.id); setAnswerText(''); }} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200">Mark answered</button>
                       )}
                       {confirmDeleteId === trace.id ? (
                         <>
                           <span className="text-rose-300">Delete “{trace.title}”?</span>
-                          <button type="button" onClick={() => { void removeTrace(trace.id); }} className="text-rose-300 underline">Delete</button>
+                          <button type="button" onClick={() => { void removeTrace(trace.id); }} className="inline-flex min-h-[40px] items-center text-rose-300 underline">Delete</button>
                           {trace.dtuId && (
-                            <button type="button" onClick={() => { void removeTrace(trace.id, { withDtu: true }); }} className="text-rose-300 underline">
+                            <button type="button" onClick={() => { void removeTrace(trace.id, { withDtu: true }); }} className="inline-flex min-h-[40px] items-center text-rose-300 underline">
                               Delete + remove its DTU
                             </button>
                           )}
-                          <button type="button" onClick={() => setConfirmDeleteId(null)} className="underline hover:text-zinc-200">Keep</button>
+                          <button type="button" onClick={() => setConfirmDeleteId(null)} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200">Keep</button>
                         </>
                       ) : (
-                        <button type="button" onClick={() => { void removeTrace(trace.id); }} className="underline hover:text-zinc-200">Delete</button>
+                        <button type="button" onClick={() => { void removeTrace(trace.id); }} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200">Delete</button>
                       )}
                       <SaveAsDtuButton compact
                         apiSource="cognition-question-log"
@@ -436,7 +436,7 @@ export default function CognitionPage() {
         {entities && (
           <section aria-label="Emergent entities" className="mt-8 rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5">
             <h2 className="text-[15px] font-medium text-zinc-200">The platform&apos;s emergent entities</h2>
-            <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-500">
+            <p className="mt-2 max-w-lg text-[13px] leading-relaxed text-zinc-400">
               Separate from your log: Concord also keeps a population of {entities.registered.toLocaleString()} registered emergent
               entities — system content, spawned and run by the platform&apos;s own emergent layer, not questions of yours and not
               activity counts. This lens is their named home; their working view lives in Attention.

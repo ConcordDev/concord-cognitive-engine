@@ -122,9 +122,9 @@ export function AnalysisPanel() {
     <div className="space-y-4">
       {/* Workspace dashboard — counts measured from the workspace store. */}
       <div className="panel p-4">
-        <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+        <h2 className="text-sm font-semibold flex items-center gap-2 mb-3">
           <BarChart3 className="w-4 h-4 text-neon-cyan" /> Workspace Dashboard
-        </h3>
+        </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 text-center">
           {[
             ['Connections', connectionCount],

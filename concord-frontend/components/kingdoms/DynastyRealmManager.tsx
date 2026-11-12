@@ -85,7 +85,7 @@ export function DynastyRealmManager() {
     <div className="rounded-xl border border-amber-500/20 bg-gradient-to-br from-zinc-950 to-amber-950/10 p-4">
       <header className="mb-3 flex items-center gap-2 border-b border-amber-500/10 pb-2">
         <Crown className="h-4 w-4 text-amber-400" />
-        <h3 className="text-sm font-semibold text-white">Dynasty &amp; Realm</h3>
+        <h2 className="text-sm font-semibold text-white">Dynasty &amp; Realm</h2>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
           crusader kings III
         </span>
@@ -211,7 +211,7 @@ function DynastyTab({ onOk, onErr }: TabProps) {
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Add character</h4>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Add character</h3>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name"
             className="rounded bg-zinc-950 px-2 py-1 text-[12px] text-white" />
@@ -245,9 +245,9 @@ function DynastyTab({ onOk, onErr }: TabProps) {
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">
           Bloodline ({chars.length})
-        </h4>
+        </h3>
         {chars.length === 0 ? (
           <p className="text-[12px] text-zinc-400">No characters yet — add the dynasty founder above.</p>
         ) : dynastyTree ? (
@@ -256,7 +256,7 @@ function DynastyTab({ onOk, onErr }: TabProps) {
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Characters</h4>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Characters</h3>
         <ul className="space-y-1">
           {chars.map((c) => (
             <li key={c.id} className="flex items-center justify-between rounded bg-zinc-950 px-2 py-1 text-[11px]">
@@ -281,7 +281,7 @@ function DynastyTab({ onOk, onErr }: TabProps) {
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Arrange marriage</h4>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Arrange marriage</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <select value={marryA} onChange={(e) => setMarryA(e.target.value)}
             className="rounded bg-zinc-950 px-2 py-1 text-[11px] text-white">
@@ -355,7 +355,7 @@ function CouncilTab({ onOk, onErr }: TabProps) {
       {seats.map((s) => (
         <div key={s.seat} className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-[12px] font-semibold capitalize text-amber-200">{s.seat.replace(/_/g, ' ')}</h4>
+            <h3 className="text-[12px] font-semibold capitalize text-amber-200">{s.seat.replace(/_/g, ' ')}</h3>
             {s.appointment && (
               <button type="button" onClick={() => dismiss(s.seat)} disabled={busy}
                 className="rounded bg-rose-900/50 px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-800/60">
@@ -444,7 +444,7 @@ function DiplomacyTab({ onOk, onErr }: TabProps) {
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Propose treaty</h4>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Propose treaty</h3>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <select value={tKind} onChange={(e) => setTKind(e.target.value)}
             className="rounded bg-zinc-950 px-2 py-1 text-[11px] text-white">
@@ -465,7 +465,7 @@ function DiplomacyTab({ onOk, onErr }: TabProps) {
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Treaties ({treaties.length})</h4>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Treaties ({treaties.length})</h3>
         {treaties.length === 0 ? (
           <p className="text-[12px] text-zinc-400">No treaties yet.</p>
         ) : (
@@ -497,7 +497,7 @@ function DiplomacyTab({ onOk, onErr }: TabProps) {
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Fabricate claim</h4>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Fabricate claim</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <input value={cTarget} onChange={(e) => setCTarget(e.target.value)} placeholder="Target realm/title"
             className="rounded bg-zinc-950 px-2 py-1 text-[12px] text-white" />
@@ -570,7 +570,7 @@ function WarTab({ onOk, onErr }: TabProps) {
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Declare war</h4>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Declare war</h3>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <input value={target} onChange={(e) => setTarget(e.target.value)} placeholder="Target realm"
             className="rounded bg-zinc-950 px-2 py-1 text-[12px] text-white" />
@@ -598,7 +598,7 @@ function WarTab({ onOk, onErr }: TabProps) {
         wars.map((w) => (
           <div key={w.id} className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-[12px] font-semibold text-rose-200">War on {w.target}</h4>
+              <h3 className="text-[12px] font-semibold text-rose-200">War on {w.target}</h3>
               <span className="font-mono text-[10px] text-zinc-400">{w.status} · cb {w.casusBelli}</span>
             </div>
             <div className="mt-1.5 grid grid-cols-3 gap-2 text-[11px]">
@@ -694,7 +694,7 @@ function EconomyTab({ onOk, onErr }: TabProps) {
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Tax rate</h4>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Tax rate</h3>
         <div className="flex items-center gap-2">
           <input value={taxRate} onChange={(e) => setTaxRate(e.target.value.replace(/[^\d.]/g, ''))}
             placeholder="0.00 – 0.50"
@@ -711,7 +711,7 @@ function EconomyTab({ onOk, onErr }: TabProps) {
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Construction</h4>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Construction</h3>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           {Object.entries(catalog).map(([kind, spec]) => (
             <div key={kind} className="flex items-center justify-between rounded bg-zinc-950 px-2 py-1.5 text-[11px]">
@@ -783,7 +783,7 @@ function IntrigueTab({ onOk, onErr }: TabProps) {
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Begin scheme</h4>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Begin scheme</h3>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <select value={kind} onChange={(e) => setKind(e.target.value)}
             className="rounded bg-zinc-950 px-2 py-1 text-[11px] text-white">
@@ -812,7 +812,7 @@ function IntrigueTab({ onOk, onErr }: TabProps) {
         schemes.map((sc) => (
           <div key={sc.id} className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-[12px] font-semibold text-purple-200">{sc.label} → {sc.target}</h4>
+              <h3 className="text-[12px] font-semibold text-purple-200">{sc.label} → {sc.target}</h3>
               <span className="font-mono text-[10px] text-zinc-400">{sc.status}</span>
             </div>
             <div className="mt-1.5 h-1.5 overflow-hidden rounded bg-zinc-950">
@@ -879,7 +879,7 @@ function LawTab({ onOk, onErr }: TabProps) {
         </div>
       )}
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Amend law</h4>
+        <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-300">Amend law</h3>
         <div className="space-y-2">
           <label className="block text-[11px] text-zinc-400">
             Succession type

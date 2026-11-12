@@ -97,7 +97,7 @@ export function WearableImportPanel() {
     <div className="rounded-lg border border-teal-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-teal-500/10 pb-2">
         <Watch className="h-4 w-4 text-teal-400" />
-        <h3 className="text-sm font-semibold text-white">Wearable data import</h3>
+        <h2 className="text-sm font-semibold text-white">Wearable data import</h2>
         {history?.lastSyncAt && (
           <span className="ml-auto text-[10px] text-zinc-400">last sync {new Date(history.lastSyncAt).toLocaleDateString()}</span>
         )}

@@ -139,9 +139,11 @@ export function DxWorkbench() {
               key={t.id}
               type="button"
               role="tab"
+              id={`dx-tab-${t.id}`}
               aria-selected={active}
+              aria-controls={`dx-panel-${t.id}`}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition ${
+              className={`flex min-h-[40px] items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition ${
                 active
                   ? 'bg-amber-500 text-zinc-950'
                   : 'border border-zinc-800 text-zinc-400 hover:border-zinc-700'
@@ -155,20 +157,46 @@ export function DxWorkbench() {
       </div>
 
       {tab === 'codebases' && (
-        <CodebasesTab
-          codebases={codebases}
-          loading={loadingCb}
-          activeCb={activeCb}
-          setActiveCb={setActiveCb}
-          onIndexed={refreshCodebases}
-        />
+        <div role="tabpanel" id="dx-panel-codebases" aria-labelledby="dx-tab-codebases">
+          <CodebasesTab
+            codebases={codebases}
+            loading={loadingCb}
+            activeCb={activeCb}
+            setActiveCb={setActiveCb}
+            onIndexed={refreshCodebases}
+          />
+        </div>
       )}
-      {tab === 'review' && <ReviewTab codebases={codebases} />}
-      {tab === 'search' && <SearchTab codebases={codebases} activeCb={activeCb} setActiveCb={setActiveCb} />}
-      {tab === 'team' && <TeamTab codebases={codebases} onChanged={refreshCodebases} />}
-      {tab === 'detectors' && <DetectorsTab codebases={codebases} activeCb={activeCb} setActiveCb={setActiveCb} />}
-      {tab === 'analytics' && <AnalyticsTab />}
-      {tab === 'ci' && <CiTab codebases={codebases} activeCb={activeCb} setActiveCb={setActiveCb} />}
+      {tab === 'review' && (
+        <div role="tabpanel" id="dx-panel-review" aria-labelledby="dx-tab-review">
+          <ReviewTab codebases={codebases} />
+        </div>
+      )}
+      {tab === 'search' && (
+        <div role="tabpanel" id="dx-panel-search" aria-labelledby="dx-tab-search">
+          <SearchTab codebases={codebases} activeCb={activeCb} setActiveCb={setActiveCb} />
+        </div>
+      )}
+      {tab === 'team' && (
+        <div role="tabpanel" id="dx-panel-team" aria-labelledby="dx-tab-team">
+          <TeamTab codebases={codebases} onChanged={refreshCodebases} />
+        </div>
+      )}
+      {tab === 'detectors' && (
+        <div role="tabpanel" id="dx-panel-detectors" aria-labelledby="dx-tab-detectors">
+          <DetectorsTab codebases={codebases} activeCb={activeCb} setActiveCb={setActiveCb} />
+        </div>
+      )}
+      {tab === 'analytics' && (
+        <div role="tabpanel" id="dx-panel-analytics" aria-labelledby="dx-tab-analytics">
+          <AnalyticsTab />
+        </div>
+      )}
+      {tab === 'ci' && (
+        <div role="tabpanel" id="dx-panel-ci" aria-labelledby="dx-tab-ci">
+          <CiTab codebases={codebases} activeCb={activeCb} setActiveCb={setActiveCb} />
+        </div>
+      )}
     </div>
   );
 }

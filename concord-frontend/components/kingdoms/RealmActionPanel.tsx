@@ -396,7 +396,7 @@ export function RealmActionPanel() {
     <div className="rounded-lg border border-amber-500/20 bg-gradient-to-br from-zinc-950 to-amber-950/10 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-amber-500/10 pb-2">
         <Crown className="h-4 w-4 text-amber-400" />
-        <h3 className="text-sm font-semibold text-white">Realm command</h3>
+        <h2 className="text-sm font-semibold text-white">Realm command</h2>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">crusader kings III</span>
         {myRealm && <span className="ml-auto text-[10px] text-amber-300 font-semibold">👑 {myRealm.name}</span>}
       </header>
