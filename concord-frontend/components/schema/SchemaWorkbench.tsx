@@ -352,10 +352,10 @@ function RegistryPanel({
                   <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">v{s.latestVersion}</span>
                 </div>
                 {s.description && <p className="mt-0.5 text-[11px] text-zinc-400">{s.description}</p>}
-                <div className="mt-1 flex gap-3 text-[10px] text-zinc-400">
-                  <span>{s.fieldCount} fields</span>
-                  <span>{s.versionCount} version{s.versionCount !== 1 ? 's' : ''}</span>
-                  <span>updated {new Date(s.updatedAt).toLocaleDateString()}</span>
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-zinc-400">
+                  <span className="whitespace-nowrap">{s.fieldCount} fields</span>
+                  <span className="whitespace-nowrap">{s.versionCount} version{s.versionCount !== 1 ? 's' : ''}</span>
+                  <span className="whitespace-nowrap">updated {new Date(s.updatedAt).toLocaleDateString()}</span>
                 </div>
               </div>
               <div className="flex shrink-0 gap-1">
