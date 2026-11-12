@@ -106,21 +106,21 @@ export function CampaignsManager() {
       {/* Create */}
       <div className="p-3 border-b border-white/10 space-y-2">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Campaign name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <select value={form.channel} onChange={e => setForm({ ...form, channel: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <input id="retail-campaign-name" name="campaign-name" aria-label="Campaign name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Campaign name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <select id="retail-channel" name="channel" value={form.channel} onChange={e => setForm({ ...form, channel: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {CHANNELS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select value={form.segment} onChange={e => setForm({ ...form, segment: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select id="retail-segment" name="segment" value={form.segment} onChange={e => setForm({ ...form, segment: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {SEGMENTS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Subject" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-subject" name="subject" aria-label="Subject" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Subject" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           {form.channel === 'discount' && (
-            <input value={form.discountCode} onChange={e => setForm({ ...form, discountCode: e.target.value.toUpperCase() })} placeholder="Discount code" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+            <input id="retail-discount-code" name="discount-code" aria-label="Discount code" value={form.discountCode} onChange={e => setForm({ ...form, discountCode: e.target.value.toUpperCase() })} placeholder="Discount code" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
           )}
         </div>
-        <textarea value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} placeholder="Message body" rows={2} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <textarea id="retail-message-body" name="message-body" aria-label="Message body" value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} placeholder="Message body" rows={2} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button onClick={create} disabled={busy || !form.name.trim()} className="px-3 py-1.5 text-xs rounded bg-purple-500 text-white font-bold hover:bg-purple-400 disabled:opacity-40 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" /> Create campaign
         </button>
@@ -163,7 +163,7 @@ export function CampaignsManager() {
                     <span className="text-emerald-300">${c.revenue.toFixed(2)} revenue</span>
                     <div className="ml-auto flex items-center gap-1">
                       <Target className="w-3 h-3 text-gray-400" />
-                      <select value={convForm[c.id] || ''} onChange={e => setConvForm({ ...convForm, [c.id]: e.target.value })} className="px-1 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
+                      <select id="retail-field" name="field" value={convForm[c.id] || ''} onChange={e => setConvForm({ ...convForm, [c.id]: e.target.value })} className="px-1 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
                         <option value="">Attribute order…</option>
                         {orders.map(o => <option key={o.id} value={o.id}>{o.number} (${o.total})</option>)}
                       </select>

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { Users, Plus, Trash2, Star, Mail } from 'lucide-react';
-import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
@@ -109,12 +108,12 @@ export function CustomersPanel() {
       {creating && (
         <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
           {addError && <div className="col-span-5 rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-300" role="alert">{addError}</div>}
-          <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Email (required)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Phone" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-name" name="name" aria-label="Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-email-required" name="email-required" aria-label="Email (required)" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="Email (required)" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-phone" name="phone" aria-label="Phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Phone" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={add} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400">Add</button>
-          <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="City" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} placeholder="State" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-city" name="city" aria-label="City" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="City" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-state" name="state" aria-label="State" value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} placeholder="State" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         </div>
       )}
 
@@ -144,7 +143,7 @@ export function CustomersPanel() {
                     <div className="text-sm font-mono tabular-nums text-white">${c.totalSpent.toFixed(0)}</div>
                     <div className="text-[10px] text-gray-400">{c.orderCount} order{c.orderCount === 1 ? '' : 's'}</div>
                   </div>
-                  <StickyDeleteConfirm onConfirm={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} armAriaLabel={`Delete customer ${c.name}`} confirmLabel={`Delete "${c.name}"?`} confirmAriaLabel={`Confirm delete customer ${c.name}`} />
+                  <button onClick={() => remove(c.id)} aria-label="Delete customer" className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               );
             })}

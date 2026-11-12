@@ -201,14 +201,14 @@ export function TicketQueuePanel() {
 
       {creating && (
         <div className="p-3 border-b border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="Subject" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-subject-2" name="subject-2" aria-label="Subject" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="Subject" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as Priority })} aria-label="Priority" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {PRIORITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
           </select>
-          <input value={form.requester} onChange={(e) => setForm({ ...form, requester: e.target.value })} placeholder="Requester" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} placeholder="Contact email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={form.assignee} onChange={(e) => setForm({ ...form, assignee: e.target.value })} placeholder="Assignee" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe the issue" rows={2} className="col-span-2 sm:col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-requester" name="requester" aria-label="Requester" value={form.requester} onChange={(e) => setForm({ ...form, requester: e.target.value })} placeholder="Requester" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-contact-email" name="contact-email" aria-label="Contact email" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} placeholder="Contact email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="retail-assignee-2" name="assignee-2" aria-label="Assignee" value={form.assignee} onChange={(e) => setForm({ ...form, assignee: e.target.value })} placeholder="Assignee" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <textarea id="retail-describe-the-issue" name="describe-the-issue" aria-label="Describe the issue" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe the issue" rows={2} className="col-span-2 sm:col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button type="button" onClick={create} disabled={!form.subject.trim()} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 disabled:opacity-40">Open ticket</button>
         </div>
       )}
@@ -341,13 +341,13 @@ export function TicketQueuePanel() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-                  <input
+                  <input id="retail-your-name-2" name="your-name-2" aria-label="Your name"
                     value={replyDraft.author}
                     onChange={(e) => setReplyDraft({ ...replyDraft, author: e.target.value })}
                     placeholder="Your name"
                     className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white"
                   />
-                  <input
+                  <input id="retail-write-a-reply" name="write-a-reply" aria-label="Write a reply…"
                     value={replyDraft.body}
                     onChange={(e) => setReplyDraft({ ...replyDraft, body: e.target.value })}
                     placeholder="Write a reply…"

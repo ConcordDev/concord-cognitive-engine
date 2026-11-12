@@ -53,12 +53,12 @@ export function RefundsPanel() {
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
-        <select value={form.orderId} onChange={e => setForm({ ...form, orderId: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <select id="retail-orderid" name="orderid" value={form.orderId} onChange={e => setForm({ ...form, orderId: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">Select order…</option>
           {orders.map(o => <option key={o.id} value={o.id}>{o.number} · ${o.total.toFixed(2)}</option>)}
         </select>
-        <input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="Refund $" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <select value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <input id="retail-refund" name="refund" aria-label="Refund $" type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="Refund $" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <select id="retail-reason" name="reason" value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="customer_request">Customer request</option>
           <option value="defective">Defective</option>
           <option value="not_as_described">Not as described</option>
@@ -67,7 +67,7 @@ export function RefundsPanel() {
         </select>
         <button onClick={create} className="px-3 py-1.5 text-xs rounded bg-rose-500 text-white font-bold hover:bg-rose-400">Refund</button>
         <label className="col-span-5 inline-flex items-center gap-1.5 text-[11px] text-gray-300">
-          <input type="checkbox" checked={form.restock} onChange={e => setForm({ ...form, restock: e.target.checked })} className="accent-emerald-500" />
+          <input id="retail-field-3" name="field-3" type="checkbox" checked={form.restock} onChange={e => setForm({ ...form, restock: e.target.checked })} className="accent-emerald-500" />
           Restock inventory
         </label>
         {error && <p role="alert" className="col-span-5 text-[11px] text-rose-400">{error}</p>}
