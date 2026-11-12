@@ -82,7 +82,7 @@ export function NorthStarFrame({
           <h1 className={cn('font-vault mt-1 text-[1.75rem] leading-tight text-zinc-100 sm:text-5xl', subtitle ? 'mb-1' : 'mb-5')}>
             {crumb}
           </h1>
-          {subtitle && <p className="mb-5 max-w-2xl text-[14px] text-zinc-500">{subtitle}</p>}
+          {subtitle && <p className="mb-5 max-w-2xl text-[14px] text-zinc-400">{subtitle}</p>}
         </div>
         {actions && <div className="flex flex-wrap items-center justify-start gap-3 pt-0 sm:shrink-0 sm:justify-end sm:pt-2">{actions}</div>}
       </div>
@@ -110,7 +110,7 @@ export function NorthStarFrame({
                 title={t.hint ? `${t.hint}${t.keys ? ` (${t.keys})` : ''}` : undefined}
                 className={cn(
                   'inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200',
                 )}
               >
                 {Icon && <Icon className="h-3.5 w-3.5" />}

@@ -93,10 +93,10 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
                 style={{ background: 'none', border: 'none', color: 'inherit', padding: 0, textAlign: 'left', cursor: 'pointer', width: '100%' }}
               >
                 <b>{m.name}</b>
-                <span style={{ opacity: 0.85, fontSize: 12, marginLeft: 8 }}>
+                <span style={{ opacity: 0.6, fontSize: 12, marginLeft: 8 }}>
                   {m.element ?? '—'} · {m.skillKind ?? '—'} · tier {m.tier ?? 1}
                 </span>
-                <span style={{ opacity: 0.75, fontSize: 11, marginLeft: 8 }}>{expandedId === m.id ? '▲ hide detail' : '▼ show detail'}</span>
+                <span style={{ color: 'var(--text-tertiary)', fontSize: 11, marginLeft: 8 }}>{expandedId === m.id ? '▲ hide detail' : '▼ show detail'}</span>
               </button>
               {renamingId === m.id ? (
                 <span style={{ display: 'flex', gap: 8, marginTop: 6 }}>
@@ -112,11 +112,6 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
                 <button type="button" className="underline" style={{ fontSize: 12, marginRight: 8 }}
                   onClick={() => { setRenamingId(m.id); setRename(m.name); }}>Rename</button>
               )}
-              <button type="button" className="underline" style={{ fontSize: 12, marginRight: 8 }}
-                onClick={async () => {
-                  await lensRun('move-builder', 'duplicate', { moveId: m.id });
-                  await load();
-                }}>Duplicate</button>
               <StickyDeleteConfirm
                 armed={armedId === m.id}
                 onArm={() => setArmedId(m.id)}
