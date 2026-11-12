@@ -472,7 +472,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                   <button
                     onClick={() => setActionResult(null)}
                     className="p-1 rounded-md hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-                  aria-label="Xcircle">
+                  aria-label="Dismiss result">
                     <XCircle className="w-4 h-4" />
                   </button>
                 </div>

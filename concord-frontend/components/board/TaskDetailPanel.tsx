@@ -287,7 +287,7 @@ export function TaskDetailPanel({
                   }
                 }}
                 className="p-1 rounded-md bg-white/5 hover:bg-white/10 text-gray-400"
-              aria-label="Add">
+              aria-label="Add subtask">
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -361,7 +361,7 @@ export function TaskDetailPanel({
                   }
                 }}
                 className="p-1 rounded-md bg-purple-500/20 hover:bg-purple-500/30 text-purple-300"
-              aria-label="Message">
+              aria-label="Post comment">
                 <MessageSquare className="w-3.5 h-3.5" />
               </button>
             </div>
