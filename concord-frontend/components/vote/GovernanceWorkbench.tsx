@@ -1078,6 +1078,14 @@ function CreatePollModal({ onClose, onCreated }: { onClose: () => void; onCreate
     const opts = options.map((o) => o.trim()).filter(Boolean);
     if (!title.trim()) { setErr('Title required.'); return; }
     if (opts.length < 2) { setErr('At least 2 options required.'); return; }
+    // FIX-vote-003: refuse duplicate options at the form, naming the
+    // duplicate, instead of creating a ballot with identical choices.
+    const seenOpts = new Map<string, string>();
+    for (const o of opts) {
+      const k = o.toLowerCase();
+      if (seenOpts.has(k)) { setErr(`Options must be unique \u2014 "${seenOpts.get(k)}" appears more than once.`); return; }
+      seenOpts.set(k, o);
+    }
     const days = Number(durationDays);
     if (!Number.isInteger(days) || days < 1 || days > 365) { setErr('Duration must be a whole number of days from 1 to 365.'); return; }
     const quorumN = Number(quorum);
@@ -1142,8 +1150,9 @@ function CreatePollModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
         <div>
           <label className="mb-1 block text-xs text-zinc-400">Description</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} maxLength={2000}
             className="w-full resize-none rounded border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white" placeholder="Optional context" />
+          <p className="mt-0.5 text-right text-[10px] text-zinc-500">{description.length}/2,000</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

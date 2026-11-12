@@ -730,6 +730,19 @@ export default function registerVoteActions(registerLensAction) {
       .map((o) => vtclean(o, 120)).filter(Boolean);
     if (options.length < 2) return { ok: false, error: "at least 2 options required" };
     if (options.length > 30) return { ok: false, error: "at most 30 options allowed" };
+    // FIX-vote-003: duplicate options were accepted (two identical
+    // choices a ballot cannot tell apart), and a description past the
+    // stored 2,000 characters was silently truncated. Both now refuse
+    // by name — the duplicate is named, the limit is stated.
+    const seenOpts = new Map();
+    for (const o of options) {
+      const k = o.toLowerCase();
+      if (seenOpts.has(k)) return { ok: false, error: `options must be unique \u2014 "${seenOpts.get(k)}" appears more than once` };
+      seenOpts.set(k, o);
+    }
+    if (params.description != null && String(params.description).length > 2000) {
+      return { ok: false, error: "description must be 2,000 characters or fewer" };
+    }
 
     if (params.durationDays != null && params.durationDays !== "") {
       const days = Number(params.durationDays);
