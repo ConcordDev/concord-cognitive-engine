@@ -1163,7 +1163,9 @@ export default function registerCreativeActions(registerLensAction) {
     const link = {
       id: crId("pln"), token, assetId: asset.id, ownerId: userId,
       label: crClean(params.label, 160) || asset.name,
-      allowComments: params.allowComments !== false,
+      // External comments are opt-in: only an explicit true enables them,
+      // so a link created without the choice stays closed to outside input.
+      allowComments: params.allowComments === true,
       active: true,
       createdAt: crNow(),
     };
@@ -1214,10 +1216,15 @@ export default function registerCreativeActions(registerLensAction) {
 
   registerLensAction("creative", "prooflink-delete", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const arr = s.proofLinks.get(crAid(ctx)) || [];
+    const userId = crAid(ctx);
+    const arr = s.proofLinks.get(userId) || [];
     const i = arr.findIndex((l) => l.id === params.id);
     if (i < 0) return { ok: false, error: "proof link not found" };
-    arr.splice(i, 1);
+    const [removed] = arr.splice(i, 1);
+    // Deleting a link retires its external thread with it — the comments
+    // were collected under that link's token and have no home without it.
+    const ext = s.proofExtComments.get(userId);
+    if (ext) s.proofExtComments.set(userId, ext.filter((c) => c.token !== removed.token));
     saveCrState();
     return { ok: true, result: { deleted: params.id } };
   });
@@ -1225,7 +1232,11 @@ export default function registerCreativeActions(registerLensAction) {
   // Owner-side inbox of external comments captured across all proof links.
   registerLensAction("creative", "prooflink-inbox", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    let comments = (s.proofExtComments.get(crAid(ctx)) || []).slice();
+    const userId = crAid(ctx);
+    // The inbox shows threads of links the owner still holds; a comment
+    // whose link is gone (deleted or never the owner's) is not surfaced.
+    const liveTokens = new Set((s.proofLinks.get(userId) || []).map((l) => l.token));
+    let comments = (s.proofExtComments.get(userId) || []).filter((c) => liveTokens.has(c.token));
     if (params.token) comments = comments.filter((c) => c.token === params.token);
     comments.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return {

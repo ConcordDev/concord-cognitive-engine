@@ -1184,7 +1184,7 @@ function ProofLinkTab() {
   const [inbox, setInbox] = useState<ExtComment[]>([]);
   const [assetId, setAssetId] = useState('');
   const [label, setLabel] = useState('');
-  const [allowComments, setAllowComments] = useState(true);
+  const [allowComments, setAllowComments] = useState(false);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
