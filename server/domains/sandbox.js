@@ -229,10 +229,25 @@ export default function registerSandboxMacros(register) {
     if (!skill) return { ok: false, error: "unknown_skillId" };
     const named = params.name !== undefined && params.name !== null;
     const trimmed = named ? String(params.name).trim() : "";
-    if (named && !trimmed) return { ok: false, error: "loadout name required", message: "Loadout name is required." };
+    if (named && !trimmed && !params.loadoutId) return { ok: false, error: "loadout name required", message: "Loadout name is required." };
     if (trimmed.length > 60) return { ok: false, error: "invalid_input", field: "name", message: "Loadout name must be 60 characters or fewer." };
-    const name = trimmed || `${weapon.label} loadout`;
     const list = ulist(s.loadouts, actor(ctx));
+    // FIX-sandbox-006: a save carrying the id of the preset being edited
+    // updates that preset in place instead of minting a duplicate. A blank
+    // name on an update keeps the preset's existing name; createdAt stands.
+    if (params.loadoutId) {
+      const existing = list.find((x) => x.id === String(params.loadoutId));
+      if (!existing) return { ok: false, error: "loadout_not_found" };
+      existing.name = trimmed || existing.name;
+      existing.weaponId = weapon.id;
+      existing.skillId = skill.id;
+      existing.lightDamage = clampNum(params.lightDamage, 1, 500, weapon.baseLight);
+      existing.heavyDamage = clampNum(params.heavyDamage, 1, 500, weapon.baseHeavy);
+      existing.updatedAt = now();
+      save();
+      return { ok: true, result: { loadout: existing, total: list.length, updated: true } };
+    }
+    const name = trimmed || `${weapon.label} loadout`;
     const entry = {
       id: sid("ld"),
       name,
