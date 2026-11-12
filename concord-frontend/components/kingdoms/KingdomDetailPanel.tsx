@@ -12,6 +12,11 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
   const [decreeKind, setDecreeKind] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [contestKind, setContestKind] = useState<'siege' | 'subversion' | 'annexation'>('siege');
+  // Lifecycle controls (FIX-kingdoms-001): rename / leave / abdicate / dissolve.
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [confirmAction, setConfirmAction] = useState<'leave' | 'abdicate' | 'dissolve' | null>(null);
+  const [gone, setGone] = useState(false);
 
   const fetchDetail = useCallback(async (id: string) => {
     try {
@@ -32,6 +37,10 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
   }, []);
 
   useEffect(() => { if (kingdomId) fetchDetail(kingdomId); }, [kingdomId, fetchDetail]);
+
+  if (gone) {
+    return <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">This kingdom has been dissolved.</div>;
+  }
 
   if (!detail) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">Loading kingdom…</div>;
@@ -71,6 +80,38 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
     } finally { setSubmitting(false); }
   };
 
+  const rename = async () => {
+    if (!nameDraft.trim()) { setNotice('Name cannot be empty.'); return; }
+    const r = await fetch(`/api/kingdoms/${kingdom.id}`, {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: nameDraft.trim() }),
+    });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || j?.ok === false) { setNotice(j?.error || 'Rename failed.'); return; }
+    setEditingName(false);
+    setNotice('Kingdom renamed.');
+    onRefresh();
+  };
+
+  const lifecycle = async (action: 'leave' | 'abdicate' | 'dissolve') => {
+    const url = action === 'dissolve'
+      ? `/api/kingdoms/${kingdom.id}`
+      : `/api/kingdoms/${kingdom.id}/${action}`;
+    const r = await fetch(url, {
+      method: action === 'dissolve' ? 'DELETE' : 'POST',
+      credentials: 'same-origin',
+    });
+    const j = await r.json().catch(() => null);
+    setConfirmAction(null);
+    if (!r.ok || j?.ok === false) { setNotice(j?.error || 'That did not work.'); return; }
+    if (action === 'leave') { setNotice('You have left this kingdom.'); onRefresh(); return; }
+    if (action === 'dissolve' || j?.outcome === 'dissolved') { setGone(true); return; }
+    setNotice('You abdicated — the crown has passed to your heir.');
+    onRefresh();
+  };
+
   const join = async () => {
     setNotice(null);
     const r = await fetch(`/api/kingdoms/${kingdom.id}/join`, { method: 'POST', credentials: 'same-origin' });
@@ -108,6 +149,63 @@ export function KingdomDetailPanel({ kingdomId }: { kingdomId: string }) {
           </div>
         </div>
         {notice && <p className="mt-3 text-sm text-amber-200" role="status">{notice}</p>}
+
+        {(viewer?.role === 'ruler' || (viewer?.resident && viewer?.role !== 'ruler')) && (
+          <div className="mt-4 border-t border-slate-800 pt-3">
+            <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">
+              {viewer?.role === 'ruler' ? 'Your rule' : 'Your residency'}
+            </p>
+            {viewer?.role === 'ruler' && (
+              editingName ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    aria-label="Kingdom name"
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    className="rounded bg-slate-800 px-2 py-1.5 text-sm text-slate-100"
+                  />
+                  <button onClick={() => void rename()} className="rounded bg-amber-700 px-3 py-1.5 text-sm hover:bg-amber-600">Save name</button>
+                  <button onClick={() => setEditingName(false)} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-300">Cancel</button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => { setNameDraft(kingdom.name); setEditingName(true); }}
+                    className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-700"
+                  >
+                    Rename kingdom
+                  </button>
+                  {confirmAction === 'abdicate' ? (
+                    <>
+                      <button onClick={() => void lifecycle('abdicate')} className="rounded bg-amber-800 px-3 py-1.5 text-sm text-amber-100">Confirm abdication</button>
+                      <button onClick={() => setConfirmAction(null)} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-300">Cancel</button>
+                    </>
+                  ) : confirmAction === 'dissolve' ? (
+                    <>
+                      <button onClick={() => void lifecycle('dissolve')} className="rounded bg-rose-800 px-3 py-1.5 text-sm text-rose-100">Confirm dissolve</button>
+                      <button onClick={() => setConfirmAction(null)} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-300">Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => setConfirmAction('abdicate')} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-amber-200 hover:bg-slate-700">Abdicate</button>
+                      <button onClick={() => setConfirmAction('dissolve')} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-rose-300 hover:bg-slate-700">Dissolve kingdom</button>
+                    </>
+                  )}
+                </div>
+              )
+            )}
+            {viewer?.resident && viewer?.role !== 'ruler' && (
+              confirmAction === 'leave' ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button onClick={() => void lifecycle('leave')} className="rounded bg-rose-800 px-3 py-1.5 text-sm text-rose-100">Confirm leave</button>
+                  <button onClick={() => setConfirmAction(null)} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-300">Cancel</button>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmAction('leave')} className="rounded bg-slate-800 px-3 py-1.5 text-sm text-rose-300 hover:bg-slate-700">Leave kingdom</button>
+              )
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
