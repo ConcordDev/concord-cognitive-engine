@@ -836,8 +836,18 @@ export default function registerAgricultureActions(registerLensAction) {
     const map = s.fields.get(userId);
     if (!map || !map.has(id)) return { ok: false, error: "not found" };
     map.delete(id);
+    // FIX-agriculture-006 (scout leg): a deleted field's scouting pins
+    // must not outlive it — orphaned pins stay in the caller's store and
+    // still surface on an unfiltered scout-list. Cascade to the pins.
+    const pins = s.scouts.get(userId);
+    let scoutPinsRemoved = 0;
+    if (Array.isArray(pins)) {
+      const kept = pins.filter((p) => p.fieldId !== id);
+      scoutPinsRemoved = pins.length - kept.length;
+      if (scoutPinsRemoved > 0) s.scouts.set(userId, kept);
+    }
     saveAgriState();
-    return { ok: true, result: { deleted: id } };
+    return { ok: true, result: { deleted: id, scoutPinsRemoved } };
   });
 
   // ── Weather / soil for field (Open-Meteo — free, no key) ──

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { AgricultureKeepMenu } from './AgricultureKeepMenu';
 import type { AgField } from './agricultureReport';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export interface Field {
   id: string;
@@ -605,10 +606,14 @@ function ScoutTab({ field, fields, onSelect }: { field: Field | null; fields: Fi
                 </div>
                 <p className="text-xs text-gray-200">{p.note}</p>
               </div>
-              <button aria-label="Delete" type="button" onClick={() => remove(p.id)}
-                className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100">
-                <Trash2 className="w-3 h-3" />
-              </button>
+              <StickyDeleteConfirm
+                onConfirm={() => { void remove(p.id); }}
+                armLabel={<Trash2 className="w-3 h-3" />}
+                armAriaLabel={`Delete observation ${p.note.slice(0, 40)}`}
+                confirmLabel="Delete this observation?"
+                confirmAriaLabel="Confirm delete observation"
+                className="p-1 text-gray-600 hover:text-rose-300"
+              />
             </div>
           </div>
         ))

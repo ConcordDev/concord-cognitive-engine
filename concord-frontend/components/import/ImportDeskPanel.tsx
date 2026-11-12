@@ -14,6 +14,7 @@ import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalImport } from '@/components/import/UniversalImport';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 // Mirrors server/domains/importdomain.js `validateImport`'s actual return
 // shape exactly (status is "pass"|"warning"|"fail"; errors are grouped per
@@ -151,7 +152,11 @@ export function ImportDeskPanel() {
     isLoading: jobsLoading, isError: isError, error: error, refetch: refetch,
     create: createJob,
     update: updateJob,
+    remove: removeJob,
   } = useLensData<ImportJob>('import', 'import-job', { seed: [] });
+
+  // FIX-import-004: history is searchable — filter rows by filename.
+  const [historyFilter, setHistoryFilter] = useState('');
 
   const importJobs: ImportJob[] = importJobItems.map(item => ({
     id: item.id,
@@ -167,6 +172,10 @@ export function ImportDeskPanel() {
     started_at: item.data.started_at ?? item.createdAt,
     completed_at: item.data.completed_at,
   } as ImportJob));
+
+  const visibleJobs: ImportJob[] = historyFilter.trim()
+    ? importJobs.filter((j) => j.filename.toLowerCase().includes(historyFilter.trim().toLowerCase()))
+    : importJobs;
 
   const [importActionResult, setImportActionResult] = useState<{ action: string; data: unknown } | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
@@ -824,10 +833,19 @@ export function ImportDeskPanel() {
 
       {/* Import History */}
       <div className="lens-card mt-6">
-        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <FileJson className="w-5 h-5 text-neon-green" />
-          Import History
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <FileJson className="w-5 h-5 text-neon-green" />
+            Import History
+          </h2>
+          <input
+            value={historyFilter}
+            onChange={(e) => setHistoryFilter(e.target.value)}
+            placeholder="Filter history by filename…"
+            aria-label="Filter import history by filename"
+            className="bg-void-800 border border-void-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-void-500 w-64"
+          />
+        </div>
 
         {jobsLoading ? (
           <div className="flex items-center justify-center p-8 text-void-400">
@@ -838,9 +856,13 @@ export function ImportDeskPanel() {
           <div className="text-center p-8 text-void-500">
             No import jobs yet. Upload a file or use quick import to get started.
           </div>
+        ) : visibleJobs.length === 0 ? (
+          <div className="text-center p-8 text-void-500">
+            No import jobs match “{historyFilter}”.
+          </div>
         ) : (
           <div className="space-y-3">
-            {importJobs.map((job, index) => (
+            {visibleJobs.map((job, index) => (
               <motion.div key={job.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="p-4 bg-void-800 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
@@ -902,14 +924,23 @@ export function ImportDeskPanel() {
                     Started: {new Date(job.started_at).toLocaleString()}
                     {job.completed_at && ` | Completed: ${new Date(job.completed_at).toLocaleString()}`}
                   </p>
-                  {(job.status === 'importing' || job.status === 'pending') && (
-                    <button
-                      onClick={() => updateJob(job.id, { data: { ...job, status: 'completed', progress: 100, completed_at: new Date().toISOString() } as unknown as Record<string, unknown> })}
-                      className="text-xs px-2 py-1 bg-neon-green/10 text-neon-green rounded hover:bg-neon-green/20 transition-colors"
-                    >
-                      Mark Complete
-                    </button>
-                  )}
+                  <span className="flex items-center gap-2">
+                    {(job.status === 'importing' || job.status === 'pending') && (
+                      <button
+                        onClick={() => updateJob(job.id, { data: { ...job, status: 'completed', progress: 100, completed_at: new Date().toISOString() } as unknown as Record<string, unknown> })}
+                        className="text-xs px-2 py-1 bg-neon-green/10 text-neon-green rounded hover:bg-neon-green/20 transition-colors"
+                      >
+                        Mark Complete
+                      </button>
+                    )}
+                    <StickyDeleteConfirm
+                      onConfirm={() => { void removeJob(job.id); }}
+                      armLabel="Delete"
+                      confirmLabel={`Delete "${job.filename}"?`}
+                      armAriaLabel={`Delete import job ${job.filename} from history`}
+                      confirmAriaLabel={`Confirm delete import job ${job.filename}`}
+                    />
+                  </span>
                 </div>
               </motion.div>
             ))}
