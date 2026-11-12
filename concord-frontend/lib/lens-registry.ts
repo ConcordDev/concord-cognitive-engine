@@ -2940,7 +2940,7 @@ export const LENS_REGISTRY: LensEntry[] = [
     id: 'narrative-walk',
     name: 'Narrative trail',
     icon: BookOpen,
-    description: 'Authored story beats. A written walk through Concordia’s cinematics, read as shot direction.',
+    description: 'Authored story beats. A written walk through the turning points of Concordia.',
     category: 'creative',
     showInSidebar: false,
     showInCommandPalette: true,

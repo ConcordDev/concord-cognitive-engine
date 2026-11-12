@@ -1,6 +1,7 @@
 {
   "id": "war_declared",
   "name": "War Declared",
+  "summary": "The sky takes on the colour of embers. One faction raises its banner in declaration, and across the field the enemy answers — war has been declared, and there is no walking it back.",
   "trigger": "war_declared",
   "comment": "Phase W — sky tint to crimson, banner-anchor zoom on declaring faction, 2-shot enemy banner counterpoint.",
   "shots": [

@@ -33,11 +33,13 @@ import NarrativeWalkLens from '@/app/lenses/narrative-walk/page';
 const SEQS = [
   {
     id: 'boss_arrival', trigger: 'boss_arrival', name: 'Boss Arrival',
+    summary: 'A vast silhouette crosses the horizon — the boss has arrived.',
     comment: 'Wide environmental shot + boss silhouette emerge + name-card flash.',
     shots: [{ duration_ms: 1500 }, { duration_ms: 300 }],
   },
   {
     id: 'vela_reveal', trigger: 'vela:reveal', name: 'Vela Reveal',
+    summary: 'A figure long spoken of in hints steps forward at last.',
     comment: 'Bespoke cinematic for the Vela reveal beat.',
     shots: [{ duration_ms: 90000 }],
   },
@@ -86,7 +88,10 @@ describe('narrative trail', () => {
     const view = render(<NarrativeWalkLens />);
     fireEvent.click(await view.findByRole('button', { name: 'Begin the walk' }));
     expect(await view.findByRole('heading', { name: 'Boss Arrival' })).toBeInTheDocument();
-    expect(view.getByText(/Wide environmental shot/)).toBeInTheDocument();
+    // The beat's body is its user-facing summary. The sequence's
+    // internal authoring comment (shot direction) is never rendered.
+    expect(view.getByText(/vast silhouette crosses the horizon/)).toBeInTheDocument();
+    expect(view.queryByText(/Wide environmental shot/)).toBeNull();
     expect(localStorage.getItem('concordia:narrative-walk:open')).toBe('boss_arrival');
     await waitFor(() => expect(playSequence).toHaveBeenCalledWith(
       'boss_arrival',

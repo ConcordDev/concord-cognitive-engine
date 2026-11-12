@@ -38,15 +38,23 @@ interface Step {
   id: string;
   trigger: string;
   name: string;
+  /** User-facing story prose for the beat (the sequence's summary). */
+  summary: string;
+  /** Internal authoring note — NEVER rendered. Read only for the
+   *  set-eyebrow derivation below. */
   comment: string;
 }
 
 /**
  * The two authored sets splice into one playlist, and every beat's
- * comment already says which set it belongs to ("Phase W — fires
- * when…" / "Concordia Phase 15 — bespoke cinematic…"). The eyebrow is
- * derived from that self-label — nothing is invented for a beat whose
- * comment carries neither.
+ * internal authoring comment already says which set it belongs to
+ * ("Phase W — fires when…" / "Concordia Phase 15 — bespoke
+ * cinematic…"). The eyebrow is derived from that self-label — nothing
+ * is invented for a beat whose comment carries neither. The comment
+ * itself is production copy (sprint/spec terms, trigger conditions,
+ * shot direction) and is never shown to the walker; the beat's body
+ * is its summary, the human-facing blurb the sequence type reserves
+ * for catalog UIs.
  */
 function setLabel(step: Step): string | null {
   if (step.comment.startsWith('Phase W')) return 'Event template';
@@ -107,6 +115,7 @@ export default function NarrativeWalkLensPage() {
           id: seq.id,
           trigger: seq.trigger || seq.id,
           name: seq.name || seq.id,
+          summary: typeof seq.summary === 'string' ? seq.summary : '',
           comment: typeof comment === 'string' ? comment : '',
         };
       }).filter((step) => step.id);
@@ -235,7 +244,7 @@ export default function NarrativeWalkLensPage() {
             <div data-testid="narrative-empty">
               <p className="text-[14px] text-zinc-500">No walk open.</p>
               <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-zinc-400">
-                Eleven authored story beats, read as the shot direction they were written in. Walk them in
+                Eleven authored story beats from the turning points of Concordia. Walk them in
                 order — you can step back at any point, and when the trail ends you can walk it again.
               </p>
               <div className="mt-6 h-px w-2/3 bg-white/10" aria-hidden="true" />
@@ -248,8 +257,8 @@ export default function NarrativeWalkLensPage() {
                 <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-zinc-500">{setLabel(open)}</p>
               ) : null}
               <h2 className="font-vault text-[1.5rem] text-zinc-100">{open.name}</h2>
-              {open.comment ? (
-                <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-zinc-400">{open.comment}</p>
+              {open.summary ? (
+                <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-zinc-400">{open.summary}</p>
               ) : null}
               <p data-testid="narrative-progress" className="mt-6 text-[13px] tabular-nums text-zinc-500">
                 Step {openIndex + 1} of {catalog.length} · {watchedCount} walked
