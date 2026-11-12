@@ -38,6 +38,20 @@ function makeWithEntrants(format, names, extra = {}) {
 }
 
 describe("tournaments.create", () => {
+  it("FIX-tournaments-003: refuses an out-of-range maxEntrants instead of silently clamping it", () => {
+    const zero = call("create", ctxA, { title: "Zero", maxEntrants: 0 });
+    assert.equal(zero.ok, false);
+    assert.equal(zero.error, "max_entrants_must_be_2_to_128");
+    const huge = call("create", ctxA, { title: "Huge", maxEntrants: 500 });
+    assert.equal(huge.ok, false);
+    const fine = call("create", ctxA, { title: "Fine", maxEntrants: 16 });
+    assert.equal(fine.ok, true);
+    assert.equal(fine.result.tournament.maxEntrants, 16);
+    const absent = call("create", ctxA, { title: "Absent" });
+    assert.equal(absent.ok, true);
+    assert.equal(absent.result.tournament.maxEntrants, 8);
+  });
+
   it("creates each bracket format", () => {
     for (const fmt of ["single_elimination", "double_elimination", "round_robin", "swiss"]) {
       const r = call("create", ctxA, { title: "X", format: fmt });

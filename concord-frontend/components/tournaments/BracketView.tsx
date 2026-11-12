@@ -72,6 +72,11 @@ function MatchCard({
               aria-label={`${bName} score`}
               className="w-12 rounded bg-slate-900 px-1.5 py-0.5 text-center text-[11px]"
             />
+            {a === b && (
+              <span role="note" className="text-[10px] leading-tight text-amber-300/90">
+                A match needs a winner — tied scores can&apos;t be submitted.
+              </span>
+            )}
             <button
               onClick={() => onReport(m.id, a, b)}
               disabled={busy || a === b}

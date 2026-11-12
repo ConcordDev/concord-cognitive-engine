@@ -44,6 +44,12 @@ export function TournamentCreatePanel({
       setFormError(titleProblem);
       return;
     }
+    // FIX-tournaments-003: 0 (or >128) used to be silently clamped to a
+    // different tournament than the organizer asked for.
+    if (!Number.isFinite(maxEntrants) || Math.floor(maxEntrants) !== maxEntrants || maxEntrants < 2 || maxEntrants > 128) {
+      setFormError('Max entrants must be a whole number between 2 and 128.');
+      return;
+    }
     setFormError(null);
     const split = payoutSplit.split(',').map((x) => Number(x.trim())).filter((n) => Number.isFinite(n) && n >= 0);
     const t = await run('create', {
