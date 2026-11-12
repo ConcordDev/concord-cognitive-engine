@@ -30,7 +30,23 @@ import { toCsv, download, type Anomalies } from '@/components/ledger/ledger-shar
 const WORLD_OPTIONS = ['sere', 'concordia-hub', 'tunya'];
 
 export default function LedgerLensPage() {
-  const [worldId, setWorldId] = useState('sere');
+  // The audited world lives in the URL (?world=tunya) so a reload keeps
+  // the selection instead of resetting to sere (FIX-world-006). Read
+  // once at first render; written back with history.replaceState — the
+  // AssemblyViewer's pattern — so other params survive and no
+  // navigation or remount is triggered.
+  const [worldId, setWorldId] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'sere';
+    const w = new URLSearchParams(window.location.search).get('world');
+    return w && w.length <= 64 ? w : 'sere';
+  });
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (worldId === 'sere') url.searchParams.delete('world');
+    else url.searchParams.set('world', worldId);
+    window.history.replaceState(window.history.state, '', url.toString());
+  }, [worldId]);
   const [data, setData] = useState<Anomalies | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
