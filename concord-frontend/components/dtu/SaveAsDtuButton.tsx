@@ -92,6 +92,13 @@ export interface SaveAsDtuButtonProps {
    * highlighting the saved row, refreshing a "my DTUs" sidebar, etc.
    */
   onSaved?: (dtuId: string) => void;
+  /**
+   * The DTU this item was ALREADY saved as (e.g. a link the caller
+   * persisted on its own record — FIX-cognition-002). When set, the
+   * button mounts in its saved state with the receipt, instead of
+   * inviting a duplicate save after every reload.
+   */
+  initialSavedId?: string;
   /** Optional initial content class (default: dataset for real-data saves). */
   defaultContentClass?: ContentClass | string;
   /** Optional initial license scopes (default: private). */
@@ -158,11 +165,17 @@ export function SaveAsDtuButton({
   confirm = true,
   className = '',
   onSaved,
+  initialSavedId,
   defaultContentClass = 'dataset',
   defaultLicenseScopes,
 }: SaveAsDtuButtonProps) {
   const [open, setOpen] = useState(false);
-  const [savedId, setSavedId] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(initialSavedId || null);
+  // Adopt a persisted link that arrives after mount (callers load their
+  // records async); never override a save made in this session.
+  useEffect(() => {
+    if (initialSavedId) setSavedId((cur) => cur || initialSavedId);
+  }, [initialSavedId]);
   const [editTitle, setEditTitle] = useState(() => clampDtuTitle(title));
   const [editTags, setEditTags] = useState([apiSource, ...extraTags].join(', '));
   const [isGlobal, setIsGlobal] = useState(false);
@@ -306,6 +319,13 @@ export function SaveAsDtuButton({
       {savedId && (
         <span className="inline-flex items-baseline gap-1 text-[10px] text-zinc-400">
           Saved as DTU <DtuId id={savedId} />
+          <a
+            href={`/dtu/${savedId}`}
+            className="inline-flex items-center gap-0.5 text-cyan-300/90 underline decoration-dotted underline-offset-2 hover:text-cyan-200"
+            title={`Open DTU ${savedId}`}
+          >
+            Open <ExternalLink className="h-2.5 w-2.5" />
+          </a>
         </span>
       )}
 

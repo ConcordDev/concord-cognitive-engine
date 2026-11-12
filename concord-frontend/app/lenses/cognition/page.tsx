@@ -11,7 +11,9 @@
  * complete: edit (updateExport), delete (deleteExport, two-step), an
  * answered state (answerExport), and an identical re-create returns the
  * standing record (the server's duplicate flag) instead of a second
- * copy. Title and trace live in cognition_traces, so a server restart
+ * copy. Saving an entry as a DTU records the link on the entry
+ * (linkExportDtu) so the saved state survives reload, and deleting a
+ * linked entry offers to remove its DTU too instead of orphaning it. Title and trace live in cognition_traces, so a server restart
  * still lists them. Below the log, a labelled window states this lens's
  * relationship to the platform's emergent-entity store (D3).
  */
@@ -21,7 +23,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
-import { lensRun } from '@/lib/api/client';
+import { lensRun, apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface TraceRow {
@@ -29,13 +31,14 @@ interface TraceRow {
   title: string;
   question: string;
   answered: { note: string; at: string } | null;
+  dtuId: string | null;
 }
 
 type Phase = 'loading' | 'ready' | 'error';
 
-function rowsFrom(rows: unknown): { id: string; title: string; answered: { note: string; at: string } | null }[] {
+function rowsFrom(rows: unknown): { id: string; title: string; answered: { note: string; at: string } | null; dtuId: string | null }[] {
   if (!Array.isArray(rows)) return [];
-  const out: { id: string; title: string; answered: { note: string; at: string } | null }[] = [];
+  const out: { id: string; title: string; answered: { note: string; at: string } | null; dtuId: string | null }[] = [];
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue;
     const id = (row as { id?: string }).id;
@@ -43,10 +46,12 @@ function rowsFrom(rows: unknown): { id: string; title: string; answered: { note:
     if (typeof id !== 'string' || !id) continue;
     if (typeof title !== 'string' || !title.trim()) continue;
     const ans = (row as { answered?: { note?: unknown; at?: unknown } | null }).answered;
+    const dtuId = (row as { dtuId?: unknown }).dtuId;
     out.push({
       id,
       title: title.trim(),
       answered: ans && typeof ans.note === 'string' ? { note: ans.note, at: typeof ans.at === 'string' ? ans.at : '' } : null,
+      dtuId: typeof dtuId === 'string' && dtuId ? dtuId : null,
     });
   }
   return out;
@@ -85,7 +90,7 @@ async function readTraces(): Promise<TraceRow[]> {
       { exportId: row.id },
       'Could not read your question log.',
     );
-    out.push({ id: row.id, title: row.title, question: questionFrom(detail.export?.trace), answered: row.answered });
+    out.push({ id: row.id, title: row.title, question: questionFrom(detail.export?.trace), answered: row.answered, dtuId: row.dtuId });
   }
   return out;
 }
@@ -166,20 +171,8 @@ export default function CognitionPage() {
       setActionError('A title is required.');
       return;
     }
-    if (trimmed.length < 3) {
-      setActionError('A title needs at least 3 characters.');
-      return;
-    }
     if (!asked) {
       setActionError('A question is required.');
-      return;
-    }
-    if (asked.length < 10) {
-      setActionError('A question needs at least 10 characters — say it in your own words.');
-      return;
-    }
-    if (asked.length > 2000) {
-      setActionError('A question is 2,000 characters or fewer.');
       return;
     }
     setBusy(true);
@@ -229,18 +222,44 @@ export default function CognitionPage() {
     } finally { setBusy(false); }
   }, [editTitle, editQuestion, refresh]);
 
-  const removeTrace = useCallback(async (id: string) => {
+  const removeTrace = useCallback(async (id: string, opts?: { withDtu?: boolean }) => {
     // S-COG-2: delete is two-step — the first click names the entry.
     if (confirmDeleteId !== id) { setConfirmDeleteId(id); return; }
     setConfirmDeleteId(null);
     setBusy(true);
     try {
+      // FIX-cognition-002: deleting an entry that was saved as a DTU offers
+      // to remove the DTU too, through the platform's own gated delete —
+      // otherwise the DTU is orphaned with no surface pointing at it.
+      if (opts?.withDtu) {
+        const trace = traces.find((t) => t.id === id);
+        if (trace?.dtuId) {
+          try {
+            await apiHelpers.dtus.delete(trace.dtuId);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (!/not found|404/i.test(msg)) throw new Error(`Could not remove the DTU: ${msg}`);
+            // Already gone — the log entry can still be deleted.
+          }
+        }
+      }
       await runCognition('deleteExport', { exportId: id }, 'Could not delete that entry.');
       await refresh();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not delete that entry.');
     } finally { setBusy(false); }
-  }, [confirmDeleteId, refresh]);
+  }, [confirmDeleteId, refresh, traces]);
+
+  // FIX-cognition-002: record the DTU a Save-as-DTU just minted on the log
+  // entry itself, so the saved state and the link survive a reload.
+  const linkDtu = useCallback(async (id: string, dtuId: string) => {
+    setTraces((rows) => rows.map((t) => (t.id === id ? { ...t, dtuId } : t)));
+    try {
+      await runCognition('linkExportDtu', { exportId: id, dtuId }, 'Could not record the DTU link.');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not record the DTU link.');
+    }
+  }, []);
 
   const saveAnswer = useCallback(async (id: string) => {
     const note = answerText.trim();
@@ -352,15 +371,27 @@ export default function CognitionPage() {
                       ) : (
                         <button type="button" onClick={() => { setAnsweringId(trace.id); setAnswerText(''); }} className="underline hover:text-zinc-200">Mark answered</button>
                       )}
-                      <button type="button" onClick={() => { void removeTrace(trace.id); }}
-                        className={confirmDeleteId === trace.id ? 'text-rose-300 underline' : 'underline hover:text-zinc-200'}>
-                        {confirmDeleteId === trace.id ? `Delete “${trace.title}”? Click again` : 'Delete'}
-                      </button>
+                      {confirmDeleteId === trace.id ? (
+                        <>
+                          <span className="text-rose-300">Delete “{trace.title}”?</span>
+                          <button type="button" onClick={() => { void removeTrace(trace.id); }} className="text-rose-300 underline">Delete</button>
+                          {trace.dtuId && (
+                            <button type="button" onClick={() => { void removeTrace(trace.id, { withDtu: true }); }} className="text-rose-300 underline">
+                              Delete + remove its DTU
+                            </button>
+                          )}
+                          <button type="button" onClick={() => setConfirmDeleteId(null)} className="underline hover:text-zinc-200">Keep</button>
+                        </>
+                      ) : (
+                        <button type="button" onClick={() => { void removeTrace(trace.id); }} className="underline hover:text-zinc-200">Delete</button>
+                      )}
                       <SaveAsDtuButton compact
                         apiSource="cognition-question-log"
                         title={trace.title}
                         content={trace.answered ? `${trace.question}\n\nAnswered: ${trace.answered.note}` : trace.question}
-                        extraTags={['cognition', 'question-log']} />
+                        extraTags={['cognition', 'question-log']}
+                        initialSavedId={trace.dtuId || undefined}
+                        onSaved={(dtuId) => { void linkDtu(trace.id, dtuId); }} />
                     </div>
                   )}
                 </li>
@@ -374,32 +405,22 @@ export default function CognitionPage() {
                 <input
                   data-testid="cg-title"
                   value={title}
-                  maxLength={120}
                   onChange={(event) => { setTitle(event.target.value); if (actionError) setActionError(''); }}
                   className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
                   autoFocus
                 />
-                <span className="mt-1 flex justify-between text-[11px] text-zinc-500">
-                  <span>3–120 characters.</span>
-                  <span>{title.length}/120</span>
-                </span>
               </label>
               <label className="block text-[14px] text-zinc-400">
                 Question
                 <input
                   data-testid="cg-question-input"
                   value={question}
-                  maxLength={2000}
                   onChange={(event) => { setQuestion(event.target.value); if (actionError) setActionError(''); }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') { event.preventDefault(); void openTrace(); }
                   }}
                   className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
                 />
-                <span className="mt-1 flex justify-between text-[11px] text-zinc-500">
-                  <span>10–2,000 characters — the question in your own words.</span>
-                  <span>{question.length}/2000</span>
-                </span>
               </label>
             </div>
           )}
