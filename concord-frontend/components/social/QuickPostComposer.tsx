@@ -390,6 +390,11 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
         <span className={cn('text-[10px] font-mono tabular-nums', overLimit ? 'text-rose-400' : 'text-zinc-400')}>
           {remaining}
         </span>
+        {overLimit && (
+          <span role="alert" className="text-[10px] text-rose-300">
+            {`${-remaining} over the ${MAX_LEN}-character limit — trim to post.`}
+          </span>
+        )}
         <button
           type="submit"
           aria-label={mode === 'story' ? 'Post 24h story' : 'Post'}
