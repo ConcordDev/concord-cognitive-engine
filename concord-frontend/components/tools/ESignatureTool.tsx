@@ -279,7 +279,7 @@ export function ESignatureTool() {
                   {parties.length > 1 && (
                     <button
                       onClick={() => setParties((prev) => prev.filter((_, idx) => idx !== i))}
-                      className="rounded border border-yellow-900/40 px-1.5 text-yellow-700 hover:text-red-400"
+                      className="rounded border border-yellow-900/40 px-1.5 text-yellow-600 hover:text-red-400"
                       aria-label={`Remove party ${i + 1}`}
                     >
                       <Trash2 className="h-3 w-3" aria-hidden />
@@ -318,7 +318,7 @@ export function ESignatureTool() {
               </select>
             </label>
             {list.length === 0 ? (
-              <p className="py-6 text-center text-xs text-yellow-700">No envelopes yet — create one to begin.</p>
+              <p className="py-6 text-center text-xs text-yellow-600">No envelopes yet — create one to begin.</p>
             ) : (
               <ul className="space-y-1.5">
                 {[...list].sort((a, b) => sortBy === 'title' ? a.title.localeCompare(b.title) : 0).map((e) => (
@@ -334,7 +334,7 @@ export function ESignatureTool() {
                         </div>
                         <div className="truncate text-yellow-200">{e.title}</div>
                       </div>
-                      <span className="ml-2 shrink-0 text-yellow-700">{e.signedCount}/{e.partyCount} signed</span>
+                      <span className="ml-2 shrink-0 text-yellow-600">{e.signedCount}/{e.partyCount} signed</span>
                     </button>
                   </li>
                 ))}
@@ -356,13 +356,13 @@ export function ESignatureTool() {
                 </div>
                 <h3 className="text-sm font-semibold text-yellow-200">{selected.title}</h3>
               </div>
-              <button onClick={() => { setSelected(null); setVerify(null); }} className="text-yellow-700 hover:text-yellow-400" aria-label="Close detail">
+              <button onClick={() => { setSelected(null); setVerify(null); }} className="text-yellow-600 hover:text-yellow-400" aria-label="Close detail">
                 <X className="h-4 w-4" aria-hidden />
               </button>
             </div>
 
             <div className="rounded border border-yellow-900/40 bg-black/40 p-2">
-              <div className="mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-yellow-700">
+              <div className="mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-yellow-600">
                 <FileText className="h-3 w-3" aria-hidden /> Document · SHA-256 {selected.documentHash.slice(0, 16)}…
               </div>
               <pre className="max-h-28 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-yellow-300">{selected.document}</pre>
@@ -377,7 +377,7 @@ export function ESignatureTool() {
                   <li key={p.id} className="flex items-center justify-between rounded border border-yellow-900/30 bg-black/30 px-2.5 py-1.5">
                     <div className="text-xs">
                       <span className="text-yellow-200">{p.name}</span>
-                      <span className="ml-1.5 text-yellow-700">· {p.role}</span>
+                      <span className="ml-1.5 text-yellow-600">· {p.role}</span>
                       {p.signedAt && <div className="text-[10px] text-emerald-500">signed {new Date(p.signedAt).toLocaleString()}{p.signedVia === 'link' ? ` via their link${p.typedName ? ` as "${p.typedName}"` : ''}` : ''}</div>}
                     </div>
                     {p.status === 'signed' ? (
@@ -402,7 +402,7 @@ export function ESignatureTool() {
                           {p.delivery ? 'Resend link' : 'Send signing link'}
                         </button>
                         {p.delivery && (
-                          <span className="text-[10px] text-yellow-700">
+                          <span className="text-[10px] text-yellow-600">
                             {p.delivery.method === 'email' ? `emailed to ${p.email}` : `not emailed (${(p.delivery.reason || '').replace(/_/g, ' ')}) — share the link`}
                           </span>
                         )}
@@ -414,7 +414,7 @@ export function ESignatureTool() {
                         )}
                       </div>
                     ) : (
-                      <span className="text-[11px] text-yellow-700">pending</span>
+                      <span className="text-[11px] text-yellow-600">pending</span>
                     )}
                   </li>
                 ))}
@@ -485,15 +485,15 @@ export function ESignatureTool() {
                   <li key={i} className="text-[11px]">
                     <span className="font-mono uppercase text-yellow-500">{a.event}</span>
                     <span className="ml-1.5 text-yellow-400">{a.detail}</span>
-                    <div className="text-[10px] text-yellow-700">{new Date(a.at).toLocaleString()} · {a.actor}</div>
+                    <div className="text-[10px] text-yellow-600">{new Date(a.at).toLocaleString()} · {a.actor}</div>
                   </li>
                 ))}
               </ul>
             </div>
-            <p className="text-[10px] text-yellow-800">{selected.esignDisclosure}</p>
+            <p className="text-[10px] text-yellow-600">{selected.esignDisclosure}</p>
           </div>
         ) : (
-          <div className="flex h-full min-h-[12rem] items-center justify-center rounded-lg border border-dashed border-yellow-900/40 text-xs text-yellow-700">
+          <div className="flex h-full min-h-[12rem] items-center justify-center rounded-lg border border-dashed border-yellow-900/40 text-xs text-yellow-600">
             Select an envelope to view signers, verify, and inspect its audit trail.
           </div>
         )}

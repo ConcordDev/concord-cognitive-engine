@@ -162,7 +162,7 @@ export function CompileTool() {
       <div className="rounded-lg border border-yellow-900/40 bg-yellow-950/10 p-4">
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] uppercase tracking-wide text-yellow-700">Loader</span>
+            <span className="text-[10px] uppercase tracking-wide text-yellow-600">Loader</span>
             <div className="flex gap-0.5 rounded border border-yellow-900/40 bg-yellow-950/30 p-0.5 text-xs">
               {LOADERS.map((l) => (
                 <button
@@ -175,7 +175,7 @@ export function CompileTool() {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] uppercase tracking-wide text-yellow-700">Target</span>
+            <span className="text-[10px] uppercase tracking-wide text-yellow-600">Target</span>
             <div className="flex gap-0.5 rounded border border-yellow-900/40 bg-yellow-950/30 p-0.5 text-xs">
               {TARGETS.map((t) => (
                 <button
@@ -188,7 +188,7 @@ export function CompileTool() {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] uppercase tracking-wide text-yellow-700">Format</span>
+            <span className="text-[10px] uppercase tracking-wide text-yellow-600">Format</span>
             <div className="flex gap-0.5 rounded border border-yellow-900/40 bg-yellow-950/30 p-0.5 text-xs">
               {FORMATS.map((f) => (
                 <button
@@ -246,7 +246,7 @@ export function CompileTool() {
       )}
 
       {!busy && !error && !result && (
-        <div className="rounded-lg border border-dashed border-yellow-900/40 bg-yellow-950/5 px-3 py-6 text-center text-xs text-yellow-700">
+        <div className="rounded-lg border border-dashed border-yellow-900/40 bg-yellow-950/5 px-3 py-6 text-center text-xs text-yellow-600">
           Paste TypeScript/JSX above and press Compile — output appears here with copy, download, and per-build history.
         </div>
       )}
@@ -306,7 +306,7 @@ export function CompileTool() {
           <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-yellow-500">
             <History className="h-3.5 w-3.5" aria-hidden /> Compile history
           </h4>
-          <p className="mb-2 text-[11px] text-yellow-700">Select an entry to restore its source and settings in the editor.</p>
+          <p className="mb-2 text-[11px] text-yellow-600">Select an entry to restore its source and settings in the editor.</p>
           <ul className="space-y-1">
             {history.map((h) => (
               <li key={h.id}>
@@ -317,12 +317,12 @@ export function CompileTool() {
                     className="flex min-h-[40px] w-full items-center justify-between rounded px-2 py-2 text-left text-[11px] text-yellow-600 hover:bg-yellow-950/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
                   >
                     <span>{h.loader} → {h.target} ({h.format}){h.minify ? ' · min' : ''}</span>
-                    <span className="text-yellow-700">{h.inputBytes}B→{h.outputBytes}B · {h.durationMs}ms · {h.engine}</span>
+                    <span className="text-yellow-600">{h.inputBytes}B→{h.outputBytes}B · {h.durationMs}ms · {h.engine}</span>
                   </button>
                 ) : (
                   <div className="flex min-h-[40px] items-center justify-between rounded px-2 py-2 text-[11px] text-yellow-600/60">
                     <span>{h.loader} → {h.target} ({h.format}){h.minify ? ' · min' : ''} · source not kept</span>
-                    <span className="text-yellow-700/60">{h.inputBytes}B→{h.outputBytes}B · {h.durationMs}ms · {h.engine}</span>
+                    <span className="text-yellow-600/60">{h.inputBytes}B→{h.outputBytes}B · {h.durationMs}ms · {h.engine}</span>
                   </div>
                 )}
               </li>

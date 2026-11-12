@@ -129,7 +129,7 @@ export function WebResearchTool() {
       )}
 
       {!busy && !error && !payload && (
-        <div className="rounded-lg border border-dashed border-yellow-900/40 bg-yellow-950/5 px-3 py-8 text-center text-sm text-yellow-700">
+        <div className="rounded-lg border border-dashed border-yellow-900/40 bg-yellow-950/5 px-3 py-8 text-center text-sm text-yellow-600">
           Search the live web across DuckDuckGo + Wikipedia — results are readable and citable into a DTU.
         </div>
       )}
@@ -149,7 +149,7 @@ export function WebResearchTool() {
               </a>
             </div>
           )}
-          <div className="flex items-center justify-between text-xs text-yellow-700">
+          <div className="flex items-center justify-between text-xs text-yellow-600">
             <span>{payload.count} results for &quot;{payload.query}&quot;</span>
             <span>Sources: {payload.sources.join(', ')}</span>
           </div>
@@ -196,7 +196,7 @@ export function WebResearchTool() {
             </h4>
             <button
               onClick={clearHistory}
-              className="inline-flex items-center gap-1 text-[11px] text-yellow-700 hover:text-yellow-400"
+              className="inline-flex items-center gap-1 text-[11px] text-yellow-600 hover:text-yellow-400"
             >
               <Trash2 className="h-3 w-3" aria-hidden /> Clear
             </button>
@@ -209,7 +209,7 @@ export function WebResearchTool() {
                   className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs text-yellow-400 hover:bg-yellow-900/20"
                 >
                   <span className="truncate">{h.query}</span>
-                  <span className="ml-2 shrink-0 text-yellow-700">{h.resultCount} hits</span>
+                  <span className="ml-2 shrink-0 text-yellow-600">{h.resultCount} hits</span>
                 </button>
               </li>
             ))}
