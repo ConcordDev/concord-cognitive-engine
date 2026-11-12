@@ -219,14 +219,39 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
   }, []);
+  // FIX-mail-004: with Gmail not connected, Compose used to open a
+  // Gmail composer onto the connect wall — a sheet that could never
+  // send, over a wall that says to connect first (and on the reported
+  // build, no visible effect at all). Compose now routes to the
+  // player-mail composer instead: switch mailboxes, then signal its
+  // compose tab once it has mounted.
+  const [routeToPlayerCompose, setRouteToPlayerCompose] = useState(false);
+  const composeNew = useCallback(() => {
+    if (isConcord) { setConcordCompose((n) => n + 1); return; }
+    if (connected === false) {
+      openFolder('CONCORD');
+      setRouteToPlayerCompose(true);
+      return;
+    }
+    openComposer({ mode: 'new', draft: emptyDraft() });
+  }, [isConcord, connected, openComposer]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The compose signal to the player mailbox fires only after it has
+  // mounted (a same-commit bump would be its initial value, not a
+  // signal, and its compose tab would never open).
+  useEffect(() => {
+    if (isConcord && routeToPlayerCompose) {
+      setRouteToPlayerCompose(false);
+      setConcordCompose((n) => n + 1);
+    }
+  }, [isConcord, routeToPlayerCompose]);
+
   const lastSignal = useRef(composeSignal);
   useEffect(() => {
     if (composeSignal !== lastSignal.current) {
       lastSignal.current = composeSignal;
-      if (isConcord) setConcordCompose((n) => n + 1);
-      else queueMicrotask(() => openComposer({ mode: 'new', draft: emptyDraft() }));
+      queueMicrotask(() => composeNew());
     }
-  }, [composeSignal, isConcord, openComposer]);
+  }, [composeSignal, composeNew]);
 
   const openDraft = (d: Draft) => {
     const msg = d.message;
@@ -236,7 +261,7 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
   const current = threads[Math.min(cursor, Math.max(0, threads.length - 1))];
   const openThreadObj = useMemo(() => threads.find((t) => t.id === openId), [threads, openId]);
   useLensCommand([
-    { id: 'mail-compose', keys: 'c', description: 'Compose', category: 'actions', action: () => { if (isConcord) setConcordCompose((n) => n + 1); else openComposer({ mode: 'new', draft: emptyDraft() }); } },
+    { id: 'mail-compose', keys: 'c', description: 'Compose', category: 'actions', action: () => composeNew() },
     { id: 'mail-search', keys: '/', description: 'Search mail', category: 'navigation', action: () => searchRef.current?.focus() },
     { id: 'mail-next', keys: 'j', description: 'Next conversation', category: 'navigation', action: () => { const i = Math.min(cursor + 1, threads.length - 1); setCursor(i); if (openId && threads[i]) openThread(threads[i]); } },
     { id: 'mail-prev', keys: 'k', description: 'Previous conversation', category: 'navigation', action: () => { const i = Math.max(cursor - 1, 0); setCursor(i); if (openId && threads[i]) openThread(threads[i]); } },
