@@ -34,7 +34,7 @@ const CAT_COLOURS: Record<string, string> = {
   registration: '#06b6d4', tax: '#84cc16', parking: '#ec4899', toll: '#f97316', cleaning: '#14b8a6', other: '#6b7280',
 };
 
-export function GarageSection() {
+export function GarageSection({ onDataChanged }: { onDataChanged?: () => void } = {}) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [garageQuery, setGarageQuery] = useState('');
   const [garageSort, setGarageSort] = useState<'name' | 'miles'>('name');
@@ -96,6 +96,9 @@ export function GarageSection() {
   async function reloadAll() {
     await refreshVehicles();
     if (activeId) await refreshVehicleData(activeId);
+    // The page-level summary strip / renewals widget read the same data —
+    // tell the page to refetch so they never sit stale after a mutation.
+    onDataChanged?.();
   }
 
   async function addVehicle() {
@@ -108,11 +111,12 @@ export function GarageSection() {
       const r = await lensRun({ domain: 'automotive', action: 'vehicles-create', input: { name: name.trim(), make, model, year: year.trim() || undefined, odometer: odometer.trim() } });
       if (r.data?.ok === false) { alert(r.data?.message || r.data?.error || 'Could not add the vehicle.'); return; }
       await refreshVehicles();
+      onDataChanged?.();
       if (r.data?.result?.vehicle) setActiveId(r.data.result.vehicle.id);
     } catch (e) { console.error('[Garage] addVehicle', e); }
   }
   async function delVehicle(id: string) {
-    try { await lensRun({ domain: 'automotive', action: 'vehicles-delete', input: { id } }); setActiveId(null); await refreshVehicles(); }
+    try { await lensRun({ domain: 'automotive', action: 'vehicles-delete', input: { id } }); setActiveId(null); await refreshVehicles(); onDataChanged?.(); }
     catch (e) { console.error('[Garage] delVehicle', e); }
   }
   async function editVehicle(v: Vehicle) {

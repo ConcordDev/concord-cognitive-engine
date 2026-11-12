@@ -487,6 +487,17 @@ export default function registerAutomotiveActions(registerLensAction) {
       const arr = listAu(s[bucket], userId);
       for (let j = arr.length - 1; j >= 0; j--) if (arr[j].vehicleId === id) arr.splice(j, 1);
     }
+    // The parity-backlog buckets are keyed by vehicleId too — leaving them
+    // behind orphaned OBD readings, attachments, appointments and renewals
+    // under a vehicle that no longer exists (renewals-upcoming kept
+    // surfacing the deleted vehicle's renewals). They live in lazily
+    // initialised Maps (see getAutoExtra), so guard on the Map existing.
+    for (const bucket of ['obd', 'attachments', 'appointments', 'renewals']) {
+      const map = s[bucket];
+      if (!(map instanceof Map)) continue;
+      const arr = listAu(map, userId);
+      for (let j = arr.length - 1; j >= 0; j--) if (arr[j].vehicleId === id) arr.splice(j, 1);
+    }
     saveAuto();
     return { ok: true, result: { deleted: true } };
   });
