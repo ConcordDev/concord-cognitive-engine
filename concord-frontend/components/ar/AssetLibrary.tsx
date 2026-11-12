@@ -41,6 +41,7 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { EmptyState, ErrorState } from '@/components/ui';
 import { SketchfabModels } from '@/components/ar/SketchfabModels';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 const MODEL_FORMATS = ['GLTF', 'GLB', 'USDZ', 'OBJ', 'FBX', 'STL'];
 
@@ -194,9 +195,7 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
                   <button onClick={() => handlePreview(item)} className={ds.btnGhost} aria-label={`Preview ${item.data.name} in AR`} disabled={previewingId === item.id}>
                     {previewingId === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4 text-neon-cyan" />}
                   </button>
-                  <button onClick={() => remove(item.id)} className={ds.btnGhost} aria-label={`Delete ${item.data.name}`}>
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                  </button>
+                  <StickyDeleteConfirm onConfirm={() => { void remove(item.id); }} className={ds.btnGhost} armAriaLabel={`Delete ${item.data.name}`} confirmLabel={`Delete “${item.data.name}”?`} confirmAriaLabel={`Confirm delete ${item.data.name}`} armLabel={<Trash2 className="w-4 h-4 text-red-400" />} />
                 </div>
               </div>
             ))}

@@ -28,6 +28,7 @@ import {
   UserPlus, FileSignature,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 
@@ -425,7 +426,7 @@ function CrewSchedule() {
                             {e.status}
                           </button>
                           <button onClick={() => startEdit(e)} className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300 hover:text-white">Edit</button>
-                          <button onClick={() => removeSchedule(e.id)} className="text-zinc-600 hover:text-rose-300" aria-label="Delete schedule"><Trash2 className="h-3.5 w-3.5" /></button>
+                          <StickyDeleteConfirm onConfirm={() => { void removeSchedule(e.id); }} className="text-zinc-600 hover:text-rose-300" armAriaLabel={`Delete schedule ${e.title || ''}`.trim()} confirmLabel={`Delete “${e.title || 'schedule'}”?`} confirmAriaLabel={`Confirm delete schedule ${e.title || ''}`.trim()} armLabel={<Trash2 className="h-3.5 w-3.5" />} />
                         </div>
                       </div>
                       {editingId === e.id && (
@@ -548,7 +549,7 @@ function TimeTracking() {
                 <span className="text-zinc-300">{e.jobName} <span className="text-zinc-600">· {e.source}</span></span>
                 <div className="flex items-center gap-2">
                   <span className="font-mono"><span className="text-amber-200">{e.hours}h</span> <span className="text-emerald-300">${e.cost}</span></span>
-                  <button onClick={() => removeEntry(e.id)} className="text-zinc-600 hover:text-rose-300" aria-label="Delete entry"><Trash2 className="h-3 w-3" /></button>
+                  <StickyDeleteConfirm onConfirm={() => { void removeEntry(e.id); }} className="text-zinc-600 hover:text-rose-300" armAriaLabel={`Delete entry for ${e.jobName}`} confirmLabel={`Delete ${e.hours}h entry for ${e.jobName}?`} confirmAriaLabel={`Confirm delete entry for ${e.jobName}`} armLabel={<Trash2 className="h-3 w-3" />} />
                 </div>
               </div>
             ))}
