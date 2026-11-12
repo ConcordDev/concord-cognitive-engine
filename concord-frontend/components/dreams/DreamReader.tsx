@@ -244,7 +244,7 @@ export function DreamReader({
                   Your annotations on the engine&apos;s dream — saved under your account and shown only to you.
                 </p>
                 <div className="flex gap-2">
-                  <input
+                  <input id="dreams-commaseparated-tags" name="commaseparated-tags" aria-label="comma-separated tags"
                     type="text"
                     value={tagDraft}
                     onChange={(e) => setTagDraft(e.target.value)}

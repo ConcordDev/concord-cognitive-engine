@@ -147,7 +147,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
       {mode === 'search' && (
         <>
           <div className="flex flex-wrap gap-2">
-            <input
+            <input id="dreams-search-dream-prose-titles-fragments" name="search-dream-prose-titles-fragments" aria-label="Search dream prose, titles, fragments…"
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -155,7 +155,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
               placeholder="Search dream prose, titles, fragments…"
               className="min-w-[12rem] flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-600"
             />
-            <select
+            <select id="dreams-scope" name="scope"
               value={scope}
               onChange={(e) => setScope(e.target.value as '' | 'public' | 'personal')}
               className="min-h-11 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-300"
