@@ -365,6 +365,8 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         <div className="relative">
           <button
             type="button"
+            aria-label="React to post"
+            aria-expanded={showReactions}
             onClick={() => setShowReactions((v) => !v)}
             className={cn('flex items-center gap-1 text-xs hover:text-rose-400', post.viewerReaction && 'text-rose-400')}
           >
@@ -392,6 +394,8 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         </div>
         <button
           type="button"
+          aria-label="Show replies"
+          aria-expanded={showReplies}
           onClick={() => setShowReplies((v) => !v)}
           className="flex items-center gap-1 text-xs hover:text-indigo-300"
         >
@@ -400,6 +404,8 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         </button>
         <button
           type="button"
+          aria-label={post.viewerReposted ? 'Reposted' : 'Repost post'}
+          aria-pressed={!!post.viewerReposted}
           onClick={() => void repost()}
           className={cn('flex items-center gap-1 text-xs hover:text-emerald-400', post.viewerReposted && 'text-emerald-400')}
         >
