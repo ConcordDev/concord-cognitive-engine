@@ -88,9 +88,9 @@ export function StravaClubsPanel() {
           <Users className="w-3.5 h-3.5 text-orange-400" /> Clubs
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-          <input placeholder="Club name" value={clubForm.name} onChange={(e) => setClubForm({ ...clubForm, name: e.target.value })}
+          <input id="fitness-club-name" name="club-name" aria-label="Club name" placeholder="Club name" value={clubForm.name} onChange={(e) => setClubForm({ ...clubForm, name: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={clubForm.sport} onChange={(e) => setClubForm({ ...clubForm, sport: e.target.value })}
+          <select id="fitness-sport" name="sport" value={clubForm.sport} onChange={(e) => setClubForm({ ...clubForm, sport: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {['run', 'ride', 'swim', 'hike'].map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -136,13 +136,13 @@ export function StravaClubsPanel() {
           <Flag className="w-3.5 h-3.5 text-orange-400" /> Challenges
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-          <input placeholder="Challenge name" value={chForm.name} onChange={(e) => setChForm({ ...chForm, name: e.target.value })}
+          <input id="fitness-challenge-name" name="challenge-name" aria-label="Challenge name" placeholder="Challenge name" value={chForm.name} onChange={(e) => setChForm({ ...chForm, name: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={chForm.metric} onChange={(e) => setChForm({ ...chForm, metric: e.target.value })}
+          <select id="fitness-metric" name="metric" value={chForm.metric} onChange={(e) => setChForm({ ...chForm, metric: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {['distance', 'elevation', 'activity_count', 'duration'].map((m) => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
           </select>
-          <input placeholder="Target" inputMode="decimal" value={chForm.target} onChange={(e) => setChForm({ ...chForm, target: e.target.value })}
+          <input id="fitness-target-3" name="target-3" aria-label="Target" placeholder="Target" inputMode="decimal" value={chForm.target} onChange={(e) => setChForm({ ...chForm, target: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         </div>
         <button type="button" onClick={createChallenge}

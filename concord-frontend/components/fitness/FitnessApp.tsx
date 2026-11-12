@@ -956,7 +956,7 @@ export default function FitnessApp() {
                 {clientGoals.map((g, i) => (
                   <div key={i} className={ds.panel}>
                     <div className="flex items-center justify-between mb-1">
-                      <input value={g.label} onChange={e => { const ng = [...clientGoals]; ng[i] = { ...g, label: e.target.value }; setClientGoals(ng); }} className={cn(ds.input, 'bg-transparent border-none p-0 text-sm font-medium')} placeholder="Goal name" />
+                      <input id="fitness-goal-name" name="goal-name" aria-label="Goal name" value={g.label} onChange={e => { const ng = [...clientGoals]; ng[i] = { ...g, label: e.target.value }; setClientGoals(ng); }} className={cn(ds.input, 'bg-transparent border-none p-0 text-sm font-medium')} placeholder="Goal name" />
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-400">{g.current}/{g.target}</span>
                         <button onClick={() => setClientGoals(prev => prev.filter((_, idx) => idx !== i))} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3 h-3 text-red-400" /></button>
@@ -964,8 +964,8 @@ export default function FitnessApp() {
                     </div>
                     <ProgressBar value={g.current} max={g.target} color="neon-cyan" />
                     <div className="flex gap-2 mt-1">
-                      <input type="number" value={g.current} onChange={e => { const ng = [...clientGoals]; ng[i] = { ...g, current: parseFloat(e.target.value) || 0 }; setClientGoals(ng); }} className={cn(ds.input, 'w-20 text-xs')} placeholder="Current" />
-                      <input type="number" value={g.target} onChange={e => { const ng = [...clientGoals]; ng[i] = { ...g, target: parseFloat(e.target.value) || 100 }; setClientGoals(ng); }} className={cn(ds.input, 'w-20 text-xs')} placeholder="Target" />
+                      <input id="fitness-current" name="current" aria-label="Current" type="number" value={g.current} onChange={e => { const ng = [...clientGoals]; ng[i] = { ...g, current: parseFloat(e.target.value) || 0 }; setClientGoals(ng); }} className={cn(ds.input, 'w-20 text-xs')} placeholder="Current" />
+                      <input id="fitness-target" name="target" aria-label="Target" type="number" value={g.target} onChange={e => { const ng = [...clientGoals]; ng[i] = { ...g, target: parseFloat(e.target.value) || 100 }; setClientGoals(ng); }} className={cn(ds.input, 'w-20 text-xs')} placeholder="Target" />
                     </div>
                   </div>
                 ))}
@@ -1007,15 +1007,15 @@ export default function FitnessApp() {
                         return (
                           <tr key={i} className="border-b border-lattice-border/50 hover:bg-lattice-elevated/50">
                             <td className="py-2 px-2">
-                              <input type="date" value={m.date} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, date: e.target.value }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-32')} />
+                              <input id="fitness-date" name="date" type="date" value={m.date} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, date: e.target.value }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-32')} />
                             </td>
-                            <td className="py-2 px-2"><input type="number" value={m.weight || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, weight: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
-                            <td className="py-2 px-2"><input type="number" value={m.bodyFat || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, bodyFat: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
-                            <td className="py-2 px-2"><input type="number" value={m.chest || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, chest: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
-                            <td className="py-2 px-2"><input type="number" value={m.waist || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, waist: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
-                            <td className="py-2 px-2"><input type="number" value={m.hips || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, hips: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
-                            <td className="py-2 px-2"><input type="number" value={m.arms || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, arms: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
-                            <td className="py-2 px-2"><input type="number" value={m.thighs || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, thighs: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
+                            <td className="py-2 px-2"><input id="fitness-field" name="field" type="number" value={m.weight || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, weight: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
+                            <td className="py-2 px-2"><input id="fitness-field-2" name="field-2" type="number" value={m.bodyFat || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, bodyFat: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
+                            <td className="py-2 px-2"><input id="fitness-field-3" name="field-3" type="number" value={m.chest || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, chest: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
+                            <td className="py-2 px-2"><input id="fitness-field-4" name="field-4" type="number" value={m.waist || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, waist: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
+                            <td className="py-2 px-2"><input id="fitness-field-5" name="field-5" type="number" value={m.hips || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, hips: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
+                            <td className="py-2 px-2"><input id="fitness-field-6" name="field-6" type="number" value={m.arms || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, arms: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
+                            <td className="py-2 px-2"><input id="fitness-field-7" name="field-7" type="number" value={m.thighs || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, thighs: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
                             <td className="py-2 px-2">
                               {weightTrend < 0 ? <ArrowDownRight className="w-4 h-4 text-red-400" /> : weightTrend > 0 ? <ArrowUpRight className="w-4 h-4 text-red-400" /> : <Minus className="w-4 h-4 text-gray-400" />}
                             </td>
@@ -1066,11 +1066,11 @@ export default function FitnessApp() {
                     <div key={i} className={cn(ds.panel, 'flex items-center gap-3')}>
                       <Award className="w-5 h-5 text-amber-400 shrink-0" />
                       <div className="flex-1 space-y-1">
-                        <input value={pr.exercise} onChange={e => { const np = [...clientPRs]; np[i] = { ...pr, exercise: e.target.value }; setClientPRs(np); }} className={cn(ds.input, 'text-xs')} placeholder="Exercise" />
+                        <input id="fitness-exercise" name="exercise" aria-label="Exercise" value={pr.exercise} onChange={e => { const np = [...clientPRs]; np[i] = { ...pr, exercise: e.target.value }; setClientPRs(np); }} className={cn(ds.input, 'text-xs')} placeholder="Exercise" />
                         <div className="flex gap-1">
-                          <input type="number" value={pr.weight || ''} onChange={e => { const np = [...clientPRs]; np[i] = { ...pr, weight: parseFloat(e.target.value) || 0 }; setClientPRs(np); }} className={cn(ds.input, 'text-xs w-16')} placeholder="lbs" />
-                          <input type="number" value={pr.reps || ''} onChange={e => { const np = [...clientPRs]; np[i] = { ...pr, reps: parseInt(e.target.value) || 1 }; setClientPRs(np); }} className={cn(ds.input, 'text-xs w-12')} placeholder="reps" />
-                          <input type="date" value={pr.date} onChange={e => { const np = [...clientPRs]; np[i] = { ...pr, date: e.target.value }; setClientPRs(np); }} className={cn(ds.input, 'text-xs w-28')} />
+                          <input id="fitness-lbs" name="lbs" aria-label="lbs" type="number" value={pr.weight || ''} onChange={e => { const np = [...clientPRs]; np[i] = { ...pr, weight: parseFloat(e.target.value) || 0 }; setClientPRs(np); }} className={cn(ds.input, 'text-xs w-16')} placeholder="lbs" />
+                          <input id="fitness-reps" name="reps" aria-label="reps" type="number" value={pr.reps || ''} onChange={e => { const np = [...clientPRs]; np[i] = { ...pr, reps: parseInt(e.target.value) || 1 }; setClientPRs(np); }} className={cn(ds.input, 'text-xs w-12')} placeholder="reps" />
+                          <input id="fitness-date-2" name="date-2" type="date" value={pr.date} onChange={e => { const np = [...clientPRs]; np[i] = { ...pr, date: e.target.value }; setClientPRs(np); }} className={cn(ds.input, 'text-xs w-28')} />
                         </div>
                       </div>
                       <button onClick={() => setClientPRs(prev => prev.filter((_, idx) => idx !== i))} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
@@ -1128,8 +1128,8 @@ export default function FitnessApp() {
                   {clientPhotos.map((p, i) => (
                     <div key={i} className={cn(ds.panel, 'w-36 text-center')}>
                       <Eye className="w-8 h-8 text-gray-600 mx-auto mb-1" />
-                      <input type="date" value={p.date} onChange={e => { const np = [...clientPhotos]; np[i] = { ...p, date: e.target.value }; setClientPhotos(np); }} className={cn(ds.input, 'text-xs')} />
-                      <input value={p.label} onChange={e => { const np = [...clientPhotos]; np[i] = { ...p, label: e.target.value }; setClientPhotos(np); }} className={cn(ds.input, 'text-xs mt-1')} placeholder="Label" />
+                      <input id="fitness-date-3" name="date-3" type="date" value={p.date} onChange={e => { const np = [...clientPhotos]; np[i] = { ...p, date: e.target.value }; setClientPhotos(np); }} className={cn(ds.input, 'text-xs')} />
+                      <input id="fitness-label" name="label" aria-label="Label" value={p.label} onChange={e => { const np = [...clientPhotos]; np[i] = { ...p, label: e.target.value }; setClientPhotos(np); }} className={cn(ds.input, 'text-xs mt-1')} placeholder="Label" />
                     </div>
                   ))}
                 </div>
@@ -1148,10 +1148,10 @@ export default function FitnessApp() {
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input ref={searchInputRef}
+              <input id="fitness-search" name="search" aria-label="Search..." ref={searchInputRef}
               type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className={cn(ds.input, 'pl-9 w-56')} />
             </div>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as Status | 'all')} className={cn(ds.select, 'w-40')}>
+            <select id="fitness-filterstatus" name="filterstatus" value={filterStatus} onChange={e => setFilterStatus(e.target.value as Status | 'all')} className={cn(ds.select, 'w-40')}>
               <option value="all">All statuses</option>
               {ALL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -1509,26 +1509,26 @@ export default function FitnessApp() {
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div>
                       <label className={ds.label}>Weight (kg)</label>
-                      <input type="number" value={bcWeight} onChange={e => setBcWeight(e.target.value)} className={ds.input} placeholder="80" />
+                      <input id="fitness-80" name="80" aria-label="80" type="number" value={bcWeight} onChange={e => setBcWeight(e.target.value)} className={ds.input} placeholder="80" />
                     </div>
                     <div>
                       <label className={ds.label}>Height (cm)</label>
-                      <input type="number" value={bcHeight} onChange={e => setBcHeight(e.target.value)} className={ds.input} placeholder="180" />
+                      <input id="fitness-180" name="180" aria-label="180" type="number" value={bcHeight} onChange={e => setBcHeight(e.target.value)} className={ds.input} placeholder="180" />
                     </div>
                     <div>
                       <label className={ds.label}>Age</label>
-                      <input type="number" value={bcAge} onChange={e => setBcAge(e.target.value)} className={ds.input} placeholder="30" />
+                      <input id="fitness-30" name="30" aria-label="30" type="number" value={bcAge} onChange={e => setBcAge(e.target.value)} className={ds.input} placeholder="30" />
                     </div>
                     <div>
                       <label className={ds.label}>Sex</label>
-                      <select value={bcIsMale ? 'male' : 'female'} onChange={e => setBcIsMale(e.target.value === 'male')} className={ds.select}>
+                      <select id="fitness-field-8" name="field-8" value={bcIsMale ? 'male' : 'female'} onChange={e => setBcIsMale(e.target.value === 'male')} className={ds.select}>
                         <option value="male">Male</option>
                         <option value="female">Female</option>
                       </select>
                     </div>
                     <div>
                       <label className={ds.label}>Activity</label>
-                      <select value={bcActivity} onChange={e => setBcActivity(e.target.value)} className={ds.select}>
+                      <select id="fitness-bcactivity" name="bcactivity" value={bcActivity} onChange={e => setBcActivity(e.target.value)} className={ds.select}>
                         <option value="1.2">Sedentary</option>
                         <option value="1.375">Light</option>
                         <option value="1.55">Moderate</option>
@@ -1563,16 +1563,16 @@ export default function FitnessApp() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     <div>
                       <label className={ds.label}>Waist (cm)</label>
-                      <input type="number" value={bcWaist} onChange={e => setBcWaist(e.target.value)} className={ds.input} placeholder="85" />
+                      <input id="fitness-85" name="85" aria-label="85" type="number" value={bcWaist} onChange={e => setBcWaist(e.target.value)} className={ds.input} placeholder="85" />
                     </div>
                     <div>
                       <label className={ds.label}>Neck (cm)</label>
-                      <input type="number" value={bcNeck} onChange={e => setBcNeck(e.target.value)} className={ds.input} placeholder="38" />
+                      <input id="fitness-38" name="38" aria-label="38" type="number" value={bcNeck} onChange={e => setBcNeck(e.target.value)} className={ds.input} placeholder="38" />
                     </div>
                     {!bcIsMale && (
                       <div>
                         <label className={ds.label}>Hip (cm)</label>
-                        <input type="number" value={bcHip} onChange={e => setBcHip(e.target.value)} className={ds.input} placeholder="95" />
+                        <input id="fitness-95" name="95" aria-label="95" type="number" value={bcHip} onChange={e => setBcHip(e.target.value)} className={ds.input} placeholder="95" />
                       </div>
                     )}
                   </div>
@@ -1592,7 +1592,7 @@ export default function FitnessApp() {
                   <p className={cn(ds.textMuted, 'mb-3')}>Mifflin-St Jeor — TDEE = BMR × activity factor. The 1RM panel below names its formulas (Epley / Brzycki); this one now names its own and shows the BMR it is built on.</p>
                   <div className="mb-3">
                     <label className={ds.label}>Goal</label>
-                    <select value={bcGoal} onChange={e => setBcGoal(e.target.value as 'cut' | 'maintain' | 'bulk')} className={cn(ds.select, 'w-40')}>
+                    <select id="fitness-bcgoal" name="bcgoal" value={bcGoal} onChange={e => setBcGoal(e.target.value as 'cut' | 'maintain' | 'bulk')} className={cn(ds.select, 'w-40')}>
                       <option value="cut">Cut (-500 cal)</option>
                       <option value="maintain">Maintain</option>
                       <option value="bulk">Bulk (+300 cal)</option>
@@ -1642,11 +1642,11 @@ export default function FitnessApp() {
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div>
                       <label className={ds.label}>Weight Lifted</label>
-                      <input type="number" value={bc1rmWeight} onChange={e => setBc1rmWeight(e.target.value)} className={ds.input} placeholder="100" />
+                      <input id="fitness-100" name="100" aria-label="100" type="number" value={bc1rmWeight} onChange={e => setBc1rmWeight(e.target.value)} className={ds.input} placeholder="100" />
                     </div>
                     <div>
                       <label className={ds.label}>Reps Completed</label>
-                      <input type="number" value={bc1rmReps} onChange={e => setBc1rmReps(e.target.value)} className={ds.input} placeholder="5" min="1" max="15" />
+                      <input id="fitness-5" name="5" aria-label="5" type="number" value={bc1rmReps} onChange={e => setBc1rmReps(e.target.value)} className={ds.input} placeholder="5" min="1" max="15" />
                     </div>
                   </div>
                   {oneRMEpley !== null && oneRMBrzycki !== null ? (
@@ -1700,12 +1700,12 @@ export default function FitnessApp() {
                 {/* Base fields */}
                 <div>
                   <label className={ds.label}>Title</label>
-                  <input value={formTitle} onChange={e => setFormTitle(e.target.value)} className={ds.input} placeholder="Title" />
+                  <input id="fitness-title" name="title" aria-label="Title" value={formTitle} onChange={e => setFormTitle(e.target.value)} className={ds.input} placeholder="Title" />
                 </div>
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Type</label>
-                    <select value={formType} onChange={e => setFormType(e.target.value as ArtifactType)} className={ds.select}>
+                    <select id="fitness-formtype" name="formtype" value={formType} onChange={e => setFormType(e.target.value as ArtifactType)} className={ds.select}>
                       <option value="Client">Client</option>
                       <option value="Program">Program</option>
                       <option value="Workout">Workout</option>
@@ -1716,7 +1716,7 @@ export default function FitnessApp() {
                   </div>
                   <div>
                     <label className={ds.label}>Status</label>
-                    <select value={formStatus} onChange={e => setFormStatus(e.target.value as Status)} className={ds.select}>
+                    <select id="fitness-formstatus" name="formstatus" value={formStatus} onChange={e => setFormStatus(e.target.value as Status)} className={ds.select}>
                       {ALL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
@@ -1724,21 +1724,21 @@ export default function FitnessApp() {
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Coach / Instructor</label>
-                    <input value={formCoach} onChange={e => setFormCoach(e.target.value)} className={ds.input} placeholder="Coach name" />
+                    <input id="fitness-coach-name" name="coach-name" aria-label="Coach name" value={formCoach} onChange={e => setFormCoach(e.target.value)} className={ds.input} placeholder="Coach name" />
                   </div>
                   <div>
                     <label className={ds.label}>Category</label>
-                    <input value={formCategory} onChange={e => setFormCategory(e.target.value)} className={ds.input} placeholder="e.g. HIIT, Yoga, Strength" />
+                    <input id="fitness-eg-hiit-yoga-strength" name="eg-hiit-yoga-strength" aria-label="e.g. HIIT, Yoga, Strength" value={formCategory} onChange={e => setFormCategory(e.target.value)} className={ds.input} placeholder="e.g. HIIT, Yoga, Strength" />
                   </div>
                 </div>
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Duration (minutes)</label>
-                    <input type="number" value={formDuration} onChange={e => setFormDuration(e.target.value)} className={ds.input} placeholder="45" min="0" />
+                    <input id="fitness-45-2" name="45-2" aria-label="45" type="number" value={formDuration} onChange={e => setFormDuration(e.target.value)} className={ds.input} placeholder="45" min="0" />
                   </div>
                   <div>
                     <label className={ds.label}>Intensity</label>
-                    <select value={formIntensity} onChange={e => setFormIntensity(e.target.value as 'low' | 'moderate' | 'high' | 'extreme')} className={ds.select}>
+                    <select id="fitness-formintensity" name="formintensity" value={formIntensity} onChange={e => setFormIntensity(e.target.value as 'low' | 'moderate' | 'high' | 'extreme')} className={ds.select}>
                       <option value="low">Low</option>
                       <option value="moderate">Moderate</option>
                       <option value="high">High</option>
@@ -1749,16 +1749,16 @@ export default function FitnessApp() {
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Schedule</label>
-                    <input value={formSchedule} onChange={e => setFormSchedule(e.target.value)} className={ds.input} placeholder="e.g. Mon/Wed/Fri 6AM" />
+                    <input id="fitness-eg-monwedfri-6am" name="eg-monwedfri-6am" aria-label="e.g. Mon/Wed/Fri 6AM" value={formSchedule} onChange={e => setFormSchedule(e.target.value)} className={ds.input} placeholder="e.g. Mon/Wed/Fri 6AM" />
                   </div>
                   <div>
                     <label className={ds.label}>Start Date</label>
-                    <input type="date" value={formStartDate} onChange={e => setFormStartDate(e.target.value)} className={ds.input} />
+                    <input id="fitness-formstartdate" name="formstartdate" type="date" value={formStartDate} onChange={e => setFormStartDate(e.target.value)} className={ds.input} />
                   </div>
                 </div>
                 <div>
                   <label className={ds.label}>Goal</label>
-                  <input value={formGoal} onChange={e => setFormGoal(e.target.value)} className={ds.input} placeholder="Target or goal" />
+                  <input id="fitness-target-or-goal" name="target-or-goal" aria-label="Target or goal" value={formGoal} onChange={e => setFormGoal(e.target.value)} className={ds.input} placeholder="Target or goal" />
                 </div>
                 <div>
                   <label className={ds.label}>Description</label>
@@ -1833,30 +1833,30 @@ export default function FitnessApp() {
                         <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                           <div>
                             <label className={ds.label}>Sets</label>
-                            <input type="number" value={ex.sets} onChange={e => updateExercise(ex.id, 'sets', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} min="0" />
+                            <input id="fitness-sets" name="sets" type="number" value={ex.sets} onChange={e => updateExercise(ex.id, 'sets', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} min="0" />
                           </div>
                           <div>
                             <label className={ds.label}>Reps</label>
-                            <input type="number" value={ex.reps} onChange={e => updateExercise(ex.id, 'reps', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} min="0" />
+                            <input id="fitness-reps-2" name="reps-2" type="number" value={ex.reps} onChange={e => updateExercise(ex.id, 'reps', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} min="0" />
                           </div>
                           <div>
                             <label className={ds.label}>Weight</label>
-                            <input type="number" value={ex.weight} onChange={e => updateExercise(ex.id, 'weight', parseFloat(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} min="0" />
+                            <input id="fitness-weight" name="weight" type="number" value={ex.weight} onChange={e => updateExercise(ex.id, 'weight', parseFloat(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} min="0" />
                           </div>
                           <div>
                             <label className={ds.label}>Rest (s)</label>
-                            <input type="number" value={ex.restSeconds} onChange={e => updateExercise(ex.id, 'restSeconds', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} min="0" />
+                            <input id="fitness-restseconds" name="restseconds" type="number" value={ex.restSeconds} onChange={e => updateExercise(ex.id, 'restSeconds', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} min="0" />
                           </div>
                           <div>
                             <label className={ds.label}>RPE</label>
-                            <input type="number" value={ex.rpe} onChange={e => updateExercise(ex.id, 'rpe', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} min="1" max="10" />
+                            <input id="fitness-rpe" name="rpe" type="number" value={ex.rpe} onChange={e => updateExercise(ex.id, 'rpe', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} min="1" max="10" />
                           </div>
                           <div>
                             <label className={ds.label}>Superset</label>
                             <div className="flex items-center gap-1">
-                              <input type="checkbox" checked={ex.isSuperset} onChange={e => updateExercise(ex.id, 'isSuperset', e.target.checked)} className="accent-red-300" />
+                              <input id="fitness-field-9" name="field-9" type="checkbox" checked={ex.isSuperset} onChange={e => updateExercise(ex.id, 'isSuperset', e.target.checked)} className="accent-red-300" />
                               {ex.isSuperset && (
-                                <input value={ex.supersetGroup} onChange={e => updateExercise(ex.id, 'supersetGroup', e.target.value)} className={cn(ds.input, 'text-xs w-12')} placeholder="Grp" />
+                                <input id="fitness-grp" name="grp" aria-label="Grp" value={ex.supersetGroup} onChange={e => updateExercise(ex.id, 'supersetGroup', e.target.value)} className={cn(ds.input, 'text-xs w-12')} placeholder="Grp" />
                               )}
                             </div>
                           </div>
@@ -1931,15 +1931,15 @@ export default function FitnessApp() {
                     <div className={ds.grid3}>
                       <div>
                         <label className={ds.label}>Macro Cycle</label>
-                        <input value={formMacroCycle} onChange={e => setFormMacroCycle(e.target.value)} className={ds.input} placeholder="e.g. Annual Plan 2026" />
+                        <input id="fitness-eg-annual-plan-2026" name="eg-annual-plan-2026" aria-label="e.g. Annual Plan 2026" value={formMacroCycle} onChange={e => setFormMacroCycle(e.target.value)} className={ds.input} placeholder="e.g. Annual Plan 2026" />
                       </div>
                       <div>
                         <label className={ds.label}>Meso Cycle</label>
-                        <input value={formMesoCycle} onChange={e => setFormMesoCycle(e.target.value)} className={ds.input} placeholder="e.g. Off-season Phase 1" />
+                        <input id="fitness-eg-offseason-phase-1" name="eg-offseason-phase-1" aria-label="e.g. Off-season Phase 1" value={formMesoCycle} onChange={e => setFormMesoCycle(e.target.value)} className={ds.input} placeholder="e.g. Off-season Phase 1" />
                       </div>
                       <div>
                         <label className={ds.label}>Micro Cycle</label>
-                        <input value={formMicroCycle} onChange={e => setFormMicroCycle(e.target.value)} className={ds.input} placeholder="e.g. Week 1 - Base" />
+                        <input id="fitness-eg-week-1-base" name="eg-week-1-base" aria-label="e.g. Week 1 - Base" value={formMicroCycle} onChange={e => setFormMicroCycle(e.target.value)} className={ds.input} placeholder="e.g. Week 1 - Base" />
                       </div>
                     </div>
 
@@ -1965,11 +1965,11 @@ export default function FitnessApp() {
                           <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                             <div>
                               <label className={ds.label}>Name</label>
-                              <input value={block.name} onChange={e => updateBlock(block.id, 'name', e.target.value)} className={cn(ds.input, 'text-xs')} />
+                              <input id="fitness-name" name="name" value={block.name} onChange={e => updateBlock(block.id, 'name', e.target.value)} className={cn(ds.input, 'text-xs')} />
                             </div>
                             <div>
                               <label className={ds.label}>Phase</label>
-                              <select value={block.phase} onChange={e => updateBlock(block.id, 'phase', e.target.value)} className={cn(ds.select, 'text-xs')}>
+                              <select id="fitness-phase" name="phase" value={block.phase} onChange={e => updateBlock(block.id, 'phase', e.target.value)} className={cn(ds.select, 'text-xs')}>
                                 <option value="Hypertrophy">Hypertrophy</option>
                                 <option value="Strength">Strength</option>
                                 <option value="Power">Power</option>
@@ -1978,19 +1978,19 @@ export default function FitnessApp() {
                             </div>
                             <div>
                               <label className={ds.label}>Weeks</label>
-                              <input type="number" value={block.weeks} onChange={e => updateBlock(block.id, 'weeks', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} min="1" />
+                              <input id="fitness-weeks" name="weeks" type="number" value={block.weeks} onChange={e => updateBlock(block.id, 'weeks', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} min="1" />
                             </div>
                             <div>
                               <label className={ds.label}>Vol Target</label>
-                              <input type="number" value={block.weeklyVolume} onChange={e => updateBlock(block.id, 'weeklyVolume', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} placeholder="sets/wk" />
+                              <input id="fitness-setswk" name="setswk" aria-label="sets/wk" type="number" value={block.weeklyVolume} onChange={e => updateBlock(block.id, 'weeklyVolume', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} placeholder="sets/wk" />
                             </div>
                             <div>
                               <label className={ds.label}>Overload %</label>
-                              <input type="number" value={block.overloadPercent} onChange={e => updateBlock(block.id, 'overloadPercent', parseFloat(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
+                              <input id="fitness-overloadpercent" name="overloadpercent" type="number" value={block.overloadPercent} onChange={e => updateBlock(block.id, 'overloadPercent', parseFloat(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
                             </div>
                           </div>
                           <div className="mt-2">
-                            <input value={block.notes} onChange={e => updateBlock(block.id, 'notes', e.target.value)} className={cn(ds.input, 'text-xs')} placeholder="Block notes..." />
+                            <input id="fitness-block-notes" name="block-notes" aria-label="Block notes..." value={block.notes} onChange={e => updateBlock(block.id, 'notes', e.target.value)} className={cn(ds.input, 'text-xs')} placeholder="Block notes..." />
                           </div>
                         </div>
                       );
@@ -2047,39 +2047,39 @@ export default function FitnessApp() {
                               {slotsForTime.length > 0 ? slotsForTime.map(slot => (
                                 <div key={slot.id} className={cn(ds.panel, 'mb-1')}>
                                   <div className="flex items-center justify-between mb-2">
-                                    <input value={slot.name} onChange={e => updateClassSlot(slot.id, 'name', e.target.value)} className={cn(ds.input, 'text-sm font-medium bg-transparent border-none p-0 w-40')} />
+                                    <input id="fitness-name-2" name="name-2" value={slot.name} onChange={e => updateClassSlot(slot.id, 'name', e.target.value)} className={cn(ds.input, 'text-sm font-medium bg-transparent border-none p-0 w-40')} />
                                     <button onClick={() => removeClassSlot(slot.id)} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                                   </div>
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                     <div>
                                       <label className={ds.label}>Instructor</label>
-                                      <input value={slot.instructor} onChange={e => updateClassSlot(slot.id, 'instructor', e.target.value)} className={cn(ds.input, 'text-xs')} />
+                                      <input id="fitness-instructor" name="instructor" value={slot.instructor} onChange={e => updateClassSlot(slot.id, 'instructor', e.target.value)} className={cn(ds.input, 'text-xs')} />
                                     </div>
                                     <div>
                                       <label className={ds.label}>Capacity</label>
-                                      <input type="number" value={slot.capacity} onChange={e => updateClassSlot(slot.id, 'capacity', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
+                                      <input id="fitness-capacity" name="capacity" type="number" value={slot.capacity} onChange={e => updateClassSlot(slot.id, 'capacity', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
                                     </div>
                                     <div>
                                       <label className={ds.label}>Enrolled</label>
-                                      <input type="number" value={slot.enrolled} onChange={e => updateClassSlot(slot.id, 'enrolled', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
+                                      <input id="fitness-enrolled" name="enrolled" type="number" value={slot.enrolled} onChange={e => updateClassSlot(slot.id, 'enrolled', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
                                     </div>
                                     <div>
                                       <label className={ds.label}>Waitlist</label>
-                                      <input type="number" value={slot.waitlist} onChange={e => updateClassSlot(slot.id, 'waitlist', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
+                                      <input id="fitness-waitlist" name="waitlist" type="number" value={slot.waitlist} onChange={e => updateClassSlot(slot.id, 'waitlist', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
                                     </div>
                                   </div>
                                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
                                     <div>
                                       <label className={ds.label}>$/Head</label>
-                                      <input type="number" value={slot.pricePerHead} onChange={e => updateClassSlot(slot.id, 'pricePerHead', parseFloat(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
+                                      <input id="fitness-priceperhead" name="priceperhead" type="number" value={slot.pricePerHead} onChange={e => updateClassSlot(slot.id, 'pricePerHead', parseFloat(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
                                     </div>
                                     <div>
                                       <label className={ds.label}>Attended</label>
-                                      <input type="number" value={slot.attended} onChange={e => updateClassSlot(slot.id, 'attended', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
+                                      <input id="fitness-attended" name="attended" type="number" value={slot.attended} onChange={e => updateClassSlot(slot.id, 'attended', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
                                     </div>
                                     <div>
                                       <label className={ds.label}>Cancellations</label>
-                                      <input type="number" value={slot.cancellations} onChange={e => updateClassSlot(slot.id, 'cancellations', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
+                                      <input id="fitness-cancellations" name="cancellations" type="number" value={slot.cancellations} onChange={e => updateClassSlot(slot.id, 'cancellations', parseInt(e.target.value) || 0)} className={cn(ds.input, 'text-xs')} />
                                     </div>
                                   </div>
                                   <div className="mt-2 flex gap-3 text-xs text-gray-400">
@@ -2138,12 +2138,12 @@ export default function FitnessApp() {
                             <tbody>
                               {roster.map((r, i) => (
                                 <tr key={i} className="border-b border-lattice-border/50">
-                                  <td className="py-1 px-2"><input value={r.name} onChange={e => updateRosterEntry(i, 'name', e.target.value)} className={cn(ds.input, 'text-xs')} placeholder="Name" /></td>
-                                  <td className="py-1 px-2"><input value={r.position} onChange={e => updateRosterEntry(i, 'position', e.target.value)} className={cn(ds.input, 'text-xs w-20')} placeholder="Pos" /></td>
-                                  <td className="py-1 px-2"><input value={r.number} onChange={e => updateRosterEntry(i, 'number', e.target.value)} className={cn(ds.input, 'text-xs w-12')} placeholder="#" /></td>
-                                  <td className="py-1 px-2"><input value={r.stats} onChange={e => updateRosterEntry(i, 'stats', e.target.value)} className={cn(ds.input, 'text-xs')} placeholder="Key stats" /></td>
+                                  <td className="py-1 px-2"><input id="fitness-name-3" name="name-3" aria-label="Name" value={r.name} onChange={e => updateRosterEntry(i, 'name', e.target.value)} className={cn(ds.input, 'text-xs')} placeholder="Name" /></td>
+                                  <td className="py-1 px-2"><input id="fitness-pos" name="pos" aria-label="Pos" value={r.position} onChange={e => updateRosterEntry(i, 'position', e.target.value)} className={cn(ds.input, 'text-xs w-20')} placeholder="Pos" /></td>
+                                  <td className="py-1 px-2"><input id="fitness-field-10" name="field-10" aria-label="#" value={r.number} onChange={e => updateRosterEntry(i, 'number', e.target.value)} className={cn(ds.input, 'text-xs w-12')} placeholder="#" /></td>
+                                  <td className="py-1 px-2"><input id="fitness-key-stats" name="key-stats" aria-label="Key stats" value={r.stats} onChange={e => updateRosterEntry(i, 'stats', e.target.value)} className={cn(ds.input, 'text-xs')} placeholder="Key stats" /></td>
                                   <td className="py-1 px-2">
-                                    <select value={r.status} onChange={e => updateRosterEntry(i, 'status', e.target.value)} className={cn(ds.select, 'text-xs w-24')}>
+                                    <select id="fitness-status" name="status" value={r.status} onChange={e => updateRosterEntry(i, 'status', e.target.value)} className={cn(ds.select, 'text-xs w-24')}>
                                       <option value="active">Active</option>
                                       <option value="injured">Injured</option>
                                       <option value="reserve">Reserve</option>
@@ -2178,10 +2178,10 @@ export default function FitnessApp() {
                         <div className="space-y-2">
                           {seasonGames.map((game, i) => (
                             <div key={i} className={cn(ds.panel, 'flex gap-2 items-center')}>
-                              <input type="date" value={game.date} onChange={e => { const ng = [...seasonGames]; ng[i] = { ...game, date: e.target.value }; setSeasonGames(ng); }} className={cn(ds.input, 'text-xs w-32')} />
-                              <input value={game.opponent} onChange={e => { const ng = [...seasonGames]; ng[i] = { ...game, opponent: e.target.value }; setSeasonGames(ng); }} className={cn(ds.input, 'text-xs flex-1')} placeholder="Opponent" />
-                              <input value={game.location} onChange={e => { const ng = [...seasonGames]; ng[i] = { ...game, location: e.target.value }; setSeasonGames(ng); }} className={cn(ds.input, 'text-xs w-24')} placeholder="Location" />
-                              <input value={game.result} onChange={e => { const ng = [...seasonGames]; ng[i] = { ...game, result: e.target.value }; setSeasonGames(ng); }} className={cn(ds.input, 'text-xs w-20')} placeholder="Result" />
+                              <input id="fitness-date-4" name="date-4" type="date" value={game.date} onChange={e => { const ng = [...seasonGames]; ng[i] = { ...game, date: e.target.value }; setSeasonGames(ng); }} className={cn(ds.input, 'text-xs w-32')} />
+                              <input id="fitness-opponent" name="opponent" aria-label="Opponent" value={game.opponent} onChange={e => { const ng = [...seasonGames]; ng[i] = { ...game, opponent: e.target.value }; setSeasonGames(ng); }} className={cn(ds.input, 'text-xs flex-1')} placeholder="Opponent" />
+                              <input id="fitness-location" name="location" aria-label="Location" value={game.location} onChange={e => { const ng = [...seasonGames]; ng[i] = { ...game, location: e.target.value }; setSeasonGames(ng); }} className={cn(ds.input, 'text-xs w-24')} placeholder="Location" />
+                              <input id="fitness-result" name="result" aria-label="Result" value={game.result} onChange={e => { const ng = [...seasonGames]; ng[i] = { ...game, result: e.target.value }; setSeasonGames(ng); }} className={cn(ds.input, 'text-xs w-20')} placeholder="Result" />
                             </div>
                           ))}
                         </div>
@@ -2193,7 +2193,7 @@ export default function FitnessApp() {
                     {/* Practice Plans */}
                     <div>
                       <label className={ds.label}>Practice Plans (one per line)</label>
-                      <textarea className={ds.textarea} rows={3} placeholder="Warm-up drills&#10;Skill work&#10;Scrimmage&#10;Cool-down" />
+                      <textarea id="fitness-warmup-drills10skill-work10scrimmage10co" name="warmup-drills10skill-work10scrimmage10co" aria-label="Warm-up drills&#10;Skill work&#10;Scrimmage&#10;Cool-down" className={ds.textarea} rows={3} placeholder="Warm-up drills&#10;Skill work&#10;Scrimmage&#10;Cool-down" />
                     </div>
                   </div>
                 )}
@@ -2226,21 +2226,21 @@ export default function FitnessApp() {
                         <label className={ds.label}>Email</label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                          <input value={formEmail} onChange={e => setFormEmail(e.target.value)} className={cn(ds.input, 'pl-9')} placeholder="athlete@email.com" />
+                          <input id="fitness-athleteemailcom" name="athleteemailcom" aria-label="athlete@email.com" value={formEmail} onChange={e => setFormEmail(e.target.value)} className={cn(ds.input, 'pl-9')} placeholder="athlete@email.com" />
                         </div>
                       </div>
                       <div>
                         <label className={ds.label}>Phone</label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                          <input value={formPhone} onChange={e => setFormPhone(e.target.value)} className={cn(ds.input, 'pl-9')} placeholder="(555) 000-0000" />
+                          <input id="fitness-555-0000000" name="555-0000000" aria-label="(555) 000-0000" value={formPhone} onChange={e => setFormPhone(e.target.value)} className={cn(ds.input, 'pl-9')} placeholder="(555) 000-0000" />
                         </div>
                       </div>
                       <div>
                         <label className={ds.label}>Location</label>
                         <div className="relative">
                           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                          <input value={formLocation} onChange={e => setFormLocation(e.target.value)} className={cn(ds.input, 'pl-9')} placeholder="City, State" />
+                          <input id="fitness-city-state" name="city-state" aria-label="City, State" value={formLocation} onChange={e => setFormLocation(e.target.value)} className={cn(ds.input, 'pl-9')} placeholder="City, State" />
                         </div>
                       </div>
                     </div>
@@ -2248,7 +2248,7 @@ export default function FitnessApp() {
                     {/* Performance metrics */}
                     <div>
                       <label className={ds.label}>Performance Metrics / Scouting Notes</label>
-                      <textarea className={ds.textarea} rows={3} placeholder="40-yard: 4.5s&#10;Vertical: 32&quot;&#10;GPA: 3.8&#10;Highlights: Strong leadership, varsity starter since sophomore year" />
+                      <textarea id="fitness-40yard-45s10vertical-32quot10gpa-3810hig" name="40yard-45s10vertical-32quot10gpa-3810hig" aria-label="40-yard: 4.5s&#10;Vertical: 32&quot;&#10;GPA: 3.8&#10;Highlights: Strong leadership, varsity starter since sophomore year" className={ds.textarea} rows={3} placeholder="40-yard: 4.5s&#10;Vertical: 32&quot;&#10;GPA: 3.8&#10;Highlights: Strong leadership, varsity starter since sophomore year" />
                     </div>
                   </div>
                 )}

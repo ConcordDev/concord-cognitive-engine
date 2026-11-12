@@ -197,7 +197,7 @@ export function WorkoutLogger() {
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Dumbbell className="w-4 h-4 text-cyan-400" />
-        <input
+        <input id="fitness-title-4" name="title-4"
           value={active.title}
           onChange={e => setActive({ ...active, title: e.target.value })}
           className="flex-1 bg-transparent text-sm font-bold text-white outline-none focus:bg-white/5 px-2 py-0.5 rounded"
@@ -245,13 +245,13 @@ export function WorkoutLogger() {
                     <tr key={i} className={cn('border-t border-white/5', s.done && 'bg-green-500/[0.05]')}>
                       <td className="px-2 py-1 text-gray-400">{i + 1}</td>
                       <td className="px-2 py-1">
-                        <input type="number" value={s.reps} onChange={e => updateSet(ex.id, i, { reps: Number(e.target.value) || 0 })} className="w-12 px-1 bg-lattice-deep border border-white/10 rounded text-white tabular-nums" />
+                        <input id="fitness-reps-5" name="reps-5" type="number" value={s.reps} onChange={e => updateSet(ex.id, i, { reps: Number(e.target.value) || 0 })} className="w-12 px-1 bg-lattice-deep border border-white/10 rounded text-white tabular-nums" />
                       </td>
                       <td className="px-2 py-1">
-                        <input type="number" step={0.5} value={s.weight} onChange={e => updateSet(ex.id, i, { weight: Number(e.target.value) || 0 })} className="w-16 px-1 bg-lattice-deep border border-white/10 rounded text-white tabular-nums" />
+                        <input id="fitness-weight-3" name="weight-3" type="number" step={0.5} value={s.weight} onChange={e => updateSet(ex.id, i, { weight: Number(e.target.value) || 0 })} className="w-16 px-1 bg-lattice-deep border border-white/10 rounded text-white tabular-nums" />
                       </td>
                       <td className="px-2 py-1">
-                        <input type="number" value={s.rir ?? ''} placeholder="—" onChange={e => updateSet(ex.id, i, { rir: e.target.value ? Number(e.target.value) : undefined })} className="w-10 px-1 bg-lattice-deep border border-white/10 rounded text-white tabular-nums" />
+                        <input id="fitness-field-27" name="field-27" aria-label="—" type="number" value={s.rir ?? ''} placeholder="—" onChange={e => updateSet(ex.id, i, { rir: e.target.value ? Number(e.target.value) : undefined })} className="w-10 px-1 bg-lattice-deep border border-white/10 rounded text-white tabular-nums" />
                       </td>
                       <td className="px-2 py-1 text-right">
                         {!s.done ? (

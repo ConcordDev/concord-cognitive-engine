@@ -192,24 +192,24 @@ export function StravaActivitiesPanel() {
 
       {showForm && (
         <div className="grid grid-cols-2 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <select
+          <select id="fitness-type" name="type"
             value={form.type}
             onChange={(e) => setForm({ ...form, type: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100"
           >
             {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
-          <input placeholder="Name (optional)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+          <input id="fitness-name-optional" name="name-optional" aria-label="Name (optional)" placeholder="Name (optional)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Distance (km)" inputMode="decimal" value={form.distanceKm} onChange={(e) => setForm({ ...form, distanceKm: e.target.value })}
+          <input id="fitness-distance-km" name="distance-km" aria-label="Distance (km)" placeholder="Distance (km)" inputMode="decimal" value={form.distanceKm} onChange={(e) => setForm({ ...form, distanceKm: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Duration (min)" inputMode="decimal" value={form.durationMin} onChange={(e) => setForm({ ...form, durationMin: e.target.value })}
+          <input id="fitness-duration-min" name="duration-min" aria-label="Duration (min)" placeholder="Duration (min)" inputMode="decimal" value={form.durationMin} onChange={(e) => setForm({ ...form, durationMin: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Elevation (m)" inputMode="numeric" value={form.elevationGainM} onChange={(e) => setForm({ ...form, elevationGainM: e.target.value })}
+          <input id="fitness-elevation-m" name="elevation-m" aria-label="Elevation (m)" placeholder="Elevation (m)" inputMode="numeric" value={form.elevationGainM} onChange={(e) => setForm({ ...form, elevationGainM: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Avg HR (bpm)" inputMode="numeric" value={form.avgHr} onChange={(e) => setForm({ ...form, avgHr: e.target.value })}
+          <input id="fitness-avg-hr-bpm" name="avg-hr-bpm" aria-label="Avg HR (bpm)" placeholder="Avg HR (bpm)" inputMode="numeric" value={form.avgHr} onChange={(e) => setForm({ ...form, avgHr: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Calories" inputMode="numeric" value={form.calories} onChange={(e) => setForm({ ...form, calories: e.target.value })}
+          <input id="fitness-calories" name="calories" aria-label="Calories" placeholder="Calories" inputMode="numeric" value={form.calories} onChange={(e) => setForm({ ...form, calories: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={submit} disabled={busy}
             className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white text-xs font-medium rounded-lg px-2 py-1.5">
@@ -365,7 +365,7 @@ export function StravaActivitiesPanel() {
                     <label className="w-20 h-20 rounded-lg border border-dashed border-zinc-700 flex flex-col items-center justify-center gap-1 cursor-pointer text-zinc-400 hover:text-orange-300 hover:border-orange-700/60">
                       <ImagePlus className="w-4 h-4" />
                       <span className="text-[10px]">Add photo</span>
-                      <input
+                      <input id="fitness-field-22" name="field-22"
                         type="file"
                         accept="image/*"
                         className="hidden"
@@ -399,7 +399,7 @@ export function StravaActivitiesPanel() {
                     )}
                   </ul>
                   <div className="flex items-center gap-1.5">
-                    <input
+                    <input id="fitness-add-a-comment" name="add-a-comment" aria-label="Add a comment…"
                       placeholder="Add a comment…"
                       value={commentDraft}
                       onChange={(e) => setCommentDraft(e.target.value)}

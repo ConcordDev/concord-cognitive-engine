@@ -258,7 +258,7 @@ export function StravaBeaconPanel() {
 
           {!active || active.status !== 'live' ? (
             <div className="flex items-center gap-2">
-              <select
+              <select id="fitness-type-2" name="type-2"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100"
@@ -347,7 +347,7 @@ export function StravaBeaconPanel() {
           )}
 
           <div className="flex items-center gap-2">
-            <input
+            <input id="fitness-paste-a-beacon-share-token" name="paste-a-beacon-share-token" aria-label="Paste a beacon share token"
               placeholder="Paste a beacon share token"
               value={followToken}
               onChange={(e) => setFollowToken(e.target.value)}

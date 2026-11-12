@@ -106,13 +106,13 @@ export function RoutesPanel({ className }: { className?: string }) {
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); void create(); }} className="flex flex-wrap items-center gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Route name" maxLength={60}
+        <input id="fitness-route-name" name="route-name" aria-label="Route name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Route name" maxLength={60}
           className="flex-1 min-w-[8rem] bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:border-orange-500 focus:outline-none" />
-        <input value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} placeholder="km" type="number" min="0" step="0.1"
+        <input id="fitness-km" name="km" aria-label="km" value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} placeholder="km" type="number" min="0" step="0.1"
           className="w-16 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:outline-none" />
-        <input value={elevationGainM} onChange={(e) => setElevationGainM(e.target.value)} placeholder="elev m" type="number" min="0"
+        <input id="fitness-elev-m" name="elev-m" aria-label="elev m" value={elevationGainM} onChange={(e) => setElevationGainM(e.target.value)} placeholder="elev m" type="number" min="0"
           className="w-20 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:outline-none" />
-        <select value={activityType} onChange={(e) => setActivityType(e.target.value)}
+        <select id="fitness-activitytype" name="activitytype" value={activityType} onChange={(e) => setActivityType(e.target.value)}
           className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:outline-none">
           {ACTIVITIES.map((a) => <option key={a} value={a}>{a}</option>)}
         </select>

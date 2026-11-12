@@ -91,14 +91,14 @@ export function StravaGoalsPanel() {
           <Target className="w-3.5 h-3.5 text-orange-400" /> Goals
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-          <select value={goalForm.metric} onChange={(e) => setGoalForm({ ...goalForm, metric: e.target.value })}
+          <select id="fitness-metric-2" name="metric-2" value={goalForm.metric} onChange={(e) => setGoalForm({ ...goalForm, metric: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {METRICS.map((m) => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
           </select>
-          <input placeholder="Target" inputMode="decimal" value={goalForm.target}
+          <input id="fitness-target-4" name="target-4" aria-label="Target" placeholder="Target" inputMode="decimal" value={goalForm.target}
             onChange={(e) => setGoalForm({ ...goalForm, target: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={goalForm.period} onChange={(e) => setGoalForm({ ...goalForm, period: e.target.value })}
+          <select id="fitness-period" name="period" value={goalForm.period} onChange={(e) => setGoalForm({ ...goalForm, period: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {['week', 'month', 'year'].map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -161,13 +161,13 @@ export function StravaGoalsPanel() {
           <Footprints className="w-3.5 h-3.5 text-orange-400" /> Gear
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-          <input placeholder="Name" value={gearForm.name} onChange={(e) => setGearForm({ ...gearForm, name: e.target.value })}
+          <input id="fitness-name-7" name="name-7" aria-label="Name" placeholder="Name" value={gearForm.name} onChange={(e) => setGearForm({ ...gearForm, name: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={gearForm.kind} onChange={(e) => setGearForm({ ...gearForm, kind: e.target.value })}
+          <select id="fitness-kind" name="kind" value={gearForm.kind} onChange={(e) => setGearForm({ ...gearForm, kind: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {['shoes', 'bike', 'other'].map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
-          <input placeholder="Retire at km" inputMode="numeric" value={gearForm.retireAtKm}
+          <input id="fitness-retire-at-km" name="retire-at-km" aria-label="Retire at km" placeholder="Retire at km" inputMode="numeric" value={gearForm.retireAtKm}
             onChange={(e) => setGearForm({ ...gearForm, retireAtKm: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addGear}

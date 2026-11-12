@@ -77,7 +77,7 @@ export function WorkoutPlanner({ onSavePlan }: WorkoutPlannerProps) {
       </header>
       <div className="p-4 grid grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
         <Field label="Goal">
-          <select value={goal} onChange={e => setGoal(e.target.value as 'strength' | 'hypertrophy' | 'endurance' | 'fat_loss' | 'general')} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
+          <select id="fitness-goal" name="goal" value={goal} onChange={e => setGoal(e.target.value as 'strength' | 'hypertrophy' | 'endurance' | 'fat_loss' | 'general')} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="strength">Strength</option>
             <option value="hypertrophy">Hypertrophy</option>
             <option value="endurance">Endurance</option>
@@ -86,20 +86,20 @@ export function WorkoutPlanner({ onSavePlan }: WorkoutPlannerProps) {
           </select>
         </Field>
         <Field label="Days / week">
-          <input type="number" min={1} max={7} value={daysPerWeek} onChange={e => setDaysPerWeek(Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-daysperweek" name="daysperweek" type="number" min={1} max={7} value={daysPerWeek} onChange={e => setDaysPerWeek(Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </Field>
         <Field label="Weeks">
-          <input type="number" min={1} max={24} value={weeks} onChange={e => setWeeks(Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-weeks-3" name="weeks-3" type="number" min={1} max={24} value={weeks} onChange={e => setWeeks(Number(e.target.value))} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </Field>
         <Field label="Equipment">
-          <select value={equipment} onChange={e => setEquipment(e.target.value as 'full_gym' | 'home_dumbbells' | 'bodyweight_only')} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
+          <select id="fitness-equipment" name="equipment" value={equipment} onChange={e => setEquipment(e.target.value as 'full_gym' | 'home_dumbbells' | 'bodyweight_only')} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="full_gym">Full gym</option>
             <option value="home_dumbbells">Dumbbells + bench</option>
             <option value="bodyweight_only">Bodyweight only</option>
           </select>
         </Field>
         <Field label="Experience">
-          <select value={experience} onChange={e => setExperience(e.target.value as 'beginner' | 'intermediate' | 'advanced')} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
+          <select id="fitness-experience" name="experience" value={experience} onChange={e => setExperience(e.target.value as 'beginner' | 'intermediate' | 'advanced')} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="beginner">Beginner</option>
             <option value="intermediate">Intermediate</option>
             <option value="advanced">Advanced</option>

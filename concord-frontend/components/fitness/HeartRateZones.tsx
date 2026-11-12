@@ -48,15 +48,15 @@ export function HeartRateZones() {
       <div className="p-4 grid grid-cols-3 gap-3 text-xs">
         <label>
           <span className="block text-[10px] uppercase text-gray-400">Age</span>
-          <input type="number" min={5} max={100} value={age} onChange={e => setAge(Number(e.target.value) || 30)} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-age" name="age" type="number" min={5} max={100} value={age} onChange={e => setAge(Number(e.target.value) || 30)} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </label>
         <label>
           <span className="block text-[10px] uppercase text-gray-400">Resting HR</span>
-          <input type="number" min={30} max={120} value={restingHr} onChange={e => setRestingHr(Number(e.target.value) || 60)} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input id="fitness-restinghr" name="restinghr" type="number" min={30} max={120} value={restingHr} onChange={e => setRestingHr(Number(e.target.value) || 60)} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
         </label>
         <label>
           <span className="block text-[10px] uppercase text-gray-400">Method</span>
-          <select value={method} onChange={e => setMethod(e.target.value as 'tanaka' | 'fox' | 'karvonen')} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
+          <select id="fitness-method" name="method" value={method} onChange={e => setMethod(e.target.value as 'tanaka' | 'fox' | 'karvonen')} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="tanaka">Tanaka (208 − 0.7×age)</option>
             <option value="fox">Fox (220 − age)</option>
             <option value="karvonen">Karvonen (HR reserve)</option>

@@ -197,7 +197,7 @@ export function StravaTrainingPanel() {
       {/* Sleep input drives readiness + battery */}
       <div className="flex items-center gap-2 text-xs text-zinc-400">
         <span>Last night&apos;s sleep</span>
-        <input
+        <input id="fitness-sleephours" name="sleephours"
           inputMode="decimal" value={sleepHours} onChange={(e) => setSleepHours(e.target.value)}
           className="w-16 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-zinc-100"
         />
@@ -221,7 +221,7 @@ export function StravaTrainingPanel() {
             <p className="text-[11px] text-zinc-400 italic">{hrv?.notes || 'Log nightly HRV to see a status.'}</p>
           )}
           <div className="flex gap-1 mt-2">
-            <input
+            <input id="fitness-rmssd-ms" name="rmssd-ms" aria-label="RMSSD (ms)"
               placeholder="RMSSD (ms)" inputMode="decimal" value={rmssd} onChange={(e) => setRmssd(e.target.value)}
               className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100"
             />
