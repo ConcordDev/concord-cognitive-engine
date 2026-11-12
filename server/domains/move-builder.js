@@ -328,6 +328,47 @@ export default function registerMoveBuilderMacros(register) {
     }
   }, { note: "rename the caller's minted move" });
 
+  register("move-builder", "duplicate", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    const moveId = String(input.moveId || input.id || "");
+    if (!moveId) return { ok: false, reason: "missing_move" };
+    const cols = dtuColumns(db);
+    try {
+      let row = null;
+      if (cols.has("type") && cols.has("creator_id") && cols.has("data")) {
+        row = db.prepare(`SELECT * FROM dtus WHERE id = ? AND type = 'move_recipe'`).get(moveId);
+      } else if (cols.has("body_json") && cols.has("owner_user_id")) {
+        row = db.prepare(`SELECT * FROM dtus WHERE id = ?`).get(moveId);
+      } else {
+        return { ok: false, reason: "no_dtu_table" };
+      }
+      if (!row) return { ok: false, reason: "move_not_found" };
+      const owner = row.creator_id ?? row.owner_user_id;
+      if (owner && String(owner) !== String(userId)) return { ok: false, reason: "move_not_found" };
+      const bodyCol = cols.has("data") ? "data" : "body_json";
+      let meta = {};
+      try { meta = JSON.parse(row[bodyCol] || "{}"); } catch { meta = {}; }
+      if (cols.has("body_json") && meta.kind !== "move_recipe") return { ok: false, reason: "move_not_found" };
+      const copyName = `${String(row.title || meta.name || "Untitled move").slice(0, 110)} copy`.slice(0, 120);
+      meta.name = copyName;
+      if ("current_name" in meta) meta.current_name = copyName;
+      const newId = `move:${userId}:${crypto.randomUUID().slice(0, 8)}`;
+      const now = new Date().toISOString();
+      const clone = { ...row, id: newId, title: copyName, [bodyCol]: JSON.stringify(meta) };
+      if ("created_at" in clone) clone.created_at = now;
+      if ("updated_at" in clone) clone.updated_at = now;
+      const keys = Object.keys(clone);
+      db.prepare(`INSERT INTO dtus (${keys.join(", ")}) VALUES (${keys.map(() => "?").join(", ")})`)
+        .run(...keys.map((k) => clone[k]));
+      return { ok: true, moveId: newId, name: copyName, duplicatedFrom: moveId };
+    } catch (e) {
+      return { ok: false, reason: "duplicate_failed", detail: String(e?.message || e) };
+    }
+  }, { note: "duplicate the caller's minted move" });
+
   /**
    * move-builder.get — one minted move, round-tripping the stamped descriptor.
    * input: { moveId }
