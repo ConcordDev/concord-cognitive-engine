@@ -47,13 +47,21 @@ export function SpawnPanel({ onSpawned }: { onSpawned?: () => void }) {
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <input
-          type="text"
-          placeholder="World name"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
-        />
+        <div>
+          <input
+            type="text"
+            placeholder="World name"
+            aria-label="World name"
+            maxLength={200}
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+          />
+          <div className="mt-0.5 flex justify-between text-[10px] text-zinc-500">
+            <span>{form.name.trim().length > 0 && form.name.trim().length < 3 ? 'At least 3 characters.' : '3–200 characters.'}</span>
+            <span>{form.name.length}/200</span>
+          </div>
+        </div>
         <input
           type="text"
           placeholder="Forge app DTU id (optional)"
