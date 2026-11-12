@@ -215,10 +215,15 @@ export function IncidentConsole() {
   }
   async function createService(name: string, owner: string, tier: string, dependsOn: string[], alertKeys: string[]) {
     setBusy('svc-create');
-    const r = await run<{ service: Service }>('serviceCreate', { name, owner, tier, dependsOn, alertKeys });
+    // runResult, not run: the register error must carry the server's own
+    // reason. A permission denial reads "Insufficient permissions" from
+    // the gate — swallowing it into a generic failure (or worse, letting
+    // it surface as a session problem) sends the user to re-login for a
+    // role they simply don't hold.
+    const r = await runResult<{ service: Service }>('serviceCreate', { name, owner, tier, dependsOn, alertKeys });
     setBusy(null);
-    if (r?.service) { flash('ok', `Service "${name}" registered`); await loadServices(); await loadStatus(); }
-    else flash('err', 'Failed to register service');
+    if (r.ok && r.result?.service) { flash('ok', `Service "${name}" registered`); await loadServices(); await loadStatus(); }
+    else flash('err', `Failed to register service: ${r.ok ? 'unexpected response' : r.error}`);
   }
   async function createPolicy(name: string, tiers: Array<{ afterMinutes: number; target: string; channel: Channel }>) {
     setBusy('pol-create');
