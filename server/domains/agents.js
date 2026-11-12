@@ -1038,11 +1038,19 @@ export default function registerAgentsActions(registerLensAction) {
       const requiredSkills = Array.isArray(params.requiredSkills)
         ? params.requiredSkills.map(sk => aClean(sk, 60)).filter(Boolean)
         : [];
+      // FIX-agents-005: priority was any cleaned string, so a junk
+      // value ('not-a-number') stored and rendered as a priority.
+      // The vocabulary is the one the surface offers: low / normal /
+      // high / urgent; absent still defaults to "normal".
+      const priorityRaw = aClean(params.priority, 20);
+      if (priorityRaw && !["low", "normal", "high", "urgent"].includes(priorityRaw.toLowerCase())) {
+        return { ok: false, error: "priority must be one of: low, normal, high, urgent" };
+      }
       const taskDefinition = {
         id: aId("taskdef"),
         name,
         requiredSkills,
-        priority: aClean(params.priority, 20) || "normal",
+        priority: priorityRaw ? priorityRaw.toLowerCase() : "normal",
         description: aClean(params.description, 500),
         createdAt: new Date().toISOString(),
       };
