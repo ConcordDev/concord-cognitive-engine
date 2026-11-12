@@ -19,6 +19,7 @@ import {
   Map as MapIcon, LineChart as LineIcon, Columns3, ScatterChart as ScatterIcon,
   Search, Contact, Loader2, AlertTriangle, Bookmark, Trash2, Link2, Play, Copy,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
@@ -98,6 +99,7 @@ function fmt(v: number | null | undefined, indicator?: string): string {
 const PALETTE = ['#06b6d4', '#22c55e', '#f59e0b', '#ec4899', '#a855f7', '#ef4444'];
 
 export function DataExplorer() {
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>('choropleth');
 
   // --- per-mode inputs ---
@@ -204,15 +206,23 @@ export function DataExplorer() {
     if (r.data.ok && r.data.result) {
       setShareLink(r.data.result.shareLink);
       void refreshViews();
+      // The page's Saved Views stat card reads its own query; refresh it
+      // too or the count lags the list until a reload (FIX-global-008).
+      void queryClient.invalidateQueries({ queryKey: ['global-saved-views-count'] });
     } else {
       setError(r.data.error || 'Could not save view.');
     }
-  }, [mode, indicator, indicatorX, indicatorY, catalogQuery, country, currentConfig, refreshViews]);
+  }, [mode, indicator, indicatorX, indicatorY, catalogQuery, country, currentConfig, refreshViews, queryClient]);
 
   const deleteView = useCallback(async (id: string) => {
     const r = await lensRun('global', 'deleteView', { id });
-    if (r.data.ok) void refreshViews();
-  }, [refreshViews]);
+    if (r.data.ok) {
+      void refreshViews();
+      // Same stat-card refresh as the save path (FIX-global-008): the
+      // card kept showing the deleted view in its count until a reload.
+      void queryClient.invalidateQueries({ queryKey: ['global-saved-views-count'] });
+    }
+  }, [refreshViews, queryClient]);
 
   const applyView = useCallback((v: SavedView) => {
     const c = v.config || {};
