@@ -310,6 +310,32 @@ describe('LensToolbar', () => {
     await press(/Lens tools/);
     expect(document.body.textContent).not.toMatch(/Kay/);
   });
+  it('FIX-energy-010: opening moves focus into the menu; Tab closes it instead of leaking to the page behind; Escape returns focus to the trigger', async () => {
+    render(<Tools />);
+    await settle();
+    await press(/Lens tools/);
+    await settle();
+    const menu = document.querySelector('[role="menu"]');
+    expect(menu).not.toBeNull();
+    const items = screen.queryAllByRole('menuitem');
+    expect(items.length).toBeGreaterThan(1);
+    // Focus moved to the first item on open.
+    expect(document.activeElement).toBe(items[0]);
+    // ArrowDown advances within the menu.
+    fireEvent.keyDown(items[0], { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[1]);
+    // Tab closes the menu (focus proceeds by browser default, not held,
+    // and never lands on a page control behind an open menu).
+    fireEvent.keyDown(items[1], { key: 'Tab' });
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    // Reopen; Escape closes and returns focus to the trigger button.
+    await press(/Lens tools/);
+    await settle();
+    const firstAgain = screen.queryAllByRole('menuitem')[0];
+    fireEvent.keyDown(firstAgain, { key: 'Escape' });
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    expect((document.activeElement as HTMLElement)?.dataset?.testid).toBe('lens-tools-menu');
+  });
 });
 
 describe('LiveIndicator', () => {
