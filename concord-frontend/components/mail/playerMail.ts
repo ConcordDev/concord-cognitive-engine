@@ -6,6 +6,18 @@
 import { lensRun } from '@/lib/api/client';
 import type { MailRow } from './types';
 
+/** FIX-mail-002: the autosaved compose draft (mail.draft-get/save). */
+export interface MailDraft {
+  toUserId: string;
+  subject: string;
+  body: string;
+  attachmentCc: number;
+  codCc: number;
+  attachmentDtuIds: string[];
+  attachmentTitles: Record<string, string>;
+  updatedAt: number;
+}
+
 export interface MailClaimBody {
   ok?: boolean;
   error?: string;
@@ -14,6 +26,7 @@ export interface MailClaimBody {
   claimed?: boolean;
   alreadyClaimed?: boolean;
   dtuIds?: string[];
+  draft?: MailDraft | null;
   payout?: { attachmentCc?: number; codCcPaid?: number };
   attachments?: { dtuIds?: string[]; transferred?: string[]; skipped?: string[] };
 }

@@ -15,6 +15,7 @@ import {
   Send, ShieldAlert, Star, Tag, Trash2, Undo2, X, Gamepad2, AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useUIStore } from '@/store/ui';
 import { MailFolderPanel } from '@/components/mail/MailFolderPanel';
@@ -51,7 +52,15 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [me, setMe] = useState('');
   const [labels, setLabels] = useState<GmailLabel[]>([]);
-  const [folder, setFolder] = useState('INBOX');
+  // FIX-mail-002: the open mailbox survives a reload — a player-mail
+  // user no longer lands back on the Gmail view (and its connect wall)
+  // after F5.
+  const { restore: restoreMailView, persist: persistMailView } = useLensStatePersistence('mail');
+  const [folder, setFolder] = useState(() => {
+    const f = restoreMailView()?.folder;
+    return typeof f === 'string' && f ? f : 'INBOX';
+  });
+  useEffect(() => { persistMailView({ folder }); }, [folder, persistMailView]);
   const [query, setQuery] = useState('');
   const [searchDraft, setSearchDraft] = useState('');
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
@@ -453,7 +462,12 @@ const CONCORD_TABS = [
 ] as const;
 
 export function ConcordMailbox({ composeSignal = 0 }: { composeSignal?: number }) {
-  const [tab, setTab] = useState<'inbox' | 'sent' | 'compose'>('inbox');
+  const { restore: restoreConcordTab, persist: persistConcordTab } = useLensStatePersistence('mail-concord');
+  const [tab, setTab] = useState<'inbox' | 'sent' | 'compose'>(() => {
+    const t = restoreConcordTab()?.tab;
+    return t === 'sent' || t === 'compose' ? t : 'inbox';
+  });
+  useEffect(() => { persistConcordTab({ tab }); }, [tab, persistConcordTab]);
   const lastCompose = useRef(composeSignal);
   useEffect(() => {
     if (composeSignal !== lastCompose.current) {

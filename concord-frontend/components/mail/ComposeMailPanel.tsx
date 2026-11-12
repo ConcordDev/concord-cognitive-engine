@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Send, Paperclip, X } from 'lucide-react';
 import { DTUPickerModal } from '@/components/dtu/DTUPickerModal';
@@ -22,11 +22,59 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const [recipientError, setRecipientError] = useState<string | null>(null);
 
+  // FIX-mail-002: compose autosaves as a draft (Gmail-style) — a reload
+  // restores the in-progress mail instead of emptying the form.
+  const draftHydrated = useRef(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const to = new URLSearchParams(window.location.search).get('to');
     if (to) setComposeTo(to);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const j = await playerMail('draft-get');
+      if (cancelled) return;
+      const d = j.ok ? j.draft : null;
+      if (d) {
+        const urlTo = typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search).get('to') : null;
+        if (!urlTo && d.toUserId) setComposeTo(d.toUserId);
+        if (d.subject) setComposeSubject(d.subject);
+        if (d.body) setComposeBody(d.body);
+        setComposeCc(d.attachmentCc || 0);
+        setComposeCod(d.codCc || 0);
+        if (d.attachmentDtuIds?.length) {
+          setComposeAttachments(d.attachmentDtuIds.map((id) => ({
+            id, title: d.attachmentTitles?.[id] || id,
+          }) as unknown as DTU));
+        }
+        setFlash({ kind: 'ok', msg: 'Draft restored — autosave is on.' });
+      }
+      draftHydrated.current = true;
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!draftHydrated.current) return;
+    const t = setTimeout(async () => {
+      const j = await playerMail('draft-save', {
+        toUserId: composeTo,
+        subject: composeSubject,
+        body: composeBody,
+        attachmentCc: composeCc,
+        codCc: composeCod,
+        attachmentDtuIds: composeAttachments.map((d) => d.id),
+        attachmentTitles: Object.fromEntries(composeAttachments.map((d) => [d.id, d.title || d.id])),
+      });
+      if (j.ok) setDraftSavedAt(Date.now());
+    }, 800);
+    return () => clearTimeout(t);
+  }, [composeTo, composeSubject, composeBody, composeCc, composeCod, composeAttachments]);
 
   const handleAttachDtu = useCallback((dtu: DTU) => {
     setComposeAttachments((prev) => {
@@ -167,14 +215,21 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
             <p className="mt-1 text-[10px] text-amber-400">Max <span className="tabular-nums">{MAX_ATTACHMENTS}</span> attachments reached.</p>
           )}
         </div>
-        <button
-          type="submit"
-          disabled={!composeTo.trim() || !composeSubject.trim() || busy === 'send'}
-          className={cn(ds.btnPrimary, 'px-3 py-1.5 text-[12px]')}
-        >
-          <Send className="h-3.5 w-3.5" />
-          Send
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={!composeTo.trim() || !composeSubject.trim() || busy === 'send'}
+            className={cn(ds.btnPrimary, 'px-3 py-1.5 text-[12px]')}
+          >
+            <Send className="h-3.5 w-3.5" />
+            Send
+          </button>
+          <span className="text-[10px] text-gray-500" role="status">
+            {draftSavedAt
+              ? `Draft saved ${new Date(draftSavedAt).toLocaleTimeString()} — it survives a reload.`
+              : 'Drafts autosave as you type.'}
+          </span>
+        </div>
       </form>
 
       <AnimatePresence>
