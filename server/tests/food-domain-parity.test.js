@@ -361,6 +361,32 @@ describe("food.recipe-add / recipe-list", () => {
   it("rejects empty title", () => {
     assert.equal(call("recipe-add", ctxA, { title: "" }).ok, false);
   });
+
+  it("FIX-005: recipe-list includes the caller's own workbench-minted recipe DTUs", () => {
+    globalThis._concordSTATE.dtus.set("dtu_mint_a", {
+      id: "dtu_mint_a", source: "food:recipe:mint", ownerId: "user_a",
+      title: "Recipe — Minted soup",
+      meta: { visibility: "private", recipe: { name: "Minted soup", servings: 3, ingredients: [{ name: "stock", quantity: 1, unit: "l" }] } },
+      createdAt: "2026-11-08T20:54:00.000Z",
+    });
+    globalThis._concordSTATE.dtus.set("dtu_mint_b", {
+      id: "dtu_mint_b", source: "food:recipe:mint", ownerId: "user_b",
+      title: "Recipe — Not yours", meta: { recipe: { name: "Not yours" } },
+    });
+    globalThis._concordSTATE.dtus.set("dtu_other", {
+      id: "dtu_other", source: "food:other", ownerId: "user_a",
+      title: "Unrelated", meta: {},
+    });
+    const list = call("recipe-list", ctxA, {});
+    const minted = list.result.recipes.filter((r) => r.minted);
+    assert.equal(minted.length, 1);
+    assert.equal(minted[0].id, "dtu_mint_a");
+    assert.equal(minted[0].dtuId, "dtu_mint_a");
+    assert.equal(minted[0].title, "Minted soup");
+    assert.equal(minted[0].servings, 3);
+    assert.equal(minted[0].ingredients.length, 1);
+    assert.equal(call("recipe-list", ctxB, {}).result.recipes.filter((r) => r.minted).length, 1);
+  });
 });
 
 describe("food.recipe-photo-*", () => {

@@ -39,6 +39,10 @@ export interface Recipe {
   cookCount: number;
   lastCookedAt: string | null;
   photoCount: number;
+  /** FIX-005: workbench-minted recipe DTUs merged into the library list. */
+  minted?: boolean;
+  dtuId?: string;
+  ingredients?: { name: string; quantity?: number; unit?: string }[];
 }
 
 interface RecipePhoto {
@@ -154,11 +158,13 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
     }
   }, []);
 
-  function toggle(recipeId: string) {
-    if (expanded === recipeId) { setExpanded(null); return; }
-    setExpanded(recipeId);
+  function toggle(recipe: Recipe) {
+    if (expanded === recipe.id) { setExpanded(null); return; }
+    setExpanded(recipe.id);
     setPhotos([]); setCooks([]);
-    loadDetail(recipeId);
+    // Minted DTU rows carry their detail inline; the photo/cook endpoints
+    // only know lens-state recipes.
+    if (!recipe.minted) loadDetail(recipe.id);
   }
 
   async function addRecipe() {
@@ -298,7 +304,7 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
             {recipes.map((r) => (
               <li key={r.id}>
                 <button
-                  onClick={() => toggle(r.id)}
+                  onClick={() => toggle(r)}
                   className="w-full px-3 py-2 hover:bg-white/[0.03] flex items-center gap-2 text-left"
                 >
                   <ChevronRight className={cn('w-3.5 h-3.5 text-gray-400 transition-transform', expanded === r.id && 'rotate-90')} />
@@ -306,6 +312,7 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
                     <div className="text-sm text-white truncate">{r.title}</div>
                     <div className="text-[10px] text-gray-400 flex items-center gap-2 tabular-nums">
                       <span className="text-cyan-400">{r.slot}</span>
+                      {r.minted && <span className="px-1 rounded bg-blue-500/20 text-blue-300">Minted DTU</span>}
                       {r.calories > 0 && <span>{r.calories} kcal</span>}
                       {r.cookCount > 0 && <span className="flex items-center gap-0.5"><Flame className="w-3 h-3" />{r.cookCount}×</span>}
                       {r.photoCount > 0 && <span className="flex items-center gap-0.5"><Camera className="w-3 h-3" />{r.photoCount}</span>}
@@ -317,7 +324,30 @@ export function RecipeLibrary({ onChange }: { onChange?: () => void }) {
                   </div>
                 </button>
 
-                {expanded === r.id && (
+                {expanded === r.id && r.minted && (
+                  <div className="px-3 pb-3 pt-2 space-y-2 bg-black/20 text-xs">
+                    <div className="text-gray-400">
+                      Saved from the workbench as a private recipe DTU — it lives in your DTU library, so rating / photo / cook tools don&rsquo;t apply here.
+                    </div>
+                    {(r.ingredients?.length ?? 0) > 0 && (
+                      <ul className="space-y-0.5 text-gray-300">
+                        {r.ingredients!.map((ing, i) => (
+                          <li key={i} className="tabular-nums">
+                            {ing.name}{ing.quantity != null ? ` — ${ing.quantity}` : ''}{ing.unit ? ` ${ing.unit}` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="text-gray-400 tabular-nums">Serves {r.servings}</div>
+                    {r.dtuId && (
+                      <a href={`/dtu/${r.dtuId}`} className="inline-block px-2 py-1 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30">
+                        Open the DTU
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {expanded === r.id && !r.minted && (
                   <div className="px-3 pb-3 space-y-3 bg-black/20">
                     <div className="flex flex-wrap items-center gap-3 pt-2 text-xs">
                       <span className="text-gray-400">Your rating:</span>

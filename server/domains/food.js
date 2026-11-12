@@ -1706,6 +1706,35 @@ export default function registerFoodActions(registerLensAction) {
         photoCount: (s.recipePhotos.get(userId) || []).filter((x) => x.recipeId === r.id).length,
       };
     });
+    // FIX-005: recipes minted from the workbench are private DTUs in the
+    // corpus (source "food:recipe:mint"), not lens-state recipes, so this
+    // list never showed them and a minted recipe "vanished" on reload.
+    // Merge the caller's own minted DTUs in, flagged, so Recipes is one
+    // library for everything the user saved as a recipe.
+    try {
+      const dtus = globalThis._concordSTATE?.dtus;
+      if (dtus && typeof dtus.values === "function") {
+        const seen = new Set(recipes.map((r) => r.id));
+        for (const d of dtus.values()) {
+          if (!d || typeof d.id !== "string" || seen.has(d.id)) continue;
+          if (d.source !== "food:recipe:mint" || d.ownerId !== userId) continue;
+          const rec = d.meta?.recipe || {};
+          recipes.push({
+            id: d.id,
+            dtuId: d.id,
+            minted: true,
+            title: String(rec.name || d.title || "Recipe").replace(/^Recipe — /, ""),
+            slot: "Dinner",
+            servings: Math.max(1, Number(rec.servings) || 1),
+            calories: 0, protein: 0, carbs: 0, fat: 0,
+            tags: ["minted"],
+            ingredients: Array.isArray(rec.ingredients) ? rec.ingredients : [],
+            avgRating: 0, ratingCount: 0, cookCount: 0, lastCookedAt: null, photoCount: 0,
+            createdAt: d.createdAt || null,
+          });
+        }
+      }
+    } catch { /* corpus unavailable — the lens-state library still answers */ }
     return { ok: true, result: { recipes, count: recipes.length } };
   });
 
