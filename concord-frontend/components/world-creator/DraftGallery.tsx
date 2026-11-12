@@ -73,7 +73,14 @@ export function DraftGallery({ onOpen }: { onOpen: (draftId: string) => void }) 
   useEffect(() => { if (showDiscover) loadDiscover(discoverQ); }, [showDiscover, discoverQ, loadDiscover]);
 
   const createDraft = useCallback(async (template?: string) => {
-    const name = newName.trim() || (template ? `${template} world` : 'Untitled world');
+    // A blank name on a blank draft used to become 'Untitled world' with no
+    // word to the creator — say so in the open instead (templates name
+    // themselves, and the name they will get is stated on the button path).
+    if (!template && !newName.trim()) {
+      setErr('Give your world a name first (at least 3 characters) — or start from a template below.');
+      return;
+    }
+    const name = newName.trim() || `${template} world`;
     if (name.length < 3) { setErr('Name must be at least 3 characters.'); return; }
     setBusy(true); setErr(null);
     const r = await lensRun<{ draft: { id: string } }>('world-creator', 'draft-create',

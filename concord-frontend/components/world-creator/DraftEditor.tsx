@@ -304,6 +304,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
                     onChange={e => setZoneRadius(clampNum(Number(e.target.value), 5, 250))}
                     className="w-16 rounded border border-stone-700 bg-stone-900 px-1.5 py-1 text-stone-100" />
                   m
+                  <span className="text-[10px] text-stone-500">5–250 m</span>
                 </label>
               </div>
             )}
@@ -529,6 +530,7 @@ function InspectorBody({ draft, selected, onUpdateProp }: {
             onChange={e => onUpdateProp(p.id, { scale: Math.min(4, Math.max(0.25, Number(e.target.value) || 1)) })}
             className="w-14 rounded border border-stone-700 bg-stone-900 px-1.5 py-0.5 text-right text-stone-100" />
           <span className="text-stone-500">×</span>
+          <span className="text-[10px] text-stone-500">0.25–4×</span>
         </dd>
       </div>
     </dl>;
@@ -635,6 +637,7 @@ function NpcPlacementForm({
           onChange={e => setLevel(clampNum(Number(e.target.value), 1, 100) || 1)}
           aria-label="NPC level"
           className="w-16 rounded border border-stone-700 bg-stone-900 px-1.5 py-1 text-xs text-stone-100" />
+        <span className="text-[10px] text-stone-500">1–100</span>
       </div>
       <button onClick={submit} disabled={busy || submitting || !name.trim()}
         className="w-full rounded bg-amber-600 px-2 py-1 text-xs font-medium text-stone-900 hover:bg-amber-500 disabled:opacity-50">
