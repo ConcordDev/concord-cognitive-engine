@@ -41,6 +41,25 @@ function makeBounty(ctx = owner, extra = {}) {
 }
 
 describe("bounties.create", () => {
+  it("FIX-bounties-003: an over-max reward is refused in words naming the bound, not the field name", () => {
+    const r = call("create", owner, {
+      title: "Huge reward bounty", description: "a long enough description", rewardCc: 999999999,
+    });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /between 1 and 1,000,000 CC/);
+    assert.doesNotMatch(r.error, /invalid numeric field/);
+    const ms = call("create", owner, {
+      title: "Huge milestone bounty", description: "a long enough description",
+      milestones: [{ title: "M1", rewardCc: 999999999 }],
+    });
+    assert.equal(ms.ok, false);
+    assert.match(ms.error, /Milestone 1's reward must be a whole number between 1 and 1,000,000 CC/);
+    const atMax = call("create", owner, {
+      title: "At max bounty", description: "a long enough description", rewardCc: 1000000,
+    });
+    assert.equal(atMax.ok, true);
+  });
+
   it("creates a custom bounty with category/tags/difficulty", () => {
     const b = makeBounty();
     assert.equal(b.category, "bug");

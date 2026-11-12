@@ -132,7 +132,10 @@ export default function registerBountiesActions(registerLensAction) {
       const userId = actor(ctx);
       // Fail-CLOSED on poisoned money inputs before any state write.
       const badTop = badNumericField(params, ["rewardCc"]);
-      if (badTop) return { ok: false, error: `invalid numeric field: ${badTop}` };
+      // FIX-bounties-003: the refusal named the internal field
+      // ('invalid numeric field: rewardCc'). It now states the bound
+      // that governs in this domain (REWARD_MAX) in words.
+      if (badTop) return { ok: false, error: "Reward must be a whole number between 1 and 1,000,000 CC" };
       const title = clean(params.title, 160);
       if (title.length < 6) return { ok: false, error: "title must be at least 6 characters" };
       const description = clean(params.description, 6000);
@@ -157,7 +160,7 @@ export default function registerBountiesActions(registerLensAction) {
       }
       const rawMilestones = Array.isArray(params.milestones) ? params.milestones : [];
       const badMilestone = rawMilestones.findIndex((m) => badNumericField(m, ["rewardCc"]));
-      if (badMilestone !== -1) return { ok: false, error: `invalid numeric field: milestones[${badMilestone}].rewardCc` };
+      if (badMilestone !== -1) return { ok: false, error: `Milestone ${badMilestone + 1}'s reward must be a whole number between 1 and 1,000,000 CC` };
       const wholeReward = (v) => {
         if (v === undefined || v === null || v === "") return null;
         const n = readingOrNull(v, { min: 1, max: 1e12, fallback: null });
