@@ -107,13 +107,16 @@ export function EntitiesPanel() {
           </select>
           <input className={`${input} w-28`} type="number" placeholder="value" aria-label="Initial value"
             value={value} onChange={(e) => setValue(e.target.value)} />
-          <button className={btn} disabled={!name || create.isPending} onClick={() => create.mutate()}>
+          <button className={btn} disabled={!name.trim() || create.isPending} onClick={() => create.mutate()}>
             {create.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Create
           </button>
           <button className={btnGhost} disabled={extractFromDtu.isPending} onClick={() => { setExtractNote(null); setPickerOpen(true); }}>
             {extractFromDtu.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileSearch className="h-3 w-3" />} Extract from DTU
           </button>
         </div>
+        {!name.trim() && (
+          <p role="note" className="mt-1.5 text-[11px] text-amber-300/90">Give the entity a name to create it.</p>
+        )}
         <p className="mt-1.5 text-[11px] text-emerald-700">Entities carry a numeric <code>value</code> attribute that simulations propagate. &quot;Extract from DTU&quot; grounds a node in a real DTU from your archive instead of typing one by hand.</p>
         {err && <p className="mt-2 text-xs text-rose-400">{err}</p>}
         {extractNote && <p className="mt-2 text-xs text-emerald-400">{extractNote}</p>}
