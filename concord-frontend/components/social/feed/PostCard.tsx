@@ -447,7 +447,7 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
 
       {showReplies && (
         <div className="mt-2 border-t border-zinc-800 pt-2">
-          <ReplyTree postId={post.id} username={username} />
+          <ReplyTree postId={post.id} username={username} currentUserId={currentUserId} />
         </div>
       )}
     </article>

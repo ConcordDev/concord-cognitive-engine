@@ -439,6 +439,32 @@ export default function registerSocialActions(registerLensAction) {
     return { ok: true, result: { tree: roots, total: flat.length } };
   });
 
+  registerLensAction("social", "deleteReply", (ctx, _a, params = {}) => {
+    const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const postId = String(params.postId || "");
+    const replyId = String(params.replyId || "");
+    const userId = actor(ctx);
+    const list = s.replies.get(postId) || [];
+    const target = list.find((r) => r.id === replyId);
+    if (!target) return { ok: false, error: "reply not found" };
+    if (target.userId !== userId) return { ok: false, error: "only the author can delete this reply" };
+    // Children keep their place in the thread: they re-attach to the
+    // deleted reply's parent rather than being deleted with it or
+    // orphaned out of the tree. Mutate in place: getSocialState aliases
+    // s.replies[postId] onto the post's own lensReplies array, so a
+    // replaced array would be overwritten back on the next read.
+    for (const r of list) if (r.parentId === replyId) r.parentId = target.parentId;
+    list.splice(list.findIndex((r) => r.id === replyId), 1);
+    const host = s.posts.get(postId);
+    if (host && Array.isArray(host.comments)) {
+      for (const c of host.comments) if (c.parentCommentId === replyId) c.parentCommentId = target.parentId;
+      const ci = host.comments.findIndex((c) => c.id === replyId);
+      if (ci >= 0) host.comments.splice(ci, 1);
+    }
+    save();
+    return { ok: true, result: { id: replyId, deleted: true } };
+  });
+
   // ── 2. Likes / reactions / repost actions ───────────────────────────
   registerLensAction("social", "react", (ctx, _a, params = {}) => {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
