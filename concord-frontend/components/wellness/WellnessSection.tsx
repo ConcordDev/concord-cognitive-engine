@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   HeartPulse, Loader2, Plus, Trash2, Flame, Activity, Smile, Target,
-  TrendingUp, TrendingDown, Minus, Dumbbell, Sparkles, Check,
+  TrendingUp, TrendingDown, Minus, Dumbbell, Sparkles, Check, Pencil,
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { lensRun } from '@/lib/api/client';
@@ -173,8 +173,47 @@ export function WellnessSection() {
     catch (e) { console.error('[Wellness] logWorkout', e); }
   }
   async function delWorkout(id: string) {
+    // Confirmation (FIX-wellness-005): this delete used to fire on a
+    // single click, unlike the habit archive's confirm.
+    if (!confirm('Delete this workout?')) return;
     try { await lensRun({ domain: 'wellness', action: 'workouts-delete', input: { id } }); await refresh(); notifyWellnessChanged(); }
     catch (e) { console.error('[Wellness] delWorkout', e); }
+  }
+
+  // Metric + mood entry edit/delete (FIX-wellness-005) — the entry
+  // lists were read-only; edits go through the new update macros and
+  // deletes confirm first, in this panel's prompt/confirm idiom.
+  async function editMetric(m: MetricEntry) {
+    const v = prompt(`${METRIC_TYPE_LABELS[m.type] || m.type} on ${m.date} — value?`, String(m.value));
+    if (v === null) return;
+    try {
+      await lensRun({ domain: 'wellness', action: 'metrics-update', input: { id: m.id, value: Number(v) } });
+      await loadMetricsLog(metricsLogFilter); await refresh(); notifyWellnessChanged();
+    } catch (e) { console.error('[Wellness] editMetric', e); }
+  }
+  async function delMetric(m: MetricEntry) {
+    if (!confirm(`Delete this ${METRIC_TYPE_LABELS[m.type] || m.type} entry (${m.value} on ${m.date})?`)) return;
+    try {
+      await lensRun({ domain: 'wellness', action: 'metrics-delete', input: { id: m.id } });
+      await loadMetricsLog(metricsLogFilter); await refresh(); notifyWellnessChanged();
+    } catch (e) { console.error('[Wellness] delMetric', e); }
+  }
+  async function editMood(m: MoodEntry) {
+    const note = prompt('Note for this mood entry?', m.note || '');
+    if (note === null) return;
+    const actStr = prompt('Activities (comma-separated)?', (m.activities || []).join(', '));
+    if (actStr === null) return;
+    try {
+      await lensRun({ domain: 'wellness', action: 'mood-update', input: { id: m.id, note, activities: actStr.split(',').map(a => a.trim()).filter(Boolean) } });
+      await refresh(); notifyWellnessChanged();
+    } catch (e) { console.error('[Wellness] editMood', e); }
+  }
+  async function delMood(m: MoodEntry) {
+    if (!confirm(`Delete this mood entry from ${m.date}?`)) return;
+    try {
+      await lensRun({ domain: 'wellness', action: 'mood-delete', input: { id: m.id } });
+      await refresh(); notifyWellnessChanged();
+    } catch (e) { console.error('[Wellness] delMood', e); }
   }
 
   async function addGoal() {
@@ -191,6 +230,7 @@ export function WellnessSection() {
     catch (e) { console.error('[Wellness] updateGoal', e); }
   }
   async function delGoal(id: string) {
+    if (!confirm('Delete this goal?')) return;
     try { await lensRun({ domain: 'wellness', action: 'goals-delete', input: { id } }); await refresh(); notifyWellnessChanged(); }
     catch (e) { console.error('[Wellness] delGoal', e); }
   }
@@ -323,6 +363,8 @@ export function WellnessSection() {
                       <span className="text-[10px] text-gray-400 font-mono w-20 flex-shrink-0">{m.date}</span>
                       <span className="flex-1 text-white font-mono">{m.value}</span>
                       {m.source && <span className="text-[9px] text-gray-500 font-mono flex-shrink-0">{m.source.replace(/_/g, ' ')}</span>}
+                      <button aria-label={`Edit ${METRIC_TYPE_LABELS[m.type] || m.type} entry`} onClick={() => editMetric(m)} className="p-1 text-gray-400 hover:text-cyan-300 flex-shrink-0"><Pencil className="w-3 h-3" /></button>
+                      <button aria-label={`Delete ${METRIC_TYPE_LABELS[m.type] || m.type} entry`} onClick={() => delMetric(m)} className="p-1 text-gray-400 hover:text-rose-300 flex-shrink-0"><Trash2 className="w-3 h-3" /></button>
                     </li>
                   ))}
                 </ul>
@@ -417,6 +459,8 @@ export function WellnessSection() {
                       <span className="text-lg">{MOODS[m.moodScore]?.emoji}</span>
                       <span className="text-[10px] text-gray-400 font-mono w-20">{m.date}</span>
                       <span className="flex-1 text-gray-300 truncate">{m.activities.join(', ')}{m.note && ` — ${m.note}`}</span>
+                      <button aria-label="Edit mood entry" onClick={() => editMood(m)} className="p-1 text-gray-400 hover:text-cyan-300 flex-shrink-0"><Pencil className="w-3 h-3" /></button>
+                      <button aria-label="Delete mood entry" onClick={() => delMood(m)} className="p-1 text-gray-400 hover:text-rose-300 flex-shrink-0"><Trash2 className="w-3 h-3" /></button>
                     </li>
                   ))}
                 </ul>
