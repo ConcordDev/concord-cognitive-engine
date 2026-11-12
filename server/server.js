@@ -2265,7 +2265,7 @@ import {
   rememberCompletedChatTurn,
 } from "./lib/chat/turn-pipeline.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
-import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
+import { DOMAIN_RULES, validateArtifact, artifactDataWithTitle, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
 import { resolveMeshSendDtu } from "./lib/mesh-send-dtu.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
 import { reconcileArtifactTypes } from "./lib/lens-artifact-types.js";
@@ -50122,7 +50122,7 @@ register("lens", "create", async (ctx, input={}) => {
   }
 
   // Domain-specific validation
-  const validation = validateArtifact(domain, type, data, meta);
+  const validation = validateArtifact(domain, type, artifactDataWithTitle(data, trimmedTitle), meta);
   if (!validation.ok) {
     // Education's dialog used to toast the bare token. The rule error
     // already names the field (type or status). Other domains keep the token.

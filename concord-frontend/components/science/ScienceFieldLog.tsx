@@ -14,6 +14,40 @@ interface ClusterResult { clusters: Array<{ id: number; observations: number; ce
 
 const emptyRow = (): ObsRow => ({ date: '', observer: '', type: '', notes: '', lat: '', lon: '' });
 
+// Inline coordinate/radius validation (FIX-science-007): the fields used
+// to accept any text ('abc' latitude, -1 km radius) and send NaN or a
+// negative radius to the macros with no word to the user. A blank pair is
+// fine (GPS is optional per row); a half-filled or out-of-range pair is
+// named at the row itself before anything runs.
+function coordIssue(value: string, kind: 'lat' | 'lon'): string | null {
+  const v = value.trim();
+  if (!v) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return kind === 'lat' ? 'Latitude must be a number.' : 'Longitude must be a number.';
+  if (kind === 'lat' && (n < -90 || n > 90)) return 'Latitude must be between -90 and 90.';
+  if (kind === 'lon' && (n < -180 || n > 180)) return 'Longitude must be between -180 and 180.';
+  return null;
+}
+
+function rowCoordIssue(r: ObsRow): string | null {
+  return (
+    coordIssue(r.lat, 'lat') ??
+    coordIssue(r.lon, 'lon') ??
+    (r.lat.trim() !== '' && r.lon.trim() === '' || r.lat.trim() === '' && r.lon.trim() !== ''
+      ? 'Add both latitude and longitude, or leave both blank.'
+      : null)
+  );
+}
+
+function radiusIssue(value: string): string | null {
+  const v = value.trim();
+  if (!v) return 'Cluster radius is required.';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 'Cluster radius must be a number.';
+  if (n <= 0) return 'Cluster radius must be greater than zero.';
+  return null;
+}
+
 /**
  * Field observation log — GPS-tagged field records exported (CSV/GeoJSON)
  * or spatially clustered via the dataExport / spatialCluster macros
@@ -57,7 +91,17 @@ export function ScienceFieldLog() {
         gps: r.lat.trim() && r.lon.trim() ? { lat: Number(r.lat), lon: Number(r.lon) } : undefined,
       }));
 
+  const firstRowIssue = (): string | null => {
+    for (let i = 0; i < rows.length; i++) {
+      const issue = rowCoordIssue(rows[i]);
+      if (issue) return `Row ${i + 1}: ${issue}`;
+    }
+    return null;
+  };
+
   const runExport = async () => {
+    const issue = firstRowIssue();
+    if (issue) { setError(issue); return; }
     const obs = observations();
     if (!obs.length) { setError('Add at least one observation'); return; }
     setBusy('export'); setError(null); setExportResult(null);
@@ -68,6 +112,10 @@ export function ScienceFieldLog() {
   };
 
   const runCluster = async () => {
+    const issue = firstRowIssue();
+    if (issue) { setError(issue); return; }
+    const rIssue = radiusIssue(radiusKm);
+    if (rIssue) { setError(rIssue); return; }
     const obs = observations();
     const withGps = obs.filter((o) => o.gps);
     if (!withGps.length) { setError('Add at least one observation with lat/lon'); return; }
@@ -133,14 +181,19 @@ export function ScienceFieldLog() {
               <input value={r.notes} onChange={(e) => setRow(i, { notes: e.target.value })}
                 placeholder="Notes" className="px-1.5 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-gray-100" />
               <input value={r.lat} onChange={(e) => setRow(i, { lat: e.target.value })}
-                placeholder="Lat" className="w-20 px-1.5 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
+                placeholder="Lat" aria-invalid={!!coordIssue(r.lat, 'lat') || !!rowCoordIssue(r)}
+                className={cn("w-20 px-1.5 py-1 text-[11px] bg-black/40 border rounded text-gray-100 font-mono", coordIssue(r.lat, 'lat') ? "border-red-500/60" : "border-white/10")} />
               <input value={r.lon} onChange={(e) => setRow(i, { lon: e.target.value })}
-                placeholder="Lon" className="w-20 px-1.5 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
+                placeholder="Lon" aria-invalid={!!coordIssue(r.lon, 'lon') || !!rowCoordIssue(r)}
+                className={cn("w-20 px-1.5 py-1 text-[11px] bg-black/40 border rounded text-gray-100 font-mono", coordIssue(r.lon, 'lon') ? "border-red-500/60" : "border-white/10")} />
               <button type="button" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}
                 className="text-gray-600 hover:text-red-400" aria-label="Remove observation">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
+            {rowCoordIssue(r) && (
+              <p role="alert" className="text-[11px] text-red-400">{rowCoordIssue(r)}</p>
+            )}
           </div>
         ))}
         <button type="button" onClick={() => setRows((rs) => [...rs, emptyRow()])}
@@ -159,7 +212,11 @@ export function ScienceFieldLog() {
           <Download className="w-3 h-3" /> Export
         </RunButton>
         <input type="number" min="0.1" step="0.1" value={radiusKm} onChange={(e) => setRadiusKm(e.target.value)}
-          className="w-20 px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" title="Cluster radius (km)" />
+          aria-invalid={!!radiusIssue(radiusKm)} aria-describedby="sci-radius-error"
+          className={cn("w-20 px-2 py-1.5 text-xs bg-black/40 border rounded text-gray-100 font-mono", radiusIssue(radiusKm) ? "border-red-500/60" : "border-white/10")} title="Cluster radius (km)" />
+        {radiusIssue(radiusKm) && (
+          <span id="sci-radius-error" role="alert" className="text-[11px] text-red-400">{radiusIssue(radiusKm)}</span>
+        )}
         <RunButton onClick={runCluster} busy={busy === 'cluster'}>
           <Layers className="w-3 h-3" /> Spatial Cluster
         </RunButton>
