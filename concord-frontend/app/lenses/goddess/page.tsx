@@ -37,6 +37,17 @@ export default function GoddessPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [worldId, setWorldId] = useState('concordia-hub');
+  // The World field used to accept anything silently — blank, 300 chars, or
+  // '-99999999999' all just quietly changed (or emptied) the feed. World ids
+  // are slug-shaped; say so at the field and never fetch for a malformed id.
+  const worldTrimmed = worldId.trim();
+  const worldMalformed = worldTrimmed.length > 0
+    && (worldTrimmed.length > 64 || !/^[a-z0-9][a-z0-9-_]*$/i.test(worldTrimmed));
+  const worldNote = !worldTrimmed
+    ? 'Blank reads as concordia-hub.'
+    : worldMalformed
+      ? 'World ids are 1–64 characters — letters, numbers, dashes, underscores, starting with a letter or number.'
+      : null;
   const [tab, setTab] = useState<Tab>('feed');
   const [toneFilter, setToneFilter] = useState<string>('');
   const [openId, setOpenId] = useState<number | null>(null);
@@ -46,8 +57,14 @@ export default function GoddessPage() {
   useEffect(() => {
     let alive = true;
     const refresh = async () => {
+      const t = worldId.trim();
+      if (t && (t.length > 64 || !/^[a-z0-9][a-z0-9-_]*$/i.test(t))) {
+        setError('That is not a world id — ids are 1–64 characters: letters, numbers, dashes, underscores.');
+        setLoading(false);
+        return;
+      }
       try {
-        const r = await lensRun<RecentResult>('goddess', 'recent', { worldId, limit: 50 });
+        const r = await lensRun<RecentResult>('goddess', 'recent', { worldId: t || 'concordia-hub', limit: 50 });
         if (!alive) return;
         if (r.data?.ok && r.data.result) {
           setDispatches(r.data.result.dispatches || []);
@@ -94,11 +111,18 @@ export default function GoddessPage() {
         actions={
           <label className="flex items-center gap-2 text-xs text-zinc-400" htmlFor="goddess-world">
             World
-            <input
-              id="goddess-world" type="text" value={worldId}
-              onChange={(e) => { setWorldId(e.target.value); setOpenId(null); }}
-              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-xs text-zinc-100"
-            />
+            <span className="flex flex-col">
+              <input
+                id="goddess-world" type="text" value={worldId} maxLength={64}
+                onChange={(e) => { setWorldId(e.target.value); setOpenId(null); }}
+                className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-xs text-zinc-100"
+              />
+              {worldNote && (
+                <span role={worldMalformed ? 'alert' : undefined} className={`mt-0.5 text-[10px] ${worldMalformed ? 'text-amber-300' : 'text-zinc-500'}`}>
+                  {worldNote}
+                </span>
+              )}
+            </span>
           </label>
         }
         tabs={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
