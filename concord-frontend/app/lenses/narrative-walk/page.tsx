@@ -286,12 +286,12 @@ export default function NarrativeWalkLensPage() {
         {phase === 'ready' && open && (
           <div className="mt-4 flex flex-wrap items-center gap-4">
             {openIndex > 0 && (
-              <button type="button" onClick={goBack} className="text-[13px] text-zinc-400 underline decoration-zinc-600 underline-offset-4 transition-colors hover:text-zinc-100">
+              <button type="button" onClick={goBack} className="inline-flex min-h-11 items-center px-2 -mx-2 text-[13px] text-zinc-400 underline decoration-zinc-600 underline-offset-4 transition-colors hover:text-zinc-100">
                 The step before
               </button>
             )}
             {!atEnd && (
-              <button type="button" onClick={restart} className="text-[13px] text-zinc-400 underline decoration-zinc-600 underline-offset-4 transition-colors hover:text-zinc-100">
+              <button type="button" onClick={restart} className="inline-flex min-h-11 items-center px-2 -mx-2 text-[13px] text-zinc-400 underline decoration-zinc-600 underline-offset-4 transition-colors hover:text-zinc-100">
                 Start over
               </button>
             )}
@@ -305,7 +305,7 @@ export default function NarrativeWalkLensPage() {
           type="button"
           onClick={primaryAction}
           disabled={phase !== 'ready' || catalog.length === 0}
-          className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60"
+          className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-4 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60 md:bottom-8 md:right-8"
         >
           {cta}
         </button>
