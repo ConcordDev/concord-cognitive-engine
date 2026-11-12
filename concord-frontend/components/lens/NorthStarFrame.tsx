@@ -92,6 +92,7 @@ export function NorthStarFrame({
           ref={navRef}
           className="no-scrollbar mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1"
           aria-label={tabsLabel ?? `${crumb} views`}
+          data-fade-right={fadeRight ? 'true' : undefined}
           style={fadeRight ? {
             maskImage: 'linear-gradient(to right, black calc(100% - 28px), transparent)',
             WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 28px), transparent)',
@@ -135,6 +136,7 @@ export function NorthStarFrame({
           onClick={cta.onClick}
           disabled={cta.disabled}
           title={cta.title}
+          aria-label={cta.label}
           data-testid="north-star-cta"
           /* MobileNav is fixed bottom-0 z-50 h-14 + safe-area. Sit on the same
              line as HelpButton (bottom-[4rem+safe], right-4, 44px wide, shown
@@ -143,8 +145,13 @@ export function NorthStarFrame({
              tab bar is hidden, so drop to bottom-8 (HelpButton sits at bottom-5). */
           className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-[4.75rem] z-30 inline-flex min-h-[44px] max-w-[calc(100vw-6.5rem)] items-center gap-2 rounded-full bg-teal-400 px-4 py-2.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 disabled:opacity-60 sm:px-6 sm:py-3.5 md:bottom-8 lg:right-8"
         >
-          {CtaIcon && <CtaIcon className="h-4 w-4" />}
-          {cta.label}
+          {CtaIcon && <CtaIcon className="h-4 w-4 shrink-0" />}
+          {/* Phone width (FIX-achievements-004 · FIX-deities-007): the wide
+              labelled pill plus the Help launcher formed a ~210px obstruction
+              band over card content. Below sm the CTA collapses to its icon;
+              the label stays as the accessible name (aria-label above) and
+              the title tooltip. */}
+          <span className={CtaIcon ? 'hidden sm:inline' : undefined}>{cta.label}</span>
         </button>
       )}
     </div>
