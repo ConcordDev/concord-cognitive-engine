@@ -30,7 +30,7 @@ export function RestoreDtuExport() {
   const [content, setContent] = useState('');
   const [overwrite, setOverwrite] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ imported: number; skipped: number; total: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; skipped: number; total: number; note?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -47,8 +47,20 @@ export function RestoreDtuExport() {
     setBusy(true); setError(null); setResult(null);
     try {
       if (format === 'json') {
-        let parsed: { dtus?: unknown[] };
+        let parsed: { dtus?: unknown[]; definition?: { spec?: string; canvas?: { name?: string } } };
         try { parsed = JSON.parse(content); } catch { throw new Error('Not valid JSON — expected the payload from Export → JSON.'); }
+        // FIX-import-009: a custom-lens export (concord-custom-lens/v1) is a
+        // lens definition, not a DTU batch — route it to the custom domain's
+        // own restore instead of rejecting it for lacking dtus.
+        const definition = parsed.definition && parsed.definition.spec === 'concord-custom-lens/v1'
+          ? parsed.definition
+          : (parsed as { spec?: string }).spec === 'concord-custom-lens/v1' ? parsed : null;
+        if (definition) {
+          const r = await lensRun('custom', 'importCanvas', { definition });
+          if (!r.data.ok) throw new Error(r.data.error || 'Lens restore failed.');
+          setResult({ imported: 1, skipped: 0, total: 1, note: `Lens "${definition.canvas?.name || 'Untitled'}" restored into your canvases.` });
+          return;
+        }
         if (!Array.isArray(parsed.dtus)) throw new Error('Expected a { dtus: [...] } export payload.');
         const r = await lensRun<JsonImportResult>('import', 'json', { dtus: parsed.dtus, overwrite });
         if (!r.data.ok || !r.data.result) throw new Error(r.data.error || 'Import failed.');
@@ -134,6 +146,7 @@ export function RestoreDtuExport() {
           <span><span className="text-neon-green font-semibold">{result.imported}</span> imported</span>
           {result.skipped > 0 && <span><span className="text-yellow-400 font-semibold">{result.skipped}</span> skipped (already present)</span>}
           <span className="text-gray-400">of {result.total} total</span>
+          {result.note && <span className="text-gray-300">{result.note}</span>}
         </div>
       )}
     </div>

@@ -98,6 +98,7 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
   const [format, setFormat] = useState('json');
   const [busy, setBusy] = useState(false);
   const [lastRun, setLastRun] = useState<string | null>(null);
+  const [nameError, setNameError] = useState(false);
 
   const refresh = useCallback(async () => {
     const r = await lensRun('export', 'schedule-list', {});
@@ -128,9 +129,13 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
   useSmartPolling(runDue, 60_000, { immediate: false });
 
   const create = async () => {
+    // FIX-export-005: a blank name used to be silently auto-named
+    // ("daily export"); a schedule you can't tell apart in the list is a
+    // naming failure, so require the name instead.
+    if (!name.trim()) { setNameError(true); return; }
     setBusy(true);
     try {
-      const r = await lensRun('export', 'schedule-create', { name: name || `${frequency} export`, frequency, format, dataSources: ['dtus'] });
+      const r = await lensRun('export', 'schedule-create', { name: name.trim(), frequency, format, dataSources: ['dtus'] });
       if (r.data?.ok) { setName(''); await refresh(); }
     } finally { setBusy(false); }
   };
@@ -142,8 +147,9 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
       <div className="mb-3 flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
           Name
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Weekly backup"
+          <input value={name} onChange={(e) => { setName(e.target.value); setNameError(false); }} placeholder="Weekly backup" aria-invalid={nameError || undefined}
             className="w-44 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
+          {nameError && <span role="alert" className="text-[10px] text-rose-300">Give the schedule a name first — blank names are not auto-filled.</span>}
         </label>
         <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
           Frequency

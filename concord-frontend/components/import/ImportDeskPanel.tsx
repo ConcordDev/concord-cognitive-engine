@@ -338,9 +338,24 @@ export function ImportDeskPanel() {
     }
   };
 
+  const [dupWarning, setDupWarning] = useState<string | null>(null);
+  const [dupWarnedKey, setDupWarnedKey] = useState<string | null>(null);
   const startImport = async () => {
     if (!selectedFile || !validationResult) return;
 
+    // FIX-import-003: re-importing a file that already completed created a
+    // duplicate job with no warning. Same filename + same record count in
+    // the completed history now stops for an explicit confirmation first.
+    const fileKey = `${selectedFile.name}|${validationResult.record_count}`;
+    if (dupWarnedKey !== fileKey) {
+      const prior = importJobs.find(j => j.filename === selectedFile.name && j.status === 'completed' && j.records_total === validationResult.record_count);
+      if (prior) {
+        setDupWarning(`"${selectedFile.name}" was already imported (${prior.records_imported} records). Import it again?`);
+        setDupWarnedKey(fileKey);
+        return;
+      }
+    }
+    setDupWarning(null);
     setImporting(true);
     try {
       const fileText = await selectedFile.text();
@@ -668,13 +683,18 @@ export function ImportDeskPanel() {
                     </button>
                   ))}
                 </div>
+                {dupWarning && (
+                  <p role="alert" className="mb-2 flex items-start gap-1.5 text-[11px] text-amber-300">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {dupWarning}
+                  </p>
+                )}
                 <button
                   onClick={startImport}
                   disabled={!validationResult.valid || importing}
                   className="btn-primary w-full flex items-center justify-center gap-1 text-xs py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
                   {importing && <Loader2 className="w-3 h-3 animate-spin" />}
-                  {importing ? 'Importing...' : 'Import'}
+                  {importing ? 'Importing...' : dupWarning ? 'Import anyway' : 'Import'}
                 </button>
               </div>
             )}
