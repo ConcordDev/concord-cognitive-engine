@@ -296,6 +296,23 @@ export default function registerHistoryActions(registerLensAction) {
     return { ok: true, result: { timeline } };
   });
 
+  registerLensAction("history", "timeline-update", (ctx, _a, params = {}) => {
+    const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const list = hsList(s, hsActor(ctx));
+    const timeline = list.find((x) => x.id === params.id);
+    if (!timeline) return { ok: false, error: "timeline not found" };
+    if (params.title != null) {
+      const title = hsClean(params.title, 200);
+      if (!title) return { ok: false, error: "timeline title required" };
+      const dup = list.find((x) => x.id !== timeline.id && x.title.trim().toLowerCase() === title.trim().toLowerCase());
+      if (dup) return { ok: false, error: "duplicate_title", message: `A timeline titled "${dup.title}" already exists.`, duplicateOf: dup.id };
+      timeline.title = title;
+    }
+    if (params.description != null) timeline.description = hsClean(params.description, 1000);
+    saveHistory();
+    return { ok: true, result: { timeline } };
+  });
+
   registerLensAction("history", "timeline-list", (ctx, _a, _params = {}) => {
   try {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };

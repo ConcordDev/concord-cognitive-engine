@@ -642,6 +642,34 @@ export default function registerAgentsActions(registerLensAction) {
     }
   });
 
+  // Edit a schedule in place — same fields and validation as
+  // createSchedule; enabled / fire history are not editable here
+  // (toggleSchedule owns enabled).
+  registerLensAction("agents", "updateSchedule", (ctx, _a, params = {}) => {
+    try {
+      const s = getAgentState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const schedules = arr(s.schedules, aActor(ctx));
+      const sch = schedules.find(x => x.id === aClean(params.id, 80));
+      if (!sch) return { ok: false, error: "schedule not found" };
+      const kind = params.kind != null
+        ? (SCHEDULE_KINDS.includes(params.kind) ? params.kind : sch.kind)
+        : sch.kind;
+      const spec = params.spec != null ? aClean(params.spec, 200) : sch.spec;
+      if (!spec) return { ok: false, error: "spec required (interval ms / cron / webhook path / event name)" };
+      if (kind === "interval" && !(Number.isInteger(Number(spec)) && Number(spec) >= 1)) {
+        return { ok: false, error: "invalid_input", message: "Interval must be a whole number of milliseconds that is 1 or greater." };
+      }
+      sch.kind = kind;
+      sch.spec = spec;
+      if (params.agentName != null) sch.agentName = aClean(params.agentName, 120) || sch.agentName;
+      if (params.goal != null) sch.goal = aClean(params.goal, 500) || sch.goal;
+      saveAgents();
+      return { ok: true, result: { schedule: sch } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   // Manually fire a schedule (also models the webhook/event arriving):
   // executes a real run and records the firing.
   registerLensAction("agents", "fireSchedule", async (ctx, _a, params = {}) => {

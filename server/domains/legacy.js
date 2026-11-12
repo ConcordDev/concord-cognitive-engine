@@ -429,6 +429,35 @@ export default function registerLegacyActions(registerLensAction) {
    * metrics, and persist as a named codebase snapshot.
    * params = { name, files: [{ path, content?, language?, churn?, lastModifiedDaysAgo?, testCoverage? }] }
    */
+  // Shared by scanCodebase (first scan) and rescanCodebase (in-place
+  // rescan) so both produce the identical languages/summary shape.
+  function computeScanSummary(scanned) {
+    const totalLoc = scanned.reduce((a, f) => a + f.linesOfCode, 0);
+    const langTotals = {};
+    for (const f of scanned) {
+      langTotals[f.language] = (langTotals[f.language] || 0) + f.linesOfCode;
+    }
+    const languages = Object.entries(langTotals)
+      .map(([lang, loc]) => ({ language: lang, linesOfCode: loc, pctOfCodebase: totalLoc > 0 ? r2(loc / totalLoc * 100) : 0, legacy: LEGACY_LANGS.has(lang) }))
+      .sort((a, b) => b.linesOfCode - a.linesOfCode);
+    const testFiles = scanned.filter(f => f.isTest);
+    const prodFiles = scanned.filter(f => !f.isTest);
+    const prodLoc = prodFiles.reduce((a, f) => a + f.linesOfCode, 0);
+    const testLoc = testFiles.reduce((a, f) => a + f.linesOfCode, 0);
+    const summary = {
+      fileCount: scanned.length,
+      totalLinesOfCode: totalLoc,
+      productionFiles: prodFiles.length,
+      testFiles: testFiles.length,
+      testToCodeRatio: prodLoc > 0 ? r2(testLoc / prodLoc) : 0,
+      avgComplexity: scanned.length > 0 ? r2(scanned.reduce((a, f) => a + f.cyclomaticComplexity, 0) / scanned.length) : 0,
+      totalTodos: scanned.reduce((a, f) => a + f.todoCount, 0),
+      legacyLanguageFiles: scanned.filter(f => f.isLegacyLanguage).length,
+      avgCommentRatio: scanned.length > 0 ? r2(scanned.reduce((a, f) => a + f.commentRatio, 0) / scanned.length) : 0,
+    };
+    return { languages, summary };
+  }
+
   registerLensAction("legacy", "scanCodebase", (ctx, _artifact, params = {}) => {
     try {
       const s = lgState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -437,30 +466,7 @@ export default function registerLegacyActions(registerLensAction) {
       const name = lgClean(params.name, 120) || "untitled-codebase";
       const scanned = files.slice(0, 5000).map(scanFile);
 
-      const totalLoc = scanned.reduce((a, f) => a + f.linesOfCode, 0);
-      const langTotals = {};
-      for (const f of scanned) {
-        langTotals[f.language] = (langTotals[f.language] || 0) + f.linesOfCode;
-      }
-      const languages = Object.entries(langTotals)
-        .map(([lang, loc]) => ({ language: lang, linesOfCode: loc, pctOfCodebase: totalLoc > 0 ? r2(loc / totalLoc * 100) : 0, legacy: LEGACY_LANGS.has(lang) }))
-        .sort((a, b) => b.linesOfCode - a.linesOfCode);
-      const testFiles = scanned.filter(f => f.isTest);
-      const prodFiles = scanned.filter(f => !f.isTest);
-      const prodLoc = prodFiles.reduce((a, f) => a + f.linesOfCode, 0);
-      const testLoc = testFiles.reduce((a, f) => a + f.linesOfCode, 0);
-
-      const summary = {
-        fileCount: scanned.length,
-        totalLinesOfCode: totalLoc,
-        productionFiles: prodFiles.length,
-        testFiles: testFiles.length,
-        testToCodeRatio: prodLoc > 0 ? r2(testLoc / prodLoc) : 0,
-        avgComplexity: scanned.length > 0 ? r2(scanned.reduce((a, f) => a + f.cyclomaticComplexity, 0) / scanned.length) : 0,
-        totalTodos: scanned.reduce((a, f) => a + f.todoCount, 0),
-        legacyLanguageFiles: scanned.filter(f => f.isLegacyLanguage).length,
-        avgCommentRatio: scanned.length > 0 ? r2(scanned.reduce((a, f) => a + f.commentRatio, 0) / scanned.length) : 0,
-      };
+      const { languages, summary } = computeScanSummary(scanned);
 
       const codebase = {
         id: lgId("cb"), name,
@@ -508,6 +514,41 @@ export default function registerLegacyActions(registerLensAction) {
       arr.splice(i, 1);
       lgSave();
       return { ok: true, result: { deleted: params.id } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /** updateCodebase — rename a scanned codebase. params = { id, name } */
+  registerLensAction("legacy", "updateCodebase", (ctx, _a, params = {}) => {
+    try {
+      const s = lgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const cb = (s.codebases.get(lgUid(ctx)) || []).find(c => c.id === params.id);
+      if (!cb) return { ok: false, error: "codebase not found" };
+      const name = lgClean(params.name, 120);
+      if (!name) return { ok: false, error: "codebase name required" };
+      cb.name = name;
+      lgSave();
+      return { ok: true, result: { codebase: { id: cb.id, name: cb.name, languages: cb.languages, summary: cb.summary, scannedAt: cb.scannedAt } } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  /** rescanCodebase — rescan in place: same id, same list position, same
+   *  name; files/languages/summary recomputed from the supplied files.
+   *  params = { id, files } */
+  registerLensAction("legacy", "rescanCodebase", (ctx, _a, params = {}) => {
+    try {
+      const s = lgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const cb = (s.codebases.get(lgUid(ctx)) || []).find(c => c.id === params.id);
+      if (!cb) return { ok: false, error: "codebase not found" };
+      const files = Array.isArray(params.files) ? params.files : [];
+      if (files.length === 0) return { ok: false, error: "no files supplied to scan" };
+      const scanned = files.slice(0, 5000).map(scanFile);
+      const { languages, summary } = computeScanSummary(scanned);
+      cb.files = scanned;
+      cb.languages = languages;
+      cb.summary = summary;
+      cb.scannedAt = lgNow();
+      lgSave();
+      return { ok: true, result: { codebase: { id: cb.id, name: cb.name, languages, summary, scannedAt: cb.scannedAt }, files: scanned } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 

@@ -243,6 +243,25 @@ export default function registerOceanActions(registerLensAction) {
     return { ok: true, result: { spot } };
   });
 
+  registerLensAction("ocean", "spot-update", (ctx, _a, params = {}) => {
+    const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const spot = ocSpots(s, ocActor(ctx)).find((x) => x.id === params.id);
+    if (!spot) return { ok: false, error: "spot not found" };
+    if (params.name != null) {
+      const rawName = String(params.name || "").trim();
+      if (!rawName) return { ok: false, error: "spot name required", message: "Spot name is required." };
+      if (rawName.length > 160) return { ok: false, error: "invalid_input", message: "Spot name must be 160 characters or fewer." };
+      spot.name = rawName;
+    }
+    if (params.kind != null && SPOT_KINDS.includes(params.kind)) spot.kind = params.kind;
+    if (params.lat != null) spot.lat = ocNum(params.lat);
+    if (params.lon != null) spot.lon = ocNum(params.lon);
+    if (params.stationId != null) spot.stationId = ocClean(params.stationId, 40) || null;
+    if (params.notes != null) spot.notes = ocClean(params.notes, 1000);
+    saveOcean();
+    return { ok: true, result: { spot } };
+  });
+
   registerLensAction("ocean", "spot-list", (ctx, _a, params = {}) => {
   try {
     const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };

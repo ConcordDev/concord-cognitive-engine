@@ -285,7 +285,7 @@ export default function registerInheritanceActions(registerLensAction) {
       return {
         ok: true,
         result: {
-          versions: e.wills.map((w) => ({ ...w, bodyPreview: w.body.slice(0, 160) })),
+          versions: e.wills.filter((w) => w.status !== "deleted").map((w) => ({ ...w, bodyPreview: w.body.slice(0, 160) })),
           activeVersion: (e.wills.find((w) => w.status === "active") || {}).version || null,
         },
       };
@@ -298,7 +298,7 @@ export default function registerInheritanceActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const e = getEstate(userId);
       const will = e.wills.find((w) => w.version === Number(params.version));
-      if (!will) return { ok: false, error: "version_not_found" };
+      if (!will || will.status === "deleted") return { ok: false, error: "version_not_found" };
       return { ok: true, result: { will } };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   });
@@ -309,7 +309,7 @@ export default function registerInheritanceActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const e = getEstate(userId);
       const src = e.wills.find((w) => w.version === Number(params.version));
-      if (!src) return { ok: false, error: "version_not_found" };
+      if (!src || src.status === "deleted") return { ok: false, error: "version_not_found" };
       const version = e.wills.length + 1;
       for (const w of e.wills) if (w.status === "active") w.status = "superseded";
       const will = {
@@ -324,6 +324,27 @@ export default function registerInheritanceActions(registerLensAction) {
       e.wills.push(will);
       e.updatedAt = Date.now();
       return { ok: true, result: { will } };
+    } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+  });
+
+  // Delete a non-active will version. The ACTIVE version cannot be
+  // deleted (author a new will first — deleting it would leave the
+  // estate with a superseded will silently in force). Deleted versions
+  // are tombstoned, not spliced: version numbers are assigned as
+  // wills.length + 1, so removing a slot would let a later author_will
+  // reuse a number that restore/get already handed out.
+  registerLensAction("inheritance", "delete_will_version", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = actorId(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const e = getEstate(userId);
+      const will = e.wills.find((w) => w.version === Number(params.version));
+      if (!will || will.status === "deleted") return { ok: false, error: "version_not_found" };
+      if (will.status === "active") return { ok: false, error: "cannot_delete_active_version" };
+      will.status = "deleted";
+      will.deletedAt = Date.now();
+      e.updatedAt = Date.now();
+      return { ok: true, result: { deleted: will.version } };
     } catch (err) { return { ok: false, error: String(err?.message || err) }; }
   });
 

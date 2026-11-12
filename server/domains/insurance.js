@@ -2348,6 +2348,38 @@ export default function registerInsuranceActions(register) {
     };
   });
 
+  // Void: cancel an in-flight envelope. The "voided" status is the
+  // domain's own designed terminal state (esign-sign already refuses
+  // to sign a voided envelope; binder-issue requires "completed", so
+  // a voided envelope can never issue a binder). A COMPLETED envelope
+  // is the fully-signed record — it can be neither voided nor deleted.
+  registerLensAction("insurance", "esign-void", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const env = (s.envelopes.get(insAid(ctx)) || []).find((e) => e.id === params.id);
+    if (!env) return { ok: false, error: "envelope not found" };
+    if (env.status === "voided") return { ok: false, error: "envelope is already voided" };
+    if (env.status === "completed") return { ok: false, error: "a completed envelope cannot be voided" };
+    env.status = "voided";
+    env.voidedAt = insNow();
+    env.audit.push({ at: insNow(), event: "Envelope voided by owner" });
+    saveInsState();
+    return { ok: true, result: { envelopeId: env.id, status: env.status } };
+  });
+
+  // Delete: removes a VOIDED envelope (the dead-letter cleanup). Any
+  // other status is refused — void first, and completed envelopes are
+  // the signed record and are never deletable.
+  registerLensAction("insurance", "esign-delete", (ctx, _a, params = {}) => {
+    const s = getAmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const arr = s.envelopes.get(insAid(ctx)) || [];
+    const i = arr.findIndex((e) => e.id === params.id);
+    if (i < 0) return { ok: false, error: "envelope not found" };
+    if (arr[i].status !== "voided") return { ok: false, error: "only a voided envelope can be deleted" };
+    arr.splice(i, 1);
+    saveInsState();
+    return { ok: true, result: { deleted: params.id } };
+  });
+
   // Binder: a temporary proof of coverage. Issuable only once an
   // application envelope is fully signed.
   registerLensAction("insurance", "binder-issue", (ctx, _a, params = {}) => {
