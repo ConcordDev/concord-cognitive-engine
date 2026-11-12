@@ -5,7 +5,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { lensRun } from '@/lib/api/client';
-import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
@@ -321,6 +320,7 @@ export function SceneStudio() {
   const [validation, setValidation] = useState<any>(null);
   const [timeline, setTimeline] = useState<any>(null);
   const [targets, setTargets] = useState<ImageTarget[]>([]);
+  const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<string | null>(null);
   const [publishRec, setPublishRec] = useState<PublishRecord | null>(null);
   const [webxr, setWebxr] = useState<WebXRPlan | null>(null);
 
@@ -586,6 +586,18 @@ export function SceneStudio() {
     else { flash(r.data?.error || 'Compile failed.'); }
   };
 
+  // Two-step delete (FIX-ar-015): the first click arms the confirm on
+  // that card; the second removes the target server-side.
+  const deleteTarget = async (id: string) => {
+    if (confirmDeleteTarget !== id) { setConfirmDeleteTarget(id); return; }
+    setConfirmDeleteTarget(null);
+    setBusy(true);
+    const r = await lensRun('ar', 'imageTargetDelete', { targetId: id });
+    setBusy(false);
+    if (r.data?.ok) { loadTargets(); flash('Image target deleted.'); }
+    else { flash(r.data?.error || 'Delete failed.'); }
+  };
+
   const addObject = () => {
     if (!scene) return;
     const o = blankObject();
@@ -651,7 +663,10 @@ export function SceneStudio() {
                     {s.anchor} anchor &middot; {s.objectCount} objects &middot; {s.behaviorCount} behaviors &middot; v{s.version}
                   </p>
                 </button>
-                <StickyDeleteConfirm onConfirm={() => { void deleteScene(s.id); }} className={ds.btnGhost} armAriaLabel={`Delete scene ${s.name}`} confirmLabel={`Delete “${s.name}”?`} confirmAriaLabel={`Confirm delete scene ${s.name}`} armLabel={<><Trash2 className="w-4 h-4 text-red-400" /><span>Delete scene</span></>} />
+                <button onClick={() => deleteScene(s.id)} className={ds.btnGhost} aria-label="Delete scene">
+                  <Trash2 className="w-4 h-4 text-red-400" />
+                  <span>Delete scene</span>
+                </button>
               </div>
             ))}
           </div>
@@ -679,7 +694,9 @@ export function SceneStudio() {
         <div className="flex items-center gap-2">
           {busy && <span className="text-xs text-neon-purple animate-pulse">working…</span>}
           {scene.id ? (
-            <StickyDeleteConfirm onConfirm={() => { void deleteScene(scene.id); }} className={ds.btnGhost} disabled={busy} armAriaLabel={`Delete scene ${scene.name || ''}`.trim()} confirmLabel={`Delete “${scene.name || 'scene'}”?`} confirmAriaLabel="Confirm delete scene" armLabel={<><Trash2 className="w-4 h-4 text-red-400" /> Delete scene</>} />
+            <button onClick={() => deleteScene(scene.id)} className={ds.btnGhost} disabled={busy} aria-label="Delete scene">
+              <Trash2 className="w-4 h-4 text-red-400" /> Delete scene
+            </button>
           ) : null}
           <button onClick={saveScene} className={ds.btnPrimary} disabled={busy}><Save className="w-4 h-4" /> Save</button>
         </div>
@@ -1054,12 +1071,19 @@ export function SceneStudio() {
               </button>
               {targets.map((t) => (
                 <div key={t.id} className="rounded-md border border-lattice-border p-2 text-xs">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-white">{t.name}</span>
-                    <span className={cn(
-                      'px-1.5 py-0.5 rounded',
-                      t.rating === 'excellent' || t.rating === 'good' ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300',
-                    )}>{t.rating} {(t.trackabilityScore * 100).toFixed(0)}%</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className={cn(
+                        'px-1.5 py-0.5 rounded',
+                        t.rating === 'excellent' || t.rating === 'good' ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300',
+                      )}>{t.rating} {(t.trackabilityScore * 100).toFixed(0)}%</span>
+                      {confirmDeleteTarget === t.id ? (
+                        <button type="button" aria-label={`Confirm delete target ${t.name}`} onClick={() => void deleteTarget(t.id)} disabled={busy} className="px-1 text-[11px] font-medium text-rose-300 hover:text-rose-200 disabled:opacity-40">Confirm</button>
+                      ) : (
+                        <button type="button" aria-label={`Delete target ${t.name}`} onClick={() => void deleteTarget(t.id)} className="p-0.5 text-gray-500 hover:text-rose-300"><Trash2 className="w-3.5 h-3.5" /></button>
+                      )}
+                    </span>
                   </div>
                   <p className="text-gray-400 mt-0.5">{t.physical.widthCm}×{t.physical.heightCm}cm</p>
                   {t.warnings.map((w, i) => <p key={i} className="text-amber-400 mt-0.5">{w}</p>)}

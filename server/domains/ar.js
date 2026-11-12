@@ -1102,6 +1102,20 @@ export default function registerArActions(registerLensAction) {
     }
   });
 
+  /** imageTargetDelete — remove an image target the caller owns. Honest not-found rejection. */
+  registerLensAction("ar", "imageTargetDelete", (ctx, artifact, params) => {
+    try {
+      const targets = targetStore(ctx);
+      const id = params && (params.targetId || params.id);
+      if (!id) return { ok: false, error: "targetId is required" };
+      if (!targets.get(id)) return { ok: false, error: "image target not found" };
+      targets.delete(id);
+      return { ok: true, result: { deleted: true, targetId: id } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
   /**
    * publishScene
    * Generate a shareable publish record for an AR scene — a short link,
