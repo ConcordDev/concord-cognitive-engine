@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Play, Save, Download, Upload, Trash2, Crosshair, Box,
   RotateCcw, Loader2, Film, Palette, Image as ImageIcon,
@@ -849,9 +850,7 @@ export function FractalRenderer() {
                   <button onClick={() => exportPreset(p.id)} className="text-zinc-400 hover:text-cyan-400" title="Export">
                     <Download className="h-3 w-3" />
                   </button>
-                  <button onClick={() => deletePreset(p.id)} disabled={busy === p.id} className="text-zinc-400 hover:text-red-400" title="Delete">
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                  <StickyDeleteConfirm onConfirm={() => { void deletePreset(p.id); }} disabled={busy === p.id} className="text-zinc-400 hover:text-red-400" armAriaLabel={`Delete preset ${p.name}`} confirmLabel={`Delete “${p.name}”?`} confirmAriaLabel={`Confirm delete preset ${p.name}`} armLabel={<Trash2 className="h-3 w-3" />} />
                 </div>
               ))}
             </div>

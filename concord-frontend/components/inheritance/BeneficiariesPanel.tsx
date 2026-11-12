@@ -4,6 +4,7 @@
 
 import { TimelineView, ChartKit } from '@/components/viz';
 import { useEstate } from './EstateContext';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export function BeneficiariesPanel() {
   const {
@@ -149,7 +150,7 @@ export function BeneficiariesPanel() {
                               onClick={() => setNotifyDraft((d) => (b.id in d ? (() => { const n = { ...d }; delete n[b.id]; return n; })() : { ...d, [b.id]: '' }))}
                             >{draftOpen ? 'Cancel' : 'Notify heir'}</button>
                           )}
-                          <button type="button" className="text-xs text-rose-400 hover:text-rose-300" onClick={() => removeBeneficiary(b.id)}>Remove</button>
+                          <StickyDeleteConfirm onConfirm={() => removeBeneficiary(b.id)} className="text-xs text-rose-400 hover:text-rose-300" armLabel="Remove" armAriaLabel={`Remove beneficiary ${b.name}`} confirmLabel={`Remove ${b.name}?`} confirmAriaLabel={`Confirm remove beneficiary ${b.name}`} />
                         </div>
                         {draftOpen && !b.heirUserId && (
                           <div className="mt-2 flex items-center gap-2 border-t border-zinc-800 pt-2">

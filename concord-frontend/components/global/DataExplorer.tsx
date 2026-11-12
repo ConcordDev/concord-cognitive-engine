@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
 import { IndicatorPicker } from './IndicatorPicker';
@@ -640,14 +641,7 @@ export function DataExplorer() {
                 <span className="font-mono text-[10px] text-zinc-400">
                   {new Date(v.createdAt).toLocaleDateString()}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => void deleteView(v.id)}
-                  className="text-zinc-600 hover:text-rose-400"
-                  aria-label="Delete view"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => { void deleteView(v.id); }} className="text-zinc-600 hover:text-rose-400" armAriaLabel={`Delete view ${v.label}`} confirmLabel={`Delete “${v.label}”?`} confirmAriaLabel={`Confirm delete view ${v.label}`} armLabel={<Trash2 className="h-3.5 w-3.5" />} />
               </div>
             ))}
           </div>
