@@ -167,6 +167,20 @@ describe("productivity natural-language quick add", () => {
     assert.equal(p.content, "submit report");
   });
 
+  it("FIX-productivity-007: an impossible ISO date is flagged, never stored", () => {
+    const r = call("task-parse", ctxA, { text: "file taxes 2026-99-99" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.parsed.dueDate, null);
+    assert.equal(r.result.parsed.invalidDate, "2026-99-99");
+    assert.equal(r.result.parsed.content, "file taxes");
+    const added = call("task-quick-add", ctxA, { text: "file taxes 2026-99-99" });
+    assert.equal(added.ok, false);
+    assert.match(added.error, /not a real calendar date/);
+    const good = call("task-parse", ctxA, { text: "file taxes 2027-04-15" });
+    assert.equal(good.result.parsed.dueDate, "2027-04-15");
+    assert.equal(good.result.parsed.invalidDate, null);
+  });
+
   it("task-parse rejects empty text", () => {
     assert.equal(call("task-parse", ctxA, { text: "  " }).ok, false);
   });

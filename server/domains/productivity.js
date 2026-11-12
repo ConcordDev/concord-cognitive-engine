@@ -673,7 +673,7 @@ export default function registerProductivityActions(registerLensAction) {
   function parseQuickAdd(text) {
     let raw = String(text == null ? "" : text).trim();
     if (!raw) return null;
-    const out = { content: raw, priority: 4, dueDate: null, dueTime: null, project: null, labels: [], recurring: null };
+    const out = { content: raw, priority: 4, dueDate: null, dueTime: null, project: null, labels: [], recurring: null, invalidDate: null };
 
     // priority — "p1".."p4" or "!!" style
     const pm = raw.match(/(?:^|\s)p([1-4])(?=\s|$)/i);
@@ -717,7 +717,19 @@ export default function registerProductivityActions(registerLensAction) {
     const dayMs = 86400000;
     const isoToday = today.toISOString().slice(0, 10);
     const iso = raw.match(/(?:^|\s)(\d{4}-\d{2}-\d{2})(?=\s|$)/);
-    if (iso) { out.dueDate = iso[1]; raw = raw.replace(iso[0], " "); }
+    if (iso) {
+      // FIX-productivity-007: the ISO shape was trusted verbatim, so
+      // 2026-99-99 became a due-date chip and a stored dueDate. A
+      // date-shaped token that is not a real calendar date (round-trip
+      // checked) is flagged on the parse instead of silently landing.
+      const d = new Date(`${iso[1]}T00:00:00Z`);
+      if (!Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso[1]) {
+        out.dueDate = iso[1];
+      } else {
+        out.invalidDate = iso[1];
+      }
+      raw = raw.replace(iso[0], " ");
+    }
     else {
       const lc = raw.toLowerCase();
       if (/(?:^|\s)today(?=\s|$)/.test(lc)) { out.dueDate = isoToday; raw = raw.replace(/(?:^|\s)today/i, " "); }
@@ -761,6 +773,7 @@ export default function registerProductivityActions(registerLensAction) {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const parsed = parseQuickAdd(params.text);
     if (!parsed || !parsed.content) return { ok: false, error: "text required" };
+    if (parsed.invalidDate) return { ok: false, error: `"${parsed.invalidDate}" is not a real calendar date` };
     const userId = pdAid(ctx);
     // resolve project name → existing project id, else keep name on task
     let projectId = null;
