@@ -91,7 +91,7 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
         if (entry) { setSelectedId(entry.id); setName(entry.name); }
         await refresh();
       }
-      else setError(r.data?.error || 'Save failed');
+      else setError((r.data as { message?: string } | undefined)?.message || r.data?.error || 'Save failed');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed');
     } finally { setBusy(false); }
@@ -174,6 +174,7 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Preset name"
+          maxLength={60}
           aria-label="Preset name"
           className="min-w-0 flex-1 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100 placeholder:text-slate-600"
         />
@@ -184,6 +185,7 @@ export function LoadoutPicker({ onApply }: { onApply: (l: ActiveLoadout) => void
         >
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} {selectedId ? 'Update' : 'Save'}
         </button>
+        {name.length > 45 && <span className="self-center text-[10px] text-slate-500">{name.length}/60</span>}
       </div>
 
       {selectedId && (

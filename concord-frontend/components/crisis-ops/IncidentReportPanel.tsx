@@ -95,8 +95,10 @@ export function IncidentReportPanel({ crisisId }: { crisisId?: string }) {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Report title (e.g. Sitrep — hour 3)"
             aria-label="Report title"
+            maxLength={120}
             className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-gray-100"
           />
+          {title.length > 90 && <span className="text-[10px] text-zinc-500">{title.length}/120</span>}
           <select
             value={severity}
             onChange={(e) => setSeverity(e.target.value)}

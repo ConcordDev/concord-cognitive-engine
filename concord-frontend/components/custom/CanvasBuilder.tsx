@@ -420,10 +420,12 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
         <div className="panel p-3 flex flex-wrap items-center gap-2">
           <label className="text-xs text-gray-400" htmlFor="custom-new-canvas-name">New lens name</label>
           <input id="custom-new-canvas-name" autoFocus value={newName}
+            maxLength={80}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); createCanvas(); } }}
             placeholder="e.g. Shift board"
             className="input-lattice text-sm flex-1 min-w-[200px]" />
+          {newName.length > 60 && <span className="text-[10px] text-zinc-500">{newName.length}/80</span>}
           <button onClick={createCanvas} disabled={busy || !newName.trim()}
             className="btn-neon purple text-sm disabled:opacity-40">Create lens</button>
           <button onClick={() => { setShowCreate(false); setNewName(''); }}

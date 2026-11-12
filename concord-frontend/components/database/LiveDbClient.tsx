@@ -695,8 +695,10 @@ export function LiveDbClient() {
                 value={connForm.name}
                 onChange={(e) => setConnForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="Connection name"
+                maxLength={80}
                 className="input-lattice w-full text-xs"
               />
+              {connForm.name.length > 60 && <span className="text-[10px] text-zinc-500">{connForm.name.length}/80</span>}
               <select
                 value={connForm.engine}
                 onChange={(e) => setConnForm((f) => ({ ...f, engine: e.target.value }))}
