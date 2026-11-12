@@ -122,12 +122,20 @@ export function EventPlanner() {
           className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200 capitalize">
           {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+        <input type="date" aria-label="Event date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
           className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={form.budget} onChange={e => setForm({ ...form, budget: e.target.value })} placeholder="budget"
           className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <button onClick={create} disabled={!form.name.trim()}
           className="px-2.5 py-1 text-xs rounded bg-pink-600 hover:bg-pink-500 text-white font-semibold disabled:opacity-40">Add event</button>
+        {/* FIX-events-009: a past date was accepted with no word; past
+            events are a modelled state here, so the form warns instead
+            of refusing. */}
+        {form.date && form.date < new Date().toISOString().slice(0, 10) && (
+          <p role="note" className="w-full text-[11px] text-amber-300/90">
+            That date is in the past — this event will be created already past. (Past events stay creatable so a finished event can still be logged.)
+          </p>
+        )}
       </div>
 
       <div className="grid sm:grid-cols-[200px_1fr] gap-3">
