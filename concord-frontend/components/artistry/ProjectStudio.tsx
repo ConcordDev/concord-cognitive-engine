@@ -344,7 +344,7 @@ export function ProjectStudio() {
               <button onClick={closeForm} aria-label="Close"><X className="w-4 h-4" /></button>
             </div>
             <div className="space-y-3">
-              <input value={fTitle} onChange={(e) => setFTitle(e.target.value)} placeholder="Project title" className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
+              <input value={fTitle} onChange={(e) => setFTitle(e.target.value)} placeholder="Project title" maxLength={160} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
               <textarea value={fDesc} onChange={(e) => setFDesc(e.target.value)} placeholder="Description" rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
               <select value={fDiscipline} onChange={(e) => setFDiscipline(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm">
                 {['illustration', 'painting', 'photography', '3d', 'animation', 'graphic-design', 'concept-art', 'typography'].map((d) => <option key={d} value={d}>{d}</option>)}

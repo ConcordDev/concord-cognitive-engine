@@ -827,6 +827,7 @@ export function FractalRenderer() {
                 className={inputCls}
                 placeholder="preset name…"
                 value={presetName}
+                maxLength={120}
                 onChange={e => setPresetName(e.target.value)}
               />
               <button onClick={savePreset} disabled={busy === 'save'} className={btn}>

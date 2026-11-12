@@ -255,6 +255,7 @@ export function ComposePanel({ intent }: ComposePanelProps) {
             value={compTitle}
             onChange={(e) => setCompTitle(e.target.value)}
             placeholder="Poem title"
+            maxLength={200}
             className="text-lg font-semibold bg-transparent border-none focus:outline-none placeholder-gray-600 italic"
           />
           <select

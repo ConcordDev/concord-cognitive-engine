@@ -103,7 +103,7 @@ export function PoemWorkspace() {
 
         <div>
           <div className="flex gap-1.5 mb-1.5">
-            <input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="Poem title"
+            <input value={draft.title} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="Poem title" maxLength={200}
               className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100" />
             <select value={draft.form} onChange={e => setDraft({ ...draft, form: e.target.value })}
               className="bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">

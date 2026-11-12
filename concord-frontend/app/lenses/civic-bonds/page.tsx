@@ -285,6 +285,7 @@ export default function CivicBondsLens() {
                 value={draftTitle}
                 onChange={(e) => setDraftTitle(e.target.value)}
                 placeholder="Community project title"
+                maxLength={500}
                 className="w-full px-2 py-1.5 rounded bg-black/30 border border-white/10 text-sm"
                 aria-label="Bond title"
               />

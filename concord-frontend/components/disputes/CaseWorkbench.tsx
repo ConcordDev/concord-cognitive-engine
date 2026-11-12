@@ -559,6 +559,9 @@ function NewCaseModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
             Freeze escrow on the disputed amount immediately
           </label>
           {error && <p className="text-sm text-rose-400 flex items-center gap-1"><XCircle className="w-3.5 h-3.5" />{error}</p>}
+          {!title.trim() && !error && (
+            <p role="note" className="text-xs text-zinc-500">A case title is required — Open Case unlocks once the case has a title.</p>
+          )}
         </div>
         <div className="flex justify-end gap-2 border-t border-zinc-800 px-4 py-3">
           <button className={btnGhost} onClick={onClose}>Cancel</button>

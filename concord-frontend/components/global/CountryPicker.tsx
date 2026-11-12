@@ -114,6 +114,9 @@ export function CountryPicker(props: Props) {
             );
           })}
         </div>
+        {selected.length >= max && (
+          <p role="note" className="text-[10px] text-zinc-500">Up to {max} countries at a time — remove one to swap in another.</p>
+        )}
       </div>
     );
   }

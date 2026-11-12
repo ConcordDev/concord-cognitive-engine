@@ -97,6 +97,7 @@ export function FoldersSidebar({
               <input
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
+                maxLength={120}
                 onKeyDown={(e) => { if (e.key === 'Enter') submitRename(f.id); }}
                 className="flex-1 text-xs bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-zinc-100"
                 autoFocus
@@ -153,6 +154,7 @@ export function FoldersSidebar({
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
+            maxLength={120}
             onKeyDown={(e) => { if (e.key === 'Enter') submitCreate(); }}
             placeholder="Folder name"
             className="flex-1 text-xs bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-zinc-100"

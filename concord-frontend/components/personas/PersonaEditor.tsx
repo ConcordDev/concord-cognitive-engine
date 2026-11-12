@@ -240,6 +240,11 @@ export function PersonaEditor({
           className="px-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm py-2 rounded-lg"
         >Cancel</button>
       </div>
+      {!busy && !name.trim() && (
+        <p role="note" className="text-[11px] text-zinc-500">
+          A name is required — the button above unlocks once the persona has one.
+        </p>
+      )}
     </div>
   );
 }

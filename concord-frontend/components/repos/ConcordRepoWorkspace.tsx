@@ -874,6 +874,9 @@ function IssuesTab({ repoId }: { repoId: string }) {
           <input value={newBody} onChange={(e) => setNewBody(e.target.value)} placeholder="Description (optional)" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
           <button onClick={createIssue} disabled={busy === 'create' || !newTitle.trim()} className="rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Create</button>
         </div>
+        {!newTitle.trim() && busy !== 'create' && (
+          <p role="note" className="mt-1.5 text-[10px] text-zinc-500">Give the issue a title — Create unlocks once it has one.</p>
+        )}
       </div>
       <div className="flex gap-1">
         {(['all', 'open', 'closed'] as const).map((s) => (

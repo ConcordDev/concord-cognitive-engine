@@ -139,7 +139,7 @@ export function FieldLog() {
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 space-y-1.5">
         <div className="flex gap-1.5">
-          <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Sample / outcrop name"
+          <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Sample / outcrop name" maxLength={120}
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
           <select value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value })}
             className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200 capitalize">
@@ -210,7 +210,7 @@ export function FieldLog() {
           {selected.notes && <p className="text-[11px] text-zinc-300">{selected.notes}</p>}
           <div className="space-y-1.5 border-t border-zinc-800 pt-2">
             <div className="flex gap-1.5">
-              <input aria-label="Observation name" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+              <input aria-label="Observation name" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} maxLength={120}
                 className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
               <select aria-label="Observation kind" value={editForm.kind} onChange={e => setEditForm({ ...editForm, kind: e.target.value })}
                 className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200 capitalize">

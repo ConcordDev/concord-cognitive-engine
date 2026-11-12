@@ -166,7 +166,7 @@ export function PoetryActionPanel() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <input type="text" value={poemTitle} onChange={(e) => setPoemTitle(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Poem title" />
+        <input type="text" value={poemTitle} onChange={(e) => setPoemTitle(e.target.value)} maxLength={200} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Poem title" />
         <select value={formType} onChange={(e) => setFormType(e.target.value as typeof formType)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
           {(['sonnet', 'haiku', 'limerick', 'villanelle', 'free-verse'] as const).map(f => <option key={f} value={f}>{f}</option>)}
         </select>
