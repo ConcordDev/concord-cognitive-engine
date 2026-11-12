@@ -104,7 +104,7 @@ export function MeshMessaging() {
     <div className="grid gap-4 md:grid-cols-[200px_1fr]">
       <aside className="space-y-1">
         <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-teal-600">Conversations</h3>
-        <p className="mb-2 text-[10px] leading-snug text-gray-500">Messages here are a log and are not radioed out. Use Send DTU to route over a transport.</p>
+        <p className="mb-2 text-[10px] leading-snug text-gray-400">Messages here are a log and are not radioed out. Use Send DTU to route over a transport.</p>
         {targets.map((t) => (
           <button
             key={t.id}

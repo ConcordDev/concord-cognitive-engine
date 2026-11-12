@@ -57,7 +57,7 @@ export function SpawnPanel({ onSpawned }: { onSpawned?: () => void }) {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
           />
-          <div className="mt-0.5 flex justify-between text-[10px] text-zinc-500">
+          <div className="mt-0.5 flex justify-between text-[10px] text-zinc-400">
             <span>{form.name.trim().length > 0 && form.name.trim().length < 3 ? 'At least 3 characters.' : '3–200 characters.'}</span>
             <span>{form.name.length}/200</span>
           </div>

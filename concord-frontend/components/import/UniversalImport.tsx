@@ -356,7 +356,7 @@ export function UniversalImport({
                 </span>
               )}
             </span>
-            <span className="text-gray-600">
+            <span className="text-gray-400">
               {files.length} file{files.length !== 1 ? 's' : ''}
             </span>
           </div>

@@ -468,7 +468,7 @@ export function SyncDashboard() {
                   <div className="flex items-center gap-2">
                     {d.online
                       ? <Wifi className="h-5 w-5 text-emerald-400" aria-label="online" />
-                      : <WifiOff className="h-5 w-5 text-zinc-600" aria-label="offline" />}
+                      : <WifiOff className="h-5 w-5 text-zinc-400" aria-label="offline" />}
                     <div>
                       <p className="text-sm font-semibold text-zinc-100">{d.label}</p>
                       <p className="text-[11px] text-zinc-400">

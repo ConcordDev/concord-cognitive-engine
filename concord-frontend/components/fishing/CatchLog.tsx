@@ -62,7 +62,7 @@ export function CatchLog({ catches, loading, reason, onRetry, justCaughtId, dens
             header: 'Rarity',
             accessor: (c: CatchRow) => {
               const species = speciesById.get(c.item_id.replace(/^raw_fish:/, ''));
-              if (!species?.rarity) return <span className="text-gray-600">—</span>;
+              if (!species?.rarity) return <span className="text-gray-400">—</span>;
               return (
                 <span
                   className={cn(
@@ -80,7 +80,7 @@ export function CatchLog({ catches, loading, reason, onRetry, justCaughtId, dens
             header: 'Mass',
             accessor: (c: CatchRow) => {
               const species = speciesById.get(c.item_id.replace(/^raw_fish:/, ''));
-              return species?.mass != null ? `${species.mass} kg` : <span className="text-gray-600">—</span>;
+              return species?.mass != null ? `${species.mass} kg` : <span className="text-gray-400">—</span>;
             },
             align: 'right' as const,
             monospace: true,
@@ -108,7 +108,7 @@ export function CatchLog({ catches, loading, reason, onRetry, justCaughtId, dens
       header: 'Quality',
       accessor: (c) => {
         const meta = parseCatchMeta(c);
-        if (meta.qualityScore == null) return <span className="text-gray-600">—</span>;
+        if (meta.qualityScore == null) return <span className="text-gray-400">—</span>;
         const tier = qualityTier(meta.qualityScore);
         return (
           <span

@@ -214,7 +214,7 @@ export default function QuestsLensPage() {
               <p className="text-[13px] font-medium text-slate-300">
                 {tab === 'active' ? 'No active quests' : tab === 'completed' ? 'No completed quests yet' : 'No quests available'}
               </p>
-              <p className="text-[12px] text-slate-500">
+              <p className="text-[12px] text-slate-400">
                 {tab === 'active'
                   ? 'Talk to an NPC in the world to accept a quest — it will appear here with its objectives.'
                   : tab === 'completed'

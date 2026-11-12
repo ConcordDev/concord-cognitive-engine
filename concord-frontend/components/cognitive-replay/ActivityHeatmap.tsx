@@ -103,7 +103,7 @@ export function ActivityHeatmap({ sinceDays }: { sinceDays: number }) {
               <tr>
                 <td />
                 {Array.from({ length: 24 }, (_, h) => (
-                  <td key={h} className="text-center font-mono text-[7px] text-zinc-600">{h % 6 === 0 ? h : ''}</td>
+                  <td key={h} className="text-center font-mono text-[7px] text-zinc-400">{h % 6 === 0 ? h : ''}</td>
                 ))}
               </tr>
             </tbody>

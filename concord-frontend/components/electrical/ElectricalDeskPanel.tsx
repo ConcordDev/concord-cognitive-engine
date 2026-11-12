@@ -524,7 +524,7 @@ export function ElectricalDeskPanel({
         </div>
       ) : filtered.length === 0 ? (
         <div className={cn(ds.panel, 'text-center py-12')}>
-          <SvgIcon name="circuit-panel" size={48} className="text-gray-600 mx-auto mb-3" />
+          <SvgIcon name="circuit-panel" size={48} className="text-gray-400 mx-auto mb-3" />
           <p className={ds.textMuted}>No {activeArtifactType} items yet</p>
           <button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}>
             <Plus className="w-4 h-4" /> Create First

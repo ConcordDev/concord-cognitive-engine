@@ -70,7 +70,7 @@ export function RestoreDtuExport() {
       <header className="flex items-center gap-2">
         <RotateCcw className="w-4 h-4 text-neon-purple" />
         <h2 className="font-semibold text-white">Restore from export</h2>
-        <span className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">import.json · import.markdown</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-400 font-mono">import.json · import.markdown</span>
       </header>
       <p className="text-xs text-gray-400">
         Paste or upload a file produced by the Export lens (JSON or Markdown
@@ -133,7 +133,7 @@ export function RestoreDtuExport() {
           <CheckCircle2 className="w-3.5 h-3.5 text-neon-green shrink-0" />
           <span><span className="text-neon-green font-semibold">{result.imported}</span> imported</span>
           {result.skipped > 0 && <span><span className="text-yellow-400 font-semibold">{result.skipped}</span> skipped (already present)</span>}
-          <span className="text-gray-500">of {result.total} total</span>
+          <span className="text-gray-400">of {result.total} total</span>
         </div>
       )}
     </div>

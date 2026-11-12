@@ -289,7 +289,7 @@ export function TelecommunicationsActionPanel() {
             <div className="text-[10px] text-zinc-400">ARPU ${costResult.arpu} - cost ${costResult.costPerSubscriber} = ${costResult.margin}</div>
             <div className="text-[10px] text-zinc-400">Revenue ${costResult.monthlyRevenue.toLocaleString()}/mo · infra ${costResult.infrastructurePerSubscriber}/line</div>
             <div className="text-[10px] text-zinc-400">breakeven: {costResult.breakeven ?? 'never at the current margin'}{costResult.breakevenMonths != null ? ` (${costResult.breakevenMonths} mo of margin)` : ''}</div>
-            <div className="text-[10px] text-zinc-500 italic">Basis: {costResult.costBasis}</div>
+            <div className="text-[10px] text-zinc-400 italic">Basis: {costResult.costBasis}</div>
           </div>
         )}
       </div>

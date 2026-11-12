@@ -202,7 +202,7 @@ export function ResidueDetail({
                     >
                       {STAGE_LABEL[s] || s}
                     </div>
-                    {i < stages.length - 1 && <span className="mx-1 text-gray-600">→</span>}
+                    {i < stages.length - 1 && <span className="mx-1 text-gray-400">→</span>}
                   </div>
                 ))}
               </div>
@@ -284,7 +284,7 @@ export function ResidueDetail({
                       onChange={(e) => setDossierTitle(e.target.value)}
                       placeholder={`Spectral Dossier — ${r.drift_type} (${r.severity})`}
                       maxLength={200}
-                      className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-white placeholder:text-gray-600"
+                      className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-white placeholder:text-gray-400"
                     />
                     <textarea
                       value={dossierNotes}
@@ -292,7 +292,7 @@ export function ResidueDetail({
                       placeholder="Field notes (optional)…"
                       rows={3}
                       maxLength={4000}
-                      className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-white placeholder:text-gray-600"
+                      className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-white placeholder:text-gray-400"
                     />
                     <div className="flex items-center justify-between">
                       <label className="flex items-center gap-2 text-xs text-gray-400">

@@ -135,7 +135,7 @@ export function GenesisMetrics({ onSelect }: { onSelect?: (id: string) => void }
               <ol className="space-y-1">
                 {(data.topContributors || []).map((c, i) => (
                   <li key={c.emergent_id} className="flex items-center gap-2 text-[12px]">
-                    <span className="w-5 font-mono text-zinc-600">#{i + 1}</span>
+                    <span className="w-5 font-mono text-zinc-400">#{i + 1}</span>
                     <button
                       type="button"
                       onClick={() => onSelect?.(c.emergent_id)}

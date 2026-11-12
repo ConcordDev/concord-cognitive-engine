@@ -119,7 +119,7 @@ export default function TelecommunicationsLensPage() {
             </div>
             <p className="text-2xl font-bold text-violet-400">
               {overview ? overview.activeTowers : '—'}
-              {overview ? <span className="text-sm text-zinc-500"> / {overview.towers}</span> : null}
+              {overview ? <span className="text-sm text-zinc-400"> / {overview.towers}</span> : null}
             </p>
             <p className="text-xs text-gray-400">Active sites</p>
           </div>

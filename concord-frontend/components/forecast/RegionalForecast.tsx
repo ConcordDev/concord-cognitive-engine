@@ -90,7 +90,7 @@ function DistrictCompass({
           );
         })}
       </svg>
-      <p className="mt-1.5 flex items-center justify-center gap-3 text-[10px] text-zinc-500">
+      <p className="mt-1.5 flex items-center justify-center gap-3 text-[10px] text-zinc-400">
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />measured</span>
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-zinc-600" />no data</span>
         <span>· click a district to select it below</span>
