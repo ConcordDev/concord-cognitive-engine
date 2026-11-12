@@ -88,6 +88,8 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
   const [formInspectionType, setFormInspectionType] = useState('Foundation');
   const [formForeman, setFormForeman] = useState('');
   const [formCrewSize, setFormCrewSize] = useState('');
+  const [jobNotice, setJobNotice] = useState<{ itemId: string; title: string } | null>(null);
+  const [jobError, setJobError] = useState('');
 
   const activeArtifactType = modeToArtifact(mode);
   const { items, isLoading, isError, error, refetch, create, update, remove } =
@@ -133,14 +135,40 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
     async (item: LensItem<ConstructionArtifact>) => {
       const d = item.data as unknown as ConstructionArtifact;
       if (d.status !== 'planned') return;
-      await update(item.id, {
-        title: item.title,
-        data: { ...(d as unknown as Record<string, unknown>), status: 'in_progress' },
-        meta: { tags: [], status: 'in_progress', visibility: 'private' },
-      });
+      try {
+        await update(item.id, {
+          title: item.title,
+          data: { ...(d as unknown as Record<string, unknown>), status: 'in_progress' },
+          meta: { tags: [], status: 'in_progress', visibility: 'private' },
+        });
+        // The quick action says what it did, with a way back — a status
+        // change is never silent.
+        setJobError('');
+        setJobNotice({ itemId: item.id, title: item.title || d.name || 'Job' });
+      } catch {
+        setJobNotice(null);
+        setJobError('Couldn\'t start that job — try again.');
+      }
     },
     [update],
   );
+
+  const undoStartJob = useCallback(async () => {
+    if (!jobNotice) return;
+    const item = items.find((i) => i.id === jobNotice.itemId);
+    setJobNotice(null);
+    if (!item) return;
+    const d = item.data as unknown as ConstructionArtifact;
+    try {
+      await update(item.id, {
+        title: item.title,
+        data: { ...(d as unknown as Record<string, unknown>), status: 'planned' },
+        meta: { tags: [], status: 'planned', visibility: 'private' },
+      });
+    } catch {
+      setJobError('Couldn\'t undo the start — the job is still In Progress.');
+    }
+  }, [jobNotice, items, update]);
 
   const openCreate = () => {
     setEditingItem(null);
@@ -604,10 +632,11 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
                         void activateJob(item);
                       }}
                       className={ds.btnGhost}
-                      aria-label="Activate job"
-                      title="Activate job"
+                      aria-label="Start job"
+                      title="Start job"
                     >
                       <Zap className="w-4 h-4 text-neon-cyan" />
+                      <span className="text-xs">Start job</span>
                     </button>
                   ) : (
                     <button
@@ -667,6 +696,19 @@ export function ProjectRegistryPanel({ mode }: { mode: RegistryMode }) {
     <div className="space-y-4">
       {runAction.isPending && (
         <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>
+      )}
+      {jobNotice && (
+        <div role="status" className="flex items-center justify-between gap-3 rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+          <span>&lsquo;{jobNotice.title}&rsquo; started — status is now In Progress.</span>
+          <button type="button" onClick={() => void undoStartJob()} className="shrink-0 rounded border border-emerald-400/40 px-2 py-0.5 text-emerald-100 hover:bg-emerald-500/20">
+            Undo
+          </button>
+        </div>
+      )}
+      {jobError && (
+        <div role="alert" className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          {jobError}
+        </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
