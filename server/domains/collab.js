@@ -1094,7 +1094,7 @@ export default function registerCollabActions(registerLensAction) {
     try {
       const userId = roomActor(ctx);
       if (!userId) return { ok: false, error: "no_actor" };
-      const title = cbClean(params?.title, 160);
+      const title = cbClean(params?.title, 200);
       if (!title) return { ok: false, error: "room title required" };
       const note = cbClean(params?.note, 8000);
       if (!note) return { ok: false, error: "room note required" };
@@ -1170,7 +1170,7 @@ export default function registerCollabActions(registerLensAction) {
       if (!userId) return { ok: false, error: "no_actor" };
       const id = cbClean(params?.id || params?.roomId, 80);
       if (!id) return { ok: false, error: "missing_room_id" };
-      const title = params?.title != null ? cbClean(params.title, 160) : null;
+      const title = params?.title != null ? cbClean(params.title, 200) : null;
       const note = params?.note != null ? cbClean(params.note, 8000) : null;
       if (title !== null && !title) return { ok: false, error: "room title required" };
       if (note !== null && !note) return { ok: false, error: "room note required" };
