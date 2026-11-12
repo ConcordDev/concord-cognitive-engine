@@ -171,6 +171,8 @@ export function SaveAsDtuButton({
 }: SaveAsDtuButtonProps) {
   const [open, setOpen] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(initialSavedId || null);
+  const [confirmUndo, setConfirmUndo] = useState(false);
+  const [undoing, setUndoing] = useState(false);
   // Adopt a persisted link that arrives after mount (callers load their
   // records async); never override a save made in this session.
   useEffect(() => {
@@ -281,6 +283,32 @@ export function SaveAsDtuButton({
     createMutation.mutate({ title: clampDtuTitle(editTitle), tags, isGlobal, contentClass, licenseScopes });
   };
 
+  // The receipt is the only in-lens handle on the DTU a save just made:
+  // it must be able to take the save back. Two-step (arm, then confirm),
+  // matching the delete guards elsewhere; a successful delete returns
+  // the button to its unsaved state so the row can be saved again.
+  const handleUndoDelete = async () => {
+    if (!savedId || savedId === 'saved') return;
+    if (!confirmUndo) { setConfirmUndo(true); return; }
+    setUndoing(true);
+    try {
+      const resp = await apiHelpers.dtus.delete(savedId) as { data?: { ok?: boolean; error?: string } };
+      if (resp?.data && resp.data.ok === false) throw new Error(resp.data.error || 'delete failed');
+      const goneId = savedId;
+      setSavedId(null);
+      setConfirmUndo(false);
+      queryClient.invalidateQueries({ queryKey: ['dtus-recent'] });
+      queryClient.invalidateQueries({ queryKey: ['dtus-mine'] });
+      queryClient.invalidateQueries({ queryKey: ['lensDTUs'] });
+      addToast({ type: 'success', message: `Deleted DTU ${goneId} — save undone` });
+    } catch (err) {
+      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Could not delete that DTU' });
+      setConfirmUndo(false);
+    } finally {
+      setUndoing(false);
+    }
+  };
+
   return (
     <>
       <button
@@ -326,6 +354,16 @@ export function SaveAsDtuButton({
           >
             Open <ExternalLink className="h-2.5 w-2.5" />
           </a>
+          {savedId !== 'saved' && (
+            <button
+              type="button"
+              disabled={undoing}
+              onClick={() => void handleUndoDelete()}
+              className="text-zinc-400 hover:text-rose-300 underline decoration-dotted underline-offset-2 disabled:opacity-40"
+            >
+              {undoing ? 'Deleting…' : confirmUndo ? 'Confirm delete' : 'Delete'}
+            </button>
+          )}
         </span>
       )}
 
