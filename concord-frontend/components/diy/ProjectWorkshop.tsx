@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
 import { ds } from '@/lib/design-system';
@@ -68,6 +68,7 @@ interface DProject {
   tags: string[];
   steps: DStep[];
   bom: DBomLine[];
+  cutList?: { stockLength: number; cuts: { label: string; length: number; quantity: number }[]; updatedAt?: string } | null;
   status: string;
   published?: boolean;
   forkedFrom: { projectId: string; name: string } | null;
@@ -697,7 +698,7 @@ function ProjectDetail({
       {tab === 'steps' && <StepBuilder project={project} busy={busy} run={run} onChanged={onChanged} />}
       {tab === 'bom' && <BomEditor project={project} busy={busy} run={run} onChanged={onChanged} />}
       {tab === 'tools' && <ToolGate project={project} busy={busy} run={run} />}
-      {tab === 'cutlist' && <CutListPanel busy={busy} run={run} />}
+      {tab === 'cutlist' && <CutListPanel key={project.id} project={project} busy={busy} run={run} />}
       {tab === 'insights' && <InsightsPanel project={project} busy={busy} run={run} />}
     </div>
   );
@@ -1297,18 +1298,29 @@ function ToolGate({
 
 // ── Cut-list optimizer with board-layout diagram ────────────────────
 function CutListPanel({
+  project,
   busy,
   run,
 }: {
+  project: DProject;
   busy: boolean;
   run: (a: string, i: Record<string, unknown>, after?: (r: any) => void) => Promise<any>;
 }) {
-  const [stock, setStock] = useState('96');
-  const [cuts, setCuts] = useState<{ label: string; length: string; quantity: string }[]>([]);
+  // Hydrate from the project's saved cut list (FIX-diy-003) — the panel used
+  // to keep stock + cuts in component state only, so the work vanished on
+  // reload. Inputs persist via diy.cutlist-save; the estimate is recomputed
+  // from the restored inputs on mount.
+  const saved = project.cutList;
+  const [stock, setStock] = useState(saved ? String(saved.stockLength) : '96');
+  const [cuts, setCuts] = useState<{ label: string; length: string; quantity: string }[]>(
+    (saved?.cuts || []).map((c) => ({ label: c.label, length: String(c.length), quantity: String(c.quantity) })),
+  );
   const [cLabel, setCLabel] = useState('');
   const [cLen, setCLen] = useState('');
   const [cQty, setCQty] = useState('1');
   const [result, setResult] = useState<DCutList | null>(null);
+  const hydratedRef = useRef(false);
+  const autoRanRef = useRef(false);
 
   const addCut = () => {
     if (!cLen.trim()) return;
@@ -1336,6 +1348,33 @@ function CutListPanel({
     });
     if (r) setResult(r as DCutList);
   };
+
+  // Persist the working inputs on the project (debounced), and re-run the
+  // optimizer once on mount when a saved cut list was restored so the
+  // estimate the user left is what they come back to.
+  useEffect(() => {
+    if (!hydratedRef.current) {
+      hydratedRef.current = true;
+      if (!autoRanRef.current && cuts.length > 0) {
+        autoRanRef.current = true;
+        void optimize();
+      }
+      return;
+    }
+    const t = setTimeout(() => {
+      void run('cutlist-save', {
+        projectId: project.id,
+        stockLength: parseFloat(stock) || 96,
+        cuts: cuts.map((c) => ({
+          label: c.label,
+          length: parseFloat(c.length) || 0,
+          quantity: parseInt(c.quantity) || 1,
+        })),
+      });
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stock, cuts]);
 
   return (
     <div className="space-y-3">

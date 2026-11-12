@@ -207,3 +207,27 @@ describe("diy project forking / remix", () => {
     assert.equal(call("project-fork", ctxB, { projectId: "ghost" }).ok, false);
   });
 });
+
+describe("diy cut list persistence (FIX-diy-003)", () => {
+  it("cutlist-save stores the working cut list on the project and project-get returns it", () => {
+    const created = call("project-create", ctxA, { name: "Bookshelf" });
+    assert.equal(created.ok, true);
+    const pid = created.result.project.id;
+    const saved = call("cutlist-save", ctxA, {
+      projectId: pid,
+      stockLength: 96,
+      cuts: [
+        { label: "Side", length: 72, quantity: 2 },
+        { label: "Shelf", length: 30.5, quantity: 4 },
+        { label: "Bad", length: 0, quantity: 1 },
+      ],
+    });
+    assert.equal(saved.ok, true);
+    assert.equal(saved.result.cutList.cuts.length, 2); // zero-length cut dropped
+    const got = call("project-get", ctxA, { projectId: pid });
+    assert.equal(got.result.project.cutList.stockLength, 96);
+    assert.equal(got.result.project.cutList.cuts[1].length, 30.5);
+    // Another user cannot save onto or read the project.
+    assert.equal(call("cutlist-save", ctxB, { projectId: pid, stockLength: 48, cuts: [] }).ok, false);
+  });
+});
