@@ -311,6 +311,9 @@ function MeterPicker({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [meterQuery, setMeterQuery] = useState('');
+  const mq = meterQuery.trim().toLowerCase();
+  const visibleMeters = mq ? meters.filter((m) => m.name.toLowerCase().includes(mq)) : meters;
 
   const createMeter = async () => {
     if (!name.trim()) { setError('Meter name is required.'); return; }
@@ -395,12 +398,21 @@ function MeterPicker({
           </button>
         </div>
 
+        {meters.length > 1 && (
+          <input value={meterQuery} onChange={(event) => setMeterQuery(event.target.value)}
+            placeholder="Search meters" aria-label="Search meters"
+            className="mt-5 w-full rounded-lg border border-white/10 bg-black px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-teal-400/60" />
+        )}
         <div className="mt-5 space-y-2">
           {meters.length === 0 ? (
             <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-zinc-500">
               No meters are connected yet. Add the meter you submit readings from.
             </p>
-          ) : meters.map((meter) => (
+          ) : visibleMeters.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-zinc-500">
+              No meters match &ldquo;{meterQuery}&rdquo;.
+            </p>
+          ) : visibleMeters.map((meter) => (
             <div
               key={meter.id}
               className={cn(

@@ -49,6 +49,8 @@ export function RecipeBoxSection() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekStart] = useState(() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d; });
+  const [recipeQuery, setRecipeQuery] = useState('');
+  const [recipeSort, setRecipeSort] = useState<'default' | 'title-az' | 'title-za' | 'quickest'>('default');
   const [editRecipe, setEditRecipe] = useState<Partial<Recipe> & { _new?: boolean } | null>(null);
   const [scaleFor, setScaleFor] = useState<{ recipe: Recipe; target: number; scaled: Ingredient[] } | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
@@ -261,6 +263,19 @@ export function RecipeBoxSection() {
     return m;
   }, [shopping]);
 
+  const visibleRecipes = useMemo(() => {
+    const q = recipeQuery.trim().toLowerCase();
+    const filtered = q
+      ? recipes.filter(r => r.title.toLowerCase().includes(q) || r.cuisine.toLowerCase().includes(q) || r.tags.some(t => t.toLowerCase().includes(q)))
+      : recipes;
+    if (recipeSort === 'default') return filtered;
+    const copy = [...filtered];
+    if (recipeSort === 'title-az') copy.sort((a, b) => a.title.localeCompare(b.title));
+    if (recipeSort === 'title-za') copy.sort((a, b) => b.title.localeCompare(a.title));
+    if (recipeSort === 'quickest') copy.sort((a, b) => (a.prepMin + a.cookMin) - (b.prepMin + b.cookMin));
+    return copy;
+  }, [recipes, recipeQuery, recipeSort]);
+
   return (
     <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
@@ -299,11 +314,27 @@ export function RecipeBoxSection() {
                 <Plus className="w-3 h-3" />New recipe
               </button>
             </div>
+            {recipes.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <input value={recipeQuery} onChange={e => setRecipeQuery(e.target.value)}
+                  placeholder="Search recipes by title, cuisine, or tag" aria-label="Search recipes"
+                  className="flex-1 min-w-[180px] px-2.5 py-1.5 text-xs rounded border border-white/10 bg-black/30 text-white placeholder:text-gray-500" />
+                <select value={recipeSort} onChange={e => setRecipeSort(e.target.value as typeof recipeSort)} aria-label="Sort recipes"
+                  className="px-2 py-1.5 text-xs rounded border border-white/10 bg-black/30 text-gray-200">
+                  <option value="default">Saved order</option>
+                  <option value="title-az">Title A–Z</option>
+                  <option value="title-za">Title Z–A</option>
+                  <option value="quickest">Quickest first</option>
+                </select>
+              </div>
+            )}
             {recipes.length === 0 ? (
               <div className="py-10 text-center text-xs text-gray-400"><ChefHat className="w-6 h-6 mx-auto mb-2 opacity-30" />No recipes yet.</div>
+            ) : visibleRecipes.length === 0 ? (
+              <div className="py-10 text-center text-xs text-gray-400">No recipes match &ldquo;{recipeQuery}&rdquo;.</div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                {recipes.map(r => (
+                {visibleRecipes.map(r => (
                   <div key={r.id} className="rounded border border-white/10 bg-black/30 overflow-hidden group">
                     <div className="aspect-video bg-black/40">
                       {r.photoUrl

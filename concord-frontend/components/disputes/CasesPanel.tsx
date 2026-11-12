@@ -685,6 +685,8 @@ export function CasesPanel({ fileRequest = 0 }: { fileRequest?: number }) {
     { lensId: 'disputes' }
   );
   const [statusFilter, setStatusFilter] = useState<DisputeStatus | 'all'>('all');
+  const [caseQuery, setCaseQuery] = useState('');
+  const [caseSort, setCaseSort] = useState<'default' | 'newest' | 'oldest'>('default');
   const queryClient = useQueryClient();
 
   // --- Domain action state ---
@@ -716,6 +718,20 @@ export function CasesPanel({ fileRequest = 0 }: { fileRequest?: number }) {
   const filtered = statusFilter === 'all'
     ? disputes
     : disputes.filter(d => d.status === statusFilter);
+
+  const cq = caseQuery.trim().toLowerCase();
+  const searched = cq
+    ? filtered.filter(d =>
+        d.description.toLowerCase().includes(cq)
+        || d.dispute_type.toLowerCase().includes(cq)
+        || d.id.toLowerCase().includes(cq)
+        || (d.reported_content_id || '').toLowerCase().includes(cq))
+    : filtered;
+  const visibleCases = caseSort === 'default'
+    ? searched
+    : [...searched].sort((a, b) => caseSort === 'newest'
+        ? String(b.opened_at).localeCompare(String(a.opened_at))
+        : String(a.opened_at).localeCompare(String(b.opened_at)));
 
   const isLoading = showQueue ? adminQueue.isLoading : myDisputes.isLoading;
 
@@ -988,6 +1004,21 @@ export function CasesPanel({ fileRequest = 0 }: { fileRequest?: number }) {
         })}
       </div>
 
+      {/* Search + sort */}
+      {disputes.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input value={caseQuery} onChange={e => setCaseQuery(e.target.value)}
+            placeholder="Search cases by text, type, or id" aria-label="Search cases"
+            className="flex-1 min-w-[200px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-100 placeholder:text-gray-500" />
+          <select value={caseSort} onChange={e => setCaseSort(e.target.value as typeof caseSort)} aria-label="Sort cases"
+            className="px-2.5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-200">
+            <option value="default">Default order</option>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+        </div>
+      )}
+
       {/* Dispute list */}
       <div className="space-y-3">
         {isLoading ? (
@@ -1000,19 +1031,21 @@ export function CasesPanel({ fileRequest = 0 }: { fileRequest?: number }) {
             <AlertCircle size={32} className="text-gray-600 mb-3" />
             <p className="text-gray-400">The moderation queue could not be loaded.</p>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : visibleCases.length === 0 ? (
           <div className={cn(ds.panel, 'flex flex-col items-center justify-center py-16')}>
             <Shield size={32} className="text-gray-600 mb-3" />
             <p className="text-gray-400">
-              {statusFilter !== 'all'
-                ? `No ${STATUS_CONFIG[statusFilter as DisputeStatus]?.label?.toLowerCase()} disputes`
-                : showQueue
-                  ? 'No disputes in the admin queue.'
-                  : 'No disputes found. If you have a problem with a purchase, click "Report Problem" above.'}
+              {cq
+                ? `No disputes match "${caseQuery}".`
+                : statusFilter !== 'all'
+                  ? `No ${STATUS_CONFIG[statusFilter as DisputeStatus]?.label?.toLowerCase()} disputes`
+                  : showQueue
+                    ? 'No disputes in the admin queue.'
+                    : 'No disputes found. If you have a problem with a purchase, click "Report Problem" above.'}
             </p>
           </div>
         ) : (
-          filtered.map(dispute => (
+          visibleCases.map(dispute => (
             <DisputeCard
               key={dispute.id}
               dispute={dispute}

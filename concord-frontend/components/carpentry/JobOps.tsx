@@ -289,6 +289,7 @@ interface ScheduleEntry {
 function CrewSchedule() {
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [sched, setSched] = useState<ScheduleEntry[]>([]);
+  const [jobQuery, setJobQuery] = useState('');
   const [busy, setBusy] = useState(false);
   // crew form
   const [cName, setCName] = useState('');
@@ -354,6 +355,11 @@ function CrewSchedule() {
     detail: `${e.startTime}–${e.endTime}${e.crewNames.length ? ' · ' + e.crewNames.join(', ') : ''}`,
   }));
 
+  const jq = jobQuery.trim().toLowerCase();
+  const visibleSched = jq
+    ? sched.filter((e) => e.title.toLowerCase().includes(jq) || e.address.toLowerCase().includes(jq) || e.crewNames.some((n) => n.toLowerCase().includes(jq)))
+    : sched;
+
   return (
     <div className={card}>
       <header className={head}>
@@ -412,8 +418,14 @@ function CrewSchedule() {
             : (
               <>
                 <TimelineView events={timelineEvents} height={110} />
+                <input value={jobQuery} onChange={(e) => setJobQuery(e.target.value)}
+                  placeholder="Search scheduled jobs by title, address, or crew" aria-label="Search scheduled jobs"
+                  className={`${inp} w-full`} />
+                {visibleSched.length === 0 && (
+                  <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No scheduled jobs match &ldquo;{jobQuery}&rdquo;.</div>
+                )}
                 <div className="space-y-1.5">
-                  {sched.map((e) => (
+                  {visibleSched.map((e) => (
                     <div key={e.id} className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
                       <div className="flex items-center justify-between">
                         <div>

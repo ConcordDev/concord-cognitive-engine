@@ -29,6 +29,7 @@ export function StandManager() {
   const [formError, setFormError] = useState<string | null>(null);
   const [actForm, setActForm] = useState({ kind: 'survey', notes: '' });
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: '', species: 'mixed', acres: '', treesPerAcre: '' });
   const [editError, setEditError] = useState<string | null>(null);
@@ -138,6 +139,11 @@ export function StandManager() {
     </div>
   );
 
+  const q = query.trim().toLowerCase();
+  const visibleStands = q
+    ? stands.filter(st => st.name.toLowerCase().includes(q) || st.species.toLowerCase().includes(q))
+    : stands;
+
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -174,9 +180,17 @@ export function StandManager() {
       </div>
       {formError && <p role="alert" className="mb-3 text-xs text-rose-300">{formError}</p>}
 
+      {stands.length > 0 && (
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search stands by name or species"
+          aria-label="Search stands"
+          className="mb-2 w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
+      )}
       <ul className="space-y-1">
         {stands.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No stands yet.</li>}
-        {stands.map(st => (
+        {stands.length > 0 && visibleStands.length === 0 && (
+          <li className="text-xs text-zinc-400 italic py-3 text-center">No stands match &ldquo;{query}&rdquo;.</li>
+        )}
+        {visibleStands.map(st => (
           <li key={st.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="group flex items-center gap-2">
               <button onClick={() => setActive(active === st.id ? null : st.id)} className="text-left min-w-0 flex-1">

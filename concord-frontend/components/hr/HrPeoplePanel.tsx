@@ -22,6 +22,7 @@ interface HrDoc { id: string; title: string; kind: string }
 
 export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [dirQuery, setDirQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -276,6 +277,11 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
     );
   }
 
+  const dq = dirQuery.trim().toLowerCase();
+  const visibleEmployees = dq
+    ? employees.filter((e) => e.name.toLowerCase().includes(dq) || e.department.toLowerCase().includes(dq) || (e.title || '').toLowerCase().includes(dq))
+    : employees;
+
   // ── Directory / org view ──
   if (loadError) {
     return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
@@ -322,6 +328,12 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
         </div>
       )}
 
+      {view === 'list' && employees.length > 0 && (
+        <input value={dirQuery} onChange={(e) => setDirQuery(e.target.value)}
+          placeholder="Search directory by name, title, or department" aria-label="Search directory"
+          className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-2 text-xs text-zinc-100" />
+      )}
+
       {view === 'org' ? (
         orgChart.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic">No employees to chart.</p>
@@ -334,7 +346,12 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
         </div>
       ) : (
         <ul className="space-y-2">
-          {employees.map((e) => (
+          {visibleEmployees.length === 0 && (
+            <li className="text-center text-zinc-400 text-sm italic py-6 border border-zinc-800 rounded-xl">
+              No employees match &ldquo;{dirQuery}&rdquo;.
+            </li>
+          )}
+          {visibleEmployees.map((e) => (
             <li key={e.id}>
               <button type="button" onClick={() => openEmp(e)}
                 className="w-full text-left flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 hover:border-zinc-700">

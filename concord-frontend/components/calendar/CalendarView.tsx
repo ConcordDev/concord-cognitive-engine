@@ -42,6 +42,7 @@ export function CalendarView({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [eventQuery, setEventQuery] = useState('');
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -124,6 +125,11 @@ export function CalendarView({
       default: return 'bg-gray-400';
     }
   };
+
+  const eq = eventQuery.trim().toLowerCase();
+  const eventMatches = eq
+    ? events.filter(ev => ev.title.toLowerCase().includes(eq)).sort((a, b) => a.date.localeCompare(b.date))
+    : [];
 
   const days = viewMode === 'month' ? getDaysInMonth(currentDate) : getWeekDays(currentDate);
 
@@ -253,6 +259,37 @@ export function CalendarView({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Event search */}
+      <div className="px-4 py-2 border-b border-lattice-border">
+        <input value={eventQuery} onChange={(e) => setEventQuery(e.target.value)}
+          placeholder="Search events by title" aria-label="Search events"
+          className="w-full bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500" />
+        {eventQuery.trim() && (
+          <div className="mt-2 space-y-1">
+            {eventMatches.length === 0 ? (
+              <p className="text-xs text-gray-400 italic">No events match &ldquo;{eventQuery}&rdquo;.</p>
+            ) : (
+              eventMatches.map((ev) => (
+                <button key={ev.id} type="button"
+                  aria-label={`Open ${ev.title} on ${ev.date}`}
+                  onClick={() => {
+                    const d = new Date(`${ev.date}T12:00:00`);
+                    if (!Number.isNaN(d.getTime())) setCurrentDate(d);
+                    setSelectedDate(ev.date);
+                    onSelectDate?.(ev.date);
+                    onSelectEvent?.(ev);
+                  }}
+                  className="w-full flex items-center gap-2 text-left px-2 py-1.5 rounded-lg hover:bg-lattice-surface">
+                  <span className={cn('w-2 h-2 rounded-full shrink-0', getEventColor(ev.type))} />
+                  <span className="text-sm text-white truncate">{ev.title}</span>
+                  <span className="ml-auto text-[11px] text-gray-400 shrink-0">{ev.date}{ev.time ? ` · ${ev.time}` : ''}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* Day headers */}

@@ -34,6 +34,7 @@ interface Frame {
 interface Roll {
   id: string;
   name: string;
+  createdAt: string;
   frames: Frame[];
 }
 
@@ -66,6 +67,7 @@ function rollsFrom(rows: unknown): Roll[] {
     out.push({
       id,
       name: name.trim(),
+      createdAt: typeof (row as { createdAt?: unknown }).createdAt === 'string' ? (row as { createdAt: string }).createdAt : '',
       frames: framesFrom((row as { frames?: unknown }).frames),
     });
   }
@@ -113,6 +115,7 @@ export default function PhotographyPage() {
   useLensNav('photography');
   const [phase, setPhase] = useState<Phase>('loading');
   const [rolls, setRolls] = useState<Roll[]>([]);
+  const [rollQuery, setRollQuery] = useState('');
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
   const [composing, setComposing] = useState(false);
@@ -259,6 +262,11 @@ export default function PhotographyPage() {
 
   const empty = phase === 'ready' && rolls.length === 0 && !composing;
 
+  const rq = rollQuery.trim().toLowerCase();
+  const visibleRolls = rq
+    ? rolls.filter((roll) => roll.name.toLowerCase().includes(rq) || roll.createdAt.toLowerCase().includes(rq))
+    : rolls;
+
   return (
     <LensShell lensId="photography" asMain={false}>
       <div data-lens-theme="photography" className="relative min-h-full bg-black px-8 pb-28 pt-6">
@@ -289,9 +297,17 @@ export default function PhotographyPage() {
               <p className="text-[14px] text-zinc-500">No roll loaded.</p>
             </div>
           )}
+          {phase === 'ready' && rolls.length > 1 && (
+            <input value={rollQuery} onChange={(e) => setRollQuery(e.target.value)}
+              placeholder="Search rolls by name or date" aria-label="Search rolls"
+              className="mb-5 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500" />
+          )}
+          {phase === 'ready' && rolls.length > 0 && visibleRolls.length === 0 && (
+            <p className="text-[14px] text-zinc-500">No rolls match &ldquo;{rollQuery}&rdquo;.</p>
+          )}
           {phase === 'ready' && rolls.length > 0 && (
             <ul data-testid="ph-rolls" className="space-y-8">
-              {rolls.map((roll) => (
+              {visibleRolls.map((roll) => (
                 <li key={roll.id}>
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="font-vault text-[1.5rem] leading-8 text-zinc-100">{roll.name}</h2>

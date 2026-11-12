@@ -60,6 +60,7 @@ import {
 export default function CraftingPage() {
   const nameId = useId();
   const [recipes, setRecipes] = useState<BenchPiece[]>([]);
+  const [pieceQuery, setPieceQuery] = useState('');
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState('');
   const [open, setOpen] = useState(false);
@@ -358,6 +359,11 @@ export default function CraftingPage() {
     { lensId: 'crafting' },
   );
 
+  const pq = pieceQuery.trim().toLowerCase();
+  const visiblePieces = pq
+    ? recipes.filter((p) => p.title.toLowerCase().includes(pq))
+    : recipes;
+
 
   return (
     <LensShell lensId="crafting" asMain={false}>
@@ -385,9 +391,17 @@ export default function CraftingPage() {
           {phase === 'ready' && recipes.length === 0 && !open && (
             <p className="text-[14px] text-zinc-500">The bench is clear.</p>
           )}
+          {phase === 'ready' && recipes.length > 1 && (
+            <input value={pieceQuery} onChange={(e) => setPieceQuery(e.target.value)}
+              placeholder="Search your pieces" aria-label="Search your pieces"
+              className="mb-3 w-full max-w-xl self-stretch rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500" />
+          )}
+          {phase === 'ready' && recipes.length > 0 && visiblePieces.length === 0 && (
+            <p className="text-[14px] text-zinc-500">No pieces match &ldquo;{pieceQuery}&rdquo;.</p>
+          )}
           {phase === 'ready' && recipes.length > 0 && (
             <ul className="w-full max-w-xl self-stretch">
-              {recipes.map((row) => (
+              {visiblePieces.map((row) => (
                 <li key={row.id} className="flex items-baseline justify-between gap-4 border-b border-white/10 py-3 text-[16px] text-zinc-100">
                   <span>{row.title}</span>
                   <span className="flex shrink-0 items-baseline gap-3">

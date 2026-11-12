@@ -35,6 +35,7 @@ const THREAD_COLOR_BG: Record<string, string> = {
 };
 
 export function CwBinderPanel({ projectId, onChange }: { projectId: string; onChange: () => void }) {
+  const [binderQuery, setBinderQuery] = useState('');
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -237,7 +238,13 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
     </motion.li>
   );
 
-  const unfiled = scenes.filter((sc) => !sc.chapterId);
+  const bq = binderQuery.trim().toLowerCase();
+  const sceneMatches = (sc: Scene) => !bq || sc.title.toLowerCase().includes(bq);
+  const chapterMatches = (ch: Chapter) => !bq || ch.title.toLowerCase().includes(bq)
+    || scenes.some((sc) => sc.chapterId === ch.id && sceneMatches(sc));
+  const visibleChapters = chapters.filter(chapterMatches);
+  const visibleScenesFor = (ch: Chapter) => scenes.filter((sc) => sc.chapterId === ch.id && (ch.title.toLowerCase().includes(bq) || sceneMatches(sc)));
+  const unfiled = scenes.filter((sc) => !sc.chapterId && sceneMatches(sc));
   const refScene = scenes.find((sc) => sc.id === refSceneId) || null;
   const refNote = refNotes.find((n) => n.id === refNoteId) || null;
 
@@ -254,10 +261,18 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
             <Plus className="w-4 h-4" />
           </button>
         </div>
-        {chapters.length === 0 && unfiled.length === 0 && (
+        {(chapters.length > 0 || scenes.length > 0) && (
+          <input value={binderQuery} onChange={(e) => setBinderQuery(e.target.value)}
+            placeholder="Filter binder by title" aria-label="Filter binder by title"
+            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+        )}
+        {bq && visibleChapters.length === 0 && unfiled.length === 0 && (
+          <p className="text-[11px] text-zinc-400 italic">No chapters or scenes match &ldquo;{binderQuery}&rdquo;.</p>
+        )}
+        {chapters.length === 0 && unfiled.length === 0 && !bq && (
           <p className="text-[11px] text-zinc-400 italic">Add a chapter to start your binder.</p>
         )}
-        {chapters.map((ch) => (
+        {visibleChapters.map((ch) => (
           <motion.div layout="position" transition={{ type: 'spring', stiffness: 400, damping: 35 }} key={ch.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-1.5">
             <div className="group flex items-center gap-1 px-1">
               <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -295,7 +310,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               </div>
             </div>
             <ul className="mt-1 space-y-0.5">
-              {scenes.filter((sc) => sc.chapterId === ch.id).map(renderSceneRow)}
+              {visibleScenesFor(ch).map(renderSceneRow)}
             </ul>
             <button type="button" onClick={() => addScene(ch.id)}
               className="mt-1 flex items-center gap-1 text-[10px] text-zinc-400 hover:text-amber-300 px-1">
