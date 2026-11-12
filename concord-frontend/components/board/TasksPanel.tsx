@@ -25,7 +25,7 @@ import {
   type Task, type TaskView,
   columns, priorityConfig, typeConfig, labels, assignees, projects,
   TASKS_FALLBACK, lensItemToTask, isOverdue, formatTaskDate, taskPatchToLensUpdate,
-  buildBoardActionParams,
+  buildBoardActionParams, createKeyedSerialWriter,
 } from './board-shared';
 
 export function TasksPanel({ mode }: { mode: TaskView }) {
@@ -48,6 +48,16 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
   } = useLensData<Record<string, unknown>>('board', 'task', {
     seed: TASKS_FALLBACK,
   });
+
+  // FIX-board-004: route every task write through a per-task serial writer —
+  // concurrent writes from one drag/typing stream landed out of order and an
+  // earlier value could overwrite the final one on the server. (updateLens is
+  // a stable useCallback over the react-query mutation, so the writer — and
+  // its per-task queues — is created once for the panel's lifetime.)
+  const enqueueTaskWrite = useMemo(
+    () => createKeyedSerialWriter((id, patch) => updateLens(id, patch)),
+    [updateLens],
+  );
 
   const tasks: Task[] = useMemo(() => lensItems.map(lensItemToTask), [lensItems]);
 
@@ -151,9 +161,9 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
     (taskId: string, patch: Partial<Task>) => {
       // Optimistically update the selected task panel
       setSelectedTask((prev) => (prev && prev.id === taskId ? { ...prev, ...patch } : prev));
-      updateLens(taskId, taskPatchToLensUpdate(patch));
+      enqueueTaskWrite(taskId, taskPatchToLensUpdate(patch));
     },
-    [updateLens]
+    [enqueueTaskWrite]
   );
 
   const toggleSubtask = useCallback(
@@ -166,7 +176,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
       const doneCount = updatedSubs.filter((s) => s.done).length;
       const progress =
         updatedSubs.length > 0 ? Math.round((doneCount / updatedSubs.length) * 100) : task.progress;
-      updateLens(taskId, {
+      enqueueTaskWrite(taskId, {
         data: { subtasks: updatedSubs, progress } as unknown as Record<string, unknown>,
       });
       setSelectedTask((prev) => {
@@ -174,7 +184,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
         return { ...prev, subtasks: updatedSubs, progress };
       });
     },
-    [tasks, updateLens]
+    [tasks, enqueueTaskWrite]
   );
 
   // -----------------------------------------------------------------------
@@ -755,7 +765,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
               onMove={(taskId, status) => {
                 const task = tasks.find((x) => x.id === taskId);
                 if (!task || task.status === status) return;
-                updateLens(taskId, {
+                enqueueTaskWrite(taskId, {
                   data: { status, progress: status === 'done' ? 100 : task.progress } as unknown as Record<string, unknown>,
                 });
               }}
