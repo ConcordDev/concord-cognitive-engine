@@ -3824,7 +3824,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                         <button
                           type="button"
                           onClick={() => setComposerPlusOpen((v) => !v)}
-                          className="p-2 text-white/70 hover:text-white transition-colors"
+                          className="flex h-11 w-11 items-center justify-center text-white/70 hover:text-white transition-colors"
                           title="Attachments and tools"
                           aria-label="Attachments and tools"
                           aria-expanded={composerPlusOpen}
@@ -3876,7 +3876,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                         <button
                           type="button"
                           onClick={() => setModeSelectOpen((v) => !v)}
-                          className="mx-1 mb-1 inline-flex items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-[11px] text-white/70 hover:text-white hover:border-white/30"
+                          className="mx-1 mb-1 inline-flex min-h-11 items-center gap-1 rounded-full border border-white/15 px-3 py-1 text-[11px] text-white/70 hover:text-white hover:border-white/30"
                           aria-label="Choose mode"
                           title={`Mode: ${aiMode.name}`}
                           aria-expanded={modeSelectOpen}
