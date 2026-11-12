@@ -5,7 +5,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { GitFork, GitBranch, GitMerge, Layers, Loader2, ArrowLeftRight, RefreshCw, Network, Eye, FlaskConical } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
@@ -51,7 +51,23 @@ export default function ForkLensPage() {
   useLensNav('fork');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('fork');
   const [selectedFork, setSelectedFork] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<ForkView>('lineage');
+  // Tab state lives in the URL (?tab=lab) so a reload, a shared link, or
+  // a back/forward hop lands on the same view instead of resetting to
+  // Lineage (FIX-fork-003). Read once at first render; written back with
+  // history.replaceState — the AssemblyViewer's pattern — so other
+  // params survive and no navigation or remount is triggered.
+  const [activeView, setActiveView] = useState<ForkView>(() => {
+    if (typeof window === 'undefined') return 'lineage';
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return FORK_TABS.some((tab) => tab.id === t) ? (t as ForkView) : 'lineage';
+  });
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (activeView === 'lineage') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', activeView);
+    window.history.replaceState(window.history.state, '', url.toString());
+  }, [activeView]);
   const [layout, setLayout] = useState<'tree' | 'list'>('tree');
   const [forkSearch, setForkSearch] = useState('');
   const [forkStatusFilter, setForkStatusFilter] = useState<ForkStatusFilter>('all');
