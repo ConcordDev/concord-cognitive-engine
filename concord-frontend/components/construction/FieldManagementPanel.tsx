@@ -11,7 +11,7 @@
  * Every value rendered comes from a real macro round-trip — no mock data.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { cloneElement, isValidElement, useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { ChartKit } from '@/components/viz';
@@ -51,10 +51,26 @@ const fmtMoney = (n: number) =>
 
 // ── shared field primitives ──────────────────────────────────────────────
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  // FIX-construction-008: the caption was a bare <label> with no
+  // association, so every Field-wrapped control read as unlabelled to
+  // assistive tech (the audit's "select elements do not have
+  // associated label elements"). The label now points at the control:
+  // the child is cloned with a generated id (and a name, which the
+  // DevTools id/name check also wants) unless it already carries one.
+  const autoId = useId();
+  const child = isValidElement(children)
+    ? cloneElement(children as React.ReactElement<{ id?: string; name?: string }>, {
+        id: (children as React.ReactElement<{ id?: string }>).props.id ?? autoId,
+        name: (children as React.ReactElement<{ name?: string }>).props.name ?? autoId,
+      })
+    : children;
+  const controlId = isValidElement(children)
+    ? ((children as React.ReactElement<{ id?: string }>).props.id ?? autoId)
+    : autoId;
   return (
     <div>
-      <label className={ds.label}>{label}</label>
-      {children}
+      <label className={ds.label} htmlFor={controlId}>{label}</label>
+      {child}
     </div>
   );
 }
@@ -513,11 +529,11 @@ function DailyLogTab() {
               <label className={ds.label}>Manpower</label>
               {manpower.map((m, i) => (
                 <div key={i} className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-                  <input className={ds.input} placeholder="Trade" value={m.trade}
+                  <input aria-label="Manpower trade" className={ds.input} placeholder="Trade" value={m.trade}
                     onChange={(e) => setManpower(manpower.map((x, j) => j === i ? { ...x, trade: e.target.value } : x))} />
-                  <input type="number" className={ds.input} placeholder="Workers" value={m.workers}
+                  <input aria-label="Manpower workers" type="number" className={ds.input} placeholder="Workers" value={m.workers}
                     onChange={(e) => setManpower(manpower.map((x, j) => j === i ? { ...x, workers: e.target.value } : x))} />
-                  <input type="number" className={ds.input} placeholder="Hours" value={m.hours}
+                  <input aria-label="Manpower hours" type="number" className={ds.input} placeholder="Hours" value={m.hours}
                     onChange={(e) => setManpower(manpower.map((x, j) => j === i ? { ...x, hours: e.target.value } : x))} />
                 </div>
               ))}
@@ -614,6 +630,7 @@ function PunchTab() {
             </div>
             <div className="flex flex-col gap-1 shrink-0">
               <select
+                aria-label="Punch item status"
                 className={cn(ds.select, 'text-xs py-1')}
                 value={p.status}
                 onChange={(e) => setStatus(p.id, e.target.value)}
@@ -887,12 +904,12 @@ function DrawingsTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className={ds.panel}>
             <p className="text-sm font-semibold text-white mb-2">Issue Revision</p>
-            <textarea className={ds.textarea} rows={2} placeholder="Revision notes" value={reviseNote} onChange={(e) => setReviseNote(e.target.value)} />
+            <textarea aria-label="Revision notes" className={ds.textarea} rows={2} placeholder="Revision notes" value={reviseNote} onChange={(e) => setReviseNote(e.target.value)} />
             <button onClick={revise} className={cn(ds.btnPrimary, 'mt-2')}>Issue Revision</button>
           </div>
           <div className={ds.panel}>
             <p className="text-sm font-semibold text-white mb-2">Add Markup</p>
-            <input className={ds.input} placeholder="Markup note" value={markupNote} onChange={(e) => setMarkupNote(e.target.value)} />
+            <input aria-label="Markup note" className={ds.input} placeholder="Markup note" value={markupNote} onChange={(e) => setMarkupNote(e.target.value)} />
             <button onClick={markup} className={cn(ds.btnPrimary, 'mt-2')} disabled={!markupNote.trim()}>Add Markup</button>
           </div>
         </div>
@@ -1211,11 +1228,11 @@ function GanttTab() {
         <p className="text-sm font-semibold text-white mb-2">Schedule Tasks</p>
         {taskRows.map((t, i) => (
           <div key={i} className="grid grid-cols-12 gap-2 mb-2 items-center">
-            <input className={cn(ds.input, 'col-span-4')} placeholder="Task name" value={t.name}
+            <input aria-label="Task name" className={cn(ds.input, 'col-span-4')} placeholder="Task name" value={t.name}
               onChange={(e) => setTaskRows(taskRows.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
-            <input type="number" className={cn(ds.input, 'col-span-2')} placeholder="Days" value={t.duration}
+            <input aria-label="Task duration in days" type="number" className={cn(ds.input, 'col-span-2')} placeholder="Days" value={t.duration}
               onChange={(e) => setTaskRows(taskRows.map((x, j) => j === i ? { ...x, duration: e.target.value } : x))} />
-            <input className={cn(ds.input, 'col-span-5')} placeholder="Depends on (comma)" value={t.dependencies}
+            <input aria-label="Task dependencies" className={cn(ds.input, 'col-span-5')} placeholder="Depends on (comma)" value={t.dependencies}
               onChange={(e) => setTaskRows(taskRows.map((x, j) => j === i ? { ...x, dependencies: e.target.value } : x))} />
             <button
               onClick={() => setTaskRows(taskRows.filter((_, j) => j !== i))}

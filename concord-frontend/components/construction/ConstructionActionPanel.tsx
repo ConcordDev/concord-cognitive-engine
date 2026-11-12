@@ -296,7 +296,7 @@ export function ConstructionActionPanel() {
           <StructuredArrayEditor<PhaseRow> value={phases} onChange={setPhases} template={{ phase: '', plannedPercent: '', actualPercent: '' }} columns={PHASE_COLS} accent="green" maxRows={60} />
         </div>
         <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <input aria-label="DM recipient" type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
           <RecallSlot ctl={dmRecall} />
           <RecallSlot ctl={publishRecall} />
         </div>

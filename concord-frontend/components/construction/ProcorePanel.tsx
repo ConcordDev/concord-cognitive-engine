@@ -95,7 +95,7 @@ function TakeoffEstimate() {
           <div key={i} className="grid grid-cols-[1fr_70px_70px_80px_70px_30px] gap-1.5">
             <input className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" placeholder="2x4 stud 8ft" value={it.description} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, description: e.target.value } : x))} />
             <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={it.quantity} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, quantity: e.target.value } : x))} />
-            <select className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" value={it.unit} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, unit: e.target.value } : x))}>
+            <select aria-label={`Line item ${i + 1} unit`} className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white" value={it.unit} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, unit: e.target.value } : x))}>
               <option value="each">each</option><option value="lf">LF</option><option value="sf">SF</option><option value="cy">CY</option><option value="lb">lb</option><option value="bag">bag</option>
             </select>
             <input type="number" step="0.01" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={it.unitCost} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, unitCost: e.target.value } : x))} />
