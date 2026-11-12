@@ -73,6 +73,7 @@ function MetricsTab() {
   const [stats, setStats] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [confirmDeleteMetric, setConfirmDeleteMetric] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const d = await run('metricList');
@@ -87,6 +88,21 @@ function MetricsTab() {
     setBusy(false);
     if (d.ok) { setSeries(d.result?.series || []); setStats(d.result?.stats || null); }
   }, [agg, win]);
+
+  // Two-step delete (FIX-observe-003): the first click arms the confirm
+  // on that row; the second removes the whole series server-side.
+  const delMetric = async (metricName: string) => {
+    if (confirmDeleteMetric !== metricName) { setConfirmDeleteMetric(metricName); return; }
+    setConfirmDeleteMetric(null);
+    setBusy(true);
+    const d = await run('metricDelete', { metric: metricName });
+    setBusy(false);
+    if (d.ok) {
+      setNotice({ kind: 'ok', text: `Deleted ${metricName} (${d.result?.points ?? 0} points).` });
+      if (sel === metricName) { setSel(''); setSeries([]); setStats(null); }
+      refresh();
+    } else setNotice({ kind: 'err', text: d.error || 'delete failed' });
+  };
 
   const ingest = async () => {
     const v = parseFloat(value);
@@ -118,11 +134,20 @@ function MetricsTab() {
           <div className="space-y-1 max-h-72 overflow-y-auto">
             {metrics.length === 0 && <div className="text-[11px] text-zinc-400">No metrics yet.</div>}
             {metrics.map((m) => (
-              <button key={m.name} onClick={() => query(m.name)}
-                className={`w-full text-left px-2 py-1 rounded text-[11px] flex justify-between ${sel === m.name ? 'bg-cyan-500/15 text-cyan-200' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'}`}>
-                <span className="font-mono truncate">{m.name}</span>
-                <span className="text-zinc-400">{m.points}pt</span>
-              </button>
+              <div key={m.name} className={`w-full rounded flex items-stretch ${sel === m.name ? 'bg-cyan-500/15' : 'bg-zinc-900 hover:bg-zinc-800'}`}>
+                <button onClick={() => query(m.name)}
+                  className={`flex-1 min-w-0 text-left px-2 py-1 text-[11px] flex justify-between ${sel === m.name ? 'text-cyan-200' : 'text-zinc-300'}`}>
+                  <span className="font-mono truncate">{m.name}</span>
+                  <span className="text-zinc-400">{m.points}pt</span>
+                </button>
+                {confirmDeleteMetric === m.name ? (
+                  <button aria-label={`Confirm delete ${m.name}`} onClick={() => void delMetric(m.name)} disabled={busy}
+                    className="px-1.5 text-[10px] font-medium text-rose-300 hover:text-rose-200 disabled:opacity-40">Confirm</button>
+                ) : (
+                  <button aria-label={`Delete ${m.name}`} onClick={() => void delMetric(m.name)}
+                    className="px-1.5 text-zinc-500 hover:text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                )}
+              </div>
             ))}
           </div>
         </div>

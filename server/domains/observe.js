@@ -213,6 +213,22 @@ export default function registerObserveActions(registerLensAction) {
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
+  /** metricDelete — remove one of the caller's own metric series entirely. */
+  registerLensAction("observe", "metricDelete", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getObserveState();
+      if (!s) return { ok: false, error: "state unavailable" };
+      const name = clean(params.metric, 80);
+      if (!name) return { ok: false, error: "metric name required" };
+      const userMetrics = s.metrics.get(actor(ctx));
+      if (!userMetrics || !userMetrics.has(name)) return { ok: false, error: "metric not found" };
+      const points = userMetrics.get(name).length;
+      userMetrics.delete(name);
+      save();
+      return { ok: true, result: { deleted: name, points, metrics: userMetrics.size } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
   /** metricQuery — time-series query with windowing + aggregation rollup. */
   registerLensAction("observe", "metricQuery", (ctx, _artifact, params = {}) => {
     try {
