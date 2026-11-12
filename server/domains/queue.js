@@ -682,7 +682,9 @@ export default function registerQueueActions(registerLensAction) {
   });
 
   /**
-   * retry — requeue a failed or dead job back to pending.
+   * retry — requeue a failed, dead, or completed job back to pending.
+   * A completed job can be run again (FIX-queue-004): its previous
+   * result is cleared so the rerun starts clean.
    * params: { jobId, resetAttempts? }
    */
   registerLensAction("queue", "retry", (ctx, _artifact, params = {}) => {
@@ -692,18 +694,64 @@ export default function registerQueueActions(registerLensAction) {
       const userId = qActor(ctx);
       const job = userJobs(s, userId).get(String(params.jobId || ""));
       if (!job) return { ok: false, error: "job not found" };
-      if (!["failed", "dead"].includes(job.status)) {
-        return { ok: false, error: `only failed/dead jobs can be retried (status: ${job.status})` };
+      if (!["failed", "dead", "completed"].includes(job.status)) {
+        return { ok: false, error: `only failed/dead/completed jobs can be retried (status: ${job.status})` };
       }
       if (params.resetAttempts === true) job.attempts = 0;
       job.status = "pending";
       job.error = null;
+      job.result = null;
       job.startedAt = null;
       job.finishedAt = null;
       job.durationMs = null;
       job.runAt = qIso(qNow());
       job.updatedAt = qIso(qNow());
       logEvent(s, userId, "retried", `${job.name} requeued`, job.id);
+      saveQueueState();
+      return { ok: true, result: { job: jobPublicShape(job) } };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  /**
+   * update — edit a job's name / priority / payload / maxAttempts
+   * (FIX-queue-004). Any job that is not actively running can be
+   * edited — including a processed one, so its payload can be fixed
+   * before a requeue. Editing never changes the job's status.
+   * params: { jobId, name?, priority?, payload?, maxAttempts? }
+   */
+  registerLensAction("queue", "update", (ctx, _artifact, params = {}) => {
+    try {
+      const s = getQueueState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = qActor(ctx);
+      const job = userJobs(s, userId).get(String(params.jobId || ""));
+      if (!job) return { ok: false, error: "job not found" };
+      if (job.status === "active") return { ok: false, error: "job is running — it cannot be edited" };
+      const changed = [];
+      if (params.name !== undefined) {
+        const name = String(params.name || "").trim().slice(0, 80);
+        if (!name) return { ok: false, error: "name cannot be empty" };
+        job.name = name; changed.push("name");
+      }
+      if (params.priority !== undefined) {
+        if (!["high", "normal", "low"].includes(params.priority)) {
+          return { ok: false, error: "priority must be high, normal, or low" };
+        }
+        job.priority = params.priority; changed.push("priority");
+      }
+      if (params.payload !== undefined) {
+        if (!params.payload || typeof params.payload !== "object" || Array.isArray(params.payload)) {
+          return { ok: false, error: "payload must be a JSON object" };
+        }
+        job.payload = params.payload; changed.push("payload");
+      }
+      if (params.maxAttempts !== undefined) {
+        job.maxAttempts = Math.max(1, Math.min(Number(params.maxAttempts) || 1, 10));
+        changed.push("maxAttempts");
+      }
+      if (changed.length === 0) return { ok: false, error: "nothing to update" };
+      job.updatedAt = qIso(qNow());
+      logEvent(s, userId, "edited", `${job.name} edited (${changed.join(", ")})`, job.id);
       saveQueueState();
       return { ok: true, result: { job: jobPublicShape(job) } };
     } catch (e) { return { ok: false, error: e.message }; }

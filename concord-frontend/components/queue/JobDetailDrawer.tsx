@@ -1,7 +1,15 @@
 'use client';
 
-import { X, RotateCcw, Trash2, Play } from 'lucide-react';
+import { useState } from 'react';
+import { X, RotateCcw, Trash2, Play, Pencil } from 'lucide-react';
 import type { QueueJob } from './JobList';
+
+export interface QueueJobUpdate {
+  name: string;
+  priority: string;
+  maxAttempts: number;
+  payload: Record<string, unknown>;
+}
 
 export interface QueueEvent {
   id: string;
@@ -18,6 +26,7 @@ export function JobDetailDrawer({
   onProcess,
   onRetry,
   onRemove,
+  onUpdate,
 }: {
   job: QueueJob | null;
   history: QueueEvent[];
@@ -25,10 +34,47 @@ export function JobDetailDrawer({
   onProcess: (id: string) => void;
   onRetry: (id: string) => void;
   onRemove: (id: string) => void;
+  onUpdate?: (id: string, fields: QueueJobUpdate) => void;
 }) {
+  // Edit state (FIX-queue-004) — keyed by job id so switching jobs
+  // re-seeds the form instead of leaking the previous job's draft.
+  const [editJobId, setEditJobId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPriority, setEditPriority] = useState('normal');
+  const [editMaxAttempts, setEditMaxAttempts] = useState(3);
+  const [editPayload, setEditPayload] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
   if (!job) return null;
   const runnable = ['pending', 'delayed', 'failed'].includes(job.status);
-  const retryable = ['failed', 'dead'].includes(job.status);
+  const retryable = ['failed', 'dead', 'completed'].includes(job.status);
+  const editing = editJobId === job.id;
+
+  const startEdit = () => {
+    setEditJobId(job.id);
+    setEditName(job.name);
+    setEditPriority(job.priority);
+    setEditMaxAttempts(job.maxAttempts);
+    setEditPayload(JSON.stringify(job.payload ?? {}, null, 2));
+    setEditError(null);
+  };
+
+  const saveEdit = () => {
+    let payload: Record<string, unknown>;
+    try {
+      const parsed: unknown = JSON.parse(editPayload || '{}');
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        setEditError('Payload must be a JSON object.');
+        return;
+      }
+      payload = parsed as Record<string, unknown>;
+    } catch {
+      setEditError('Payload is not valid JSON.');
+      return;
+    }
+    if (!editName.trim()) { setEditError('Name cannot be empty.'); return; }
+    onUpdate?.(job.id, { name: editName.trim(), priority: editPriority, maxAttempts: editMaxAttempts, payload });
+    setEditJobId(null);
+  };
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
       <button
@@ -115,6 +161,51 @@ export function JobDetailDrawer({
           </div>
         </div>
 
+        {editing && (
+          <div className="mt-4 space-y-2 rounded-lg border border-cyan-500/25 bg-cyan-500/5 p-3">
+            <div className="text-[10px] uppercase tracking-wider text-cyan-300">Edit job</div>
+            <input
+              aria-label="Job name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-white"
+            />
+            <div className="flex gap-2">
+              <select
+                aria-label="Priority"
+                value={editPriority}
+                onChange={(e) => setEditPriority(e.target.value)}
+                className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-white"
+              >
+                <option value="high">High</option>
+                <option value="normal">Normal</option>
+                <option value="low">Low</option>
+              </select>
+              <input
+                aria-label="Max attempts"
+                type="number"
+                min={1}
+                max={10}
+                value={editMaxAttempts}
+                onChange={(e) => setEditMaxAttempts(Number(e.target.value) || 1)}
+                className="w-24 rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-white"
+              />
+            </div>
+            <textarea
+              aria-label="Payload JSON"
+              value={editPayload}
+              onChange={(e) => setEditPayload(e.target.value)}
+              rows={5}
+              className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 font-mono text-[11px] text-zinc-200"
+            />
+            {editError && <p role="alert" className="text-xs text-rose-300">{editError}</p>}
+            <div className="flex gap-2">
+              <button onClick={saveEdit} className="flex-1 rounded-lg bg-cyan-500/20 py-1.5 text-sm text-cyan-300 hover:bg-cyan-500/30">Save changes</button>
+              <button onClick={() => setEditJobId(null)} className="flex-1 rounded-lg bg-zinc-800 py-1.5 text-sm text-zinc-300 hover:bg-zinc-700">Cancel</button>
+            </div>
+          </div>
+        )}
+
         <div className="mt-5 flex gap-2">
           {runnable && (
             <button
@@ -129,7 +220,15 @@ export function JobDetailDrawer({
               onClick={() => onRetry(job.id)}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-amber-500/20 py-2 text-sm text-amber-300 hover:bg-amber-500/30"
             >
-              <RotateCcw className="h-4 w-4" /> Retry
+              <RotateCcw className="h-4 w-4" /> {job.status === 'completed' ? 'Requeue' : 'Retry'}
+            </button>
+          )}
+          {onUpdate && job.status !== 'active' && !editing && (
+            <button
+              onClick={startEdit}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-cyan-500/20 py-2 text-sm text-cyan-300 hover:bg-cyan-500/30"
+            >
+              <Pencil className="h-4 w-4" /> Edit
             </button>
           )}
           <button
