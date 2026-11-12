@@ -101,7 +101,7 @@ export function QuotesPanel() {
               <input value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="Description" className="col-span-3 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
               <input type="number" value={l.qty} onChange={e => setLine(i, 'qty', Number(e.target.value))} placeholder="Qty" className="px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
               <input type="number" value={l.unitPrice} onChange={e => setLine(i, 'unitPrice', Number(e.target.value))} placeholder="Unit $" className="px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-              <button onClick={() => setLines(prev => prev.filter((_, idx) => idx !== i))} className="text-rose-400 hover:text-rose-300 text-xs">×</button>
+              <button onClick={() => setLines(prev => prev.filter((_, idx) => idx !== i))} aria-label={`Remove line ${i + 1}`} className="text-rose-400 hover:text-rose-300 text-xs">×</button>
             </div>
           ))}
           <div className="flex items-center gap-2">

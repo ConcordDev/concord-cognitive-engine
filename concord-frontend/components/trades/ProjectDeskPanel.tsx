@@ -772,7 +772,7 @@ export default function ProjectDeskPanel() {
           {/* Gantt grid */}
           {sortedPhases.length === 0 ? (
             <div className="text-center py-8">
-              <Calendar className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <Calendar className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No phases added yet. Add phases to see the timeline.</p>
             </div>
           ) : (
@@ -1096,7 +1096,7 @@ export default function ProjectDeskPanel() {
           {/* Change orders list */}
           {changeOrders.length === 0 ? (
             <div className="text-center py-8">
-              <FileCheck className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <FileCheck className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No change orders. They will appear here when added.</p>
             </div>
           ) : (
@@ -1190,7 +1190,7 @@ export default function ProjectDeskPanel() {
         {/* Time entries table */}
         {timeEntries.length === 0 ? (
           <div className="text-center py-8">
-            <Timer className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+            <Timer className="w-10 h-10 text-gray-400 mx-auto mb-3" />
             <p className={ds.textMuted}>No time entries logged yet.</p>
           </div>
         ) : (
@@ -1267,7 +1267,7 @@ export default function ProjectDeskPanel() {
 
           {!selectedJob ? (
             <div className="text-center py-8">
-              <PieChart className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <PieChart className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>Select a job from the Jobs tab to view Profit & Loss analysis.</p>
             </div>
           ) : (
@@ -1454,7 +1454,7 @@ export default function ProjectDeskPanel() {
           {/* Materials table */}
           {matEntries.length === 0 ? (
             <div className="text-center py-8">
-              <Package className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <Package className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No materials tracked yet. Add materials to begin tracking.</p>
             </div>
           ) : (
@@ -1586,7 +1586,7 @@ export default function ProjectDeskPanel() {
           {/* Photo entries by phase */}
           {photoEntries.length === 0 ? (
             <div className="text-center py-8">
-              <Camera className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <Camera className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No photo documentation entries yet. Log entries as you document the project.</p>
             </div>
           ) : (
@@ -1610,7 +1610,7 @@ export default function ProjectDeskPanel() {
                         <div key={entry.id} className="p-3 rounded-lg bg-lattice-elevated/30 hover:bg-lattice-elevated/50 group">
                           {/* Placeholder for actual photo */}
                           <div className="aspect-video rounded-lg bg-lattice-surface border border-lattice-border flex items-center justify-center mb-2">
-                            <Camera className="w-8 h-8 text-gray-600" />
+                            <Camera className="w-8 h-8 text-gray-400" />
                           </div>
                           <div className="flex items-start justify-between">
                             <div>
@@ -1680,7 +1680,7 @@ export default function ProjectDeskPanel() {
         </div>
       ) : filtered.length === 0 ? (
         <div className={cn(ds.panel, 'text-center py-12')}>
-          <Package className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+          <Package className="w-10 h-10 text-gray-400 mx-auto mb-3" />
           <p className={ds.textMuted}>No {activeTab} found. Create one to get started.</p>
         </div>
       ) : (
