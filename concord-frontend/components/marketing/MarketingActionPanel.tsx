@@ -6,8 +6,8 @@
  * mint/DM/publish/agent.
  */
 
-import { useState } from 'react';
-import { Megaphone, FlaskConical, Filter, Users, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Megaphone, FlaskConical, Filter, Users, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -63,6 +63,23 @@ export function MarketingActionPanel() {
 
   const ok = (m: string) => setFeedback({ kind: 'ok', text: m });
   const err = (m: string) => setFeedback({ kind: 'err', text: m });
+
+  // FIX-marketing-015: an ROI result is tied to its campaign by name —
+  // when that campaign is deleted (or renamed away) in the Campaigns
+  // panel, the card clears with a note instead of outliving its subject.
+  // Every result card also carries its own dismiss control: an analysis
+  // output always has a lifecycle the user can end.
+  useEffect(() => {
+    const onRemoved = (e: Event) => {
+      const name = (e as CustomEvent<{ name?: string }>).detail?.name;
+      if (name && roiResult && roiResult.campaign === name) {
+        setRoiResult(null);
+        ok(`Cleared the ROI analysis for “${name}” — its campaign was deleted.`);
+      }
+    };
+    window.addEventListener('marketing:campaign-removed', onRemoved);
+    return () => window.removeEventListener('marketing:campaign-removed', onRemoved);
+  }, [roiResult]);
 
   // Example payloads (build(marketing) S7). Shapes pinned to the server
   // tests, so each example computes on first run: A/B → Treatment wins
@@ -263,7 +280,10 @@ export function MarketingActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {roiResult && (
           <div className={cn('rounded-md border p-2.5', roiResult.profitable ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
-            <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">{roiResult.campaign} · {roiResult.grade}</div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">{roiResult.campaign} · {roiResult.grade}</div>
+              <button type="button" aria-label="Clear ROI result" onClick={() => setRoiResult(null)} className="text-zinc-500 hover:text-zinc-200"><X className="h-3 w-3" /></button>
+            </div>
             <p className="text-[10px] text-zinc-400">These figures are the numbers typed here. They are not the campaign's recorded ROAS.</p>
             <div className={cn('text-2xl font-bold', GRADE_COLOR[roiResult.grade])}>{roiResult.roi}%<span className="text-xs text-zinc-400"> ROI</span></div>
             <div className="text-[10px] text-zinc-400">CPL ${roiResult.costPerLead} · CPA ${roiResult.costPerAcquisition}</div>
@@ -272,28 +292,37 @@ export function MarketingActionPanel() {
         )}
         {abResult && (
           <div className={cn('rounded-md border p-2.5 max-h-48 overflow-y-auto', abResult.statisticallySignificant ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30 bg-amber-500/5')}>
-            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">A/B · {abResult.winner} (+{abResult.lift}%)</div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">A/B · {abResult.winner} (+{abResult.lift}%)</div>
+              <button type="button" aria-label="Clear A/B result" onClick={() => setAbResult(null)} className="text-zinc-500 hover:text-zinc-200"><X className="h-3 w-3" /></button>
+            </div>
             <div className="text-[10px] text-zinc-400">{abResult.totalVisitors.toLocaleString()} visitors · {abResult.statisticallySignificant ? '✓ significant' : '⏳ keep testing'}</div>
             {abResult.variants.map((v, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex items-center gap-2"><span className="font-mono w-24 truncate">{v.name}</span><div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-purple-400" style={{ width: `${Math.min(100, v.conversionRate * 10)}%` }} /></div><span className="text-purple-200 font-mono">{v.conversionRate}%</span></div>)}
           </div>
         )}
         {funnelResult && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-48 overflow-y-auto">
-            <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Funnel · {funnelResult.overallConversion}%</div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Funnel · {funnelResult.overallConversion}%</div>
+              <button type="button" aria-label="Clear funnel result" onClick={() => setFunnelResult(null)} className="text-zinc-500 hover:text-zinc-200"><X className="h-3 w-3" /></button>
+            </div>
             {funnelResult.stages.map((s, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5"><div className="flex items-center gap-2"><span className="font-mono w-20 truncate">{s.stage}</span><div className="flex-1 h-1 bg-zinc-800 rounded-sm overflow-hidden"><div className="h-full bg-blue-400" style={{ width: `${s.convFromTop}%` }} /></div><span className="font-mono text-blue-200">{s.visitors.toLocaleString()}</span></div>{i > 0 && <div className="text-[9px] text-zinc-400 ml-20">drop {s.dropoff}%</div>}</div>)}
             <div className="text-[10px] text-amber-300 mt-1 italic">{funnelResult.quickWin}</div>
           </div>
         )}
         {segResult && (
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5 max-h-48 overflow-y-auto">
-            <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Segments · {segResult.totalUsers} users</div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Segments · {segResult.totalUsers} users</div>
+              <button type="button" aria-label="Clear segment result" onClick={() => setSegResult(null)} className="text-zinc-500 hover:text-zinc-200"><X className="h-3 w-3" /></button>
+            </div>
             <div className="text-[10px] text-emerald-300">{segResult.pareto}</div>
             {segResult.segments.map((s, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5"><strong className="text-green-200">{s.segment}</strong> · {s.users} ({s.share}%) · avg ${s.avgSpend}</div>)}
           </div>
         )}
       </div>
 
-      {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Top play</div><pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre></div>)}
+      {agentReply && (<div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto"><div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Top play<button type="button" aria-label="Clear play" onClick={() => setAgentReply(null)} className="ml-auto text-zinc-500 hover:text-zinc-200"><X className="h-3 w-3" /></button></div><pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre></div>)}
 
       <AnimatePresence>
         {feedback && (<motion.div key={feedback.text} initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }} className={cn('px-3 py-2 rounded text-[11px] flex items-start gap-2 border', feedback.kind === 'ok' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-red-500/10 text-red-300 border-red-500/30')}>{feedback.kind === 'ok' ? <Check className="h-3 w-3 mt-0.5" /> : <AlertTriangle className="h-3 w-3 mt-0.5" />}<span>{feedback.text}</span></motion.div>)}

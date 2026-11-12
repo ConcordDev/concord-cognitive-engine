@@ -81,8 +81,13 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
     await refresh(); onChange();
   };
   const del = async (id: string) => {
+    const victim = campaigns.find((c) => c.id === id);
     await lensRun('marketing', 'campaign-delete', { id });
     if (selected?.id === id) setSelected(null);
+    // FIX-marketing-015: tell the rest of the lens the campaign is gone,
+    // so surfaces holding output tied to it by name (the Quick Analysis
+    // bench's result card) clear it instead of leaving an orphan behind.
+    if (victim) window.dispatchEvent(new CustomEvent('marketing:campaign-removed', { detail: { name: victim.name } }));
     await refresh(); onChange();
   };
   // Edit path (build(marketing) S4 — Review 5 F4): `campaign-update` was
@@ -109,6 +114,11 @@ export function MarketingCampaignsPanel({ onChange }: { onChange: () => void }) 
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
     const updated = (r.data?.result as { campaign?: Campaign } | null)?.campaign;
     if (updated) setSelected(updated);
+    // A rename orphans name-tied output the same way a delete does
+    // (FIX-marketing-015) — the old name's analysis is cleared too.
+    if (updated && updated.name !== selected.name) {
+      window.dispatchEvent(new CustomEvent('marketing:campaign-removed', { detail: { name: selected.name } }));
+    }
     setEditing(false); setError(null);
     await refresh(); onChange();
   };
