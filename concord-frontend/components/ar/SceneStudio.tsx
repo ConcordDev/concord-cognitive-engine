@@ -5,6 +5,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { Icon as SvgIcon } from '@/components/icons/Icon';
@@ -663,10 +664,7 @@ export function SceneStudio() {
                     {s.anchor} anchor &middot; {s.objectCount} objects &middot; {s.behaviorCount} behaviors &middot; v{s.version}
                   </p>
                 </button>
-                <button onClick={() => deleteScene(s.id)} className={ds.btnGhost} aria-label="Delete scene">
-                  <Trash2 className="w-4 h-4 text-red-400" />
-                  <span>Delete scene</span>
-                </button>
+                <StickyDeleteConfirm onConfirm={() => { void deleteScene(s.id); }} className={ds.btnGhost} armAriaLabel={`Delete scene ${s.name}`} confirmLabel={`Delete “${s.name}”?`} confirmAriaLabel={`Confirm delete scene ${s.name}`} armLabel={<><Trash2 className="w-4 h-4 text-red-400" /><span>Delete scene</span></>} />
               </div>
             ))}
           </div>
@@ -694,9 +692,7 @@ export function SceneStudio() {
         <div className="flex items-center gap-2">
           {busy && <span className="text-xs text-neon-purple animate-pulse">working…</span>}
           {scene.id ? (
-            <button onClick={() => deleteScene(scene.id)} className={ds.btnGhost} disabled={busy} aria-label="Delete scene">
-              <Trash2 className="w-4 h-4 text-red-400" /> Delete scene
-            </button>
+            <StickyDeleteConfirm onConfirm={() => { void deleteScene(scene.id); }} className={ds.btnGhost} disabled={busy} armAriaLabel={`Delete scene ${scene.name || ''}`.trim()} confirmLabel={`Delete “${scene.name || 'scene'}”?`} confirmAriaLabel="Confirm delete scene" armLabel={<><Trash2 className="w-4 h-4 text-red-400" /> Delete scene</>} />
           ) : null}
           <button onClick={saveScene} className={ds.btnPrimary} disabled={busy}><Save className="w-4 h-4" /> Save</button>
         </div>
