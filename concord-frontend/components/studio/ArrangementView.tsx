@@ -288,8 +288,8 @@ export function ArrangementView({
                     style={{
                       left: clip.startBeat * beatWidth,
                       width: clip.lengthBeats * beatWidth,
-                      backgroundColor: (clip.color || track.color) + '40',
-                      borderColor: clip.color || track.color,
+                      backgroundColor: track.color + '40',
+                      borderColor: track.color,
                     }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                     {/* Mini waveform or note display */}
                     {clip.type === 'midi' && clip.midiNotes && (

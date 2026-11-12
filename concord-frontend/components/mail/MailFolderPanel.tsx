@@ -26,7 +26,7 @@ export function MailFolderPanel({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [query, setQuery] = useState('');
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
-  const [claimNote, setClaimNote] = useState<string | null>(null);
+  const [claimNote, setClaimNote] = useState<{ mailId: string; msg: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [openNote, setOpenNote] = useState<string | null>(null);
 
@@ -107,7 +107,7 @@ export function MailFolderPanel({
     try {
       const j = await playerMail('claim', { id: mailId });
       const note = claimResultText(j);
-      setClaimNote(note.msg);
+      setClaimNote({ mailId, msg: note.msg });
       showFlash(note.kind, note.msg);
       if (j.ok) refresh();
     } finally { setBusy(null); }
@@ -132,6 +132,13 @@ export function MailFolderPanel({
       );
     });
   }, [folderRows, folder, statusFilter, query]);
+
+  // FIX-mail-019: the detail pane must never show a mail the visible list no
+  // longer contains — a filter or folder change that excludes the open mail
+  // closes it instead of leaving a stale detail on screen.
+  useEffect(() => {
+    if (selected && !rows.some((r) => r.id === selected.id)) setSelected(null);
+  }, [rows, selected]);
 
   return (
     <section className="mx-auto grid max-w-screen-2xl gap-3 px-3 py-4 sm:grid-cols-[1fr_2fr] sm:px-6 sm:py-5">
@@ -376,7 +383,7 @@ export function MailFolderPanel({
                     Claim {selected.codCc > 0 ? `(pay ${selected.codCc} CC)` : ''}
                   </button>
                 )}
-                {claimNote && <p className="mt-2 text-[11px] text-gray-200" role="status">{claimNote}</p>}
+                {claimNote && claimNote.mailId === selected.id && <p className="mt-2 text-[11px] text-gray-200" role="status">{claimNote.msg}</p>}
                 {selected.status === 'claimed' && (
                   <p className="mt-1 text-[10px] italic text-gray-400">
                     Claimed <span className="tabular-nums">{selected.claimedAt ? new Date(selected.claimedAt * 1000).toLocaleString() : ''}</span>

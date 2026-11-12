@@ -76,8 +76,12 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
       setMessages(r.data.result.messages || []);
       if (r.data.result.threadKey) setActiveKey(r.data.result.threadKey);
       if (r.data.result.withName) setActiveWithName(r.data.result.withName);
+      // FIX-social-017: opening the thread is what reads it — reload the
+      // inbox list so the unread badge and preview catch up immediately
+      // instead of staying stale until a send or a remount.
+      void loadInbox();
     }
-  }, []);
+  }, [loadInbox]);
 
   // FIX-social-022: the composer owns its draft now (see DMComposer below);
   // the inbox only sends. Keystrokes no longer re-render the thread list

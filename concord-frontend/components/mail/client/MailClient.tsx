@@ -463,11 +463,13 @@ const CONCORD_TABS = [
 
 export function ConcordMailbox({ composeSignal = 0 }: { composeSignal?: number }) {
   const { restore: restoreConcordTab, persist: persistConcordTab } = useLensStatePersistence('mail-concord');
+  const lastFolderRef = useRef<'inbox' | 'sent'>('inbox');
   const [tab, setTab] = useState<'inbox' | 'sent' | 'compose'>(() => {
     const t = restoreConcordTab()?.tab;
     return t === 'sent' || t === 'compose' ? t : 'inbox';
   });
   useEffect(() => { persistConcordTab({ tab }); }, [tab, persistConcordTab]);
+  if (tab !== 'compose') lastFolderRef.current = tab;
   const lastCompose = useRef(composeSignal);
   useEffect(() => {
     if (composeSignal !== lastCompose.current) {
@@ -487,7 +489,13 @@ export function ConcordMailbox({ composeSignal = 0 }: { composeSignal?: number }
         <span className="ml-auto text-[11px] text-zinc-500">Player-to-player mail with items, CC and cash on delivery</span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {tab === 'compose' ? <ComposeMailPanel onSent={() => setTab('sent')} /> : <MailFolderPanel folder={tab} onCompose={() => setTab('compose')} />}
+        {tab === 'compose' && <ComposeMailPanel onSent={() => setTab('sent')} />}
+        {/* FIX-mail-019: the folder panel stays mounted (hidden) while
+            composing, so its filter/search/selection survive the round trip
+            instead of resetting on remount. */}
+        <div className={tab === 'compose' ? 'hidden' : undefined}>
+          <MailFolderPanel folder={tab === 'compose' ? lastFolderRef.current : tab} onCompose={() => setTab('compose')} />
+        </div>
       </div>
     </Panel>
   );
