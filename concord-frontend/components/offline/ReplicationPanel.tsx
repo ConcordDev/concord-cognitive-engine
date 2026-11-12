@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   allDocs,
   dirtyDocs,
@@ -791,13 +792,14 @@ export function ReplicationPanel({
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
-              <button
-                onClick={() => removeDoc(d.id)}
+              <StickyDeleteConfirm
+                onConfirm={() => removeDoc(d.id)}
+                armLabel={<Trash2 className="h-3.5 w-3.5" />}
+                confirmLabel={`Delete ${d.id}?`}
+                armAriaLabel={`Delete ${d.id}`}
+                confirmAriaLabel={`Confirm delete ${d.id}`}
                 className="rounded border border-red-500/30 p-1.5 text-red-300 hover:bg-red-500/10"
-                aria-label={`Delete ${d.id}`}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              />
             </div>
           </div>
         ))}

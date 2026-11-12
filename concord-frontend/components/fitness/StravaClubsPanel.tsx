@@ -172,11 +172,22 @@ export function StravaClubsPanel() {
                       onConfirm={async () => { await lensRun('fitness', 'challenge-delete', { id: ch.id }); await refresh(); }}
                     />
                   )}
-                  <button type="button" onClick={() => joinChallenge(ch)}
-                    className={cn('text-[11px] px-2.5 py-1 rounded-lg border',
-                      ch.joined ? 'border-zinc-700 text-zinc-400' : 'border-orange-700/50 bg-orange-950/40 text-orange-300')}>
-                    {ch.joined ? 'Leave' : 'Join'}
-                  </button>
+                  {ch.joined ? (
+                    <StickyDeleteConfirm
+                      armLabel="Leave"
+                      confirmLabel={`Leave "${ch.name}"?`}
+                      armAriaLabel={`Leave challenge ${ch.name}`}
+                      confirmAriaLabel={`Confirm leave challenge ${ch.name}`}
+                      cancelAriaLabel="Stay in challenge"
+                      className="text-[11px] px-2.5 py-1 rounded-lg border border-zinc-700 text-zinc-400"
+                      onConfirm={() => joinChallenge(ch)}
+                    />
+                  ) : (
+                    <button type="button" onClick={() => joinChallenge(ch)}
+                      className="text-[11px] px-2.5 py-1 rounded-lg border border-orange-700/50 bg-orange-950/40 text-orange-300">
+                      Join
+                    </button>
+                  )}
                   </div>
                 </div>
                 {ch.joined && (

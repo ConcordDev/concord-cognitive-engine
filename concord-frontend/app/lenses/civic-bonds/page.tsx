@@ -3,6 +3,7 @@
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 /**
  * Civic Bonds lens — the transparency surface for the micro-bond engine.
@@ -461,12 +462,15 @@ export default function CivicBondsLens() {
                   aria-label={`Pledge to ${b.title}`}
                 >Pledge</button>
                 {['voting', 'funding'].includes(b.status) && (
-                  <button
-                    onClick={() => void unpledge(b.id)}
+                  <StickyDeleteConfirm
+                    onConfirm={() => void unpledge(b.id)}
+                    armLabel="Unpledge"
+                    confirmLabel={`Refund pledge to "${b.title}"?`}
+                    armAriaLabel={`Refund my pledge to ${b.title}`}
+                    confirmAriaLabel={`Confirm refund of my pledge to ${b.title}`}
+                    cancelAriaLabel="Keep my pledge"
                     className="px-3 py-1 rounded bg-white/5 text-gray-300 text-sm hover:bg-white/10"
-                    aria-label={`Refund my pledge to ${b.title}`}
-                    title="Refund your unfilled escrow while the bond is still open"
-                  >Unpledge</button>
+                  />
                 )}
                 {b.status === 'voting' && (
                   <>

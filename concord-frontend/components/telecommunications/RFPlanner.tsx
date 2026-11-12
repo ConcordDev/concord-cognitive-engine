@@ -351,6 +351,11 @@ function SitesTab({ towers, run, busy, refreshTowers, flash, onChanged }: {
   // delete-and-recreate.
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  // FIX-telecommunications-005: the Sites list had no search or sort.
+  // Both act on a render copy inside this tab only — the parent tower
+  // set feeding the map and the other tabs is never filtered.
+  const [siteQuery, setSiteQuery] = useState('');
+  const [siteSort, setSiteSort] = useState<'delivered' | 'name' | 'tallest'>('delivered');
 
   const startEdit = (t: Tower) => {
     setEditingId(t.id);
@@ -402,6 +407,12 @@ function SitesTab({ towers, run, busy, refreshTowers, flash, onChanged }: {
       flash(`Removed ${r.removed} site`);
     }
   };
+
+  const siteQ = siteQuery.trim().toLowerCase();
+  const visibleTowers = (siteQ
+    ? towers.filter((t) => [t.name, t.technology, t.terrain, t.status].some((f) => f.toLowerCase().includes(siteQ)))
+    : [...towers]
+  ).sort((a, b) => (siteSort === 'name' ? a.name.localeCompare(b.name) : siteSort === 'tallest' ? b.heightM - a.heightM : 0));
 
   const markers: MapMarker[] = towers.map((t) => ({
     id: t.id, lat: t.lat, lon: t.lon, label: `${t.name} · ${t.technology}`,
@@ -455,8 +466,28 @@ function SitesTab({ towers, run, busy, refreshTowers, flash, onChanged }: {
         <MapView markers={markers} height={260} />
       </div>
 
+      {towers.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="search" value={siteQuery} onChange={(e) => setSiteQuery(e.target.value)}
+            placeholder="Search sites by name, technology, terrain, or status…"
+            aria-label="Search sites"
+            className="min-w-48 flex-1 rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-500"
+          />
+          <select
+            value={siteSort} onChange={(e) => setSiteSort(e.target.value as typeof siteSort)}
+            aria-label="Sort sites"
+            className="rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5 text-[12px] text-zinc-100"
+          >
+            <option value="delivered">Delivered order</option>
+            <option value="name">Name A–Z</option>
+            <option value="tallest">Tallest first</option>
+          </select>
+        </div>
+      )}
+
       <div className="space-y-1">
-        {towers.map((t) => (
+        {visibleTowers.map((t) => (
           <div key={t.id} className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900/50 px-3 py-2">
             <div className="text-[12px] text-zinc-200">
               <span className="font-semibold">{t.name}</span>
@@ -494,6 +525,9 @@ function SitesTab({ towers, run, busy, refreshTowers, flash, onChanged }: {
         ))}
         {towers.length === 0 && (
           <p className="py-4 text-center text-[11px] text-zinc-400">No sites yet — add one above.</p>
+        )}
+        {towers.length > 0 && visibleTowers.length === 0 && (
+          <p className="py-4 text-center text-[11px] text-zinc-400">No sites match &ldquo;{siteQuery}&rdquo;.</p>
         )}
       </div>
     </div>

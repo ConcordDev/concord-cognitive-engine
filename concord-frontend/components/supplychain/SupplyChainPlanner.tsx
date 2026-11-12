@@ -159,6 +159,8 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
   const [ref, setRef] = useState(''); const [carrier, setCarrier] = useState('');
   const [origin, setOrigin] = useState(''); const [dest, setDest] = useState('');
   const [eta, setEta] = useState(''); const [value, setValue] = useState('');
+  // FIX-supplychain-007: in-lens search over the held shipments.
+  const [shipQuery, setShipQuery] = useState('');
 
   const load = useCallback(async () => {
     try { setData(await run<ShipmentList>('shipmentList')); }
@@ -218,8 +220,21 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
         </div>
       )}
 
+      {(data?.shipments?.length ?? 0) > 1 && (
+        <input
+          type="search" value={shipQuery} onChange={(e) => setShipQuery(e.target.value)}
+          placeholder="Search shipments by reference, carrier, origin, or destination…"
+          aria-label="Search shipments"
+          className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-500"
+        />
+      )}
+
       <div className="space-y-2">
-        {(data?.shipments || []).map((s) => (
+        {(data?.shipments || []).filter((s) => {
+          const q = shipQuery.trim().toLowerCase();
+          if (!q) return true;
+          return [s.reference, s.carrier, s.origin, s.destination].some((f) => f.toLowerCase().includes(q));
+        }).map((s) => (
           <div key={s.id} className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -263,6 +278,9 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
           </div>
         ))}
         {data && data.shipments.length === 0 && <p className="text-[11px] text-zinc-400 py-3 text-center">No shipments tracked yet.</p>}
+        {data && data.shipments.length > 0 && shipQuery.trim() !== '' && !data.shipments.some((s) => [s.reference, s.carrier, s.origin, s.destination].some((f) => f.toLowerCase().includes(shipQuery.trim().toLowerCase()))) && (
+          <p className="text-[11px] text-zinc-400 py-3 text-center">No shipments match &ldquo;{shipQuery}&rdquo;.</p>
+        )}
       </div>
     </div>
   );
@@ -487,6 +505,8 @@ function ScenarioPanel({ notify }: { notify: (f: Feedback) => void }) {
   const [demand, setDemand] = useState('100'); const [lead, setLead] = useState('14');
   const [cost, setCost] = useState('10'); const [stock, setStock] = useState('');
   const [altLead, setAltLead] = useState(''); const [altCost, setAltCost] = useState('');
+  // FIX-supplychain-007: in-lens search over the held scenarios.
+  const [scenarioQuery, setScenarioQuery] = useState('');
 
   const load = useCallback(async () => {
     try { const r = await run<{ scenarios: Scenario[] }>('scenarioList'); setScenarios(r?.scenarios || []); }
@@ -532,8 +552,21 @@ function ScenarioPanel({ notify }: { notify: (f: Feedback) => void }) {
         </button>
       </div>
 
+      {scenarios.length > 1 && (
+        <input
+          type="search" value={scenarioQuery} onChange={(e) => setScenarioQuery(e.target.value)}
+          placeholder="Search scenarios by name or disruption…"
+          aria-label="Search scenarios"
+          className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-500"
+        />
+      )}
+
       <div className="space-y-2">
-        {scenarios.map((s) => (
+        {scenarios.filter((s) => {
+          const q = scenarioQuery.trim().toLowerCase();
+          if (!q) return true;
+          return [s.name, s.disruption.replace(/_/g, ' ')].some((f) => f.toLowerCase().includes(q));
+        }).map((s) => (
           <div key={s.id} className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -561,6 +594,9 @@ function ScenarioPanel({ notify }: { notify: (f: Feedback) => void }) {
           </div>
         ))}
         {scenarios.length === 0 && <p className="text-[11px] text-zinc-400 py-3 text-center">No scenarios run yet.</p>}
+        {scenarios.length > 0 && scenarioQuery.trim() !== '' && !scenarios.some((s) => [s.name, s.disruption.replace(/_/g, ' ')].some((f) => f.toLowerCase().includes(scenarioQuery.trim().toLowerCase()))) && (
+          <p className="text-[11px] text-zinc-400 py-3 text-center">No scenarios match &ldquo;{scenarioQuery}&rdquo;.</p>
+        )}
       </div>
     </div>
   );
@@ -736,6 +772,8 @@ function WorkOrdersPanel({ notify }: { notify: (f: Feedback) => void }) {
   const [item, setItem] = useState(''); const [supplier, setSupplier] = useState('');
   const [qty, setQty] = useState('1'); const [cost, setCost] = useState('');
   const [lead, setLead] = useState('14'); const [category, setCategory] = useState('');
+  // FIX-supplychain-007: in-lens search over the held purchase orders.
+  const [poQuery, setPoQuery] = useState('');
 
   const load = useCallback(async () => {
     try { setData(await run<WorkOrderList>('workOrderList')); }
@@ -786,8 +824,20 @@ function WorkOrdersPanel({ notify }: { notify: (f: Feedback) => void }) {
             <Stat label="Ordered" value={data.byStage.ordered || 0} />
             <Stat label="Received" value={data.byStage.received || 0} tone="text-emerald-300" />
           </div>
+          {data.workOrders.length > 1 && (
+            <input
+              type="search" value={poQuery} onChange={(e) => setPoQuery(e.target.value)}
+              placeholder="Search purchase orders by number, item, or supplier…"
+              aria-label="Search purchase orders"
+              className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-500"
+            />
+          )}
           <div className="space-y-2">
-            {data.workOrders.map((wo) => (
+            {data.workOrders.filter((wo) => {
+              const q = poQuery.trim().toLowerCase();
+              if (!q) return true;
+              return [wo.poNumber, wo.item, wo.supplier].some((f) => f.toLowerCase().includes(q));
+            }).map((wo) => (
               <div key={wo.id} className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -817,6 +867,9 @@ function WorkOrdersPanel({ notify }: { notify: (f: Feedback) => void }) {
               </div>
             ))}
             {data.workOrders.length === 0 && <p className="text-[11px] text-zinc-400 py-3 text-center">No work orders yet.</p>}
+            {data.workOrders.length > 0 && poQuery.trim() !== '' && !data.workOrders.some((wo) => [wo.poNumber, wo.item, wo.supplier].some((f) => f.toLowerCase().includes(poQuery.trim().toLowerCase()))) && (
+              <p className="text-[11px] text-zinc-400 py-3 text-center">No purchase orders match &ldquo;{poQuery}&rdquo;.</p>
+            )}
           </div>
         </>
       )}

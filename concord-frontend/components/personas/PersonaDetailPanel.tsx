@@ -41,6 +41,7 @@ export function PersonaDetailPanel({
   const [tab, setTab] = useState<'chat' | 'stats' | 'versions' | 'reviews'>('chat');
   const [stars, setStars] = useState(5);
   const [publishArm, setPublishArm] = useState(false);
+  const [unpublishArm, setUnpublishArm] = useState(false);
   const [review, setReview] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,17 +72,23 @@ export function PersonaDetailPanel({
 
   const togglePublish = async () => {
     if (!persona) return;
-    // Publishing states its visibility BEFORE the act: the first click
-    // arms with the terms in words; the second confirms. Unpublishing
-    // (a withdrawal) stays one click.
+    // Both directions state their terms BEFORE the act: the first click
+    // arms with the terms in words; the second confirms. Publishing
+    // discloses the listing; unpublishing discloses the withdrawal
+    // (FIX-personas-017 — unpublish previously fired in one click).
     if (!persona.published && !publishArm) {
       setPublishArm(true);
+      return;
+    }
+    if (persona.published && !unpublishArm) {
+      setUnpublishArm(true);
       return;
     }
     const r = await runPersona('publish', {
       personaId, published: !persona.published,
     });
     setPublishArm(false);
+    setUnpublishArm(false);
     if (r.ok) {
       flash((r.data as any)?.published ? 'Published to marketplace' : 'Unpublished');
       await load();
@@ -208,7 +215,7 @@ export function PersonaDetailPanel({
             <button
               type="button" onClick={togglePublish}
               className="text-xs px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-emerald-100"
-            >{persona.published ? 'Unpublish' : publishArm ? 'Confirm publish' : 'Publish'}</button>
+            >{persona.published ? (unpublishArm ? 'Confirm unpublish' : 'Unpublish') : publishArm ? 'Confirm publish' : 'Publish'}</button>
             {publishArm && !persona.published && (
               <>
                 <span className="text-[11px] text-zinc-300 self-center">
@@ -218,6 +225,17 @@ export function PersonaDetailPanel({
                   type="button" onClick={() => setPublishArm(false)}
                   className="text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
                 >Keep private</button>
+              </>
+            )}
+            {unpublishArm && persona.published && (
+              <>
+                <span className="text-[11px] text-zinc-300 self-center">
+                  Unpublishing removes this persona from the marketplace. Existing installs keep their copy; the listing, discovery, and new installs stop.
+                </span>
+                <button
+                  type="button" onClick={() => setUnpublishArm(false)}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                >Keep listed</button>
               </>
             )}
             <button

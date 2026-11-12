@@ -19,6 +19,7 @@ import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { useAuth } from '@/hooks/useAuth';
 import { lfgPostDisabled } from '@/lib/lfg-post';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 /** Server refusal codes → the words the surface answers with. */
 const ERROR_COPY: Record<string, string> = {
@@ -248,9 +249,16 @@ export default function LfgLensPage() {
                         {r.note && <p className="mt-0.5 text-[11px] text-cyan-200/80">{r.note}</p>}
                       </div>
                       {mine ? (
-                        <button onClick={() => handleCancel(r.id)} disabled={busy === `cancel-${r.id}`} aria-label="Cancel your request" className="shrink-0 rounded-md bg-rose-500/20 px-3 py-1 text-[11px] text-rose-100 hover:bg-rose-500/30 disabled:opacity-40">
-                          <X className="mr-1 inline h-3 w-3" aria-hidden="true" /> Cancel
-                        </button>
+                        <StickyDeleteConfirm
+                          onConfirm={() => handleCancel(r.id)}
+                          armLabel={<><X className="mr-1 inline h-3 w-3" aria-hidden="true" /> Cancel</>}
+                          confirmLabel="Cancel this request?"
+                          armAriaLabel="Cancel your request"
+                          confirmAriaLabel="Confirm cancel your request"
+                          cancelAriaLabel="Keep your request"
+                          disabled={busy === `cancel-${r.id}`}
+                          className="shrink-0 rounded-md bg-rose-500/20 px-3 py-1 text-[11px] text-rose-100 hover:bg-rose-500/30 disabled:opacity-40"
+                        />
                       ) : (
                         <button onClick={() => handleInvite(r.id)} disabled={busy === `invite-${r.id}`} aria-label={`Invite ${r.role} from ${r.worldId}`} className="shrink-0 rounded-md bg-emerald-500/20 px-3 py-1 text-[11px] text-emerald-100 hover:bg-emerald-500/30 disabled:opacity-40">
                           <Send className="mr-1 inline h-3 w-3" aria-hidden="true" /> Invite

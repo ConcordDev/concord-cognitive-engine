@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Library, Plus, Trash2, Loader2, Share2, X, FolderOpen, Link2, Check,
 } from 'lucide-react';
@@ -229,14 +230,14 @@ export function SpacesPanel({
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
               </button>
-              <button
-                type="button"
-                onClick={() => removeSpace(s.id)}
-                title="Delete space"
+              <StickyDeleteConfirm
+                onConfirm={() => removeSpace(s.id)}
+                armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                confirmLabel={`Delete space "${s.name}"?`}
+                armAriaLabel="Delete space"
+                confirmAriaLabel={`Confirm delete space ${s.name}`}
                 className="text-zinc-600 hover:text-red-400"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              />
             </li>
           ))}
         </ul>

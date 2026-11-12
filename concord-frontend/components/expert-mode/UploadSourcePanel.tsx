@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { FileUp, Trash2, Loader2, Paperclip, X } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export interface UploadDoc {
   id: string;
@@ -167,9 +168,14 @@ export function UploadSourcePanel({
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
-                <button type="button" onClick={() => remove(u.id)} title="Delete" className="text-zinc-600 hover:text-red-400">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => remove(u.id)}
+                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  confirmLabel={`Delete "${u.name}"?`}
+                  armAriaLabel={`Delete ${u.name}`}
+                  confirmAriaLabel={`Confirm delete ${u.name}`}
+                  className="text-zinc-600 hover:text-red-400"
+                />
               </li>
             );
           })}

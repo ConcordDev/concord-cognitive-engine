@@ -1,6 +1,7 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState } from 'react';
 import { Play, RotateCcw, Trash2, Loader2, ChevronRight } from 'lucide-react';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
@@ -55,6 +56,10 @@ export function JobList({
   onRemove: (id: string) => void;
   onSelect: (job: QueueJob) => void;
 }) {
+  // FIX-queue-006: the list had no in-lens find control (the header
+  // Search button is the global DTU search). Search filters the held
+  // jobs on a render copy; the delivered order is never mutated.
+  const [jobQuery, setJobQuery] = useState('');
   if (jobs.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
@@ -62,9 +67,28 @@ export function JobList({
       </p>
     );
   }
+  const q = jobQuery.trim().toLowerCase();
+  const visibleJobs = q
+    ? jobs.filter((j) => [j.name, j.queue, j.status].some((f) => f.toLowerCase().includes(q)))
+    : jobs;
   return (
     <div className="space-y-2">
-      {jobs.map((j) => {
+      {jobs.length > 1 && (
+        <input
+          type="search"
+          value={jobQuery}
+          onChange={(e) => setJobQuery(e.target.value)}
+          placeholder="Search jobs by name, queue, or status…"
+          aria-label="Search jobs"
+          className="w-full rounded-lg border border-zinc-800 bg-black/30 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500"
+        />
+      )}
+      {visibleJobs.length === 0 && (
+        <p className="rounded-lg border border-dashed border-zinc-800 py-6 text-center text-sm text-zinc-400">
+          No jobs match &ldquo;{jobQuery}&rdquo;.
+        </p>
+      )}
+      {visibleJobs.map((j) => {
         const runnable = ['pending', 'delayed', 'failed'].includes(j.status);
         const retryable = ['failed', 'dead'].includes(j.status);
         const busy = busyId === j.id;
