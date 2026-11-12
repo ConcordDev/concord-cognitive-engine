@@ -53,6 +53,10 @@ export default function GoddessPage() {
   const [openId, setOpenId] = useState<number | null>(null);
   // Bumped to re-run the feed fetch on demand (Retry control).
   const [reloadKey, setReloadKey] = useState(0);
+  // 'Listen again' used to re-fetch with no trace the click did anything
+  // (same dispatches came back, nothing on screen changed). The note
+  // says it is listening, then when the refresh landed.
+  const [refreshNote, setRefreshNote] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -69,6 +73,9 @@ export default function GoddessPage() {
         if (r.data?.ok && r.data.result) {
           setDispatches(r.data.result.dispatches || []);
           setError(null);
+          if (reloadKey > 0) {
+            setRefreshNote(`Dispatches refreshed · ${new Date().toLocaleTimeString()}`);
+          }
         } else {
           // A failed fetch must surface — never silently collapse into the
           // empty state (which would read as "goddess has not spoken").
@@ -85,7 +92,12 @@ export default function GoddessPage() {
     return () => { alive = false; window.clearInterval(interval); };
   }, [worldId, reloadKey]);
 
-  const retryFeed = () => { setError(null); setLoading(true); setReloadKey((k) => k + 1); };
+  const retryFeed = () => {
+    setError(null);
+    setLoading(true);
+    setRefreshNote('Listening again…');
+    setReloadKey((k) => k + 1);
+  };
 
   const filtered = useMemo(
     () => (toneFilter ? dispatches.filter((d) => d.tone === toneFilter) : dispatches),
@@ -114,7 +126,7 @@ export default function GoddessPage() {
             <span className="flex flex-col">
               <input
                 id="goddess-world" type="text" value={worldId} maxLength={64}
-                onChange={(e) => { setWorldId(e.target.value); setOpenId(null); }}
+                onChange={(e) => { setWorldId(e.target.value); setOpenId(null); setRefreshNote(null); }}
                 className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-xs text-zinc-100"
               />
               {worldNote && (
@@ -132,6 +144,9 @@ export default function GoddessPage() {
         cta={{ label: 'Listen again', icon: RefreshCw, onClick: retryFeed, title: 'Re-fetch the latest dispatches' }}
       >
         <div className="max-w-3xl">
+        {refreshNote && (
+          <p role="status" className="mb-3 text-xs text-amber-200/80">{refreshNote}</p>
+        )}
         {openId !== null ? (
           <DispatchDetail
             dispatchId={openId}
