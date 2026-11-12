@@ -2264,6 +2264,28 @@ export default function registerGameDesignActions(registerLensAction) {
     return { ok: true, dtuId, buildingId, spawned: true, citation, citations, conceptArtCitation };
   });
 
+  // ─── building-remove — the reversible half of building-publish ──────
+  // Removes the caller's own placed building from its world. The
+  // blueprint DTU is NOT deleted: it is the author's authored asset and
+  // stays listable/remixable — only the world placement is undone.
+  registerLensAction("game-design", "building-remove", (ctx, _a, params = {}) => {
+    const db = gdBuildingDb(ctx);
+    if (!db) return { ok: false, error: "db_unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId || null;
+    if (!userId || userId === "anon") return { ok: false, error: "auth_required" };
+    const buildingId = params.buildingId ? String(params.buildingId) : (params.id ? String(params.id) : null);
+    if (!buildingId) return { ok: false, error: "building_id_required" };
+    const row = db.prepare(`SELECT id, world_id, spawned_by_user_id FROM world_buildings WHERE id = ?`).get(buildingId);
+    if (!row) return { ok: false, error: "building_not_found" };
+    if (row.spawned_by_user_id !== userId) return { ok: false, error: "not_your_building" };
+    db.prepare(`DELETE FROM world_buildings WHERE id = ?`).run(buildingId);
+    try {
+      const REALTIME = globalThis._concordREALTIME;
+      REALTIME?.io?.to(`world:${row.world_id}`).emit("world:building-removed", { id: buildingId, worldId: row.world_id });
+    } catch { /* realtime best-effort */ }
+    return { ok: true, buildingId, worldId: row.world_id, removed: true };
+  });
+
   // ─── Asset Studio Increment 5 — game-design.asset-fuse ───────────────
   // The composition/remix flywheel's fusion primitive: mint a NEW
   // creator-attributed blueprint DTU whose lineage lists 2+ existing

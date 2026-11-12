@@ -533,6 +533,8 @@ function PlaceBuildingCard({ worldId, ok, err }: TabProps) {
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState<PublishedBuilding | null>(null);
   const [placeError, setPlaceError] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   const widthNum = Number(width);
   const heightNum = Number(height);
@@ -569,6 +571,27 @@ function PlaceBuildingCard({ worldId, ok, err }: TabProps) {
     const result = r.data.result;
     setPlaced(result);
     ok(`Placed in ${worldId} — switch to Playtest to walk it.`);
+  }
+
+  // Two-step remove (FIX-foundry-008): undo the placement from the same
+  // receipt that placed it. The blueprint DTU stays — only the world
+  // placement is removed.
+  async function removePlaced() {
+    if (!placed?.buildingId) return;
+    if (!confirmRemove) { setConfirmRemove(true); return; }
+    setRemoving(true);
+    const r = await lensRun('game-design', 'building-remove', { buildingId: placed.buildingId });
+    setRemoving(false);
+    setConfirmRemove(false);
+    const res = (r.data as { result?: { ok?: boolean; error?: string }; error?: string } | undefined)?.result;
+    if (!res || res.ok === false) {
+      const reason = res?.error || (r.data as { error?: string } | undefined)?.error || 'remove failed';
+      setPlaceError(reason);
+      err(`Could not remove building: ${reason}`);
+      return;
+    }
+    setPlaced(null);
+    ok(`Removed from ${worldId}. The blueprint stays in your assets.`);
   }
 
   const archLabel = (a: string) => a.charAt(0).toUpperCase() + a.slice(1);
@@ -660,11 +683,17 @@ function PlaceBuildingCard({ worldId, ok, err }: TabProps) {
       {placed && (
         <div className="flex items-start gap-2 rounded border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-[11px] text-emerald-300">
           <Check className="mt-0.5 h-3 w-3 shrink-0" />
-          <div>
+          <div className="min-w-0 flex-1">
             <div>Placed in <span className="font-mono">{worldId}</span> — switch to Playtest to walk it.</div>
             <div className="mt-0.5 font-mono text-[10px] text-emerald-400/80">
               buildingId: {placed.buildingId || '—'} · dtuId: {placed.dtuId || '—'}
             </div>
+            {placed.buildingId && (
+              <button type="button" onClick={() => void removePlaced()} disabled={removing}
+                className="mt-1.5 rounded bg-rose-500/15 px-2 py-1 text-[11px] font-medium text-rose-200 hover:bg-rose-500/25 disabled:opacity-50">
+                {removing ? 'Removing…' : confirmRemove ? 'Confirm remove' : 'Remove from world'}
+              </button>
+            )}
           </div>
         </div>
       )}
