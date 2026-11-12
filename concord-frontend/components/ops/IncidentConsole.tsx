@@ -272,7 +272,10 @@ export function IncidentConsole() {
         </div>
       </header>
 
-      <nav className="flex flex-wrap gap-1">
+      {/* Mobile 390 (FIX-ops-008): the seven sub-tabs wrapped onto three rows
+          and ate the workbench's vertical space. One row, sideways scroll,
+          no native scrollbar bar — the NorthStarFrame tab-strip treatment. */}
+      <nav className="no-scrollbar flex flex-nowrap gap-1 overflow-x-auto" aria-label="Incident workbench views">
         {([
           ['incidents', 'Incidents', AlertTriangle],
           ['alerts', 'Alerts', Bell],
@@ -285,7 +288,7 @@ export function IncidentConsole() {
           <button
             key={k}
             onClick={() => setTab(k)}
-            className={`flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-rose-400/40 ${
+            className={`flex min-h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded px-2.5 py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-rose-400/40 ${
               tab === k ? 'bg-rose-500/20 text-rose-200' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-300'
             }`}
           >
