@@ -291,7 +291,7 @@ export function ESignatureTool() {
             <button
               onClick={createEnvelope}
               disabled={busy}
-              className="inline-flex items-center gap-2 rounded bg-yellow-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-yellow-500 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className="inline-flex items-center gap-2 rounded bg-yellow-600 px-3 py-1.5 text-sm font-medium text-yellow-950 hover:bg-yellow-500 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-yellow-400"
             >
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSignature className="h-3.5 w-3.5" />} Route for signature
             </button>
@@ -388,7 +388,7 @@ export function ESignatureTool() {
                       <button
                         onClick={() => signParty(selected.id, p.id)}
                         disabled={busy}
-                        className="inline-flex items-center gap-1 rounded bg-yellow-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-yellow-500 disabled:opacity-40"
+                        className="inline-flex items-center gap-1 rounded bg-yellow-600 px-2 py-1 text-[11px] font-medium text-yellow-950 hover:bg-yellow-500 disabled:opacity-40"
                       >
                         <Lock className="h-3 w-3" aria-hidden /> Sign as you
                       </button>
@@ -552,7 +552,7 @@ function TokenVerifier() {
       <button
         onClick={verifyToken}
         disabled={busy || !token.trim() || !payloadJson.trim()}
-        className="inline-flex items-center gap-1.5 rounded bg-yellow-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-yellow-500 disabled:opacity-40"
+        className="inline-flex items-center gap-1.5 rounded bg-yellow-600 px-2.5 py-1 text-xs font-medium text-yellow-950 hover:bg-yellow-500 disabled:opacity-40"
       >
         {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldCheck className="h-3 w-3" />} Verify token
       </button>

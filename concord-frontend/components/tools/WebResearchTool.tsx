@@ -102,7 +102,7 @@ export function WebResearchTool() {
           <button
             onClick={() => runSearch(query)}
             disabled={!query.trim() || busy}
-            className="inline-flex items-center gap-2 rounded bg-yellow-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-yellow-500 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            className="inline-flex items-center gap-2 rounded bg-yellow-600 px-3 py-1.5 text-sm font-medium text-yellow-950 hover:bg-yellow-500 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-yellow-400"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />} Search
           </button>
