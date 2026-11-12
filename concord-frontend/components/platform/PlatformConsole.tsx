@@ -250,6 +250,9 @@ function ConfigTab() {
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-gray-400">
+        Your account’s variables only — this is your workspace config, not Concord’s system-wide platform config.
+      </p>
       <div className={`${card} p-3 flex flex-wrap items-end gap-2`}>
         <label className="flex flex-col gap-1 text-[10px] text-gray-400">Key
           <input className={input} value={key} onChange={(e) => setKey(e.target.value)} placeholder="API_KEY" />
@@ -583,6 +586,9 @@ function AuditTab() {
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-gray-400">
+        Your account’s changes only — this log records what changed in your workspace, not platform-wide activity.
+      </p>
       <div className={`${card} p-3 flex flex-wrap items-center gap-2`}>
         <input className={input} value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="filter by action prefix" />
         <button className={btn} onClick={load} disabled={loading}>
@@ -593,7 +599,7 @@ function AuditTab() {
         ))}
       </div>
       {entries.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-8">No audit entries. Platform changes are recorded here.</p>
+        <p className="text-xs text-gray-400 text-center py-8">No audit entries. Your account’s platform changes are recorded here.</p>
       ) : (
         <div className={`${card} divide-y divide-lattice-border`}>
           {entries.map((e) => (
@@ -618,6 +624,10 @@ export default function PlatformConsole() {
       <h2 className="text-xl font-bold text-gray-100 flex items-center gap-3">
         <Rocket className="w-6 h-6 text-neon-blue" /> Platform Console
       </h2>
+      <p className="text-xs text-gray-400 -mt-2">
+        Scoped to your account: this console holds your own deployments, config, domains, alerts and audit
+        history — your workspace records, not system-wide platform configuration, and not visible to other accounts.
+      </p>
       <div className="flex gap-1 flex-wrap border-b border-lattice-border">
         {CONSOLE_TABS.map((t) => {
           const Icon = t.icon;
