@@ -25,6 +25,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -65,8 +66,21 @@ export default function ExpertModeLens() {
 
   const [threadId, setThreadId] = useState<string | null>(null);
   const [turns, setTurns] = useState<TurnWithRelated[]>([]);
-  const [focus, setFocus] = useState('all');
-  const [useWeb, setUseWeb] = useState(true);
+  // FIX-expert-mode-001: focus mode + Live web search are user prefs —
+  // they persist through the shared lens UI-state store and are restored
+  // on mount instead of resetting to All / on. Only the user's own
+  // control actions persist (the handlers below); opening a thread still
+  // adopts that thread's focus for the session without overwriting the
+  // saved pref.
+  const { restore, persist } = useLensStatePersistence('expert-mode');
+  const [initialPrefs] = useState(() => restore());
+  const [focus, setFocus] = useState(() => (
+    typeof initialPrefs?.focus === 'string' && initialPrefs.focus ? initialPrefs.focus : 'all'
+  ));
+  const [useWeb, setUseWeb] = useState(() => (
+    typeof initialPrefs?.useWeb === 'boolean' ? initialPrefs.useWeb : true
+  ));
+  const persistPrefs = (patch: Record<string, unknown>) => persist({ ...(restore() ?? {}), ...patch });
 
   const [uploadId, setUploadId] = useState<string | null>(null);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
@@ -322,12 +336,12 @@ export default function ExpertModeLens() {
 
             {/* focus + web controls */}
             <div className="flex items-center gap-3 flex-wrap mb-3">
-              <FocusModeBar value={focus} onChange={setFocus} />
+              <FocusModeBar value={focus} onChange={(next) => { setFocus(next); persistPrefs({ focus: next }); }} />
               <label className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={useWeb}
-                  onChange={(e) => setUseWeb(e.target.checked)}
+                  onChange={(e) => { setUseWeb(e.target.checked); persistPrefs({ useWeb: e.target.checked }); }}
                   className="accent-sky-500"
                 />
                 <Globe2 className="w-3.5 h-3.5 text-sky-400" />
