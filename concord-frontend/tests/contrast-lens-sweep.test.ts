@@ -65,6 +65,24 @@ describe('muted-text contrast sweep (CB-0434)', () => {
     expect(nsf).not.toMatch(/text-zinc-(500|600)/);
   });
 
+  it('mesh teal labels sit at the passing teal step, not teal-700 (3.6:1)', () => {
+    const hits: string[] = [];
+    for (const f of filesOf('mesh')) {
+      const src = fs.readFileSync(f, 'utf8');
+      for (const m of src.matchAll(/text-teal-700/g)) hits.push(path.relative(ROOT, f) + ': ' + m[0]);
+    }
+    expect(hits).toEqual([]);
+  });
+
+  it('tools amber labels sit at the passing step, not yellow-700/800 (4.0 / 2.9:1)', () => {
+    const hits: string[] = [];
+    for (const f of filesOf('tools')) {
+      const src = fs.readFileSync(f, 'utf8');
+      for (const m of src.matchAll(/text-yellow-(700|800)/g)) hits.push(path.relative(ROOT, f) + ': ' + m[0]);
+    }
+    expect(hits).toEqual([]);
+  });
+
   it('the move-builder show-detail toggle no longer renders at opacity 0.4', () => {
     const src = readFileSync(path.join(root, 'components/move-builder/MintedMovesPanel.tsx'), 'utf8');
     expect(src).not.toContain('opacity: 0.4');
