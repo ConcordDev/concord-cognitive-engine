@@ -233,6 +233,19 @@ export function GoalsListPanel() {
 
   return (
     <div className="max-w-2xl space-y-3 pb-24">
+      {/* FIX-goals-009: the New goal action is position:fixed, so its
+          DOM position is free — it mounts FIRST in the panel so a
+          keyboard user reaches it in a couple of Tabs instead of
+          tabbing through every goal card's controls (~40 stops). */}
+      <button
+        type="button"
+        onClick={() => setShowCreate(true)}
+        className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+        aria-label="New goal"
+      >
+        <Plus className="h-4 w-4" />
+        New goal
+      </button>
       {showFocusPicker && (
         <div className="rounded-2xl border border-violet-400/20 bg-violet-400/[0.04] px-5 py-4">
           <div className="flex items-center justify-between">
@@ -436,15 +449,6 @@ export function GoalsListPanel() {
         <p className="py-8 text-[14px] text-zinc-500">{goals.length === 0 ? 'No goals yet.' : 'Nothing in this filter.'}</p>
       )}
 
-      <button
-        type="button"
-        onClick={() => setShowCreate(true)}
-        className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
-        aria-label="New goal"
-      >
-        <Plus className="h-4 w-4" />
-        New goal
-      </button>
     </div>
   );
 }
