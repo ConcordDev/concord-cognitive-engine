@@ -24,7 +24,7 @@ import { notifyCreativeDashboardDirty } from '@/lib/creative/dashboard-bus';
 import {
   Clapperboard, MessageSquare, ClipboardList, Layers, CalendarDays, Link2,
   Plus, Trash2, X, CheckCircle2, Clock, Send, RotateCcw, Film, Image as ImageIcon,
-  Copy, Check, ChevronRight, Tag, Users, MapPin,
+  Copy, Check, ChevronRight, Tag, Users, MapPin, Pencil,
 } from 'lucide-react';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
 
@@ -511,6 +511,34 @@ function CallSheetTab() {
     if (r.data.ok && r.data.result) { setActive(r.data.result.sheet); await loadSheets(); }
   };
 
+  // Row edit (FIX-creative-007): inline inputs prefilled from the row,
+  // saved through callsheet-update-row.
+  const [editingRow, setEditingRow] = useState<{ sec: string; rowId: string } | null>(null);
+  const [editFields, setEditFields] = useState<Record<string, string>>({});
+
+  const startEditRow = (sec: string, row: CallSheetRow) => {
+    setEditingRow({ sec, rowId: row.id });
+    const fields: Record<string, string> = {};
+    for (const col of ['name', 'role', 'department', 'callTime', 'address', 'time', 'scene']) {
+      if (row[col] != null) fields[col] = String(row[col]);
+    }
+    setEditFields(fields);
+  };
+
+  const saveEditRow = async () => {
+    if (!active || !editingRow) return;
+    setBusy(true);
+    const r = await lensRun<{ sheet: CallSheet }>('creative', 'callsheet-update-row', {
+      id: active.id, section: editingRow.sec, rowId: editingRow.rowId, ...editFields,
+    });
+    setBusy(false);
+    if (r.data.ok && r.data.result) {
+      setEditingRow(null);
+      setActive(r.data.result.sheet);
+      await loadSheets();
+    }
+  };
+
   const rowSpec: Record<string, { key: string; label: string }[]> = {
     cast: [{ key: 'name', label: 'Cast name' }, { key: 'role', label: 'Role' }, { key: 'callTime', label: 'Call time (HH:MM)' }],
     crew: [{ key: 'name', label: 'Crew name' }, { key: 'department', label: 'Department' }, { key: 'callTime', label: 'Call time (HH:MM)' }],
@@ -614,14 +642,32 @@ function CallSheetTab() {
                   ) : (
                     <div className="space-y-1">
                       {rows.map((row) => (
-                        <div key={row.id} className="flex items-center gap-3 text-sm text-zinc-300 border-b border-zinc-800/60 last:border-0 py-1.5">
-                          {sec.cols.map((col) => (
-                            <span key={col} className="flex-1 truncate">{String(row[col] ?? '—')}</span>
-                          ))}
-                          <button onClick={() => removeRow(sec.key, row.id)} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Remove row">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        editingRow?.sec === sec.key && editingRow.rowId === row.id ? (
+                          <div key={row.id} className="flex flex-wrap items-center gap-2 border-b border-zinc-800/60 last:border-0 py-1.5">
+                            {sec.cols.map((col) => (
+                              <input
+                                key={col} className={`${INPUT} flex-1 min-w-[90px]`}
+                                aria-label={`Edit ${col}`}
+                                value={editFields[col] || ''}
+                                onChange={(e) => setEditFields((f) => ({ ...f, [col]: e.target.value }))}
+                              />
+                            ))}
+                            <button onClick={saveEditRow} disabled={busy} className={BTN_PRIMARY} aria-label="Save row">Save</button>
+                            <button onClick={() => setEditingRow(null)} className={BTN_GHOST} aria-label="Cancel edit">Cancel</button>
+                          </div>
+                        ) : (
+                          <div key={row.id} className="flex items-center gap-3 text-sm text-zinc-300 border-b border-zinc-800/60 last:border-0 py-1.5">
+                            {sec.cols.map((col) => (
+                              <span key={col} className="flex-1 truncate">{String(row[col] ?? '—')}</span>
+                            ))}
+                            <button onClick={() => startEditRow(sec.key, row)} className={`${BTN_GHOST} hover:text-violet-300`} aria-label="Edit row">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => removeRow(sec.key, row.id)} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Remove row">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )
                       ))}
                     </div>
                   )}
@@ -1083,6 +1129,39 @@ function CalendarTab() {
     notifyCreativeDashboardDirty();
   };
 
+  // Event edit (FIX-creative-007): the server's calendar-update already
+  // accepts title/date/kind/project/notes — wire the form to it.
+  const [editingEvent, setEditingEvent] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editKind, setEditKind] = useState('shoot_day');
+  const [editProject, setEditProject] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+
+  const startEditEvent = (ev: CalendarEvent) => {
+    setEditingEvent(ev.id);
+    setEditTitle(ev.title);
+    setEditDate(ev.date);
+    setEditKind(ev.kind);
+    setEditProject(ev.project || '');
+    setEditNotes(ev.notes || '');
+  };
+
+  const saveEditEvent = async () => {
+    if (!editingEvent || !editTitle.trim() || !editDate) return;
+    setBusy(true);
+    const r = await lensRun('creative', 'calendar-update', {
+      id: editingEvent, title: editTitle.trim(), date: editDate, kind: editKind,
+      project: editProject.trim(), notes: editNotes,
+    });
+    setBusy(false);
+    if (r.data.ok) {
+      setEditingEvent(null);
+      await load();
+      notifyCreativeDashboardDirty();
+    }
+  };
+
   const timelineEvents: TimelineEvent[] = useMemo(
     () => events.map((e) => ({
       id: e.id,
@@ -1139,6 +1218,23 @@ function CalendarTab() {
         {events.length === 0 && <p className="text-xs text-zinc-400">No production events. Add shoot days, milestones and due dates.</p>}
         {events.map((ev) => {
           const overdue = !ev.done && ev.date < today;
+          if (editingEvent === ev.id) {
+            return (
+              <div key={ev.id} className={`${PANEL} grid grid-cols-1 sm:grid-cols-2 gap-2`}>
+                <input className={INPUT} placeholder="Event title" aria-label="Edit event title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+                <input className={INPUT} type="date" aria-label="Edit event date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
+                <select className={INPUT} aria-label="Edit event kind" value={editKind} onChange={(e) => setEditKind(e.target.value)}>
+                  {CAL_KINDS.map((k) => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
+                </select>
+                <input className={INPUT} placeholder="Project (optional)" aria-label="Edit event project" value={editProject} onChange={(e) => setEditProject(e.target.value)} />
+                <input className={`${INPUT} sm:col-span-2`} placeholder="Notes (optional)" aria-label="Edit event notes" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+                <div className="flex gap-2 sm:col-span-2">
+                  <button onClick={saveEditEvent} disabled={busy || !editTitle.trim() || !editDate} className={BTN_PRIMARY}>Save changes</button>
+                  <button onClick={() => setEditingEvent(null)} className={BTN_GHOST}>Cancel</button>
+                </div>
+              </div>
+            );
+          }
           return (
             <div key={ev.id} className={`${PANEL} flex items-center gap-3`}>
               <button
@@ -1155,6 +1251,9 @@ function CalendarTab() {
                   {overdue && <span className="text-rose-400 ml-1">overdue</span>}
                 </p>
               </div>
+              <button onClick={() => startEditEvent(ev)} className={`${BTN_GHOST} hover:text-violet-300`} aria-label="Edit event">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
               <StickyDeleteConfirm onConfirm={() => { void del(ev.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete event ${ev.title}`} confirmLabel={`Delete “${ev.title}”?`} confirmAriaLabel={`Confirm delete event ${ev.title}`} armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
           );
