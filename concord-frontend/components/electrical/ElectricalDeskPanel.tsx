@@ -542,6 +542,18 @@ export function ElectricalDeskPanel({
               transition={{ delay: index * 0.05 }}
               className={ds.panelHover}
               onClick={() => openEdit(item)}
+              // FIX-electrical-008: the row opens the job on click, so it
+              // must be keyboard-openable too — focusable, named, and
+              // Enter/Space activates it (the shared editable-target
+              // activator keeps keys typed in nested fields typing).
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${d.name || item.title}`}
+              onKeyDown={(e) => {
+                // Only the row's own keystrokes: the nested Activate /
+                // Delete buttons keep their Enter/Space for themselves.
+                if (e.target === e.currentTarget) activateOnEnterOrSpace(e);
+              }}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">

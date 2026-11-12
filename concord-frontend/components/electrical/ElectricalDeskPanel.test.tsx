@@ -120,6 +120,22 @@ describe('ElectricalDeskPanel', () => {
     );
   });
 
+  it('FIX-electrical-008: the job row is keyboard-openable, and nested action buttons keep their keys', () => {
+    lensDataState.items = [JOB];
+    render(<ElectricalDeskPanel mode="jobs" />);
+    const row = screen.getByRole('button', { name: 'Open Panel upgrade' });
+    expect(row.getAttribute('tabindex')).toBe('0');
+    // Enter on the nested Activate button belongs to that button — the
+    // row must not also open.
+    const activate = screen.getByRole('button', { name: 'Activate' });
+    fireEvent.keyDown(activate, { key: 'Enter' });
+    expect(screen.queryByText('Edit Job')).not.toBeInTheDocument();
+    // Enter on the focused row opens the job, like the click does.
+    row.focus();
+    fireEvent.keyDown(row, { key: 'Enter' });
+    expect(screen.getByText('Edit Job')).toBeInTheDocument();
+  });
+
   it('Cancel closes the editor without saving', () => {
     render(<ElectricalDeskPanel mode="jobs" />);
     fireEvent.click(screen.getByRole('button', { name: /^New$/i }));
@@ -131,7 +147,13 @@ describe('ElectricalDeskPanel', () => {
   it('delete calls remove() for the target row', () => {
     lensDataState.items = [JOB];
     render(<ElectricalDeskPanel mode="jobs" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    // Declared test-only repair (FIX-electrical-008 pass): the delete arm
+    // is the shared StickyDeleteConfirm, whose accessible name now names
+    // the record ('Delete Panel upgrade') under the sweep's confirm-
+    // naming work — the old bare 'Delete' query went stale on that
+    // change. The two-step flow is unchanged: arm, then confirm.
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Panel upgrade' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete Panel upgrade' }));
     expect(remove).toHaveBeenCalledWith('art_1');
   });
 
