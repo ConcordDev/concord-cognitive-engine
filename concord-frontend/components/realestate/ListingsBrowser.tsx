@@ -5,6 +5,7 @@ import { MapPin, Plus, Trash2, Loader2, Heart, BedDouble, Bath, Maximize2, Slide
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export interface Listing {
   id: string;
@@ -51,7 +52,6 @@ export function ListingsBrowser({
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>({});
   const [sortBy, setSortBy] = useState<'newest' | 'price_asc' | 'price_desc' | 'beds' | 'sqft'>('newest');
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', address: '', city: '', state: '', zip: '', price: '', beds: '', baths: '', sqft: '', kind: 'single_family' });
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -218,11 +218,14 @@ export function ListingsBrowser({
                       {picked ? '✓' : 'Compare'}
                     </button>
                   )}
-                  {confirmDeleteId === l.id ? (
-                    <button aria-label="Confirm delete" onClick={() => { setConfirmDeleteId(null); void remove(l.id); }} className="px-1.5 py-1 text-[10px] font-medium text-rose-300 hover:text-rose-200">Confirm delete</button>
-                  ) : (
-                    <button aria-label="Delete" onClick={() => setConfirmDeleteId(l.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
-                  )}
+                  <StickyDeleteConfirm
+                    onConfirm={() => void remove(l.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                    armAriaLabel="Delete"
+                    confirmLabel={`Delete "${l.address}"?`}
+                    confirmAriaLabel="Confirm delete"
+                  />
                 </li>
               );
             })}

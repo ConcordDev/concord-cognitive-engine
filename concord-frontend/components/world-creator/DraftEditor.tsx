@@ -343,10 +343,12 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
               <div className="rounded-lg border border-amber-800/40 bg-amber-950/10 p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider text-amber-300">{selected.kind} selected</span>
-                  <button onClick={removeSelected} disabled={busy}
-                    className="rounded bg-red-700 px-2 py-0.5 text-[11px] text-white hover:bg-red-600 disabled:opacity-50">
-                    Delete
-                  </button>
+                  <StickyDeleteConfirm onConfirm={removeSelected} disabled={busy}
+                    className="rounded bg-red-700 px-2 py-0.5 text-[11px] text-white hover:bg-red-600 disabled:opacity-50"
+                    armLabel="Delete"
+                    armAriaLabel={`Delete selected ${selected.kind}`}
+                    confirmLabel={`Delete this ${selected.kind}?`}
+                    confirmAriaLabel={`Confirm delete selected ${selected.kind}`} />
                 </div>
                 <InspectorBody draft={draft} selected={selected} onUpdateProp={updateProp} />
               </div>
@@ -670,8 +672,12 @@ function FactionPanel({
               <span className="h-3 w-3 rounded-full" style={{ background: f.color }} />
               {f.name} <span className="text-stone-400">· {f.stance}</span>
             </button>
-            <button onClick={() => run('faction-remove', { draftId, factionId: f.id })} disabled={busy}
-              className="text-[11px] text-red-400 hover:text-red-300">✕</button>
+            <StickyDeleteConfirm onConfirm={() => run('faction-remove', { draftId, factionId: f.id })} disabled={busy}
+              className="text-[11px] text-red-400 hover:text-red-300"
+              armLabel="✕"
+              armAriaLabel={`Remove faction ${f.name}`}
+              confirmLabel={`Remove "${f.name}"?`}
+              confirmAriaLabel={`Confirm remove faction ${f.name}`} />
           </div>
         ))}
         {draft.factions.length === 0 && <p className="text-[11px] text-stone-400">No factions yet.</p>}

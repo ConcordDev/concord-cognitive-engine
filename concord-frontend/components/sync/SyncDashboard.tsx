@@ -15,6 +15,7 @@ import {
   WifiOff, Wifi, Loader2, Plus, FolderTree, Gauge, Clock, GitMerge, Download,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { downloadFile } from '@/lib/utils';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
@@ -508,13 +509,15 @@ export function SyncDashboard() {
                       />
                       Auto-sync
                     </label>
-                    <button
-                      type="button" onClick={() => revokeDevice(d.id, d.label)}
+                    <StickyDeleteConfirm
+                      onConfirm={() => revokeDevice(d.id, d.label)}
                       disabled={busy === `revoke:${d.id}`}
                       className="flex items-center gap-1 rounded-lg border border-rose-800/60 bg-rose-950/40 px-2.5 py-1.5 text-xs text-rose-300 hover:bg-rose-900/50 disabled:opacity-50"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Revoke
-                    </button>
+                      armLabel={<><Trash2 className="h-3.5 w-3.5" /> Revoke</>}
+                      armAriaLabel={`Revoke device ${d.label}`}
+                      confirmLabel={`Revoke "${d.label}"?`}
+                      confirmAriaLabel={`Confirm revoke device ${d.label}`}
+                    />
                   </div>
                 </div>
 

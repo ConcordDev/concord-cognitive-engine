@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mail, Loader2, Send, ArrowLeft, MessageCirclePlus } from 'lucide-react';
 import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { DMThreadSummary, DMMessage } from './types';
 
 function personLabel(name: string | null | undefined, id: string): string {
@@ -262,16 +263,30 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                           </p>
                           <span className="mt-1 flex gap-2">
                             {mine && !m.recalled && (
-                              <button type="button" className="underline" onClick={async () => {
-                                const res = await api.post('/api/social/dm/recall', { messageId: m.id });
-                                if (res.data?.ok === false) setError(res.data.error || 'Could not take this back.');
-                                else if (activeWith) void openThread(activeKey, activeWith);
-                              }}>Take back</button>
+                              <StickyDeleteConfirm
+                                onConfirm={async () => {
+                                  const res = await api.post('/api/social/dm/recall', { messageId: m.id });
+                                  if (res.data?.ok === false) setError(res.data.error || 'Could not take this back.');
+                                  else if (activeWith) void openThread(activeKey, activeWith);
+                                }}
+                                className="underline"
+                                armLabel="Take back"
+                                armAriaLabel="Take back message"
+                                confirmLabel="Take back?"
+                                confirmAriaLabel="Confirm take back message"
+                              />
                             )}
-                            <button type="button" className="underline" onClick={async () => {
-                              await api.post('/api/social/dm/hide', { messageId: m.id });
-                              if (activeWith) void openThread(activeKey, activeWith);
-                            }}>Remove for me</button>
+                            <StickyDeleteConfirm
+                              onConfirm={async () => {
+                                await api.post('/api/social/dm/hide', { messageId: m.id });
+                                if (activeWith) void openThread(activeKey, activeWith);
+                              }}
+                              className="underline"
+                              armLabel="Remove for me"
+                              armAriaLabel="Remove message for me"
+                              confirmLabel="Remove for you?"
+                              confirmAriaLabel="Confirm remove message for me"
+                            />
                           </span>
                         </div>
                       </div>

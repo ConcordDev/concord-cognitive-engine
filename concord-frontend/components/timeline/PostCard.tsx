@@ -17,6 +17,7 @@ import { ReportDialog } from './ReportDialog';
 import { cn } from '@/lib/utils';
 import { lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { FeedPost, Privacy, ReactionKind, ReplyGate } from './types';
 import { timeAgo, exactTime } from './timeFormat';
 import { CommentThread } from './CommentThread';
@@ -183,14 +184,15 @@ export function PostCard({ post, viewerId }: { post: FeedPost; viewerId: string 
             >
               <Pencil className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => deleteMutation.mutate()}
+            <StickyDeleteConfirm
+              onConfirm={() => deleteMutation.mutate()}
               disabled={deleteMutation.isPending}
               className="p-2 rounded-full hover:bg-[#3a3b3c] text-gray-400 hover:text-red-400"
-              aria-label="Delete post"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+              armLabel={<Trash2 className="w-4 h-4" />}
+              armAriaLabel="Delete post"
+              confirmLabel="Delete this post?"
+              confirmAriaLabel="Confirm delete post"
+            />
           </div>
         )}
         {/* S-TL-9: safety verbs on someone else's post (F12) */}
