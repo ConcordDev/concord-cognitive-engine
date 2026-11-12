@@ -217,6 +217,11 @@ export default function registerToolsActions(register) {
 
   const TARGETS = ["esnext", "es2022", "es2020", "es2017", "es2015"];
   const LOADERS = ["ts", "tsx", "js", "jsx"];
+  // A history entry restores the editor, so it keeps the source it was
+  // compiled from. The cap keeps 50 kept entries from bloating the state
+  // snapshot; an entry whose source was cut says so (sourceTruncated)
+  // instead of restoring a partial program as if it were the whole one.
+  const HISTORY_SOURCE_CAP = 32_768;
 
   registerLensAction("tools", "compile", async (ctx, _artifact, params = {}) => {
     const source = String(params.source || "");
@@ -301,12 +306,16 @@ export default function registerToolsActions(register) {
       const hist = bucket(s.compileHistory, userId);
       hist.push({
         id: uid("compile"),
-        target, loader, format, minify,
+        target, loader, format, minify, sourcemap,
         engine: result.engine,
         inputBytes: result.inputBytes,
         outputBytes: result.outputBytes,
         warningCount: result.warnings.length,
         durationMs,
+        // The source rides the entry so selecting it in the history
+        // restores the editor exactly as it was for this compile.
+        source: source.length > HISTORY_SOURCE_CAP ? source.slice(0, HISTORY_SOURCE_CAP) : source,
+        sourceTruncated: source.length > HISTORY_SOURCE_CAP,
         at: isoNow(),
       });
       clip(hist, 50);

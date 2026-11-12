@@ -35,6 +35,11 @@ interface CompileHistoryItem {
   id: string; target: string; loader: string; format: string; minify: boolean;
   engine: string; inputBytes: number; outputBytes: number; warningCount: number;
   durationMs: number; at: string;
+  // Recorded by tools.compile so an entry can restore the editor.
+  // Absent on entries written before history kept the source.
+  sourcemap?: boolean;
+  source?: string;
+  sourceTruncated?: boolean;
 }
 
 const TARGETS: Target[] = ['esnext', 'es2022', 'es2020', 'es2017', 'es2015'];
@@ -113,6 +118,23 @@ export function CompileTool() {
       setError(r.data?.error || 'compile failed');
     }
   }, [src, target, loader, format, minify, sourcemap, loadHistory]);
+
+  // Selecting a history entry restores the editor to that compile:
+  // the source it ran on and the settings it ran with. Entries kept
+  // from before history recorded the source have nothing to restore.
+  const restore = useCallback((h: CompileHistoryItem) => {
+    if (h.source == null) return;
+    setSrc(h.source);
+    if ((TARGETS as string[]).includes(h.target)) setTarget(h.target as Target);
+    if ((LOADERS as string[]).includes(h.loader)) setLoader(h.loader as Loader);
+    if ((FORMATS as string[]).includes(h.format)) setFormat(h.format as Format);
+    setMinify(h.minify === true);
+    setSourcemap(h.sourcemap === true);
+    setResult(null);
+    setError(h.sourceTruncated
+      ? 'That entry kept only the first part of a long source, so the editor shows that part.'
+      : null);
+  }, []);
 
   const copyOutput = useCallback(() => {
     if (!result) return;
@@ -284,11 +306,25 @@ export function CompileTool() {
           <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-yellow-500">
             <History className="h-3.5 w-3.5" aria-hidden /> Compile history
           </h4>
+          <p className="mb-2 text-[11px] text-yellow-700">Select an entry to restore its source and settings in the editor.</p>
           <ul className="space-y-1">
             {history.map((h) => (
-              <li key={h.id} className="flex items-center justify-between rounded px-2 py-1 text-[11px] text-yellow-600">
-                <span>{h.loader} → {h.target} ({h.format}){h.minify ? ' · min' : ''}</span>
-                <span className="text-yellow-700">{h.inputBytes}B→{h.outputBytes}B · {h.durationMs}ms · {h.engine}</span>
+              <li key={h.id}>
+                {h.source != null ? (
+                  <button
+                    type="button"
+                    onClick={() => restore(h)}
+                    className="flex min-h-[40px] w-full items-center justify-between rounded px-2 py-2 text-left text-[11px] text-yellow-600 hover:bg-yellow-950/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
+                  >
+                    <span>{h.loader} → {h.target} ({h.format}){h.minify ? ' · min' : ''}</span>
+                    <span className="text-yellow-700">{h.inputBytes}B→{h.outputBytes}B · {h.durationMs}ms · {h.engine}</span>
+                  </button>
+                ) : (
+                  <div className="flex min-h-[40px] items-center justify-between rounded px-2 py-2 text-[11px] text-yellow-600/60">
+                    <span>{h.loader} → {h.target} ({h.format}){h.minify ? ' · min' : ''} · source not kept</span>
+                    <span className="text-yellow-700/60">{h.inputBytes}B→{h.outputBytes}B · {h.durationMs}ms · {h.engine}</span>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
