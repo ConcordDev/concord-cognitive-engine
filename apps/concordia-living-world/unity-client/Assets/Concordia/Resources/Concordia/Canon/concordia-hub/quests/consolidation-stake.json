@@ -1,0 +1,130 @@
+[
+  {
+    "id": "consolidation_01_two_ledgers",
+    "title": "The Stake — Two Ledgers",
+    "description": "Junior Curator Isa Velt has laid two dossiers on the same table and is afraid of both. One tracks Vesper Kane's money, contracts, and 'rescue' charters across the superhero skyline, the crime docks, and the Grid. The other is the sealed Voss genealogy — four worlds of one name, and an ancestor who walked the Concord Link before every record says the Link existed. Isa will not say the ancestor's first name. She wants someone who can hold both ledgers without selling either.",
+    "giver_npc_id": "scribe_isa_velt",
+    "difficulty": "intermediate",
+    "domain": "cross_world_arc",
+    "estimated_time": "25m",
+    "objectives": [
+      {
+        "id": "obj_cs_meet_isa",
+        "type": "talk_to",
+        "target": "scribe_isa_velt",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Meet Isa Velt in the Scholars' embassy annex after hours."
+      },
+      {
+        "id": "obj_cs_read_kane",
+        "type": "interact",
+        "target": "kane_crossworld_dossier",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Read the Kane dossier: Luminary founder, crime-unit liaison, Grid contractor around the upload."
+      },
+      {
+        "id": "obj_cs_read_voss",
+        "type": "interact",
+        "target": "sealed_voss_genealogy_abstract",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Read the sealed genealogy abstract. The ancestor's first name is inked out. The walking-date is not."
+      }
+    ],
+    "rewards": { "xp": 100, "skill_xp": { "lore": 35 } },
+    "breadcrumbs": [
+      {
+        "id": "bc_cs_stake_named",
+        "content": "Isa's margin note, in a hand that shakes once: 'The question is not who wins. It is whether agency stays many-handed or returns to one throat. Kane consolidates. The Voss line connects. Someone has to say that out loud before the embassies finish saying it in contracts.'",
+        "unlocks_after": "obj_cs_read_voss",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["consolidation_02_two_worlds"],
+    "prerequisites": [],
+    "tags": ["hub", "cross_world", "vesper_kane", "voss", "consolidation", "distributed_agency"]
+  },
+  {
+    "id": "consolidation_02_two_worlds",
+    "title": "The Stake — Kane in Two Worlds",
+    "description": "Isa will not leave the hub. You will. Carry a sealed extract of the Kane dossier to two places that still pretend he is only a local problem: the crime docks, where Jax Rivera still names him as the liaison who sold the unit, and the superhero skyline, where Luminary letterhead still buys silence. Do not open a third front. Do not ask anyone for the sealed ancestor's name.",
+    "giver_npc_id": "scribe_isa_velt",
+    "difficulty": "intermediate",
+    "domain": "cross_world_arc",
+    "estimated_time": "45m",
+    "objectives": [
+      {
+        "id": "obj_cs_travel_crime",
+        "type": "travel",
+        "target": "crime",
+        "required_count": 1,
+        "description": "Travel to the crime world via the Ring of Doors."
+      },
+      {
+        "id": "obj_cs_talk_jax",
+        "type": "talk_to",
+        "target": "jax_rivera",
+        "world_id": "crime",
+        "required_count": 1,
+        "description": "Speak with Jax Rivera about Kane as liaison — not as rumor, as blood ledger."
+      },
+      {
+        "id": "obj_cs_travel_superhero",
+        "type": "travel",
+        "target": "superhero",
+        "required_count": 1,
+        "description": "Travel to the superhero world."
+      },
+      {
+        "id": "obj_cs_observe_luminary",
+        "type": "observe",
+        "target": "luminary_vesper",
+        "world_id": "superhero",
+        "required_count": 1,
+        "description": "Observe Vesper Kane or Luminary operations without forcing a confrontation. Note what consolidates when he smiles."
+      },
+      {
+        "id": "obj_cs_return_isa",
+        "type": "talk_to",
+        "target": "scribe_isa_velt",
+        "world_id": "concordia-hub",
+        "required_count": 1,
+        "description": "Return to Isa with both field notes."
+      }
+    ],
+    "rewards": {
+      "xp": 180,
+      "skill_xp": { "lore": 50, "investigation": 40 },
+      "named_items": [
+        {
+          "id": "stake_twin_ledger",
+          "name": "Twin Ledger — Consolidation Stake",
+          "type": "relic",
+          "quality": "tier_3",
+          "tags": ["cross_world", "kane", "voss", "codex"],
+          "description": "Isa bound the Kane extract to a blank-faced copy of the Voss abstract. One side names consolidation in three markets. The other side refuses a first name. Together they are the stake: distributed agency versus the throat that wants it back.",
+          "quantity": 1
+        }
+      ]
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_cs_jax",
+        "content": "Jax does not say Kane's name twice. 'He sold the unit from a chair that looked like help. If your hub clerk wants a pattern, tell her the pattern has a payroll.'",
+        "unlocks_after": "obj_cs_talk_jax",
+        "release_mode": "on_completion"
+      },
+      {
+        "id": "bc_cs_named",
+        "content": "Isa files your notes under a new heading she finally writes in ink: Consolidation versus distributed agency. Beside it, smaller: Voss Question — ancestor sealed. She underlines sealed twice.",
+        "unlocks_after": "obj_cs_return_isa",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [],
+    "prerequisites": ["consolidation_01_two_ledgers"],
+    "tags": ["hub", "crime", "superhero", "cross_world", "vesper_kane", "voss", "consolidation", "distributed_agency"]
+  }
+]

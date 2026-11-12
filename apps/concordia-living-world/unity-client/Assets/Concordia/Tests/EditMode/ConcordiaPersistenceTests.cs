@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Concordia.GameplayCore.Persistence;
 using Concordia.WorldSimulation;
 using NUnit.Framework;
@@ -200,6 +201,77 @@ namespace Concordia.Tests
             FactionStandingBook.AddWitnessHeat(WorldId.Hub, "merchant_collective", 0.5f, "test-witness");
             Assert.AreEqual(-1f, FactionStandingBook.Get(WorldId.Hub, "merchant_collective"));
             Assert.AreEqual(0.5f, FactionStandingBook.WitnessHeat(WorldId.Hub, "merchant_collective"));
+        }
+
+        static PersistencePayload SavedProgress()
+        {
+            var payload = new PersistencePayload();
+            payload.player.hp = 64f;
+            payload.player.inventory.Add(new ItemIdentifierRecord { id = "kit-blade", displayName = "Ash Blade", kind = "weapon" });
+            payload.quests.completedIds.Add("onboarding-01");
+            var active = new ActiveQuestPersistenceRecord { questId = "onboarding-02", world = "Hub" };
+            active.objectiveDone.Add(true);
+            active.objectiveDone.Add(false);
+            payload.quests.active.Add(active);
+            payload.skills.group = "combat";
+            payload.skills.activeSkill = "spears";
+            payload.skills.trainedCount = 7;
+            return payload;
+        }
+
+        [Test]
+        public void PlayerQuestAndSkillSections_RoundTripThroughJson()
+        {
+            var json = JsonUtility.ToJson(new PersistenceEnvelope { schemaVersion = 1, payload = SavedProgress() });
+            var decoded = JsonUtility.FromJson<PersistenceEnvelope>(json).payload;
+
+            Assert.AreEqual(64f, decoded.player.hp);
+            Assert.AreEqual("kit-blade", decoded.player.inventory[0].id);
+            CollectionAssert.AreEqual(new[] { "onboarding-01" }, decoded.quests.completedIds);
+            Assert.AreEqual("onboarding-02", decoded.quests.active[0].questId);
+            CollectionAssert.AreEqual(new[] { true, false }, decoded.quests.active[0].objectiveDone);
+            Assert.AreEqual("spears", decoded.skills.activeSkill);
+            Assert.AreEqual(7, decoded.skills.trainedCount);
+        }
+
+        [Test]
+        public void SectionsNeverRestored_AreWrittenBackAsLoaded()
+        {
+            var loaded = SavedProgress();
+            loaded.world.activeWorld = "Hub";
+            var live = new PersistencePayload();
+            live.world.activeWorld = "Crime";
+
+            ConcordiaPersistenceService.KeepUnrestoredSections(live, loaded, new HashSet<string>());
+
+            Assert.AreEqual("onboarding-02", live.quests.active[0].questId);
+            Assert.AreEqual(7, live.skills.trainedCount);
+            Assert.AreEqual("kit-blade", live.player.inventory[0].id);
+            Assert.AreEqual("Crime", live.world.activeWorld, "world memory is always captured live");
+        }
+
+        [Test]
+        public void RestoredSections_KeepTheirLiveState()
+        {
+            var loaded = SavedProgress();
+            var live = new PersistencePayload();
+            live.quests.active.Add(new ActiveQuestPersistenceRecord { questId = "main-arc-01", world = "Hub" });
+
+            ConcordiaPersistenceService.KeepUnrestoredSections(
+                live, loaded, new HashSet<string> { ConcordiaPersistenceService.Section.Quests });
+
+            Assert.AreEqual(1, live.quests.active.Count);
+            Assert.AreEqual("main-arc-01", live.quests.active[0].questId);
+            Assert.AreEqual(7, live.skills.trainedCount, "skills were not restored, so the save keeps them");
+        }
+
+        [Test]
+        public void WithoutALoadedSave_LiveCaptureIsUntouched()
+        {
+            var live = new PersistencePayload();
+            live.skills.trainedCount = 2;
+            ConcordiaPersistenceService.KeepUnrestoredSections(live, null, new HashSet<string>());
+            Assert.AreEqual(2, live.skills.trainedCount);
         }
 }
 }

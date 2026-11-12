@@ -1,0 +1,499 @@
+[
+  {
+    "id": "cracks_in_the_compact",
+    "title": "Cracks in the Compact",
+    "description": "Maren Ashveil has been watching you since Tollan mentioned your name. She wants to meet — but not at the Guild outpost. She names a location in the archive quarter that isn't on any official map.",
+    "giver_npc_id": "archivist_maren",
+    "difficulty": "intermediate",
+    "domain": "concordia_main",
+    "estimated_time": "1h",
+    "objectives": [
+      {
+        "id": "obj_cic_1",
+        "type": "reach_location",
+        "target": "shadow_archive_entrance",
+        "required_count": 1,
+        "description": "Find the location Maren described"
+      },
+      {
+        "id": "obj_cic_2",
+        "type": "talk_to",
+        "target": "archivist_maren",
+        "required_count": 1,
+        "description": "Meet with Maren Ashveil"
+      },
+      {
+        "id": "obj_cic_3",
+        "type": "gather",
+        "target": "vault_manifest_fragment",
+        "required_count": 2,
+        "description": "Retrieve two manifest fragments from locations Maren identifies — before the Wardens' patrol reaches them"
+      },
+      {
+        "id": "obj_cic_4",
+        "type": "talk_to",
+        "target": "archivist_maren",
+        "required_count": 2,
+        "description": "Return to Maren with the fragments"
+      }
+    ],
+    "rewards": {
+      "xp": 200,
+      "gold": 50,
+      "skill_xp": {"lore_concordia": 75, "stealth": 40}
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_cic_1",
+        "content": "Maren told you: 'The Purge destroyed what was inconvenient. That is not the work of a rogue arsonist. That is the work of someone who knew exactly which vaults to open.' She would not yet say who.",
+        "unlocks_after": "obj_cic_2",
+        "release_mode": "on_completion"
+      },
+      {
+        "id": "bc_cic_2",
+        "content": "The manifest fragments describe texts that were not scholarship. They were records — commercial records, cartel arrangements, price-fixing going back fifty years. Someone burned an archive to protect a business ledger.",
+        "unlocks_after": "obj_cic_4",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["the_shadow_archive"],
+    "prerequisites": ["the_choice"],
+    "tags": ["main_arc", "concordia_main", "maren", "purge"]
+  },
+  {
+    "id": "the_shadow_archive",
+    "title": "The Shadow Archive",
+    "description": "Maren is ready to show you what she has been building for thirty years. But first she needs to know if you can be trusted. She gives you a test that looks like a small errand and isn't.",
+    "giver_npc_id": "archivist_maren",
+    "difficulty": "intermediate",
+    "domain": "concordia_main",
+    "estimated_time": "1.5h",
+    "objectives": [
+      {
+        "id": "obj_sa_1",
+        "type": "deliver",
+        "target": "sealed_package_maren",
+        "required_count": 1,
+        "description": "Deliver a sealed package to a contact in the warehouse district — without opening it"
+      },
+      {
+        "id": "obj_sa_2",
+        "type": "reach_location",
+        "target": "shadow_archive_vault",
+        "required_count": 1,
+        "description": "Return to Maren and be admitted to the shadow archive proper"
+      },
+      {
+        "id": "obj_sa_3",
+        "type": "gather",
+        "target": "archive_evidence_dossier",
+        "required_count": 1,
+        "description": "Locate the dossier Maren has compiled on the Purge's origins"
+      },
+      {
+        "id": "obj_sa_4",
+        "type": "talk_to",
+        "target": "archivist_maren",
+        "required_count": 3,
+        "description": "Spend time with Maren reviewing the evidence — this will take multiple conversations"
+      }
+    ],
+    "rewards": {
+      "xp": 300,
+      "gold": 75,
+      "skill_xp": {"lore_concordia": 100, "investigation": 60}
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_sa_1",
+        "content": "The sealed package contained nothing. It was a test of whether you would open it. Maren tells you this directly: 'I needed to know if curiosity outweighs discretion. In this city, the answer to that question has a body count.'",
+        "unlocks_after": "obj_sa_2",
+        "release_mode": "on_completion"
+      },
+      {
+        "id": "bc_sa_2",
+        "content": "The dossier names Commander Voss. The evidence is not conclusive on its own — but Maren has a source who was present. The source has not yet agreed to speak.",
+        "unlocks_after": "obj_sa_3",
+        "release_mode": "on_completion"
+      },
+      {
+        "id": "bc_sa_3",
+        "content": "Maren's final confidence: 'There is a full manifest in the Shadow Network's possession. A broker called Sael. If we had that manifest alongside the dossier, we would not need a witness. The evidence would speak for itself.'",
+        "unlocks_after": "obj_sa_4",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["warden_crackdown"],
+    "prerequisites": ["cracks_in_the_compact"],
+    "tags": ["main_arc", "concordia_main", "maren", "purge", "shadow_archive"]
+  },
+  {
+    "id": "warden_crackdown",
+    "title": "The Crackdown",
+    "description": "Voss knows something has shifted. New confiscation orders hit the archive quarter — broader than before, covering any 'unofficial repositories of pre-Year 70 materials.' The shadow archive has days, not weeks. Captain Rael is personally leading the search teams, and she looks like she would rather be somewhere else.",
+    "giver_npc_id": "captain_rael",
+    "difficulty": "intermediate",
+    "domain": "concordia_main",
+    "estimated_time": "1h",
+    "objectives": [
+      {
+        "id": "obj_wc_1",
+        "type": "talk_to",
+        "target": "captain_rael",
+        "required_count": 1,
+        "description": "Speak with Captain Rael before the search teams enter the archive quarter"
+      },
+      {
+        "id": "obj_wc_2",
+        "type": "deliver",
+        "target": "shadow_archive_relocation_bundle",
+        "required_count": 1,
+        "description": "Help Maren move the most critical archive materials to a secondary location before the search"
+      },
+      {
+        "id": "obj_wc_3",
+        "type": "reach_location",
+        "target": "archive_quarter_observation",
+        "required_count": 1,
+        "description": "Watch the Warden search from a safe vantage point"
+      },
+      {
+        "id": "obj_wc_4",
+        "type": "talk_to",
+        "target": "captain_rael",
+        "required_count": 2,
+        "description": "Find Rael after the search and speak with her again"
+      }
+    ],
+    "moral_branch": {
+      "description": "During the search, Rael finds a fragment of the shadow archive that wasn't moved in time. She looks at it for a long moment. Then she looks at you.",
+      "options": [
+        {
+          "id": "warn_rael",
+          "trigger": "tell_rael_truth",
+          "consequence": "You tell Rael what Maren has found. Rael is silent for a long time. She does not arrest you. She says: 'Give me three days.' She files a report saying the quarter was clean.",
+          "reputation_change": {"captain_rael_personal": 30, "iron_wardens": -15, "scholars_guild": 10}
+        },
+        {
+          "id": "deflect_rael",
+          "trigger": "deflect_rael",
+          "consequence": "You say nothing useful. Rael pockets the fragment. You don't know which way that goes.",
+          "reputation_change": {"captain_rael_personal": -5}
+        }
+      ]
+    },
+    "rewards": {
+      "xp": 350,
+      "gold": 80,
+      "skill_xp": {"stealth": 60, "social": 50}
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_wc_1",
+        "content": "Rael told you, before the search, that Voss had personally signed the search orders. 'He has never done that before. In fifteen years, he has never personally signed a search order.' She did not say what she thought it meant.",
+        "unlocks_after": "obj_wc_1",
+        "release_mode": "on_completion"
+      },
+      {
+        "id": "bc_wc_2",
+        "content": "After the search, Rael said: 'The suppressed witness statement I found three months ago. I think I know what it means now.' She walked away before you could ask her to explain.",
+        "unlocks_after": "obj_wc_4",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["broker_gambit"],
+    "prerequisites": ["the_shadow_archive"],
+    "tags": ["main_arc", "concordia_main", "rael", "wardens", "crackdown"]
+  },
+  {
+    "id": "broker_gambit",
+    "title": "The Broker's Gambit",
+    "description": "Yshe Dawnmere reaches out: Sael is moving. The manifest is being offered for sale and the bidding closes in 72 hours. The Wardens are bidding. So is someone from the Merchant Collective, acting without Cade's knowledge. If the Wardens buy it, it disappears. If the Merchants buy it, it becomes leverage — a different kind of buried. You have a third option.",
+    "giver_npc_id": "lorekeeper_yshe",
+    "difficulty": "advanced",
+    "domain": "concordia_main",
+    "estimated_time": "1.5h",
+    "objectives": [
+      {
+        "id": "obj_bg_1",
+        "type": "talk_to",
+        "target": "broker_sael",
+        "required_count": 1,
+        "description": "Find Sael in the shadow market and make contact"
+      },
+      {
+        "id": "obj_bg_2",
+        "type": "gather",
+        "target": "bid_currency",
+        "required_count": 500,
+        "description": "Raise enough currency to participate in the bidding (or find another way to convince Sael)"
+      },
+      {
+        "id": "obj_bg_3",
+        "type": "talk_to",
+        "target": "broker_sael",
+        "required_count": 2,
+        "description": "Return to Sael with your offer"
+      },
+      {
+        "id": "obj_bg_4",
+        "type": "deliver",
+        "target": "vault_manifest_complete",
+        "required_count": 1,
+        "description": "Secure the manifest"
+      }
+    ],
+    "moral_branch": {
+      "description": "When you meet Sael the second time, they make an unexpected offer: 'Forget the auction. I will give you the manifest for nothing. In exchange, you go public with it in a way that cannot be traced to me.' They are not being altruistic — or not entirely.",
+      "options": [
+        {
+          "id": "accept_sael_terms",
+          "trigger": "accept_sael_free",
+          "consequence": "You accept. Sael gives you the manifest and tells you something you didn't know: 'I was eight years old when they burned the archive. My mother worked in Vault Twelve.' You understand, finally, that this was never just business.",
+          "reputation_change": {"shadow_network": 20, "broker_sael_personal": 40}
+        },
+        {
+          "id": "pay_sael",
+          "trigger": "pay_market_price",
+          "consequence": "You pay. Sael takes the money with an expression you can't read. You get the manifest with no strings attached — and no understanding of why Sael was selling it.",
+          "reputation_change": {"shadow_network": 5}
+        }
+      ]
+    },
+    "rewards": {
+      "xp": 500,
+      "gold": 0,
+      "skill_xp": {"negotiation": 80, "lore_concordia": 60}
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_bg_1",
+        "content": "The manifest is complete. It lists every text destroyed in the Purge, with cross-references to the commercial records they documented. The Trade War cartel arrangements span thirty years and implicate seven prominent merchant families. And signed, in the margin of the destruction order: 'Authorized — A. Voss.'",
+        "unlocks_after": "obj_bg_4",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["the_merchants_dilemma"],
+    "prerequisites": ["warden_crackdown"],
+    "tags": ["main_arc", "concordia_main", "sael", "manifest", "shadow_network"]
+  },
+  {
+    "id": "the_merchants_dilemma",
+    "title": "The Merchant's Dilemma",
+    "description": "Factor Cade received an anonymous summary of what the manifest contains. She wants to meet — alone, outside the Collective offices. She already knows about the cartel arrangements. She has known, in pieces, for years. Now she has to decide whether Concordia's economic stability is worth protecting with a lie.",
+    "giver_npc_id": "factor_cade",
+    "difficulty": "advanced",
+    "domain": "concordia_main",
+    "estimated_time": "1h",
+    "objectives": [
+      {
+        "id": "obj_md_1",
+        "type": "talk_to",
+        "target": "factor_cade",
+        "required_count": 1,
+        "description": "Meet with Factor Cade at the location she specified"
+      },
+      {
+        "id": "obj_md_2",
+        "type": "talk_to",
+        "target": "factor_cade",
+        "required_count": 2,
+        "description": "Give Cade enough time to process what you are telling her — this requires multiple conversations"
+      },
+      {
+        "id": "obj_md_3",
+        "type": "reach_location",
+        "target": "collective_archives",
+        "required_count": 1,
+        "description": "Help Cade locate the original Year 40 cartel documents in the Collective's own archive"
+      },
+      {
+        "id": "obj_md_4",
+        "type": "talk_to",
+        "target": "factor_cade",
+        "required_count": 3,
+        "description": "Hear Cade's decision"
+      }
+    ],
+    "moral_branch": {
+      "description": "Cade has reached her decision. She will not cover for the cartel arrangements — they were made by people before her time. But she asks you to let her make the disclosure on the Collective's terms, not through a public scandal.",
+      "options": [
+        {
+          "id": "trust_cade",
+          "trigger": "agree_managed_disclosure",
+          "consequence": "You agree. Cade issues a voluntary disclosure to the city council, acknowledging historical cartel activity and proposing reparations. The Collective loses prestige but retains legitimacy. Cade gains your trust.",
+          "reputation_change": {"merchant_collective": 10, "factor_cade_personal": 35, "scholars_guild": 15}
+        },
+        {
+          "id": "go_public_anyway",
+          "trigger": "refuse_managed",
+          "consequence": "You go public without Cade. The disclosure causes market panic. The Collective fractures. Cade does not forgive this but concedes that you may have been right.",
+          "reputation_change": {"merchant_collective": -25, "factor_cade_personal": -20, "iron_wardens": -10, "scholars_guild": 20}
+        }
+      ]
+    },
+    "rewards": {
+      "xp": 450,
+      "gold": 100,
+      "skill_xp": {"social": 70, "negotiation": 60}
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_md_1",
+        "content": "Cade said: 'You understand that if this becomes public in the wrong way, three generations of merchants lose their livelihoods on the basis of what their grandparents arranged.' Then: 'You also understand that someone burned a building full of books to protect it.'",
+        "unlocks_after": "obj_md_2",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["the_reckoning"],
+    "prerequisites": ["broker_gambit"],
+    "tags": ["main_arc", "concordia_main", "cade", "merchants", "moral_choice"]
+  },
+  {
+    "id": "the_reckoning",
+    "title": "The Reckoning",
+    "description": "The evidence is assembled. Maren has the dossier. You have the manifest. Rael has the suppressed witness statement. Cade has made her disclosure or it has already been made for her. Voss knows what is coming. He has sent you a message asking for a meeting — before it goes to the council.",
+    "giver_npc_id": "warden_voss",
+    "difficulty": "advanced",
+    "domain": "concordia_main",
+    "estimated_time": "1.5h",
+    "objectives": [
+      {
+        "id": "obj_tr_1",
+        "type": "talk_to",
+        "target": "warden_voss",
+        "required_count": 1,
+        "description": "Meet with Commander Voss"
+      },
+      {
+        "id": "obj_tr_2",
+        "type": "talk_to",
+        "target": "archivist_maren",
+        "required_count": 1,
+        "description": "Bring Maren into the meeting — or tell her what Voss said"
+      },
+      {
+        "id": "obj_tr_3",
+        "type": "talk_to",
+        "target": "captain_rael",
+        "required_count": 1,
+        "description": "Get Rael's decision on the suppressed statement"
+      },
+      {
+        "id": "obj_tr_4",
+        "type": "reach_location",
+        "target": "city_council_chamber",
+        "required_count": 1,
+        "description": "Bring the assembled evidence before the city council"
+      }
+    ],
+    "moral_branch": {
+      "description": "Voss does not deny it. He explains — at length, without excuse — why he did what he did. He believed it was the only way to prevent a war. He asks you: 'Was I wrong?'",
+      "options": [
+        {
+          "id": "condemn_voss",
+          "trigger": "condemn",
+          "consequence": "You bring the full case to the council. Voss is removed from command. Rael is appointed acting commander. The truth is known. The city survives. Whether it heals is a longer question.",
+          "reputation_change": {"iron_wardens": -20, "scholars_guild": 30, "captain_rael_personal": 20}
+        },
+        {
+          "id": "partial_truth",
+          "trigger": "partial_truth",
+          "consequence": "You release the commercial records but let the Purge authorization remain ambiguous. Voss retires quietly. Maren knows what you did and why. She does not thank you.",
+          "reputation_change": {"iron_wardens": 5, "scholars_guild": -15, "archivist_maren_personal": -25}
+        },
+        {
+          "id": "full_truth_mercy",
+          "trigger": "full_truth_mercy",
+          "consequence": "You release the full truth and argue publicly for Voss's right to explain himself before judgment. The council hears him. The outcome is uncertain. Rael says: 'I did not expect that from you.'",
+          "reputation_change": {"iron_wardens": 5, "scholars_guild": 20, "captain_rael_personal": 30, "archivist_maren_personal": 15}
+        }
+      ]
+    },
+    "rewards": {
+      "xp": 750,
+      "gold": 200,
+      "skill_xp": {"social": 100, "lore_concordia": 100}
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_tr_1",
+        "content": "Voss said: 'I was thirty-four years old. I had been a Warden for twelve years. I believed that what I was protecting was worth more than what I was destroying.' He paused. 'I am no longer certain that the thing I was protecting exists.'",
+        "unlocks_after": "obj_tr_1",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["a_new_compact"],
+    "prerequisites": ["the_merchants_dilemma"],
+    "tags": ["main_arc", "concordia_main", "voss", "rael", "reckoning", "climax"]
+  },
+  {
+    "id": "a_new_compact",
+    "title": "A New Compact",
+    "description": "The old order has fractured. The Wardens are in disarray. The Merchants are restructuring. The Scholars have their vindication — and Maren is exhausted in a way that looks like relief. The city needs to decide what comes next. Kael, your fellow traveler, finds you in the market and says: 'I think they need someone who doesn't belong to any of them to help write the new rules.'",
+    "giver_npc_id": "wanderer_kael",
+    "difficulty": "master",
+    "domain": "concordia_main",
+    "estimated_time": "2h",
+    "objectives": [
+      {
+        "id": "obj_anc_1",
+        "type": "talk_to",
+        "target": "archivist_maren",
+        "required_count": 1,
+        "description": "Speak with Maren about what the Scholars want from the new compact"
+      },
+      {
+        "id": "obj_anc_2",
+        "type": "talk_to",
+        "target": "captain_rael",
+        "required_count": 1,
+        "description": "Speak with Rael about what the Wardens need to survive as an institution worth keeping"
+      },
+      {
+        "id": "obj_anc_3",
+        "type": "talk_to",
+        "target": "factor_cade",
+        "required_count": 1,
+        "description": "Speak with Cade about what the Collective can commit to"
+      },
+      {
+        "id": "obj_anc_4",
+        "type": "talk_to",
+        "target": "broker_sael",
+        "required_count": 1,
+        "description": "Speak with Sael about the Shadow Network's terms — or their absence"
+      },
+      {
+        "id": "obj_anc_5",
+        "type": "reach_location",
+        "target": "founding_compact_hall",
+        "required_count": 1,
+        "description": "Bring the four factions together in the hall where the original Compact was signed"
+      }
+    ],
+    "rewards": {
+      "xp": 1000,
+      "gold": 500,
+      "skill_xp": {"social": 150, "lore_concordia": 150, "negotiation": 100},
+      "title": "Architect of the New Compact"
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_anc_1",
+        "content": "Maren said: 'What I wanted for thirty years was for the truth to be known. I have that now. I find that I do not know what I want next. I think that means I will have to find out, like everyone else.' She smiled. It was the first time you had seen her smile.",
+        "unlocks_after": "obj_anc_1",
+        "release_mode": "on_completion"
+      },
+      {
+        "id": "bc_anc_2",
+        "content": "Sael said, at the end: 'The Network does not sign compacts. We witness them.' They were there when the first Compact was signed, sixty years ago. They said nothing then either.",
+        "unlocks_after": "obj_anc_4",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [],
+    "prerequisites": ["the_reckoning"],
+    "tags": ["main_arc", "concordia_main", "epilogue", "new_compact"]
+  }
+]

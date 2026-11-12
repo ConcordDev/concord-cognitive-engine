@@ -270,11 +270,11 @@ namespace Concordia
 
             Bosses = LoadArray<BossRoot, BossEncounter>("BOSSES_AND_RAIDS", root => root?.encounters) ?? Array.Empty<BossEncounter>();
             Companions = LoadArray<CompanionRoot, Companion>("COMPANIONS", root => root?.companions) ?? Array.Empty<Companion>();
-            var vendorRoot = LoadRoot<VendorRoot>("VENDORS_AND_ITEMS");
+            var vendorRoot = LoadRoot<VendorRoot>("Concordia/ContentBind/VENDORS_AND_ITEMS");
             Items = vendorRoot?.items ?? Array.Empty<Item>();
             Vendors = vendorRoot?.vendors ?? Array.Empty<Vendor>();
             Density = LoadArray<DensityRoot, DensityWorld>("DENSITY_TABLES", root => root?.worlds) ?? Array.Empty<DensityWorld>();
-            var mountRoot = LoadRoot<MountRoot>("MOUNT_AND_VEHICLE");
+            var mountRoot = LoadRoot<MountRoot>("Concordia/ContentBind/MOUNT_AND_VEHICLE");
             Mounts = mountRoot?.mounts ?? Array.Empty<Mount>();
             Vehicles = mountRoot?.vehicles ?? Array.Empty<Vehicle>();
 
@@ -399,9 +399,10 @@ namespace Concordia
         static string LoadEditorFallback(string resourcePath)
         {
 #if UNITY_EDITOR
-            var path = "Assets/Concordia/Generated/NativeBible/" + resourcePath.Substring("Concordia/ContentBind/NativeBible/".Length);
-            if (resourcePath.StartsWith("Concordia/ContentBind/NativeBible/", StringComparison.Ordinal))
+            const string nativePrefix = "Concordia/ContentBind/NativeBible/";
+            if (resourcePath.StartsWith(nativePrefix, StringComparison.Ordinal))
             {
+                var path = "Assets/Concordia/Generated/NativeBible/" + resourcePath.Substring(nativePrefix.Length);
                 var asset = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
                 return asset ? asset.text : null;
             }

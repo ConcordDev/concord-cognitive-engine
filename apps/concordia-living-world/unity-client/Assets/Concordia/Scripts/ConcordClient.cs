@@ -18,7 +18,7 @@ namespace Concordia
     /// </summary>
     public class ConcordClient : MonoBehaviour
     {
-        [SerializeField] string gatewayUrl = "wss://live.concordos.ai/unity-ws";
+        [SerializeField] string gatewayUrl = "wss://concord-os.org/unity-ws";
         [SerializeField] string kitchenUrl = "ws://127.0.0.1:5050/unity-ws";
         [SerializeField] string worldId = "concordia-hub";
         [SerializeField] string bearerToken = "";
@@ -49,6 +49,15 @@ namespace Concordia
         public static string StatusJson { get; private set; } = "{\"ok\":false,\"reason\":\"no_gateway\"}";
         public static string LastReason { get; private set; } = "no_gateway";
         public static string HudLine { get; private set; } = "";
+
+        /// <summary>
+        /// B-09: the LeanPlay retry gate. Defaults false and stays false until the boot is idle,
+        /// so the loop in <see cref="Update"/> cannot handshake during the boot window.
+        /// ConcordiaGame.StagedConnect sets it true. Defaulting false also makes the gate survive
+        /// a play-mode domain reload (statics reset to this initialiser), which would otherwise
+        /// silently re-open the socket mid-boot.
+        /// </summary>
+        public static bool LeanAutoConnect;
         public static string FieldBecause { get; private set; } = "";
         public static int AbandonedCount { get; private set; }
         public static string SnapshotJson { get; private set; } = "";
@@ -66,6 +75,33 @@ namespace Concordia
             new System.Collections.Concurrent.ConcurrentQueue<System.Action>();
 
         public string WorldId => worldId;
+
+        string _activeUrl;
+
+        /// <summary>
+        /// HTTP origin of the gateway this session is connected to, for ConcordRest.
+        /// Null while offline, so REST can never reach a server the socket did not.
+        /// </summary>
+        public string RestOrigin => Connected ? HttpOrigin(_activeUrl) : null;
+
+        /// <summary>
+        /// The session's bearer for REST, read in place and never copied or logged.
+        /// Null when there is none: the web build's login is the site cookie, which the
+        /// browser attaches to same-origin requests itself.
+        /// </summary>
+        internal string RestBearer => string.IsNullOrEmpty(bearerToken) ? null : bearerToken;
+
+        /// <summary>ws://host:port/path → http://host:port, wss → https. Null for anything else.</summary>
+        public static string HttpOrigin(string wsUrl)
+        {
+            if (string.IsNullOrWhiteSpace(wsUrl)) return null;
+            if (!Uri.TryCreate(wsUrl.Trim(), UriKind.Absolute, out var u)) return null;
+            string scheme;
+            if (u.Scheme == "ws") scheme = "http";
+            else if (u.Scheme == "wss") scheme = "https";
+            else return null;
+            return scheme + "://" + u.Authority;
+        }
         /// <summary>The authenticated account id ("" until the gateway says hello).</summary>
         public string UserId => _userId;
 
@@ -98,6 +134,10 @@ namespace Concordia
 #if UNITY_WEBGL && !UNITY_EDITOR
             if (string.IsNullOrWhiteSpace(gatewayUrl)) return;
 #endif
+            // B-09: in LeanPlay the retry loop must not open the socket during the boot
+            // window. ConcordiaGame re-enables this once the hero is dressed and the world
+            // has been idle (StagedConnect), so the handshake happens exactly once, late.
+            if (ConcordiaHost.LeanPlay && !LeanAutoConnect) return;
             if (Time.unscaledTime < _retryAt) return;
             _retryAt = Time.unscaledTime + 8f;
             _ = EnsureConnected();
@@ -188,6 +228,7 @@ namespace Concordia
                 MarkDisconnected();
                 return;
             }
+            _activeUrl = gatewayUrl;
             ConcordWsConnect(gatewayUrl);
 #else
 #if UNITY_EDITOR
@@ -207,6 +248,7 @@ namespace Concordia
                     lock (_preAuth) _preAuth.Clear();
                     _ws = new ClientWebSocket();
                     await _ws.ConnectAsync(new Uri(url), _cts.Token);
+                    _activeUrl = url;
                     last = null;
                     break;
                 }
@@ -253,6 +295,7 @@ namespace Concordia
                     lock (_preAuth) _preAuth.Clear();
                     _ws = new ClientWebSocket();
                     await _ws.ConnectAsync(new Uri(url), _cts.Token);
+                    _activeUrl = url;
                     await AfterOpen();
                     return Connected;
                 }
@@ -307,6 +350,7 @@ namespace Concordia
                     await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
                     await SendEvt("party:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                     await SendEvt("world:snapshot", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+                    await SendEvt("npc:residents", "{\"worldId\":\"" + Escape(worldId) + "\",\"limit\":96}");
                     LastReason = "lean_connected";
                     StatusJson = "{\"ok\":true,\"reason\":\"lean_connected\"}";
                     Debug.Log("[Concordia] LeanPlay: WS full handshake (ApplyScene staged; AgentBody later)");
@@ -320,6 +364,7 @@ namespace Concordia
                 await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
                 await SendEvt("party:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                 await SendEvt("world:snapshot", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+                await SendEvt("npc:residents", "{\"worldId\":\"" + Escape(worldId) + "\",\"limit\":96}");
                 await LensRun("skills", "mastery");
                 LastReason = "awaiting_kingdom";
                 StatusJson = "{\"ok\":false,\"reason\":\"awaiting_kingdom\"}";
@@ -613,7 +658,17 @@ namespace Concordia
             }
             if (evt == "npc:conversation-bid")
             {
-                RunMain(() => WorldClock.NoteAct("voices nearby"));
+                RunMain(() => HubResidents.PlayConversation(text));
+                return;
+            }
+            if (evt == "world:aerial-traffic")
+            {
+                RunMain(() => AerialTraffic.Apply(text));
+                return;
+            }
+            if (evt == "npc:residents")
+            {
+                RunMain(() => HubResidents.Apply(text));
                 return;
             }
             if (evt == "gift:result")
@@ -1126,27 +1181,8 @@ namespace Concordia
             var w = JsonNestedString(json, "type");
             if (string.IsNullOrEmpty(w)) w = JsonString(json, "type");
             WorldClock.BindKernelWeather(w);
-            if (ConcordiaHost.LeanPlay)
-            {
-                // Gossip live; PresentKernelCreatures/Ecology still skip (compile storm).
-                var leanGossip = JsonArrayCount(json, "gossip");
-                if (leanGossip > 0)
-                {
-                    var shown = 0;
-                    ForEachArrayObject(json, "gossip", row =>
-                    {
-                        var summary = JsonString(row, "summary");
-                        if (string.IsNullOrEmpty(summary)) return;
-                        if (shown < 3)
-                        {
-                            WorldClock.PushFeed("gossip", summary);
-                            shown++;
-                        }
-                    });
-                }
-                Debug.Log("[Concordia] LeanPlay: ApplyWorldSnapshot soft (gossip on; skip creatures/ecology)");
-                return;
-            }
+            // LeanPlay used to stop here (gossip only) to dodge the mid-Play recompile
+            // storm. #1470 removed that recompile, so Lean presents the same world as Full.
             var gossipN = JsonArrayCount(json, "gossip");
             if (gossipN > 0)
             {
@@ -1912,6 +1948,14 @@ if (JsonFlagFalse(json, "ok"))
                 + "\",\"x\":" + x.ToString(System.Globalization.CultureInfo.InvariantCulture)
                 + ",\"z\":" + z.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}");
         }
+
+        /// <summary>A server creature strikes this player; answered by npc:attack:ack.</summary>
+        public Task SendNpcAttack(string npcId) =>
+            SendEvt("npc:attack", "{\"npcId\":\"" + Escape(npcId) + "\"}");
+
+        /// <summary>Held guard: arms the server block window for ~0.8 s (combat:block:ack).</summary>
+        public Task SendBlock(bool active) =>
+            SendEvt("combat:block", active ? "{\"active\":true}" : "{\"active\":false}");
 
         public Task SendDodge(bool parry = false, string action = null)
         {

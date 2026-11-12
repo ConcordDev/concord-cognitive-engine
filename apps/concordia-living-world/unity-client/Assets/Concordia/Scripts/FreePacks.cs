@@ -369,6 +369,7 @@ namespace Concordia
             {
                 go = Object.Instantiate(prefab, parent);
                 go.name = stem;
+                StripSceneCameras(go);
                 go.SetActive(true);
             }
             else
@@ -404,7 +405,63 @@ namespace Concordia
             }
             else if (WantsSolid(kind, maxDim)) MakeWalkable(go);
             else StripColliders(go);
+            CastShadowsFromCoarseLod(go);
             return go;
+        }
+
+        /// The shadow pass drew Mesh-LOD trees at near-full detail: 75 PolyHaven
+        /// jacarandas (3.86M triangles each) put ~96M triangles into the shadow
+        /// map every frame. A 2048 map over the URP shadow distance resolves about
+        /// a decimetre per texel, so a coarse LOD casts the same shadow. The visible
+        /// renderer keeps its own LOD selection and stops casting; a ShadowsOnly
+        /// child casts from the deepest LOD where every submesh still keeps 1% of
+        /// its LOD0 indices (deeper levels drop the jacaranda trunk to 8 triangles).
+        public const string ShadowLodName = "ShadowLod";
+
+        /// The ShadowsOnly child made by CastShadowsFromCoarseLod. Code that forces
+        /// shadow casting back on must skip it, or it draws as visible geometry.
+        public static bool IsShadowLod(Renderer r) => r && r.gameObject.name == ShadowLodName;
+
+        /// The visible renderer whose shadow comes from a ShadowLod child.
+        public static bool HasShadowLod(Renderer r) => r && r.transform.Find(ShadowLodName);
+
+        public static void CastShadowsFromCoarseLod(GameObject go)
+        {
+            if (!go) return;
+            foreach (var r in go.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (!r || r.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.On) continue;
+                if (IsShadowLod(r) || HasShadowLod(r)) continue;
+                var mf = r.GetComponent<MeshFilter>();
+                var mesh = mf ? mf.sharedMesh : null;
+                if (!mesh || mesh.lodCount < 2) continue;
+                int lod = CoarsestFaithfulLod(mesh);
+                if (lod < 1) continue;
+                var caster = new GameObject(ShadowLodName);
+                caster.transform.SetParent(r.transform, false);
+                caster.AddComponent<MeshFilter>().sharedMesh = mesh;
+                var cr = caster.AddComponent<MeshRenderer>();
+                cr.sharedMaterials = r.sharedMaterials;
+                cr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+                cr.receiveShadows = false;
+                cr.forceMeshLod = (short)lod;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+        }
+
+        static int CoarsestFaithfulLod(Mesh mesh)
+        {
+            int pick = 0;
+            for (int l = 1; l < mesh.lodCount; l++)
+            {
+                for (int s = 0; s < mesh.subMeshCount; s++)
+                {
+                    long full = mesh.GetLod(s, 0).indexCount;
+                    if (full > 0 && mesh.GetLod(s, l).indexCount * 100L < full) return pick;
+                }
+                pick = l;
+            }
+            return pick;
         }
 
         /// <summary>
@@ -452,6 +509,27 @@ namespace Concordia
                     || s.Contains("furnace") || s.Contains("cauldron"))
                 return true;
             return maxDim >= 2.4f;
+        }
+
+        /// A model exported with its authoring scene (Blender's Camera node) carries
+        /// a live Camera that renders the whole world to the screen again. Pack
+        /// content is never a viewpoint, so the spawned copy drops it. The
+        /// Quaternius animal FBXs did this: every flock bird and Delve boss added
+        /// a full-resolution camera. Their importers now skip cameras and lights;
+        /// this keeps the next pack from doing the same.
+        public static void StripSceneCameras(GameObject go)
+        {
+            if (!go) return;
+            foreach (var listener in go.GetComponentsInChildren<AudioListener>(true))
+                if (listener) Object.Destroy(listener);
+            foreach (var cam in go.GetComponentsInChildren<Camera>(true))
+            {
+                if (!cam) continue;
+                cam.enabled = false;
+                var urp = cam.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+                if (urp) Object.Destroy(urp);
+                Object.Destroy(cam);
+            }
         }
 
         public static void StripColliders(GameObject go)
