@@ -35,6 +35,11 @@ const STATUS_COLOR: Record<string, string> = {
   draft: 'text-zinc-400', upcoming: 'text-sky-400', active: 'text-emerald-400', past: 'text-zinc-600',
 };
 
+/** The page header's "Plan a trip" CTA fires this event (FIX-travel-002):
+ *  the trips tab is the page's default tab, so switching to it changed
+ *  nothing on screen — the CTA now also opens the new-trip form here. */
+export const TRAVEL_NEW_TRIP_EVENT = 'concord:travel-new-trip';
+
 export function TripWorkspaceSection({ onChange }: { onChange?: () => void } = {}) {
   const [trips, setTrips] = useState<DomainTrip[]>([]);
   const [shared, setShared] = useState<SharedTrip[]>([]);
@@ -57,6 +62,12 @@ export function TripWorkspaceSection({ onChange }: { onChange?: () => void } = {
   }, [onChange]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  useEffect(() => {
+    const open = () => { setSelected(null); setShowAdd(true); };
+    window.addEventListener(TRAVEL_NEW_TRIP_EVENT, open);
+    return () => window.removeEventListener(TRAVEL_NEW_TRIP_EVENT, open);
+  }, []);
 
   const createTrip = useCallback(async () => {
     if (!form.name.trim() || !form.destination.trim()) {
