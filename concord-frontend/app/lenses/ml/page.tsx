@@ -17,7 +17,7 @@ import { AutoMLPanel } from '@/components/ml/AutoMLPanel';
 import { DeploymentsPanel } from '@/components/ml/DeploymentsPanel';
 import { SpacesPanel } from '@/components/ml/SpacesPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Brain, TestTube, Beaker, Database, Trophy, Wand2, Rocket, Sparkles,
   BookOpen, SlidersHorizontal, GitBranch,
@@ -51,7 +51,24 @@ export default function MLLensPage() {
   useLensNav('ml');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('ml');
 
-  const [tab, setTab] = useState<Tab>('hub');
+  // Tab state lives in the URL (?tab=datasets) so a reload lands back
+  // on the same tab instead of resetting to Model Hub (FIX-ml-010).
+  // Read once at first render; written back with history.replaceState —
+  // the AssemblyViewer's pattern — so other params survive and no
+  // navigation or remount is triggered.
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof window === 'undefined') return 'hub';
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return TABS.some((x) => x.id === t) ? (t as Tab) : 'hub';
+  });
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (tab === 'hub') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', tab);
+    window.history.replaceState(window.history.state, '', url.toString());
+  }, [tab]);
+
   const [playgroundModel, setPlaygroundModel] = useState('');
 
   useLensCommand(
