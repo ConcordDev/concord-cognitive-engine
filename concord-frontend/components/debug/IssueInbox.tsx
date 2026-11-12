@@ -255,12 +255,12 @@ export function IssueInbox() {
             value={form.type}
             onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
             placeholder="Error type"
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+            className="min-w-0 w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
           />
           <select
             value={form.level}
             onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
+            className="min-w-0 w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"
           >
             <option value="error">error</option>
             <option value="fatal">fatal</option>
@@ -279,14 +279,14 @@ export function IssueInbox() {
             value={form.culprit}
             onChange={(e) => setForm((f) => ({ ...f, culprit: e.target.value }))}
             placeholder="Culprit (file/fn)"
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+            className="min-w-0 w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
           />
           <input
             value={form.release}
             onChange={(e) => setForm((f) => ({ ...f, release: e.target.value }))}
             placeholder="Release (e.g. v1.2.0)"
             list="debug-release-names"
-            className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
+            className="min-w-0 w-full px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
           />
           <datalist id="debug-release-names">
             {releaseNames.map((v) => (
