@@ -181,7 +181,10 @@ export function RefreshSchedule() {
           />
         ) : (
           <div className="overflow-x-auto rounded border border-fuchsia-900/40">
-            <table className="w-full font-mono text-xs">
+            {/* FIX-lattice-008: a min-width lets the wrapper's scroll
+                engage — as a bare w-full table the columns squeezed until
+                the last one (Enabled) clipped at 390px. */}
+            <table className="w-full min-w-[560px] font-mono text-xs">
               <thead className="bg-fuchsia-950/40 text-fuchsia-400">
                 <tr>
                   <th className="px-3 py-2 text-left">Brain</th>
