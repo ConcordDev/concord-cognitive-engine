@@ -184,7 +184,9 @@ export function ManufacturingActionPanel() {
 
   return (
     <div className="rounded-lg border border-amber-500/20 bg-zinc-950/60 p-3 space-y-3">
-      <header className="flex items-center gap-2 border-b border-amber-500/10 pb-2">
+      {/* FIX-manufacturing-004: the header wraps — the trailing badge
+          previously crowded the title on a 390px viewport. */}
+      <header className="flex flex-wrap items-center gap-2 border-b border-amber-500/10 pb-2">
         <Factory className="h-4 w-4 text-amber-400" />
         <h3 className="text-sm font-semibold text-white">Shop-floor bench</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">OEE · BOM · TRIR · scheduler</span>
