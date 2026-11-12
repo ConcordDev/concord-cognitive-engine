@@ -188,10 +188,20 @@ export function EventActionRail({ event }: { event: EventLite }) {
         name: 'do',
         input: { task, maxTurns: 6 },
       });
-      const reply = r.data?.result?.reply
+      // FIX-calendar-014: the agent loop returns its text as `answer`
+      // (lib/chat-agent.js runAgentLoop) — this rail read only
+      // reply/summary/output, so a completed prep always landed in the
+      // "returned empty" branch and the prep never showed. Read the
+      // field the loop actually returns, the same chain the calendar's
+      // own ActionPanel and every other lens panel use; a failed run
+      // says it failed instead of claiming emptiness.
+      const reply = r.data?.result?.answer
+        ?? r.data?.result?.reply
         ?? r.data?.result?.summary
         ?? r.data?.result?.output;
-      if (reply) {
+      if (r.data?.ok === false && !reply) {
+        err(r.data?.error || r.data?.result?.error || 'Agent prep failed.');
+      } else if (reply) {
         setAgentFindings(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Agent finished prep.');
       } else {
