@@ -212,9 +212,22 @@ export default function WorldObservatoryPage() {
   const [lastManualRefresh, setLastManualRefresh] = useState<Date | null>(null);
 
   const [selectedWorldId, setSelectedWorldId] = useState<string | null>(null);
+  const [worldQuery, setWorldQuery] = useState('');
+  const [factionQuery, setFactionQuery] = useState('');
+  const [districtQuery, setDistrictQuery] = useState('');
   const [detail, setDetail] = useState<WorldDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+
+  const worldNeedle = worldQuery.trim().toLowerCase();
+  const visibleWorlds = overview.filter((w) =>
+    !worldNeedle || `${w.name} ${w.worldId}`.toLowerCase().includes(worldNeedle));
+  const factionNeedle = factionQuery.trim().toLowerCase();
+  const visibleFactionStates = (detail?.factions.states ?? []).filter((s) =>
+    !factionNeedle || `${s.factionId} ${s.stance} ${s.phase ?? ''}`.toLowerCase().includes(factionNeedle));
+  const districtNeedle = districtQuery.trim().toLowerCase();
+  const visibleDistricts = (detail?.districts ?? []).filter((d) =>
+    !districtNeedle || `${d.name} ${d.lightingTag ?? ''}`.toLowerCase().includes(districtNeedle));
 
   // Tracks the in-flight worldId so a slow response for a since-deselected
   // world can't clobber the currently-selected world's detail panel.
@@ -281,6 +294,8 @@ export default function WorldObservatoryPage() {
   const selectWorld = useCallback(
     (worldId: string) => {
       setSelectedWorldId(worldId);
+      setFactionQuery('');
+      setDistrictQuery('');
       loadDetail(worldId);
     },
     [loadDetail],
@@ -436,8 +451,20 @@ export default function WorldObservatoryPage() {
             {overview.length === 0 ? (
               <p className="text-[11px] text-slate-400">No worlds detected on this instance.</p>
             ) : (
+              <>
+              <input
+                type="text"
+                value={worldQuery}
+                onChange={(e) => setWorldQuery(e.target.value)}
+                placeholder="Search worlds by name…"
+                aria-label="Search worlds"
+                className="mb-2.5 w-full min-h-[40px] rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100"
+              />
+              {visibleWorlds.length === 0 ? (
+                <p className="text-[11px] text-slate-400">No worlds match your search.</p>
+              ) : (
               <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" role="group" aria-label="World summary grid">
-                {overview.map((w) => {
+                {visibleWorlds.map((w) => {
                   const selected = w.worldId === selectedWorldId;
                   const stuck = w.stuckFactionSchedulers > 0;
                   return (
@@ -482,6 +509,8 @@ export default function WorldObservatoryPage() {
                   );
                 })}
               </div>
+              )}
+              </>
             )}
           </div>
 
@@ -554,8 +583,19 @@ export default function WorldObservatoryPage() {
                             ? ` · ${detail.factions.count - detail.factions.states.length} present without a strategy stance`
                             : ''}
                         </p>
+                        <input
+                          type="text"
+                          value={factionQuery}
+                          onChange={(e) => setFactionQuery(e.target.value)}
+                          placeholder="Filter factions by id or stance…"
+                          aria-label="Filter factions"
+                          className="w-full min-h-[40px] rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100"
+                        />
+                        {visibleFactionStates.length === 0 && (
+                          <p className="text-[11px] text-slate-400">No factions match your filter.</p>
+                        )}
                         <div className="grid gap-1.5 sm:grid-cols-2">
-                          {detail.factions.states.map((s) => (
+                          {visibleFactionStates.map((s) => (
                             <div key={s.factionId} className="rounded border border-fuchsia-500/20 bg-fuchsia-500/5 px-2.5 py-1.5 text-[11px]">
                               <div className="flex items-center justify-between">
                                 <span className="font-mono font-semibold text-fuchsia-200">{s.factionId}</span>
@@ -665,6 +705,15 @@ export default function WorldObservatoryPage() {
                     {detail.districts.length === 0 ? (
                       <p className="text-[11px] text-slate-400">No districts platted in this world yet.</p>
                     ) : (
+                      <>
+                      <input
+                        type="text"
+                        value={districtQuery}
+                        onChange={(e) => setDistrictQuery(e.target.value)}
+                        placeholder="Filter districts by name or lighting…"
+                        aria-label="Filter districts"
+                        className="mb-2 w-full min-h-[40px] rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100"
+                      />
                       <div className="overflow-x-auto">
                         <table className="w-full text-[11px]" aria-label="District density">
                           <caption className="sr-only">Per-district area, building count, and lighting tag</caption>
@@ -677,7 +726,7 @@ export default function WorldObservatoryPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {detail.districts.map((d) => (
+                            {visibleDistricts.map((d) => (
                               <tr key={d.id} className="border-b border-zinc-900">
                                 <td className="px-2 py-1 text-slate-200">{d.name}</td>
                                 <td className="px-2 py-1 text-right font-mono text-slate-300">
@@ -689,9 +738,13 @@ export default function WorldObservatoryPage() {
                                 <td className="px-2 py-1 text-slate-400">{d.lightingTag ?? '—'}</td>
                               </tr>
                             ))}
+                            {visibleDistricts.length === 0 && (
+                              <tr><td colSpan={4} className="px-2 py-2 text-slate-400">No districts match your filter.</td></tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
+                      </>
                     )}
                   </div>
 

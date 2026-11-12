@@ -153,6 +153,7 @@ interface LoadedWidget extends Widget { data?: WidgetData }
 
 function ReportBuilder({ eventNames }: { eventNames: string[] }) {
   const [dashboards, setDashboards] = useState<DashboardSummary[]>([]);
+  const [dashSort, setDashSort] = useState<'updated' | 'name-asc' | 'name-desc' | 'widgets'>('updated');
   // Draft persistence (A23 successor, Review 4 Addenda 5 + 8): the
   // dashboard-name draft rides the lens state store under a
   // dashboardDraft key — restored once on mount, re-persisted on
@@ -242,10 +243,31 @@ function ReportBuilder({ eventNames }: { eventNames: string[] }) {
 
       {/* Saved dashboards */}
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5">Saved dashboards</p>
+        <div className="flex items-center gap-2 mb-1.5">
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400">Saved dashboards</p>
+          {dashboards.length > 0 && (
+            <select
+              value={dashSort}
+              onChange={(e) => setDashSort(e.target.value as typeof dashSort)}
+              aria-label="Sort saved dashboards"
+              className={cn(INPUT, 'ml-auto w-auto min-h-[40px] text-xs')}
+            >
+              <option value="updated">Recently updated</option>
+              <option value="name-asc">Name A–Z</option>
+              <option value="name-desc">Name Z–A</option>
+              <option value="widgets">Most widgets</option>
+            </select>
+          )}
+        </div>
         {dashboards.length === 0 && <Empty text="No saved dashboards yet." />}
         <div className="space-y-1">
-          {dashboards.map((d) => (
+          {[...dashboards]
+            .sort((a, b) =>
+              dashSort === 'name-asc' ? a.name.localeCompare(b.name)
+              : dashSort === 'name-desc' ? b.name.localeCompare(a.name)
+              : dashSort === 'widgets' ? b.widgetCount - a.widgetCount
+              : String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')))
+            .map((d) => (
             <div key={d.id} className="flex items-center gap-2 text-xs">
               <button onClick={() => open(d.id)} className="flex-1 text-left text-zinc-200 hover:text-amber-300 truncate">
                 {d.name}
@@ -594,6 +616,7 @@ interface StreamEvent {
 function LiveStream({ eventNames }: { eventNames: string[] }) {
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [nameFilter, setNameFilter] = useState('');
+  const [eventOrder, setEventOrder] = useState<'newest' | 'oldest'>('newest');
   const [live, setLive] = useState(false);
   const [matched, setMatched] = useState(0);
   const [deleteError, setDeleteError] = useState('');
@@ -656,7 +679,16 @@ function LiveStream({ eventNames }: { eventNames: string[] }) {
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
         <div className="flex flex-wrap gap-1.5 items-center">
           <input list="ls-events" value={nameFilter} onChange={(e) => setNameFilter(e.target.value)}
-            placeholder="filter by event name" className={cn(INPUT, 'flex-1 min-w-[140px]')} />
+            placeholder="filter by event name" aria-label="Filter events by name" className={cn(INPUT, 'flex-1 min-w-[140px]')} />
+          <select
+            value={eventOrder}
+            onChange={(e) => setEventOrder(e.target.value as typeof eventOrder)}
+            aria-label="Event order"
+            className={cn(INPUT, 'w-auto min-h-[40px] text-xs')}
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
           <button onClick={() => { cursorRef.current = null; void poll(true); }} className={BTN_GHOST}>
             <RefreshCw className="w-3 h-3" />Refresh
           </button>
@@ -674,7 +706,7 @@ function LiveStream({ eventNames }: { eventNames: string[] }) {
       {events.length === 0 && <Empty text="No events yet — track events to populate the stream." />}
       {events.length > 0 && (
         <div className="bg-zinc-950 border border-zinc-800 rounded-lg max-h-72 overflow-y-auto divide-y divide-zinc-900">
-          {events.map((e) => (
+          {(eventOrder === 'oldest' ? [...events].reverse() : events).map((e) => (
             <div key={e.id} className="group px-2.5 py-1.5 text-[11px] font-mono">
               <div className="flex items-center gap-2">
                 <span className="text-amber-300 font-semibold">{e.name}</span>

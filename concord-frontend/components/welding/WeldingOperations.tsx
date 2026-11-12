@@ -637,6 +637,7 @@ function InvoiceRow({ invoice, onPaid }: { invoice: Invoice; onPaid: () => void 
 // ── WPS tab ─────────────────────────────────────────────────────────
 function WpsTab() {
   const [list, setList] = useState<Wps[]>([]);
+  const [wpsQuery, setWpsQuery] = useState('');
   const bumpOps = useContext(OpsRefreshCtx);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
@@ -684,6 +685,11 @@ function WpsTab() {
   };
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  const wpsNeedle = wpsQuery.trim().toLowerCase();
+  const visibleWps = list.filter((w) =>
+    !wpsNeedle
+    || `${w.wpsNumber} ${w.process} ${w.baseMetal} ${w.code} ${w.status}`.toLowerCase().includes(wpsNeedle));
+
   return (
     <div className="space-y-3">
       <div className="grid gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 sm:grid-cols-4">
@@ -706,9 +712,19 @@ function WpsTab() {
         {wpsError && <p role="alert" className="sm:col-span-4 text-[11px] text-rose-300">{wpsError}</p>}
       </div>
 
+      {list.length > 0 && (
+        <input
+          className={`${inputCls} w-full min-h-[40px]`}
+          placeholder="Search WPS records by number, process, metal, or code…"
+          aria-label="Search WPS records"
+          value={wpsQuery}
+          onChange={(e) => setWpsQuery(e.target.value)}
+        />
+      )}
+
       <div className="space-y-1.5">
         {busy && list.length === 0 && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
-        {list.map((w) => (
+        {visibleWps.map((w) => (
           <div key={w.id} className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-2.5">
             <div className="flex items-center justify-between">
               <div>
@@ -725,6 +741,7 @@ function WpsTab() {
           </div>
         ))}
         {!busy && list.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No WPS documents yet.</div>}
+        {!busy && list.length > 0 && visibleWps.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No WPS records match your search.</div>}
       </div>
 
       <PqrSection />
@@ -735,6 +752,7 @@ function WpsTab() {
 // ── PQR records — the qualification evidence a WPS stands on ────────
 function PqrSection() {
   const [list, setList] = useState<Pqr[]>([]);
+  const [pqrQuery, setPqrQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     pqrNumber: '', wpsNumber: '', process: 'SMAW', baseMetal: '', couponThickness: '',
@@ -770,6 +788,11 @@ function PqrSection() {
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const outcomeCls = (v?: string) => v === 'pass' ? 'bg-emerald-500/20 text-emerald-200' : v === 'fail' ? 'bg-rose-500/20 text-rose-200' : 'bg-zinc-700 text-zinc-300';
 
+  const pqrNeedle = pqrQuery.trim().toLowerCase();
+  const visiblePqr = list.filter((p) =>
+    !pqrNeedle
+    || `${p.pqrNumber} ${p.wpsNumber ?? ''} ${p.process} ${p.baseMetal} ${p.welder ?? ''} ${p.code}`.toLowerCase().includes(pqrNeedle));
+
   return (
     <div className="space-y-3 border-t border-zinc-800 pt-3">
       <div className="text-[10px] uppercase tracking-wider text-zinc-400">Procedure Qualification Records (PQR)</div>
@@ -796,8 +819,18 @@ function PqrSection() {
         {pqrError && <p role="alert" className="sm:col-span-4 text-[11px] text-rose-300">{pqrError}</p>}
       </div>
 
+      {list.length > 0 && (
+        <input
+          className={`${inputCls} w-full min-h-[40px]`}
+          placeholder="Search PQR records by number, process, metal, or welder…"
+          aria-label="Search PQR records"
+          value={pqrQuery}
+          onChange={(e) => setPqrQuery(e.target.value)}
+        />
+      )}
+
       <div className="space-y-1.5">
-        {list.map((p) => (
+        {visiblePqr.map((p) => (
           <div key={p.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-950/40 p-2.5">
             <div className="min-w-0">
               <div className="text-[12px] font-medium text-white">{p.pqrNumber} <span className="font-normal text-zinc-400">· {p.process} · {p.code}</span></div>
@@ -813,6 +846,7 @@ function PqrSection() {
           </div>
         ))}
         {!busy && list.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No PQRs recorded yet — a WPS stands on the PQR that qualified it.</div>}
+        {!busy && list.length > 0 && visiblePqr.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No PQR records match your search.</div>}
       </div>
     </div>
   );

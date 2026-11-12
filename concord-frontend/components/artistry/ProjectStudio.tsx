@@ -67,6 +67,8 @@ function ResolvedImage({ src, alt, className }: { src: string; alt: string; clas
 
 export function ProjectStudio() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectQuery, setProjectQuery] = useState('');
+  const [disciplineFilter, setDisciplineFilter] = useState('all');
   // F6 (unconfirmed-destructive): the study card's Delete used to fire
   // projectDelete on a single click. The family's two-step applies
   // (cf. Gallery F6 / game-design F5 / animation F5): the first click
@@ -241,6 +243,15 @@ export function ProjectStudio() {
     }
   }, [openId, detail]);
 
+  const visibleProjects = projects.filter((p) => {
+    if (disciplineFilter !== 'all' && p.discipline !== disciplineFilter) return false;
+    const q = projectQuery.trim().toLowerCase();
+    if (!q) return true;
+    const hay = [p.title, p.description, p.discipline, ...(p.tools ?? []), ...(p.tags ?? [])]
+      .join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -252,13 +263,39 @@ export function ProjectStudio() {
         </button>
       </div>
 
+      {!loading && projects.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={projectQuery}
+            onChange={(e) => setProjectQuery(e.target.value)}
+            placeholder="Search title, tool, or tag…"
+            aria-label="Search projects"
+            className="min-h-[40px] flex-1 min-w-[200px] bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm"
+          />
+          <select
+            value={disciplineFilter}
+            onChange={(e) => setDisciplineFilter(e.target.value)}
+            aria-label="Filter projects by discipline"
+            className="min-h-[40px] bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-sm"
+          >
+            <option value="all">All disciplines</option>
+            {[...new Set(projects.map((p) => p.discipline).filter(Boolean))].sort().map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-neon-pink" /></div>
       ) : projects.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm">No projects yet. Create a multi-image case study.</div>
+      ) : visibleProjects.length === 0 ? (
+        <div className="text-center py-12 text-gray-400 text-sm">No projects match your search.</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((p) => (
+          {visibleProjects.map((p) => (
             <div key={p.id} className="bg-white/5 border border-white/10 rounded-lg overflow-hidden hover:border-neon-pink/30 transition-colors group">
               <button onClick={() => openProject(p.id)} className="block w-full text-left">
                 <div className="aspect-video bg-white/5 flex items-center justify-center overflow-hidden">

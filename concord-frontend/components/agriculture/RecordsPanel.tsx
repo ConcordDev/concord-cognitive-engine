@@ -257,6 +257,7 @@ export function RecordsPanel({ kind }: { kind: RecordKind }) {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
+  const [sortKey, setSortKey] = useState<'default' | 'newest' | 'oldest' | 'name-asc' | 'name-desc'>('default');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<AgricultureArtifact> | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -270,6 +271,7 @@ export function RecordsPanel({ kind }: { kind: RecordKind }) {
     setEditingItem(null);
     setSearchQuery('');
     setFilterStatus('all');
+    setSortKey('default');
   }, [kind]);
 
   const filtered = useMemo(() => {
@@ -285,8 +287,14 @@ export function RecordsPanel({ kind }: { kind: RecordKind }) {
     if (filterStatus !== 'all') {
       result = result.filter((i) => i.data.status === filterStatus);
     }
-    return result;
-  }, [items, searchQuery, filterStatus]);
+    const sorted = [...result];
+    if (sortKey === 'default') return sorted;
+    if (sortKey === 'name-asc') sorted.sort((a, b) => a.title.localeCompare(b.title));
+    else if (sortKey === 'name-desc') sorted.sort((a, b) => b.title.localeCompare(a.title));
+    else if (sortKey === 'newest') sorted.sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')));
+    else if (sortKey === 'oldest') sorted.sort((a, b) => String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? '')));
+    return sorted;
+  }, [items, searchQuery, filterStatus, sortKey]);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -381,6 +389,7 @@ export function RecordsPanel({ kind }: { kind: RecordKind }) {
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as Status | 'all')}
           className={cn(ds.select, 'w-40')}
+          aria-label="Filter by status"
         >
           <option value="all">All statuses</option>
           {Object.entries(STATUS_CONFIG).map(([k, v]) => (
@@ -388,6 +397,18 @@ export function RecordsPanel({ kind }: { kind: RecordKind }) {
               {v.label}
             </option>
           ))}
+        </select>
+        <select
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value as typeof sortKey)}
+          className={cn(ds.select, 'w-40')}
+          aria-label={`Sort ${kind}`}
+        >
+          <option value="default">Default order</option>
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="name-asc">Name A–Z</option>
+          <option value="name-desc">Name Z–A</option>
         </select>
         <button
           type="button"

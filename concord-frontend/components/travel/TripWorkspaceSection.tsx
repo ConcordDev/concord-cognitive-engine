@@ -43,6 +43,7 @@ export const TRAVEL_NEW_TRIP_EVENT = 'concord:travel-new-trip';
 export function TripWorkspaceSection({ onChange }: { onChange?: () => void } = {}) {
   const [trips, setTrips] = useState<DomainTrip[]>([]);
   const [shared, setShared] = useState<SharedTrip[]>([]);
+  const [tripQuery, setTripQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<WorkspaceTrip | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -92,6 +93,12 @@ export function TripWorkspaceSection({ onChange }: { onChange?: () => void } = {
     );
   }
 
+  const tripNeedle = tripQuery.trim().toLowerCase();
+  const tripMatches = (t: { name: string; destination: string }) =>
+    !tripNeedle || `${t.name} ${t.destination}`.toLowerCase().includes(tripNeedle);
+  const visibleTrips = trips.filter(tripMatches);
+  const visibleShared = shared.filter(tripMatches);
+
   return (
     <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -128,15 +135,30 @@ export function TripWorkspaceSection({ onChange }: { onChange?: () => void } = {
         </div>
       )}
 
+      {!loading && (trips.length > 0 || shared.length > 0) && (
+        <input
+          type="text"
+          value={tripQuery}
+          onChange={(e) => setTripQuery(e.target.value)}
+          placeholder="Search trips by name or destination…"
+          aria-label="Search trips"
+          className="w-full min-h-[40px] bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100"
+        />
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
       ) : trips.length === 0 && shared.length === 0 ? (
         <div className="text-center text-zinc-400 text-xs italic py-8 border border-zinc-800 rounded-xl">
           No trips yet. Create one to open the map, agenda, weather and collaboration tools.
         </div>
+      ) : visibleTrips.length === 0 && visibleShared.length === 0 ? (
+        <div className="text-center text-zinc-400 text-xs italic py-8 border border-zinc-800 rounded-xl">
+          No trips match your search.
+        </div>
       ) : (
         <div className="space-y-2">
-          {trips.map((t) => (
+          {visibleTrips.map((t) => (
             <button key={t.id} type="button" onClick={() => setSelected(t)}
               className="w-full flex items-center justify-between bg-zinc-900/70 border border-zinc-800 hover:border-sky-700 rounded-xl p-3 text-left transition-colors">
               <div>
@@ -152,12 +174,12 @@ export function TripWorkspaceSection({ onChange }: { onChange?: () => void } = {
               <span className="text-[10px] text-sky-400">Open workspace →</span>
             </button>
           ))}
-          {shared.length > 0 && (
+          {visibleShared.length > 0 && (
             <div className="pt-1">
               <p className="text-[11px] font-semibold text-zinc-400 flex items-center gap-1 mb-1.5">
                 <Users className="w-3.5 h-3.5" /> Shared with you
               </p>
-              {shared.map((t) => (
+              {visibleShared.map((t) => (
                 <button key={t.id} type="button" onClick={() => setSelected(t)}
                   className="w-full flex items-center justify-between bg-zinc-900/50 border border-dashed border-zinc-800 hover:border-sky-700 rounded-xl p-3 text-left transition-colors mb-1">
                   <div>
