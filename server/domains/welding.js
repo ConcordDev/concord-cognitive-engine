@@ -623,6 +623,14 @@ export default function registerWeldingActions(registerLensAction) {
     try {
       const s = getWeldState(); if (!s) return noState;
       const list = wList(s, "certs", wActor(ctx));
+      // FIX-welding-002: a certification whose expiry precedes its issued
+      // date was stored without a word. Both dates are ISO (the form's
+      // date inputs); a reversed pair is refused by name.
+      const issuedD = wClean(params.issuedDate, 40);
+      const expiryD = wClean(params.expiryDate, 40);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(issuedD) && /^\d{4}-\d{2}-\d{2}$/.test(expiryD) && expiryD < issuedD) {
+        return { ok: false, error: "expiry date must be on or after the issued date" };
+      }
       const cert = {
         id: wId("cert"),
         welder: wClean(params.welder, 160) || "Unnamed welder",

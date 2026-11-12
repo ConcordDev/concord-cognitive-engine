@@ -221,6 +221,14 @@ describe("welding — WPS builder", () => {
 
 // ─── Welder-certification tracking ───────────────────────────────────
 describe("welding — certification tracking", () => {
+  it("FIX-welding-002: cert-add refuses an expiry before the issued date", () => {
+    const r = call("cert-add", ctxA, { welder: "Sam", issuedDate: "2027-11-10", expiryDate: "2026-11-10" });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /on or after the issued date/);
+    const ok = call("cert-add", ctxA, { welder: "Sam", issuedDate: "2026-11-10", expiryDate: "2027-11-10" });
+    assert.equal(ok.ok, true);
+  });
+
   it("cert-add + cert-status flags an expired cert", () => {
     const past = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
     call("cert-add", ctxA, { welder: "Old Cert", certType: "AWS D1.1 Structural", expiryDate: past });

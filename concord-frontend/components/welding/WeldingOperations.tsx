@@ -866,8 +866,11 @@ function CertsTab() {
   }, []);
   useEffect(() => { void reload(); }, [reload]);
 
+  // FIX-welding-002: reversed cert dates (expiry before issued) were
+  // accepted with no message and Add stayed enabled.
+  const datesReversed = Boolean(form.issuedDate && form.expiryDate && form.expiryDate < form.issuedDate);
   const add = async () => {
-    if (!form.welder.trim()) return;
+    if (!form.welder.trim() || datesReversed) return;
     setBusy(true);
     await run('cert-add', { ...form });
     setForm({ welder: '', certType: 'AWS D1.1 Structural', certNumber: '', process: '', position: '', issuedBy: '', issuedDate: '', expiryDate: '' });
@@ -899,7 +902,10 @@ function CertsTab() {
         <input className={inputCls} placeholder="Issued by" value={form.issuedBy} onChange={set('issuedBy')} />
         <label className="text-[10px] text-zinc-400">Issued<input type="date" className={`${inputCls} mt-0.5 w-full`} value={form.issuedDate} onChange={set('issuedDate')} /></label>
         <label className="text-[10px] text-zinc-400">Expires<input type="date" className={`${inputCls} mt-0.5 w-full`} value={form.expiryDate} onChange={set('expiryDate')} /></label>
-        <button type="button" className={`${btnCls} sm:col-span-4`} onClick={add} disabled={busy || !form.welder.trim()}><Plus className="h-3.5 w-3.5" /> Add certification</button>
+        <button type="button" className={`${btnCls} sm:col-span-4`} onClick={add} disabled={busy || !form.welder.trim() || datesReversed}><Plus className="h-3.5 w-3.5" /> Add certification</button>
+        {datesReversed && (
+          <p role="alert" className="text-[11px] text-rose-300 sm:col-span-4">Expiry date is before the issued date — a certification can&rsquo;t expire before it was issued.</p>
+        )}
       </div>
 
       {data && (
