@@ -276,7 +276,9 @@ export function MaterialsLibraryPanel({ mode, onModeChange }: { mode: MaterialsC
         <button onClick={openCreate} className={ds.btnPrimary}><Plus className="w-4 h-4" /> New</button>
       </div>
       {isLoading ? <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 border-zinc-300 border-t-transparent rounded-full animate-spin" /></div>
-      : filtered.length === 0 ? <div className={cn(ds.panel, 'text-center py-12')}><Box className="w-12 h-12 text-gray-600 mx-auto mb-3" /><p className={ds.textMuted}>No {activeArtifactType} items yet</p><button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}><Plus className="w-4 h-4" /> Create First</button></div>
+      : filtered.length === 0 ? ((searchQuery || filterStatus !== 'all')
+        ? <div className={cn(ds.panel, 'text-center py-12')}><Box className="w-12 h-12 text-gray-600 mx-auto mb-3" /><p className={ds.textMuted}>No {activeArtifactType} items match{searchQuery ? ` “${searchQuery}”` : ''}{filterStatus !== 'all' ? ` with status ${filterStatus}` : ''} — {items.length} in the library.</p><button onClick={() => { setSearchQuery(''); setFilterStatus('all'); }} className={cn(ds.btnSecondary, 'mt-3')}>Clear search & filter</button></div>
+        : <div className={cn(ds.panel, 'text-center py-12')}><Box className="w-12 h-12 text-gray-600 mx-auto mb-3" /><p className={ds.textMuted}>No {activeArtifactType} items yet</p><button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}><Plus className="w-4 h-4" /> Create First</button></div>)
       : filtered.map((item, index) => {
         const d = item.data as unknown as MaterialArtifact;
         const sc = STATUS_CONFIG[d.status] || STATUS_CONFIG.active;

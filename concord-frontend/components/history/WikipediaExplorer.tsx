@@ -110,9 +110,11 @@ function ArticleSearch() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [lastQuery, setLastQuery] = useState('');
   const searchMutation = useMutation({
     mutationFn: async (q: string) => callMacro<{ results: SearchHit[] }>('wiki-search', { query: q, limit: 8 }),
-    onSuccess: (env) => {
+    onSuccess: (env, q) => {
+      setLastQuery(q);
       if (env.ok && env.result) setHits(env.result.results);
       else setHits([]);
     },
@@ -183,7 +185,9 @@ function ArticleSearch() {
 
       {!article && !lookupMutation.isPending && (
         <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
-          Start typing — Wikipedia opensearch fires after 2 characters with 200ms debounce.
+          {lastQuery && hits.length === 0 && !searchMutation.isPending
+            ? `No Wikipedia articles match “${lastQuery}”. Check the spelling or try a broader topic.`
+            : 'Start typing — Wikipedia opensearch fires after 2 characters with 200ms debounce.'}
         </div>
       )}
 

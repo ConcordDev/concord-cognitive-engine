@@ -205,12 +205,14 @@ export function SearchPanel() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              maxLength={200}
               onKeyDown={(e) => { if (e.key === 'Enter') runSearch(); }}
               placeholder="Search themes, passages, authors — e.g. “mortality and conscience”"
               className="flex-1 bg-transparent outline-none text-sm placeholder:text-zinc-600"
               aria-label="Literary search query"
             />
           </div>
+          {query.length > 0 && <span className="self-center text-[10px] text-zinc-500">{query.length}/200</span>}
           <button
             type="button"
             onClick={runSearch}

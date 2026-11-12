@@ -68,7 +68,7 @@ export function CustomersPanel() {
     if (activeSegment === 'repeat') return c.orderCount >= 2 && c.orderCount < 5;
     if (activeSegment === 'vip') return c.totalSpent >= 1000 || c.orderCount >= 5;
     if (activeSegment === 'atRisk') return c.lastOrderAt && (now - new Date(c.lastOrderAt).getTime()) > 90 * day && c.orderCount > 0;
-    if (activeSegment === 'dormant') return !c.lastOrderAt || (now - new Date(c.lastOrderAt).getTime()) > 180 * day;
+    if (activeSegment === 'dormant') return !!c.lastOrderAt && (now - new Date(c.lastOrderAt).getTime()) > 180 * day;
     return true;
   });
 
