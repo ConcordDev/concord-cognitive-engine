@@ -359,13 +359,13 @@ function RegistryPanel({
                 </div>
               </div>
               <div className="flex shrink-0 gap-1">
-                <button onClick={() => viewHistory(s.id)} className="rounded border border-zinc-700 px-2 py-1 text-[10px] text-zinc-300 hover:bg-zinc-800">History</button>
-                <button onClick={() => onOpen(s.id)} className="rounded border border-cyan-500/30 px-2 py-1 text-[10px] text-cyan-300 hover:bg-cyan-500/15">Edit</button>
+                <button onClick={() => viewHistory(s.id)} className="inline-flex min-h-11 items-center rounded border border-zinc-700 px-2 py-1 text-[10px] text-zinc-300 hover:bg-zinc-800">History</button>
+                <button onClick={() => onOpen(s.id)} className="inline-flex min-h-11 items-center rounded border border-cyan-500/30 px-2 py-1 text-[10px] text-cyan-300 hover:bg-cyan-500/15">Edit</button>
                 <StickyDeleteConfirm
                   onConfirm={() => handleDelete(s.id)}
                   disabled={deleting === s.id}
                   armLabel={<Trash2 className="h-3 w-3" />}
-                  className="rounded border border-red-500/30 px-2 py-1 text-red-300 hover:bg-red-500/15 disabled:opacity-50"
+                  className="inline-flex min-h-11 items-center rounded border border-red-500/30 px-2 py-1 text-red-300 hover:bg-red-500/15 disabled:opacity-50"
                 />
               </div>
             </div>
@@ -493,38 +493,41 @@ function VisualEditor({
                   value={f.name}
                   onChange={(e) => update(idx, { name: e.target.value })}
                   placeholder="field name"
-                  className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+                  className="min-h-11 flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
                 />
                 <select
                   value={f.type}
                   onChange={(e) => update(idx, { type: e.target.value as FieldType })}
-                  className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
+                  className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white"
                 >
                   {FIELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
-                <label className="flex items-center gap-1 text-[10px] text-zinc-400">
-                  <input type="checkbox" checked={f.required} onChange={(e) => update(idx, { required: e.target.checked })} />
+                {/* Mobile 390 (FIX-schema-011): the req label is the checkbox's
+                    tap target — it now carries the 44px floor, and the remove
+                    button beside it is a full 44px box. */}
+                <label className="flex min-h-11 items-center gap-1.5 px-1 -mx-1 text-[10px] text-zinc-400">
+                  <input type="checkbox" className="h-5 w-5 shrink-0" checked={f.required} onChange={(e) => update(idx, { required: e.target.checked })} />
                   req
                 </label>
-                <button aria-label="Remove" onClick={() => removeField(idx)} className="text-zinc-600 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>
+                <button aria-label="Remove" onClick={() => removeField(idx)} className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center text-zinc-600 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {f.type === 'string' && (
                   <>
-                    <input value={f.pattern || ''} onChange={(e) => update(idx, { pattern: e.target.value })} placeholder="regex pattern" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
-                    <input value={f.enumStr || ''} onChange={(e) => update(idx, { enumStr: e.target.value })} placeholder="enum: a, b, c" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
-                    <input type="number" value={f.minLength ?? ''} onChange={(e) => update(idx, { minLength: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="minLength" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
-                    <input type="number" value={f.maxLength ?? ''} onChange={(e) => update(idx, { maxLength: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="maxLength" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                    <input value={f.pattern || ''} onChange={(e) => update(idx, { pattern: e.target.value })} placeholder="regex pattern" className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                    <input value={f.enumStr || ''} onChange={(e) => update(idx, { enumStr: e.target.value })} placeholder="enum: a, b, c" className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                    <input type="number" value={f.minLength ?? ''} onChange={(e) => update(idx, { minLength: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="minLength" className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                    <input type="number" value={f.maxLength ?? ''} onChange={(e) => update(idx, { maxLength: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="maxLength" className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
                   </>
                 )}
                 {(f.type === 'integer' || f.type === 'number') && (
                   <>
-                    <input type="number" value={f.min ?? ''} onChange={(e) => update(idx, { min: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="min" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
-                    <input type="number" value={f.max ?? ''} onChange={(e) => update(idx, { max: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="max" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                    <input type="number" value={f.min ?? ''} onChange={(e) => update(idx, { min: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="min" className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                    <input type="number" value={f.max ?? ''} onChange={(e) => update(idx, { max: e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="max" className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
                   </>
                 )}
                 {(f.type === 'object' || f.type === 'array') && (
-                  <input value={f.ref || ''} onChange={(e) => update(idx, { ref: e.target.value })} placeholder="ref: target schema name" className="col-span-2 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
+                  <input value={f.ref || ''} onChange={(e) => update(idx, { ref: e.target.value })} placeholder="ref: target schema name" className="col-span-2 min-h-11 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-300" />
                 )}
               </div>
             </div>
