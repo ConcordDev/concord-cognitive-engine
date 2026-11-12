@@ -880,7 +880,7 @@ function VolunteerMatchTool({ volunteer }: { volunteer: Volunteer }) {
         <div className="mt-1.5 text-[11px] text-zinc-300">
           <span className="text-rose-300 font-bold">{result.matchScore}%</span> match
           {result.matches.map((m, i) => (
-            <p key={i} className={m.matched ? 'text-emerald-400' : 'text-zinc-500'}>{m.program}: {m.requiredSkill} {m.matched ? '✓' : '✗'}{m.matched && !m.availabilityMatch ? ' (schedule conflict)' : ''}</p>
+            <p key={i} className={m.matched ? 'text-emerald-400' : 'text-zinc-400'}>{m.program}: {m.requiredSkill} {m.matched ? '✓' : '✗'}{m.matched && !m.availabilityMatch ? ' (schedule conflict)' : ''}</p>
           ))}
         </div>
       )}

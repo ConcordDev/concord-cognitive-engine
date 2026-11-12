@@ -1200,7 +1200,7 @@ export default function CouncilLensPage() {
                 className={cn(ds.input, 'pl-10 !w-64')}
               />
             </div>
-            <select
+            <select aria-label="Filter by status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as ProposalStatus | 'all')}
               className={cn(ds.select, '!w-40')}
@@ -1345,7 +1345,7 @@ export default function CouncilLensPage() {
               </span>
             )}
           </div>
-          <h1 className={cn(ds.heading1, 'mb-2')}>{p.title}</h1>
+          <h2 className={cn(ds.heading1, 'mb-2')}>{p.title}</h2>
           <p className="text-gray-300 text-sm leading-relaxed mb-4">{p.description}</p>
 
           <div className="flex items-center gap-6 text-xs text-gray-400 border-t border-lattice-border pt-3">
@@ -2153,7 +2153,7 @@ export default function CouncilLensPage() {
               <DollarSign className="w-5 h-5 text-green-400" />
               Budget Modeler
             </h2>
-            <select
+            <select aria-label="Budget scenario"
               value={budgetScenario}
               onChange={(e) => setBudgetScenario(e.target.value as typeof budgetScenario)}
               className={cn(ds.select, '!w-36')}
@@ -2372,7 +2372,7 @@ export default function CouncilLensPage() {
               <Shield className="w-5 h-5 text-orange-400" />
               Audit Trail
             </h2>
-            <select
+            <select aria-label="Audit category"
               value={auditCategory}
               onChange={(e) => setAuditCategory(e.target.value as AuditEntry['category'] | 'all')}
               className={cn(ds.select, '!w-40')}
@@ -2629,6 +2629,7 @@ export default function CouncilLensPage() {
               <div className="flex gap-1 mt-3 pt-2 border-t border-lattice-border">
                 {!s.delegatedTo ? (
                   <select
+                    aria-label={`Delegate ${stakeholderName(s.id)}'s vote to`}
                     onChange={(e) => {
                       if (e.target.value) handleDelegate(s.id, e.target.value);
                       e.target.value = '';
@@ -2771,7 +2772,7 @@ export default function CouncilLensPage() {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-[22rem]">
             <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Council</h1>
-            <p className="text-[14px] text-zinc-500">
+            <p className="text-[14px] text-zinc-400">
               Governance, deliberation, and collective decision-making
             </p>
           </div>
@@ -2961,7 +2962,7 @@ export default function CouncilLensPage() {
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Type</label>
-                    <select
+                    <select aria-label="Proposal type"
                       value={newProposal.type}
                       onChange={(e) =>
                         setNewProposal((p) => ({ ...p, type: e.target.value as ProposalType }))
@@ -2977,7 +2978,7 @@ export default function CouncilLensPage() {
                   </div>
                   <div>
                     <label className={ds.label}>Voting Method</label>
-                    <select
+                    <select aria-label="Voting method"
                       value={newProposal.votingMethod}
                       onChange={(e) =>
                         setNewProposal((p) => ({
@@ -3062,7 +3063,7 @@ export default function CouncilLensPage() {
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Category</label>
-                    <select
+                    <select aria-label="Budget item category"
                       value={newBudgetItem.category}
                       onChange={(e) =>
                         setNewBudgetItem((b) => ({ ...b, category: e.target.value }))
@@ -3078,7 +3079,7 @@ export default function CouncilLensPage() {
                   </div>
                   <div>
                     <label className={ds.label}>Type</label>
-                    <select
+                    <select aria-label="Budget item type"
                       value={newBudgetItem.type}
                       onChange={(e) =>
                         setNewBudgetItem((b) => ({
@@ -3117,7 +3118,7 @@ export default function CouncilLensPage() {
                   </div>
                   <div>
                     <label className={ds.label}>Scenario</label>
-                    <select
+                    <select aria-label="Budget scenario"
                       value={newBudgetItem.scenario}
                       onChange={(e) =>
                         setNewBudgetItem((b) => ({

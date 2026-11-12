@@ -292,7 +292,7 @@ export function NonprofitActionPanel() {
                 <select value={d.status} onChange={(e) => setDeliverables((arr) => arr.map((x, j) => j === i ? { ...x, status: e.target.value } : x))} className={inp}>
                   {['completed', 'in_progress', 'pending'].map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
-                <button onClick={() => setDeliverables((arr) => arr.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-red-400" aria-label="Remove deliverable"><Trash2 className="w-3 h-3" /></button>
+                <button onClick={() => setDeliverables((arr) => arr.filter((_, j) => j !== i))} className="text-zinc-400 hover:text-red-400" aria-label="Remove deliverable"><Trash2 className="w-3 h-3" /></button>
               </div>
             ))}
           </div>
@@ -303,7 +303,7 @@ export function NonprofitActionPanel() {
                 <input value={m.name} onChange={(e) => setMetrics((arr) => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} className={cn(inp, 'flex-1')} placeholder="metric" />
                 <input value={m.target} onChange={(e) => setMetrics((arr) => arr.map((x, j) => j === i ? { ...x, target: e.target.value } : x))} className={cn(inp, 'w-16')} placeholder="target" />
                 <input value={m.actual} onChange={(e) => setMetrics((arr) => arr.map((x, j) => j === i ? { ...x, actual: e.target.value } : x))} className={cn(inp, 'w-16')} placeholder="actual" />
-                <button onClick={() => setMetrics((arr) => arr.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-red-400" aria-label="Remove metric"><Trash2 className="w-3 h-3" /></button>
+                <button onClick={() => setMetrics((arr) => arr.filter((_, j) => j !== i))} className="text-zinc-400 hover:text-red-400" aria-label="Remove metric"><Trash2 className="w-3 h-3" /></button>
               </div>
             ))}
           </div>
