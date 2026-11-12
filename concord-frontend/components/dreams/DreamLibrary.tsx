@@ -161,7 +161,7 @@ export function DreamLibrary({ onOpen, reloadKey }: { onOpen: (dreamId: string) 
               className="min-h-11 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-300"
             >
               <option value="">All scopes</option>
-              <option value="personal">Personal</option>
+              <option value="personal">Mine — unpublished</option>
               <option value="public">Published</option>
             </select>
             <button

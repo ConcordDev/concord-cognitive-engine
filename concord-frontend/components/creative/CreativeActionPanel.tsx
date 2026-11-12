@@ -313,10 +313,10 @@ export function CreativeActionPanel() {
   }
 
   const actions = [
-    { id: 'shots' as ActionId, label: 'Shots', desc: 'shotListGenerate', icon: Film, accent: '#8b5cf6', handler: actShots },
-    { id: 'assets' as ActionId, label: 'Assets', desc: 'assetOrganize', icon: FolderOpen, accent: '#f59e0b', handler: actAssets },
-    { id: 'budget' as ActionId, label: 'Budget', desc: 'budgetTrack', icon: DollarSign, accent: '#22c55e', handler: actBudget },
-    { id: 'dist' as ActionId, label: 'Delivery', desc: 'distributionChecklist', icon: ListChecks, accent: '#3b82f6', handler: actDist },
+    { id: 'shots' as ActionId, label: 'Shots', desc: 'Generate the shot list', icon: Film, accent: '#8b5cf6', handler: actShots },
+    { id: 'assets' as ActionId, label: 'Assets', desc: 'Organize the assets', icon: FolderOpen, accent: '#f59e0b', handler: actAssets },
+    { id: 'budget' as ActionId, label: 'Budget', desc: 'Track the budget', icon: DollarSign, accent: '#22c55e', handler: actBudget },
+    { id: 'dist' as ActionId, label: 'Delivery', desc: 'Distribution checklist', icon: ListChecks, accent: '#3b82f6', handler: actDist },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private pkg DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send status', icon: Send, accent: '#ec4899', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : 'Public handoff', icon: Globe, accent: '#15803d', handler: actPublish },

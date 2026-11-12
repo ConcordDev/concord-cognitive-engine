@@ -65,7 +65,7 @@ const NAV: NavItem[] = [
   { id: 'refills',      label: 'Refills',      icon: Pill,            group: 'communications' },
   { id: 'scribe',       label: 'AI Scribe',    icon: Sparkles,        group: 'tools' },
   { id: 'smartphrases', label: 'SmartPhrases', icon: FileSearch,      group: 'tools' },
-  { id: 'codes',        label: 'ICD-10 / CPT', icon: Database,        group: 'tools' },
+  { id: 'codes',        label: 'ICD-10', icon: Database,        group: 'tools' },
   { id: 'reports',      label: 'Reports',      icon: Activity,        group: 'tools' },
   { id: 'artifacts',    label: 'Records desk', icon: Archive,         group: 'ops' },
   { id: 'immunizations',label: 'Immunizations',icon: Syringe,         group: 'ops' },

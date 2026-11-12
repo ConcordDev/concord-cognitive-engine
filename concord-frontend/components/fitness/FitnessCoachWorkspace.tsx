@@ -1026,7 +1026,7 @@ export default function FitnessCoachWorkspace() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-12">
             <Dumbbell className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <p className={ds.textMuted}>No {activeTab.toLowerCase()} found. Create one to get started.</p>
+            <p className={ds.textMuted}>No {activeTab === 'HRZones' ? 'HR zones' : activeTab === 'AIPlan' ? 'AI plans' : activeTab.toLowerCase()} found. Create one to get started.</p>
           </div>
         ) : (
           <div className={ds.grid3}>
