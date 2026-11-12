@@ -34,7 +34,7 @@
  */
 
 import { useState } from 'react';
-import { Box, Plus, Trash2, Eye, Search, Loader2 } from 'lucide-react';
+import { Box, Plus, Trash2, Eye, Search, Loader2, Pencil } from 'lucide-react';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -67,11 +67,12 @@ export interface ArRenderPlan {
 }
 
 export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, title: string) => void }) {
-  const { items, isLoading, isError, error, refetch, create, remove } = useLensData<ModelAsset>('ar', 'Model3D', { seed: [] });
+  const { items, isLoading, isError, error, refetch, create, update, remove } = useLensData<ModelAsset>('ar', 'Model3D', { seed: [] });
   const runAction = useRunArtifact('ar');
   const [previewingId, setPreviewingId] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [format, setFormat] = useState(MODEL_FORMATS[0]);
   const [polyCount, setPolyCount] = useState('');
@@ -82,6 +83,20 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
 
   const resetForm = () => {
     setName(''); setFormat(MODEL_FORMATS[0]); setPolyCount(''); setFileSize(''); setSourceUrl(''); setDescription('');
+    setEditingId(null);
+  };
+
+  // Edit (FIX-ar-007): open the same form prefilled from the model.
+  const openEdit = (item: LensItem<ModelAsset>) => {
+    setEditingId(item.id);
+    setName(item.data.name || item.title || '');
+    setFormat(item.data.format || MODEL_FORMATS[0]);
+    setPolyCount(item.data.polyCount != null ? String(item.data.polyCount) : '');
+    setFileSize(item.data.fileSize || '');
+    setSourceUrl(item.data.sourceUrl || '');
+    setDescription(item.data.description || '');
+    setFormError(null);
+    setFormOpen(true);
   };
 
   const handleCreate = async () => {
@@ -99,7 +114,7 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
       return;
     }
     setFormError(null);
-    await create({
+    const payload = {
       title: name,
       data: {
         name, format, description,
@@ -110,7 +125,9 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
         position: '0, 0, 0', rotation: '0, 0, 0', scale: 1,
       },
       meta: { tags: ['ar', 'model'], status: 'active', visibility: 'private' },
-    });
+    };
+    if (editingId) await update(editingId, payload);
+    else await create(payload);
     resetForm();
     setFormOpen(false);
   };
@@ -138,7 +155,7 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
             <h3 className={ds.heading3}>My Models</h3>
             <p className={ds.textMuted}>Reference catalog of 3D assets you plan to place in a scene — format, poly count, and source, self-reported.</p>
           </div>
-          <button onClick={() => setFormOpen((v) => !v)} className={ds.btnPrimary}>
+          <button onClick={() => { if (formOpen) { setFormOpen(false); resetForm(); } else { resetForm(); setFormOpen(true); } }} className={ds.btnPrimary}>
             <Plus className="w-4 h-4" /> Add model
           </button>
         </div>
@@ -158,7 +175,7 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
             <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
             <div className="flex justify-end gap-2">
               <button onClick={() => { setFormOpen(false); resetForm(); }} className={ds.btnSecondary}>Cancel</button>
-              <button onClick={handleCreate} className={ds.btnPrimary} disabled={!name.trim()}>Save</button>
+              <button onClick={handleCreate} className={ds.btnPrimary} disabled={!name.trim()}>{editingId ? 'Save changes' : 'Save'}</button>
             </div>
           </div>
         )}
@@ -192,6 +209,9 @@ export function AssetLibrary({ onPreview }: { onPreview: (plan: ArRenderPlan, ti
                       <Search className="w-4 h-4" />
                     </a>
                   )}
+                  <button onClick={() => openEdit(item)} className={ds.btnGhost} aria-label={`Edit ${item.data.name}`}>
+                    <Pencil className="w-4 h-4" />
+                  </button>
                   <button onClick={() => handlePreview(item)} className={ds.btnGhost} aria-label={`Preview ${item.data.name} in AR`} disabled={previewingId === item.id}>
                     {previewingId === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4 text-neon-cyan" />}
                   </button>
