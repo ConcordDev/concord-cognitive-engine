@@ -35,6 +35,7 @@ export function EngagementTracker({ onChanged, newFocusSignal = 0 }: { onChanged
   const [form, setForm] = useState({ name: '', client: '', rate: '', budgetHours: '' });
   const [formError, setFormError] = useState('');
   const [timeForm, setTimeForm] = useState({ hours: '', note: '' });
+  const [engQuery, setEngQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ rate: '', budgetHours: '', status: 'active' as string });
 
@@ -126,6 +127,11 @@ export function EngagementTracker({ onChanged, newFocusSignal = 0 }: { onChanged
     );
   }
 
+  const eq = engQuery.trim().toLowerCase();
+  const visibleEngs = eq
+    ? engs.filter(e => e.name.toLowerCase().includes(eq) || (e.client || '').toLowerCase().includes(eq) || (e.status || '').toLowerCase().includes(eq))
+    : engs;
+
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-1">
@@ -162,9 +168,15 @@ export function EngagementTracker({ onChanged, newFocusSignal = 0 }: { onChanged
       </div>
       {formError && <p role="alert" className="text-[11px] text-rose-300 mb-2">{formError}</p>}
 
+      {engs.length > 1 && (
+        <input value={engQuery} onChange={e => setEngQuery(e.target.value)} placeholder="Search engagements…"
+          aria-label="Search engagements"
+          className="w-full mb-2 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
+      )}
       <ul className="space-y-1">
         {engs.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No engagements yet.</li>}
-        {engs.map(e => (
+        {engs.length > 0 && visibleEngs.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No engagements match &ldquo;{engQuery.trim()}&rdquo;.</li>}
+        {visibleEngs.map(e => (
           <li key={e.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="group flex items-center gap-2">
               <button onClick={() => setActive(active === e.id ? null : e.id)} className="text-left min-w-0 flex-1">

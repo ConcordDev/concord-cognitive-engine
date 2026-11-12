@@ -39,6 +39,7 @@ function StateIcon({ m }: { m: MeshMessage }) {
 export function MeshMessaging() {
   const qc = useQueryClient();
   const [target, setTarget] = useState<string>('');
+  const [msgQuery, setMsgQuery] = useState('');
   const [draft, setDraft] = useState('');
 
   const nodes = useQuery({
@@ -90,6 +91,8 @@ export function MeshMessaging() {
   }, [thread.data?.unread, target]);
 
   const messages = thread.data?.messages ?? [];
+  const mq = msgQuery.trim().toLowerCase();
+  const visibleMessages = mq ? messages.filter((m) => (m.body || '').toLowerCase().includes(mq)) : messages;
   const targets = useMemo(
     () => [
       { id: '', label: 'All messages', kind: 'broadcast' as const },
@@ -125,12 +128,19 @@ export function MeshMessaging() {
             {typeof thread.data?.unread === 'number' ? ` · ${thread.data.unread} unread` : ''}
             {!target ? ' · pick a conversation to send' : ''}
           </p>
+          {messages.length > 1 && (
+            <input value={msgQuery} onChange={(e) => setMsgQuery(e.target.value)} placeholder="Search messages…"
+              aria-label="Search messages"
+              className="w-full rounded border border-teal-900/50 bg-black px-2 py-1.5 text-xs text-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+          )}
           {thread.isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-teal-500" />
           ) : messages.length === 0 ? (
             <p className="py-8 text-center text-xs text-teal-500">No messages yet. Send the first frame.</p>
+          ) : visibleMessages.length === 0 ? (
+            <p className="py-8 text-center text-xs text-teal-500">No messages match &ldquo;{msgQuery.trim()}&rdquo;.</p>
           ) : (
-            messages.map((m) => (
+            visibleMessages.map((m) => (
               <div key={m.id} className={`flex ${m.direction === 'out' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[80%] rounded-lg px-3 py-1.5 text-xs ${
                   m.direction === 'out' ? 'bg-teal-800/50 text-teal-50' : 'bg-zinc-800/60 text-zinc-100'

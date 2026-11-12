@@ -37,6 +37,7 @@ export function MeshTopology() {
   const [newName, setNewName] = useState('');
   const [newTransport, setNewTransport] = useState('lora');
   const [pingResult, setPingResult] = useState<Record<string, string>>({});
+  const [nodeQuery, setNodeQuery] = useState('');
 
   const map = useQuery({
     queryKey: ['mesh-map'],
@@ -80,6 +81,8 @@ export function MeshTopology() {
   const nodes = map.data?.nodes ?? [];
   const edges = map.data?.edges ?? [];
   const peers = nodes.filter((n) => n.kind === 'peer');
+  const nq = nodeQuery.trim().toLowerCase();
+  const visiblePeers = nq ? peers.filter((n) => n.name.toLowerCase().includes(nq)) : peers;
 
   // Radial layout — self at centre, peers on a ring.
   const W = 520, H = 380, cx = W / 2, cy = H / 2, ringR = 140;
@@ -170,12 +173,21 @@ export function MeshTopology() {
 
           <div className="space-y-1.5">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-teal-600">Nodes</h3>
+            {peers.length > 1 && (
+              <input value={nodeQuery} onChange={(e) => setNodeQuery(e.target.value)} placeholder="Search nodes…"
+                aria-label="Search nodes"
+                className="w-full rounded border border-teal-900/50 bg-black px-2 py-1.5 text-xs text-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+            )}
             {peers.length === 0 ? (
               <p className="rounded border border-teal-900/30 bg-teal-950/10 px-3 py-4 text-center text-xs text-teal-600">
                 No peer nodes yet. Add one above to build the mesh.
               </p>
+            ) : visiblePeers.length === 0 ? (
+              <p className="rounded border border-teal-900/30 bg-teal-950/10 px-3 py-4 text-center text-xs text-teal-600">
+                No nodes match &ldquo;{nodeQuery.trim()}&rdquo;.
+              </p>
             ) : (
-              peers.map((n) => (
+              visiblePeers.map((n) => (
                 <div key={n.id} className="flex flex-wrap items-center gap-2 rounded border border-teal-900/30 bg-teal-950/10 px-3 py-2 text-xs">
                   <span className={`h-2 w-2 rounded-full ${n.online ? 'bg-emerald-400' : 'bg-zinc-600'}`} aria-hidden />
                   <span className="font-mono text-teal-200">{n.name}</span>

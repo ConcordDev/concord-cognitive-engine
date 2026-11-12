@@ -54,6 +54,7 @@ export function PetCareSection() {
   const [showDrawer, setShowDrawer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recordTick, setRecordTick] = useState(0);
+  const [petQuery, setPetQuery] = useState('');
   const [form, setForm] = useState({ name: '', species: 'dog', breed: '', birthdate: '', weightKg: '' });
 
   const refresh = useCallback(async () => {
@@ -110,6 +111,11 @@ export function PetCareSection() {
     );
   }
 
+  const pq = petQuery.trim().toLowerCase();
+  const visiblePets = pq
+    ? pets.filter((p) => p.name.toLowerCase().includes(pq) || p.species.toLowerCase().includes(pq) || (p.breed || '').toLowerCase().includes(pq))
+    : pets;
+
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-teal-600/15 to-transparent">
@@ -130,8 +136,18 @@ export function PetCareSection() {
       )}
 
       {/* Pet picker */}
+      {pets.length > 1 && (
+        <div className="px-4 pt-2.5">
+          <input value={petQuery} onChange={(e) => setPetQuery(e.target.value)} placeholder="Search pets…"
+            aria-label="Search pets"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
+        </div>
+      )}
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-800 overflow-x-auto">
-        {pets.map((p) => (
+        {pets.length > 0 && visiblePets.length === 0 && (
+          <span className="text-xs text-zinc-400 italic">No pets match &ldquo;{petQuery.trim()}&rdquo;.</span>
+        )}
+        {visiblePets.map((p) => (
           <button
             key={p.id} type="button" onClick={() => setSelected(p.id)}
             className={cn('flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full border whitespace-nowrap',

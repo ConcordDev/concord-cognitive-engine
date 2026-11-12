@@ -307,6 +307,8 @@ function RegistryPanel({
 }) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [history, setHistory] = useState<FullEntry | null>(null);
+  const [registryQuery, setRegistryQuery] = useState('');
+  const [registrySort, setRegistrySort] = useState<'default' | 'name-az' | 'name-za' | 'recent'>('default');
 
   const handleDelete = async (id: string) => {
     setDeleting(id);
@@ -319,6 +321,17 @@ function RegistryPanel({
     const r = await lensRun('schema', 'registryGet', { id });
     if (r.data?.ok && r.data.result) setHistory(r.data.result as FullEntry);
   };
+
+  const rq = registryQuery.trim().toLowerCase();
+  const visibleRegistry = (() => {
+    const filtered = rq
+      ? registry.filter((s) => s.name.toLowerCase().includes(rq) || (s.description || '').toLowerCase().includes(rq))
+      : [...registry];
+    if (registrySort === 'name-az') filtered.sort((a, b) => a.name.localeCompare(b.name));
+    else if (registrySort === 'name-za') filtered.sort((a, b) => b.name.localeCompare(a.name));
+    else if (registrySort === 'recent') filtered.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    return filtered;
+  })();
 
   return (
     <div className="space-y-3">
@@ -342,8 +355,29 @@ function RegistryPanel({
         </div>
       )}
 
+      {!loading && !err && registry.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input value={registryQuery} onChange={(e) => setRegistryQuery(e.target.value)} placeholder="Search schemas…"
+            aria-label="Search schemas"
+            className="flex-1 min-w-[140px] rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-200" />
+          <select value={registrySort} onChange={(e) => setRegistrySort(e.target.value as typeof registrySort)}
+            aria-label="Sort schemas"
+            className="rounded border border-zinc-700 bg-zinc-950 px-1.5 py-1.5 text-xs text-zinc-200">
+            <option value="default">Delivered order</option>
+            <option value="name-az">Name A–Z</option>
+            <option value="name-za">Name Z–A</option>
+            <option value="recent">Recently updated</option>
+          </select>
+        </div>
+      )}
+      {!loading && !err && registry.length > 0 && visibleRegistry.length === 0 && (
+        <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
+          No schemas match &ldquo;{registryQuery.trim()}&rdquo;.
+        </div>
+      )}
+
       <div className="space-y-2">
-        {registry.map((s) => (
+        {visibleRegistry.map((s) => (
           <div key={s.id} className="rounded-lg border border-cyan-500/15 bg-cyan-500/5 p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">

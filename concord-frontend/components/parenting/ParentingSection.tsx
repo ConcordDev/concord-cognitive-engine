@@ -46,6 +46,7 @@ const TABS: { id: TabId; label: string; icon: typeof Baby }[] = [
 
 export function ParentingSection() {
   const [children, setChildren] = useState<Child[]>([]);
+  const [childQuery, setChildQuery] = useState('');
   const [activeChild, setActiveChild] = useState<string>('');
   const [tab, setTab] = useState<TabId>('today');
   const [growthTick, setGrowthTick] = useState(0);
@@ -110,6 +111,11 @@ export function ParentingSection() {
     await refreshChildren();
   };
 
+  const cq = childQuery.trim().toLowerCase();
+  const visibleChildren = cq
+    ? children.filter((c) => c.name.toLowerCase().includes(cq))
+    : children;
+
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-rose-600/15 to-transparent">
@@ -128,8 +134,16 @@ export function ParentingSection() {
         <>
           {/* Child roster */}
           <div className="px-4 py-3 border-b border-zinc-800 space-y-2">
+            {children.length > 1 && (
+              <input value={childQuery} onChange={(e) => setChildQuery(e.target.value)} placeholder="Search children…"
+                aria-label="Search children"
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            )}
             <div className="flex flex-wrap items-center gap-1.5">
-              {children.map((c) => (
+              {children.length > 0 && visibleChildren.length === 0 && (
+                <span className="text-[11px] text-zinc-400 italic">No children match &ldquo;{childQuery.trim()}&rdquo;.</span>
+              )}
+              {visibleChildren.map((c) => (
                 <span key={c.id} className={cn('flex items-center gap-1.5 text-[11px] pl-2.5 pr-1.5 py-1 rounded-lg',
                   activeChild === c.id ? 'bg-rose-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
                   <button type="button" onClick={() => setActiveChild(c.id)}>{c.name} · {c.ageDisplay}{c.shared ? ' · shared' : ''}</button>

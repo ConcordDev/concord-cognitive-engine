@@ -26,6 +26,7 @@ export function MineSiteManager() {
   const [form, setForm] = useState({ name: '', kind: 'surface', commodity: '', productionTonnes: '' });
   const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [incForm, setIncForm] = useState({ severity: 'minor', description: '' });
+  const [siteQuery, setSiteQuery] = useState('');
 
   const refresh = useCallback(async () => {
     const [sl, d] = await Promise.all([
@@ -78,6 +79,11 @@ export function MineSiteManager() {
 
   if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
+  const sq = siteQuery.trim().toLowerCase();
+  const visibleSites = sq
+    ? sites.filter(st => st.name.toLowerCase().includes(sq) || st.kind.toLowerCase().includes(sq) || st.commodity.toLowerCase().includes(sq))
+    : sites;
+
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -118,9 +124,15 @@ export function MineSiteManager() {
         <p className="text-[11px] text-amber-300 -mt-2 mb-3">Editing site {editingSite.name} — Save site updates it in place.</p>
       )}
 
+      {sites.length > 1 && (
+        <input value={siteQuery} onChange={e => setSiteQuery(e.target.value)} placeholder="Search sites…"
+          aria-label="Search sites"
+          className="w-full mb-2 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
+      )}
       <ul className="space-y-1">
         {sites.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No sites yet.</li>}
-        {sites.map(st => (
+        {sites.length > 0 && visibleSites.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No sites match &ldquo;{siteQuery.trim()}&rdquo;.</li>}
+        {visibleSites.map(st => (
           <li key={st.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="group flex items-center gap-2">
               <button onClick={() => setActive(active === st.id ? null : st.id)} className="text-left min-w-0 flex-1">

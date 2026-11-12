@@ -36,6 +36,7 @@ export function MeshChannels() {
   const [name, setName] = useState('');
   const [psk, setPsk] = useState('');
   const [keyDraft, setKeyDraft] = useState<Record<string, string>>({});
+  const [channelQuery, setChannelQuery] = useState('');
 
   const channels = useQuery({
     queryKey: ['mesh-group-channels'],
@@ -66,6 +67,8 @@ export function MeshChannels() {
   });
 
   const list = channels.data?.channels ?? [];
+  const cq = channelQuery.trim().toLowerCase();
+  const visibleChannels = cq ? list.filter((c) => c.name.toLowerCase().includes(cq)) : list;
 
   return (
     <div className="space-y-4">
@@ -111,8 +114,18 @@ export function MeshChannels() {
           <p className="text-[11px] text-teal-500">
             {channels.data?.total} channel{channels.data?.total !== 1 ? 's' : ''} · {channels.data?.encrypted} encrypted
           </p>
+          {list.length > 1 && (
+            <input value={channelQuery} onChange={(e) => setChannelQuery(e.target.value)} placeholder="Search channels…"
+              aria-label="Search channels"
+              className="w-full rounded border border-teal-900/50 bg-black px-2 py-1.5 text-xs text-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+          )}
+          {visibleChannels.length === 0 && (
+            <p className="rounded border border-teal-900/30 bg-teal-950/10 px-4 py-6 text-center text-xs text-teal-600">
+              No channels match &ldquo;{channelQuery.trim()}&rdquo;.
+            </p>
+          )}
           <ul className="space-y-2">
-            {list.map((c) => (
+            {visibleChannels.map((c) => (
               <li key={c.id} className="rounded-lg border border-teal-900/30 bg-teal-950/10 p-3">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   {c.encrypted ? <Lock className="h-3.5 w-3.5 text-emerald-400" aria-hidden /> : <Unlock className="h-3.5 w-3.5 text-zinc-400" aria-hidden />}

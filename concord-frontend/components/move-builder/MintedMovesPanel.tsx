@@ -19,6 +19,7 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
   const [armedId, setArmedId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [rename, setRename] = useState('');
+  const [moveQuery, setMoveQuery] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,6 +75,11 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
     );
   }
 
+  const mq = moveQuery.trim().toLowerCase();
+  const visibleMoves = mq
+    ? (moves ?? []).filter((m) => m.name.toLowerCase().includes(mq) || (m.element || '').toLowerCase().includes(mq) || (m.skillKind || '').toLowerCase().includes(mq))
+    : (moves ?? []);
+
   return (
     <section aria-label="Your minted moves">
       <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Your moves</h2>
@@ -82,8 +88,17 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
           No moves yet. Compose one and mint it to start your library.
         </div>
       ) : (
+        <>
+        {(moves ?? []).length > 1 && (
+          <input value={moveQuery} onChange={(e) => setMoveQuery(e.target.value)} placeholder="Search your moves…"
+            aria-label="Search your moves"
+            style={{ width: '100%', marginBottom: 8, background: 'transparent', color: 'inherit', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, padding: '6px 8px', fontSize: 13 }} />
+        )}
+        {visibleMoves.length === 0 && (
+          <div style={{ ...card, opacity: 0.7 }}>No moves match &ldquo;{moveQuery.trim()}&rdquo;.</div>
+        )}
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {(moves ?? []).map((m) => (
+          {visibleMoves.map((m) => (
             <li key={m.id} style={{ ...card, marginBottom: 8, padding: '10px 14px' }}>
               <button
                 type="button"
@@ -157,6 +172,7 @@ export const MintedMovesPanel = forwardRef<MintedMovesHandle>(function MintedMov
             </li>
           ))}
         </ul>
+        </>
       )}
     </section>
   );

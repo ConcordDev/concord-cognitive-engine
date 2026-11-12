@@ -36,6 +36,7 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
   const [armedId, setArmedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const [entryQuery, setEntryQuery] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -84,6 +85,11 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
   if (loadError) {
     return <div className="p-4"><ErrorState message={loadError} onRetry={refresh} /></div>;
   }
+
+  const nq = entryQuery.trim().toLowerCase();
+  const visibleEntries = nq
+    ? entries.filter((e) => e.date.toLowerCase().includes(nq) || e.items.map(gratitudeItemText).join(' ').toLowerCase().includes(nq))
+    : entries;
 
   return (
     <div className="space-y-4">
@@ -138,11 +144,18 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
           </button>
         </div>
 
+        {entries.length > 1 && (
+          <input aria-label="Search entries" value={entryQuery} onChange={(e) => setEntryQuery(e.target.value)} placeholder="Search entries…"
+            className="w-full mt-2 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
+        )}
         {entries.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic mt-2">No gratitude entries yet. A few lines a day builds the habit.</p>
         ) : (
           <ul className="space-y-1.5 mt-2">
-            {entries.map((e) => (
+            {entries.length > 0 && visibleEntries.length === 0 && (
+              <li className="text-[11px] text-zinc-400 italic py-2 text-center">No entries match &ldquo;{entryQuery.trim()}&rdquo;.</li>
+            )}
+            {visibleEntries.map((e) => (
               <li key={e.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-[10px] text-zinc-400">{e.date}</p>

@@ -8,6 +8,7 @@
  * node; retry releases them once the node pings again (recorded, not transmitted).
  */
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { Loader2, RotateCw, Trash2, Inbox } from 'lucide-react';
@@ -35,6 +36,7 @@ const PRIORITY_TONE: Record<string, string> = {
 
 export function MeshQueue() {
   const qc = useQueryClient();
+  const [frameQuery, setFrameQuery] = useState('');
 
   const queue = useQuery({
     queryKey: ['mesh-queue'],
@@ -65,6 +67,10 @@ export function MeshQueue() {
   });
 
   const frames = queue.data?.frames ?? [];
+  const fq = frameQuery.trim().toLowerCase();
+  const visibleFrames = fq
+    ? frames.filter((f) => (f.toName || '').toLowerCase().includes(fq) || (f.to || '').toLowerCase().includes(fq) || f.priority.includes(fq) || (f.state || '').toLowerCase().includes(fq))
+    : frames;
 
   return (
     <div className="space-y-3">
@@ -81,8 +87,19 @@ export function MeshQueue() {
           <Inbox className="h-4 w-4" /> Store-and-forward queue is empty.
         </p>
       ) : (
-        <ul className="space-y-1.5">
-          {frames.map((f) => (
+        <>
+          {frames.length > 1 && (
+            <input value={frameQuery} onChange={(e) => setFrameQuery(e.target.value)} placeholder="Search queued frames…"
+              aria-label="Search queued frames"
+              className="w-full rounded border border-teal-900/50 bg-black px-2 py-1.5 text-xs text-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+          )}
+          {visibleFrames.length === 0 && (
+            <p className="flex items-center justify-center gap-2 rounded border border-teal-900/30 bg-teal-950/10 px-4 py-8 text-xs text-teal-600">
+              No frames match &ldquo;{frameQuery.trim()}&rdquo;.
+            </p>
+          )}
+          <ul className="space-y-1.5">
+          {visibleFrames.map((f) => (
             <li key={f.id} className="flex flex-wrap items-center gap-2 rounded border border-teal-900/30 bg-teal-950/10 px-3 py-2 text-xs">
               <span className={`rounded px-1.5 py-0.5 text-[10px] ${PRIORITY_TONE[f.priority]}`}>{f.priority}</span>
               <span className="font-mono text-teal-200">→ {f.toName}</span>
@@ -116,7 +133,8 @@ export function MeshQueue() {
               </span>
             </li>
           ))}
-        </ul>
+          </ul>
+        </>
       )}
     </div>
   );
