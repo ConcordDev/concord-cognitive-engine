@@ -301,3 +301,19 @@ describe("electrical.priceList* (material price list)", () => {
     assert.equal(rm.result.removed, 1);
   });
 });
+
+describe("electrical panel schedules — FIX-electrical-007 investigation pin", () => {
+  it("a panel survives the platform snapshot round-trip (serialize -> hydrate)", async () => {
+    const { serializeLensState, hydrateLensState } = await import("../lib/lens-state-persistence.js");
+    const created = call("panelCreate", ctxA, { name: "Main", mainBreaker: 200 });
+    assert.equal(created.ok, true);
+    assert.equal(call("panelList", ctxA, {}).result.panels.length, 1);
+    const snap = JSON.parse(JSON.stringify(serializeLensState(globalThis._concordSTATE)));
+    globalThis._concordSTATE = { dtus: new Map() };
+    hydrateLensState(globalThis._concordSTATE, snap);
+    const after = call("panelList", ctxA, {});
+    assert.equal(after.ok, true);
+    assert.equal(after.result.panels.length, 1);
+    assert.equal(after.result.panels[0].id, created.result.id);
+  });
+});
