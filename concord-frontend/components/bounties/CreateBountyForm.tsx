@@ -54,6 +54,12 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
 
   const submit = async () => {
     setErr(null);
+    // FIX-bounties-004: a past deadline was accepted silently. The field
+    // is a date picker now (min = today) and submit refuses a past date.
+    if (deadline && deadline < new Date().toISOString().slice(0, 10)) {
+      setErr('Deadline must be today or later.');
+      return;
+    }
     const rewardOk = (n: number) => Number.isFinite(n) && n >= 1 && n === Math.floor(n);
     if (!useMilestones) {
       if (!rewardOk(rewardCc)) { setErr('Reward must be a whole number of at least 1.'); return; }
@@ -146,9 +152,11 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
           className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
         />
         <input
+          type="date"
+          aria-label="Deadline (optional)"
+          min={new Date().toISOString().slice(0, 10)}
           value={deadline}
           onChange={(e) => setDeadline(e.target.value)}
-          placeholder="Deadline (optional, free text e.g. 2026-06-30)"
           className="w-full bg-zinc-950 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
         />
 

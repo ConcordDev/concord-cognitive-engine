@@ -51,6 +51,20 @@ describe("bounties.create", () => {
     assert.deepEqual(b.tags.sort(), ["auth", "race", "security"]);
   });
 
+  it("FIX-bounties-004: rejects a past or non-date deadline, accepts a future one", () => {
+    const past = call("create", owner, { title: "Valid title here", description: "long enough description", rewardCc: 10, deadline: "2020-01-01" });
+    assert.equal(past.ok, false);
+    assert.match(past.error, /today or later/);
+    const junk = call("create", owner, { title: "Valid title here", description: "long enough description", rewardCc: 10, deadline: "next friday" });
+    assert.equal(junk.ok, false);
+    const impossible = call("create", owner, { title: "Valid title here", description: "long enough description", rewardCc: 10, deadline: "2027-02-30" });
+    assert.equal(impossible.ok, false);
+    const future = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    const ok = call("create", owner, { title: "Valid title here", description: "long enough description", rewardCc: 10, deadline: future });
+    assert.equal(ok.ok, true);
+    assert.equal(ok.result.bounty.deadline, future);
+  });
+
   it("rejects short titles", () => {
     const r = call("create", owner, { title: "x", description: "long enough description" });
     assert.equal(r.ok, false);

@@ -140,6 +140,21 @@ export default function registerBountiesActions(registerLensAction) {
       const category = CATEGORIES.includes(params.category) ? params.category : "other";
       const difficulty = DIFFICULTIES.includes(params.difficulty) ? params.difficulty : "intermediate";
       const tags = parseTags(params.tags);
+      // FIX-bounties-004: the deadline was free text stored verbatim, so a
+      // past date (2020-01-01) was accepted silently. It is a date now:
+      // strict ISO YYYY-MM-DD (round-trip checked) and not in the past.
+      let deadline = null;
+      if (params.deadline !== undefined && params.deadline !== null && String(params.deadline).trim() !== "") {
+        const d = String(params.deadline).trim();
+        const parsed = /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T00:00:00Z`) : null;
+        if (!parsed || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== d) {
+          return { ok: false, error: "deadline must be a date (YYYY-MM-DD)" };
+        }
+        if (d < new Date().toISOString().slice(0, 10)) {
+          return { ok: false, error: "deadline must be today or later" };
+        }
+        deadline = d;
+      }
       const rawMilestones = Array.isArray(params.milestones) ? params.milestones : [];
       const badMilestone = rawMilestones.findIndex((m) => badNumericField(m, ["rewardCc"]));
       if (badMilestone !== -1) return { ok: false, error: `invalid numeric field: milestones[${badMilestone}].rewardCc` };
@@ -179,7 +194,7 @@ export default function registerBountiesActions(registerLensAction) {
         submissions: [],
         acceptedSubmissionId: null,
         dispute: null,
-        deadline: params.deadline ? clean(params.deadline, 40) : null,
+        deadline,
         createdAt: now(),
         updatedAt: now(),
       };
