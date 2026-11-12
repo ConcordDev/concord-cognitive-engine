@@ -13,7 +13,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
 
-interface OrgMember { memberId: string; role: string }
+interface OrgMember { memberId: string; role: string; label?: string | null }
 interface OrgGroup {
   orgId: string;
   label: string;
@@ -152,7 +152,11 @@ export function OrgKeysPanel() {
             <ul className="mt-2 space-y-1">
               {org.members.map((m) => (
                 <li key={m.memberId} className="flex items-center gap-2 text-[11px]">
-                  <span className="font-mono text-zinc-400 flex-1 truncate">{m.memberId}</span>
+                  {m.label ? (
+                    <span className="text-zinc-200 flex-1 truncate" title={m.memberId}>{m.label}</span>
+                  ) : (
+                    <span className="font-mono text-zinc-400 flex-1 truncate" title={m.memberId}>{m.memberId.slice(0, 8)}…</span>
+                  )}
                   <span className={`font-mono ${m.role === 'owner' ? 'text-amber-300' : 'text-zinc-400'}`}>
                     {m.role}
                   </span>

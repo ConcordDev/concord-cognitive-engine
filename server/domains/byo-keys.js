@@ -23,6 +23,7 @@ import { BYO_PROVIDERS } from "../lib/byo-providers.js";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { setRateLimit, getRateLimitStatus, ensureByoKeysLensState } from "../lib/byo-rate-limit.js";
 import { isHighPowerModeAllowed } from "../lib/high-power-allowlist.js";
+import { lookupUserIdentity } from "../lib/user-identity.js";
 
 const VALID_SLOTS = new Set(["conscious", "subconscious", "utility", "repair", "vision"]);
 
@@ -558,7 +559,16 @@ export default function registerByoKeysMacros(register) {
         slot: org.slot,
         myRole,
         isOwner: org.ownerId === userId,
-        members: [...org.members.entries()].map(([id, role]) => ({ memberId: id, role })),
+        members: [...org.members.entries()].map(([id, role]) => {
+          // Display label for the member row — the panel used to print
+          // the raw user id. Resolve through the shared identity lookup;
+          // it never invents a name from the id, so an id with no
+          // account row keeps label null and the panel falls back to a
+          // shortened id (memberId itself is unchanged for management).
+          const ident = lookupUserIdentity(ctx?.db || null, id);
+          const label = ident?.displayName && ident.displayName !== id ? ident.displayName : null;
+          return { memberId: id, role, label };
+        }),
         memberCount: org.members.size,
         createdAt: org.createdAt,
       });

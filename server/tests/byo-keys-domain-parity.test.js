@@ -300,6 +300,26 @@ describe("byo_keys — org-shared keys", () => {
     assert.equal(r.reason, "cannot_remove_owner");
   });
 
+  it("org_keys_list labels members with their display name, never inventing one", async () => {
+    db.prepare(`CREATE TABLE users (id TEXT PRIMARY KEY, username TEXT)`).run();
+    db.prepare(`INSERT INTO users (id, username) VALUES (?, ?)`).run("user_a", "alice");
+    db.prepare(`INSERT INTO users (id, username) VALUES (?, ?)`).run("user_b", "bob");
+    const org = (await call("org_key_create", ctxA, { label: "Named team", provider: "openai" })).result;
+    await call("org_key_add_member", ctxA, { orgId: org.orgId, memberId: "user_b", role: "user" });
+    await call("org_key_add_member", ctxA, { orgId: org.orgId, memberId: "no-such-account-id", role: "viewer" });
+    const list = await call("org_keys_list", ctxA);
+    const members = list.result.orgs[0].members;
+    const byId = new Map(members.map((m) => [m.memberId, m]));
+    // Known accounts resolve to their display name (the card used to
+    // print the raw user id for every member, owner included).
+    assert.equal(byId.get("user_a").label, "alice");
+    assert.equal(byId.get("user_b").label, "bob");
+    // An id with no account row keeps label null — the lookup never
+    // fabricates a name — and memberId itself is untouched.
+    assert.equal(byId.get("no-such-account-id").label, null);
+    assert.equal(byId.get("no-such-account-id").memberId, "no-such-account-id");
+  });
+
   it("org_keys_list only returns groups the caller belongs to", async () => {
     const org = (await call("org_key_create", ctxA, { label: "A-team", provider: "openai" })).result;
     await call("org_key_add_member", ctxA, { orgId: org.orgId, memberId: "user_b", role: "user" });
