@@ -288,7 +288,7 @@ export function IncidentConsole() {
           <button
             key={k}
             onClick={() => setTab(k)}
-            className={`flex min-h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded px-2.5 py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-rose-400/40 ${
+            className={`flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded px-2.5 py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-rose-400/40 ${
               tab === k ? 'bg-rose-500/20 text-rose-200' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-300'
             }`}
           >
@@ -364,23 +364,27 @@ function IncidentsTab({
     <div className="grid gap-4 lg:grid-cols-3">
       <div className="lg:col-span-2 space-y-3">
         <div className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
+          {/* Mobile 390 (FIX-ops-010): the whole create row sat at ~30px —
+              the severity select and Trigger named in the ticket, the title
+              input and service select beside them at the same height. All
+              four meet the 44px floor together so the row stays coherent. */}
           <input
             value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Incident title"
-            className="min-w-[200px] flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
+            className="min-h-11 min-w-[200px] flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
           />
-          <select value={sev} onChange={(e) => setSev(e.target.value as Sev)}
-            className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white">
+          <select value={sev} onChange={(e) => setSev(e.target.value as Sev)} aria-label="Severity"
+            className="min-h-11 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white">
             {(['sev1', 'sev2', 'sev3', 'sev4'] as Sev[]).map((s) => <option key={s} value={s}>{s.toUpperCase()}</option>)}
           </select>
-          <select value={svc} onChange={(e) => setSvc(e.target.value)}
-            className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white">
+          <select value={svc} onChange={(e) => setSvc(e.target.value)} aria-label="Service"
+            className="min-h-11 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white">
             <option value="">— no service —</option>
             {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           <button
             disabled={!title.trim() || busy === 'inc-create'}
             onClick={() => { onCreate(title.trim(), sev, svc || null); setTitle(''); }}
-            className="flex items-center gap-1 rounded bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500 disabled:opacity-40"
+            className="flex min-h-11 items-center gap-1 rounded bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500 disabled:opacity-40"
           >
             {busy === 'inc-create' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />} Trigger
           </button>

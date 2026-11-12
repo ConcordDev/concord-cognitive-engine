@@ -29,11 +29,19 @@ describe('IncidentConsole sub-tab bar (FIX-ops-008, mobile 390)', () => {
     }
   });
 
-  it('sub-tab buttons meet the 40px touch floor', () => {
+  it('sub-tab buttons meet the 44px touch floor (FIX-ops-010)', () => {
     render(<IncidentConsole />);
     for (const label of SUBTABS) {
-      expect(screen.getByRole('button', { name: new RegExp(label, 'i') }).className).toContain('min-h-10');
+      expect(screen.getByRole('button', { name: new RegExp(label, 'i') }).className).toContain('min-h-11');
     }
+  });
+
+  it('create-row controls (title, severity, service, Trigger) meet the 44px floor (FIX-ops-010)', () => {
+    render(<IncidentConsole />);
+    expect(screen.getByPlaceholderText('Incident title').className).toContain('min-h-11');
+    expect(screen.getByRole('combobox', { name: 'Severity' }).className).toContain('min-h-11');
+    expect(screen.getByRole('combobox', { name: 'Service' }).className).toContain('min-h-11');
+    expect(screen.getByRole('button', { name: /trigger/i }).className).toContain('min-h-11');
   });
 
   it('clicking a sub-tab still switches the workbench view', () => {
