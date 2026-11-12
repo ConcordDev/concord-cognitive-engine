@@ -33,6 +33,7 @@ export function EngagementTracker({ onChanged, newFocusSignal = 0 }: { onChanged
   }, [newFocusSignal]);
   const [active, setActive] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', client: '', rate: '', budgetHours: '' });
+  const [formError, setFormError] = useState('');
   const [timeForm, setTimeForm] = useState({ hours: '', note: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ rate: '', budgetHours: '', status: 'active' as string });
@@ -55,8 +56,21 @@ export function EngagementTracker({ onChanged, newFocusSignal = 0 }: { onChanged
   const engs = data?.engs || [];
   const dash = data?.dash || null;
 
+  // FIX-consulting-003: rate / budget hours used to be sent as raw
+  // Number(text) — junk became NaN and negatives were clamped to 0 by the
+  // server, both in silence. Refuse at the form, in words.
+  function badAmount(label: string, raw: string): string {
+    if (raw.trim() === '') return '';
+    const v = Number(raw);
+    if (!Number.isFinite(v)) return `${label} must be a number.`;
+    if (v < 0) return `${label} can't be negative.`;
+    return '';
+  }
   async function addEng() {
     if (!form.name.trim()) return;
+    const err = badAmount('Rate', form.rate) || badAmount('Budget hours', form.budgetHours);
+    if (err) { setFormError(err); return; }
+    setFormError('');
     await lensRun('consulting', 'engagement-create', {
       name: form.name.trim(), client: form.client.trim(),
       rate: form.rate ? Number(form.rate) : 0, budgetHours: form.budgetHours ? Number(form.budgetHours) : 0,
@@ -88,6 +102,9 @@ export function EngagementTracker({ onChanged, newFocusSignal = 0 }: { onChanged
     setEditForm({ rate: String(e.rate), budgetHours: String(e.budgetHours), status: e.status });
   }
   async function saveEdit(id: string) {
+    const err = badAmount('Rate', editForm.rate) || badAmount('Budget hours', editForm.budgetHours);
+    if (err) { setFormError(err); return; }
+    setFormError('');
     await lensRun('consulting', 'engagement-update', {
       id,
       rate: editForm.rate ? Number(editForm.rate) : undefined,
@@ -143,6 +160,7 @@ export function EngagementTracker({ onChanged, newFocusSignal = 0 }: { onChanged
         <button onClick={addEng} disabled={!form.name.trim()}
           className="px-2.5 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-40">Add</button>
       </div>
+      {formError && <p role="alert" className="text-[11px] text-rose-300 mb-2">{formError}</p>}
 
       <ul className="space-y-1">
         {engs.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No engagements yet.</li>}

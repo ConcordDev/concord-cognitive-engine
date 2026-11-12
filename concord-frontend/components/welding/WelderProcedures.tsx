@@ -111,11 +111,12 @@ function JointStrengthCalc() {
             </select>
           </label>
           <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Thickness (mm)</span>
-            <input type="number" step="0.5" min={0} value={thickness || ''} onChange={(e) => setThickness(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 6" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
+            <input type="number" step="0.5" min={0} value={thickness || ''} onChange={(e) => setThickness(Number(e.target.value) || 0)} placeholder="e.g. 6" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Weld length (mm)</span>
-            <input type="number" min={0} value={length || ''} onChange={(e) => setLength(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 100" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
+            <input type="number" min={0} value={length || ''} onChange={(e) => setLength(Number(e.target.value) || 0)} placeholder="e.g. 100" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
+          {(thickness < 0 || length < 0) && <p role="note" className="text-[10px] text-amber-300">Negative values can't be used — enter 0 or more.</p>}
           <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || thickness <= 0 || length <= 0} className="w-full rounded bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-400 disabled:opacity-50">
             {compute.isPending ? <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /> : 'Calculate strength'}
           </button>
@@ -198,11 +199,12 @@ function RodSelector() {
             {WELD_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <div className="grid grid-cols-[1fr_80px] gap-1">
-            <input type="number" min={0} step="0.5" value={thickness || ''} onChange={(e) => setThickness(Math.max(0, Number(e.target.value) || 0))} placeholder="thick mm" className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
-            <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending} className="rounded bg-zinc-500 px-2 py-1.5 text-xs font-semibold text-white hover:bg-zinc-400 disabled:opacity-50">
+            <input type="number" min={0} step="0.5" value={thickness || ''} onChange={(e) => setThickness(Number(e.target.value) || 0)} placeholder="thick mm" className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
+            <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || thickness < 0} className="rounded bg-zinc-500 px-2 py-1.5 text-xs font-semibold text-white hover:bg-zinc-400 disabled:opacity-50">
               {compute.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Pick'}
             </button>
           </div>
+          {thickness < 0 && <p role="note" className="text-[10px] text-amber-300">Negative values can't be used — enter 0 or more.</p>}
         </div>
 
         {result?.recommended && (
@@ -280,18 +282,19 @@ function HeatInputCalc() {
       <div className="grid gap-3 p-4 md:grid-cols-[220px_1fr]">
         <div className="space-y-2">
           <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Voltage (V)</span>
-            <input type="number" min={0} value={voltage || ''} onChange={(e) => setVoltage(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 25" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
+            <input type="number" min={0} value={voltage || ''} onChange={(e) => setVoltage(Number(e.target.value) || 0)} placeholder="e.g. 25" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Amperage (A)</span>
-            <input type="number" min={0} value={amperage || ''} onChange={(e) => setAmperage(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 150" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
+            <input type="number" min={0} value={amperage || ''} onChange={(e) => setAmperage(Number(e.target.value) || 0)} placeholder="e.g. 150" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Travel speed (mm/s)</span>
-            <input type="number" min={0} step="0.5" value={travelSpeed || ''} onChange={(e) => setTravelSpeed(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 5" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
+            <input type="number" min={0} step="0.5" value={travelSpeed || ''} onChange={(e) => setTravelSpeed(Number(e.target.value) || 0)} placeholder="e.g. 5" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Efficiency η ({(efficiency * 100).toFixed(0)}%)</span>
             <input type="range" min={0.5} max={1} step={0.05} value={efficiency} onChange={(e) => setEfficiency(Number(e.target.value))} className="mt-1 w-full" />
             <div className="text-[9px] text-zinc-400">SMAW 0.8 · GMAW 0.85 · GTAW 0.6</div>
           </label>
+          {(voltage < 0 || amperage < 0 || travelSpeed < 0) && <p role="note" className="text-[10px] text-amber-300">Negative values can't be used — enter 0 or more.</p>}
           <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || voltage <= 0 || amperage <= 0 || travelSpeed <= 0} className="w-full rounded bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-400 disabled:opacity-50">
             {compute.isPending ? <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /> : 'Compute heat input'}
           </button>

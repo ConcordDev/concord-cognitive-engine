@@ -104,6 +104,7 @@ export function ForgeWorkbench() {
   const [concordNode, setConcordNode] = useState(false);
   const [domainTables, setDomainTables] = useState<string[]>([]);
   const [newTableName, setNewTableName] = useState('');
+  const [tableNote, setTableNote] = useState('');
   const [enabledSections, setEnabledSections] = useState<string[] | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [generationManifest, setGenerationManifest] = useState<Record<string, unknown> | null>(null);
@@ -249,10 +250,14 @@ export function ForgeWorkbench() {
 
   // ── Handlers ────────────────────────────────────────────────────────
   const handleAddTable = useCallback(() => {
-    const name = newTableName.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const raw = newTableName.trim();
+    const name = raw.toLowerCase().replace(/[^a-z0-9_]/g, '_');
     if (name && !domainTables.includes(name)) {
       setDomainTables(prev => [...prev, name]);
       setNewTableName('');
+      // FIX-forge-005: the sanitiser used to rewrite the typed name in
+      // silence ('bad table!@#' became 'bad_table___'). Name the rewrite.
+      setTableNote(name !== raw ? `Table names use lowercase letters, numbers and underscores — added as "${name}".` : '');
     }
   }, [newTableName, domainTables]);
 
@@ -516,6 +521,7 @@ export function ForgeWorkbench() {
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
+              {tableNote && <p role="note" className="text-[11px] text-amber-300 mb-2">{tableNote}</p>}
               {domainTables.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {domainTables.map(t => (

@@ -92,6 +92,18 @@ function BalanceCalculators() {
   const addUnit = () => setUnits((u) => [...u, { name: `Unit ${u.length + 1}`, hp: 100, attack: 15, defense: 10, speed: 10, cost: 3 }]);
   const removeUnit = (i: number) => setUnits((u) => u.filter((_, idx) => idx !== i));
   const updateUnit = (i: number, patch: Partial<UnitRow>) => setUnits((u) => u.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
+  // FIX-game-005: stat fields used to store Number(text) raw — '-' became
+  // NaN and 999999 passed — with no word. Name the first unusable stat and
+  // hold the balance check until every stat is a number of 0 or more.
+  const unitIssue = (() => {
+    for (let i = 0; i < units.length; i++) {
+      for (const f of ['hp', 'attack', 'defense', 'speed', 'cost'] as const) {
+        const v = units[i][f];
+        if (!Number.isFinite(v) || v < 0) return `Row ${i + 1} (${units[i].name || 'unnamed'}): ${f} must be a number of 0 or more.`;
+      }
+    }
+    return '';
+  })();
 
   // Economy simulation
   const [econ, setEcon] = useState({ startingGold: 100, goldPerMinute: 5, avgSpendPerMinute: 3, inflationPercent: 2, simulateMinutes: 60 });
@@ -138,7 +150,7 @@ function BalanceCalculators() {
           <div className="space-y-2">
             {units.map((u, i) => (
               <div key={i} className="grid grid-cols-7 gap-1.5 items-center">
-                <input value={u.name} onChange={(e) => updateUnit(i, { name: e.target.value })} placeholder="Name" className="input-lattice text-xs col-span-2" />
+                <input value={u.name} onChange={(e) => updateUnit(i, { name: e.target.value })} placeholder="Name" maxLength={200} className="input-lattice text-xs col-span-2" />
                 {(['hp', 'attack', 'defense', 'speed', 'cost'] as const).map((field) => (
                   <input key={field} type="number" value={u[field]} onChange={(e) => updateUnit(i, { [field]: Number(e.target.value) } as Partial<UnitRow>)} placeholder={field} title={field} className="input-lattice text-xs" />
                 ))}
@@ -146,9 +158,10 @@ function BalanceCalculators() {
               </div>
             ))}
           </div>
+          {unitIssue && <p role="note" className="text-[11px] text-amber-300 mb-1">{unitIssue}</p>}
           <div className="flex items-center gap-2">
             <button onClick={addUnit} className="text-xs text-neon-cyan flex items-center gap-1"><Plus className="w-3 h-3" /> Add unit</button>
-            <button onClick={() => run('balanceCheck', { units })} disabled={busy || units.length < 2} className="btn-neon text-xs py-1.5 px-4 ml-auto flex items-center gap-1">
+            <button onClick={() => run('balanceCheck', { units })} disabled={busy || units.length < 2 || !!unitIssue} className="btn-neon text-xs py-1.5 px-4 ml-auto flex items-center gap-1">
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} Check Balance
             </button>
           </div>

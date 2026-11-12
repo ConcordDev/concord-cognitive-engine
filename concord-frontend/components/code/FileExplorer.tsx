@@ -31,6 +31,7 @@ export function FileExplorer({
   const [confirmingPath, setConfirmingPath] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
   const [renameDraft, setRenameDraft] = useState('');
+  const [renameError, setRenameError] = useState('');
   const [renameFlash, setRenameFlash] = useState(0);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -84,6 +85,7 @@ export function FileExplorer({
   }
 
   function startRename(path: string) {
+    setRenameError('');
     setRenamingPath(path);
     setRenameDraft(path);
     // Focus + select the basename (not the directory prefix) on next paint, VS-Code-style.
@@ -101,7 +103,10 @@ export function FileExplorer({
     const to = renameDraft.trim();
     const from = renamingPath;
     setRenamingPath(null);
-    if (!to || to === from) return;
+    // FIX-code-003: a blank rename used to just revert with no word.
+    if (!to) { setRenameError('The rename was cancelled — a file name cannot be empty.'); return; }
+    if (to === from) return;
+    setRenameError('');
     try {
       const r = await lensRun({ domain: 'code', action: 'files-rename', input: { projectId, from, to } });
       if (r.data?.ok === false) { alert(r.data?.error); return; }
@@ -128,6 +133,9 @@ export function FileExplorer({
       </div>
       {deleteError && (
         <div role="alert" className="px-2 py-1.5 border-b border-rose-500/30 bg-rose-500/10 text-[11px] text-rose-200">{deleteError}</div>
+      )}
+      {renameError && (
+        <div role="alert" className="px-2 py-1.5 border-b border-amber-500/30 bg-amber-500/10 text-[11px] text-amber-200">{renameError}</div>
       )}
       {creating && (
         <div className="p-2 border-b border-white/10 flex items-center gap-1">
