@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { GitFork, Trash2, Loader2, RefreshCw, Rss } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Repo { id: string; fullName: string; note: string; reason: string; lastStars: number | null; lastPushedAt: string | null; openIssues?: number | null; forks?: number | null }
 interface Dash { repos: number; totalStars: number; refreshed: number; byReason: Record<string, number> }
@@ -118,7 +119,7 @@ export function RepoWatchlist() {
             <button onClick={() => refreshRepo(r.id)} disabled={busy === r.id} className="text-zinc-400 hover:text-violet-300">
               {busy === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
             </button>
-            <button aria-label="Delete" onClick={() => delRepo(r.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
+            <StickyDeleteConfirm onConfirm={() => { void delRepo(r.id); }} className="opacity-0 group-hover:opacity-100 text-rose-400" armAriaLabel={`Delete ${r.fullName}`} confirmLabel={`Stop watching ${r.fullName}?`} confirmAriaLabel={`Confirm delete ${r.fullName}`} armLabel={<Trash2 className="w-3 h-3" />} />
           </li>
         ))}
       </ul>

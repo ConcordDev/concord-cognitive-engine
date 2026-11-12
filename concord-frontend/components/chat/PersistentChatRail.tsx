@@ -24,6 +24,7 @@ import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import { useSessionId, resetSessionId } from '@/hooks/useSessionId';
 import { api } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
 import { SovereigntyPrompt } from '@/components/sovereignty/SovereigntyPrompt';
@@ -838,14 +839,29 @@ export function PersistentChatRail({
           )}
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={handleNewConversation}
-            className="p-1.5 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors"
-            title="New conversation"
-            aria-label="New conversation"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          {messages.length > 0 ? (
+            /* FIX-projects-007: starting a new conversation clears the
+               current chat — with messages on screen that is a delete, so
+               it confirms first (sticky, no timer). An empty chat starts
+               instantly: there is nothing to lose. */
+            <StickyDeleteConfirm
+              onConfirm={handleNewConversation}
+              className="p-1.5 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors"
+              armAriaLabel="New conversation"
+              confirmLabel="Start new? This chat clears."
+              confirmAriaLabel="Confirm new conversation"
+              armLabel={<Plus className="w-4 h-4" />}
+            />
+          ) : (
+            <button
+              onClick={handleNewConversation}
+              className="p-1.5 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors"
+              title="New conversation"
+              aria-label="New conversation"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="p-1.5 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors"

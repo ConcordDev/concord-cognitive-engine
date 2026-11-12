@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { buildLensFactsBlock } from '@/components/chat/lensAccountFacts';
 import { ChatDraftInThreadButton } from '@/components/chat/ChatDraftInThreadButton';
 import { getApiBase } from '@/lib/api/base';
@@ -3121,18 +3122,15 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteConversationMutation.mutate(conv.id);
-                    }}
+                  <StickyDeleteConfirm
+                    onConfirm={() => deleteConversationMutation.mutate(conv.id)}
                     disabled={deleteConversationMutation.isPending}
                     className="p-1.5 rounded-md hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
-                    title="Delete conversation"
-                    aria-label={`Delete conversation: ${conv.title}`}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    armAriaLabel={`Delete conversation: ${conv.title}`}
+                    confirmLabel={`Delete “${conv.title}”?`}
+                    confirmAriaLabel={`Confirm delete conversation: ${conv.title}`}
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  />
                 </div>
               </div>
             ))}
@@ -3546,19 +3544,18 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       New Conversation
                     </button>
                     {selectedConversation && (
-                      <button
-                        onClick={() => {
+                      <StickyDeleteConfirm
+                        onConfirm={() => {
                           deleteConversationMutation.mutate(selectedConversation);
                           setMoreMenuOpen(false);
                         }}
                         disabled={deleteConversationMutation.isPending}
                         className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors border-t border-lattice-border disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        {deleteConversationMutation.isPending
-                          ? 'Deleting...'
-                          : 'Delete Conversation'}
-                      </button>
+                        armAriaLabel="Delete Conversation"
+                        confirmLabel={`Delete “${conversations.find((c) => c.id === selectedConversation)?.title || 'Conversation'}”?`}
+                        confirmAriaLabel="Confirm delete conversation"
+                        armLabel={<><Trash2 className="w-4 h-4" /> Delete Conversation</>}
+                      />
                     )}
                   </motion.div>
                 )}

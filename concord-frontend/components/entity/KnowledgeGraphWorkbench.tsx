@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { publicLookup } from '@/lib/public-lookup';
 import { LookupNotice } from '@/components/common/LookupNotice';
 import { TreeDiagram, type TreeNode } from '@/components/viz';
@@ -388,14 +389,7 @@ function GraphTab({ graph, busy, mutate }: {
                 >
                   <Pencil className="w-3 h-3" />
                 </button>
-                <button
-                  disabled={busy}
-                  onClick={() => { mutate('node-delete', { id: selNode.id }, 'Node deleted'); setSelected(null); }}
-                  className="btn-neon text-xs text-red-400"
-                  aria-label="Delete node"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => { mutate('node-delete', { id: selNode.id }, 'Node deleted'); setSelected(null); }} disabled={busy} className="btn-neon text-xs text-red-400" armAriaLabel={`Delete node ${selNode.name}`} confirmLabel={`Delete “${selNode.name}”?`} confirmAriaLabel={`Confirm delete node ${selNode.name}`} armLabel={<Trash2 className="w-3 h-3" />} />
               </div>
               <label className="block text-[11px] text-gray-400">
                 Type
@@ -427,14 +421,7 @@ function GraphTab({ graph, busy, mutate }: {
                       <span className="text-[9px] px-1 py-0.5 rounded bg-zinc-800 text-gray-400" title="provenance">
                         {a.source}
                       </span>
-                      <button
-                        disabled={busy}
-                        onClick={() => mutate('node-update', { id: selNode.id, attributeKey: k, deleteAttribute: true }, 'Attribute removed')}
-                        className="text-gray-400 hover:text-red-400"
-                        aria-label={`Delete attribute ${k}`}
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                      <StickyDeleteConfirm onConfirm={() => mutate('node-update', { id: selNode.id, attributeKey: k, deleteAttribute: true }, 'Attribute removed')} disabled={busy} className="text-gray-400 hover:text-red-400" armAriaLabel={`Delete attribute ${k}`} confirmLabel={`Remove attribute ${k}?`} confirmAriaLabel={`Confirm delete attribute ${k}`} armLabel={<X className="w-3 h-3" />} />
                     </div>
                   ))
                 )}
@@ -475,14 +462,7 @@ function GraphTab({ graph, busy, mutate }: {
                         <span className="text-gray-400">{e.from === selNode.id ? '→' : '←'}</span>
                         <span className="text-gray-300 flex-1 truncate">{other?.name || '?'}</span>
                         <span className="text-purple-300">{e.relType}</span>
-                        <button
-                          disabled={busy}
-                          onClick={() => mutate('edge-delete', { id: e.id }, 'Edge deleted')}
-                          className="text-gray-400 hover:text-red-400"
-                          aria-label="Delete edge"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                        <StickyDeleteConfirm onConfirm={() => mutate('edge-delete', { id: e.id }, 'Edge deleted')} disabled={busy} className="text-gray-400 hover:text-red-400" armAriaLabel={`Delete edge to ${other?.name || 'node'}`} confirmLabel={`Remove this ${e.relType} edge?`} confirmAriaLabel="Confirm delete edge" armLabel={<X className="w-3 h-3" />} />
                       </div>
                     );
                   })
@@ -608,14 +588,7 @@ function SchemasTab({ schemas, busy, mutate }: {
                   <button onClick={() => startEdit(s)} className="text-gray-400 hover:text-white" aria-label="Edit schema">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
-                  <button
-                    disabled={busy}
-                    onClick={() => mutate('schema-delete', { id: s.id }, 'Schema deleted')}
-                    className="text-gray-400 hover:text-red-400"
-                    aria-label="Delete schema"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <StickyDeleteConfirm onConfirm={() => mutate('schema-delete', { id: s.id }, 'Schema deleted')} disabled={busy} className="text-gray-400 hover:text-red-400" armAriaLabel={`Delete schema ${s.className}`} confirmLabel={`Delete class “${s.className}”?`} confirmAriaLabel={`Confirm delete schema ${s.className}`} armLabel={<Trash2 className="w-3.5 h-3.5" />} />
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5">

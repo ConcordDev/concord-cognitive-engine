@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { calendarDateKey } from '@/lib/calendar-date';
 import { TimelineView, type TimelineEvent } from '@/components/viz';
 import { notifyCreativeDashboardDirty } from '@/lib/creative/dashboard-bus';
@@ -350,9 +351,7 @@ function ReviewTab() {
                   <p className="text-xs text-zinc-400">{a.project || 'No project'}{a.kind === 'video' ? ` · ${fmtTime(a.durationSec)}` : ''}</p>
                 </div>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); deleteAsset(a.id); }} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete asset">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void deleteAsset(a.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete asset ${a.name}`} confirmLabel={`Delete “${a.name}”?`} confirmAriaLabel={`Confirm delete asset ${a.name}`} armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
             <div className="flex items-center gap-3 mt-2 text-xs text-zinc-400">
               <span><MessageSquare className="w-3 h-3 inline mr-1" />{a.commentCount} comment{a.commentCount !== 1 ? 's' : ''}</span>
@@ -421,9 +420,7 @@ function ReviewTab() {
                       <button onClick={() => toggleResolved(c)} className={`${BTN_GHOST} ${c.resolved ? 'text-emerald-400' : 'hover:text-emerald-400'}`} aria-label="Resolve">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => deleteComment(c.id)} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete comment">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <StickyDeleteConfirm onConfirm={() => { void deleteComment(c.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete comment by ${c.author}`} confirmLabel={`Delete ${c.author}'s comment?`} confirmAriaLabel="Confirm delete comment" armLabel={<Trash2 className="w-3.5 h-3.5" />} />
                     </div>
                   </div>
                   <p className="text-sm text-zinc-300 mt-1">{c.body}</p>
@@ -551,9 +548,7 @@ function CallSheetTab() {
                 <p className="text-sm font-medium text-zinc-100">{cs.project}</p>
                 <p className="text-xs text-zinc-400">Day {cs.dayNumber} · {cs.shootDate} · call {cs.generalCall}</p>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); deleteSheet(cs.id); }} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void deleteSheet(cs.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete call sheet for ${cs.project}`} confirmLabel={`Delete the ${cs.project} call sheet (day ${cs.dayNumber})?`} confirmAriaLabel="Confirm delete call sheet" armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
             <div className="flex gap-3 mt-2 text-xs text-zinc-400">
               <span>{cs.castCount ?? cs.cast?.length ?? 0} cast</span>
@@ -735,9 +730,7 @@ function BreakdownTab() {
                 <p className="text-sm font-medium text-zinc-100">{b.title}</p>
                 <p className="text-xs text-zinc-400">{b.project || 'No project'} · {b.tagCount ?? 0} tags · {b.scriptLength ?? 0} chars</p>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); deleteBreakdown(b.id); }} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void deleteBreakdown(b.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete breakdown ${b.title}`} confirmLabel={`Delete “${b.title}”?`} confirmAriaLabel={`Confirm delete breakdown ${b.title}`} armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
           </div>
         ))}
@@ -943,9 +936,7 @@ function DeliverableTab() {
                 <p className="text-sm font-medium text-zinc-100">{d.name}</p>
                 <p className="text-xs text-zinc-400">{d.project || 'No project'} · v{d.currentVersion} of {d.versionCount ?? d.versions?.length ?? 1}</p>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); del(d.id); }} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void del(d.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete deliverable ${d.name}`} confirmLabel={`Delete “${d.name}”?`} confirmAriaLabel={`Confirm delete deliverable ${d.name}`} armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
             <span className={`mt-2 inline-block rounded px-1.5 py-0.5 text-xs ${STATUS_TONE[d.status] || STATUS_TONE.draft}`}>
               {d.status.replace(/_/g, ' ')}
@@ -1164,9 +1155,7 @@ function CalendarTab() {
                   {overdue && <span className="text-rose-400 ml-1">overdue</span>}
                 </p>
               </div>
-              <button onClick={() => del(ev.id)} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete event">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <StickyDeleteConfirm onConfirm={() => { void del(ev.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel={`Delete event ${ev.title}`} confirmLabel={`Delete “${ev.title}”?`} confirmAriaLabel={`Confirm delete event ${ev.title}`} armLabel={<Trash2 className="w-3.5 h-3.5" />} />
             </div>
           );
         })}
@@ -1285,9 +1274,7 @@ function ProofLinkTab() {
                 <button onClick={() => toggle(l)} className={BTN_SECONDARY}>
                   {l.active ? 'Disable' : 'Enable'}
                 </button>
-                <button onClick={() => del(l.id)} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete link">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => { void del(l.id); }} className={`${BTN_GHOST} hover:text-rose-400`} armAriaLabel="Delete proof link" confirmLabel="Delete this proof link?" confirmAriaLabel="Confirm delete proof link" armLabel={<Trash2 className="w-3.5 h-3.5" />} />
                 <span className="ml-auto text-xs text-zinc-400">
                   <MessageSquare className="w-3 h-3 inline mr-1" />{l.externalCommentCount} external
                 </span>

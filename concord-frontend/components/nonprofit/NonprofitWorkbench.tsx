@@ -26,6 +26,7 @@ import {
   CheckCircle2, FileText, Send, PauseCircle, PlayCircle, Pencil, Target,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { formatCalendarDate } from '@/lib/calendar-date';
 import { ChartKit } from '@/components/viz';
 import { commSendFeedback, commStatusLabel, thankYouSweepLines } from '@/components/nonprofit/nonprofitMail';
@@ -275,7 +276,7 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
                 </p>
               </button>
               <button onClick={() => startEdit(d)} className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-zinc-200" aria-label="Edit donor"><Pencil className="w-3 h-3" /></button>
-              <button onClick={() => delDonor(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400" aria-label="Delete donor"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void delDonor(d.id); }} className="opacity-0 group-hover:opacity-100 text-rose-400" armAriaLabel={`Delete donor ${d.name}`} confirmLabel={d.pledges.length > 0 ? `Delete “${d.name}”? Also removes ${d.pledges.length} pledge(s).` : `Delete “${d.name}”?`} confirmAriaLabel={`Confirm delete donor ${d.name}`} armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
             {editingId === d.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800 flex flex-wrap gap-1.5 items-center">
@@ -693,7 +694,7 @@ function PagesTab() {
                 <p className="text-xs font-bold text-zinc-100 truncate">{p.title}</p>
                 <p className="text-[10px] text-zinc-400 font-mono">{p.publicUrl}</p>
               </div>
-              <button onClick={() => del(p.id)} className="text-rose-400" aria-label="Delete page"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void del(p.id); }} className="text-rose-400" armAriaLabel={`Delete page ${p.title}`} confirmLabel={`Delete “${p.title}”?`} confirmAriaLabel={`Confirm delete page ${p.title}`} armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
             {p.story && <p className="text-[10px] text-zinc-400 mt-1 line-clamp-2">{p.story}</p>}
             <p className="text-sm font-bold mt-1.5" style={{ color: p.accentColor }}>{money(p.raised)}<span className="text-[10px] text-zinc-400"> raised{p.goal > 0 ? ` of ${money(p.goal)}` : ''}</span></p>
@@ -804,7 +805,7 @@ function VolunteersTab() {
                 </p>
                 <p className="text-[10px] text-zinc-400">{Math.round(v.totalHours)} hrs · {v.shifts.length} shift(s) · {v.availability || 'availability n/a'}</p>
               </button>
-              <button onClick={() => del(v.id)} className="opacity-0 group-hover:opacity-100 text-rose-400" aria-label="Delete volunteer"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void del(v.id); }} className="opacity-0 group-hover:opacity-100 text-rose-400" armAriaLabel={`Delete volunteer ${v.name}`} confirmLabel={`Delete “${v.name}”?`} confirmAriaLabel={`Confirm delete volunteer ${v.name}`} armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
             {expanded === v.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800 space-y-2">
@@ -962,7 +963,7 @@ function EventsTab() {
                   </div>
                 )}
               </button>
-              <button onClick={() => del(ev.id)} className="opacity-0 group-hover:opacity-100 text-rose-400" aria-label="Delete event"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => { void del(ev.id); }} className="opacity-0 group-hover:opacity-100 text-rose-400" armAriaLabel={`Delete event ${ev.name}`} confirmLabel={`Delete “${ev.name}”?`} confirmAriaLabel={`Confirm delete event ${ev.name}`} armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
             {expanded === ev.id && (
               <div className="mt-2 pt-2 border-t border-zinc-800 space-y-2">
