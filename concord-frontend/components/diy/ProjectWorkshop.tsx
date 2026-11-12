@@ -1589,8 +1589,13 @@ function InsightsPanel({
         {buildTime ? (
           <div className="space-y-1.5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <Stat label="Total time" value={`${buildTime.grandTotalHours}h`} />
-              <Stat label="Setup/cleanup" value={`${buildTime.setupCleanupMinutes}m`} />
+              {/* FIX-diy-004: the headline rendered hours only, so a
+                  sub-hour build read 'Total time 0h' while its own
+                  payload carried the minutes. Under an hour the total
+                  reads in minutes; a zero-rounded setup share of a
+                  nonzero build reads '<1m', not '0m'. */}
+              <Stat label="Total time" value={buildTime.grandTotalMinutes < 60 ? `${buildTime.grandTotalMinutes}m` : `${buildTime.grandTotalHours}h`} />
+              <Stat label="Setup/cleanup" value={buildTime.setupCleanupMinutes === 0 && buildTime.grandTotalMinutes > 0 ? '<1m' : `${buildTime.setupCleanupMinutes}m`} />
               <Stat label="Weekends" value={`${buildTime.weekends}`} />
             </div>
             <p className="text-[11px] text-zinc-400">{buildTime.tip}</p>

@@ -58,6 +58,13 @@ describe("diy pure-compute AI macros", () => {
     assert.ok(["moderate", "high"].includes(r.result.riskLevel));
   });
 
+  it("FIX-diy-004: a ~1-minute build carries its minutes in the payload (the display reads them, not 0h)", () => {
+    const r = call("buildTimeEstimate", ctxA, { data: { difficulty: "intermediate", steps: [{ name: "Glue", estimatedMinutes: 1 }] } }, {});
+    assert.equal(r.ok, true);
+    assert.equal(r.result.grandTotalMinutes, 1);
+    assert.equal(r.result.grandTotalHours, 0);
+  });
+
   it("buildTimeEstimate applies experience multiplier per step", () => {
     const r = call("buildTimeEstimate", ctxA, { data: { difficulty: "beginner", steps: [{ name: "Cut", estimatedMinutes: 60 }] } }, {});
     assert.ok(r.result.grandTotalMinutes > 60);
