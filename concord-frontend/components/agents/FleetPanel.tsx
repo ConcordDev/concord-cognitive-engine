@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot, Plus, Play, Power, Activity, Clock, Zap, Settings, Search, Terminal,
   ChevronRight, BarChart3, Code, Cpu, CheckCircle, XCircle, Database, Layers,
-  TrendingUp, Trash2, Gauge, Route, Radio, Timer, Loader2, AlertTriangle
+  TrendingUp, Trash2, Gauge, Route, Radio, Timer, Loader2, AlertTriangle, Pencil
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
@@ -85,6 +85,19 @@ export function FleetPanel() {
   const [newModel, setNewModel] = useState('claude-sonnet-4-5-20250929');
   const [newTemp, setNewTemp] = useState(0.3);
   const [newMaxTokens, setNewMaxTokens] = useState(4096);
+
+  // Configuration edit state (FIX-agents-009) — the detail tabs were
+  // read-only; the Configuration tab now edits name / description /
+  // model / temperature / maxTokens through the same artifact update
+  // path Start/Stop already use.
+  const [editingConfigFor, setEditingConfigFor] = useState<string | null>(null);
+  const [cfgName, setCfgName] = useState('');
+  const [cfgDescription, setCfgDescription] = useState('');
+  const [cfgModel, setCfgModel] = useState('');
+  const [cfgTemp, setCfgTemp] = useState(0.3);
+  const [cfgMaxTokens, setCfgMaxTokens] = useState(4096);
+  const [cfgError, setCfgError] = useState<string | null>(null);
+  const [cfgSaving, setCfgSaving] = useState(false);
 
   // Backend action wiring
   const runAction = useRunArtifact('agents');
@@ -338,6 +351,40 @@ export function FleetPanel() {
         return { agents: roster };
       default:
         return {};
+    }
+  };
+
+  const startConfigEdit = () => {
+    if (!selectedAgent) return;
+    setEditingConfigFor(selectedAgent.id);
+    setCfgName(selectedAgent.name || '');
+    setCfgDescription(selectedAgent.description || '');
+    setCfgModel(selectedAgent.model || 'default');
+    setCfgTemp(selectedAgent.temperature ?? 0.3);
+    setCfgMaxTokens(selectedAgent.maxTokens || 4096);
+    setCfgError(null);
+  };
+
+  const saveConfigEdit = async () => {
+    if (!selectedAgent || editingConfigFor !== selectedAgent.id) return;
+    if (!cfgName.trim()) { setCfgError('Name cannot be empty.'); return; }
+    if (cfgName.trim().length > 120) { setCfgError('Name must be at most 120 characters.'); return; }
+    setCfgSaving(true);
+    try {
+      const patch = {
+        name: cfgName.trim(),
+        description: cfgDescription,
+        model: cfgModel.trim() || 'default',
+        temperature: Math.max(0, Math.min(cfgTemp || 0, 2)),
+        maxTokens: Math.max(1, Math.min(cfgMaxTokens || 4096, 200000)),
+      };
+      await updateLensAgent(selectedAgent.id, { data: patch as unknown as Record<string, unknown> });
+      setSelectedAgent({ ...selectedAgent, ...patch });
+      setEditingConfigFor(null);
+    } catch (e) {
+      setCfgError(e instanceof Error ? e.message : 'That change was not saved.');
+    } finally {
+      setCfgSaving(false);
     }
   };
 
@@ -1064,23 +1111,79 @@ export function FleetPanel() {
             {detailTab === 'config' && (
               <div className="space-y-4">
                 <div className="panel p-4">
-                  <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-                    <Cpu className="w-4 h-4 text-neon-cyan" /> Model Configuration
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className="p-3 bg-lattice-bg rounded-lg">
-                      <p className="text-xs text-gray-400 mb-1">Model</p>
-                      <p className="text-sm font-mono text-white">{selectedAgent.model || 'default'}</p>
-                    </div>
-                    <div className="p-3 bg-lattice-bg rounded-lg">
-                      <p className="text-xs text-gray-400 mb-1">Max Tokens</p>
-                      <p className="text-sm font-mono text-white">{selectedAgent.maxTokens || 4096}</p>
-                    </div>
-                    <div className="p-3 bg-lattice-bg rounded-lg">
-                      <p className="text-xs text-gray-400 mb-1">Temperature</p>
-                      <p className="text-sm font-mono text-white">{selectedAgent.temperature ?? 0.3}</p>
-                    </div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-white flex items-center gap-2">
+                      <Cpu className="w-4 h-4 text-neon-cyan" /> Model Configuration
+                    </h3>
+                    {editingConfigFor === selectedAgent.id ? (
+                      <span className="flex items-center gap-2">
+                        <button
+                          onClick={() => void saveConfigEdit()}
+                          disabled={cfgSaving}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan/20 disabled:opacity-50"
+                        >
+                          {cfgSaving ? 'Saving...' : 'Save changes'}
+                        </button>
+                        <button
+                          onClick={() => setEditingConfigFor(null)}
+                          className="px-3 py-1.5 rounded-lg text-xs bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                        >
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={startConfigEdit}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan/20"
+                      >
+                        <Pencil className="w-3.5 h-3.5" /> Edit configuration
+                      </button>
+                    )}
                   </div>
+                  {editingConfigFor === selectedAgent.id ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block" htmlFor="cfg-name">Name</label>
+                          <input id="cfg-name" aria-label="Agent name" value={cfgName} onChange={(e) => setCfgName(e.target.value)} className="input-lattice w-full" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block" htmlFor="cfg-model">Model</label>
+                          <input id="cfg-model" aria-label="Model" value={cfgModel} onChange={(e) => setCfgModel(e.target.value)} className="input-lattice w-full" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-400 mb-1 block" htmlFor="cfg-desc">Description</label>
+                        <input id="cfg-desc" aria-label="Description" value={cfgDescription} onChange={(e) => setCfgDescription(e.target.value)} className="input-lattice w-full" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block" htmlFor="cfg-max">Max Tokens</label>
+                          <input id="cfg-max" aria-label="Max tokens" type="number" min={1} max={200000} value={cfgMaxTokens} onChange={(e) => setCfgMaxTokens(Number(e.target.value) || 0)} className="input-lattice w-full" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block" htmlFor="cfg-temp">Temperature</label>
+                          <input id="cfg-temp" aria-label="Temperature" type="number" min={0} max={2} step={0.1} value={cfgTemp} onChange={(e) => setCfgTemp(Number(e.target.value) || 0)} className="input-lattice w-full" />
+                        </div>
+                      </div>
+                      {cfgError && <p role="alert" className="text-xs text-rose-300">{cfgError}</p>}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div className="p-3 bg-lattice-bg rounded-lg">
+                        <p className="text-xs text-gray-400 mb-1">Model</p>
+                        <p className="text-sm font-mono text-white">{selectedAgent.model || 'default'}</p>
+                      </div>
+                      <div className="p-3 bg-lattice-bg rounded-lg">
+                        <p className="text-xs text-gray-400 mb-1">Max Tokens</p>
+                        <p className="text-sm font-mono text-white">{selectedAgent.maxTokens || 4096}</p>
+                      </div>
+                      <div className="p-3 bg-lattice-bg rounded-lg">
+                        <p className="text-xs text-gray-400 mb-1">Temperature</p>
+                        <p className="text-sm font-mono text-white">{selectedAgent.temperature ?? 0.3}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="panel p-4">
