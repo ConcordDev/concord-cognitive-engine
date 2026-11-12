@@ -32,6 +32,7 @@ interface Mentor {
   menteeCount: number;
   listed: boolean;
   hasAccount?: boolean;
+  sample?: boolean;
 }
 interface Review {
   id: string; authorName: string; rating: number; comment: string;
@@ -260,6 +261,9 @@ export function MentorDirectoryPanel() {
               {selected.hasAccount === false && (
                 <p className="text-xs text-zinc-500">Dataset profile. Not a member account.</p>
               )}
+              {selected.sample && (
+                <p className="text-xs text-zinc-500">Sample profile. Registered by a test harness — not an active mentor.</p>
+              )}
               <p className="text-sm text-zinc-400">{selected.headline || 'Mentor'}</p>
             </div>
             <div className="text-right">
@@ -425,6 +429,7 @@ export function MentorDirectoryPanel() {
                 <span className="font-semibold flex items-center gap-1.5">
                   {m.name}
                   {m.hasAccount === false && <span className="text-[10px] font-normal text-zinc-500">Dataset profile</span>}
+                  {m.sample && <span className="text-[10px] font-normal text-zinc-500">Sample profile</span>}
                 </span>
                 <Stars rating={m.rating} />
               </div>

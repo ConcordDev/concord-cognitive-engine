@@ -37,6 +37,7 @@ interface GroupSession {
   id: string;
   hostId: string;
   hostName: string;
+  hostSample?: boolean;
   title: string;
   topic: string;
   description: string;
@@ -182,7 +183,7 @@ export function GroupSessionsPanel() {
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs text-zinc-400">
             <span className="flex items-center gap-1">
-              {isHost(selected) && <Crown className="w-3 h-3 text-amber-400" />} Host: <b className="text-white">{selected.hostName}</b>
+              {isHost(selected) && <Crown className="w-3 h-3 text-amber-400" />} Host: <b className="text-white">{selected.hostName}</b>{selected.hostSample && <span className="text-zinc-500">(sample)</span>}
             </span>
             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(selected.startAt).toLocaleString()}</span>
             <span>Duration: <b className="text-white">{selected.durationMin} min</b></span>
@@ -326,7 +327,7 @@ export function GroupSessionsPanel() {
                 </span>
                 <span className={cn('text-[10px] px-2 py-0.5 rounded', STATUS_STYLE[s.status])}>{s.status}</span>
               </div>
-              <p className="text-xs text-zinc-400">{isHost(s) ? 'You are hosting' : `Hosted by ${s.hostName}`} · {s.attendees.length}/{s.capacity} joined</p>
+              <p className="text-xs text-zinc-400">{isHost(s) ? 'You are hosting' : `Hosted by ${s.hostName}${s.hostSample ? ' (sample)' : ''}`} · {s.attendees.length}/{s.capacity} joined</p>
               <p className="text-[10px] text-zinc-400 flex items-center gap-1">
                 <Clock className="w-3 h-3" /> {new Date(s.startAt).toLocaleString()}
               </p>
