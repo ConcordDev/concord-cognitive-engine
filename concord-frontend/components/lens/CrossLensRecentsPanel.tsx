@@ -118,6 +118,14 @@ export function CrossLensRecentsPanel({ lensId, sinceDays = 7, limit = 8, hideWh
     return () => { cancelled = true; };
   }, [lensId, sinceDays, limit]);
 
+  // A hide-when-empty panel must stay hidden until its first read
+  // settles. Rendering the shell while loading made the "From
+  // elsewhere" header flash on every reload, including lenses with no
+  // surfaced DTUs at all (FIX-debate-008).
+  if (loading && rows.length === 0 && hideWhenEmpty) {
+    return null;
+  }
+
   if (rows.length === 0 && !loading && hideWhenEmpty && !error) {
     return null;
   }

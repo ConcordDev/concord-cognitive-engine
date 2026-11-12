@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const lensRun = vi.hoisted(() => vi.fn());
@@ -25,6 +25,19 @@ describe('SessionRail — canonical lensRun path', () => {
     await waitFor(() => expect(screen.getByText('Paused Forge session')).toBeInTheDocument());
     expect(lensRun).toHaveBeenCalledWith('sessions', 'list_mine', expect.objectContaining({ lensId: 'forge', status: 'open' }));
     expect(lensRun).toHaveBeenCalledWith('sessions', 'list_mine', expect.objectContaining({ lensId: 'forge', status: 'paused' }));
+  });
+
+  it('does not flash the Open sessions shell while the first read is in flight', async () => {
+    lensRun.mockImplementation(() => new Promise((resolve) => {
+      setTimeout(() => resolve({ data: { ok: true, result: { ok: true, sessions: [] } } }), 30);
+    }));
+    const view = render(<SessionRail lensId="debate" hideWhenEmpty />);
+    // First paint, read still in flight: no shell, no header.
+    expect(view.container.firstChild).toBeNull();
+    expect(screen.queryByText(/Open sessions/)).not.toBeInTheDocument();
+    // After the read settles empty, the rail stays hidden.
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 60)); });
+    expect(view.container.firstChild).toBeNull();
   });
 
   it('degrades silently when sessions.list_mine fails', async () => {
