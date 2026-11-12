@@ -147,7 +147,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Monitor name…"
-              className="w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
+              className="min-h-11 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
               aria-label="Monitor name"
             />
             <div className="flex gap-2">
@@ -156,7 +156,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
                 <select
                   value={minSeverity}
                   onChange={(e) => setMinSeverity(e.target.value as (typeof SEVERITIES)[number])}
-                  className="mt-1 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs capitalize text-blue-100 focus:border-blue-500 focus:outline-none"
+                  className="min-h-11 mt-1 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs capitalize text-blue-100 focus:border-blue-500 focus:outline-none"
                 >
                   {SEVERITIES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -169,14 +169,14 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
                   max={1440}
                   value={intervalMin}
                   onChange={(e) => setIntervalMin(Number(e.target.value))}
-                  className="mt-1 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
+                  className="min-h-11 mt-1 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
                 />
               </label>
             </div>
             <button
               disabled={busy || !name.trim()}
               onClick={createMonitor}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40"
+              className="min-h-11 inline-flex w-full items-center justify-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40"
             >
               <Plus className="h-3.5 w-3.5" /> Create monitor
             </button>
@@ -211,14 +211,14 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
                     <button
                       disabled={busy}
                       onClick={() => runMonitor(m)}
-                      className="inline-flex items-center gap-1 rounded bg-blue-700/50 px-1.5 py-0.5 text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
+                      className="min-h-11 inline-flex items-center gap-1 rounded bg-blue-700/50 px-1.5 py-0.5 text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
                     >
                       <Play className="h-3 w-3" /> Run
                     </button>
                     <button
                       disabled={busy}
                       onClick={() => toggle(m)}
-                      className="rounded bg-blue-950/40 px-1.5 py-0.5 text-blue-400 hover:text-blue-200 disabled:opacity-40"
+                      className="min-h-11 rounded bg-blue-950/40 px-1.5 py-0.5 text-blue-400 hover:text-blue-200 disabled:opacity-40"
                       aria-label={m.enabled ? 'Disable' : 'Enable'}
                     >
                       <Power className="h-3 w-3" />
@@ -259,7 +259,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
             <button
               disabled={busy}
               onClick={acknowledgeAll}
-              className="ml-auto inline-flex items-center gap-1 rounded bg-blue-700/50 px-2 py-0.5 text-[10px] text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
+              className="min-h-11 ml-auto inline-flex items-center gap-1 rounded bg-blue-700/50 px-2 py-0.5 text-[10px] text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
             >
               <Check className="h-3 w-3" /> Ack all
             </button>
@@ -289,7 +289,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
                     <button
                       disabled={busy}
                       onClick={() => acknowledge(a.alertId)}
-                      className="ml-auto shrink-0 rounded bg-blue-700/50 px-1.5 py-0.5 text-[9px] text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
+                      className="min-h-11 ml-auto shrink-0 rounded bg-blue-700/50 px-1.5 py-0.5 text-[9px] text-blue-100 hover:bg-blue-700/70 disabled:opacity-40"
                     >
                       Ack
                     </button>

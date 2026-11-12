@@ -129,7 +129,7 @@ export function SentinelScanConfig() {
                   key={scope}
                   disabled={busy}
                   onClick={() => toggleScope(scope)}
-                  className={`rounded px-2.5 py-1 text-xs capitalize transition-colors disabled:opacity-40 ${
+                  className={`min-h-11 rounded px-2.5 py-1 text-xs capitalize transition-colors disabled:opacity-40 ${
                     active ? 'bg-blue-700/60 text-blue-100' : 'bg-blue-950/40 text-blue-500 hover:text-blue-300'
                   }`}
                   aria-pressed={active}
@@ -148,7 +148,7 @@ export function SentinelScanConfig() {
                 key={s}
                 disabled={busy}
                 onClick={() => setThreshold(s)}
-                className={`rounded px-2 py-1 text-xs capitalize disabled:opacity-40 ${
+                className={`min-h-11 rounded px-2 py-1 text-xs capitalize disabled:opacity-40 ${
                   config.autoTriageMinSeverity === s
                     ? 'bg-blue-700/60 text-blue-100'
                     : 'bg-blue-950/40 text-blue-500 hover:text-blue-300'
@@ -171,21 +171,21 @@ export function SentinelScanConfig() {
               value={ruleName}
               onChange={(e) => setRuleName(e.target.value)}
               placeholder="Rule name (optional)…"
-              className="w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
+              className="min-h-11 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
               aria-label="Rule name"
             />
             <input
               value={rulePattern}
               onChange={(e) => setRulePattern(e.target.value)}
               placeholder="Pattern (regex or substring)…"
-              className="w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 font-mono text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
+              className="min-h-11 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 font-mono text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
               aria-label="Rule pattern"
             />
             <div className="flex min-w-0 flex-wrap gap-2">
               <select
                 value={ruleSeverity}
                 onChange={(e) => setRuleSeverity(e.target.value as (typeof SEVERITIES)[number])}
-                className="rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs capitalize text-blue-100 focus:border-blue-500 focus:outline-none"
+                className="min-h-11 rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs capitalize text-blue-100 focus:border-blue-500 focus:outline-none"
                 aria-label="Rule severity"
               >
                 {SEVERITIES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -193,7 +193,7 @@ export function SentinelScanConfig() {
               <button
                 disabled={busy || !rulePattern.trim()}
                 onClick={addRule}
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40"
+                className="min-h-11 inline-flex flex-1 items-center justify-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40"
               >
                 <Plus className="h-3.5 w-3.5" /> Add rule
               </button>
@@ -223,7 +223,7 @@ export function SentinelScanConfig() {
                   <button
                     disabled={busy}
                     onClick={() => removeRule(r.ruleId)}
-                    className="shrink-0 text-blue-700 hover:text-rose-400 disabled:opacity-40"
+                    className="min-h-11 shrink-0 text-blue-700 hover:text-rose-400 disabled:opacity-40"
                     aria-label="Remove rule"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -242,13 +242,13 @@ export function SentinelScanConfig() {
             value={evalContent}
             onChange={(e) => setEvalContent(e.target.value)}
             placeholder="Paste content to evaluate against the rule book…"
-            className="h-20 w-full rounded border border-blue-900/40 bg-black/40 p-2 font-mono text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
+            className="min-h-11 h-20 w-full rounded border border-blue-900/40 bg-black/40 p-2 font-mono text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
             aria-label="Content to evaluate"
           />
           <button
             disabled={busy || !evalContent.trim()}
             onClick={evaluate}
-            className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40"
+            className="min-h-11 mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40"
           >
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FlaskConical className="h-3.5 w-3.5" />}
             Evaluate
