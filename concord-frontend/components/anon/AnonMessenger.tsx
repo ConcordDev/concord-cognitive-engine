@@ -239,6 +239,42 @@ export function AnonMessenger() {
     };
   }, [activeId, on, off, loadConversations, openConversation]);
 
+  // ── Disappearing messages: drop them from the open view at expiry ──
+  // The server prunes expired messages on read, but an already-open view
+  // only learned that on the next fetch or a manual sweep, so a message
+  // with a 30-second timer stayed on screen until a reload. Signal-style
+  // clients remove the message at its expiry moment; this effect wakes
+  // at the soonest visible expiry, drops every message whose deadline
+  // has passed, and refreshes the conversation list so its preview
+  // agrees. Each side's own client runs the timer, so the message
+  // vanishes live in both views.
+  useEffect(() => {
+    const msgs = activeView?.messages || [];
+    const now = Date.now();
+    let next = Infinity;
+    let anyExpired = false;
+    for (const m of msgs) {
+      if (!m.expiresAt) continue;
+      if (m.expiresAt <= now) anyExpired = true;
+      else if (m.expiresAt < next) next = m.expiresAt;
+    }
+    if (!anyExpired && next === Infinity) return;
+    const dropExpired = () => {
+      setActiveView((v) =>
+        v
+          ? { ...v, messages: v.messages.filter((mm) => !mm.expiresAt || mm.expiresAt > Date.now()) }
+          : v,
+      );
+      loadConversations();
+    };
+    if (anyExpired) {
+      dropExpired();
+      return;
+    }
+    const t = setTimeout(dropExpired, Math.max(50, next - now + 50));
+    return () => clearTimeout(t);
+  }, [activeView, loadConversations]);
+
   // ── Actions ──
   const rotateIdentity = async () => {
     setRotating(true);
