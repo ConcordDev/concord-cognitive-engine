@@ -12,7 +12,7 @@
  * own real files, commits and package.json.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit, TreeDiagram, TimelineView } from '@/components/viz';
 import type { TreeNode, TimelineEvent } from '@/components/viz';
@@ -1319,7 +1319,25 @@ function SecurityTab({ repoId }: { repoId: string }) {
   const [depUnreachable, setDepUnreachable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [scanned, setScanned] = useState(false);
+  const [scannedAt, setScannedAt] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // FIX-repos-003: the last scan's results are stored on the repo —
+  // load them on open so a reload doesn't reset the tab to the
+  // "Run scan" prompt.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await runX<{ alerts: SecurityAlert[] | null; bySeverity: Record<string, number> | null; scannedAt?: string | null; dependencySource?: string }>('security-alerts-get', { repoId });
+      if (cancelled || !r.ok || !r.data?.alerts) return;
+      setAlerts(r.data.alerts);
+      setBySeverity(r.data.bySeverity || {});
+      setDepSource(r.data.dependencySource || 'osv.dev');
+      setScannedAt(r.data.scannedAt || null);
+      setScanned(true);
+    })();
+    return () => { cancelled = true; };
+  }, [repoId]);
 
   const scan = async () => {
     setBusy(true); setErr(null);
@@ -1330,6 +1348,7 @@ function SecurityTab({ repoId }: { repoId: string }) {
       setBySeverity(r.data?.bySeverity || {});
       setDepSource(r.data?.dependencySource || null);
       setDepUnreachable(!!r.data?.dependencyScanUnreachable);
+      setScannedAt(new Date().toISOString());
       setScanned(true);
     }
     else { setErr(r.error); }
@@ -1344,6 +1363,9 @@ function SecurityTab({ repoId }: { repoId: string }) {
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Shield className="h-3.5 w-3.5" />} Run scan
         </button>
       </div>
+      {scanned && scannedAt && (
+        <p className="text-[10px] text-zinc-500">Last scan {new Date(scannedAt).toLocaleString()} — results are kept on the repo; run a new scan to refresh them.</p>
+      )}
       {scanned && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           {(['critical', 'high', 'moderate', 'low'] as const).map((s) => (
@@ -1623,6 +1645,33 @@ function AnalysisTab({ repoId }: { repoId: string }) {
   // line implied a missing file that exists (Review F6 framing nit).
   const [depsNote, setDepsNote] = useState<null | "missing" | "empty" | "unreadable">(null);
 
+  // FIX-repos-003: the last run's results are stored on the repo and
+  // reloaded on open; a fresh run saves its results the same way.
+  const justRanRef = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await runX<{ analysis: { complexity: ComplexityResult | null; commits: CommitAnalysisResult | null; deps: DependencyAuditResult | null; depsNote: typeof depsNote; filesCapped: boolean; cxMeta: { matched: number; unreadable: number } } | null }>('analysis-get', { repoId });
+      if (cancelled || !r.ok || !r.data?.analysis) return;
+      const a = r.data.analysis;
+      setComplexity(a.complexity ?? null);
+      setCommits(a.commits ?? null);
+      setDeps(a.deps ?? null);
+      setDepsNote(a.depsNote ?? null);
+      setFilesCapped(!!a.filesCapped);
+      if (a.cxMeta) setCxMeta(a.cxMeta);
+      setRanOnce(true);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repoId]);
+
+  useEffect(() => {
+    if (!justRanRef.current || busy) return;
+    justRanRef.current = false;
+    void runX('analysis-save', { repoId, analysis: { complexity, commits, deps, depsNote, filesCapped, cxMeta } });
+  }, [busy, complexity, commits, deps, depsNote, filesCapped, cxMeta, repoId]);
+
   const runAnalysis = async () => {
     setBusy(true); setErr(null);
     try {
@@ -1699,6 +1748,7 @@ function AnalysisTab({ repoId }: { repoId: string }) {
       } else {
         setDepsNote("missing"); setDeps(null);
       }
+      justRanRef.current = true;
       setRanOnce(true);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));

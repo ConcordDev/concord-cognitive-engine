@@ -575,3 +575,32 @@ describe("repos — GitHub API macros (network shaped)", () => {
     assert.equal(r.result.primaryLanguage, "TypeScript");
   });
 });
+
+describe("repos — FIX-repos-003 scan/analysis persistence", () => {
+  it("security scan results are readable back via security-alerts-get", async () => {
+    const id = freshRepo("scan-me");
+    const before = call("security-alerts-get", ctxA, { repoId: id });
+    assert.equal(before.ok, true);
+    assert.equal(before.result.alerts, null);
+    const scan = await call("security-scan", ctxA, { repoId: id });
+    assert.equal(scan.ok, true);
+    const after = call("security-alerts-get", ctxA, { repoId: id });
+    assert.equal(after.ok, true);
+    assert.ok(Array.isArray(after.result.alerts));
+    assert.equal(after.result.alerts.length, scan.result.total);
+    assert.ok(after.result.scannedAt);
+  });
+
+  it("analysis results save and reload per repo", () => {
+    const id = freshRepo("analyze-me");
+    assert.equal(call("analysis-get", ctxA, { repoId: id }).result.analysis, null);
+    const payload = { complexity: { files: 3 }, commits: null, deps: null, depsNote: "missing", filesCapped: false, cxMeta: { matched: 3, unreadable: 0 } };
+    const save = call("analysis-save", ctxA, { repoId: id, analysis: payload });
+    assert.equal(save.ok, true);
+    const got = call("analysis-get", ctxA, { repoId: id });
+    assert.deepEqual(got.result.analysis, payload);
+    assert.ok(got.result.savedAt);
+    assert.equal(call("analysis-save", ctxA, { repoId: id, analysis: "nope" }).ok, false);
+    assert.equal(call("analysis-get", ctxA, { repoId: "missing" }).ok, false);
+  });
+});

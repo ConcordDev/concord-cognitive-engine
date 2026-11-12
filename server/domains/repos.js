@@ -2242,6 +2242,7 @@ export default function registerReposActions(registerLensAction) {
       const bySeverity = { critical: 0, high: 0, moderate: 0, low: 0 };
       for (const a of all) bySeverity[a.severity] = (bySeverity[a.severity] || 0) + 1;
       repo.securityAlerts = all;
+      repo.securityScannedAt = rpNow();
       repo.updatedAt = rpNow();
       rpSave();
       return {
@@ -2256,6 +2257,64 @@ export default function registerReposActions(registerLensAction) {
           ...(osv.truncated ? { dependencyScanTruncated: true } : {}),
         },
       };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // FIX-repos-003: the scan above already stores its alerts on the repo;
+  // this read path is what the Security tab loads on open, so a reload
+  // shows the last scan's results (with its time) instead of the
+  // "Run scan" prompt again.
+  registerLensAction("repos", "security-alerts-get", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      if (!repo.securityScannedAt || !Array.isArray(repo.securityAlerts)) {
+        return { ok: true, result: { alerts: null, bySeverity: null, scannedAt: null } };
+      }
+      const bySeverity = { critical: 0, high: 0, moderate: 0, low: 0 };
+      for (const a of repo.securityAlerts) bySeverity[a.severity] = (bySeverity[a.severity] || 0) + 1;
+      return {
+        ok: true,
+        result: {
+          alerts: repo.securityAlerts,
+          bySeverity,
+          scannedAt: repo.securityScannedAt || null,
+          dependencySource: "osv.dev",
+        },
+      };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  // FIX-repos-003: Analysis tab results are computed in the client from
+  // the repo's real files/commits; they are stored on the repo so a
+  // reload shows the last run instead of the "Run analysis" prompt.
+  registerLensAction("repos", "analysis-save", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      const analysis = params.analysis;
+      if (!analysis || typeof analysis !== "object" || Array.isArray(analysis)) {
+        return { ok: false, error: "analysis object required" };
+      }
+      if (JSON.stringify(analysis).length > 1_000_000) {
+        return { ok: false, error: "analysis too large to store" };
+      }
+      repo.analysis = { data: analysis, savedAt: rpNow() };
+      repo.updatedAt = rpNow();
+      rpSave();
+      return { ok: true, result: { savedAt: repo.analysis.savedAt } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+
+  registerLensAction("repos", "analysis-get", (ctx, _a, params = {}) => {
+    try {
+      const s = rpState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const repo = rpFindRepo(s, rpUid(ctx), params.repoId);
+      if (!repo) return { ok: false, error: "repo not found" };
+      if (!repo.analysis) return { ok: true, result: { analysis: null, savedAt: null } };
+      return { ok: true, result: { analysis: repo.analysis.data, savedAt: repo.analysis.savedAt } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
 
