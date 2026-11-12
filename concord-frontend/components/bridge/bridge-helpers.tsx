@@ -8,7 +8,7 @@ export function EmptyCard({ icon, message, hint }: { icon: ReactNode; message: s
     <div className="flex flex-col items-center justify-center h-64 text-center">
       <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mb-4 text-zinc-400">{icon}</div>
       <p className="text-zinc-400 font-medium">{message}</p>
-      <p className="text-sm text-zinc-600 mt-1 max-w-md">{hint}</p>
+      <p className="text-sm text-zinc-400 mt-1 max-w-md">{hint}</p>
     </div>
   );
 }

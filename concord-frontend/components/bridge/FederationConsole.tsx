@@ -202,7 +202,7 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
             <div key={p.id} className="flex items-center gap-2 px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
               <span className="text-zinc-200">{p.name}</span>
-              <span className="text-zinc-600">{p.kind}</span>
+              <span className="text-zinc-400">{p.kind}</span>
               {confirmPeer === p.id ? (
                 <>
                   <span className="text-red-300">Delete {p.name} and its recorded flows?</span>
@@ -210,10 +210,10 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
                     className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 disabled:opacity-40">
                     Confirm
                   </button>
-                  <button onClick={() => setConfirmPeer(null)} className="text-zinc-500 hover:text-zinc-300">Cancel</button>
+                  <button onClick={() => setConfirmPeer(null)} className="text-zinc-400 hover:text-zinc-300">Cancel</button>
                 </>
               ) : (
-                <button aria-label="Delete" onClick={() => setConfirmPeer(p.id)} className="text-zinc-600 hover:text-red-400">
+                <button aria-label="Delete" onClick={() => setConfirmPeer(p.id)} className="text-zinc-400 hover:text-red-400">
                   <Trash2 className="w-3 h-3" />
                 </button>
               )}
@@ -462,7 +462,7 @@ function FlowsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null)
                 <div className="flex items-center gap-2 text-xs">
                   <span className="font-medium text-zinc-200">{f.peerName}</span>
                   <span className="text-zinc-400">{f.action}</span>
-                  <span className="text-zinc-600">{f.records} rec · {f.rps} rps</span>
+                  <span className="text-zinc-400">{f.records} rec · {f.rps} rps</span>
                   {f.attempts > 1 && <span className="text-amber-400">×{f.attempts}</span>}
                 </div>
                 {f.error && <p className="text-[11px] text-red-400/80 mt-0.5 truncate">{f.error}</p>}
@@ -481,10 +481,10 @@ function FlowsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null)
                     className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30">
                     Confirm
                   </button>
-                  <button onClick={() => setConfirmFlow(null)} className="text-zinc-500 hover:text-zinc-300">Cancel</button>
+                  <button onClick={() => setConfirmFlow(null)} className="text-zinc-400 hover:text-zinc-300">Cancel</button>
                 </span>
               ) : (
-                <button aria-label="Delete flow" onClick={() => setConfirmFlow(f.id)} className="text-zinc-600 hover:text-red-400">
+                <button aria-label="Delete flow" onClick={() => setConfirmFlow(f.id)} className="text-zinc-400 hover:text-red-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -591,10 +591,10 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
           {mappings.map(m => (
             <div key={m.id} className="flex items-center gap-2 p-2 rounded-lg bg-zinc-950/60 border border-zinc-800 text-xs">
               <span className="font-mono text-zinc-300">{m.source}</span>
-              <GitMerge className="w-3 h-3 text-zinc-600" />
+              <GitMerge className="w-3 h-3 text-zinc-400" />
               <span className="font-mono text-zinc-300">{m.target}</span>
               <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">{m.transform}</span>
-              <span className="text-zinc-600">{m.dataType}</span>
+              <span className="text-zinc-400">{m.dataType}</span>
               {m.required && <span className="text-amber-400">required</span>}
               {confirmMapping === m.id ? (
                 <span className="ml-auto flex items-center gap-1.5">
@@ -603,10 +603,10 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
                     className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30">
                     Confirm
                   </button>
-                  <button onClick={() => setConfirmMapping(null)} className="text-zinc-500 hover:text-zinc-300">Cancel</button>
+                  <button onClick={() => setConfirmMapping(null)} className="text-zinc-400 hover:text-zinc-300">Cancel</button>
                 </span>
               ) : (
-                <button aria-label="Delete" onClick={() => setConfirmMapping(m.id)} className="ml-auto text-zinc-600 hover:text-red-400">
+                <button aria-label="Delete" onClick={() => setConfirmMapping(m.id)} className="ml-auto text-zinc-400 hover:text-red-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -634,7 +634,7 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
                   <div key={r.mappingId} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-zinc-900">
                     {r.ok ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <XCircle className="w-3 h-3 text-red-400" />}
                     <span className="font-mono text-zinc-400">{r.source}</span>
-                    <span className="text-zinc-600">{JSON.stringify(r.inputValue)}</span>
+                    <span className="text-zinc-400">{JSON.stringify(r.inputValue)}</span>
                     <GitMerge className="w-3 h-3 text-zinc-700" />
                     <span className="font-mono text-zinc-300">{r.target}</span>
                     <span className="text-cyan-300">{r.ok ? JSON.stringify(r.outputValue) : '—'}</span>
@@ -845,7 +845,7 @@ function AlertsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null
               <Bell className="w-3.5 h-3.5 text-zinc-400" />
               <span className="text-zinc-300">{METRIC_LABEL[r.metric] || r.metric}</span>
               <span className="font-bold text-amber-400">{r.threshold}{METRIC_SUFFIX[r.metric] || ''}</span>
-              <span className="text-zinc-600">
+              <span className="text-zinc-400">
                 {r.peerId ? (peers.find(p => p.id === r.peerId)?.name || 'peer') : 'all peers'}
               </span>
               {confirmRule === r.id ? (
@@ -855,10 +855,10 @@ function AlertsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null
                     className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30">
                     Confirm
                   </button>
-                  <button onClick={() => setConfirmRule(null)} className="text-zinc-500 hover:text-zinc-300">Cancel</button>
+                  <button onClick={() => setConfirmRule(null)} className="text-zinc-400 hover:text-zinc-300">Cancel</button>
                 </span>
               ) : (
-                <button aria-label="Delete" onClick={() => setConfirmRule(r.id)} className="ml-auto text-zinc-600 hover:text-red-400">
+                <button aria-label="Delete" onClick={() => setConfirmRule(r.id)} className="ml-auto text-zinc-400 hover:text-red-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -964,7 +964,7 @@ function ThroughputTab({ peers }: { peers: Peer[] }) {
         )}
       </div>
       {stats && (
-        <p className="text-[10px] text-zinc-600">avg rps is the mean of the recorded per-flow rates (not total records ÷ total time).</p>
+        <p className="text-[10px] text-zinc-400">avg rps is the mean of the recorded per-flow rates (not total records ÷ total time).</p>
       )}
 
       {chartData.length === 0 ? (

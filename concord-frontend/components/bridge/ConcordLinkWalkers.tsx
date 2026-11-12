@@ -101,7 +101,7 @@ export function ConcordLinkWalkers() {
                 <div key={w.id} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-[11px]">
                   <div className="flex items-center justify-between">
                     <span className="text-white">{w.name || w.species || w.id}</span>
-                    <span className={`font-mono ${rateMissing ? 'text-zinc-500' : 'text-cyan-300'}`} title={rateMissing ? 'This walker list does not include a per-kilometre rate.' : undefined}>{rate}</span>
+                    <span className={`font-mono ${rateMissing ? 'text-zinc-400' : 'text-cyan-300'}`} title={rateMissing ? 'This walker list does not include a per-kilometre rate.' : undefined}>{rate}</span>
                   </div>
                   <div className="mt-0.5 font-mono text-[10px] text-zinc-400">
                     {w.speedMps != null && <span>v={w.speedMps}m/s · </span>}
