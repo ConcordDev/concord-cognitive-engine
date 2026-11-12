@@ -375,15 +375,21 @@ export default function SocialHubPage() {
               <div className="min-w-0">
                 <h1 className="mb-3 mt-1 font-vault text-3xl leading-tight text-zinc-100 sm:mb-5 sm:text-5xl">Social</h1>
               </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-2 pt-2 sm:gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 pt-2 sm:gap-3">
                 <PushEnableButton />
                 {currentUserId ? <StreakIndicator userId={currentUserId} /> : null}
                 {currentUserId ? <DMIndicator userId={currentUserId} /> : null}
                 {currentUserId ? (
-                  <NotificationBell
-                    userId={currentUserId}
-                    onViewAll={() => { setInboxTab('notifications'); setView('inbox'); }}
-                  />
+                  /* Mobile (FIX-social-010): the Inbox place in the phone nav
+                     above carries this same unread count and opens the same
+                     inbox — the bell beside it was a duplicate header control
+                     on phones. Desktop keeps the topbar bell. */
+                  <span className="hidden lg:inline-flex">
+                    <NotificationBell
+                      userId={currentUserId}
+                      onViewAll={() => { setInboxTab('notifications'); setView('inbox'); }}
+                    />
+                  </span>
                 ) : null}
                 <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
               </div>
