@@ -415,7 +415,11 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
         onPublish={() => setDialog('publish')}
         onAskProducer={() => setDialog('producer')}
       />
-      <div className="flex min-h-0 min-w-0 flex-1 overflow-x-auto" data-testid="studio-workspace">
+      {/* FIX-music-002: below sm the three panes stack in a vertical
+          scroller — as one row they totalled ~1,056px (browser 224 +
+          centre 576 + inspector 256) inside a sideways scroller, so the
+          panes clipped and the Mixer tab sat off-screen untappable. */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto sm:flex-row sm:overflow-x-auto sm:overflow-y-hidden" data-testid="studio-workspace">
         <BrowserPanel
           project={project}
           importing={importing}
@@ -423,7 +427,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
           onPlaceItem={(item) => void placeLibraryItem(item, selTrack, playhead())}
           onImportFiles={(files) => void importFiles(files, track && trackKind(track) === 'audio' ? track.id : null, playhead())}
         />
-        <div className="flex min-h-0 w-[36rem] shrink-0 flex-col sm:w-auto sm:min-w-0 sm:flex-1">
+        <div className="flex min-h-[480px] w-full shrink-0 flex-col sm:min-h-0 sm:w-auto sm:min-w-0 sm:flex-1">
           <div className="flex h-8 flex-shrink-0 items-center gap-1 border-b border-white/5 px-2">
             {([['arrange', 'Arrange', LayoutList], ['session', 'Session', Grid3x3]] as const).map(([v, label, Icon]) => (
               <button key={v} onClick={() => setView(v)} className={cn('flex items-center gap-1 rounded px-2 py-0.5 text-[11px]', view === v ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300')} data-testid={`studio-view-${v}`}>

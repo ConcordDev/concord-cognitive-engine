@@ -84,19 +84,22 @@ export function TransportBar(p: TransportBarProps) {
   const playing = p.transport !== 'stopped';
   const btn = 'h-8 w-8 flex items-center justify-center rounded-md transition-colors';
   return (
-    <div className="flex h-12 flex-shrink-0 items-center gap-2 border-b border-white/5 bg-[#101016] px-2">
+    // FIX-music-002: below lg the bar wraps into stacked rows — as one
+    // fixed h-12 row its ~1,300px of controls pushed the tempo field to
+    // x≈752, off a 390px viewport entirely. lg+ keeps the single row.
+    <div className="flex min-h-12 flex-shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-white/5 bg-[#101016] px-2 py-1 lg:h-12 lg:flex-nowrap lg:py-0">
       <button onClick={p.onBack} className={cn(btn, 'text-zinc-400 hover:bg-white/5 hover:text-white')} title="Projects">
         <ChevronLeft className="h-4 w-4" />
       </button>
       <input
         value={p.project.title}
         onChange={(e) => p.onRename(e.target.value)}
-        className="w-40 truncate rounded bg-transparent px-1 text-sm font-medium text-zinc-100 outline-none focus:bg-white/5"
+        className="w-24 truncate rounded bg-transparent px-1 text-sm font-medium text-zinc-100 outline-none focus:bg-white/5 sm:w-40"
         aria-label="Song title"
       />
       <SaveBadge save={p.save} onClick={p.onSaveNow} />
 
-      <div className="mx-auto flex items-center gap-1">
+      <div className="mx-auto flex flex-wrap items-center justify-center gap-1">
         <button onClick={p.onUndo} disabled={!p.canUndo} className={cn(btn, 'text-zinc-400 hover:bg-white/5 disabled:opacity-30')} title="Undo (⌘Z)"><Undo2 className="h-4 w-4" /></button>
         <button onClick={p.onRedo} disabled={!p.canRedo} className={cn(btn, 'text-zinc-400 hover:bg-white/5 disabled:opacity-30')} title="Redo (⇧⌘Z)"><Redo2 className="h-4 w-4" /></button>
         <div className="mx-1 h-6 w-px bg-white/10" />
