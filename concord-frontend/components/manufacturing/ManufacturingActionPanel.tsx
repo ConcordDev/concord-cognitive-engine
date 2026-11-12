@@ -196,13 +196,13 @@ export function ManufacturingActionPanel() {
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">OEE inputs</div>
           <div className="grid grid-cols-2 gap-1">
-            <input type="text" value={plannedTime} onChange={(e) => setPlannedTime(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Planned min" />
-            <input type="text" value={downtime} onChange={(e) => setDowntime(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Downtime" />
-            <input type="text" value={idealCycleTime} onChange={(e) => setIdealCycleTime(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Cycle (min/pc)" />
-            <input type="text" value={totalPieces} onChange={(e) => setTotalPieces(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Total pieces" />
-            <input type="text" value={goodPieces} onChange={(e) => setGoodPieces(e.target.value)} className="col-span-2 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Good pieces" />
+            <input id="manufacturing-planned-min" name="planned-min" aria-label="Planned min" type="text" value={plannedTime} onChange={(e) => setPlannedTime(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Planned min" />
+            <input id="manufacturing-downtime" name="downtime" aria-label="Downtime" type="text" value={downtime} onChange={(e) => setDowntime(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Downtime" />
+            <input id="manufacturing-cycle-minpc" name="cycle-minpc" aria-label="Cycle (min/pc)" type="text" value={idealCycleTime} onChange={(e) => setIdealCycleTime(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Cycle (min/pc)" />
+            <input id="manufacturing-total-pieces" name="total-pieces" aria-label="Total pieces" type="text" value={totalPieces} onChange={(e) => setTotalPieces(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Total pieces" />
+            <input id="manufacturing-good-pieces" name="good-pieces" aria-label="Good pieces" type="text" value={goodPieces} onChange={(e) => setGoodPieces(e.target.value)} className="col-span-2 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="Good pieces" />
           </div>
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <input id="manufacturing-dm-recipient" name="dm-recipient" aria-label="DM recipient" type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
           <div className="flex items-center gap-2 flex-wrap">
             <RecallSlot ctl={dmRecall} />
             <RecallSlot ctl={publishRecall} />
@@ -210,16 +210,16 @@ export function ManufacturingActionPanel() {
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">BOM JSON</label>
-          <textarea value={bomText} onChange={(e) => setBomText(e.target.value)} rows={6} placeholder={'{"product":"HA-400","components":[{"name":"Housing","quantity":1,"unitCost":12.5}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+          <textarea id="manufacturing-bomtext" name="bomtext" value={bomText} onChange={(e) => setBomText(e.target.value)} rows={6} placeholder={'{"product":"HA-400","components":[{"name":"Housing","quantity":1,"unitCost":12.5}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
         </div>
         <div className="grid grid-cols-1 gap-2">
           <div>
             <label className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Incidents JSON</label>
-            <textarea value={incidentsText} onChange={(e) => setIncidentsText(e.target.value)} rows={3} placeholder={'{"hoursWorked":200000,"incidents":[{"type":"laceration","oshaRecordable":true}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+            <textarea id="manufacturing-incidentstext" name="incidentstext" value={incidentsText} onChange={(e) => setIncidentsText(e.target.value)} rows={3} placeholder={'{"hoursWorked":200000,"incidents":[{"type":"laceration","oshaRecordable":true}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
           </div>
           <div>
             <label className="text-[10px] uppercase tracking-wider text-cyan-400 font-semibold">Work-orders JSON</label>
-            <textarea value={jobsText} onChange={(e) => setJobsText(e.target.value)} rows={3} placeholder={'{"workOrders":[{"id":"WO-1","priority":1,"dueDate":"2026-07-01"}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
+            <textarea id="manufacturing-jobstext" name="jobstext" value={jobsText} onChange={(e) => setJobsText(e.target.value)} rows={3} placeholder={'{"workOrders":[{"id":"WO-1","priority":1,"dueDate":"2026-07-01"}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[10px] text-white font-mono mt-1" />
           </div>
         </div>
       </div>

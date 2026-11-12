@@ -137,19 +137,19 @@ export function OEEDashboard() {
       <form onSubmit={registerMachine} className="px-3 py-2 border-b border-white/5 flex flex-wrap items-end gap-2">
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Machine id
-          <input value={machineId} onChange={(e) => setMachineId(e.target.value)} required className={fieldCls} />
+          <input id="manufacturing-machineid" name="machineid" value={machineId} onChange={(e) => setMachineId(e.target.value)} required className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Name
-          <input value={name} onChange={(e) => setName(e.target.value)} required className={fieldCls} />
+          <input id="manufacturing-name" name="name" value={name} onChange={(e) => setName(e.target.value)} required className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Line
-          <input value={line} onChange={(e) => setLine(e.target.value)} className={fieldCls} />
+          <input id="manufacturing-line" name="line" value={line} onChange={(e) => setLine(e.target.value)} className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Ideal cycle (min)
-          <input value={idealCycleTime} onChange={(e) => setIdealCycleTime(e.target.value)} inputMode="decimal" className={fieldCls} />
+          <input id="manufacturing-idealcycletime" name="idealcycletime" value={idealCycleTime} onChange={(e) => setIdealCycleTime(e.target.value)} inputMode="decimal" className={fieldCls} />
         </label>
         <button type="submit" disabled={saving} className="px-2 py-1 text-[10px] uppercase tracking-wider font-semibold rounded bg-cyan-500/20 text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-50">
           {saving ? 'Registering…' : 'Register machine'}

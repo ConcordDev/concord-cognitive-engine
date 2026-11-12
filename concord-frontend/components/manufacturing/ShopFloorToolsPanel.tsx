@@ -238,13 +238,13 @@ export function ShopFloorToolsPanel() {
           </header>
           <p className="text-[11px] text-zinc-500">Calculator: it works out the step position from the steps and index you supply. It does not advance a saved work order — record progress on the Work Orders board.</p>
           <Field label="Work order">
-            <input className={inputCls} value={woTitle} onChange={(e) => setWoTitle(e.target.value)} placeholder="WO-1042" />
+            <input id="manufacturing-wo1042" name="wo1042" aria-label="WO-1042" className={inputCls} value={woTitle} onChange={(e) => setWoTitle(e.target.value)} placeholder="WO-1042" />
           </Field>
           <Field label="Routing steps (comma-separated)">
-            <input className={inputCls} value={stepNames} onChange={(e) => setStepNames(e.target.value)} placeholder="Cut, Weld, Paint, Inspect" />
+            <input id="manufacturing-cut-weld-paint-inspect" name="cut-weld-paint-inspect" aria-label="Cut, Weld, Paint, Inspect" className={inputCls} value={stepNames} onChange={(e) => setStepNames(e.target.value)} placeholder="Cut, Weld, Paint, Inspect" />
           </Field>
           <Field label="Current step index">
-            <input type="number" className={inputCls} value={currentStep} onChange={(e) => setCurrentStep(e.target.value)} min={0} />
+            <input id="manufacturing-currentstep" name="currentstep" type="number" className={inputCls} value={currentStep} onChange={(e) => setCurrentStep(e.target.value)} min={0} />
           </Field>
           <button className={btnPrimary} disabled={busy === 'step'} onClick={runAdvanceStep}>
             {busy === 'step' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ListChecks className="w-3.5 h-3.5" />} Advance
@@ -269,8 +269,8 @@ export function ShopFloorToolsPanel() {
           </header>
           {defects.map((d, i) => (
             <div key={i} className="grid grid-cols-[1fr_7rem_auto] gap-1.5">
-              <input className={inputCls} value={d.type} onChange={(e) => updateDefect(i, 'type', e.target.value)} placeholder="Defect type (e.g. scratch)" />
-              <select className={inputCls} value={d.severity} onChange={(e) => updateDefect(i, 'severity', e.target.value)}>
+              <input id="manufacturing-defect-type-eg-scratch" name="defect-type-eg-scratch" aria-label="Defect type (e.g. scratch)" className={inputCls} value={d.type} onChange={(e) => updateDefect(i, 'type', e.target.value)} placeholder="Defect type (e.g. scratch)" />
+              <select id="manufacturing-severity-3" name="severity-3" className={inputCls} value={d.severity} onChange={(e) => updateDefect(i, 'severity', e.target.value)}>
                 <option value="minor">minor</option>
                 <option value="major">major</option>
                 <option value="critical">critical</option>
@@ -284,7 +284,7 @@ export function ShopFloorToolsPanel() {
             <Plus className="w-3 h-3" /> Add defect
           </button>
           <Field label="Units inspected (optional — defaults to defect count)">
-            <input type="number" className={inputCls} value={inspected} onChange={(e) => setInspected(e.target.value)} placeholder="100" />
+            <input id="manufacturing-100" name="100" aria-label="100" type="number" className={inputCls} value={inspected} onChange={(e) => setInspected(e.target.value)} placeholder="100" />
           </Field>
           <button className={btnPrimary} disabled={busy === 'defect'} onClick={runDefectAnalysis}>
             {busy === 'defect' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />} Analyze
@@ -311,14 +311,14 @@ export function ShopFloorToolsPanel() {
           </header>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Part number">
-              <input className={inputCls} value={partNumber} onChange={(e) => setPartNumber(e.target.value)} placeholder="HA-400" />
+              <input id="manufacturing-ha400" name="ha400" aria-label="HA-400" className={inputCls} value={partNumber} onChange={(e) => setPartNumber(e.target.value)} placeholder="HA-400" />
             </Field>
             <Field label="Quantity">
-              <input type="number" className={inputCls} value={quantity} onChange={(e) => setQuantity(e.target.value)} min={1} />
+              <input id="manufacturing-quantity" name="quantity" type="number" className={inputCls} value={quantity} onChange={(e) => setQuantity(e.target.value)} min={1} />
             </Field>
           </div>
           <Field label="Routing steps (comma-separated)">
-            <input className={inputCls} value={travelerSteps} onChange={(e) => setTravelerSteps(e.target.value)} placeholder="Cut, Weld, Paint, Inspect" />
+            <input id="manufacturing-cut-weld-paint-inspect-2" name="cut-weld-paint-inspect-2" aria-label="Cut, Weld, Paint, Inspect" className={inputCls} value={travelerSteps} onChange={(e) => setTravelerSteps(e.target.value)} placeholder="Cut, Weld, Paint, Inspect" />
           </Field>
           <button className={btnPrimary} disabled={busy === 'traveler'} onClick={runGenerateTraveler}>
             {busy === 'traveler' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />} Generate
@@ -336,16 +336,16 @@ export function ShopFloorToolsPanel() {
           </header>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Machine">
-              <input className={inputCls} value={machine} onChange={(e) => setMachine(e.target.value)} placeholder="CNC-03" />
+              <input id="manufacturing-cnc03" name="cnc03" aria-label="CNC-03" className={inputCls} value={machine} onChange={(e) => setMachine(e.target.value)} placeholder="CNC-03" />
             </Field>
             <Field label="Reason">
-              <input className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="tooling change" />
+              <input id="manufacturing-tooling-change" name="tooling-change" aria-label="tooling change" className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="tooling change" />
             </Field>
             <Field label="Duration (min)">
-              <input type="number" className={inputCls} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} min={0} />
+              <input id="manufacturing-durationminutes" name="durationminutes" type="number" className={inputCls} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} min={0} />
             </Field>
             <Field label="Planned shift (min)">
-              <input type="number" className={inputCls} value={plannedTime} onChange={(e) => setPlannedTime(e.target.value)} min={1} />
+              <input id="manufacturing-plannedtime" name="plannedtime" type="number" className={inputCls} value={plannedTime} onChange={(e) => setPlannedTime(e.target.value)} min={1} />
             </Field>
           </div>
           <button className={btnPrimary} disabled={busy === 'downtime'} onClick={runLogDowntime}>

@@ -179,19 +179,19 @@ export function WorkOrderBoard() {
       <form noValidate onSubmit={createOrder} className="px-3 py-2 border-b border-white/5 flex flex-wrap items-end gap-2">
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Product
-          <input value={product} onChange={(e) => setProduct(e.target.value)} className={fieldCls} />
+          <input id="manufacturing-product-2" name="product-2" value={product} onChange={(e) => setProduct(e.target.value)} className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Quantity
-          <input value={quantity} onChange={(e) => setQuantity(e.target.value)} inputMode="decimal" className={fieldCls} />
+          <input id="manufacturing-quantity-2" name="quantity-2" value={quantity} onChange={(e) => setQuantity(e.target.value)} inputMode="decimal" className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Due date
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={fieldCls} />
+          <input id="manufacturing-duedate" name="duedate" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={fieldCls} />
         </label>
         <label className="text-[10px] uppercase tracking-wider text-gray-500">
           Priority
-          <select value={priority} onChange={(e) => setPriority(e.target.value as WorkOrder['priority'])} className={fieldCls}>
+          <select id="manufacturing-priority-2" name="priority-2" value={priority} onChange={(e) => setPriority(e.target.value as WorkOrder['priority'])} className={fieldCls}>
             {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
         </label>
