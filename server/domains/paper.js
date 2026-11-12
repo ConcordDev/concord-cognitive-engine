@@ -380,13 +380,23 @@ export default function registerPaperActions(registerLensAction) {
     const list = ppList(s, ctx);
     const refId = ppClean(raw.refId, 120) || title.toLowerCase();
     if (list.some((p) => p.refId === refId)) return { ok: false, error: "paper already in your library" };
-    const yearN = Number(raw.year);
+    // FIX-paper-003: a provided year was taken as Number() — 'abcd'
+    // silently became null ('Unknown') and 99999 stored as a year.
+    // A year, when given, must be a whole calendar year.
+    let year = null;
+    if (raw.year != null && raw.year !== "") {
+      const yearN = Number(raw.year);
+      if (!Number.isFinite(yearN) || Math.floor(yearN) !== yearN || yearN < 1 || yearN > 9999) {
+        return { ok: false, error: "year must be a whole calendar year (up to four digits, e.g. 2024)" };
+      }
+      year = yearN;
+    }
     const paper = {
       id: ppId("pp"),
       refId,
       title,
       authors: ppAuthors(raw.authors),
-      year: Number.isFinite(yearN) ? Math.round(yearN) : null,
+      year,
       venue: ppClean(raw.venue, 200) || null,
       abstract: ppClean(raw.abstract, 6000) || "",
       url: ppClean(raw.url, 600) || null,

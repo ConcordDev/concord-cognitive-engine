@@ -87,6 +87,12 @@ export function PaperLibrary() {
 
   async function save() {
     if (!form.title.trim() || saving) return;
+    // FIX-paper-003: refuse a non-year at the field instead of sending
+    // it to be silently stored as 'Unknown' (or as 99999).
+    if (form.year.trim() && !/^\d{1,4}$/.test(form.year.trim())) {
+      setSaveError('Year must be a whole calendar year (e.g. 2024).');
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     const res = await lensRun<{ paper?: Paper }>('paper', 'paper-add', {
@@ -161,7 +167,7 @@ export function PaperLibrary() {
           className="flex-1 min-w-[160px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={form.authors} onChange={e => setForm({ ...form, authors: e.target.value })} placeholder="authors (comma sep)"
           className="w-36 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-        <input value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} placeholder="year"
+        <input value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} placeholder="year" aria-label="Year" inputMode="numeric"
           className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <button type="button" onClick={save} disabled={!form.title.trim() || saving}
           className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
