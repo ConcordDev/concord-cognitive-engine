@@ -40,7 +40,6 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
   const [activeWithName, setActiveWithName] = useState<string | null>(null);
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [loadingThread, setLoadingThread] = useState(false);
-  const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [query, setQuery] = useState('');
   const [matches, setMatches] = useState<Array<{ id: string; username: string; displayName: string }>>([]);
@@ -80,10 +79,13 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
     }
   }, []);
 
-  const send = useCallback(async () => {
-    const trimmed = draft.trim();
+  // FIX-social-022: the composer owns its draft now (see DMComposer below);
+  // the inbox only sends. Keystrokes no longer re-render the thread list
+  // or the message history.
+  const send = useCallback(async (body: string) => {
+    const trimmed = body.trim();
     const to = activeWith;
-    if (!trimmed || !to) return;
+    if (!trimmed || !to) return false;
     setSending(true);
     setError(null);
     const r = await lensRun<{ message: DMMessage; threadKey: string }>('social', 'sendMessage', {
@@ -91,14 +93,14 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
     });
     setSending(false);
     if (r.data?.ok && r.data.result) {
-      setDraft('');
       setMessages((m) => [...m, r.data!.result!.message]);
       setActiveKey(r.data.result.threadKey);
       void loadInbox();
-    } else {
-      setError(r.data?.error || 'Failed to send message.');
+      return true;
     }
-  }, [draft, activeWith, loadInbox]);
+    setError(r.data?.error || 'Failed to send message.');
+    return false;
+  }, [activeWith, loadInbox]);
 
   useEffect(() => {
     let cancel = false;
@@ -296,28 +298,41 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                 <div ref={endRef} />
               </div>
               {error && <p className="px-3 pb-1 text-[11px] text-rose-400">{error}</p>}
-              <div className="flex items-center gap-1.5 border-t border-zinc-800 p-2">
-                <input
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value.slice(0, 2000))}
-                  placeholder="Message…"
-                  className="flex-1 rounded bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 outline-none"
-                  onKeyDown={(e) => { if (e.key === 'Enter') void send(); }}
-                />
-                <button
-                  type="button"
-                  onClick={() => void send()}
-                  disabled={sending}
-                  className="rounded bg-indigo-600 p-1.5 text-white hover:bg-indigo-500 disabled:opacity-50"
-                  aria-label="Send message"
-                >
-                  {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                </button>
-              </div>
+              <DMComposer onSend={send} sending={sending} />
             </>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// The message composer keeps its draft in local state: typing re-renders
+// only this row, not the inbox list or the open thread above it
+// (FIX-social-022 — keystrokes used to re-render both and drop characters).
+function DMComposer({ onSend, sending }: { onSend: (body: string) => Promise<boolean>; sending: boolean }) {
+  const [draft, setDraft] = useState('');
+  const submit = async () => {
+    if (await onSend(draft)) setDraft('');
+  };
+  return (
+    <div className="flex items-center gap-1.5 border-t border-zinc-800 p-2">
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value.slice(0, 2000))}
+        placeholder="Message…"
+        className="flex-1 rounded bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 outline-none"
+        onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
+      />
+      <button
+        type="button"
+        onClick={() => void submit()}
+        disabled={sending}
+        className="rounded bg-indigo-600 p-1.5 text-white hover:bg-indigo-500 disabled:opacity-50"
+        aria-label="Send message"
+      >
+        {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+      </button>
     </div>
   );
 }

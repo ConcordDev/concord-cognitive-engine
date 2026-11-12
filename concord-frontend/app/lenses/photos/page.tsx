@@ -153,12 +153,10 @@ export default function PhotosLensPage() {
     window.history.replaceState(window.history.state, '', url.toString());
   }, [query, sort]);
   const [editId, setEditId] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [albums, setAlbums] = useState<Album[] | null>(null);
   const [albumMenuFor, setAlbumMenuFor] = useState<string | null>(null);
   const [openAlbum, setOpenAlbum] = useState<{ album: Album; ids: string[] } | null>(null);
-  const [newAlbum, setNewAlbum] = useState('');
 
   const pull = useCallback(async () => {
     const response = await fetch('/api/photos/mine', { credentials: 'include' });
@@ -304,17 +302,17 @@ export default function PhotosLensPage() {
     }
   }, [post, fail]);
 
-  const saveCaption = useCallback(async (id: string) => {
+  const saveCaption = useCallback(async (id: string, captionText: string) => {
     setActionError('');
     try {
-      const body = await post(`/api/photos/${id}/update`, { caption: editText });
+      const body = await post(`/api/photos/${id}/update`, { caption: captionText });
       const caption = (body as { photo?: { caption?: string | null } }).photo?.caption ?? null;
       setFrames((rows) => rows.map((r) => (r.id === id ? { ...r, caption } : r)));
       setEditId(null);
     } catch (e) {
       fail(e, 'Could not save caption');
     }
-  }, [post, editText, fail]);
+  }, [post, fail]);
 
   const loadAlbums = useCallback(async () => {
     try {
@@ -338,17 +336,18 @@ export default function PhotosLensPage() {
     void loadAlbums();
   }, [loadAlbums]);
 
-  const createAlbum = useCallback(async () => {
-    const name = newAlbum.trim();
-    if (!name) return;
+  const createAlbum = useCallback(async (rawName: string) => {
+    const name = rawName.trim();
+    if (!name) return false;
     try {
       await post('/api/photos/albums', { name });
-      setNewAlbum('');
       await loadAlbums();
+      return true;
     } catch (e) {
       fail(e, 'Could not create album');
+      return false;
     }
-  }, [newAlbum, post, loadAlbums, fail]);
+  }, [post, loadAlbums, fail]);
 
   const deleteAlbum = useCallback(async (album: Album) => {
     try {
@@ -484,22 +483,7 @@ export default function PhotosLensPage() {
 
               {view === 'albums' && !openAlbum && (
                 <div data-testid="photos-albums" className="mb-6">
-                  <form
-                    className="mb-4 flex gap-2"
-                    onSubmit={(e) => { e.preventDefault(); void createAlbum(); }}
-                  >
-                    <input
-                      value={newAlbum}
-                      onChange={(e) => setNewAlbum(e.target.value)}
-                      placeholder="New album name"
-                      aria-label="New album name"
-                      maxLength={80}
-                      className="flex-1 rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-[13px] text-zinc-100"
-                    />
-                    <button type="submit" disabled={!newAlbum.trim()} className="rounded-lg bg-zinc-100 px-3 py-1.5 text-[13px] text-black disabled:opacity-40">
-                      Create album
-                    </button>
-                  </form>
+                  <CreateAlbumForm onCreate={createAlbum} />
                   {albums === null ? (
                     <p role="status" className="text-[13px] text-zinc-500">Loading albums.</p>
                   ) : albums.length === 0 ? (
@@ -578,21 +562,12 @@ export default function PhotosLensPage() {
                               {frame.favorite ? '\u2605' : '\u2606'}
                             </button>
                             {editId === frame.id ? (
-                              <form
-                                className="flex gap-1"
-                                onSubmit={(e) => { e.preventDefault(); void saveCaption(frame.id); }}
-                              >
-                                <input
-                                  autoFocus
-                                  value={editText}
-                                  onChange={(e) => setEditText(e.target.value)}
-                                  onKeyDown={(e) => { if (e.key === 'Escape') setEditId(null); }}
-                                  aria-label={`Caption for ${name}`}
-                                  maxLength={280}
-                                  className="min-w-0 flex-1 rounded border border-white/10 bg-black/60 px-2 py-0.5 text-[13px] text-zinc-100"
-                                />
-                                <button type="submit" className="text-[12px] text-teal-300">Save</button>
-                              </form>
+                              <CaptionEditForm
+                                initial={frame.caption || ''}
+                                label={name}
+                                onSave={(text) => void saveCaption(frame.id, text)}
+                                onCancel={() => setEditId(null)}
+                              />
                             ) : (
                               <span className="block truncate text-[14px] text-zinc-100">{name}</span>
                             )}
@@ -606,7 +581,7 @@ export default function PhotosLensPage() {
                               {editId !== frame.id && (
                                 <button
                                   type="button"
-                                  onClick={() => { setEditId(frame.id); setEditText(frame.caption || ''); }}
+                                  onClick={() => setEditId(frame.id)}
                                   aria-label={`Edit caption ${name}`}
                                   className="text-zinc-400 underline"
                                 >
@@ -733,5 +708,52 @@ export default function PhotosLensPage() {
         onSelect={setLightboxId}
       />
     </LensShell>
+  );
+}
+
+// FIX-photos-009: the album-name and caption fields held their text in the
+// page component, so every keystroke re-rendered the whole library grid.
+// Both forms now own their text locally; the page only hears about a
+// completed name/caption.
+function CreateAlbumForm({ onCreate }: { onCreate: (name: string) => Promise<boolean> }) {
+  const [name, setName] = useState('');
+  return (
+    <form
+      className="mb-4 flex gap-2"
+      onSubmit={(e) => { e.preventDefault(); void onCreate(name).then((ok) => { if (ok) setName(''); }); }}
+    >
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="New album name"
+        aria-label="New album name"
+        maxLength={80}
+        className="flex-1 rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-[13px] text-zinc-100"
+      />
+      <button type="submit" disabled={!name.trim()} className="rounded-lg bg-zinc-100 px-3 py-1.5 text-[13px] text-black disabled:opacity-40">
+        Create album
+      </button>
+    </form>
+  );
+}
+
+function CaptionEditForm({ initial, label, onSave, onCancel }: { initial: string; label: string; onSave: (text: string) => void; onCancel: () => void }) {
+  const [text, setText] = useState(initial);
+  return (
+    <form
+      className="flex gap-1"
+      onSubmit={(e) => { e.preventDefault(); onSave(text); }}
+    >
+      <input
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}
+        aria-label={`Caption for ${label}`}
+        maxLength={280}
+        className="min-w-0 flex-1 rounded border border-white/10 bg-black/60 px-2 py-0.5 text-[13px] text-zinc-100"
+      />
+      <button type="submit" className="text-[12px] text-teal-300">Save</button>
+    </form>
   );
 }
