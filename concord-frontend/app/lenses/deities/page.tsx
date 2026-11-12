@@ -107,7 +107,7 @@ export default function DeitiesPage() {
   const bumpRefresh = () => setRefreshKey((k) => k + 1);
 
   const compose = async () => {
-    if (!form.name) return;
+    if (!form.name.trim()) { setStatus('Give your deity a name first.'); return; }
     setStatus('Composing…');
     const r = await lensRun('deity', 'compose', {
       name: form.name,
@@ -173,11 +173,17 @@ export default function DeitiesPage() {
             {composing && (
               <div className="space-y-3 rounded-2xl border border-white/10 bg-[#111] p-4">
                 <h2 className="text-sm font-bold text-purple-300">Compose a Deity</h2>
-                <input
-                  type="text" placeholder="Name" value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
-                />
+                <div>
+                  <input
+                    type="text" placeholder="Name" aria-label="Deity name" maxLength={80} value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+                  />
+                  <div className="mt-0.5 flex justify-between text-[10px] text-zinc-500">
+                    <span>{form.name.trim() ? 'Up to 80 characters.' : 'A name is required — up to 80 characters.'}</span>
+                    <span>{form.name.length}/80</span>
+                  </div>
+                </div>
                 <input
                   type="text" placeholder="Domain title (optional, e.g. Patron of the tide)" value={form.domainTitle}
                   onChange={(e) => setForm({ ...form, domainTitle: e.target.value })}
@@ -201,7 +207,7 @@ export default function DeitiesPage() {
                   </div>
                 ))}
                 <button
-                  type="button" onClick={compose} disabled={!form.name}
+                  type="button" onClick={compose} disabled={!form.name.trim()}
                   className="w-full rounded-lg bg-purple-700 hover:bg-purple-600 disabled:opacity-50 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
                   Birth Deity
