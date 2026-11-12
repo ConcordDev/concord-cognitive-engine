@@ -140,7 +140,12 @@ export function courtInteraction(db, playerUserId, partnerKind, partnerId, senti
     UPDATE player_courtship SET affinity = ?, status = ?, last_interaction = unixepoch()
     WHERE player_user_id = ? AND partner_kind = ? AND partner_id = ?
   `).run(next, status, playerUserId, partnerKind, partnerId);
-  return { ok: true, affinity: next, status, new: false, delta, heartEvent: heartEvent || null };
+  // FIX-courtship-007: an interaction the affinity cap (or floor)
+  // swallowed whole used to return a plain ok — the UI refreshed to
+  // identical numbers and said nothing. capped tells the caller the
+  // interaction landed on the bound so it can say so.
+  const capped = delta !== 0 && next === existing.affinity;
+  return { ok: true, affinity: next, status, new: false, delta, heartEvent: heartEvent || null, capped };
 }
 
 export function listMyCourtships(db, playerUserId, status = null) {

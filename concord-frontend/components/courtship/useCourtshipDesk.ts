@@ -162,6 +162,16 @@ export function useCourtshipDesk() {
           scene: j.heartEvent as HeartEventScene,
           partnerLabel: `${c.partner_kind}:${String(c.partner_id ?? "").slice(0, 14)}`,
         });
+      } else if (j?.capped) {
+        // FIX-courtship-007: at the affinity cap (or floor) the
+        // interaction changes nothing — say so instead of silently
+        // refreshing to the same numbers.
+        addToast({
+          type: 'info',
+          message: sentiment > 0
+            ? 'Affinity is already at its peak with this partner.'
+            : 'Affinity is already at its lowest with this partner.',
+        });
       }
       await refresh();
     } catch (e) {
