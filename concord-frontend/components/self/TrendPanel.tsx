@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { ChartKit } from '@/components/viz/ChartKit';
 import { Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
@@ -50,8 +51,28 @@ interface TrendResult {
 }
 
 export function TrendPanel({ refreshKey }: { refreshKey: number }) {
-  const [metric, setMetric] = useState('steps');
-  const [days, setDays] = useState(30);
+  // FIX-self-005 / FIX-self-015: metric + range are view prefs — the panel
+  // unmounts on every tab switch inside the Self lens, so both persist
+  // through the shared lens UI-state store and are restored on return
+  // instead of resetting to Steps / 30d.
+  const { restore, persist } = useLensStatePersistence('self');
+  const [initialPrefs] = useState(() => restore());
+  const [metric, setMetricState] = useState(() => {
+    const saved = initialPrefs?.trendMetric;
+    return typeof saved === 'string' && METRICS.some((m) => m.key === saved) ? saved : 'steps';
+  });
+  const [days, setDaysState] = useState(() => {
+    const saved = initialPrefs?.trendDays;
+    return typeof saved === 'number' && RANGES.some((r) => r.days === saved) ? saved : 30;
+  });
+  const setMetric = (next: string) => {
+    setMetricState(next);
+    persist({ ...(restore() ?? {}), trendMetric: next });
+  };
+  const setDays = (next: number) => {
+    setDaysState(next);
+    persist({ ...(restore() ?? {}), trendDays: next });
+  };
   const [data, setData] = useState<TrendResult | null>(null);
   const [busy, setBusy] = useState(false);
 
