@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { Boxes, Loader2, Plus, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Boxes, Loader2, Plus, ArrowUpRight, ArrowDownLeft, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 interface Resource {
@@ -74,6 +74,19 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
     });
     if (r.data?.ok) await load();
   }, [crisisId, load]);
+
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
+
+  // Two-step delete (FIX-crisis-ops-004): first click arms the confirm;
+  // the server refuses while units are deployed, with the reason shown.
+  const remove = useCallback(async (resourceId: string) => {
+    if (confirmDeleteId !== resourceId) { setConfirmDeleteId(resourceId); setDeleteError(''); return; }
+    setConfirmDeleteId(null);
+    const r = await lensRun('crisis', 'resource_delete', { resourceId });
+    if (r.data?.ok) await load();
+    else setDeleteError(r.data?.message || r.data?.error || 'That asset was not deleted.');
+  }, [confirmDeleteId, load]);
 
   return (
     <div className="space-y-3">
@@ -165,6 +178,8 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
         </p>
       )}
 
+      {deleteError && <p className="text-[11px] text-rose-300" role="alert">{deleteError}</p>}
+
       {!loading && data && data.resources.length > 0 && (
         <ul className="space-y-1.5">
           {data.resources.map((res) => {
@@ -203,6 +218,25 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
                       >
                         <ArrowDownLeft className="h-3 w-3" /> Recall
                       </button>
+                      {confirmDeleteId === res.id ? (
+                        <button
+                          type="button"
+                          onClick={() => remove(res.id)}
+                          aria-label={`Confirm delete asset ${res.name}`}
+                          className="flex items-center gap-0.5 rounded bg-rose-600/40 px-1.5 py-1 text-[10px] font-medium text-rose-100 hover:bg-rose-600/60"
+                        >
+                          Confirm
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => remove(res.id)}
+                          aria-label={`Delete asset ${res.name}`}
+                          className="flex items-center gap-0.5 rounded bg-zinc-700/50 px-1.5 py-1 text-[10px] text-zinc-300 hover:bg-rose-700/50 hover:text-rose-100"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
                     </div>
                 </div>
                 <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">

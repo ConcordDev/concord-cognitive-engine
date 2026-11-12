@@ -932,4 +932,25 @@ export default function registerCrisisMacros(register) {
       return { ok: false, error: String(err?.message || err) };
     }
   }, { note: "Deploy (or recall) a resource quantity against a crisis." });
+
+  register("crisis", "resource_delete", async (ctx, input = {}) => {
+    try {
+      const userId = ctx?.actor?.userId;
+      if (!userId) return { ok: false, error: "no_actor" };
+      const { resourceId } = input || {};
+      if (!resourceId) return { ok: false, error: "missing_resource_id" };
+      const S = stores();
+      const map = S.crisisResources.get(userId);
+      const resource = map?.get(resourceId);
+      if (!resource) return { ok: false, error: "resource_not_found" };
+      if ((resource.deployed || 0) > 0) {
+        return { ok: false, error: "resource_deployed", message: "Recall the deployed units before deleting this asset." };
+      }
+      map.delete(resourceId);
+      persist();
+      return { ok: true, result: { deleted: resourceId } };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  }, { note: "Delete a deployable resource from the player's inventory (refused while units are deployed)." });
 }

@@ -34,6 +34,7 @@ export function IncidentReportPanel({ crisisId }: { crisisId?: string }) {
   );
 
   const [open, setOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [severity, setSeverity] = useState('minor');
   const [location, setLocation] = useState('');
@@ -156,14 +157,25 @@ export function IncidentReportPanel({ crisisId }: { crisisId?: string }) {
                     {r.data?.severity || r.meta?.status || 'minor'}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => remove(r.id)}
-                  aria-label={`Delete report ${r.title}`}
-                  className="text-gray-500 hover:text-rose-300"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {confirmDeleteId === r.id ? (
+                  <button
+                    type="button"
+                    onClick={() => { setConfirmDeleteId(null); void remove(r.id); }}
+                    aria-label={`Confirm delete report ${r.title}`}
+                    className="px-1 text-[11px] font-medium text-rose-300 hover:text-rose-200"
+                  >
+                    Confirm
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteId(r.id)}
+                    aria-label={`Delete report ${r.title}`}
+                    className="text-gray-500 hover:text-rose-300"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
               {r.data?.body && <p className="mt-1 text-[11px] text-gray-300">{r.data.body}</p>}
               {r.data?.location && (
