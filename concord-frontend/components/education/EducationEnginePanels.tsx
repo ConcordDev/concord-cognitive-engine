@@ -32,7 +32,17 @@ interface GenomeSummary {
   totalMastered?: number;
   gapCount?: number;
   strongestDomain?: string;
-  velocity?: number;
+  velocity?: number | { perMinute?: number; windowMinutes?: number; interactions?: number };
+}
+
+// The server's calculateVelocity returns an object — mastery gain per
+// minute over the last hour — not a weekly number. Render its real shape
+// (FIX-009: the card printed '[object Object]/wk').
+function velocityLabel(v: GenomeSummary['velocity']): string {
+  if (v == null) return '—';
+  if (typeof v === 'number') return `${v}/min`;
+  if ((v.interactions ?? 0) === 0 || (v.perMinute ?? 0) === 0) return '—';
+  return `${(v.perMinute ?? 0).toFixed(2)}/min`;
 }
 
 interface GenomeApiResponse {
@@ -114,7 +124,7 @@ export function GenomePanel() {
         <StatCard label="Mastered" value={summary.totalMastered ?? 0} />
         <StatCard label="Gaps" value={summary.gapCount ?? nodes.filter(n => n.gap).length} />
         <StatCard label="Strongest" value={summary.strongestDomain ?? '—'} />
-        <StatCard label="Velocity" value={summary.velocity != null ? `${summary.velocity}/wk` : '—'} />
+        <StatCard label="Velocity" value={velocityLabel(summary.velocity)} />
       </div>
 
       {isLoading && <p className="text-sm text-gray-400">Loading genome…</p>}

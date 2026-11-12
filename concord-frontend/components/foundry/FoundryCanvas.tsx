@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { foundryReasonWords } from './reasonWords';
 import {
   fetchSystems, listWorlds, createWorld, updateWorld, getWorld,
   publishWorld, unpublishWorld, validateWorld, defaultConfig, fetchTemplates,
@@ -159,11 +160,11 @@ export function FoundryCanvas() {
       const ws = buildWorldspec();
       if (currentWorldId) {
         const r = await updateWorld(currentWorldId, { name: worldName, description: worldDescription, worldspec: ws });
-        if (!r.ok) { flash('err', `Save failed: ${r.reason}`); return; }
+        if (!r.ok) { flash('err', `Save failed: ${foundryReasonWords(r.reason)}`); return; }
         flash('ok', 'Saved.');
       } else {
         const r = await createWorld(worldName, worldDescription, { worldspec: ws });
-        if (!r.ok || !r.world) { flash('err', `Save failed: ${r.reason}`); return; }
+        if (!r.ok || !r.world) { flash('err', `Save failed: ${foundryReasonWords(r.reason)}`); return; }
         setCurrentWorldId(r.world.id);
         setWorldStatus(r.world.status);
         flash('ok', 'Created.');
@@ -185,7 +186,7 @@ export function FoundryCanvas() {
       await updateWorld(currentWorldId, { name: worldName, description: worldDescription, worldspec: buildWorldspec() });
       const r = await publishWorld(currentWorldId);
       if (!r.ok) {
-        flash('err', r.errors?.length ? `Can't publish: ${r.errors[0]}` : `Publish failed: ${r.reason}`);
+        flash('err', r.errors?.length ? `Can't publish: ${r.errors[0]}` : `Publish failed: ${foundryReasonWords(r.reason)}`);
         return;
       }
       setWorldStatus('published');
@@ -219,7 +220,7 @@ export function FoundryCanvas() {
     setBusy(true);
     try {
       const r = await unpublishWorld(currentWorldId);
-      if (!r.ok) { flash('err', `Unpublish failed: ${r.reason}`); return; }
+      if (!r.ok) { flash('err', `Unpublish failed: ${foundryReasonWords(r.reason)}`); return; }
       setWorldStatus('draft');
       flash('ok', `Back to draft (world ${r.disposition}).`);
     } catch {
@@ -233,7 +234,7 @@ export function FoundryCanvas() {
     setBusy(true);
     try {
       const r = await getWorld(id);
-      if (!r.ok || !r.world) { flash('err', `Load failed: ${r.reason}`); return; }
+      if (!r.ok || !r.world) { flash('err', `Load failed: ${foundryReasonWords(r.reason)}`); return; }
       const w = r.world;
       setCurrentWorldId(w.id);
       setWorldName(w.name);
@@ -258,7 +259,7 @@ export function FoundryCanvas() {
     try {
       const tpl = templates.find((t) => t.id === templateId);
       const r = await createWorld(tpl?.name ?? 'New Game', '', { templateId });
-      if (!r.ok || !r.world) { flash('err', `Template start failed: ${r.reason}`); return; }
+      if (!r.ok || !r.world) { flash('err', `Template start failed: ${foundryReasonWords(r.reason)}`); return; }
       await loadWorld(r.world.id);
       const w = await listWorlds();
       if (w.ok) setMyWorlds(w.worlds);

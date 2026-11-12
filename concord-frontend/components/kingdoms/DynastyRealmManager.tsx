@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { kingdomErrorWords } from './errorWords';
 import {
   Crown, Users, Scroll, Sword, Coins, Skull, Scale, Loader2, Plus, Check, AlertTriangle,
 } from 'lucide-react';
@@ -69,7 +70,7 @@ export function DynastyRealmManager() {
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   const ok = useCallback((text: string) => setFeedback({ kind: 'ok', text }), []);
-  const err = useCallback((text: string) => setFeedback({ kind: 'err', text }), []);
+  const err = useCallback((text: string) => setFeedback({ kind: 'err', text: kingdomErrorWords(text) }), []);
 
   const tabs: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
     { id: 'dynasty', label: 'Dynasty', icon: Crown },

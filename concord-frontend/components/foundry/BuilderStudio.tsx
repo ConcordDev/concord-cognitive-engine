@@ -18,6 +18,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { foundryReasonWords } from './reasonWords';
 import {
   Workflow, PlayCircle, Boxes, Users2, Store, BarChart3, UserPlus,
   Loader2, RefreshCw, Plus, Trash2, Star, Check, AlertTriangle, Radio,
@@ -81,8 +82,8 @@ async function fcall<T = Record<string, unknown>>(
 ): Promise<{ ok: boolean; payload: T | null; error: string | null }> {
   const r = await lensRun<T & { ok?: boolean; reason?: string; error?: string }>('foundry', name, input);
   const p = r.data?.result;
-  if (r.data?.ok === false || !p) return { ok: false, payload: null, error: r.data?.error || 'request failed' };
-  if (p.ok === false) return { ok: false, payload: null, error: p.error || p.reason || 'request failed' };
+  if (r.data?.ok === false || !p) return { ok: false, payload: null, error: foundryReasonWords(r.data?.error, 'request failed') };
+  if (p.ok === false) return { ok: false, payload: null, error: foundryReasonWords(p.error || p.reason) };
   return { ok: true, payload: p, error: null };
 }
 
