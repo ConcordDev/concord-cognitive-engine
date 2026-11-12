@@ -3301,9 +3301,6 @@ export function CaseOpsPanel({
                 ))}
               </select>
             </div>
-            <button className={ds.btnPrimary} onClick={openNew}>
-              <Plus className="w-4 h-4" /> New {currentType}
-            </button>
             <span className={cn(ds.textMuted, 'text-xs')}>
               {filtered.length} of {items.length} items
             </span>
