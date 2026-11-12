@@ -226,11 +226,11 @@ export function EducationActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Grades JSON</label>
-          <textarea value={gradesText} onChange={(e) => setGradesText(e.target.value)} rows={6} placeholder={'{"students":[{"studentId":"s1","name":"Alice","grades":[{"category":"hw","score":90,"maxScore":100}]}],"weightScheme":[{"category":"hw","weight":100}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1 placeholder:text-zinc-600" />
+          <textarea value={gradesText} onChange={(e) => setGradesText(e.target.value)} rows={6} placeholder={'{"students":[{"studentId":"s1","name":"Alice","grades":[{"category":"hw","score":90,"maxScore":100}]}],"weightScheme":[{"category":"hw","weight":100}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1 placeholder:text-zinc-400" />
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-green-400 font-semibold">Progress JSON</label>
-          <textarea value={progText} onChange={(e) => setProgText(e.target.value)} rows={6} placeholder={'{"requirements":[{"requirementId":"r1","name":"Core","requiredUnits":10}],"completions":[{"requirementId":"r1","completedUnits":4}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1 placeholder:text-zinc-600" />
+          <textarea value={progText} onChange={(e) => setProgText(e.target.value)} rows={6} placeholder={'{"requirements":[{"requirementId":"r1","name":"Core","requiredUnits":10}],"completions":[{"requirementId":"r1","completedUnits":4}]}'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[10px] text-white font-mono mt-1 placeholder:text-zinc-400" />
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Lesson + quiz</div>

@@ -1694,7 +1694,7 @@ export function EducationSection() {
                               onClick={() => markAttendance(s.id, s.title, status)}
                               className={cn(
                                 'p-1.5 rounded transition-colors',
-                                currentStatus === status ? `${ATTENDANCE_COLORS[status]} bg-white/10` : 'text-gray-600 hover:text-gray-400'
+                                currentStatus === status ? `${ATTENDANCE_COLORS[status]} bg-white/10` : 'text-gray-400 hover:text-gray-400'
                               )}
                               title={status}
                             >
@@ -1718,7 +1718,7 @@ export function EducationSection() {
             <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
-              <Users className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <Users className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No students found. Create one to get started.</p>
             </div>
           ) : (
@@ -1784,7 +1784,7 @@ export function EducationSection() {
             <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
-              <BookOpen className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <BookOpen className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No courses found. Create one to get started.</p>
             </div>
           ) : (
@@ -1981,7 +1981,7 @@ export function EducationSection() {
             <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
-              <ClipboardList className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <ClipboardList className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No assignments found. Create one to get started.</p>
             </div>
           ) : (
@@ -2169,7 +2169,7 @@ export function EducationSection() {
                                       onClick={() => { setEditingCell({ studentId: student.id, assignmentId: assignment.id }); setCellValue(score != null ? String(score) : ''); }}
                                       className={cn(
                                         'w-full py-1 px-2 rounded text-sm transition-colors hover:bg-white/5',
-                                        pct !== null ? GRADE_COLORS[colorKey] : 'text-gray-600'
+                                        pct !== null ? GRADE_COLORS[colorKey] : 'text-gray-400'
                                       )}
                                     >
                                       {score !== null && score !== undefined ? `${score}/${maxScore}` : '--'}
@@ -2192,7 +2192,7 @@ export function EducationSection() {
                 </div>
               ) : (
                 <div className="text-center py-8 bg-lattice-elevated rounded-lg">
-                  <BarChart2 className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                  <BarChart2 className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <p className={ds.textMuted}>Add students and assignments to populate the grade book</p>
                   <p className={cn(ds.textMuted, 'text-xs mt-1')}>Use the buttons above, or add student/assignment records first</p>
                 </div>
@@ -2207,7 +2207,7 @@ export function EducationSection() {
                 <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-12">
-                  <BarChart2 className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                  <BarChart2 className="w-10 h-10 text-gray-400 mx-auto mb-3" />
                   <p className={ds.textMuted}>No grades found. Create one to get started.</p>
                 </div>
               ) : (
@@ -2290,7 +2290,7 @@ export function EducationSection() {
 
               {curriculumWeeks.length === 0 ? (
                 <div className="text-center py-8">
-                  <BookMarked className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                  <BookMarked className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <p className={ds.textMuted}>No curriculum weeks defined yet. Add weeks to plan your curriculum.</p>
                 </div>
               ) : (
@@ -2458,7 +2458,7 @@ export function EducationSection() {
                 <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-12">
-                  <FileText className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                  <FileText className="w-10 h-10 text-gray-400 mx-auto mb-3" />
                   <p className={ds.textMuted}>No lesson plans found. Create one to get started.</p>
                 </div>
               ) : (
@@ -2510,7 +2510,7 @@ export function EducationSection() {
             <p className={cn(ds.textMuted, 'text-center py-12')}>Loading records...</p>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
-              <Award className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <Award className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No certifications found. Create one to get started.</p>
             </div>
           ) : (
@@ -2588,7 +2588,7 @@ export function EducationSection() {
 
           {filtered.length === 0 ? (
             <div className="text-center py-12">
-              <Library className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <Library className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No resources found. Add textbooks, videos, articles, and more.</p>
             </div>
           ) : (
@@ -2744,7 +2744,7 @@ export function EducationSection() {
 
           {filtered.length === 0 ? (
             <div className="text-center py-12">
-              <HelpCircle className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <HelpCircle className="w-10 h-10 text-gray-400 mx-auto mb-3" />
               <p className={ds.textMuted}>No quizzes found. Create one with multiple choice, true/false, or short answer questions.</p>
             </div>
           ) : (

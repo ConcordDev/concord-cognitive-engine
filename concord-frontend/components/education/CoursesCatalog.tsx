@@ -308,8 +308,8 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                                   <li key={l.id} className="flex items-center gap-2 text-[11px] text-gray-300">
                                     <Icon className="w-3 h-3 text-cyan-400/70 flex-shrink-0" />
                                     <span className="truncate flex-1">{l.order}. {l.title}</span>
-                                    <span className="text-[10px] text-gray-500 inline-flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{l.durationMin || '—'}m</span>
-                                    <span className="text-[9px] uppercase text-gray-500">{l.kind}</span>
+                                    <span className="text-[10px] text-gray-400 inline-flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{l.durationMin || '—'}m</span>
+                                    <span className="text-[9px] uppercase text-gray-400">{l.kind}</span>
                                     {isOwner && (
                                       <span className="inline-flex items-center gap-0.5">
                                         <button aria-label="Move lesson up" disabled={l.order <= 1} onClick={() => lessonOp(c.id, 'lessons-move', l.id, { direction: 'up' })} className="p-0.5 text-gray-400 hover:text-white disabled:opacity-30"><ArrowUp className="w-3 h-3" /></button>
@@ -346,7 +346,7 @@ export function CoursesCatalog({ onSelect, onEnroll }: { onSelect?: (c: Course) 
                               <button onClick={() => setAddingLesson(true)} className="mt-1.5 mb-2 text-[11px] text-cyan-300 hover:text-cyan-200">+ Add lesson</button>
                             )
                           ) : (
-                            <div className="mt-1.5 mb-2 text-[10px] text-gray-500 inline-flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Only {c.instructor || 'the author'} can add lessons</div>
+                            <div className="mt-1.5 mb-2 text-[10px] text-gray-400 inline-flex items-center gap-1"><Lock className="w-2.5 h-2.5" />Only {c.instructor || 'the author'} can add lessons</div>
                           )}
                         </>
                       )}
