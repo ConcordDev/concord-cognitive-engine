@@ -166,8 +166,20 @@ export default function CognitionPage() {
       setActionError('A title is required.');
       return;
     }
+    if (trimmed.length < 3) {
+      setActionError('A title needs at least 3 characters.');
+      return;
+    }
     if (!asked) {
       setActionError('A question is required.');
+      return;
+    }
+    if (asked.length < 10) {
+      setActionError('A question needs at least 10 characters — say it in your own words.');
+      return;
+    }
+    if (asked.length > 2000) {
+      setActionError('A question is 2,000 characters or fewer.');
       return;
     }
     setBusy(true);
@@ -362,22 +374,32 @@ export default function CognitionPage() {
                 <input
                   data-testid="cg-title"
                   value={title}
+                  maxLength={120}
                   onChange={(event) => { setTitle(event.target.value); if (actionError) setActionError(''); }}
                   className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 font-vault text-[1.25rem] text-zinc-100 outline-none"
                   autoFocus
                 />
+                <span className="mt-1 flex justify-between text-[11px] text-zinc-500">
+                  <span>3–120 characters.</span>
+                  <span>{title.length}/120</span>
+                </span>
               </label>
               <label className="block text-[14px] text-zinc-400">
                 Question
                 <input
                   data-testid="cg-question-input"
                   value={question}
+                  maxLength={2000}
                   onChange={(event) => { setQuestion(event.target.value); if (actionError) setActionError(''); }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') { event.preventDefault(); void openTrace(); }
                   }}
                   className="mt-1 w-full border-b border-white/15 bg-transparent pb-2 text-[15px] text-zinc-100 outline-none"
                 />
+                <span className="mt-1 flex justify-between text-[11px] text-zinc-500">
+                  <span>10–2,000 characters — the question in your own words.</span>
+                  <span>{question.length}/2000</span>
+                </span>
               </label>
             </div>
           )}
