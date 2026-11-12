@@ -123,11 +123,29 @@ export function ArtifactBench({
       <div className="flex flex-wrap gap-2">{actionButtons}</div>
 
       {items.length === 0 ? (
-        <EmptyState
-          title={`No ${label.toLowerCase()} yet`}
-          description={`Create your first ${typeLabel.toLowerCase()} to persist it on the aviation substrate.`}
-          action={{ label: `New ${typeLabel}`, onClick: onNew }}
-        />
+        // FIX-aviation-008: an active search/status filter with no matches
+        // used to render the first-run state ("No flights yet — create
+        // your first flight") even when the bench is full of records the
+        // filter hides. The filtered empty state names the filter and
+        // offers to clear it; the first-run state is only for an
+        // unfiltered bench.
+        statusFilter || searchQuery.trim() ? (
+          <EmptyState
+            title={`No ${label.toLowerCase()} match`}
+            description={
+              statusFilter
+                ? `Nothing on this bench is marked ${statusFilter}${searchQuery.trim() ? ` and matching "${searchQuery.trim()}"` : ''}. Clear the filter to see everything.`
+                : `Nothing on this bench matches "${searchQuery.trim()}". Clear the search to see everything.`
+            }
+            action={{ label: 'Clear filters', onClick: () => { setSearchQuery(''); setStatusFilter(''); } }}
+          />
+        ) : (
+          <EmptyState
+            title={`No ${label.toLowerCase()} yet`}
+            description={`Create your first ${typeLabel.toLowerCase()} to persist it on the aviation substrate.`}
+            action={{ label: `New ${typeLabel}`, onClick: onNew }}
+          />
+        )
       ) : (
         <div className={ds.grid3}>
           {items.map((item, index) => (
