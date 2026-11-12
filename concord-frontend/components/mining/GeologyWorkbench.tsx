@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import { Drill, Plus, Trash2, Layers, BarChart3, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -55,6 +56,10 @@ export function GeologyWorkbench() {
   const [ivGrade, setIvGrade] = useState('');
   const [ivRec, setIvRec] = useState('95');
 
+  // edit state — a hole or interval loaded into its creation form
+  const [editHoleId, setEditHoleId] = useState<string | null>(null);
+  const [editIvId, setEditIvId] = useState<string | null>(null);
+
   const loadHoles = useCallback(async () => {
     const r = await lensRun<{ holes: Hole[] }>('mining', 'drillhole-list', {});
     if (r.data.ok && r.data.result) {
@@ -88,6 +93,65 @@ export function GeologyWorkbench() {
     setBusy(null);
     if (r.data.ok) { setIvFrom(ivTo); setIvTo(''); setIvGrade(''); await loadHoles(); }
     else setErr(r.data.error || 'log failed');
+  }
+
+  function startEditHole(h: Hole) {
+    setEditHoleId(h.id);
+    setSelected(h.id);
+    setHName(h.name); setHX(String(h.collarX)); setHY(String(h.collarY)); setHZ(String(h.collarZ));
+    setHAz(String(h.azimuth)); setHDip(String(h.dip)); setHDepth(String(h.totalDepth));
+    setErr(null);
+  }
+
+  function cancelEditHole() {
+    setEditHoleId(null);
+    setHName(''); setHX('0'); setHY('0'); setHZ('0'); setHAz('0'); setHDip('-90'); setHDepth('120');
+  }
+
+  async function saveHole() {
+    if (!editHoleId) return;
+    if (!hName.trim()) { setErr('Drill-hole name required.'); return; }
+    setBusy('save-hole'); setErr(null);
+    const r = await lensRun('mining', 'drillhole-update', {
+      id: editHoleId, name: hName.trim(), azimuth: Number(hAz), dip: Number(hDip),
+      totalDepth: Number(hDepth), collarX: Number(hX), collarY: Number(hY), collarZ: Number(hZ),
+    });
+    setBusy(null);
+    if (r.data.ok) { cancelEditHole(); await loadHoles(); }
+    else setErr(r.data.error || 'update failed');
+  }
+
+  function startEditInterval(iv: Interval) {
+    setEditIvId(iv.id);
+    setIvFrom(String(iv.from)); setIvTo(String(iv.to)); setIvLith(iv.lithology);
+    setIvGrade(String(iv.assayGrade)); setIvRec(String(iv.recovery));
+    setErr(null);
+  }
+
+  function cancelEditInterval() {
+    setEditIvId(null);
+    setIvFrom(''); setIvTo(''); setIvGrade(''); setIvRec('95'); setIvLith('fresh_ore');
+  }
+
+  async function saveInterval() {
+    if (!selected || !editIvId) return;
+    if (!ivFrom || !ivTo) { setErr('Interval from/to required.'); return; }
+    setBusy('save-iv'); setErr(null);
+    const r = await lensRun('mining', 'drillhole-update-interval', {
+      holeId: selected, intervalId: editIvId, from: Number(ivFrom), to: Number(ivTo),
+      lithology: ivLith, assayGrade: Number(ivGrade), recovery: Number(ivRec),
+    });
+    setBusy(null);
+    if (r.data.ok) { cancelEditInterval(); await loadHoles(); }
+    else setErr(r.data.error || 'update failed');
+  }
+
+  async function delInterval(holeId: string, intervalId: string) {
+    setBusy('del-iv'); setErr(null);
+    const r = await lensRun('mining', 'drillhole-delete-interval', { holeId, intervalId });
+    setBusy(null);
+    if (r.data.ok) { if (editIvId === intervalId) cancelEditInterval(); await loadHoles(); }
+    else setErr(r.data.error || 'delete failed');
   }
 
   async function delHole(id: string) {
@@ -142,10 +206,19 @@ export function GeologyWorkbench() {
         <input value={hDepth} onChange={(e) => setHDepth(e.target.value.replace(/[^\d.]/g, ''))} placeholder="Depth m"
           className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[12px] text-white font-mono" />
       </div>
-      <button type="button" onClick={addHole} disabled={!!busy}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-40 text-white rounded text-[12px]">
-        {busy === 'add-hole' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Add drill-hole
-      </button>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={editHoleId ? saveHole : addHole} disabled={!!busy}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-40 text-white rounded text-[12px]">
+          {busy === 'add-hole' || busy === 'save-hole' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} {editHoleId ? 'Save drill-hole' : 'Add drill-hole'}
+        </button>
+        {editHoleId && (
+          <button type="button" onClick={cancelEditHole} disabled={!!busy}
+            className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-[12px]">
+            Cancel
+          </button>
+        )}
+        {editHoleId && <span className="text-[11px] text-cyan-300">Editing {hName || 'drill-hole'} — Save updates it in place.</span>}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* hole list */}
@@ -165,10 +238,16 @@ export function GeologyWorkbench() {
                   {h.totalDepth}m · az {h.azimuth}° dip {h.dip}° · {h.intervalCount} intervals · logged {h.loggedDepth}m
                 </div>
               </div>
-              <button type="button" onClick={(e) => { e.stopPropagation(); delHole(h.id); }}
-                className="p-1 text-zinc-400 hover:text-red-400" aria-label="Delete hole">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <span className="flex items-center gap-1">
+                <button type="button" onClick={(e) => { e.stopPropagation(); startEditHole(h); }}
+                  className="p-1 text-zinc-400 hover:text-cyan-300 text-[11px]" aria-label={`Edit hole ${h.name}`}>
+                  Edit
+                </button>
+                <button type="button" onClick={(e) => { e.stopPropagation(); delHole(h.id); }}
+                  className="p-1 text-zinc-400 hover:text-red-400" aria-label="Delete hole">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </span>
             </div>
           ))}
         </div>
@@ -195,17 +274,38 @@ export function GeologyWorkbench() {
                 <input value={ivRec} onChange={(e) => setIvRec(e.target.value.replace(/[^\d.]/g, ''))} placeholder="Rec %"
                   className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" />
               </div>
-              <button type="button" onClick={logInterval} disabled={!!busy}
-                className="flex items-center gap-1.5 px-3 py-1 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white rounded text-[11px]">
-                {busy === 'log' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Log interval
-              </button>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={editIvId ? saveInterval : logInterval} disabled={!!busy}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white rounded text-[11px]">
+                  {busy === 'log' || busy === 'save-iv' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} {editIvId ? 'Save interval' : 'Log interval'}
+                </button>
+                {editIvId && (
+                  <button type="button" onClick={cancelEditInterval} disabled={!!busy}
+                    className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-[11px]">
+                    Cancel
+                  </button>
+                )}
+              </div>
               <div className="space-y-1 max-h-44 overflow-y-auto">
                 {sel.intervals.map((iv) => (
-                  <div key={iv.id} className="flex items-center justify-between text-[11px] bg-zinc-900/60 rounded px-2 py-1">
+                  <div key={iv.id} className="flex items-center justify-between gap-2 text-[11px] bg-zinc-900/60 rounded px-2 py-1">
                     <span className="font-mono text-zinc-300">{iv.from}–{iv.to}m</span>
                     <span className="text-zinc-400">{iv.lithology}</span>
                     <span className="font-mono text-amber-300">{iv.assayGrade}%</span>
                     <span className="font-mono text-zinc-400">rec {iv.recovery}%</span>
+                    <span className="flex items-center gap-1.5">
+                      <button type="button" onClick={() => startEditInterval(iv)}
+                        className="text-zinc-400 hover:text-cyan-300" aria-label={`Edit interval ${iv.from} to ${iv.to} metres`}>
+                        Edit
+                      </button>
+                      <StickyDeleteConfirm
+                        onConfirm={() => delInterval(sel.id, iv.id)}
+                        armLabel="Delete"
+                        confirmLabel={`Delete interval ${iv.from}–${iv.to}m?`}
+                        armAriaLabel={`Delete interval ${iv.from} to ${iv.to} metres`}
+                        confirmAriaLabel={`Confirm delete interval ${iv.from} to ${iv.to} metres`}
+                      />
+                    </span>
                   </div>
                 ))}
                 {sel.intervals.length === 0 && <div className="text-[11px] text-zinc-400">No intervals logged.</div>}

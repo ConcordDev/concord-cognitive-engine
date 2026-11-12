@@ -134,6 +134,13 @@ export default function registerMiningActions(registerLensAction) {
     const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const site = mnSites(s, mnActor(ctx)).find((x) => x.id === params.id);
     if (!site) return { ok: false, error: "site not found" };
+    if (params.name != null) {
+      const nm = mnClean(params.name, 160);
+      if (!nm) return { ok: false, error: "site name required" };
+      site.name = nm;
+    }
+    if (params.kind && MINE_KINDS.includes(params.kind)) site.kind = params.kind;
+    if (params.commodity != null) site.commodity = mnClean(params.commodity, 80) || "ore";
     if (params.status && ["active", "suspended", "closed", "reclamation"].includes(params.status)) site.status = params.status;
     if (params.productionTonnes != null) site.productionTonnes = Math.max(0, mnNum(params.productionTonnes));
     saveMining();
@@ -389,6 +396,62 @@ export default function registerMiningActions(registerLensAction) {
       hole.intervals.sort((a, b) => a.from - b.from);
       saveMining();
       return { ok: true, result: { interval: iv, holeId: hole.id } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+  registerLensAction("mining", "drillhole-update", (ctx, _a, params = {}) => {
+    try {
+      const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const hole = mnHoles(s, mnActor(ctx)).find((h) => h.id === params.id);
+      if (!hole) return { ok: false, error: "drill-hole not found" };
+      if (params.name != null) {
+        const nm = mnClean(params.name, 80);
+        if (!nm) return { ok: false, error: "drill-hole name required" };
+        hole.name = nm;
+      }
+      if (params.siteId !== undefined) {
+        const sid = mnClean(params.siteId, 60) || null;
+        if (sid && !mnSites(s, mnActor(ctx)).some((x) => x.id === sid)) return { ok: false, error: "site not found" };
+        hole.siteId = sid;
+      }
+      if (params.collarX != null) hole.collarX = mnNum(params.collarX);
+      if (params.collarY != null) hole.collarY = mnNum(params.collarY);
+      if (params.collarZ != null) hole.collarZ = mnNum(params.collarZ);
+      if (params.azimuth != null) hole.azimuth = Math.max(0, Math.min(360, mnNum(params.azimuth)));
+      if (params.dip != null) hole.dip = Math.max(-90, Math.min(90, mnNum(params.dip)));
+      if (params.totalDepth != null) hole.totalDepth = Math.max(0, mnNum(params.totalDepth));
+      saveMining();
+      return { ok: true, result: { hole } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+  registerLensAction("mining", "drillhole-update-interval", (ctx, _a, params = {}) => {
+    try {
+      const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const hole = mnHoles(s, mnActor(ctx)).find((h) => h.id === params.holeId);
+      if (!hole) return { ok: false, error: "drill-hole not found" };
+      const iv = hole.intervals.find((x) => x.id === params.intervalId);
+      if (!iv) return { ok: false, error: "interval not found" };
+      const from = params.from != null ? Math.max(0, mnNum(params.from)) : iv.from;
+      const to = params.to != null ? Math.max(0, mnNum(params.to)) : iv.to;
+      if (to <= from) return { ok: false, error: "interval 'to' must exceed 'from'" };
+      iv.from = from; iv.to = to;
+      if (params.lithology != null && LITHOLOGIES.includes(params.lithology)) iv.lithology = params.lithology;
+      if (params.assayGrade != null) iv.assayGrade = Math.max(0, mnNum(params.assayGrade));
+      if (params.recovery != null) iv.recovery = Math.max(0, Math.min(100, mnNum(params.recovery)));
+      hole.intervals.sort((a, b) => a.from - b.from);
+      saveMining();
+      return { ok: true, result: { interval: iv, holeId: hole.id } };
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
+  });
+  registerLensAction("mining", "drillhole-delete-interval", (ctx, _a, params = {}) => {
+    try {
+      const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const hole = mnHoles(s, mnActor(ctx)).find((h) => h.id === params.holeId);
+      if (!hole) return { ok: false, error: "drill-hole not found" };
+      const i = hole.intervals.findIndex((x) => x.id === params.intervalId);
+      if (i < 0) return { ok: false, error: "interval not found" };
+      hole.intervals.splice(i, 1);
+      saveMining();
+      return { ok: true, result: { deleted: params.intervalId, holeId: hole.id } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
   registerLensAction("mining", "drillhole-delete", (ctx, _a, params = {}) => {
@@ -881,8 +944,15 @@ export default function registerMiningActions(registerLensAction) {
       const s = getMiningState(); if (!s) return { ok: false, error: "STATE unavailable" };
       const unit = mnFleet(s, mnActor(ctx)).find((u) => u.id === params.id);
       if (!unit) return { ok: false, error: "equipment not found" };
+      if (params.name != null) {
+        const nm = mnClean(params.name, 80);
+        if (!nm) return { ok: false, error: "equipment name required" };
+        unit.name = nm;
+      }
+      if (params.kind && EQUIP_KINDS.includes(params.kind)) unit.kind = params.kind;
       if (params.status && EQUIP_STATUS.includes(params.status)) unit.status = params.status;
       if (params.engineHours != null) unit.engineHours = Math.max(0, mnNum(params.engineHours));
+      if (params.scheduledHours != null) unit.scheduledHours = Math.max(0, mnNum(params.scheduledHours));
       if (params.fuelLitres != null) unit.fuelLitres = Math.max(0, mnNum(params.fuelLitres));
       if (params.nextServiceHours != null) unit.nextServiceHours = Math.max(0, mnNum(params.nextServiceHours));
       saveMining();
@@ -910,6 +980,7 @@ export default function registerMiningActions(registerLensAction) {
         return {
           id: u.id, name: u.name, kind: u.kind, status: u.status,
           engineHours: u.engineHours, utilization,
+          scheduledHours: u.scheduledHours, nextServiceHours: u.nextServiceHours,
           fuelLitres: u.fuelLitres, hoursToService,
           serviceDue: hoursToService <= 0,
         };

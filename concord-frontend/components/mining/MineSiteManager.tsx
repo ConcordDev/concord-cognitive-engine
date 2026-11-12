@@ -24,6 +24,7 @@ export function MineSiteManager() {
   const [active, setActive] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', kind: 'surface', commodity: '', productionTonnes: '' });
+  const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [incForm, setIncForm] = useState({ severity: 'minor', description: '' });
 
   const refresh = useCallback(async () => {
@@ -44,6 +45,24 @@ export function MineSiteManager() {
       productionTonnes: form.productionTonnes ? Number(form.productionTonnes) : 0,
     });
     setForm({ name: '', kind: 'surface', commodity: '', productionTonnes: '' });
+    await refresh();
+  }
+  function startEditSite(st: Site) {
+    setEditingSite(st);
+    setForm({ name: st.name, kind: st.kind, commodity: st.commodity, productionTonnes: String(st.productionTonnes) });
+  }
+  function cancelEditSite() {
+    setEditingSite(null);
+    setForm({ name: '', kind: 'surface', commodity: '', productionTonnes: '' });
+  }
+  async function saveSite() {
+    if (!editingSite || !form.name.trim()) return;
+    await lensRun('mining', 'site-update', {
+      id: editingSite.id,
+      name: form.name.trim(), kind: form.kind, commodity: form.commodity.trim(),
+      productionTonnes: form.productionTonnes ? Number(form.productionTonnes) : 0,
+    });
+    cancelEditSite();
     await refresh();
   }
   async function delSite(id: string) {
@@ -88,9 +107,16 @@ export function MineSiteManager() {
           className="w-24 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={form.productionTonnes} onChange={e => setForm({ ...form, productionTonnes: e.target.value })} placeholder="tonnes"
           className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-        <button onClick={addSite} disabled={!form.name.trim()}
-          className="px-2.5 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40">Add site</button>
+        <button onClick={editingSite ? saveSite : addSite} disabled={!form.name.trim()}
+          className="px-2.5 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40">{editingSite ? 'Save site' : 'Add site'}</button>
+        {editingSite && (
+          <button onClick={cancelEditSite}
+            className="px-2.5 py-1 text-xs rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">Cancel</button>
+        )}
       </div>
+      {editingSite && (
+        <p className="text-[11px] text-amber-300 -mt-2 mb-3">Editing site {editingSite.name} — Save site updates it in place.</p>
+      )}
 
       <ul className="space-y-1">
         {sites.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No sites yet.</li>}
@@ -101,6 +127,7 @@ export function MineSiteManager() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">{st.name}</p>
                 <p className="text-[10px] text-zinc-400">{st.kind} · {st.commodity} · {st.status} · {st.productionTonnes.toLocaleString()} t · {st.incidentCount} incidents</p>
               </button>
+              <button aria-label={`Edit ${st.name}`} onClick={() => startEditSite(st)} className="opacity-0 group-hover:opacity-100 text-zinc-300 text-[11px]">Edit</button>
               <button aria-label="Delete" onClick={() => delSite(st.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </div>
             {active === st.id && (
