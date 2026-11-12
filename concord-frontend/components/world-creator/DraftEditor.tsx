@@ -243,7 +243,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-xl font-semibold text-stone-100">{draft.name}</h2>
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-stone-400">
             {draft.props.length} props · {draft.npcs.length} NPCs · {draft.zones.length} zones ·
             {' '}{draft.spawnPoints.length} spawns · {draft.factions.length} factions ·
             {' '}<span className="uppercase">{draft.visibility}</span>
@@ -292,7 +292,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
               <div className="flex flex-wrap items-center gap-1.5">
                 <input value={zoneName} onChange={e => setZoneName(e.target.value)}
                   placeholder="Zone name (optional)" aria-label="Zone name"
-                  className="w-40 rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-100 placeholder:text-stone-600" />
+                  className="w-40 rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-100 placeholder:text-stone-400" />
                 <select value={zoneKind} onChange={e => setZoneKind(e.target.value)}
                   className="rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-200">
                   {ZONE_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
@@ -304,14 +304,14 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
                     onChange={e => setZoneRadius(clampNum(Number(e.target.value), 5, 250))}
                     className="w-16 rounded border border-stone-700 bg-stone-900 px-1.5 py-1 text-stone-100" />
                   m
-                  <span className="text-[10px] text-stone-500">5–250 m</span>
+                  <span className="text-[10px] text-stone-400">5–250 m</span>
                 </label>
               </div>
             )}
             {tool === 'spawn' && (
               <input value={spawnName} onChange={e => setSpawnName(e.target.value)}
                 placeholder="Spawn name (optional)" aria-label="Spawn point name"
-                className="w-40 rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-100 placeholder:text-stone-600" />
+                className="w-40 rounded border border-stone-700 bg-stone-900 px-2 py-1 text-xs text-stone-100 placeholder:text-stone-400" />
             )}
             {tool === 'npc' && (
               <select value={npcArch} onChange={e => setNpcArch(e.target.value)}
@@ -327,7 +327,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
               onSelect={(kind, id) => setSelected({ kind, id })}
               onMove={onMove}
             />
-            <p className="text-[11px] text-stone-500">
+            <p className="text-[11px] text-stone-400">
               {tool === 'select' ? 'Click an entity to select; drag a prop, zone, spawn point, or NPC to move it.' : `Click the canvas to place a ${tool}.`}
             </p>
             {pendingNpc && (
@@ -351,7 +351,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
                 <InspectorBody draft={draft} selected={selected} onUpdateProp={updateProp} />
               </div>
             ) : (
-              <div className="rounded-lg border border-stone-800 bg-stone-950 p-3 text-xs text-stone-500">
+              <div className="rounded-lg border border-stone-800 bg-stone-950 p-3 text-xs text-stone-400">
                 Nothing selected. Pick a tool to place entities, or use Select to inspect.
               </div>
             )}
@@ -401,7 +401,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
                 void run('draft-update', { id: draftId, name: v });
               }}
               className="w-full rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100" />
-            <p className="text-[11px] text-stone-500">{draft.name.length}/64</p>
+            <p className="text-[11px] text-stone-400">{draft.name.length}/64</p>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-stone-300" htmlFor="world-draft-description">Description</label>
@@ -464,7 +464,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-stone-500">
+            <p className="text-[11px] text-stone-400">
               Public worlds appear in the discovery listing. Publishing needs at least one spawn point.
             </p>
           </div>
@@ -484,7 +484,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
                 {checkResult.issues.map((i, idx) => <div key={idx} className="text-red-300">• {i}</div>)}
                 {checkResult.warnings.map((w, idx) => <div key={idx} className="text-amber-300">⚠ {w}</div>)}
               </div>
-            ) : <p className="text-xs text-stone-500">Run a check to see issues before publishing.</p>}
+            ) : <p className="text-xs text-stone-400">Run a check to see issues before publishing.</p>}
           </div>
 
           <StickyDeleteConfirm
@@ -513,24 +513,24 @@ function InspectorBody({ draft, selected, onUpdateProp }: {
     return <dl className="space-y-1.5 text-xs text-stone-300">
       <Row k="Kind" v={p.kind} /><Row k="Position" v={`(${p.x}, ${p.z})`} />
       <div className="flex items-center justify-between gap-2">
-        <dt className="text-stone-500">Rotation</dt>
+        <dt className="text-stone-400">Rotation</dt>
         <dd className="flex items-center gap-1">
           <input type="number" min={0} max={360} step={5} value={p.rotation}
             aria-label="Prop rotation in degrees"
             onChange={e => onUpdateProp(p.id, { rotation: Math.min(360, Math.max(0, Number(e.target.value) || 0)) })}
             className="w-14 rounded border border-stone-700 bg-stone-900 px-1.5 py-0.5 text-right text-stone-100" />
-          <span className="text-stone-500">°</span>
+          <span className="text-stone-400">°</span>
         </dd>
       </div>
       <div className="flex items-center justify-between gap-2">
-        <dt className="text-stone-500">Scale</dt>
+        <dt className="text-stone-400">Scale</dt>
         <dd className="flex items-center gap-1">
           <input type="number" min={0.25} max={4} step={0.25} value={p.scale}
             aria-label="Prop scale multiplier"
             onChange={e => onUpdateProp(p.id, { scale: Math.min(4, Math.max(0.25, Number(e.target.value) || 1)) })}
             className="w-14 rounded border border-stone-700 bg-stone-900 px-1.5 py-0.5 text-right text-stone-100" />
-          <span className="text-stone-500">×</span>
-          <span className="text-[10px] text-stone-500">0.25–4×</span>
+          <span className="text-stone-400">×</span>
+          <span className="text-[10px] text-stone-400">0.25–4×</span>
         </dd>
       </div>
     </dl>;
@@ -561,7 +561,7 @@ function InspectorBody({ draft, selected, onUpdateProp }: {
       <Row k="Faction" v={f?.name || 'none'} />
       {n.backstory ? (
         <div className="pt-1">
-          <dt className="text-stone-500">Backstory</dt>
+          <dt className="text-stone-400">Backstory</dt>
           <dd className="mt-0.5 text-stone-300">{n.backstory}</dd>
         </div>
       ) : null}
@@ -579,7 +579,7 @@ function InspectorBody({ draft, selected, onUpdateProp }: {
 }
 
 function Row({ k, v }: { k: string; v: string }) {
-  return <div className="flex justify-between gap-2"><dt className="text-stone-500">{k}</dt><dd className="text-right text-stone-200">{v}</dd></div>;
+  return <div className="flex justify-between gap-2"><dt className="text-stone-400">{k}</dt><dd className="text-right text-stone-200">{v}</dd></div>;
 }
 
 // NpcPlacementForm — inline form shown after a canvas click with the NPC
@@ -637,7 +637,7 @@ function NpcPlacementForm({
           onChange={e => setLevel(clampNum(Number(e.target.value), 1, 100) || 1)}
           aria-label="NPC level"
           className="w-16 rounded border border-stone-700 bg-stone-900 px-1.5 py-1 text-xs text-stone-100" />
-        <span className="text-[10px] text-stone-500">1–100</span>
+        <span className="text-[10px] text-stone-400">1–100</span>
       </div>
       <button onClick={submit} disabled={busy || submitting || !name.trim()}
         className="w-full rounded bg-amber-600 px-2 py-1 text-xs font-medium text-stone-900 hover:bg-amber-500 disabled:opacity-50">
@@ -668,13 +668,13 @@ function FactionPanel({
           <div key={f.id} className="flex items-center justify-between gap-2 rounded border border-stone-800 bg-stone-900 px-2 py-1">
             <button onClick={() => onSelectFaction(f.id)} className="flex items-center gap-1.5 text-left text-xs text-stone-200">
               <span className="h-3 w-3 rounded-full" style={{ background: f.color }} />
-              {f.name} <span className="text-stone-500">· {f.stance}</span>
+              {f.name} <span className="text-stone-400">· {f.stance}</span>
             </button>
             <button onClick={() => run('faction-remove', { draftId, factionId: f.id })} disabled={busy}
               className="text-[11px] text-red-400 hover:text-red-300">✕</button>
           </div>
         ))}
-        {draft.factions.length === 0 && <p className="text-[11px] text-stone-600">No factions yet.</p>}
+        {draft.factions.length === 0 && <p className="text-[11px] text-stone-400">No factions yet.</p>}
       </div>
       {selectedFaction && (
         <p className="mt-1.5 text-[11px] text-amber-300/80">Selected: {selectedFaction.name} — {selectedFaction.ethos || 'no ethos set'}</p>

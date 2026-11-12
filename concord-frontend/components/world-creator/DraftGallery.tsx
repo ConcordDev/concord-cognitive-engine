@@ -112,20 +112,20 @@ export function DraftGallery({ onOpen }: { onOpen: (draftId: string) => void }) 
 
         {/* template gallery */}
         <div>
-          <p className="mb-2 text-xs uppercase tracking-wider text-stone-500">Or start from a template</p>
+          <p className="mb-2 text-xs uppercase tracking-wider text-stone-400">Or start from a template</p>
           <div className="grid gap-2 sm:grid-cols-3">
             {templates.map(t => (
               <button key={t.id} disabled={busy} onClick={() => createDraft(t.id)}
                 className="rounded-lg border border-stone-700 bg-stone-900 p-3 text-left transition hover:border-amber-500">
                 <div className="text-sm font-medium text-stone-100">{t.label}</div>
                 <div className="mt-0.5 text-[11px] text-stone-400">{t.biomeLabel}</div>
-                <p className="mt-1 text-xs text-stone-500">{t.description}</p>
-                <div className="mt-1.5 text-[10px] text-stone-600">
+                <p className="mt-1 text-xs text-stone-400">{t.description}</p>
+                <div className="mt-1.5 text-[10px] text-stone-400">
                   {t.propCount} props · {t.spawnCount} spawn · {t.zoneCount} zone
                 </div>
               </button>
             ))}
-            {templates.length === 0 && <p className="text-xs text-stone-600">Loading templates…</p>}
+            {templates.length === 0 && <p className="text-xs text-stone-400">Loading templates…</p>}
           </div>
         </div>
       </section>
@@ -135,7 +135,7 @@ export function DraftGallery({ onOpen }: { onOpen: (draftId: string) => void }) 
         <h2 className="text-lg font-semibold text-stone-100">Your draft worlds</h2>
         {loadState === 'loading' ? (
           <div role="status" aria-live="polite"
-            className="rounded border border-dashed border-stone-800 p-6 text-center text-sm text-stone-500">
+            className="rounded border border-dashed border-stone-800 p-6 text-center text-sm text-stone-400">
             <span className="inline-block h-3 w-3 animate-pulse rounded-full bg-amber-500/70 align-middle" aria-hidden="true" />
             <span className="ml-2 align-middle">Loading your draft worlds…</span>
           </div>
@@ -149,7 +149,7 @@ export function DraftGallery({ onOpen }: { onOpen: (draftId: string) => void }) 
             </button>
           </div>
         ) : drafts.length === 0 ? (
-          <p className="rounded border border-dashed border-stone-800 p-6 text-center text-sm text-stone-500">
+          <p className="rounded border border-dashed border-stone-800 p-6 text-center text-sm text-stone-400">
             No drafts yet. Start a blank draft or pick a template above.
           </p>
         ) : (
@@ -164,7 +164,7 @@ export function DraftGallery({ onOpen }: { onOpen: (draftId: string) => void }) 
                   </span>
                 </div>
                 <div className="mt-0.5 text-[11px] text-stone-400">{d.biomeLabel}</div>
-                <div className="mt-1.5 text-[10px] text-stone-600">
+                <div className="mt-1.5 text-[10px] text-stone-400">
                   {d.propCount} props · {d.npcCount} NPCs · {d.zoneCount} zones · {d.spawnCount} spawns · {d.factionCount} factions
                 </div>
                 {d.publishedWorldId && (
@@ -191,15 +191,15 @@ export function DraftGallery({ onOpen }: { onOpen: (draftId: string) => void }) 
               placeholder="Search public worlds by name…"
               className="w-full rounded border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100" />
             {discover.length === 0 ? (
-              <p className="text-sm text-stone-500">No public worlds match.</p>
+              <p className="text-sm text-stone-400">No public worlds match.</p>
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 {discover.map(w => (
                   <div key={w.id} className="rounded-lg border border-stone-800 bg-stone-950 p-3">
                     <div className="text-sm font-medium text-stone-100">{w.name}</div>
                     <div className="text-[11px] text-stone-400">{w.biomeLabel} · {w.universeType}</div>
-                    <p className="mt-1 line-clamp-2 text-xs text-stone-500">{w.description || 'No description.'}</p>
-                    <div className="mt-1.5 text-[10px] text-stone-600">
+                    <p className="mt-1 line-clamp-2 text-xs text-stone-400">{w.description || 'No description.'}</p>
+                    <div className="mt-1.5 text-[10px] text-stone-400">
                       {w.propCount} props · {w.npcCount} NPCs · {w.zoneCount} zones
                     </div>
                   </div>

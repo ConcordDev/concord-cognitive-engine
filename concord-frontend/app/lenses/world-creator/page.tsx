@@ -59,7 +59,7 @@ export default function WorldCreatorPage() {
         crumb="World creator"
         subtitle="Sculpt a scene, place props, spawn points, zones, NPCs and factions, tune the rule modulators, then playtest straight into the world lens. You become the world's sole creator; there is no admin role."
         actions={(
-          <Link href="/lenses/world" className="text-[13px] text-zinc-500 hover:text-zinc-200">
+          <Link href="/lenses/world" className="text-[13px] text-zinc-400 hover:text-zinc-200">
             Back to world lens
           </Link>
         )}
