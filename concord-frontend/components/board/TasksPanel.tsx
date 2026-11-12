@@ -906,11 +906,15 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
               id="board-task-drawer"
               data-overlay-open="true"
               key="detail-panel"
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 400, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="flex-shrink-0 border-l border-white/[0.08] bg-gray-950/80 backdrop-blur-sm overflow-y-auto"
+              // FIX-board-015: the drawer was animated to a fixed 400px in
+              // the flex row — wider than a 390px viewport, so it overflowed
+              // and its header clipped. Below sm it is now a full-viewport
+              // overlay drawer; sm+ keeps the 400px side panel.
+              className="fixed inset-y-0 right-0 z-50 w-[100vw] flex-shrink-0 overflow-y-auto border-l border-white/[0.08] bg-gray-950/95 backdrop-blur-sm sm:static sm:z-auto sm:w-[400px] sm:bg-gray-950/80"
             >
               <TaskDetailPanel
                 task={selectedTask}
