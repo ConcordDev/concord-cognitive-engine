@@ -348,3 +348,22 @@ describe("productivity subtask hierarchy parity", () => {
     assert.equal(up.result.subtask.done, true);
   });
 });
+
+describe("productivity reminders — FIX-productivity-001 investigation pin", () => {
+  it("a reminder survives the platform snapshot round-trip (serialize -> hydrate)", async () => {
+    const { serializeLensState, hydrateLensState } = await import("../lib/lens-state-persistence.js");
+    const task = call("task-add", ctxA, { content: "Task with reminder" });
+    assert.equal(task.ok, true);
+    const rem = call("reminder-add", ctxA, {
+      taskId: task.result.task.id, kind: "time", remindAt: "2026-11-09T09:00", note: "n",
+    });
+    assert.equal(rem.ok, true);
+    assert.equal(call("reminder-list", ctxA, {}).result.count, 1);
+    const snap = JSON.parse(JSON.stringify(serializeLensState(globalThis._concordSTATE)));
+    globalThis._concordSTATE = { dtus: new Map() };
+    hydrateLensState(globalThis._concordSTATE, snap);
+    const after = call("reminder-list", ctxA, {});
+    assert.equal(after.result.count, 1);
+    assert.equal(after.result.reminders[0].id, rem.result.reminder.id);
+  });
+});
