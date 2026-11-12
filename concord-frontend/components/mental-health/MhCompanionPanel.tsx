@@ -111,7 +111,7 @@ export function MhCompanionPanel() {
       </div>
 
       <div className="flex gap-1">
-        <input value={draft} onChange={(e) => setDraft(e.target.value)}
+        <input aria-label="Message to companion" value={draft} onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
           placeholder="How are you feeling?"
           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />

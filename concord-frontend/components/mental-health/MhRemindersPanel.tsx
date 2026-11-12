@@ -105,11 +105,11 @@ export function MhRemindersPanel() {
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">New reminder</h3>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 flex gap-1">
-          <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}
+          <select aria-label="Reminder kind" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize">
             {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)}
+          <input aria-label="Reminder time" type="time" value={time} onChange={(e) => setTime(e.target.value)}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={add}
             className="flex items-center gap-1 px-3 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 text-white rounded-lg">

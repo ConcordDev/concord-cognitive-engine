@@ -109,7 +109,7 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
                 style={{ width: `${Math.min(100, goal.pct)}%` }} />
             </div>
             <div className="flex items-center gap-2 mt-2.5">
-              <input placeholder={`Goal (now ${goal.dailyMinutes} min)`} inputMode="numeric" value={goalInput}
+              <input aria-label="Daily minutes goal" placeholder={`Goal (now ${goal.dailyMinutes} min)`} inputMode="numeric" value={goalInput}
                 onChange={(e) => setGoalInput(e.target.value)}
                 className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
               <button type="button" onClick={saveGoal}
@@ -128,7 +128,7 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
         </h3>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
           {drafts.map((d, i) => (
-            <input key={i} placeholder={`Grateful for… ${i + 1}`} value={d}
+            <input aria-label={`Gratitude entry ${i + 1}`} key={i} placeholder={`Grateful for… ${i + 1}`} value={d}
               onChange={(e) => setDrafts((p) => p.map((x, j) => (j === i ? e.target.value : x)))}
               className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           ))}
@@ -167,7 +167,7 @@ export function MhReflectPanel({ onChange }: { onChange: () => void }) {
                 </div>
                 {editingId === e.id ? (
                   <div className="space-y-1">
-                    <textarea value={editText} onChange={(ev) => setEditText(ev.target.value)} rows={3}
+                    <textarea aria-label="Edit gratitude entries" value={editText} onChange={(ev) => setEditText(ev.target.value)} rows={3}
                       className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100" />
                     <button type="button" className="text-[11px] text-sky-300 underline" onClick={async () => {
                       await lensRun('mental-health', 'gratitude-update', { id: e.id, entries: editText.split('\n') });

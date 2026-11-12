@@ -79,13 +79,13 @@ export function MhSleepPanel({ onChange }: { onChange: () => void }) {
       )}
 
       <div className="grid grid-cols-4 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-        <input placeholder="Hours" inputMode="decimal" value={form.hoursSlept} onChange={(e) => setForm({ ...form, hoursSlept: e.target.value })}
+        <input aria-label="Hours slept" placeholder="Hours" inputMode="decimal" value={form.hoursSlept} onChange={(e) => setForm({ ...form, hoursSlept: e.target.value })}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-        <select value={form.quality} onChange={(e) => setForm({ ...form, quality: e.target.value })}
+        <select aria-label="Sleep quality" value={form.quality} onChange={(e) => setForm({ ...form, quality: e.target.value })}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
           {[1, 2, 3, 4, 5].map((q) => <option key={q} value={q}>Quality {q}</option>)}
         </select>
-        <input placeholder="Bedtime" value={form.bedtime} onChange={(e) => setForm({ ...form, bedtime: e.target.value })}
+        <input aria-label="Bedtime" placeholder="Bedtime" value={form.bedtime} onChange={(e) => setForm({ ...form, bedtime: e.target.value })}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         <button type="button" onClick={log}
           className="flex items-center justify-center gap-1 bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium rounded-lg">

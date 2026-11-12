@@ -210,19 +210,19 @@ export function MentalHealthActionPanel() {
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <select value={country} onChange={(e) => setCountry(e.target.value as typeof country)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
+        <select aria-label="Country" value={country} onChange={(e) => setCountry(e.target.value as typeof country)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
           <option value="US">US</option>
           <option value="UK">UK</option>
           <option value="CA">CA</option>
           <option value="AU">AU</option>
         </select>
-        <input type="text" value={stateAbbr} onChange={(e) => setStateAbbr(e.target.value.toUpperCase().slice(0, 2))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="State (CA, US)" />
-        <input type="text" value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Year" />
-        <select value={currentMood} onChange={(e) => setCurrentMood(e.target.value as typeof currentMood)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
+        <input aria-label="State" type="text" value={stateAbbr} onChange={(e) => setStateAbbr(e.target.value.toUpperCase().slice(0, 2))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="State (CA, US)" />
+        <input aria-label="Year" type="text" value={year} onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Year" />
+        <select aria-label="Current mood" value={currentMood} onChange={(e) => setCurrentMood(e.target.value as typeof currentMood)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
           <option value="happy">happy</option><option value="sad">sad</option><option value="anxious">anxious</option><option value="neutral">neutral</option><option value="angry">angry</option>
         </select>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
-        <input type="text" value={moodCsv} onChange={(e) => setMoodCsv(e.target.value)} className="md:col-span-5 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Optional: paste a mood series (1-10, comma-separated) to analyse instead of your tracked check-ins" />
+        <input aria-label="DM recipient" type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <input aria-label="Mood series (comma-separated)" type="text" value={moodCsv} onChange={(e) => setMoodCsv(e.target.value)} className="md:col-span-5 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Optional: paste a mood series (1-10, comma-separated) to analyse instead of your tracked check-ins" />
         <div className="md:col-span-5 flex items-center gap-2 flex-wrap">
           <RecallSlot ctl={dmRecall} />
           <RecallSlot ctl={publishRecall} />
