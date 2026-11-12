@@ -520,6 +520,15 @@ function SaveModal(props: ModalProps) {
               </button>
             </div>
 
+            {/* Scope/privacy stated plainly before saving (FIX-goals-010):
+                who will see it, and under which license scopes. */}
+            <p className="text-[11px] leading-relaxed text-zinc-400" role="note">
+              {props.isGlobal
+                ? 'This DTU will be saved as Global — anyone can find and view it.'
+                : 'This DTU will be saved as Private — only you can see it.'}
+              {' '}License scopes: {props.licenseScopes.length ? props.licenseScopes.join(', ') : 'private'}.
+            </p>
+
             {props.apiUrl && (
               <a
                 href={props.apiUrl}
