@@ -10,12 +10,26 @@ import { cn } from '@/lib/utils';
 import { playerMail, sendFailureText } from './playerMail';
 import { MAX_ATTACHMENTS, type DTU } from './types';
 
+// FIX-mail-017: the server refuses amounts outside 0..1,000,000 CC
+// (badNumericField in server/domains/mail.js). The fields hold the
+// typed text and parse only at send, so keystrokes are never silently
+// rewritten ('-1' used to become '01', letters became 0).
+const MAX_CC = 1_000_000;
+function parseAmount(text: string): number | null {
+  const t = text.trim();
+  if (t === '') return 0;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 0 || n > MAX_CC) return null;
+  return Math.round(n * 100) / 100;
+}
+
 export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
   const [composeTo, setComposeTo] = useState('');
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
-  const [composeCc, setComposeCc] = useState(0);
-  const [composeCod, setComposeCod] = useState(0);
+  const [composeCcText, setComposeCcText] = useState('');
+  const [composeCodText, setComposeCodText] = useState('');
+  const [amountError, setAmountError] = useState<string | null>(null);
   const [composeAttachments, setComposeAttachments] = useState<DTU[]>([]);
   const [showDtuPicker, setShowDtuPicker] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -45,8 +59,8 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
         if (!urlTo && d.toUserId) setComposeTo(d.toUserId);
         if (d.subject) setComposeSubject(d.subject);
         if (d.body) setComposeBody(d.body);
-        setComposeCc(d.attachmentCc || 0);
-        setComposeCod(d.codCc || 0);
+        if (d.attachmentCc) setComposeCcText(String(d.attachmentCc));
+        if (d.codCc) setComposeCodText(String(d.codCc));
         if (d.attachmentDtuIds?.length) {
           setComposeAttachments(d.attachmentDtuIds.map((id) => ({
             id, title: d.attachmentTitles?.[id] || id,
@@ -66,15 +80,15 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
         toUserId: composeTo,
         subject: composeSubject,
         body: composeBody,
-        attachmentCc: composeCc,
-        codCc: composeCod,
+        attachmentCc: parseAmount(composeCcText) ?? 0,
+        codCc: parseAmount(composeCodText) ?? 0,
         attachmentDtuIds: composeAttachments.map((d) => d.id),
         attachmentTitles: Object.fromEntries(composeAttachments.map((d) => [d.id, d.title || d.id])),
       });
       if (j.ok) setDraftSavedAt(Date.now());
     }, 800);
     return () => clearTimeout(t);
-  }, [composeTo, composeSubject, composeBody, composeCc, composeCod, composeAttachments]);
+  }, [composeTo, composeSubject, composeBody, composeCcText, composeCodText, composeAttachments]);
 
   const handleAttachDtu = useCallback((dtu: DTU) => {
     setComposeAttachments((prev) => {
@@ -97,18 +111,31 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
         setBusy(null);
         return;
       }
+      const gift = parseAmount(composeCcText);
+      if (gift === null) {
+        setAmountError('Gift amount must be a number from 0 to 1,000,000 CC.');
+        setBusy(null);
+        return;
+      }
+      const cod = parseAmount(composeCodText);
+      if (cod === null) {
+        setAmountError('COD amount must be a number from 0 to 1,000,000 CC.');
+        setBusy(null);
+        return;
+      }
+      setAmountError(null);
       setRecipientError(null);
       const j = await playerMail('send', {
         toUserId: composeTo.trim(),
         subject: composeSubject.trim(),
         body: composeBody,
-        attachmentCc: composeCc,
-        codCc: composeCod,
+        attachmentCc: gift,
+        codCc: cod,
         attachmentDtuIds: composeAttachments.map((d) => d.id),
       });
       if (j.ok && j.id) {
         setFlash({ kind: 'ok', msg: `Mail sent. ${j.id}` });
-        setComposeTo(''); setComposeSubject(''); setComposeBody(''); setComposeCc(0); setComposeCod(0);
+        setComposeTo(''); setComposeSubject(''); setComposeBody(''); setComposeCcText(''); setComposeCodText('');
         setComposeAttachments([]);
         onSent();
       } else {
@@ -117,7 +144,7 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
         setFlash({ kind: 'err', msg });
       }
     } finally { setBusy(null); }
-  }, [composeTo, composeSubject, composeBody, composeCc, composeCod, composeAttachments, onSent]);
+  }, [composeTo, composeSubject, composeBody, composeCcText, composeCodText, composeAttachments, onSent]);
 
   return (
     <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
@@ -164,21 +191,23 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
           <label className="block">
             <span className={ds.overline}>Send CC (gift)</span>
             <input
-              type="number" min={0} step={0.01}
-              value={composeCc}
-              onChange={(e) => setComposeCc(Math.max(0, Number(e.target.value) || 0))}
+              type="text" inputMode="decimal" placeholder="0"
+              value={composeCcText}
+              onChange={(e) => setComposeCcText(e.target.value)}
               className="mt-1 block w-full rounded-md border border-lattice-border bg-lattice-void/60 px-2 py-1 text-[12px] tabular-nums text-gray-100 outline-none transition-colors focus:border-neon-blue"
             />
           </label>
           <label className="block">
             <span className={ds.overline}>COD (recipient pays)</span>
             <input
-              type="number" min={0} step={0.01}
-              value={composeCod}
-              onChange={(e) => setComposeCod(Math.max(0, Number(e.target.value) || 0))}
+              type="text" inputMode="decimal" placeholder="0"
+              value={composeCodText}
+              onChange={(e) => setComposeCodText(e.target.value)}
               className="mt-1 block w-full rounded-md border border-lattice-border bg-lattice-void/60 px-2 py-1 text-[12px] tabular-nums text-gray-100 outline-none transition-colors focus:border-neon-blue"
             />
           </label>
+          <p className="col-span-2 text-[10px] text-gray-500">Amounts are CC from 0 to 1,000,000 — the server refuses more.</p>
+          {amountError && <p className="col-span-2 text-[11px] text-rose-300" role="alert">{amountError}</p>}
         </div>
         <div className="mb-3">
           <div className="flex items-center justify-between">
