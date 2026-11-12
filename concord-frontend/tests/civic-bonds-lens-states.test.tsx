@@ -249,7 +249,7 @@ describe('civic-bonds lens — four UX states', () => {
     expect(view!.getByText(/Lay foundation/)).toBeInTheDocument();
   });
 
-  it('UNPLEDGE: calls the real unpledge macro and re-lists', async () => {
+  it('UNPLEDGE: arms first (FIX-civic-bonds-009), then calls the real unpledge macro and re-lists', async () => {
     lensRunMock.mockImplementation((_d: string, action: string) => {
       if (action === 'list') return Promise.resolve({ data: { result: { ok: true, bonds: [BOND] } } });
       return Promise.resolve({ data: { result: { ok: true } } });
@@ -258,7 +258,10 @@ describe('civic-bonds lens — four UX states', () => {
     await act(async () => { view = render(<CivicBondsLens />); });
     await waitFor(() => expect(view!.getByTestId('civic-bonds-list')).toBeInTheDocument());
 
+    // First click only arms the confirm — the macro must not fire yet.
     await act(async () => { fireEvent.click(view!.getByLabelText('Refund my pledge to New Aqueduct')); });
+    expect(lensRunMock.mock.calls.some((c) => c[1] === 'unpledge')).toBe(false);
+    await act(async () => { fireEvent.click(view!.getByLabelText('Confirm refund of my pledge to New Aqueduct')); });
     await waitFor(() => expect(lensRunMock.mock.calls.some((c) => c[1] === 'unpledge' && c[2]?.bondId === 'b_1')).toBe(true));
     await waitFor(() => expect(addToastMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' })));
   });

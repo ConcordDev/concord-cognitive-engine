@@ -5,6 +5,10 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// jsdom has no Element.scrollTo; the chat preview calls it in an effect.
+Element.prototype.scrollTo = () => {};
 
 const h = vi.hoisted(() => ({ run: vi.fn() }));
 vi.mock('../persona-envelope', () => ({ runPersona: (...a: unknown[]) => h.run(...a) }));
@@ -91,7 +95,11 @@ describe('PersonaDetailPanel', () => {
   const mount = async (props: Partial<{ onEdit: () => void; onChanged: () => void; onClose: () => void }> = {}) => {
     const { PersonaDetailPanel } = await import('../PersonaDetailPanel');
     const fns = { onEdit: vi.fn(), onChanged: vi.fn(), onClose: vi.fn(), ...props };
-    const v = render(<PersonaDetailPanel personaId="p1" {...fns} />);
+    // The detail panel's author path now hosts react-query consumers, so
+    // mounts need a QueryClientProvider (declared test-only repair —
+    // without it the author-path tests die with 'No QueryClient set').
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const v = render(<QueryClientProvider client={qc}><PersonaDetailPanel personaId="p1" {...fns} /></QueryClientProvider>);
     await settle();
     return { v, fns };
   };
@@ -126,13 +134,19 @@ describe('PersonaDetailPanel', () => {
     expect(fns.onClose).toHaveBeenCalled();
   });
 
-  it('unpublishes in one click and reports failures', async () => {
+  it('unpublishes only after an armed confirm and reports failures', async () => {
     persona = PERSONA({ published: true });
     const { v } = await mount();
-    await click(btn(/Unpublish/));
+    // FIX-personas-017: the first click only arms with the terms in
+    // words — nothing is unpublished yet.
+    await click(btn(/^Unpublish$/));
+    expect(v.container.textContent).toMatch(/removes this persona from the marketplace/);
+    expect(v.container.textContent).not.toMatch(/Unpublished/);
+    await click(btn(/^Confirm unpublish$/));
     expect(v.container.textContent).toMatch(/Unpublished|Published to marketplace/);
     h.run.mockImplementation(async (a: string, i?: Record<string, unknown>) => ['publish', 'regenerate_portrait'].includes(a) ? { ok: false, error: 'denied', data: null } : impl(a, i));
-    await click(btn(/Unpublish/));
+    await click(btn(/^Unpublish$/));
+    await click(btn(/^Confirm unpublish$/));
     expect(v.container.textContent).toMatch(/Failed: denied/);
     await click(btn(/Regenerate portrait/));
     expect(v.container.textContent).toMatch(/Failed: denied/);
