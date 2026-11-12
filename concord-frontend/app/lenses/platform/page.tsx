@@ -27,6 +27,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 
 type Tab = 'overview' | 'console' | 'pipeline' | 'nerve' | 'empirical' | 'scope' | 'events' | 'analysis';
 
@@ -285,7 +286,20 @@ function OverviewDashboard() {
 export default function PlatformPage() {
   useLensNav('platform');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('platform');
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  // FIX-platform-005: the selected view is restored on reload instead of
+  // resetting to Overview — the shared lens UI-state store, following the
+  // ConsultingWorkspace restore idiom. Merged writes keep PlatformRepos'
+  // topic key (same lens entry) intact.
+  const { restore, persist } = useLensStatePersistence('platform');
+  const [initialState] = useState(() => restore());
+  const [activeTab, setActiveTabState] = useState<Tab>(() => {
+    const saved = initialState?.activeTab;
+    return typeof saved === 'string' && TABS.some((t) => t.id === saved) ? (saved as Tab) : 'overview';
+  });
+  const setActiveTab = (next: Tab) => {
+    setActiveTabState(next);
+    persist({ ...(restore() ?? {}), activeTab: next });
+  };
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(

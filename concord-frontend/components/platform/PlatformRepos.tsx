@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
 import { Layers, Loader2, ExternalLink, Star, GitBranch } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 
 interface Repo { id: number; full_name: string; html_url: string; description?: string; stargazers_count: number; forks_count: number; language?: string; license?: { spdx_id?: string }; }
 
@@ -17,7 +18,19 @@ const TOPICS = [
 ];
 
 export function PlatformRepos() {
-  const [topic, setTopic] = useState(TOPICS[0].id);
+  // FIX-platform-005: the selected topic is restored on reload instead of
+  // resetting to platform-engineering — the shared lens UI-state store.
+  // Merged writes keep the page's activeTab key (same lens entry) intact.
+  const { restore, persist } = useLensStatePersistence('platform');
+  const [initialState] = useState(() => restore());
+  const [topic, setTopicState] = useState(() => {
+    const saved = initialState?.reposTopic;
+    return typeof saved === 'string' && TOPICS.some((t) => t.id === saved) ? saved : TOPICS[0].id;
+  });
+  const setTopic = (next: string) => {
+    setTopicState(next);
+    persist({ ...(restore() ?? {}), reposTopic: next });
+  };
 
   const repos = useQuery({
     queryKey: ['gh-platform', topic],
