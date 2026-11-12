@@ -6,6 +6,7 @@
  * Pages own their state, data and commands; this only lays out the chrome.
  */
 
+import { useEffect, useRef, useState } from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { cn } from '@/lib/utils';
@@ -45,6 +46,35 @@ export function NorthStarFrame({
   lensId, theme, crumb, subtitle, actions, tabs, activeTab, onTab, tabsLabel, cta, children,
 }: NorthStarFrameProps) {
   const CtaIcon = cta?.icon;
+  const navRef = useRef<HTMLElement | null>(null);
+  const [fadeRight, setFadeRight] = useState(false);
+
+  // Mobile tab-strip genus (FIX-courtship-004 · FIX-fork-008 · FIX-deities-007):
+  // the pill strip scrolls sideways on a phone, but the native scrollbar drew
+  // a stray bar under it and the end tabs read as clipped with no cue that
+  // more tabs exist. Keep the active pill in view, hide the native bar, and
+  // fade the right edge while tabs sit off-screen to the right.
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const active = nav.querySelector<HTMLElement>('[aria-current="page"]');
+    if (active && typeof active.scrollIntoView === 'function') {
+      active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  }, [activeTab, tabs]);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const update = () => setFadeRight(nav.scrollWidth - nav.clientWidth - nav.scrollLeft > 4);
+    update();
+    nav.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      nav.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [tabs]);
   return (
     <div data-lens-theme={theme ?? lensId} className="relative min-h-full px-4 pb-36 pt-6 sm:px-6 lg:px-8">
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-4">
@@ -59,8 +89,13 @@ export function NorthStarFrame({
 
       {tabs && tabs.length > 0 && (
         <nav
-          className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1"
+          ref={navRef}
+          className="no-scrollbar mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1"
           aria-label={tabsLabel ?? `${crumb} views`}
+          style={fadeRight ? {
+            maskImage: 'linear-gradient(to right, black calc(100% - 28px), transparent)',
+            WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 28px), transparent)',
+          } : undefined}
         >
           {tabs.map((t) => {
             const Icon = t.icon;
