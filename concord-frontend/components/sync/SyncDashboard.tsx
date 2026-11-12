@@ -609,7 +609,18 @@ export function SyncDashboard() {
 
       {/* Activity feed */}
       <section>
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-400">Sync activity</h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Sync activity</h2>
+          {timeline.length > 0 && (
+            <StickyDeleteConfirm
+              onConfirm={async () => { await lensRun(DOMAIN, 'clear_history', {}); await refresh(); }}
+              armLabel="Clear history"
+              confirmLabel="Clear sync activity?"
+              armAriaLabel="Clear sync activity history"
+              confirmAriaLabel="Confirm clear sync activity history"
+            />
+          )}
+        </div>
         {timeline.length === 0 ? (
           <p className="rounded-lg border border-dashed border-zinc-800 p-4 text-center text-sm text-zinc-400">
             No sync activity yet.

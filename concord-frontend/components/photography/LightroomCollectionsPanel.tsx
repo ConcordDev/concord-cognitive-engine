@@ -66,6 +66,27 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
     setShootForm({ name: '', date: '', location: '' }); setError(null);
     await refresh(); onChange();
   };
+  const [editingShoot, setEditingShoot] = useState<Shoot | null>(null);
+  const startEditShoot = (sh: Shoot) => {
+    setEditingShoot(sh);
+    setShootForm({ name: sh.name, date: sh.date || '', location: sh.location || '' });
+    setError(null);
+  };
+  const cancelEditShoot = () => {
+    setEditingShoot(null);
+    setShootForm({ name: '', date: '', location: '' });
+  };
+  const saveShoot = async () => {
+    if (!editingShoot) return;
+    if (!shootForm.name.trim()) { setError('Shoot name is required.'); return; }
+    const r = await lensRun('photography', 'shoot-update', {
+      rollId: editingShoot.id, name: shootForm.name.trim(),
+      date: shootForm.date, location: shootForm.location.trim(),
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    cancelEditShoot(); setError(null);
+    await refresh(); onChange();
+  };
   const loadAlbumDetail = useCallback(async (albumId: string) => {
     const r = await lensRun('photography', 'album-detail', { id: albumId });
     if (r.data?.ok === false) {
@@ -180,11 +201,17 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Location" value={shootForm.location} onChange={(e) => setShootForm({ ...shootForm, location: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <button type="button" onClick={createShoot}
+          <button type="button" onClick={editingShoot ? saveShoot : createShoot}
             className="flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg">
-            <Plus className="w-3.5 h-3.5" /> Add
+            <Plus className="w-3.5 h-3.5" /> {editingShoot ? 'Save' : 'Add'}
           </button>
         </div>
+        {editingShoot && (
+          <div className="flex items-center gap-2 mb-2 text-[11px] text-indigo-300">
+            <span>Editing shoot {editingShoot.name} — Save updates it in place.</span>
+            <button type="button" onClick={cancelEditShoot} className="text-zinc-400 underline hover:text-zinc-200">Cancel</button>
+          </div>
+        )}
         {shoots.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic">No shoots.</p>
         ) : (
@@ -197,6 +224,10 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
                     {[sh.date, sh.location].filter(Boolean).join(' · ') || 'No details'} · {sh.photoCount} photos
                   </p>
                 </div>
+                <button type="button" onClick={() => startEditShoot(sh)} aria-label={`Edit shoot ${sh.name}`}
+                  className="text-[11px] text-zinc-400 underline hover:text-indigo-300">
+                  Edit
+                </button>
               </li>
             ))}
           </ul>

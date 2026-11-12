@@ -872,6 +872,33 @@ export default function registerParentingActions(registerLensAction) {
     return { ok: true, result: { children, count: children.length } };
   });
 
+  registerLensAction("parenting", "child-update", (ctx, _a, params = {}) => {
+    const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const callerId = pgAid(ctx);
+    const arr = s.children.get(callerId) || [];
+    const child = arr.find((c) => c.id === params.id);
+    if (!child) {
+      const access = pgAccess(s, ctx, params.id);
+      if (access.shared) return { ok: false, error: "only the owner can edit this child" };
+      return { ok: false, error: "child not found" };
+    }
+    if (params.name != null) {
+      const nm = pgClean(params.name, 60);
+      if (!nm) return { ok: false, error: "child name required" };
+      child.name = nm;
+    }
+    if (params.birthDate != null) {
+      const bd = pgClean(params.birthDate, 10).slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(bd)) return { ok: false, error: "birthDate must be YYYY-MM-DD" };
+      child.birthDate = bd;
+    }
+    if (params.sex != null && ["boy", "girl"].includes(String(params.sex).toLowerCase())) {
+      child.sex = String(params.sex).toLowerCase();
+    }
+    savePgState();
+    return { ok: true, result: { child: { ...child, ageMonths: Math.round(pgAgeMonths(child.birthDate) * 10) / 10, ageDisplay: pgAgeDisplay(child.birthDate) } } };
+  });
+
   registerLensAction("parenting", "child-delete", (ctx, _a, params = {}) => {
     const s = getPgState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const callerId = pgAid(ctx);

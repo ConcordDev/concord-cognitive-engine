@@ -494,6 +494,16 @@ function TimeTracking() {
     await reload(); setBusy(false);
   };
   const removeEntry = async (id: string) => { setBusy(true); await run('timeEntryDelete', { id }); await reload(); setBusy(false); };
+  const [editEntryId, setEditEntryId] = useState<string | null>(null);
+  const [editHours, setEditHours] = useState('');
+  const [editRate, setEditRate] = useState('');
+  const startEditEntry = (e: TimeEntry) => { setEditEntryId(e.id); setEditHours(String(e.hours)); setEditRate(String(e.rate)); };
+  const saveEntry = async (id: string) => {
+    setBusy(true);
+    await run('timeEntryUpdate', { id, hours: parseFloat(editHours), rate: parseFloat(editRate) || 0 });
+    setEditEntryId(null);
+    await reload(); setBusy(false);
+  };
 
   return (
     <div className={card}>
@@ -547,10 +557,20 @@ function TimeTracking() {
             {data.entries.map((e) => (
               <div key={e.id} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1 text-[11px]">
                 <span className="text-zinc-300">{e.jobName} <span className="text-zinc-600">· {e.source}</span></span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono"><span className="text-amber-200">{e.hours}h</span> <span className="text-emerald-300">${e.cost}</span></span>
-                  <StickyDeleteConfirm onConfirm={() => { void removeEntry(e.id); }} className="text-zinc-600 hover:text-rose-300" armAriaLabel={`Delete entry for ${e.jobName}`} confirmLabel={`Delete ${e.hours}h entry for ${e.jobName}?`} confirmAriaLabel={`Confirm delete entry for ${e.jobName}`} armLabel={<Trash2 className="h-3 w-3" />} />
-                </div>
+                {editEntryId === e.id ? (
+                  <div className="flex items-center gap-1.5">
+                    <input aria-label={`Hours for ${e.jobName}`} className={`${inp} w-16 font-mono`} type="number" step="0.25" value={editHours} onChange={(ev) => setEditHours(ev.target.value)} />
+                    <input aria-label={`Rate for ${e.jobName}`} className={`${inp} w-16 font-mono`} type="number" value={editRate} onChange={(ev) => setEditRate(ev.target.value)} />
+                    <button onClick={() => { void saveEntry(e.id); }} disabled={busy} className="rounded bg-amber-600 px-1.5 py-0.5 text-white hover:bg-amber-500 disabled:opacity-40">Save</button>
+                    <button onClick={() => setEditEntryId(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">Cancel</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono"><span className="text-amber-200">{e.hours}h</span> <span className="text-emerald-300">${e.cost}</span></span>
+                    <button onClick={() => startEditEntry(e)} aria-label={`Edit entry for ${e.jobName}`} className="text-zinc-500 underline hover:text-amber-300">Edit</button>
+                    <StickyDeleteConfirm onConfirm={() => { void removeEntry(e.id); }} className="text-zinc-600 hover:text-rose-300" armAriaLabel={`Delete entry for ${e.jobName}`} confirmLabel={`Delete ${e.hours}h entry for ${e.jobName}?`} confirmAriaLabel={`Confirm delete entry for ${e.jobName}`} armLabel={<Trash2 className="h-3 w-3" />} />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -697,6 +717,16 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
     await reload(); setBusy(false);
   };
   const markPaid = async (id: string) => { setBusy(true); await run('invoiceMarkPaid', { id }); await reload(); setBusy(false); };
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
+  const [editClient, setEditClient] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const startEditInvoice = (iv: Invoice) => { setEditingInvoiceId(iv.id); setEditClient(iv.client); setEditAmount(String(iv.subtotal)); };
+  const saveInvoice = async (id: string) => {
+    setBusy(true);
+    await run('invoiceUpdate', { id, client: editClient.trim() || undefined, amount: parseFloat(editAmount) });
+    setEditingInvoiceId(null);
+    await reload(); setBusy(false);
+  };
   // F7: exit paths — invoices and portal entries can be removed, each
   // behind the family's two-step named confirm.
   const [confirmingInvoiceId, setConfirmingInvoiceId] = useState<string | null>(null);
@@ -764,6 +794,14 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                       {' · '}Balance due: <span className="font-mono text-zinc-200">${(iv.total - iv.depositDue).toFixed(2)}</span>
                     </div>
                   )}
+                  {editingInvoiceId === iv.id && (
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <input aria-label={`Client for ${iv.invoiceNumber}`} className={`${inp} flex-1`} value={editClient} onChange={(e) => setEditClient(e.target.value)} />
+                      <input aria-label={`Amount for ${iv.invoiceNumber}`} className={`${inp} w-24 font-mono`} type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} />
+                      <button onClick={() => { void saveInvoice(iv.id); }} disabled={busy} className="rounded bg-amber-600 px-1.5 py-0.5 text-[10px] text-white hover:bg-amber-500 disabled:opacity-40">Save</button>
+                      <button onClick={() => setEditingInvoiceId(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">Cancel</button>
+                    </div>
+                  )}
                   <div className="mt-0.5 flex items-center justify-between text-[10px]">
                     <span className="text-zinc-400">
                       {iv.signature ? <span className="text-emerald-400"><Check className="mr-0.5 inline h-2.5 w-2.5" />signed by {iv.signature.signedBy}</span> : 'unsigned'}
@@ -775,7 +813,10 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                           <button onClick={() => setConfirmingInvoiceId(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">Cancel</button>
                         </>
                       ) : (
-                        <button onClick={() => setConfirmingInvoiceId(iv.id)} className="text-zinc-500 underline hover:text-rose-300">Delete</button>
+                        <>
+                          <button onClick={() => startEditInvoice(iv)} aria-label={`Edit ${iv.invoiceNumber}`} className="text-zinc-500 underline hover:text-amber-300">Edit</button>
+                          <button onClick={() => setConfirmingInvoiceId(iv.id)} className="text-zinc-500 underline hover:text-rose-300">Delete</button>
+                        </>
                       )}
                       {iv.status === 'paid'
                         ? <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-200">paid</span>

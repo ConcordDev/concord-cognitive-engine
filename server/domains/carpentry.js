@@ -598,6 +598,30 @@ export default function registerCarpentryActions(registerLensAction) {
     }
   });
 
+  registerLensAction("carpentry", "timeEntryUpdate", (ctx, _a, params = {}) => {
+    try {
+      const s = getCarpentryState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const entry = cpArr(s.timeEntries, cpActor(ctx)).find((e) => e.id === params.id);
+      if (!entry) return { ok: false, error: "time entry not found" };
+      if (params.hours != null) {
+        const hours = cpNum(params.hours);
+        if (hours <= 0) return { ok: false, error: "hours must be positive" };
+        entry.hours = Math.round(hours * 100) / 100;
+      }
+      if (params.rate != null) entry.rate = Math.max(0, cpNum(params.rate));
+      if (params.date != null) entry.date = cpClean(params.date, 30) || entry.date;
+      if (params.crewId != null) entry.crewId = cpClean(params.crewId, 80);
+      if (params.jobName != null) entry.jobName = cpClean(params.jobName, 160) || entry.jobName;
+      // cost is derived (hours x rate) — recompute from the merged values
+      entry.cost = Math.round(entry.hours * entry.rate * 100) / 100;
+      saveCarpentry();
+      return { ok: true, result: { entry } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
   registerLensAction("carpentry", "timeEntryDelete", (ctx, _a, params = {}) => {
     try {
       const s = getCarpentryState();
@@ -690,6 +714,32 @@ export default function registerCarpentryActions(registerLensAction) {
       const [removed] = arr.splice(i, 1);
       saveCarpentry();
       return { ok: true, result: { deleted: removed.id, invoiceNumber: removed.invoiceNumber } };
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  });
+
+  registerLensAction("carpentry", "invoiceUpdate", (ctx, _a, params = {}) => {
+    try {
+      const s = getCarpentryState();
+      if (!s) return { ok: false, error: "STATE unavailable" };
+      const inv = cpArr(s.invoices, cpActor(ctx)).find((i) => i.id === params.id);
+      if (!inv) return { ok: false, error: "invoice not found" };
+      if (params.client != null) inv.client = cpClean(params.client, 160) || inv.client;
+      if (params.clientEmail != null) inv.clientEmail = cpClean(params.clientEmail, 200);
+      if (params.dueDate != null) inv.dueDate = cpClean(params.dueDate, 30);
+      if (params.amount != null) {
+        const amount = cpNum(params.amount);
+        if (amount <= 0) return { ok: false, error: "invoice amount must be positive" };
+        // recompute the derived money from the invoice's own percentages,
+        // exactly as estimateToInvoice derived them at issue time
+        inv.subtotal = Math.round(amount * 100) / 100;
+        inv.tax = Math.round(amount * (inv.taxPct / 100) * 100) / 100;
+        inv.total = Math.round((inv.subtotal + inv.tax) * 100) / 100;
+        inv.depositDue = Math.round(inv.total * (inv.depositPct / 100) * 100) / 100;
+      }
+      saveCarpentry();
+      return { ok: true, result: { invoice: inv } };
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }

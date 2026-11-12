@@ -627,6 +627,26 @@ export default function registerPhotographyActions(registerLensAction) {
   });
 
   // Reviews F3: rolls were write-once, read-never — no delete existed.
+  registerLensAction("photography", "shoot-update", (ctx, _a, params = {}) => {
+    const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = phaid(ctx);
+    const rollId = phclean(params.rollId, 80);
+    if (!rollId) return { ok: false, error: "rollId required" };
+    const shoot = hydrateShoot(ctx, s, userId, rollId);
+    if (!shoot) return { ok: false, error: "shoot not found" };
+    if (params.name != null) {
+      const nm = phclean(params.name, 120);
+      if (!nm) return { ok: false, error: "shoot name required" };
+      shoot.name = nm;
+    }
+    if (params.date !== undefined) shoot.date = phclean(params.date, 10) || null;
+    if (params.location !== undefined) shoot.location = phclean(params.location, 120) || null;
+    if (params.client !== undefined) shoot.client = phclean(params.client, 120) || null;
+    writeRollRow(ctx, shoot);
+    savePhotoState();
+    return { ok: true, result: { shoot } };
+  });
+
   registerLensAction("photography", "shoot-delete", (ctx, _a, params = {}) => {
     const s = getPhotoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = phaid(ctx);

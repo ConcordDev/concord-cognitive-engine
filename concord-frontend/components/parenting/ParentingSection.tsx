@@ -87,6 +87,29 @@ export function ParentingSection() {
     await refreshChildren();
   };
 
+  const [editingChild, setEditingChild] = useState<Child | null>(null);
+  const startEditChild = (c: Child) => {
+    setEditingChild(c);
+    setForm({ name: c.name, birthDate: c.birthDate, sex: c.sex });
+    setError(null);
+  };
+  const cancelEditChild = () => {
+    setEditingChild(null);
+    setForm({ name: '', birthDate: '', sex: 'boy' });
+  };
+  const saveChild = async () => {
+    if (!editingChild) return;
+    if (!form.name.trim()) { setError('Child name is required.'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.birthDate)) { setError('Pick a birth date.'); return; }
+    const r = await lensRun('parenting', 'child-update', {
+      id: editingChild.id, name: form.name.trim(), birthDate: form.birthDate, sex: form.sex,
+    });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }
+    cancelEditChild();
+    setError(null);
+    await refreshChildren();
+  };
+
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-rose-600/15 to-transparent">
@@ -111,6 +134,11 @@ export function ParentingSection() {
                   activeChild === c.id ? 'bg-rose-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
                   <button type="button" onClick={() => setActiveChild(c.id)}>{c.name} · {c.ageDisplay}{c.shared ? ' · shared' : ''}</button>
                   {!c.shared && (
+                    <button type="button" onClick={() => startEditChild(c)} aria-label={`Edit ${c.name}`} className="text-zinc-300/70 hover:text-white text-[10px] underline">
+                      Edit
+                    </button>
+                  )}
+                  {!c.shared && (
                     <StickyDeleteConfirm onConfirm={() => delChild(c.id)} armLabel="×" armAriaLabel={`Remove ${c.name}`} confirmAriaLabel={`Confirm remove ${c.name}`} className="text-zinc-300/70 hover:text-rose-200" />
                   )}
                 </span>
@@ -126,11 +154,17 @@ export function ParentingSection() {
                 <option value="boy">Boy</option>
                 <option value="girl">Girl</option>
               </select>
-              <button type="button" onClick={addChild}
+              <button type="button" onClick={editingChild ? saveChild : addChild}
                 className="flex items-center justify-center gap-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium rounded-lg">
-                <Plus className="w-3.5 h-3.5" /> Add child
+                <Plus className="w-3.5 h-3.5" /> {editingChild ? 'Save child' : 'Add child'}
               </button>
             </div>
+            {editingChild && (
+              <div className="flex items-center gap-2 text-[11px] text-rose-300">
+                <span>Editing {editingChild.name} — Save child updates the record in place.</span>
+                <button type="button" onClick={cancelEditChild} className="text-zinc-400 underline hover:text-zinc-200">Cancel</button>
+              </div>
+            )}
           </div>
 
           {!activeChild ? (

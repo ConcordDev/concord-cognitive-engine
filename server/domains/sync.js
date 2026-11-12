@@ -493,6 +493,18 @@ export default function registerSyncActions(registerLensAction) {
    * same DTU. The caller supplies the dtuId and the two candidate
    * versions; the conflict is queued for resolution.
    */
+  registerLensAction("sync", "clear_history", (ctx, _artifact, _params) => {
+    try {
+      const userId = actId(ctx);
+      const logs = userLogs(userId);
+      const cleared = logs.length;
+      logs.length = 0;
+      return { ok: true, result: { cleared, total: 0 } };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  });
+
   registerLensAction("sync", "report_conflict", (ctx, artifact, params) => {
     try {
       const userId = actId(ctx);
