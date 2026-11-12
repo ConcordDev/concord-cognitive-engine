@@ -128,7 +128,7 @@ export function MeshMessaging() {
           {thread.isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-teal-500" />
           ) : messages.length === 0 ? (
-            <p className="py-8 text-center text-xs text-teal-700">No messages yet. Send the first frame.</p>
+            <p className="py-8 text-center text-xs text-teal-500">No messages yet. Send the first frame.</p>
           ) : (
             messages.map((m) => (
               <div key={m.id} className={`flex ${m.direction === 'out' ? 'justify-end' : 'justify-start'}`}>

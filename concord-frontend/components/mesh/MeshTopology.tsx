@@ -163,7 +163,7 @@ export function MeshTopology() {
                 );
               })}
             </svg>
-            <p className="px-2 pb-1 text-[10px] text-teal-700">
+            <p className="px-2 pb-1 text-[10px] text-teal-500">
               {map.data?.nodeCount ?? 0} nodes · {map.data?.edgeCount ?? 0} links · {map.data?.onlineCount ?? 0} online
             </p>
           </div>
@@ -180,7 +180,7 @@ export function MeshTopology() {
                   <span className={`h-2 w-2 rounded-full ${n.online ? 'bg-emerald-400' : 'bg-zinc-600'}`} aria-hidden />
                   <span className="font-mono text-teal-200">{n.name}</span>
                   <span className="rounded bg-teal-900/40 px-1.5 py-0.5 text-[10px] text-teal-400">{n.transports.join(', ')}</span>
-                  <span className="text-[10px] text-teal-700">{n.hops ?? 1} hop{(n.hops ?? 1) > 1 ? 's' : ''}</span>
+                  <span className="text-[10px] text-teal-500">{n.hops ?? 1} hop{(n.hops ?? 1) > 1 ? 's' : ''}</span>
                   {pingResult[n.id] && <span className="text-[10px] text-emerald-400">{pingResult[n.id]}</span>}
                   <span className="ml-auto flex gap-1">
                     <button

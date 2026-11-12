@@ -108,7 +108,7 @@ export function MeshChannels() {
         </p>
       ) : (
         <>
-          <p className="text-[11px] text-teal-700">
+          <p className="text-[11px] text-teal-500">
             {channels.data?.total} channel{channels.data?.total !== 1 ? 's' : ''} · {channels.data?.encrypted} encrypted
           </p>
           <ul className="space-y-2">

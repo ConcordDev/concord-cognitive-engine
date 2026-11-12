@@ -154,7 +154,7 @@ export default function MeshLensPage() {
                   data-testid="mesh-overview-empty"
                   className="rounded-lg border border-teal-900/40 bg-teal-950/10 p-6 text-center text-sm text-teal-500"
                 >
-                  <Network className="mx-auto mb-2 h-6 w-6 text-teal-700" aria-hidden />
+                  <Network className="mx-auto mb-2 h-6 w-6 text-teal-500" aria-hidden />
                   <p className="font-medium text-teal-300">No mesh yet.</p>
                   <p className="mt-1 text-xs text-teal-600">
                     Add your first peer node in <span className="text-teal-400">Topology</span>, then send a DTU in{' '}
@@ -194,7 +194,7 @@ function Stat({ label, value, hint }: { label: string; value: number | string; h
     <div
       className="rounded-lg border border-teal-900/40 bg-teal-950/10 p-3 text-teal-200"
     >
-      <div className="mb-1 text-[11px] uppercase tracking-wider text-teal-700">{label}</div>
+      <div className="mb-1 text-[11px] uppercase tracking-wider text-teal-500">{label}</div>
       <div className="font-mono text-xl font-semibold">{value}</div>
       {hint && <div className="mt-0.5 text-[10px] text-teal-600">{hint}</div>}
     </div>
