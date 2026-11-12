@@ -717,6 +717,7 @@ export default function PhotosLensPage() {
 // completed name/caption.
 function CreateAlbumForm({ onCreate }: { onCreate: (name: string) => Promise<boolean> }) {
   const [name, setName] = useState('');
+  const [touched, setTouched] = useState(false);
   return (
     <form
       className="mb-4 flex gap-2"
@@ -724,7 +725,7 @@ function CreateAlbumForm({ onCreate }: { onCreate: (name: string) => Promise<boo
     >
       <input
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        onChange={(e) => { setName(e.target.value); setTouched(true); }}
         placeholder="New album name"
         aria-label="New album name"
         maxLength={80}
@@ -733,6 +734,7 @@ function CreateAlbumForm({ onCreate }: { onCreate: (name: string) => Promise<boo
       <button type="submit" disabled={!name.trim()} className="rounded-lg bg-zinc-100 px-3 py-1.5 text-[13px] text-black disabled:opacity-40">
         Create album
       </button>
+      {touched && !name.trim() && <span className="self-center text-[11px] text-zinc-500">Name the album to create it.</span>}
     </form>
   );
 }

@@ -153,6 +153,7 @@ export function FoundryCanvas() {
   };
 
   const save = useCallback(async () => {
+    if (!worldName.trim()) { flash('err', 'Give the game a name first — blank names are not saved.'); return; }
     setBusy(true);
     try {
       const ws = buildWorldspec();
@@ -309,6 +310,7 @@ export function FoundryCanvas() {
         <input
           value={worldName}
           onChange={(e) => setWorldName(e.target.value)}
+          maxLength={200}
           className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-sm font-medium text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
           placeholder="Game name"
         />

@@ -2956,8 +2956,10 @@ export default function CouncilLensPage() {
                     value={newProposal.title}
                     onChange={(e) => setNewProposal((p) => ({ ...p, title: e.target.value }))}
                     placeholder="Proposal title..."
+                    maxLength={200}
                     className={ds.input}
                   />
+                  {newProposal.title.length > 0 && <span className="text-[10px] text-gray-500">{newProposal.title.length}/200</span>}
                 </div>
                 <div className={ds.grid2}>
                   <div>

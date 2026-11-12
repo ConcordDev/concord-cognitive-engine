@@ -490,10 +490,12 @@ export function BoardWorkspace() {
           type="text"
           value={newBoardName}
           onChange={(e) => setNewBoardName(e.target.value)}
+          maxLength={120}
           onKeyDown={(e) => e.key === 'Enter' && createBoard()}
           placeholder="New board name..."
           className="flex-1 max-w-xs px-2.5 py-1.5 text-xs rounded-lg bg-white/5 border border-white/10 text-gray-300 placeholder-gray-600 focus:outline-none focus:border-purple-500/40"
         />
+        {newBoardName.length > 0 && <span className="self-center text-[10px] text-gray-500">{newBoardName.length}/120</span>}
         <button
           onClick={createBoard}
           disabled={!newBoardName.trim() || busy}

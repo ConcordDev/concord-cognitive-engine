@@ -682,6 +682,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
               autoFocus
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
+              maxLength={200}
               onKeyDown={(e) => { if (e.key === 'Enter') void saveRename(); if (e.key === 'Escape') setRenaming(false); }}
               onBlur={saveRename}
               className="flex-1 bg-zinc-900 border border-violet-600 rounded px-2 py-1 text-sm text-zinc-100 min-w-0"
