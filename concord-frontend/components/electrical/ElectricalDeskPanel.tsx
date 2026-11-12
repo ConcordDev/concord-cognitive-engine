@@ -63,6 +63,7 @@ export function ElectricalDeskPanel({
   const [formCodeReference, setFormCodeReference] = useState('');
   const [formCodeSection, setFormCodeSection] = useState('');
   const [formJurisdiction, setFormJurisdiction] = useState('');
+  const [formError, setFormError] = useState('');
 
   const activeArtifactType = MODE_TABS.find((t) => t.id === (mode === 'dashboard' ? 'jobs' : mode))?.artifactType || 'Job';
   const { items, isLoading, isError, error, refetch, create, update, remove } =
@@ -118,6 +119,7 @@ export function ElectricalDeskPanel({
     setFormCodeReference('');
     setFormCodeSection('');
     setFormJurisdiction('');
+    setFormError('');
     setEditorOpen(true);
   };
   useEffect(() => {
@@ -148,6 +150,7 @@ export function ElectricalDeskPanel({
     setFormCodeReference(d.codeReference || '');
     setFormCodeSection(d.codeSection || '');
     setFormJurisdiction(d.jurisdiction || '');
+    setFormError('');
     setEditorOpen(true);
   };
 
@@ -155,6 +158,21 @@ export function ElectricalDeskPanel({
     const laborH = formLaborHours ? parseFloat(formLaborHours) : undefined;
     const laborR = formLaborRate ? parseFloat(formLaborRate) : undefined;
     const matC = formMaterialCost ? parseFloat(formMaterialCost) : undefined;
+    // Negative or non-numeric amounts are refused in the open — the form
+    // stays open with what was typed instead of saving an impossible job.
+    const badField =
+      laborH !== undefined && (!Number.isFinite(laborH) || laborH < 0)
+        ? 'Labor hours'
+        : laborR !== undefined && (!Number.isFinite(laborR) || laborR < 0)
+          ? 'Labor rate'
+          : matC !== undefined && (!Number.isFinite(matC) || matC < 0)
+            ? 'Material cost'
+            : null;
+    if (badField) {
+      setFormError(`${badField} can't be negative — enter 0 or more.`);
+      return;
+    }
+    setFormError('');
     const data: Record<string, unknown> = {
       name: formName,
       type: activeArtifactType,
@@ -332,6 +350,7 @@ export function ElectricalDeskPanel({
                     <label className={ds.label}>Labor Hours</label>
                     <input
                       type="number"
+                      min={0}
                       className={ds.input}
                       value={formLaborHours}
                       onChange={(e) => setFormLaborHours(e.target.value)}
@@ -341,6 +360,7 @@ export function ElectricalDeskPanel({
                     <label className={ds.label}>Labor Rate</label>
                     <input
                       type="number"
+                      min={0}
                       className={ds.input}
                       value={formLaborRate}
                       onChange={(e) => setFormLaborRate(e.target.value)}
@@ -350,6 +370,7 @@ export function ElectricalDeskPanel({
                     <label className={ds.label}>Material Cost</label>
                     <input
                       type="number"
+                      min={0}
                       className={ds.input}
                       value={formMaterialCost}
                       onChange={(e) => setFormMaterialCost(e.target.value)}
@@ -449,6 +470,11 @@ export function ElectricalDeskPanel({
               />
             </div>
           </div>
+          {formError && (
+            <p role="alert" className="text-sm text-red-400 mt-3">
+              {formError}
+            </p>
+          )}
           <div className="flex justify-end gap-2 mt-4">
             <button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>
               Cancel
