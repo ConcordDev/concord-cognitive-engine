@@ -341,6 +341,18 @@ export function AppShell({ children }: AppShellProps) {
       */}
       <a
         href="#main-content"
+        onClick={(e) => {
+          // The anchor jump alone only scrolls — sequential focus stays
+          // wherever it was, so the next Tab walks the sidebar anyway.
+          // Move focus into main (it carries tabIndex={-1} for exactly
+          // this) so the skip actually bypasses the chrome: FIX-mining-012
+          // · FIX-eco-010 · FIX-dx-platform-008 · FIX-schema-013.
+          const main = document.getElementById('main-content');
+          if (main) {
+            e.preventDefault();
+            main.focus();
+          }
+        }}
         className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-neon-blue focus:text-white focus:rounded-lg focus:outline-none"
       >
         Skip to main content
