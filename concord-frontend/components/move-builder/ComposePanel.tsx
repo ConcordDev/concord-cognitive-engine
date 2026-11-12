@@ -193,6 +193,7 @@ export function ComposePanel({ onMinted }: { onMinted?: () => void }) {
           {minting ? 'Minting…' : 'Mint move'}
         </button>
         {mintMsg && <span role="status" aria-live="polite" style={{ opacity: 0.85, fontSize: 13 }}>{mintMsg}</span>}
+        {!name.trim() && !minting && <span role="note" style={{ opacity: 0.7, fontSize: 13 }}>Name the move to mint it.</span>}
       </div>
     </>
   );

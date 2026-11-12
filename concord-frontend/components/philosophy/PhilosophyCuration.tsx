@@ -233,6 +233,7 @@ function ImageGridTab({ channels, onMutate, focus }: { channels: ChannelMeta[]; 
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}Add image
         </button>
       </div>
+      {!busy && (!imgUrl.trim() || !caption.trim()) && <p className="text-[11px] text-zinc-500" role="note">Add an image URL and a caption to add the image.</p>}
       {imgError && <p className="text-[11px] text-rose-300" role="alert">{imgError}</p>}
 
       {loading ? (
@@ -686,6 +687,7 @@ function EmbedTab({ channels, onMutate }: { channels: ChannelMeta[]; onMutate: (
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Link2 className="w-3 h-3" />}Embed
         </button>
       </div>
+      {!busy && !title.trim() && <p className="text-[11px] text-zinc-500" role="note">Enter a Wikipedia article title to embed it.</p>}
       {error && <p className="text-[11px] text-rose-400">{error}</p>}
       {last && (
         <div className="flex gap-3 bg-zinc-900/60 border border-emerald-800/40 rounded-lg p-3">

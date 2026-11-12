@@ -99,6 +99,7 @@ export function PhilosophyChannels() {
           className="px-3 py-1.5 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold disabled:opacity-40">New channel</button>
       </div>
 
+      {!newTitle.trim() && <p className="text-[11px] text-zinc-500 mb-3" role="note">Give the channel a title to create it.</p>}
       {notice && <p className="text-[11px] text-amber-300 mb-3" role="status">{notice}</p>}
 
       <div className="grid sm:grid-cols-[200px_1fr] gap-3">

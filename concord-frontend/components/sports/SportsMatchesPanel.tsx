@@ -137,6 +137,13 @@ export function SportsMatchesPanel() {
   const handleCreate = useCallback(async () => {
     if (!newGame.title.trim()) return;
     const pair = scorePair(newGame.scoreHome, newGame.scoreAway);
+    // FIX-sports-003: junk in both score fields used to parse to 'blank'
+    // and the match saved scoreless, silently discarding what was typed.
+    if (pair.kind === 'blank' && (newGame.scoreHome.trim() || newGame.scoreAway.trim())) {
+      const bad = [newGame.scoreHome, newGame.scoreAway].map((v) => v.trim()).filter(Boolean)[0];
+      setFormError(`Scores must be whole numbers of 0 or more — "${bad}" can't be used. Clear the score fields to save the match without a score.`);
+      return;
+    }
     if (pair.kind === 'partial') {
       setFormError('Enter both scores, or leave both blank.');
       return;

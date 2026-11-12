@@ -218,10 +218,18 @@ export function WellnessSection() {
 
   async function addGoal() {
     const name = prompt('Goal name?'); if (!name?.trim()) return;
+    // FIX-wellness-007: the create result used to be ignored entirely, so a
+    // name over the platform's 200-character limit failed with no message
+    // anywhere. Check the length first, then check the result.
+    if (name.trim().length > 200) { alert(`Goal names can be up to 200 characters — yours is ${name.trim().length}. Shorten it and try again.`); return; }
     const target = prompt('Target value?'); if (!target) return;
     const unit = prompt('Unit?') || '';
-    try { await lensRun({ domain: 'wellness', action: 'goals-create', input: { name: name.trim(), target: Number(target), unit } }); await refresh(); notifyWellnessChanged(); }
-    catch (e) { console.error('[Wellness] addGoal', e); }
+    try {
+      const r = await lensRun({ domain: 'wellness', action: 'goals-create', input: { name: name.trim(), target: Number(target), unit } });
+      if (r.data?.ok === false) { alert(r.data?.error || 'That goal could not be created.'); return; }
+      await refresh(); notifyWellnessChanged();
+    }
+    catch (e) { console.error('[Wellness] addGoal', e); alert('That goal could not be created — the request failed.'); }
   }
   async function updateGoal(g: Goal) {
     const v = prompt(`${g.name} — current progress (${g.unit})?`, String(g.current));
