@@ -91,6 +91,8 @@ export function ContentPublisher({
   const [activeTab, setActiveTab] = useState<PublishTarget>('feed');
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState<string | null>(null);
+  const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const [copiedPlatform, setCopiedPlatform] = useState<string | null>(null);
   const [postText, setPostText] = useState(description || title);
   const [selectedLens, setSelectedLens] = useState<string | null>(null);
@@ -109,6 +111,8 @@ export function ContentPublisher({
 
   const reset = useCallback(() => {
     setPublished(null);
+    setPublishedPostId(null);
+    setPublishError(null);
     setPublishing(false);
     setCopiedPlatform(null);
     setSelectedLens(null);
@@ -116,31 +120,54 @@ export function ContentPublisher({
 
   // ── Post to Feed ───────────────────────────────────────────────────────────
 
+  // Creates a REAL social post and returns its id. The post route answers
+  // HTTP 200 with { ok: false, error } when it refuses (duplicate, rate
+  // limit, empty content), so a resolved request is not yet a success —
+  // the body's ok flag decides, and a refusal must never read as published.
+  const createSocialPost = useCallback(async (): Promise<string | undefined> => {
+    const res = await api.post('/api/social/post', {
+      content: artifactId ? `${postText || title}\n\n${domain} ${artifactId}` : (postText || title),
+      title,
+      tags: [...tags, domain, contentType].filter(Boolean),
+      mediaType: contentType,
+      sourceLens: domain,
+      sourceArtifactId: artifactId,
+      visibility,
+    });
+    const data = (res as { data?: { ok?: boolean; post?: { id?: string }; error?: string } })?.data;
+    if (data?.ok === false) throw new Error(data.error || 'The post was not accepted.');
+    return data?.post?.id;
+  }, [postText, title, tags, domain, contentType, artifactId, visibility]);
+
   const handlePostToFeed = useCallback(async () => {
     setPublishing(true);
+    setPublishError(null);
     try {
-      await api.post('/api/social/post', {
-        content: artifactId ? `${postText || title}\n\n${domain} ${artifactId}` : (postText || title),
-        title,
-        tags: [...tags, domain, contentType].filter(Boolean),
-        mediaType: contentType,
-        sourceLens: domain,
-        sourceArtifactId: artifactId,
-        visibility,
-      });
+      const postId = await createSocialPost();
+      setPublishedPostId(postId ?? null);
       setPublished('feed');
       onPublished?.('feed');
     } catch (e) {
       console.error('[ContentPublisher] Feed post failed:', e);
+      setPublishError(e instanceof Error ? e.message : 'The post did not go through. Please try again.');
     } finally {
       setPublishing(false);
     }
-  }, [postText, title, tags, domain, contentType, artifactId, visibility, onPublished]);
+  }, [createSocialPost, onPublished]);
 
   // ── Cross-post to another lens ─────────────────────────────────────────────
 
   const handleCrossPost = useCallback(async (targetLens: string) => {
+    // The Lens tab's 'Social Feed' entry is a social post, not a lens
+    // artifact: the generic /api/lens/feed create lands in a store no feed
+    // or profile reads, so the share reported success with nothing to
+    // show or delete. Route it through the real post creation instead.
+    if (targetLens === 'feed') {
+      await handlePostToFeed();
+      return;
+    }
     setPublishing(true);
+    setPublishError(null);
     try {
       await api.post(`/api/lens/${targetLens}`, {
         type: contentType,
@@ -162,10 +189,11 @@ export function ContentPublisher({
       onPublished?.(targetLens);
     } catch (e) {
       console.error(`[ContentPublisher] Cross-post to ${targetLens} failed:`, e);
+      setPublishError(e instanceof Error ? e.message : 'That share did not go through. Please try again.');
     } finally {
       setPublishing(false);
     }
-  }, [contentType, title, postText, description, domain, artifactId, tags, visibility, onPublished]);
+  }, [contentType, title, postText, description, domain, artifactId, tags, visibility, onPublished, handlePostToFeed]);
 
   // ── Publish to Marketplace ─────────────────────────────────────────────────
 
@@ -276,6 +304,17 @@ export function ContentPublisher({
                      published === 'marketplace' ? 'Published to Marketplace!' :
                      `Cross-posted to ${published}!`}
                   </p>
+                  {published === 'feed' && publishedPostId && (
+                    <p>
+                      <a
+                        href={`/lenses/social/post/${publishedPostId}`}
+                        className="text-xs text-neon-cyan hover:underline"
+                      >
+                        View post
+                      </a>
+                      <span className="text-[10px] text-gray-500"> — you can open or delete it there, or from your profile.</span>
+                    </p>
+                  )}
                   <button
                     onClick={() => { reset(); }}
                     className="text-xs text-neon-cyan hover:underline"
@@ -285,6 +324,11 @@ export function ContentPublisher({
                 </div>
               ) : (
                 <>
+                  {publishError && (
+                    <p role="alert" className="mx-4 mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                      {publishError}
+                    </p>
+                  )}
                   {/* Tabs */}
                   <div className="flex border-b border-lattice-border">
                     {([
