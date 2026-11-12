@@ -246,9 +246,9 @@ export function DeityDetailPanel({
   return (
     <div className="space-y-5">
       <header className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <button type="button" onClick={onClose} className="mb-1 text-xs text-zinc-400 hover:text-zinc-200">← Pantheon</button>
-          <h2 className="text-xl font-bold text-zinc-100">{deity.name}</h2>
+          <h2 className="text-xl font-bold text-zinc-100 [overflow-wrap:anywhere]">{deity.name}</h2>
           <p className="text-xs text-purple-300">{deity.domainTitle}</p>
           <p className="mt-0.5 text-[10px] font-mono text-zinc-400">
             rev {deity.revision} · {deity.pilgrim_count} pilgrims · by {deity.author_user_id.slice(0, 8)}
@@ -336,7 +336,7 @@ export function DeityDetailPanel({
 
       {/* Live commune */}
       <section className="rounded-xl border border-purple-800/40 bg-zinc-950/40 p-4 space-y-3">
-        <h3 className="text-sm font-bold text-purple-300">Commune with {deity.name}</h3>
+        <h3 className="text-sm font-bold text-purple-300 [overflow-wrap:anywhere]">Commune with {deity.name}</h3>
         <div className="flex flex-wrap gap-1.5">
           {INTENTS.map((i) => (
             <button

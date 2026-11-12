@@ -295,13 +295,16 @@ export default function DeitiesPage() {
                 {deities.map((d) => (
                   <li key={d.id} className="rounded-2xl border border-white/10 bg-[#111] p-4 transition-colors hover:border-purple-700/50">
                     <button type="button" onClick={() => setSelectedId(d.id)} className="block w-full text-left">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="text-base font-bold text-zinc-100">{d.name}</h3>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          {/* Long composed names (up to 80 chars, one token is
+                              legal) wrap inside the card instead of breaking
+                              the layout mid-token (FIX-deities-007). */}
+                          <h3 className="text-base font-bold text-zinc-100 [overflow-wrap:anywhere]">{d.name}</h3>
                           {d.domainTitle && <p className="text-[11px] text-purple-300">{d.domainTitle}</p>}
                           <p className="mt-0.5 font-mono text-[10px] text-zinc-400">by {d.author_user_id.slice(0, 8)}</p>
                         </div>
-                        <div className="text-right">
+                        <div className="shrink-0 text-right">
                           <div className="text-lg font-bold text-purple-300">{d.pilgrim_count}</div>
                           <div className="text-[10px] uppercase tracking-wider text-zinc-400">pilgrims</div>
                         </div>
