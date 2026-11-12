@@ -17390,6 +17390,39 @@ register("worldmodel", "list_snapshots", (ctx, _input = {}) => {
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
+register("worldmodel", "delete_snapshot", (ctx, input = {}) => {
+  try {
+  enforceEthosInvariant("worldmodel_delete_snapshot");
+  ensureWorldModel();
+
+  const snapId = String(input.snapshotId || input.id || "");
+  if (!snapId) return { ok: false, error: "snapshotId required" };
+
+  const idx = ctx.state.worldModel.snapshots.findIndex(s => s.id === snapId);
+  if (idx < 0) return { ok: false, error: "Snapshot not found" };
+
+  ctx.state.worldModel.snapshots.splice(idx, 1);
+  saveStateDebounced();
+  return { ok: true, id: snapId, deleted: true };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: false });
+
+register("worldmodel", "delete_simulation", (ctx, input = {}) => {
+  try {
+  enforceEthosInvariant("worldmodel_delete_simulation");
+  ensureWorldModel();
+
+  const simId = String(input.simId || input.id || "");
+  if (!simId) return { ok: false, error: "simId required" };
+
+  if (!ctx.state.worldModel.simulations.has(simId)) return { ok: false, error: "Simulation not found" };
+
+  ctx.state.worldModel.simulations.delete(simId);
+  saveStateDebounced();
+  return { ok: true, id: simId, deleted: true };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { public: false });
+
 register("worldmodel", "extract_from_dtu", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("worldmodel_extract");
