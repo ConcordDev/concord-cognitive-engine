@@ -60,12 +60,12 @@ function RedditCreativeLive() {
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">reddit · r/{sub}</span><RedditCacheLabel cached={Boolean(posts.data?.cached)} stale={Boolean(posts.data?.stale)} />
         </div>
         <div className="flex items-center gap-2">
-          <select value={sub} onChange={(e) => setSub(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
+          <select value={sub} onChange={(e) => setSub(e.target.value)} className="min-h-11 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
             {SUBS.map((s) => <option key={s.id} value={s.id}>r/{s.label}</option>)}
           </select>
           <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-0.5 text-[10px]">
             {(['top', 'hot', 'new'] as const).map((s) => (
-              <button key={s} onClick={() => setSort(s)} className={`rounded px-2 py-0.5 font-mono uppercase ${sort === s ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-400 hover:text-zinc-300'}`}>{s}</button>
+              <button key={s} onClick={() => setSort(s)} className={`min-h-11 rounded px-2 py-0.5 font-mono uppercase ${sort === s ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-400 hover:text-zinc-300'}`}>{s}</button>
             ))}
           </div>
           {(posts.data?.length ?? 0) > 0 && (

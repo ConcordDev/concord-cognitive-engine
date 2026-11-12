@@ -92,11 +92,11 @@ const CAL_TONE: Record<string, TimelineEvent['tone']> = {
 // Shared UI atoms
 // ---------------------------------------------------------------------------
 const PANEL = 'rounded-xl border border-zinc-800 bg-zinc-950/40 p-4';
-const INPUT = 'w-full rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none';
-const BTN = 'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors';
+const INPUT = 'min-h-11 w-full rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none';
+const BTN = 'inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors';
 const BTN_PRIMARY = `${BTN} bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-40`;
 const BTN_SECONDARY = `${BTN} bg-zinc-800 hover:bg-zinc-700 text-zinc-200`;
-const BTN_GHOST = 'p-1 rounded text-zinc-400 hover:text-zinc-200 transition-colors';
+const BTN_GHOST = 'inline-flex h-11 w-11 items-center justify-center rounded text-zinc-400 hover:text-zinc-200 transition-colors';
 
 function fmtTime(sec: number | null): string {
   if (sec == null) return '--:--';
@@ -147,7 +147,7 @@ export function ProductionSuite() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`min-h-11 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                 tab === t.id ? 'bg-violet-500/20 text-violet-300' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'
               }`}
             >
@@ -310,7 +310,7 @@ function ReviewTab() {
               ) : (
                 <p className="text-zinc-400">
                   Drop a video or image here or{' '}
-                  <button type="button" onClick={() => fileInputRef.current?.click()} className="text-violet-400 underline underline-offset-2">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="min-h-11 text-violet-400 underline underline-offset-2">
                     browse files
                   </button>
                 </p>
@@ -763,7 +763,7 @@ function BreakdownTab() {
                       <p className="text-xs text-zinc-400 mb-1">Detected cast — click to tag</p>
                       <div className="flex flex-wrap gap-1">
                         {suggestions.cast.map((s) => (
-                          <button key={s} onClick={() => tag('cast', s)} className="rounded-full bg-zinc-800 hover:bg-violet-500/30 px-2 py-0.5 text-xs text-zinc-300">
+                          <button key={s} onClick={() => tag('cast', s)} className="min-h-11 rounded-full bg-zinc-800 hover:bg-violet-500/30 px-2 py-0.5 text-xs text-zinc-300">
                             <Plus className="w-2.5 h-2.5 inline mr-0.5" />{s}
                           </button>
                         ))}
@@ -775,7 +775,7 @@ function BreakdownTab() {
                       <p className="text-xs text-zinc-400 mb-1">Detected locations — click to tag</p>
                       <div className="flex flex-wrap gap-1">
                         {suggestions.locations.map((s) => (
-                          <button key={s} onClick={() => tag('locations', s)} className="rounded-full bg-zinc-800 hover:bg-violet-500/30 px-2 py-0.5 text-xs text-zinc-300">
+                          <button key={s} onClick={() => tag('locations', s)} className="min-h-11 rounded-full bg-zinc-800 hover:bg-violet-500/30 px-2 py-0.5 text-xs text-zinc-300">
                             <Plus className="w-2.5 h-2.5 inline mr-0.5" />{s}
                           </button>
                         ))}
@@ -1033,7 +1033,7 @@ function DeliverableTab() {
                     {v.version === active.currentVersion ? (
                       <span className="text-xs text-violet-300 flex items-center gap-1"><Check className="w-3 h-3" /> current</span>
                     ) : (
-                      <button onClick={() => setCurrent(v.version)} className="text-xs text-zinc-400 hover:text-violet-300">Set current</button>
+                      <button onClick={() => setCurrent(v.version)} className="min-h-11 text-xs text-zinc-400 hover:text-violet-300">Set current</button>
                     )}
                   </div>
                 ))}
@@ -1152,7 +1152,7 @@ function CalendarTab() {
             <div key={ev.id} className={`${PANEL} flex items-center gap-3`}>
               <button
                 onClick={() => toggleDone(ev)}
-                className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${ev.done ? 'border-emerald-400 bg-emerald-400/20' : 'border-zinc-600 hover:border-violet-400'}`}
+                className={`h-11 w-11 rounded border-2 flex items-center justify-center shrink-0 ${ev.done ? 'border-emerald-400 bg-emerald-400/20' : 'border-zinc-600 hover:border-violet-400'}`}
                 aria-label="Toggle done"
               >
                 {ev.done && <Check className="w-3 h-3 text-emerald-400" />}

@@ -94,16 +94,16 @@ export function CreativeBoardsSection() {
             <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <input placeholder="New board title" value={title} onChange={(e) => setTitle(e.target.value)}
-                  className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                  className="min-h-11 flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
                 <button type="button" onClick={createBoard}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+                  className="min-h-11 flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
                   <Plus className="w-3.5 h-3.5" /> Board
                 </button>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {templates.map((t) => (
                   <button key={t.id} type="button" onClick={() => fromTemplate(t.id)} title={t.description}
-                    className="text-[10px] px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg">
+                    className="min-h-11 text-[10px] px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg">
                     + {t.name}
                   </button>
                 ))}
@@ -129,17 +129,17 @@ export function CreativeBoardsSection() {
                     </button>
                     <div className="flex items-center gap-2 mt-1.5">
                       <button type="button" onClick={() => dupBoard(b.id)}
-                        className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-300">
+                        className="min-h-11 flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-300">
                         <Copy className="w-3 h-3" /> Duplicate
                       </button>
                       <div className="flex-1" />
                       {confirmDeleteId === b.id ? (
                         <>
-                          <button type="button" onClick={() => delBoard(b.id)} className="text-[10px] font-medium text-rose-400 hover:text-rose-300">Confirm delete</button>
-                          <button type="button" onClick={() => setConfirmDeleteId(null)} className="text-[10px] text-zinc-500 hover:text-zinc-300">Cancel</button>
+                          <button type="button" onClick={() => delBoard(b.id)} className="min-h-11 text-[10px] font-medium text-rose-400 hover:text-rose-300">Confirm delete</button>
+                          <button type="button" onClick={() => setConfirmDeleteId(null)} className="min-h-11 text-[10px] text-zinc-500 hover:text-zinc-300">Cancel</button>
                         </>
                       ) : (
-                        <button aria-label="Delete" type="button" onClick={() => setConfirmDeleteId(b.id)} className="text-zinc-600 hover:text-rose-400">
+                        <button aria-label="Delete" type="button" onClick={() => setConfirmDeleteId(b.id)} className="min-h-11 text-zinc-600 hover:text-rose-400">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
