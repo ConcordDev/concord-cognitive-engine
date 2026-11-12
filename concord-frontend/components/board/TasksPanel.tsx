@@ -577,6 +577,7 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                       <p className="text-sm text-gray-400">{actionResult.message as string}</p>
                     ) : (
                       <>
+                        <p className="text-[11px] text-gray-500">Cards ranked by WSJF score, split into quartiles — not task priority.</p>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           {(['critical', 'high', 'medium', 'low'] as const).map((tier) => {
                             const tierColors: Record<string, string> = {
@@ -587,12 +588,13 @@ export function TasksPanel({ mode }: { mode: TaskView }) {
                             };
                             const tierData =
                               (actionResult.tiers as Record<string, string[]>)?.[tier] || [];
+                            const tierLabel = { critical: 'Top quartile', high: 'Second quartile', medium: 'Third quartile', low: 'Bottom quartile' }[tier];
                             return (
                               <div
                                 key={tier}
                                 className={`text-center p-2.5 rounded-lg border ${tierColors[tier]}`}
                               >
-                                <p className="text-[10px] capitalize mb-1 opacity-80">{tier}</p>
+                                <p className="text-[10px] mb-1 opacity-80">{tierLabel}</p>
                                 <p className="text-base font-bold">{tierData.length}</p>
                               </div>
                             );

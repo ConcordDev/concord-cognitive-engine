@@ -14,6 +14,7 @@ interface Patient {
 
 export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => void }) {
   const [list, setList] = useState<Patient[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [q, setQ] = useState('');
@@ -26,7 +27,9 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
     setLoading(true);
     try {
       const r = await lensRun({ domain: 'healthcare', action: 'patients-list', input: query ? { q: query } : {} });
-      setList((r.data?.result?.patients || []) as Patient[]);
+      const patients = (r.data?.result?.patients || []) as Patient[];
+      setList(patients);
+      if (!query) setTotal(patients.length);
     } catch (e) { console.error('[Patients] list failed', e); }
     finally { setLoading(false); }
   }
@@ -67,7 +70,7 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Users className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">Patients</span>
-        <span className="text-[10px] text-gray-400">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{q ? `${list.length} of ${total}` : list.length}</span>
         <div className="ml-2 flex items-center gap-1 flex-1 max-w-[300px]">
           <Search className="w-3.5 h-3.5 text-gray-400" />
           <input
@@ -106,7 +109,7 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
         {loading ? (
           <SkeletonTableRows rows={5} columns={3} />
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No patients yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />{q ? `No patients match “${q}”.` : 'No patients yet.'}</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(p => (
