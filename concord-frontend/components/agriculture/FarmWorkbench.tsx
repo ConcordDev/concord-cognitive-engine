@@ -134,6 +134,13 @@ export function FarmWorkbench({ open, onClose }: Props) {
 
 // ── Fields tab ─────────────────────────────────────────────────────
 
+/** Other panels on the page (e.g. the FieldView NDVI view) hold their own
+ *  field list; tell them whenever this workbench changes the farm's fields
+ *  so their dropdowns don't wait for a reload (FIX-agriculture-014). */
+export function notifyAgricultureFieldsChanged() {
+  try { window.dispatchEvent(new CustomEvent('agriculture:fields-changed')); } catch { /* non-browser */ }
+}
+
 function FieldsTab({
   fields, loading, onChange, activeField, onSelect,
 }: {
@@ -165,6 +172,7 @@ function FieldsTab({
       if (field) setLastField(field);
       setCreating(false);
       setDraft({ name: '', acreage: 40, lat: 40.0, lng: -100.0, soilType: 'loam', currentCrop: 'corn' });
+      notifyAgricultureFieldsChanged();
       await onChange();
     } catch (e) { console.error(e); }
   };
@@ -175,6 +183,7 @@ function FieldsTab({
       await lensRun({
         domain: 'agriculture', action: 'field-delete', input: { id },
       });
+      notifyAgricultureFieldsChanged();
       await onChange();
     } catch (e) { console.error(e); }
   };
@@ -192,6 +201,7 @@ function FieldsTab({
         domain: 'agriculture', action: 'field-update', input: { id: editingId, ...editDraft },
       });
       setEditingId(null);
+      notifyAgricultureFieldsChanged();
       await onChange();
     } catch (e) { console.error(e); }
   };
