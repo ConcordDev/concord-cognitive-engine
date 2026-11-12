@@ -17,6 +17,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { CrossWorldFeed } from '@/components/concord-link-frontier/CrossWorldFeed';
 
 interface LinkRow {
@@ -234,6 +235,22 @@ export default function ConcordLinkFrontierPage() {
     }
   }, [applyBoard, busy, links, mark, mode, phase, selectedId]);
 
+  const deleteLink = useCallback(async (id: string) => {
+    if (busy || phase !== 'ready') return;
+    setBusy(true);
+    setActionError('');
+    try {
+      await runLink('link-delete', { id }, 'Could not delete that link.');
+      const rows = await readBoard();
+      applyBoard(rows);
+      setMode('view');
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not delete that link.');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyBoard, busy, phase]);
+
   const openRow = useCallback(async (id: string) => {
     if (busy || phase !== 'ready') return;
     setBusy(true);
@@ -304,7 +321,7 @@ export default function ConcordLinkFrontierPage() {
           {phase === 'ready' && mode === 'view' && links.length > 0 && (
             <ul data-testid="clf-board" className="space-y-2 border-t border-white/10 pt-4">
               {links.map((item) => (
-                <li key={item.id}>
+                <li key={item.id} className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => { void openRow(item.id); }}
@@ -312,6 +329,13 @@ export default function ConcordLinkFrontierPage() {
                   >
                     {item.name}
                   </button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => { void deleteLink(item.id); }}
+                    armLabel="Delete"
+                    confirmLabel={`Delete "${item.name}"?`}
+                    armAriaLabel={`Delete link ${item.name}`}
+                    confirmAriaLabel={`Confirm delete link ${item.name}`}
+                  />
                 </li>
               ))}
             </ul>

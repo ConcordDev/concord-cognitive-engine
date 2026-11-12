@@ -153,6 +153,12 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
   const [region, setRegion] = useState('concordia-hub');
   const [endpoint, setEndpoint] = useState('');
   const [confirmPeer, setConfirmPeer] = useState<string | null>(null);
+  const [editingPeer, setEditingPeer] = useState<Peer | null>(null);
+
+  const resetPeerForm = () => {
+    setEditingPeer(null);
+    setName(''); setKind('world'); setRegion('concordia-hub'); setEndpoint('');
+  };
 
   const addPeer = async () => {
     if (!name.trim()) return;
@@ -160,6 +166,22 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
     const r = await lensRun('bridge', 'peerRegister', { name, kind, region, endpoint });
     if (!r.data.ok) setErr(r.data.error);
     else { setName(''); setEndpoint(''); await reload(); }
+    setBusy(false);
+  };
+
+  const startEditPeer = (p: Peer) => {
+    setEditingPeer(p);
+    setName(p.name); setKind(p.kind); setRegion(p.region); setEndpoint(p.endpoint || '');
+    setConfirmPeer(null);
+    setErr(null);
+  };
+
+  const savePeer = async () => {
+    if (!editingPeer || !name.trim()) return;
+    setBusy(true);
+    const r = await lensRun('bridge', 'peerUpdate', { peerId: editingPeer.id, name, kind, region, endpoint });
+    if (!r.data.ok) setErr(r.data.error);
+    else { resetPeerForm(); await reload(); }
     setBusy(false);
   };
 
@@ -189,11 +211,20 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
           className="w-32 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder-zinc-600" />
         <input value={endpoint} onChange={e => setEndpoint(e.target.value)} placeholder="Endpoint (optional)"
           className="flex-1 min-w-[140px] bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder-zinc-600" />
-        <button onClick={addPeer} disabled={busy || !name.trim()}
+        <button onClick={editingPeer ? savePeer : addPeer} disabled={busy || !name.trim()}
           className="flex items-center gap-1 px-3 py-1.5 rounded bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 text-xs disabled:opacity-40">
-          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Add Peer
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} {editingPeer ? 'Save Peer' : 'Add Peer'}
         </button>
+        {editingPeer && (
+          <button onClick={resetPeerForm} disabled={busy}
+            className="px-3 py-1.5 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700 text-xs disabled:opacity-40">
+            Cancel
+          </button>
+        )}
       </div>
+      {editingPeer && (
+        <p className="text-[11px] text-cyan-300 mb-3">Editing peer {editingPeer.name} — Save Peer updates it in place.</p>
+      )}
       {peers.length === 0 ? (
         <p className="text-[11px] text-zinc-400">No peers registered yet. Add a world or federation peer to bridge to.</p>
       ) : (
@@ -213,9 +244,14 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
                   <button onClick={() => setConfirmPeer(null)} className="text-zinc-400 hover:text-zinc-300">Cancel</button>
                 </>
               ) : (
-                <button aria-label="Delete" onClick={() => setConfirmPeer(p.id)} className="text-zinc-400 hover:text-red-400">
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                <>
+                  <button aria-label={`Edit ${p.name}`} onClick={() => startEditPeer(p)} className="text-zinc-400 hover:text-cyan-300 text-[11px]">
+                    Edit
+                  </button>
+                  <button aria-label="Delete" onClick={() => setConfirmPeer(p.id)} className="text-zinc-400 hover:text-red-400">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </>
               )}
             </div>
           ))}
@@ -524,13 +560,30 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
 
   useEffect(() => { load(); }, [load]);
 
+  const [editingMapping, setEditingMapping] = useState<FieldMapping | null>(null);
+
+  const resetMappingForm = () => {
+    setEditingMapping(null);
+    setSource(''); setTarget(''); setTransform('direct'); setDataType('string');
+    setPeerId(''); setRequired(false);
+  };
+
+  const startEditMapping = (m: FieldMapping) => {
+    setEditingMapping(m);
+    setSource(m.source); setTarget(m.target); setTransform(m.transform);
+    setDataType(m.dataType); setPeerId(m.peerId || ''); setRequired(!!m.required);
+    setConfirmMapping(null);
+    setErr(null);
+  };
+
   const upsert = async () => {
     if (!source.trim() || !target.trim()) { setErr('source and target fields required'); return; }
     const r = await lensRun('bridge', 'mappingUpsert', {
       source, target, transform, dataType, required, peerId: peerId || undefined,
+      mappingId: editingMapping?.id,
     });
     if (!r.data.ok) setErr(r.data.error);
-    else { setSource(''); setTarget(''); await load(); }
+    else { resetMappingForm(); await load(); }
   };
 
   const [confirmMapping, setConfirmMapping] = useState<string | null>(null);
@@ -578,9 +631,18 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
           </label>
           <button onClick={upsert}
             className="flex items-center gap-1 px-3 py-1.5 rounded bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 text-xs">
-            <Plus className="w-3.5 h-3.5" /> Save Mapping
+            <Plus className="w-3.5 h-3.5" /> {editingMapping ? 'Save Changes' : 'Save Mapping'}
           </button>
+          {editingMapping && (
+            <button onClick={resetMappingForm}
+              className="px-3 py-1.5 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700 text-xs">
+              Cancel
+            </button>
+          )}
         </div>
+        {editingMapping && (
+          <p className="text-[11px] text-cyan-300 mt-2">Editing mapping {editingMapping.source} → {editingMapping.target} — Save Changes updates it in place.</p>
+        )}
       </div>
 
       {/* mapping list */}
@@ -606,9 +668,14 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
                   <button onClick={() => setConfirmMapping(null)} className="text-zinc-400 hover:text-zinc-300">Cancel</button>
                 </span>
               ) : (
-                <button aria-label="Delete" onClick={() => setConfirmMapping(m.id)} className="ml-auto text-zinc-400 hover:text-red-400">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <span className="ml-auto flex items-center gap-2">
+                  <button aria-label={`Edit mapping ${m.source} to ${m.target}`} onClick={() => startEditMapping(m)} className="text-zinc-400 hover:text-cyan-300 text-[11px]">
+                    Edit
+                  </button>
+                  <button aria-label="Delete" onClick={() => setConfirmMapping(m.id)} className="text-zinc-400 hover:text-red-400">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </span>
               )}
             </div>
           ))}

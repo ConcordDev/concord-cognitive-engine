@@ -62,6 +62,14 @@ function linkFromRow(row) {
   };
 }
 
+function deleteLinkRow(ctx, userId, id) {
+  const db = linkDb(ctx);
+  if (!linksReady(db)) return;
+  db.prepare(
+    "DELETE FROM concord_link_frontier_links WHERE id = ? AND user_id = ?",
+  ).run(id, userId);
+}
+
 function readLinkRows(ctx, userId) {
   const db = linkDb(ctx);
   if (!linksReady(db)) return [];
@@ -242,6 +250,29 @@ export default function registerConcordLinkFrontierActions(registerLensAction) {
         return { ok: false, error: "link_not_saved", detail: String(err?.message || err) };
       }
       return { ok: true, result: { linkId: link.id, link: linkFace(link) } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  registerLensAction("concord-link-frontier", "link-delete", (ctx, _artifact, params = {}) => {
+    try {
+      const userId = linkActor(ctx);
+      if (!userId) return { ok: false, error: "no_actor" };
+      const id = linkClean(params.id || params.linkId, 80);
+      if (!id) return { ok: false, error: "missing_link_id" };
+      const link = findLink(ctx, userId, id);
+      if (!link) return { ok: false, error: "link_not_found" };
+      const bucket = linkBucket(userId);
+      const idx = bucket.findIndex((item) => item.id === id);
+      if (idx >= 0) bucket.splice(idx, 1);
+      try {
+        deleteLinkRow(ctx, userId, id);
+      } catch (err) {
+        if (idx >= 0) bucket.splice(idx, 0, link);
+        return { ok: false, error: "link_not_saved", detail: String(err?.message || err) };
+      }
+      return { ok: true, result: { deleted: id, linkId: id } };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
