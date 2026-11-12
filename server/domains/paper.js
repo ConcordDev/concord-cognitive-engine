@@ -1066,7 +1066,7 @@ export default function registerPaperActions(registerLensAction) {
   });
 
   function textToSinglePagePdf(text) {
-    const lines = String(text || "").replace(/[^\x09\x0A\x0D\x20-\x7E]/g, " ").split("\n").slice(0, 45);
+    const lines = String(text || "").replace(/[^\x09\x0A\x0D\x20-\x7E]/g, " ") // eslint-disable-line no-control-regex.split("\n").slice(0, 45);
     const ops = lines.map((line, i) => {
       const escaped = line.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)").slice(0, 90);
       return `BT /F1 11 Tf 48 ${760 - i * 14} Td (${escaped}) Tj ET`;
