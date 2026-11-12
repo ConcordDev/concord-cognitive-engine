@@ -130,7 +130,7 @@ export function TrendPanel({ refreshKey }: { refreshKey: number }) {
             <StatCell label="Max" value={fmt(stats?.max, data.unit)} />
             <StatCell label="Latest" value={fmt(stats?.latest, data.unit)} />
             <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-2.5">
-              <div className="text-[10px] uppercase tracking-wider text-rose-700">Trend</div>
+              <div className="text-[10px] uppercase tracking-wider text-rose-400">Trend</div>
               <div className={`mt-0.5 flex items-center gap-1 font-mono text-sm font-semibold ${
                 delta == null ? 'text-rose-400' : good ? 'text-emerald-400' : 'text-amber-400'
               }`}>
@@ -165,7 +165,7 @@ function fmt(v: number | null | undefined, unit: string): string {
 function StatCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-2.5">
-      <div className="text-[10px] uppercase tracking-wider text-rose-700">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-rose-400">{label}</div>
       <div className="mt-0.5 font-mono text-sm font-semibold text-rose-200">{value}</div>
     </div>
   );

@@ -84,7 +84,7 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
 
       {editing && layout && (
         <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
-          <p className="mb-2 text-xs text-rose-700">Pick up to 8 tiles for your overview.</p>
+          <p className="mb-2 text-xs text-rose-400">Pick up to 8 tiles for your overview.</p>
           <div className="flex flex-wrap gap-1.5">
             {layout.available.map((t) => {
               const on = draft.includes(t.key);
@@ -110,7 +110,7 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
             >
               Save layout
             </button>
-            <span className="text-[10px] text-rose-700">{draft.length}/8 selected</span>
+            <span className="text-[10px] text-rose-400">{draft.length}/8 selected</span>
           </div>
           {saveErr && <p className="mt-2 text-xs text-red-400">{saveErr}</p>}
         </div>
@@ -136,17 +136,17 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {overview.cards.map((c) => (
               <div key={c.metric} className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-rose-700">{c.label}</div>
+                <div className="text-[10px] uppercase tracking-wider text-rose-400">{c.label}</div>
                 <div className="mt-1 font-mono text-xl font-semibold text-rose-200">
                   {c.value == null ? '—' : `${c.value}${c.unit}`}
                 </div>
-                <div className="mt-0.5 text-[10px] text-rose-800">
+                <div className="mt-0.5 text-[10px] text-rose-400">
                   {c.readings} reading{c.readings === 1 ? '' : 's'} this week
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-[11px] text-rose-800">
+          <p className="text-[11px] text-rose-400">
             {overview.totalReadings} total reading{overview.totalReadings === 1 ? '' : 's'} in your ledger
             {layout?.isDefault ? ' · default layout' : ' · custom layout'}.
           </p>

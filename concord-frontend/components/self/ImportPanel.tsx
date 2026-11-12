@@ -97,10 +97,10 @@ export function ImportPanel({ onImported }: { onImported: () => void }) {
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
-        <div className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-rose-700">
+        <div className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-rose-400">
           <FileUp className="h-3.5 w-3.5" aria-hidden /> Health-data import
         </div>
-        <p className="mb-2 text-xs text-rose-700">
+        <p className="mb-2 text-xs text-rose-400">
           Paste a JSON array (or {'{ samples: [...] }'}) or a CSV with a <code className="text-rose-400">metric,value,at</code> header.
           Supported metrics: steps, sleep_hours, workout_min, mood, weight_kg, resting_hr, water_ml (the Water reading; "water" is accepted),
           calories, meditation_min, journal_entries. Re-importing the same export is safe.
@@ -110,7 +110,7 @@ export function ImportPanel({ onImported }: { onImported: () => void }) {
           onChange={(e) => setText(e.target.value)}
           rows={6}
           placeholder='[{"metric":"steps","value":8200,"at":"2026-05-20"}]'
-          className="w-full rounded border border-rose-900/40 bg-black px-2 py-1.5 font-mono text-xs text-rose-100 placeholder:text-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
+          className="w-full rounded border border-rose-900/40 bg-black px-2 py-1.5 font-mono text-xs text-rose-100 placeholder:text-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-400"
           aria-label="Health export data"
         />
         <div className="mt-2 flex flex-wrap items-center gap-2">

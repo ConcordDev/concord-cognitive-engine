@@ -98,7 +98,7 @@ export function GoalsPanel({ refreshKey }: { refreshKey: number }) {
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               placeholder="target"
-              className="w-28 rounded border border-rose-900/40 bg-black px-2 py-1.5 text-sm text-rose-100 placeholder:text-rose-800"
+              className="w-28 rounded border border-rose-900/40 bg-black px-2 py-1.5 text-sm text-rose-100 placeholder:text-rose-400"
               aria-label="Target value"
             />
             <select
@@ -129,14 +129,14 @@ export function GoalsPanel({ refreshKey }: { refreshKey: number }) {
             <div key={g.metric} className="relative rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
               <button
                 onClick={() => void remove(g.metric)}
-                className="absolute right-1.5 top-1.5 text-rose-800 hover:text-rose-400"
+                className="absolute right-1.5 top-1.5 text-rose-400 hover:text-rose-300"
                 aria-label={`Remove ${g.label} goal`}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
               <ProgressRing percent={g.percent} met={g.met} />
               <div className="mt-2 text-sm font-medium text-rose-200">{g.label}</div>
-              <div className="text-[11px] text-rose-700">
+              <div className="text-[11px] text-rose-400">
                 {g.current} / {g.target}{g.unit} · {g.period}
               </div>
             </div>

@@ -42,7 +42,7 @@ export function CorrelationPanel({ refreshKey }: { refreshKey: number }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-rose-700">
+      <p className="text-xs text-rose-400">
         Pearson correlations across your last 90 days of readings. A link needs at least 5 days
         where both metrics were logged.
       </p>
@@ -59,7 +59,7 @@ export function CorrelationPanel({ refreshKey }: { refreshKey: number }) {
                 <div className="flex items-center gap-1.5 text-sm font-medium text-rose-200">
                   <Link2 className="h-3.5 w-3.5 text-rose-500" aria-hidden />
                   <span>{l.metricA}</span>
-                  <ArrowRight className="h-3 w-3 text-rose-700" aria-hidden />
+                  <ArrowRight className="h-3 w-3 text-rose-400" aria-hidden />
                   <span>{l.metricB}</span>
                 </div>
                 <span
@@ -79,7 +79,7 @@ export function CorrelationPanel({ refreshKey }: { refreshKey: number }) {
                   style={{ width: `${Math.min(100, Math.abs(l.r) * 100)}%` }}
                 />
               </div>
-              <p className="mt-1 text-[10px] text-rose-800">{l.sampleDays} overlapping days</p>
+              <p className="mt-1 text-[10px] text-rose-400">{l.sampleDays} overlapping days</p>
             </li>
           ))}
         </ul>

@@ -58,7 +58,7 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
 
   return (
     <div className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
-      <div className="mb-2 text-[11px] uppercase tracking-wider text-rose-700">Log a reading</div>
+      <div className="mb-2 text-[11px] uppercase tracking-wider text-rose-400">Log a reading</div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="text-[11px] text-rose-200">
           Metric
@@ -82,7 +82,7 @@ export function LogMetricForm({ onLogged }: { onLogged: () => void }) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
           placeholder={`value (${unit})`}
-          className="w-32 rounded border border-rose-900/40 bg-black px-2 py-1.5 text-sm text-rose-100 placeholder:text-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
+          className="w-32 rounded border border-rose-900/40 bg-black px-2 py-1.5 text-sm text-rose-100 placeholder:text-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-400"
           aria-label="Value"
         />
         </label>
