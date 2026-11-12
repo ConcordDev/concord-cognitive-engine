@@ -152,10 +152,18 @@ function CompatibilityTool() {
 
       {error && <p className="text-xs text-red-400 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> {error}</p>}
 
-      <button type="button" onClick={run} disabled={busy} className={cn(ds.btnPrimary, 'text-sm inline-flex items-center gap-2')}>
-        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-        Score compatibility
-      </button>
+      {/* FIX-alliance-006: the button sat enabled on blank names and
+          only spoke after a click. It now disables while a name is
+          missing, with the reason beside it. */}
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={run} disabled={busy || !a.name.trim() || !b.name.trim()} className={cn(ds.btnPrimary, 'text-sm inline-flex items-center gap-2')}>
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+          Score compatibility
+        </button>
+        {(!a.name.trim() || !b.name.trim()) && (
+          <span role="note" className="text-[11px] text-zinc-400">Name both partners to score their compatibility.</span>
+        )}
+      </div>
 
       {result && (
         <div className="space-y-3">
