@@ -16,6 +16,7 @@ import { lensRun } from '@/lib/api/client';
 
 interface SyncSummary {
   id: string; source: string; imported: number; skipped: number;
+  invalidDates?: number; futureDates?: number;
   byType: Record<string, number>; at: string;
 }
 interface SyncHistory { syncs: SyncSummary[]; lastSyncAt: string | null }
@@ -137,6 +138,13 @@ export function WearableImportPanel() {
             Imported <span className="font-mono font-bold">{lastResult.imported}</span> · skipped{' '}
             <span className="font-mono">{lastResult.skipped}</span> from {lastResult.source.replace(/_/g, ' ')}
           </div>
+          {/* FIX-wellness-006: date-rejected readings are named, not just counted. */}
+          {((lastResult.futureDates ?? 0) > 0 || (lastResult.invalidDates ?? 0) > 0) && (
+            <div role="note" className="mt-1 text-[11px] text-amber-300">
+              {(lastResult.futureDates ?? 0) > 0 && <>{lastResult.futureDates} reading{(lastResult.futureDates ?? 0) === 1 ? '' : 's'} dated in the future {(lastResult.futureDates ?? 0) === 1 ? 'was' : 'were'} not imported. </>}
+              {(lastResult.invalidDates ?? 0) > 0 && <>{lastResult.invalidDates} reading{(lastResult.invalidDates ?? 0) === 1 ? '' : 's'} with an unreadable date {(lastResult.invalidDates ?? 0) === 1 ? 'was' : 'were'} not imported.</>}
+            </div>
+          )}
           {Object.keys(lastResult.byType).length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-1.5">
               {Object.entries(lastResult.byType).map(([t, n]) => (

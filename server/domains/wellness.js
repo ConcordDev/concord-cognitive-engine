@@ -1162,7 +1162,7 @@ export default function registerWellnessMacros(_register) {
       const readings = Array.isArray(input.readings) ? input.readings : [];
       if (readings.length === 0) return { ok: false, error: "readings[] required" };
       const metrics = listWl(s.metrics, userId);
-      let imported = 0, skipped = 0;
+      let imported = 0, skipped = 0, invalidDates = 0, futureDates = 0;
       const byType = {};
       for (const raw of readings) {
         if (!raw || typeof raw !== 'object') { skipped++; continue; }
@@ -1170,6 +1170,12 @@ export default function registerWellnessMacros(_register) {
         const value = Number(raw.value);
         if (!mapped || !Number.isFinite(value) || value < -1e4 || value > 1e7) { skipped++; continue; }
         const date = String(raw.date || dayWl()).slice(0, 10);
+        // FIX-wellness-006: a reading's date was taken as-is, so a
+        // future-dated (or impossible) date imported silently. Such
+        // readings are skipped and counted by reason on the summary.
+        const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`) : null;
+        if (!parsedDate || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) { invalidDates++; skipped++; continue; }
+        if (date > dayWl()) { futureDates++; skipped++; continue; }
         // dedupe: skip if an entry from this exact source/type/date exists
         const dup = metrics.some(m => m.type === mapped && m.date === date && m.source === source);
         if (dup) { skipped++; continue; }
@@ -1190,6 +1196,8 @@ export default function registerWellnessMacros(_register) {
         source,
         imported,
         skipped,
+        invalidDates,
+        futureDates,
         byType,
         at: isoWl(),
       };
