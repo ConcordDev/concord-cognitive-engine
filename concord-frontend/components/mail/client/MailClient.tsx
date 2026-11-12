@@ -429,8 +429,8 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
       )}
       <div className="grid min-h-[34rem] gap-3 md:grid-cols-[13rem_minmax(0,1fr)]" style={{ height: 'calc(100vh - 17rem)' }}>
         <Panel className="hidden overflow-y-auto md:block">{sidebar}</Panel>
-        <div className="flex min-h-0 flex-col gap-2">
-          <div className="flex gap-1 overflow-x-auto md:hidden">
+        <div className="flex min-h-0 min-w-0 flex-col gap-2">
+          <div className="no-scrollbar flex gap-1 overflow-x-auto md:hidden">
             {[...SYSTEM_FOLDERS.slice(0, 5), { id: 'CONCORD', label: 'Player mail' }].map((f) => (
               <button key={f.id} type="button" onClick={() => openFolder(f.id)} className={cn('shrink-0 rounded-full px-3 py-1 text-[12px]', folder === f.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500')}>{f.label}</button>
             ))}
