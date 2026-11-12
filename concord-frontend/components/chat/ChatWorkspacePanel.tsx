@@ -764,8 +764,12 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
   // that snapshot holds only the user turn and, if the reply landed before
   // the effect flushed, would silently drop the assistant's first answer.
   const locallyCreatedSessionRef = useRef<string | null>(null);
+  // FIX-chat-002: a selected thread whose messages are still hydrating
+  // from the server must read as loading — not as an empty thread and
+  // never as other content standing in for the transcript.
+  const [threadLoading, setThreadLoading] = useState(false);
   useEffect(() => {
-    if (!selectedConversation) return;
+    if (!selectedConversation) { setThreadLoading(false); return; }
     if (locallyCreatedSessionRef.current === selectedConversation) {
       locallyCreatedSessionRef.current = null;
       return;
@@ -773,9 +777,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
     const saved = loadMessagesForSession<Message>(selectedConversation);
     if (saved.length > 0) {
       setLocalMessages(saved);
+      setThreadLoading(false);
       return;
     }
     let cancelled = false;
+    setThreadLoading(true);
     (async () => {
       try {
         const res = await fetch(
@@ -811,6 +817,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         // Backfill localStorage so the next open is hot-path again.
         try { saveMessagesForSession(selectedConversation, hydrated as ChatMessageLike[]); } catch { /* private mode */ }
       } catch { /* anon, offline, or 403 — leave empty */ }
+      finally { if (!cancelled) setThreadLoading(false); }
     })();
     return () => { cancelled = true; };
   }, [selectedConversation]);
@@ -2254,7 +2261,12 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
   const threadItems = useMemo<ThreadItem[]>(() => {
     const items: ThreadItem[] = messages.map((m) => ({ ...m, __kind: 'message' as const }));
-    const initiatives = Array.isArray(initiativesData) ? initiativesData : [];
+    // FIX-chat-002: initiatives are account-wide "while you were away"
+    // notices, not turns of the open thread. Merging them into a selected
+    // thread made a still-loading (or cache-missed) thread present stale
+    // away content as its transcript after reload, with the thread's own
+    // messages and controls nowhere. They belong to the no-thread view.
+    const initiatives = !selectedConversation && Array.isArray(initiativesData) ? initiativesData : [];
     for (const init of initiatives) {
       const dup = items.some((it) => it.__kind === 'message' && it.id === init.id);
       if (!dup) items.push({ ...init, __kind: 'initiative' as const });
@@ -2280,7 +2292,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       return av - bv;
     });
     return items;
-  }, [messages, initiativesData, toolTraces]);
+  }, [messages, initiativesData, toolTraces, selectedConversation]);
 
   // Count of unread initiatives — drives the "Concord wrote you while
   // you were away" banner that's surfaced on lens entry.
@@ -3645,7 +3657,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
 
             {threadItems.length > 0 && (
               <>
-                {unreadInitiativesCount > 0 && (
+                {!selectedConversation && unreadInitiativesCount > 0 && (
                   <div className="mx-4 lg:mx-6 mb-2 inline-flex items-center gap-2 self-start rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">
                     <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
                     Concord wrote you {unreadInitiativesCount} time{unreadInitiativesCount === 1 ? '' : 's'} while you were away.
@@ -3662,7 +3674,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                 />
               </>
             )}
-            {threadItems.length === 0 && threadFooter}
+            {threadItems.length === 0 && (threadLoading && selectedConversation ? (
+              <div className="flex-1 flex items-center justify-center text-sm text-zinc-500" role="status">
+                Loading conversation…
+              </div>
+            ) : threadFooter)}
 
           </div>
 
