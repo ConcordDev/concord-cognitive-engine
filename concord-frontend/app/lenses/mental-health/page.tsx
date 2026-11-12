@@ -150,9 +150,14 @@ export default function MentalHealthLensPage() {
         activeTab={view}
         onTab={(id) => setView(id as MhView)}
         tabsLabel="Mental health views"
-        cta={{ label: 'Find a coping strategy', icon: Sparkles, onClick: () => setView('analysis'), title: 'Pick what you are dealing with and get strategies' }}
+        // FIX-mental-health-009: on Analysis itself the CTA is a
+        // self-switch, so it shows only from the other views; and the
+        // content column below carries bottom padding so the last
+        // content (the practice tab's recent sessions) can scroll fully
+        // clear of the floating button instead of resting underneath it.
+        cta={view === 'analysis' ? undefined : { label: 'Find a coping strategy', icon: Sparkles, onClick: () => setView('analysis'), title: 'Pick what you are dealing with and get strategies' }}
       >
-        <div data-lens-theme="mental-health" className="space-y-5">
+        <div data-lens-theme="mental-health" className="space-y-5 pb-28">
       {/* Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
