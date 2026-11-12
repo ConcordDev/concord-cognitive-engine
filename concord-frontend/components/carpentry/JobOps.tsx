@@ -61,6 +61,13 @@ function CutListOptimizer() {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // A result belongs to the exact inputs that produced it. Any edit to
+  // the cuts or the stock settings invalidates it — the old code left
+  // the previous layout on screen after a cut was removed, so the
+  // board count and waste described cuts that no longer existed
+  // (FIX-carpentry-011).
+  useEffect(() => { setResult(null); }, [cuts, stockLength, kerf, stockCost]);
+
   const optimize = async () => {
     setBusy(true); setErr('');
     const r = await run<CutResult>('cutListOptimize', {
