@@ -282,12 +282,25 @@ describe("code-quality — fail-CLOSED numeric guards (assassin V2)", () => {
     for (const bad of [NaN, Infinity, -1, 1e308, "abc"]) {
       const r = call("setGate", ctxA, { maxCritical: bad });
       assert.equal(r.ok, false, `maxCritical=${bad} should fail-closed`);
-      assert.equal(r.error, "invalid_maxCritical");
+      // FIX-code-quality-006 (declared wording change): the refusal
+      // names the field and its range instead of the raw token.
+      assert.equal(r.error, "Max critical must be a number between 0 and 1,000,000");
     }
     // a valid value still applies
     const ok = call("setGate", ctxA, { minMaintainability: 80 });
     assert.equal(ok.ok, true);
     assert.equal(ok.result.gate.minMaintainability, 80);
+  });
+
+  it("FIX-code-quality-006: the 0..100 thresholds refuse absurd values in words", () => {
+    const m = call("setGate", ctxA, { minMaintainability: 999999 });
+    assert.equal(m.ok, false);
+    assert.equal(m.error, "Min maintainability must be a number between 0 and 100");
+    const d = call("setGate", ctxA, { maxDuplicationPct: 101 });
+    assert.equal(d.ok, false);
+    assert.equal(d.error, "Max duplication % must be a number between 0 and 100");
+    const edge = call("setGate", ctxA, { minMaintainability: 100, maxDuplicationPct: 100 });
+    assert.equal(edge.ok, true);
   });
 
   it("rejects a poisoned trackIssue.line", () => {

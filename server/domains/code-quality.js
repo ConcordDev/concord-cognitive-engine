@@ -907,12 +907,30 @@ export default function registerCodeQualityActions(registerLensAction) {
       // value — reject a poisoned NaN/Infinity/-1/1e308 instead of silently
       // skipping it (the prior `Number.isFinite` guard quietly ignored a bad
       // value, leaving the gate at its old setting and reporting ok:true).
-      const badNum = badNumericField(p, numKeys);
-      if (badNum) return { ok: false, error: `invalid_${badNum}` };
+      // FIX-code-quality-006: the refusal was a raw token
+      // ('invalid_maxCritical') and two thresholds with documented
+      // 0..100 ranges (maintainability index, duplication percent)
+      // accepted 999999. Each field now refuses in words naming its
+      // label and range; the counts/debt keep the guard's 1e6 ceiling.
+      const GATE_RANGES = {
+        maxCritical: { label: "Max critical", max: 1e6 },
+        maxHigh: { label: "Max high", max: 1e6 },
+        maxBlockerDebtHours: { label: "Max debt (h)", max: 1e6 },
+        minMaintainability: { label: "Min maintainability", max: 100 },
+        maxDuplicationPct: { label: "Max duplication %", max: 100 },
+      };
+      for (const k of numKeys) {
+        if (p[k] == null) continue;
+        const n = Number(p[k]);
+        const { label, max } = GATE_RANGES[k];
+        if (!Number.isFinite(n) || n < 0 || n > max) {
+          return { ok: false, error: `${label} must be a number between 0 and ${max.toLocaleString("en-US")}` };
+        }
+      }
       const gate = userGate(ctx);
       for (const k of numKeys) {
         if (p[k] != null) {
-          gate[k] = Math.max(0, Number(p[k]));
+          gate[k] = Number(p[k]);
         }
       }
       if (p.blockOnNewCritical != null) {
