@@ -41,6 +41,14 @@ interface Album {
 
 type View = 'all' | 'favorites' | 'albums';
 
+type Sort = 'newest' | 'oldest' | 'caption';
+
+const SORTS: { id: Sort; label: string }[] = [
+  { id: 'newest', label: 'Newest first' },
+  { id: 'oldest', label: 'Oldest first' },
+  { id: 'caption', label: 'Caption A–Z' },
+];
+
 function monthLabel(ts: number | null): string {
   if (!ts) return 'Undated';
   return new Date(ts * 1000).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
@@ -121,7 +129,29 @@ export default function PhotosLensPage() {
   const [actionError, setActionError] = useState('');
   const [lightboxId, setLightboxId] = useState<string | null>(null);
   const [view, setView] = useState<View>('all');
-  const [query, setQuery] = useState('');
+  // Search text and sort live in the URL (?q=beach&sort=oldest) so a
+  // reload keeps them instead of clearing the search (FIX-photos-010).
+  // Read once at first render; written back with history.replaceState —
+  // the AssemblyViewer's pattern — so other params survive and no
+  // navigation or remount is triggered.
+  const [query, setQuery] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return new URLSearchParams(window.location.search).get('q') || '';
+  });
+  const [sort, setSort] = useState<Sort>(() => {
+    if (typeof window === 'undefined') return 'newest';
+    const s = new URLSearchParams(window.location.search).get('sort');
+    return SORTS.some((x) => x.id === s) ? (s as Sort) : 'newest';
+  });
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (query) url.searchParams.set('q', query);
+    else url.searchParams.delete('q');
+    if (sort === 'newest') url.searchParams.delete('sort');
+    else url.searchParams.set('sort', sort);
+    window.history.replaceState(window.history.state, '', url.toString());
+  }, [query, sort]);
   const [editId, setEditId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -362,10 +392,19 @@ export default function PhotosLensPage() {
     if (view === 'favorites') rows = rows.filter((f) => f.favorite);
     if (view === 'albums') rows = openAlbum ? rows.filter((f) => openAlbum.ids.includes(f.id)) : [];
     if (q) rows = rows.filter((f) => (f.caption || 'untitled').toLowerCase().includes(q));
-    return rows;
-  }, [frames, view, openAlbum, query]);
+    // Sort (FIX-photos-010): the frame shipped with view filters but no
+    // ordering control. Undated frames sort last in both date orders.
+    const sorted = [...rows];
+    if (sort === 'newest') sorted.sort((a, b) => (b.taken_at ?? 0) - (a.taken_at ?? 0));
+    else if (sort === 'oldest') sorted.sort((a, b) => (a.taken_at ?? Number.MAX_SAFE_INTEGER) - (b.taken_at ?? Number.MAX_SAFE_INTEGER));
+    else sorted.sort((a, b) => (a.caption || 'untitled').localeCompare(b.caption || 'untitled'));
+    return sorted;
+  }, [frames, view, openAlbum, query, sort]);
 
   const groups = useMemo(() => {
+    // Month sections only make sense for date orderings; a caption sort
+    // is one alphabetical run.
+    if (sort === 'caption') return visible.length ? [{ label: 'Caption A–Z', rows: visible }] : [];
     const out: { label: string; rows: Frame[] }[] = [];
     for (const f of visible) {
       const label = monthLabel(f.taken_at);
@@ -374,7 +413,7 @@ export default function PhotosLensPage() {
       else out.push({ label, rows: [f] });
     }
     return out;
-  }, [visible]);
+  }, [visible, sort]);
 
   useLensCommand(
     [{ id: 'photos-import', keys: 'i', description: 'Import', category: 'actions', action: () => fileRef.current?.click() }],
@@ -423,13 +462,23 @@ export default function PhotosLensPage() {
                     </button>
                   ))}
                 </div>
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as Sort)}
+                  aria-label="Sort photos"
+                  className="ml-auto rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[13px] text-zinc-100"
+                >
+                  {SORTS.map((s) => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </select>
                 <input
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search captions"
                   aria-label="Search captions"
-                  className="ml-auto w-48 rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[13px] text-zinc-100 placeholder:text-zinc-600"
+                  className="w-48 rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[13px] text-zinc-100 placeholder:text-zinc-600"
                 />
               </div>
 
