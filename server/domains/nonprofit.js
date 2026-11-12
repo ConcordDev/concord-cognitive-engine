@@ -455,6 +455,13 @@ export default function registerNonprofitActions(registerLensAction) {
       const d = donors.find((x) => x.id === params.donorId);
       if (!d) return { ok: false, error: "donor not found" };
       const kind = ["thank_you", "appeal", "receipt", "custom"].includes(params.kind) ? params.kind : "custom";
+      // FIX-nonprofit-013: a custom message IS its subject and body —
+      // composeMessage silently substituted defaults for blanks, so an
+      // empty custom send went out with fabricated content. The
+      // templated kinds generate their own text and are unaffected.
+      if (kind === "custom" && (!npClean(params.subject, 160) || !npClean(params.body, 4000))) {
+        return { ok: false, error: "Subject and body are required for a custom message" };
+      }
       const msg = composeMessage(kind, d, params);
       const delivered = await deliverDonorMail(ctx, d, msg);
       const comm = {
@@ -487,6 +494,9 @@ export default function registerNonprofitActions(registerLensAction) {
       const d = npList(npMap(s, "donors"), npActor(ctx)).find((x) => x.id === params.donorId)
         || { name: npClean(params.donorName, 160) || "Friend" };
       const kind = ["thank_you", "appeal", "receipt", "custom"].includes(params.kind) ? params.kind : "thank_you";
+      if (kind === "custom" && (!npClean(params.subject, 160) || !npClean(params.body, 4000))) {
+        return { ok: false, error: "Subject and body are required for a custom message" };
+      }
       const msg = composeMessage(kind, d, params);
       return { ok: true, result: { kind, ...msg, donor: d.name } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }

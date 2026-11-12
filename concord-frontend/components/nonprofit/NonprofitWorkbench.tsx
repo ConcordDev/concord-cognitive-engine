@@ -489,6 +489,9 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
   };
   const send = async () => {
     if (!donorId) { setFeedback('Pick a donor to send to.'); return; }
+    // FIX-nonprofit-013: a custom message needs its subject and body —
+    // say so at the form instead of sending substituted defaults.
+    if (kind === 'custom' && (!subject.trim() || !body.trim())) { setFeedback('Subject and body are required for a custom message.'); return; }
     setBusy(true); setFeedback(null);
     const r = await lensRun('nonprofit', 'comm-send', { donorId, kind, cause, subject, body });
     setFeedback(commSendFeedback(kind, r.data));
