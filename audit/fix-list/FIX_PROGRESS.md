@@ -2152,3 +2152,22 @@ These stay `OPEN`. Each one needs a product surface this pass did not build. `ne
 | FIX-forecast-002 | `world_forecasts` is keyed by world, with no user id. Exporting the table would include other worlds. | A per-user forecast store, then export only that caller's rows. |
 | FIX-lattice-003 | There is no lattice domain store and no lattice panel bag. lattice-seed is a different domain. | Caller-owned corpus, brain, or schedule records, then an export of those. |
 | FIX-alliance-002 | Risk rows live in the open page. The form now refuses a dependency outside 0–100, and there is no saved dependency record to show again after reload. | A caller-owned dependency list the risk tool reads back. |
+
+## Builder seat B3 — theme 2 section (claim CB-0402, settled by Claim Ruling #1 CB-0407)
+
+Eleven of the section's twelve tickets are FIXED_PENDING_VERIFY; the twelfth is verified in code and recommended to the live-repro set (its row carries the note). The desk's tally table above is unchanged by this section — FIX-automotive-001 was counted there as NOT_REPRODUCED ("closed another way") from the walk-fixtures attribution; the code defect underneath it (an incomplete vehicle-delete cascade) reproduced in a test harness and is fixed at bb1e645d2, so the desk may want to move it to pending-verify and the closed-another-way count to 1 on the next recount.
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-automotive-001 | automotive | high | FIXED_PENDING_VERIFY | bb1e645d2 |
+| FIX-answers-001 | answers | medium | FIXED_PENDING_VERIFY | 344baecb4 |
+| FIX-projects-005 | projects | low | FIXED_PENDING_VERIFY | 129e210d7 |
+| FIX-platform-005 | platform | low | FIXED_PENDING_VERIFY | c8af71fd8 |
+| FIX-expert-mode-001 | expert-mode | low | FIXED_PENDING_VERIFY | 14a357575 |
+| FIX-self-005 | self | low | FIXED_PENDING_VERIFY | 201badcaf |
+| FIX-self-015 | self | low | FIXED_PENDING_VERIFY | 201badcaf |
+| FIX-marketing-015 | marketing | low | FIXED_PENDING_VERIFY | 2580f25d7 |
+| FIX-agriculture-014 | agriculture | low | FIXED_PENDING_VERIFY | e3073e2b5 |
+| FIX-board-004 | board | low | FIXED_PENDING_VERIFY | bf6f706d6 |
+| FIX-sandbox-006 | sandbox | low | FIXED_PENDING_VERIFY | 9d433a5be |
+| FIX-nonprofit-004 | nonprofit | low | OPEN — needs_live_repro (verified in code; see its ticket row) | — |
