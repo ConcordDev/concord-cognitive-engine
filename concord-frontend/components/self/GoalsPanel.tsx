@@ -10,6 +10,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { Loader2, Target, Plus, X, Check } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Ring {
   metric: string;
@@ -127,13 +128,16 @@ export function GoalsPanel({ refreshKey }: { refreshKey: number }) {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           {rings.map((g) => (
             <div key={g.metric} className="relative rounded-lg border border-rose-900/40 bg-rose-950/10 p-3">
-              <button
-                onClick={() => void remove(g.metric)}
-                className="absolute right-1.5 top-1.5 text-rose-400 hover:text-rose-300"
-                aria-label={`Remove ${g.label} goal`}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+              <span className="absolute right-1.5 top-1.5 z-10">
+                <StickyDeleteConfirm
+                  onConfirm={() => void remove(g.metric)}
+                  className="text-rose-400 hover:text-rose-300"
+                  armLabel={<X className="h-3.5 w-3.5" />}
+                  armAriaLabel={`Remove ${g.label} goal`}
+                  confirmLabel={`Remove ${g.label} goal?`}
+                  confirmAriaLabel={`Confirm remove ${g.label} goal`}
+                />
+              </span>
               <ProgressRing percent={g.percent} met={g.met} />
               <div className="mt-2 text-sm font-medium text-rose-200">{g.label}</div>
               <div className="text-[11px] text-rose-400">

@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Check, Flag, Trash2 } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ProductivityTaskDetail } from './ProductivityTaskDetail';
 
 export interface ProdTask {
@@ -69,9 +70,14 @@ export function ProductivityTaskRow({ task, onChange, showDelete = true }: {
           {editing ? 'Close' : 'Edit'}
         </button>
         {showDelete && (
-          <button aria-label="Delete" type="button" onClick={del} className="text-zinc-600 hover:text-rose-400 shrink-0">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          <StickyDeleteConfirm
+            onConfirm={del}
+            className="text-zinc-600 hover:text-rose-400 shrink-0"
+            armLabel={<Trash2 className="w-3.5 h-3.5" />}
+            armAriaLabel={`Delete task ${task.content}`}
+            confirmLabel="Delete this task?"
+            confirmAriaLabel="Confirm delete task"
+          />
         )}
       </div>
       {editing && (

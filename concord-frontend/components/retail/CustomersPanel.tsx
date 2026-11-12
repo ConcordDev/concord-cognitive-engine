@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Users, Plus, Trash2, Star, Mail } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
@@ -143,7 +144,7 @@ export function CustomersPanel() {
                     <div className="text-sm font-mono tabular-nums text-white">${c.totalSpent.toFixed(0)}</div>
                     <div className="text-[10px] text-gray-400">{c.orderCount} order{c.orderCount === 1 ? '' : 's'}</div>
                   </div>
-                  <button onClick={() => remove(c.id)} aria-label="Delete customer" className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <StickyDeleteConfirm onConfirm={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} armAriaLabel={`Delete customer ${c.name}`} confirmLabel={`Delete "${c.name}"?`} confirmAriaLabel={`Confirm delete customer ${c.name}`} />
                 </li>
               );
             })}

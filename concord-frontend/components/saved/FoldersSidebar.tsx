@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import { Folder, FolderPlus, Inbox, Layers, Pencil, Trash2, Check, X } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { SavedFolder } from './types';
 
 export interface FoldersSidebarProps {
@@ -133,14 +134,14 @@ export function FoldersSidebar({
                 >
                   <Pencil className="w-3 h-3" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onDelete(f.id)}
-                  aria-label="Delete folder"
+                <StickyDeleteConfirm
+                  onConfirm={() => onDelete(f.id)}
                   className="text-zinc-400 hover:text-rose-300"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                  armLabel={<Trash2 className="w-3 h-3" />}
+                  armAriaLabel={`Delete collection ${f.name}`}
+                  confirmLabel={`Delete "${f.name}"?`}
+                  confirmAriaLabel={`Confirm delete collection ${f.name}`}
+                />
               </span>
             </div>
           )}

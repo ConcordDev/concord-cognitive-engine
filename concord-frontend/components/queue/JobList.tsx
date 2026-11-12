@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Play, RotateCcw, Trash2, Loader2, ChevronRight } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export interface QueueJob {
   id: string;
@@ -137,14 +138,15 @@ export function JobList({
                   <RotateCcw className="h-4 w-4" />
                 </button>
               )}
-              <button
-                onClick={() => onRemove(j.id)}
+              <StickyDeleteConfirm
+                onConfirm={() => onRemove(j.id)}
                 disabled={busy}
-                title="Remove"
                 className="rounded-lg bg-rose-500/20 p-2 text-rose-300 hover:bg-rose-500/30 disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+                armLabel={<Trash2 className="h-4 w-4" />}
+                armAriaLabel={`Remove job ${j.name}`}
+                confirmLabel={`Remove "${j.name}"?`}
+                confirmAriaLabel={`Confirm remove job ${j.name}`}
+              />
               <ChevronRight className="h-4 w-4 text-zinc-600" />
             </div>
           </div>

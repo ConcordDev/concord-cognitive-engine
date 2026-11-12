@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, RotateCcw, Trash2, Play, Pencil } from 'lucide-react';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { QueueJob } from './JobList';
 
 export interface QueueJobUpdate {
@@ -231,12 +232,14 @@ export function JobDetailDrawer({
               <Pencil className="h-4 w-4" /> Edit
             </button>
           )}
-          <button
-            onClick={() => onRemove(job.id)}
+          <StickyDeleteConfirm
+            onConfirm={() => onRemove(job.id)}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-rose-500/20 py-2 text-sm text-rose-300 hover:bg-rose-500/30"
-          >
-            <Trash2 className="h-4 w-4" /> Remove
-          </button>
+            armLabel={<><Trash2 className="h-4 w-4" /> Remove</>}
+            armAriaLabel={`Remove job ${job.name}`}
+            confirmLabel={`Remove "${job.name}"?`}
+            confirmAriaLabel={`Confirm remove job ${job.name}`}
+          />
         </div>
       </div>
     </div>

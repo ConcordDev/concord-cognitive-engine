@@ -11,6 +11,7 @@ import {
   DollarSign, Cloud, TrendingUp, Camera, FileCode, AlertTriangle,
 } from 'lucide-react';
 import { activateOnEnterOrSpace } from '@/lib/a11y/editable-target';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface LanguageStat { language: string; linesOfCode: number; pctOfCodebase: number; legacy: boolean; }
 interface ScanSummary {
@@ -208,13 +209,14 @@ export function CodebaseScanner() {
                 onClick={() => { setActive(cb); setAnalysis({} as Record<Tab, any>); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                 <span className="text-sm">{cb.name}</span>
                 <span className="text-[10px] text-zinc-400">{cb.summary.fileCount}f · {cb.summary.totalLinesOfCode} LOC</span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); deleteCodebase(cb.id); }}
+                <StickyDeleteConfirm
+                  onConfirm={() => deleteCodebase(cb.id)}
                   className="text-zinc-600 hover:text-rose-400"
-                  aria-label={`Delete ${cb.name}`}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                  armLabel={<Trash2 className="w-3 h-3" />}
+                  armAriaLabel={`Delete ${cb.name}`}
+                  confirmLabel={`Delete "${cb.name}"?`}
+                  confirmAriaLabel={`Confirm delete ${cb.name}`}
+                />
               </div>
             ))}
           </div>
