@@ -2171,3 +2171,22 @@ Eleven of the section's twelve tickets are FIXED_PENDING_VERIFY; the twelfth is 
 | FIX-board-004 | board | low | FIXED_PENDING_VERIFY | bf6f706d6 |
 | FIX-sandbox-006 | sandbox | low | FIXED_PENDING_VERIFY | 9d433a5be |
 | FIX-nonprofit-004 | nonprofit | low | OPEN — needs_live_repro (verified in code; see its ticket row) | — |
+
+## Builder seat B3 — theme 6 section (claim CB-0423)
+
+| Ticket | Lens | Severity | Status | Commit |
+|---|---|---|---|---|
+| FIX-board-014 | board | low | FIXED_PENDING_VERIFY | 1feb2fe37 |
+| FIX-board-015 | board | low | FIXED_PENDING_VERIFY | 1feb2fe37 |
+| FIX-mining-005 | mining | medium | FIXED_PENDING_VERIFY | 99ae62a5d |
+| FIX-mining-010 | mining | low | FIXED_PENDING_VERIFY | 99ae62a5d |
+| FIX-detective-003 | detective | low | FIXED_PENDING_VERIFY | 85f681cfb |
+| FIX-gallery-003 | gallery | low | FIXED_PENDING_VERIFY | 323b35f4f |
+| FIX-mental-health-009 | mental-health | low | FIXED_PENDING_VERIFY | 1287ab94e |
+| FIX-integrations-009 | integrations | low | FIXED_PENDING_VERIFY | 505625158 |
+| FIX-lattice-008 | lattice | low | FIXED_PENDING_VERIFY | 7ab608341 |
+| FIX-legal-010 | legal | low | FIXED_PENDING_VERIFY | f608c41c7 |
+| FIX-manufacturing-004 | manufacturing | medium | FIXED_PENDING_VERIFY | 1bf143fef |
+| FIX-music-002 | music | medium | FIXED_PENDING_VERIFY | 17d81a8a7 |
+
+Riders: FIX-detective-003 title-truncation half not locatable in code (see its ticket row — left to the desk live re-walk); FIX-music-002 shell nav/Help overlay half is shell-owned (FIX-015 area). Strip halves of FIX-mining-010 + FIX-integrations-009 cured by the landed shell genus c86910c5c (B5) and credited there; B3 frame delta = root overflow-x-clip (office ruling 2026-11-12).
