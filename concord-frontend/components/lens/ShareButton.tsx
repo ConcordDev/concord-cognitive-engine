@@ -73,8 +73,8 @@ export function ShareButton({
       className={cn(
         'inline-flex items-center gap-1.5 transition-colors min-h-[44px] min-w-[44px] justify-center',
         compact
-          ? 'p-2 text-[var(--text-tertiary,#5C584F)] hover:text-[var(--accent-cool,#5B8DEF)]'
-          : 'px-3 py-2 text-sm text-[var(--text-tertiary,#5C584F)] hover:text-[var(--accent-cool,#5B8DEF)] rounded-lg hover:bg-[var(--accent-cool,#5B8DEF)]/10',
+          ? 'p-2 text-[var(--text-tertiary,#948f83)] hover:text-[var(--accent-cool,#5B8DEF)]'
+          : 'px-3 py-2 text-sm text-[var(--text-tertiary,#948f83)] hover:text-[var(--accent-cool,#5B8DEF)] rounded-lg hover:bg-[var(--accent-cool,#5B8DEF)]/10',
         copied && 'text-[var(--status-success,#3ECFA0)]',
         className,
       )}

@@ -71,7 +71,7 @@ export function CreatorLink({
             'rounded-full bg-[var(--bg-raised,#1C1C20)] flex items-center justify-center',
             avatarSizes[size],
           )}>
-            <User className={cn(size === 'sm' ? 'w-3 h-3' : 'w-4 h-4', 'text-[var(--text-tertiary,#5C584F)]')} />
+            <User className={cn(size === 'sm' ? 'w-3 h-3' : 'w-4 h-4', 'text-[var(--text-tertiary,#948f83)]')} />
           </div>
         )
       )}

@@ -151,7 +151,7 @@ function ReportButton({
                       onChange={(e) => setDetails(e.target.value)}
                       placeholder="Describe the issue..."
                       rows={3}
-                      className="w-full px-4 py-3 bg-[var(--bg-raised,#1C1C20)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] placeholder:text-[var(--text-tertiary,#5C584F)] text-sm resize-none mb-4 focus:outline-none focus:border-red-400"
+                      className="w-full px-4 py-3 bg-[var(--bg-raised,#1C1C20)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] placeholder:text-[var(--text-tertiary,#948f83)] text-sm resize-none mb-4 focus:outline-none focus:border-red-400"
                     />
                   )}
 
