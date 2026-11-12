@@ -144,6 +144,7 @@ export function ConsultingWorkspace() {
     isConsultingTool(initialState?.tool) ? initialState.tool : 'engagements'
   ));
   const [refreshKey, setRefreshKey] = useState(0);
+  const [newFocusSignal, setNewFocusSignal] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const reduceMotion = useReducedMotion();
@@ -218,7 +219,7 @@ export function ConsultingWorkspace() {
   );
 
   let panel: ReactNode;
-  if (tool === 'engagements') panel = <EngagementTracker onChanged={() => void refetchEngagements()} />;
+  if (tool === 'engagements') panel = <EngagementTracker onChanged={() => void refetchEngagements()} newFocusSignal={newFocusSignal} />;
   else if (tool === 'timer') panel = <LiveTimer engagements={engagements} onLogged={onTimeLogged} />;
   else if (tool === 'invoices') panel = <InvoiceManager key={`invoice-${refreshKey}`} engagements={engagements} />;
   else if (tool === 'proposals') panel = <ProposalBuilder />;
@@ -252,7 +253,7 @@ export function ConsultingWorkspace() {
           <DTUExportButton domain="consulting" data={latestData || {}} compact />
         </>
       )}
-      cta={{ label: 'New', icon: Plus, onClick: () => selectTool('engagements'), title: 'Start or open an engagement (1)' }}
+      cta={{ label: 'New', icon: Plus, onClick: () => { selectTool('engagements'); setNewFocusSignal((n) => n + 1); }, title: 'Start a new engagement (1)' }}
     >
       <div className="grid gap-6 rounded-2xl border border-white/10 bg-zinc-950 p-4 lg:grid-cols-[12rem_minmax(0,1fr)]">
         <nav aria-label="Consulting tools" className="flex gap-2 overflow-x-auto border-b border-amber-100/10 pb-3 lg:block lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">

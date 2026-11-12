@@ -7,7 +7,7 @@
  * / consulting-dashboard macros.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Briefcase, Plus, Trash2, Loader2, Pencil, Check, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
@@ -19,7 +19,18 @@ interface Dash { engagements: number; active: number; loggedHours: number; bille
 
 const EDITABLE_STATUSES = ['active', 'on_hold', 'complete'] as const;
 
-export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}) {
+export function EngagementTracker({ onChanged, newFocusSignal = 0 }: { onChanged?: () => void; newFocusSignal?: number } = {}) {
+  // FIX-consulting-004: the workspace's floating '+ New' CTA bumps
+  // newFocusSignal; the create form is always rendered, so the visible
+  // response is focus landing in its first field.
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const actedSignalRef = useRef(newFocusSignal);
+  useEffect(() => {
+    if (newFocusSignal > actedSignalRef.current) {
+      actedSignalRef.current = newFocusSignal;
+      nameInputRef.current?.focus();
+    }
+  }, [newFocusSignal]);
   const [active, setActive] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', client: '', rate: '', budgetHours: '' });
   const [timeForm, setTimeForm] = useState({ hours: '', note: '' });
@@ -121,7 +132,7 @@ export function EngagementTracker({ onChanged }: { onChanged?: () => void } = {}
       )}
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 flex flex-wrap gap-1.5">
-        <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Engagement"
+        <input ref={nameInputRef} aria-label="New engagement name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Engagement"
           className="flex-1 min-w-[110px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <input value={form.client} onChange={e => setForm({ ...form, client: e.target.value })} placeholder="client"
           className="w-24 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
