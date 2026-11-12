@@ -322,7 +322,7 @@ export function GarageSection({ onDataChanged }: { onDataChanged?: () => void } 
                 <div className="text-[10px] text-gray-400 truncate">{[v.year, v.make, v.model].filter(Boolean).join(' ') || 'no details'} · {v.odometer.toLocaleString()} {v.odometerUnit}</div>
               </div>
               <span onClick={(e) => e.stopPropagation()}>
-                <StickyDeleteConfirm onConfirm={() => delVehicle(v.id)} armAriaLabel="Delete vehicle" confirmAriaLabel="Confirm delete vehicle" className="p-0.5 text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} />
+                <StickyDeleteConfirm onConfirm={() => delVehicle(v.id)} armAriaLabel="Delete vehicle" confirmAriaLabel="Confirm delete vehicle" confirmLabel={`Delete "${v.name}" and its records?`} className="p-0.5 text-rose-300" armLabel={<Trash2 className="w-3 h-3" />} />
               </span>
             </li>
           ))}

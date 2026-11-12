@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Database, Search, Download, Heart, Loader2, RefreshCw, Plus, ExternalLink, X, Layers,
 } from 'lucide-react';
@@ -58,9 +59,11 @@ export function DatasetHubPanel() {
     setLoading(false);
   }, []);
 
-  // S-ML-4 (F7/F8): datasets can be deleted — with a confirmation, in
-  // the panel's own two-step form (no native dialogs). First click
-  // arms, second deletes; deleting also settles the list in place.
+  // S-ML-4 (F7/F8): datasets can be deleted — with a confirmation, via
+  // the shared StickyDeleteConfirm (no native dialogs, no timer, and no
+  // same-button label swap: the arm and confirm controls are separate,
+  // stable buttons). First click arms, Confirm deletes; deleting also
+  // settles the list in place.
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const deleteDataset = async (ds: MyDataset) => {
     if (confirmDeleteId !== ds.id) { setConfirmDeleteId(ds.id); return; }
@@ -179,12 +182,15 @@ export function DatasetHubPanel() {
                     <span>Test {Math.round(ds.splits.test * 100)}%</span>
                   </div>
                   <div className="mt-3 flex justify-end">
-                    <button
-                      onClick={() => deleteDataset(ds)}
-                      className={`text-xs px-2 py-1 rounded ${confirmDeleteId === ds.id ? 'bg-red-500/20 text-red-300' : 'text-gray-400 hover:text-red-300'}`}
-                    >
-                      {confirmDeleteId === ds.id ? `Delete “${ds.name}”? Click again to confirm` : 'Delete'}
-                    </button>
+                    <StickyDeleteConfirm
+                      armed={confirmDeleteId === ds.id}
+                      onArm={() => setConfirmDeleteId(ds.id)}
+                      onConfirm={() => { void deleteDataset(ds); }}
+                      onCancel={() => setConfirmDeleteId(null)}
+                      armLabel="Delete"
+                      confirmLabel={`Delete "${ds.name}"?`}
+                      className="text-xs px-2 py-1 rounded text-gray-400 hover:text-red-300"
+                    />
                   </div>
                 </div>
               );

@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Beaker, Plus, Loader2, Trash2, Square, Activity, CheckCircle, XCircle, X, LineChart,
 } from 'lucide-react';
@@ -179,10 +180,17 @@ export function ExperimentTracker() {
                       </button>
                     </>
                   )}
-                  <button aria-label="Delete" className="btn-neon small pink" disabled={busy === selected.id}
-                    onClick={() => remove(selected.id)}>
-                    {confirmRemoveId === selected.id ? 'Confirm?' : <Trash2 className="w-3 h-3" />}
-                  </button>
+                  <StickyDeleteConfirm
+                    armed={confirmRemoveId === selected.id}
+                    onArm={() => setConfirmRemoveId(selected.id)}
+                    onConfirm={() => { void remove(selected.id); }}
+                    onCancel={() => setConfirmRemoveId(null)}
+                    disabled={busy === selected.id}
+                    armLabel={<Trash2 className="w-3 h-3" />}
+                    armAriaLabel="Delete"
+                    confirmLabel={`Delete "${selected.name}"?`}
+                    className="btn-neon small pink"
+                  />
                 </div>
               </div>
               {manualOpen && selected.status === 'running' && (

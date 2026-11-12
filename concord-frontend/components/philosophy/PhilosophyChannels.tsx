@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Library, Plus, Trash2, Quote, Link2, FileText, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface ChannelMeta { id: string; title: string; description: string; blockCount: number; role?: 'owner' | 'collaborator' }
 interface Block { id: string; kind: string; content: string; source: string | null; channelIds: string[]; canDelete?: boolean }
@@ -110,14 +111,17 @@ export function PhilosophyChannels() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">{c.title}</p>
                 <p className="text-[10px] text-zinc-400">{c.blockCount} blocks</p>
               </button>
-              {c.role !== 'collaborator' && (confirmChannelId === c.id ? (
-                <span className="flex items-center gap-1 shrink-0">
-                  <button aria-label="Confirm delete" onClick={() => deleteChannel(c.id)} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-600 text-white font-semibold">Delete?</button>
-                  <button aria-label="Cancel delete" onClick={() => setConfirmChannelId(null)} className="px-1.5 py-0.5 text-[10px] rounded bg-zinc-800 text-zinc-300">Keep</button>
-                </span>
-              ) : (
-                <button aria-label="Delete" onClick={() => setConfirmChannelId(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
-              ))}
+              {c.role !== 'collaborator' && (
+                <StickyDeleteConfirm
+                  armed={confirmChannelId === c.id}
+                  onArm={() => setConfirmChannelId(c.id)}
+                  onConfirm={() => { void deleteChannel(c.id); }}
+                  onCancel={() => setConfirmChannelId(null)}
+                  armLabel={<Trash2 className="w-3 h-3" />}
+                  confirmLabel={`Delete "${c.title}"?`}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-rose-400 shrink-0"
+                />
+              )}
             </li>
           ))}
         </ul>
