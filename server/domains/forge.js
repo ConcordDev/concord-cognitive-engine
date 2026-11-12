@@ -35,8 +35,11 @@ function forgeState() {
       projects: new Map(),
       // shareToken -> { userId, projectId, versionId, createdAt }
       shares: new Map(),
+      // userId -> workbench config (FIX-forge-003)
+      workbench: new Map(),
     };
   }
+  if (!(STATE.forgeLens.workbench instanceof Map)) STATE.forgeLens.workbench = new Map();
   return STATE.forgeLens;
 }
 
@@ -758,6 +761,51 @@ export default function registerForgeActions(registerLensAction) {
           })),
         },
       };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  // ── workbench config — the config panel's working project ──────────
+  // FIX-forge-003: the workbench config (app name, port, tables) lived
+  // only in component state, so a reload reset it to the defaults and
+  // Generate named the output "my-forge-app" no matter what the user
+  // had entered. It is saved per user and loaded back on open. Secrets
+  // (jwt / stripe keys) are never part of the saved shape.
+  registerLensAction("forge", "workbench-config-get", (ctx) => {
+    try {
+      const cfg = forgeState().workbench.get(userId(ctx)) || null;
+      return { ok: true, result: { config: cfg } };
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) };
+    }
+  });
+
+  registerLensAction("forge", "workbench-config-save", (ctx, _artifact, params = {}) => {
+    try {
+      const p = params || {};
+      const appName = String(p.appName || "").trim().slice(0, 64);
+      if (!appName) return { ok: false, error: "appName is required" };
+      const port = Number.isInteger(p.port) ? p.port : Number(p.port);
+      if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        return { ok: false, error: "port must be an integer from 1 to 65535" };
+      }
+      const config = {
+        templateId: String(p.templateId || "blank").slice(0, 64),
+        appName,
+        port,
+        dbDriver: p.dbDriver === "postgres" ? "postgres" : "sqlite",
+        concordNode: !!p.concordNode,
+        domainTables: Array.isArray(p.domainTables)
+          ? p.domainTables.map((t) => String(t).trim()).filter(Boolean).slice(0, 64)
+          : [],
+        enabledSections: Array.isArray(p.enabledSections)
+          ? p.enabledSections.map((t) => String(t)).slice(0, 128)
+          : null,
+        updatedAt: Date.now(),
+      };
+      forgeState().workbench.set(userId(ctx), config);
+      return { ok: true, result: { config } };
     } catch (e) {
       return { ok: false, error: e?.message || String(e) };
     }

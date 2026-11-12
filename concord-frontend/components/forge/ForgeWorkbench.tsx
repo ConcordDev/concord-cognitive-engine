@@ -16,8 +16,9 @@
  *   - Domain table editor
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { lensRun } from '@/lib/api/client';
 import {
   Hammer, Download, Check, X, ChevronDown, ChevronRight,
   Cpu, Database, Lock, CreditCard, Globe, Wifi, Clock,
@@ -112,6 +113,52 @@ export function ForgeWorkbench() {
   const [jwtSecret, setJwtSecret] = useState('');
   const [stripeKey, setStripeKey] = useState('');
   const [publishOpen, setPublishOpen] = useState(false);
+
+  // FIX-forge-003: the config is the workbench's working project — load
+  // the saved config on open and save edits (debounced) so a reload no
+  // longer resets the name/port/tables to the defaults. Secrets are
+  // never saved.
+  const configHydrated = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await lensRun<{ config: {
+          templateId: string; appName: string; port: number;
+          dbDriver: 'sqlite' | 'postgres'; concordNode: boolean;
+          domainTables: string[]; enabledSections: string[] | null;
+        } | null }>('forge', 'workbench-config-get', {});
+        const cfg = r.data?.ok ? r.data.result?.config : null;
+        if (!cancelled && cfg) {
+          setSelectedTemplate(cfg.templateId || 'blank');
+          setAppName(cfg.appName);
+          setPort(cfg.port);
+          setDbDriver(cfg.dbDriver === 'postgres' ? 'postgres' : 'sqlite');
+          setConcordNode(!!cfg.concordNode);
+          setDomainTables(Array.isArray(cfg.domainTables) ? cfg.domainTables : []);
+          setEnabledSections(Array.isArray(cfg.enabledSections) ? cfg.enabledSections : null);
+        }
+      } catch { /* no saved config — the defaults stand */ }
+      if (!cancelled) configHydrated.current = true;
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!configHydrated.current) return;
+    const t = setTimeout(() => {
+      lensRun('forge', 'workbench-config-save', {
+        templateId: selectedTemplate,
+        appName,
+        port,
+        dbDriver,
+        concordNode,
+        domainTables,
+        enabledSections,
+      }).catch(() => { /* best effort — editing continues offline */ });
+    }, 600);
+    return () => clearTimeout(t);
+  }, [selectedTemplate, appName, port, dbDriver, concordNode, domainTables, enabledSections]);
 
   // ── Queries ─────────────────────────────────────────────────────────
   const { data: templatesData } = useQuery({
