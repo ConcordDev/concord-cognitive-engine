@@ -84,20 +84,20 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
 
       {creating && (
         <div className="px-4 py-3 border-b border-white/10 grid grid-cols-12 gap-2">
-          <input value={draft.firstName} onChange={e => setDraft({ ...draft, firstName: e.target.value })} placeholder="First name *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={draft.lastName} onChange={e => setDraft({ ...draft, lastName: e.target.value })} placeholder="Last name *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input type="date" value={draft.dob} onChange={e => setDraft({ ...draft, dob: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <select value={draft.sex} onChange={e => setDraft({ ...draft, sex: e.target.value as typeof draft.sex })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <input value={draft.firstName} onChange={e => setDraft({ ...draft, firstName: e.target.value })} aria-label="First name" placeholder="First name *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={draft.lastName} onChange={e => setDraft({ ...draft, lastName: e.target.value })} aria-label="Last name" placeholder="Last name *" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input type="date" aria-label="Date of birth" value={draft.dob} onChange={e => setDraft({ ...draft, dob: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <select aria-label="Sex" value={draft.sex} onChange={e => setDraft({ ...draft, sex: e.target.value as typeof draft.sex })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="U">Unknown</option>
             <option value="F">Female</option>
             <option value="M">Male</option>
             <option value="X">Non-binary</option>
           </select>
-          <input value={draft.phone} onChange={e => setDraft({ ...draft, phone: e.target.value })} placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={draft.email} onChange={e => setDraft({ ...draft, email: e.target.value })} placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={draft.insurancePlan} onChange={e => setDraft({ ...draft, insurancePlan: e.target.value })} placeholder="Insurance plan" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={draft.insuranceMemberId} onChange={e => setDraft({ ...draft, insuranceMemberId: e.target.value })} placeholder="Member ID" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-          <input value={draft.address} onChange={e => setDraft({ ...draft, address: e.target.value })} placeholder="Address" className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={draft.phone} onChange={e => setDraft({ ...draft, phone: e.target.value })} aria-label="Phone" placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={draft.email} onChange={e => setDraft({ ...draft, email: e.target.value })} aria-label="Email" placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={draft.insurancePlan} onChange={e => setDraft({ ...draft, insurancePlan: e.target.value })} aria-label="Insurance plan" placeholder="Insurance plan" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input value={draft.insuranceMemberId} onChange={e => setDraft({ ...draft, insuranceMemberId: e.target.value })} aria-label="Member ID" placeholder="Member ID" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input value={draft.address} onChange={e => setDraft({ ...draft, address: e.target.value })} aria-label="Address" placeholder="Address" className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={create} className="col-span-12 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Register patient</button>
         </div>
       )}
