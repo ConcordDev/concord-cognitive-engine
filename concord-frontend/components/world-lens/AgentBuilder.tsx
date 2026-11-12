@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 
@@ -117,21 +118,59 @@ export default function AgentBuilder() {
 
   // My Agents state — real data from `agents.listSchedules`, empty until loaded.
   const [agents, setAgents] = useState<SeedAgent[]>([]);
+  const [schedules, setSchedules] = useState<BackendSchedule[]>([]);
   const [agentsLoading, setAgentsLoading] = useState(true);
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+  const [editingAgent, setEditingAgent] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', goal: '', spec: '' });
 
   const loadAgents = useCallback(async () => {
     setAgentsLoading(true);
     try {
       const r = await lensRun<{ schedules?: BackendSchedule[] }>('agents', 'listSchedules', {});
       const schedules = r.data?.result?.schedules;
+      setSchedules(Array.isArray(schedules) ? schedules : []);
       setAgents(Array.isArray(schedules) ? schedules.map(scheduleToAgent) : []);
     } catch {
+      setSchedules([]);
       setAgents([]); // honest empty on error — never fabricate
     } finally {
       setAgentsLoading(false);
     }
   }, []);
+
+  const startEditAgent = (agent: SeedAgent) => {
+    const raw = schedules.find((s) => s.id === agent.id);
+    setEditForm({
+      name: raw?.agentName || agent.name,
+      goal: raw?.goal || agent.description,
+      spec: raw?.spec || '',
+    });
+    setEditingAgent(agent.id);
+  };
+
+  const saveEditAgent = async (id: string) => {
+    if (!editForm.name.trim() || !editForm.spec.trim()) return;
+    try {
+      await lensRun('agents', 'updateSchedule', {
+        id, agentName: editForm.name.trim(), goal: editForm.goal.trim(), spec: editForm.spec.trim(),
+      });
+      setEditingAgent(null);
+      await loadAgents();
+    } catch {
+      loadAgents(); // re-sync from backend if persist failed
+    }
+  };
+
+  const deleteAgent = async (id: string) => {
+    try {
+      await lensRun('agents', 'deleteSchedule', { id });
+    } catch {
+      // fall through to the re-sync either way
+    }
+    if (editingAgent === id) setEditingAgent(null);
+    await loadAgents();
+  };
 
   useEffect(() => {
     loadAgents();
@@ -370,7 +409,62 @@ export default function AgentBuilder() {
                   >
                     {isExpanded ? 'Hide Logs' : 'View Logs'}
                   </button>
+                  <button
+                    onClick={() => (editingAgent === agent.id ? setEditingAgent(null) : startEditAgent(agent))}
+                    className="text-xs px-3 py-1 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <StickyDeleteConfirm
+                    armLabel="Delete"
+                    confirmLabel={`Delete ${agent.name}?`}
+                    armAriaLabel={`Delete agent ${agent.name}`}
+                    confirmAriaLabel={`Confirm delete agent ${agent.name}`}
+                    onConfirm={() => void deleteAgent(agent.id)}
+                  />
                 </div>
+
+                {/* Edit form — name / goal / spec ride agents.updateSchedule */}
+                {editingAgent === agent.id && (
+                  <div className="mt-1 space-y-2 border-t border-white/10 pt-3">
+                    <input
+                      aria-label={`Agent name for ${agent.name}`}
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      placeholder="Agent name"
+                      className="w-full min-h-[40px] rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    />
+                    <input
+                      aria-label="Agent goal"
+                      value={editForm.goal}
+                      onChange={(e) => setEditForm({ ...editForm, goal: e.target.value })}
+                      placeholder="Goal"
+                      className="w-full min-h-[40px] rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    />
+                    <input
+                      aria-label="Schedule spec"
+                      value={editForm.spec}
+                      onChange={(e) => setEditForm({ ...editForm, spec: e.target.value })}
+                      placeholder="Spec (interval ms / cron / event name)"
+                      className="w-full min-h-[40px] rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => void saveEditAgent(agent.id)}
+                        disabled={!editForm.name.trim() || !editForm.spec.trim()}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium disabled:opacity-40"
+                      >
+                        Save changes
+                      </button>
+                      <button
+                        onClick={() => setEditingAgent(null)}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-gray-400 hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Expanded logs */}
                 {isExpanded && (

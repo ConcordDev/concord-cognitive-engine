@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit, TimelineView } from '@/components/viz';
 import type { TimelineEvent } from '@/components/viz';
 
@@ -36,6 +37,8 @@ interface DeityDetail {
   author_user_id: string;
   pilgrim_count: number;
   revision: number;
+  retired?: boolean;
+  retiredAt?: number | null;
   toneVector: ToneVector;
   dialogueTemplates: Template[];
   alignmentThresholds: Threshold;
@@ -188,6 +191,16 @@ export function DeityDetailPanel({
     }
   };
 
+  const retireDeity = async () => {
+    const r = await lensRun('deity', 'retire', { deityId });
+    if (r.data.ok) {
+      await load();
+      onChanged();
+    } else {
+      setError(r.data.error || 'Retire failed');
+    }
+  };
+
   const loadFullPilgrimLog = async () => {
     setPilgrimLogLoading(true);
     setPilgrimLogError(null);
@@ -254,10 +267,22 @@ export function DeityDetailPanel({
             rev {deity.revision} · {deity.pilgrim_count} pilgrims · by {deity.author_user_id.slice(0, 8)}
           </p>
         </div>
-        {isAuthor && !editing && (
-          <button type="button" onClick={startEdit} className="rounded-lg bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-xs text-zinc-200">
-            Revise
-          </button>
+        {isAuthor && !editing && !deity.retired && (
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={startEdit} className="rounded-lg bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-xs text-zinc-200">
+              Revise
+            </button>
+            <StickyDeleteConfirm
+              armLabel="Retire"
+              confirmLabel={`Retire ${deity.name}?`}
+              armAriaLabel={`Retire deity ${deity.name}`}
+              confirmAriaLabel={`Confirm retire deity ${deity.name}`}
+              onConfirm={() => void retireDeity()}
+            />
+          </div>
+        )}
+        {deity.retired && (
+          <span className="rounded-lg bg-red-500/15 px-3 py-1.5 text-xs font-semibold text-red-300">Retired</span>
         )}
       </header>
 

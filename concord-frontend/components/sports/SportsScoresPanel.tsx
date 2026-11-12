@@ -43,6 +43,17 @@ function GameCard({ g, onChange, watchIds, refresh }: {
     refresh(); onChange();
   };
   const del = async () => { await lensRun('sports', 'game-delete', { id: g.id }); refresh(); onChange(); };
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ homeTeam: g.homeTeam, awayTeam: g.awayTeam, league: g.league, date: g.date });
+  const saveEdit = async () => {
+    if (!editForm.homeTeam.trim() || !editForm.awayTeam.trim()) return;
+    await lensRun('sports', 'game-update', {
+      id: g.id, homeTeam: editForm.homeTeam.trim(), awayTeam: editForm.awayTeam.trim(),
+      league: editForm.league.trim(), date: editForm.date,
+    });
+    setEditing(false);
+    refresh(); onChange();
+  };
 
   return (
     <li className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
@@ -54,9 +65,33 @@ function GameCard({ g, onChange, watchIds, refresh }: {
             className={cn('p-0.5', watchIds.includes(g.id) ? 'text-amber-400' : 'text-zinc-600 hover:text-amber-400')}>
             <Star className={cn('w-3.5 h-3.5', watchIds.includes(g.id) && 'fill-amber-400')} />
           </button>
+          <button aria-label={`Edit ${g.homeTeam} vs ${g.awayTeam}`} type="button"
+            onClick={() => { setEditForm({ homeTeam: g.homeTeam, awayTeam: g.awayTeam, league: g.league, date: g.date }); setEditing(!editing); }}
+            className="text-[10px] font-semibold text-zinc-400 hover:text-cyan-300">Edit</button>
           <button aria-label="Delete" type="button" onClick={del} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
       </div>
+      {editing && (
+        <div className="mt-2 space-y-1.5 rounded-lg border border-zinc-700 bg-zinc-950/60 p-2">
+          <div className="flex gap-1.5">
+            <input aria-label="Home team" value={editForm.homeTeam} onChange={e => setEditForm({ ...editForm, homeTeam: e.target.value })}
+              className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+            <input aria-label="Away team" value={editForm.awayTeam} onChange={e => setEditForm({ ...editForm, awayTeam: e.target.value })}
+              className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+          </div>
+          <div className="flex gap-1.5">
+            <input aria-label="League" value={editForm.league} onChange={e => setEditForm({ ...editForm, league: e.target.value })}
+              className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+            <input aria-label="Date" type="date" value={editForm.date} onChange={e => setEditForm({ ...editForm, date: e.target.value })}
+              className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+          </div>
+          <div className="flex gap-1.5">
+            <button type="button" onClick={() => void saveEdit()} disabled={!editForm.homeTeam.trim() || !editForm.awayTeam.trim()}
+              className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40">Save</button>
+            <button type="button" onClick={() => setEditing(false)} className="px-2.5 py-1 text-xs rounded bg-zinc-800 text-zinc-300">Cancel</button>
+          </div>
+        </div>
+      )}
       <div className="mt-1 space-y-1">
         {(['away', 'home'] as const).map((side) => {
           const team = side === 'home' ? g.homeTeam : g.awayTeam;

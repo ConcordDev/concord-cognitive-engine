@@ -4,6 +4,7 @@
 
 import { TimelineView, ChartKit } from '@/components/viz';
 import { useEstate } from './EstateContext';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 export function WillsPanel() {
   const {
@@ -96,6 +97,7 @@ export function WillsPanel() {
     authorWill,
     viewWill,
     restoreWill,
+    deleteWill,
   } = useEstate();
 
   return (
@@ -136,7 +138,16 @@ export function WillsPanel() {
                               {w.restoredFrom ? ` · restored from v${w.restoredFrom}` : ''}
                             </div>
                             {w.status !== 'active' && (
-                              <button type="button" className="mt-1 text-[10px] text-amber-400 hover:text-amber-300" onClick={() => restoreWill(w.version)}>Restore this version</button>
+                              <div className="mt-1 flex items-center gap-3">
+                                <button type="button" className="text-[10px] text-amber-400 hover:text-amber-300" onClick={() => restoreWill(w.version)}>Restore this version</button>
+                                <StickyDeleteConfirm
+                                  armLabel="Delete"
+                                  confirmLabel={`Delete v${w.version}?`}
+                                  armAriaLabel={`Delete will version ${w.version}`}
+                                  confirmAriaLabel={`Confirm delete will version ${w.version}`}
+                                  onConfirm={() => void deleteWill(w.version)}
+                                />
+                              </div>
                             )}
                           </li>
                         ))}

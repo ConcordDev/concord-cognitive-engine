@@ -13,8 +13,10 @@
 // discoverability that doesn't exist. Full DTU-ification of raw_fish is
 // tracked as a larger follow-up, not done in this pass.
 
+import { useState } from 'react';
 import { Trophy } from 'lucide-react';
 import { DataTable, EmptyState, ErrorState, Skeleton } from '@/components/ui';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import type { DataTableColumn } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
@@ -35,9 +37,15 @@ interface CatchLogProps {
    *  parent join the already-fetched species catalog so rarity/mass stop
    *  being catalog-only columns and show up on the actual log too. */
   speciesById?: Map<string, { rarity?: string; mass?: number }>;
+  /** Lifecycle exits (FIX-fishing-004): delete the log row / set its note.
+   *  Absent callbacks render the log read-only, as before. */
+  onDeleteCatch?: (catchId: string) => void;
+  onAnnotateCatch?: (catchId: string, note: string) => void;
 }
 
-export function CatchLog({ catches, loading, reason, onRetry, justCaughtId, density, speciesById }: CatchLogProps) {
+export function CatchLog({ catches, loading, reason, onRetry, justCaughtId, density, speciesById, onDeleteCatch, onAnnotateCatch }: CatchLogProps) {
+  const [noteEditId, setNoteEditId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
   const columns: DataTableColumn<CatchRow>[] = [
     {
       id: 'fish',
@@ -144,6 +152,64 @@ export function CatchLog({ catches, loading, reason, onRetry, justCaughtId, dens
       align: 'right',
       monospace: true,
     },
+    ...((onDeleteCatch || onAnnotateCatch)
+      ? [
+          {
+            id: 'note',
+            header: 'Note',
+            accessor: (c: CatchRow) => {
+              const note = parseCatchMeta(c).note;
+              return note
+                ? <span className="text-gray-300 italic">{note}</span>
+                : <span className="text-gray-500">—</span>;
+            },
+          } satisfies DataTableColumn<CatchRow>,
+          {
+            id: 'actions',
+            header: '',
+            accessor: (c: CatchRow) => (
+              <span className="inline-flex items-center gap-2">
+                {onAnnotateCatch && (noteEditId === c.id ? (
+                  <>
+                    <input
+                      aria-label={`Note for ${c.item_name || c.item_id}`}
+                      className="min-h-[40px] rounded bg-zinc-900 px-2 text-xs text-zinc-100 border border-zinc-700"
+                      value={noteDraft}
+                      onChange={(e) => setNoteDraft(e.target.value)}
+                      placeholder="Note…"
+                    />
+                    <button
+                      type="button"
+                      className="text-xs text-emerald-300 hover:text-emerald-200"
+                      onClick={() => { onAnnotateCatch(c.id, noteDraft); setNoteEditId(null); }}
+                    >Save note</button>
+                    <button
+                      type="button"
+                      className="text-xs text-zinc-400 hover:text-zinc-200"
+                      onClick={() => setNoteEditId(null)}
+                    >Cancel</button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="text-xs text-cyan-300 hover:text-cyan-200"
+                    onClick={() => { setNoteEditId(c.id); setNoteDraft(parseCatchMeta(c).note || ''); }}
+                  >{parseCatchMeta(c).note ? 'Edit note' : 'Add note'}</button>
+                ))}
+                {onDeleteCatch && (
+                  <StickyDeleteConfirm
+                    armLabel="Delete"
+                    confirmLabel={`Delete ${c.item_name || c.item_id}${(c.quantity ?? 1) > 1 ? ` (×${c.quantity})` : ''}?`}
+                    armAriaLabel={`Delete catch ${c.item_name || c.item_id}`}
+                    confirmAriaLabel={`Confirm delete catch ${c.item_name || c.item_id}`}
+                    onConfirm={() => onDeleteCatch(c.id)}
+                  />
+                )}
+              </span>
+            ),
+          } satisfies DataTableColumn<CatchRow>,
+        ]
+      : []),
   ];
 
   return (

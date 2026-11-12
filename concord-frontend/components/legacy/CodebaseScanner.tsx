@@ -106,6 +106,38 @@ export function CodebaseScanner() {
     await loadCodebases();
   };
 
+  // Lifecycle exits (FIX-legacy-002): rename + rescan in place.
+  const [renameDraft, setRenameDraft] = useState('');
+  const [rescanText, setRescanText] = useState('');
+  const [rescanErr, setRescanErr] = useState<string | null>(null);
+  const [rescanning, setRescanning] = useState(false);
+  useEffect(() => { setRenameDraft(active?.name || ''); setRescanText(''); setRescanErr(null); }, [active?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const renameActive = async () => {
+    if (!active || !renameDraft.trim()) return;
+    const { data } = await lensRun('legacy', 'updateCodebase', { id: active.id, name: renameDraft.trim() });
+    if (!data.ok) { setRescanErr(data.error || 'Rename failed.'); return; }
+    const cb = (data.result as any).codebase as Codebase;
+    setActive({ ...active, name: cb.name });
+    await loadCodebases();
+  };
+
+  const rescanActive = async () => {
+    if (!active) return;
+    setRescanErr(null);
+    const files = parseFiles(rescanText);
+    if (files.length === 0) { setRescanErr('Paste the updated source to rescan in place. Delimit multiple files with "=== path/to/file.ext ===" headers.'); return; }
+    setRescanning(true);
+    const { data } = await lensRun('legacy', 'rescanCodebase', { id: active.id, files });
+    setRescanning(false);
+    if (!data.ok) { setRescanErr(data.error || 'Rescan failed.'); return; }
+    const cb = (data.result as any).codebase as Codebase;
+    setAnalysis({} as Record<Tab, any>);
+    setActive(cb);
+    setRescanText('');
+    await loadCodebases();
+  };
+
   const runAnalysis = useCallback(async (which: Tab, cb: Codebase) => {
     setAnalyzing(which);
     const macro = which === 'graph' ? 'dependencyGraph'
@@ -225,6 +257,26 @@ export function CodebaseScanner() {
 
       {active && (
         <>
+          {/* ── Lifecycle: rename + rescan in place (FIX-legacy-002) ── */}
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 space-y-2">
+            <h3 className="font-semibold text-sm">Manage “{active.name}”</h3>
+            <div className="flex flex-wrap gap-2">
+              <input aria-label="Codebase name" value={renameDraft} onChange={e => setRenameDraft(e.target.value)}
+                className="flex-1 min-w-[160px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-200" />
+              <button onClick={() => void renameActive()} disabled={!renameDraft.trim() || renameDraft.trim() === active.name}
+                className="btn-secondary text-sm disabled:opacity-50">Rename</button>
+            </div>
+            <textarea aria-label="Rescan source" value={rescanText} onChange={e => setRescanText(e.target.value)} rows={4}
+              placeholder={'Paste updated source to rescan this codebase in place. Delimit multiple files with "=== path/to/file.ext ===" headers.'}
+              className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs font-mono text-zinc-200" />
+            {rescanErr && <p role="alert" className="text-xs text-rose-300">{rescanErr}</p>}
+            <button onClick={() => void rescanActive()} disabled={rescanning || !rescanText.trim()}
+              className="btn-secondary text-sm flex items-center gap-1.5 disabled:opacity-50">
+              {rescanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderSearch className="w-3.5 h-3.5" />}
+              Rescan in place
+            </button>
+          </div>
+
           {/* ── Computed metrics (replaces the old fake panel) ── */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Metric label="Total LOC" value={active.summary.totalLinesOfCode.toLocaleString()} />

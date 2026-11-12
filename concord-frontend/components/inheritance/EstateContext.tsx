@@ -151,6 +151,11 @@ function useEstateValue(onNavigate?: (tab: string) => void) {
     const r = await run('restore_will_version', { version });
     if (r?.ok) { flash(`Restored v${version} as v${r.result.will.version}.`); void loadAll(); }
   };
+  const deleteWill = async (version: number) => {
+    const r = await run('delete_will_version', { version });
+    if (r?.ok) { flash(`Deleted will v${version}.`); void loadAll(); }
+    else flash(`Failed: ${r?.error || 'unknown'}`);
+  };
 
   // ── Asset form ─────────────────────────────────────────────────────
   const [aLabel, setALabel] = useState('');
@@ -392,6 +397,7 @@ function useEstateValue(onNavigate?: (tab: string) => void) {
     authorWill,
     viewWill,
     restoreWill,
+    deleteWill,
     addAsset,
     removeAsset,
     assignExecutor,

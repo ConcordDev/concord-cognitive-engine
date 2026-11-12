@@ -33,6 +33,8 @@ export function FieldLog() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', kind: 'rock', locationName: '', formation: '', notes: '' });
+  const [selected, setSelected] = useState<Observation | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', kind: 'rock', formation: '', notes: '' });
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -75,6 +77,25 @@ export function FieldLog() {
   }
   async function del(id: string) {
     await lensRun('geology', 'observation-delete', { id });
+    if (selected?.id === id) setSelected(null);
+    await refresh();
+  }
+  function openObservation(o: Observation) {
+    setSelected(o);
+    setEditForm({ name: o.name, kind: o.kind, formation: o.formation || '', notes: o.notes || '' });
+  }
+  async function saveEdit() {
+    if (!selected || !editForm.name.trim()) return;
+    const r = await lensRun('geology', 'observation-update', {
+      id: selected.id, name: editForm.name.trim(), kind: editForm.kind,
+      formation: editForm.formation.trim(), notes: editForm.notes.trim(),
+    });
+    const inner = r.data?.result as { ok?: boolean; error?: string; observation?: Observation } | undefined;
+    if (!r.data?.ok || inner?.ok === false) {
+      setError(inner?.error || r.data?.error || 'Could not update observation');
+      return;
+    }
+    if (inner?.observation) setSelected(inner.observation);
     await refresh();
   }
 
@@ -156,7 +177,8 @@ export function FieldLog() {
             <li key={o.id} className="group bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
               <div className="flex items-center gap-2">
                 <span className={cn('text-[9px] px-1.5 py-0.5 rounded capitalize', KIND_COLOR[o.kind] || KIND_COLOR.other)}>{o.kind}</span>
-                <span className="text-xs font-semibold text-zinc-100 flex-1 truncate">{o.name}</span>
+                <button type="button" onClick={() => openObservation(o)} aria-label={`Open ${o.name}`}
+                  className="text-xs font-semibold text-zinc-100 flex-1 truncate text-left hover:text-amber-300">{o.name}</button>
                 <span className="text-[10px] text-zinc-400">{o.collectedAt}</span>
                 <StickyDeleteConfirm onConfirm={() => del(o.id)} armAriaLabel={`Delete ${o.name}`} confirmAriaLabel={`Confirm delete ${o.name}`} className="text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
               </div>
@@ -170,6 +192,41 @@ export function FieldLog() {
             </li>
           ))}
         </ul>
+      )}
+
+      {selected && (
+        <div className="mt-3 bg-zinc-900/60 border border-amber-800/50 rounded-lg p-3 space-y-2" aria-label={`Observation detail ${selected.name}`}>
+          <div className="flex items-center gap-2">
+            <h4 className="text-xs font-bold text-zinc-100 flex-1 truncate">{selected.name}</h4>
+            <span className={cn('text-[9px] px-1.5 py-0.5 rounded capitalize', KIND_COLOR[selected.kind] || KIND_COLOR.other)}>{selected.kind}</span>
+            <button type="button" onClick={() => setSelected(null)} className="text-[11px] text-zinc-400 hover:text-zinc-200">Close</button>
+          </div>
+          <p className="text-[11px] text-zinc-400">
+            {selected.locationName && <span className="inline-flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{selected.locationName} · </span>}
+            {selected.formation && <span>{selected.formation} · </span>}
+            collected {selected.collectedAt}
+            {selected.tags?.length ? ` · ${selected.tags.join(', ')}` : ''}
+          </p>
+          {selected.notes && <p className="text-[11px] text-zinc-300">{selected.notes}</p>}
+          <div className="space-y-1.5 border-t border-zinc-800 pt-2">
+            <div className="flex gap-1.5">
+              <input aria-label="Observation name" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+              <select aria-label="Observation kind" value={editForm.kind} onChange={e => setEditForm({ ...editForm, kind: e.target.value })}
+                className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200 capitalize">
+                {KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-1.5">
+              <input aria-label="Formation" value={editForm.formation} onChange={e => setEditForm({ ...editForm, formation: e.target.value })} placeholder="Formation"
+                className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+              <input aria-label="Field notes" value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Field notes"
+                className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
+              <button onClick={() => void saveEdit()} disabled={!editForm.name.trim()}
+                className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40">Save</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
