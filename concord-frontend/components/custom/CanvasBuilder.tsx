@@ -99,9 +99,22 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
   }, []);
 
   // ── loaders ───────────────────────────────────────────────────────────────
+  // FIX-custom-001: a failed canvasList load used to read as an empty
+  // account — the builder showed "No canvases yet" after a tab switch
+  // remounted it into a transient /api/lens/run failure, while the canvases
+  // were never lost. The list now has an honest loading / error state: the
+  // empty message renders only after a load actually succeeded.
+  const [listState, setListState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const loadedOnceRef = useRef(false);
   const loadCanvases = useCallback(async () => {
     const d = await call<{ canvases: Canvas[] }>('canvasList');
-    if (d.ok && d.result) setCanvases(d.result.canvases);
+    if (d.ok && d.result) {
+      loadedOnceRef.current = true;
+      setCanvases(d.result.canvases);
+      setListState('ready');
+    } else if (!loadedOnceRef.current) {
+      setListState('error');
+    }
   }, []);
   const loadBindings = useCallback(async () => {
     const d = await call<{ bindings: Binding[] }>('bindingList');
@@ -116,15 +129,16 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
     if (d.ok && d.result) setPublished(d.result.published);
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      const p = await call<{ components: PaletteComp[] }>('palette');
-      if (p.ok && p.result) setPalette(p.result.components);
-      await loadCanvases();
-      await loadBindings();
-      await loadPublished();
-    })();
+  const loadAll = useCallback(async () => {
+    setListState((s) => (loadedOnceRef.current ? s : 'loading'));
+    const p = await call<{ components: PaletteComp[] }>('palette');
+    if (p.ok && p.result) setPalette(p.result.components);
+    await loadCanvases();
+    await loadBindings();
+    await loadPublished();
   }, [loadCanvases, loadBindings, loadPublished]);
+
+  useEffect(() => { void loadAll(); }, [loadAll]);
 
   // Report real, live counts up to the page for its header stat tiles —
   // avoids a second disconnected fetch of the same lists.
@@ -421,7 +435,14 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
         {/* ── Canvas list ──────────────────────────────────────────────────── */}
         <div className="col-span-12 lg:col-span-2 panel p-3 space-y-2">
           <p className="text-xs uppercase tracking-wider text-gray-400">Canvases</p>
-          {canvases.length === 0 && <p className="text-xs text-gray-400">No canvases yet.</p>}
+          {listState === 'loading' && <p className="text-xs text-gray-400">Loading canvases…</p>}
+          {listState === 'error' && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-red-300">Couldn’t load your canvases — they are saved, the list just failed to arrive.</p>
+              <button onClick={() => void loadAll()} className="btn-neon text-xs">Retry</button>
+            </div>
+          )}
+          {listState === 'ready' && canvases.length === 0 && <p className="text-xs text-gray-400">No canvases yet.</p>}
           {canvases.map((c) => (
             <div key={c.id}
               className={`group rounded px-2 py-1.5 text-sm ${
