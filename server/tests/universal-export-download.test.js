@@ -49,6 +49,20 @@ describe("GET /api/lens/:domain/export/download", () => {
     assert.equal(lines[2], '"a2","Oak \\"bow\\"","craft","t2","u2"');
   });
 
+  it("csv: row data rides as extra columns (the record itself is exported)", async () => {
+    rows = [
+      { id: "p1", type: "poem", title: "Ode", createdAt: "t1", updatedAt: "u1", data: { body: "line one\nline two", lines: 2 } },
+      { id: "p2", type: "poem", title: "Haiku", createdAt: "t2", updatedAt: "u2", data: { body: "short", meta: { form: "haiku" } } },
+    ];
+    const res = await fetch(`${base}/api/lens/poetry/export/download?format=csv`);
+    assert.equal(res.status, 200);
+    const lines = (await res.text()).split("\n");
+    assert.equal(lines[0], "id,title,type,createdAt,updatedAt,body,lines,meta");
+    assert.equal(lines[1], '"p1","Ode","poem","t1","u1","line one\\nline two",2,""');
+    assert.equal(lines[2], '"p2","Haiku","poem","t2","u2","short","","{\\"form\\":\\"haiku\\"}"');
+    rows = ROWS;
+  });
+
   it("an empty export is a 404 nothing_to_export, never an empty file", async () => {
     rows = [];
     const res = await fetch(`${base}/api/lens/crafting/export/download?format=json`);

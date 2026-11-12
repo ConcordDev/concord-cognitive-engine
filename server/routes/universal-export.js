@@ -146,9 +146,31 @@ export default function createUniversalExportRouter(STATE, runMacro, makeCtx) {
       body = JSON.stringify(rows, null, 2);
       type = "application/json; charset=utf-8";
     } else {
+      // The envelope columns alone made every CSV a five-column husk —
+      // the record itself (acreage, poem lines, photo refs) rides in
+      // row.data and never reached the file (FIX-agriculture-005,
+      // FIX-poetry-008, FIX-careers-002, FIX-photography-008). Columns are
+      // now the envelope five plus the union of scalar data keys in
+      // first-seen order; nested values ride as one JSON cell. Quoting
+      // stays the house JSON style the client path uses.
       const headers = ["id", "title", "type", "createdAt", "updatedAt"];
-      const lines = rows.map((r) => headers.map((h) => JSON.stringify(r?.[h] ?? "")).join(","));
-      body = [headers.join(","), ...lines].join("\n");
+      const dataKeys = [];
+      for (const r of rows) {
+        const d = r?.data;
+        if (!d || typeof d !== "object" || Array.isArray(d)) continue;
+        for (const k of Object.keys(d)) {
+          if (headers.includes(k) || dataKeys.includes(k)) continue;
+          if (dataKeys.length >= 40) break;
+          dataKeys.push(k);
+        }
+        if (dataKeys.length >= 40) break;
+      }
+      const cell = (v) => JSON.stringify(typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? ""));
+      const lines = rows.map((r) => [
+        ...headers.map((h) => cell(r?.[h])),
+        ...dataKeys.map((k) => cell(r?.data?.[k])),
+      ].join(","));
+      body = [[...headers, ...dataKeys].join(","), ...lines].join("\n");
       type = "text/csv; charset=utf-8";
     }
     res.set({
