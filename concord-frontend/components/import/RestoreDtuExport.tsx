@@ -106,7 +106,7 @@ export function RestoreDtuExport() {
             <FileText className="w-3.5 h-3.5" /> Markdown
           </button>
         </div>
-        <input ref={fileRef} type="file" accept=".json,.md,.markdown,.txt" onChange={onFile} className="hidden" />
+        <input ref={fileRef} type="file" aria-label="Choose a DTU export file to restore" accept=".json,.md,.markdown,.txt" onChange={onFile} className="hidden" />
         <button onClick={pickFile} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-lattice-border text-xs text-gray-300 hover:border-neon-cyan/40">
           <Upload className="w-3.5 h-3.5" /> Upload file
         </button>

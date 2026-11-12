@@ -260,10 +260,11 @@ export function UniversalImport({
             isDragOver
               ? 'border-neon-cyan bg-neon-cyan/5 scale-[1.01]'
               : 'border-lattice-border hover:border-gray-500 hover:bg-lattice-deep/30'
-          )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+          )} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} aria-label="Drop files to import, or activate to browse for files">
           <input
             ref={fileInputRef}
             type="file"
+            aria-label="Choose files to import"
             multiple
             onChange={handleFileSelect}
             className="hidden"
@@ -335,7 +336,7 @@ export function UniversalImport({
                   <button
                     onClick={(e) => { e.stopPropagation(); removeFile(f.id); }}
                     className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-300 transition-colors"
-                  aria-label="Close">
+                  aria-label={`Remove ${f.file.name}`}>
                     <X className="w-3 h-3" />
                   </button>
                 )}

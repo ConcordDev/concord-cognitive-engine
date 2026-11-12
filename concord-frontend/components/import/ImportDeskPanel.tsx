@@ -632,6 +632,8 @@ export function ImportDeskPanel() {
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
+              role="region"
+              aria-label="Structured data import: drop backup or data files here, or browse to choose one"
             >
               {validating ? (
                 <Loader2 className="w-8 h-8 mx-auto mb-2 text-neon-blue animate-spin" />
@@ -644,6 +646,7 @@ export function ImportDeskPanel() {
               <label className="btn-secondary cursor-pointer text-xs">
                 <input
                   type="file"
+                  aria-label="Choose a backup or data file"
                   className="hidden"
                   accept=".json,.jsonl,.zip"
                   onChange={handleFileSelect}
@@ -775,6 +778,7 @@ export function ImportDeskPanel() {
               </div>
               <input
                 type="file"
+                aria-label="Choose a substrate archive to import"
                 className="hidden"
                 accept=".gz,.gzip"
                 disabled={importing}
