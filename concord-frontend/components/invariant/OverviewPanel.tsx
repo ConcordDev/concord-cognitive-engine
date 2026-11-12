@@ -79,10 +79,10 @@ export function OverviewPanel() {
           not exist. Until an approval mechanism actually guards monitor
           changes, the banner states the actual behaviour. */}
       <div className="panel p-4 border-l-4 border-yellow-500/60">
-        <h3 className="font-semibold text-yellow-200/90 mb-2 flex items-center gap-2">
+        <h2 className="font-semibold text-yellow-200/90 mb-2 flex items-center gap-2">
           <Lock className="w-4 h-4" />
           Sovereignty Lock — not in force
-        </h3>
+        </h2>
         <p className="text-sm text-gray-400">
           This panel previously claimed invariants cannot be disabled or modified without full council
           approval and structural verification. No such gate exists: your monitors are yours to pause,

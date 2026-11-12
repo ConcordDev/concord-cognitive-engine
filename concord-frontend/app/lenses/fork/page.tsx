@@ -276,6 +276,9 @@ export default function ForkLensPage() {
         <div className="flex flex-wrap items-center gap-2">
           <input
             ref={forkSearchInputRef}
+            id="fork-search"
+            name="forkSearch"
+            aria-label="Search forks"
             type="text"
             value={forkSearch}
             onChange={(e) => setForkSearch(e.target.value)}

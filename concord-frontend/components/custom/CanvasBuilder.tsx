@@ -495,7 +495,7 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
               </p>
               {active && (
                 <div className="flex items-center gap-1.5">
-                  <button onClick={saveCanvas} disabled={busy || !dirty}
+                  <button onClick={saveCanvas} disabled={busy || !dirty} aria-label="Save canvas" title="Save canvas"
                     className="btn-neon text-xs flex items-center gap-1 disabled:opacity-40">
                     {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                     {dirty ? 'Save*' : 'Saved'}
