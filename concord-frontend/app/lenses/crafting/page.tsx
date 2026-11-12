@@ -188,8 +188,12 @@ export default function CraftingPage() {
 
   const putOnBench = useCallback(async () => {
     const title = name.trim();
-    if (!title || saving) {
-      setOpen(true);
+    if (saving) return;
+    // FIX-crafting-005: an empty or whitespace name used to vanish here
+    // — the click did nothing and said nothing. Refuse out loud, the
+    // same words the rename path already uses for the same case.
+    if (!title) {
+      setSaveError('A piece needs a name.');
       return;
     }
     setSaving(true);
@@ -460,6 +464,8 @@ export default function CraftingPage() {
               <input
                 id={nameId}
                 value={editingId ? editName : name}
+                aria-invalid={saveError ? true : undefined}
+                aria-describedby={saveError ? 'crafting-name-error' : undefined}
                 onChange={(event) => {
                   if (editingId) setEditName(event.target.value);
                   else setName(event.target.value);
@@ -477,7 +483,10 @@ export default function CraftingPage() {
               {isDuplicateName(editingId ? editName : name, recipes, editingId ?? undefined) ? (
                 <p className="mt-2 text-[13px] text-zinc-400">A piece with this name is already on the bench.</p>
               ) : null}
-              {saveError ? <p role="alert" className="mt-3 text-[14px] text-zinc-300">{saveError}</p> : null}
+              {!editingId && !(editingId ? editName : name).trim() ? (
+                <p className="mt-2 text-[13px] text-zinc-500">Give the piece a name to put it on the bench.</p>
+              ) : null}
+              {saveError ? <p role="alert" id="crafting-name-error" className="mt-3 text-[14px] text-zinc-300">{saveError}</p> : null}
               {saving ? <p role="status" className="mt-3 text-[14px] text-zinc-500">Saving the piece.</p> : null}
             </form>
           )}
@@ -486,7 +495,7 @@ export default function CraftingPage() {
         <button
           type="button"
           onClick={onPrimary}
-          disabled={saving || phase !== 'ready'}
+          disabled={saving || phase !== 'ready' || (open && !(editingId ? editName : name).trim())}
           title="Start a piece (N)"
           className="fixed bottom-8 right-8 z-30 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black disabled:opacity-60"
         >
