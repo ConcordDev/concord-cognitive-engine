@@ -43,7 +43,7 @@ function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-[#111] px-4 py-3">
       <div className="text-[1.5rem] font-medium leading-none tabular-nums text-zinc-50">{value}</div>
-      <div className="mt-1.5 text-[12px] text-zinc-500">{label}</div>
+      <div className="mt-1.5 text-[12px] text-zinc-400">{label}</div>
     </div>
   );
 }
@@ -152,7 +152,7 @@ export function SwarmRegistryPanel({ createOpen = false, onCreateClose }: { crea
 
   const pending: TerminalProposalSummary[] = isCouncilEligible && Array.isArray(pendingApprovals?.pending) ? pendingApprovals.pending : [];
   const s = status.data;
-  const fieldCls = 'rounded-lg border border-white/10 bg-transparent px-3 py-2 text-[14px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-teal-400/60';
+  const fieldCls = 'rounded-lg border border-white/10 bg-transparent px-3 py-2 text-[14px] text-zinc-100 outline-none placeholder:text-zinc-400 focus:border-teal-400/60';
 
   return (
     <div className="pb-28">
@@ -170,7 +170,7 @@ export function SwarmRegistryPanel({ createOpen = false, onCreateClose }: { crea
         >
           <div className="mb-3 flex items-center justify-between">
             <span className="text-[14px] font-medium text-zinc-100">Spawn an entity</span>
-            <button type="button" onClick={onCreateClose} aria-label="Close" className="text-zinc-500 hover:text-zinc-200"><X className="h-4 w-4" /></button>
+            <button type="button" onClick={onCreateClose} aria-label="Close" className="text-zinc-400 hover:text-zinc-200"><X className="h-4 w-4" /></button>
           </div>
           <div className="mb-3 flex flex-wrap gap-1.5">
             {ENTITY_TYPES.map((t) => (
@@ -180,7 +180,7 @@ export function SwarmRegistryPanel({ createOpen = false, onCreateClose }: { crea
               </button>
             ))}
           </div>
-          <p className="mb-3 text-[12px] text-zinc-500">{TYPE_BLURB[type]}</p>
+          <p className="mb-3 text-[12px] text-zinc-400">{TYPE_BLURB[type]}</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Supply chain resilience" aria-label="Entity name" className={fieldCls} />
             <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" aria-label="Entity description" className={fieldCls} />
@@ -195,7 +195,7 @@ export function SwarmRegistryPanel({ createOpen = false, onCreateClose }: { crea
         <section aria-label="Entities">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <label className="relative min-w-[12rem] flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search entities" aria-label="Search entities" className={cn(fieldCls, 'w-full pl-9')} />
             </label>
             <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort entities" className={cn(fieldCls, 'bg-[#111]')}>
@@ -209,21 +209,21 @@ export function SwarmRegistryPanel({ createOpen = false, onCreateClose }: { crea
               return (
                 <button key={t} type="button" onClick={() => setTypeFilter(t)} aria-pressed={typeFilter === t}
                   className={cn('inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] transition-colors', typeFilter === t ? 'border-teal-400/60 bg-teal-400/10 text-teal-200' : 'border-white/10 text-zinc-400 hover:text-zinc-200')}>
-                  {t !== 'all' && <span className={cn('h-1.5 w-1.5 rounded-full', TYPE_DOT[t])} />}{t}<span className="text-zinc-500">{n}</span>
+                  {t !== 'all' && <span className={cn('h-1.5 w-1.5 rounded-full', TYPE_DOT[t])} />}{t}<span className="text-zinc-400">{n}</span>
                 </button>
               );
             })}
           </div>
 
           {list.isLoading ? (
-            <div className="flex items-center gap-2 text-[14px] text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading entities…</div>
+            <div className="flex items-center gap-2 text-[14px] text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading entities…</div>
           ) : entities.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center">
               <p className="text-[15px] text-zinc-300">The world model is empty.</p>
-              <p className="mt-1 text-[13px] text-zinc-500">Spawn an entity with the button below, or extract entities from a DTU on the right.</p>
+              <p className="mt-1 text-[13px] text-zinc-400">Spawn an entity with the button below, or extract entities from a DTU on the right.</p>
             </div>
           ) : visible.length === 0 ? (
-            <p className="text-[14px] text-zinc-500">No entities match that filter.</p>
+            <p className="text-[14px] text-zinc-400">No entities match that filter.</p>
           ) : (
             <ul className="space-y-2">
               {visible.map((e) => {
@@ -235,12 +235,12 @@ export function SwarmRegistryPanel({ createOpen = false, onCreateClose }: { crea
                       <div className="flex items-center gap-3">
                         <span className={cn('h-2 w-2 shrink-0 rounded-full', TYPE_DOT[e.type] || 'bg-zinc-500')} />
                         <span className="min-w-0 flex-1 truncate text-[15px] text-zinc-100">{e.name}</span>
-                        <span className="shrink-0 text-[12px] text-zinc-500">{e.type}</span>
+                        <span className="shrink-0 text-[12px] text-zinc-400">{e.type}</span>
                         <span className="shrink-0 rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] tabular-nums text-zinc-400" title="Relations">{e.relationCount} rel</span>
                       </div>
                       <div className="mt-2.5 grid grid-cols-2 gap-4">
-                        <div title={`Salience ${pct(e.salience)}%`}><div className="mb-1 text-[11px] text-zinc-500">Salience</div><Bar value={e.salience} tone="bg-teal-400" /></div>
-                        <div title={`Confidence ${pct(e.confidence)}%`}><div className="mb-1 text-[11px] text-zinc-500">Confidence</div><Bar value={e.confidence} tone="bg-sky-400" /></div>
+                        <div title={`Salience ${pct(e.salience)}%`}><div className="mb-1 text-[11px] text-zinc-400">Salience</div><Bar value={e.salience} tone="bg-teal-400" /></div>
+                        <div title={`Confidence ${pct(e.confidence)}%`}><div className="mb-1 text-[11px] text-zinc-400">Confidence</div><Bar value={e.confidence} tone="bg-sky-400" /></div>
                       </div>
                     </button>
                   </li>
@@ -273,11 +273,11 @@ export function SwarmRegistryPanel({ createOpen = false, onCreateClose }: { crea
             Council approvals{pending.length > 0 && <span className="ml-2 text-amber-300">{pending.length} pending</span>}
           </h2>
           {pendingLoading ? (
-            <p className="flex items-center gap-2 text-[13px] text-zinc-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading proposals…</p>
+            <p className="flex items-center gap-2 text-[13px] text-zinc-400"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading proposals…</p>
           ) : pendingErrored || pendingApprovals?.ok === false ? (
             <p className="text-[13px] text-red-300">Couldn’t load the approval queue{pendingApprovals?.error ? `: ${pendingApprovals.error}` : '.'}</p>
           ) : pending.length === 0 ? (
-            <p className="text-[13px] text-zinc-500">Nothing waiting on a vote.</p>
+            <p className="text-[13px] text-zinc-400">Nothing waiting on a vote.</p>
           ) : (
             <ul className="space-y-3">
               {pending.map((p) => (
@@ -305,7 +305,7 @@ export function SwarmRegistryPanel({ createOpen = false, onCreateClose }: { crea
             </ul>
           )}
           {Array.isArray(pendingApprovals?.recentHistory) && pendingApprovals.recentHistory.length > 0 && (
-            <details className="mt-3 text-[12px] text-zinc-500">
+            <details className="mt-3 text-[12px] text-zinc-400">
               <summary className="cursor-pointer hover:text-zinc-300">Recently resolved ({pendingApprovals.recentHistory.length})</summary>
               <div className="mt-2 space-y-1">
                 {pendingApprovals.recentHistory.map((p: TerminalProposalSummary) => (
@@ -322,7 +322,7 @@ export function SwarmRegistryPanel({ createOpen = false, onCreateClose }: { crea
 
       {entities.length > 0 && (
         <details className="mt-8">
-          <summary className="cursor-pointer text-[13px] text-zinc-500 hover:text-zinc-300">Lifecycle</summary>
+          <summary className="cursor-pointer text-[13px] text-zinc-400 hover:text-zinc-300">Lifecycle</summary>
           <div className="mt-3"><EntityLifecycleViz /></div>
         </details>
       )}

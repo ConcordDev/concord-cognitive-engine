@@ -27,7 +27,7 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const toast = (type: 'success' | 'error', message: string) => useUIStore.getState().addToast({ type, message });
-const fieldCls = 'rounded-lg border border-white/10 bg-transparent px-3 py-2 text-[13px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-teal-400/60';
+const fieldCls = 'rounded-lg border border-white/10 bg-transparent px-3 py-2 text-[13px] text-zinc-100 outline-none placeholder:text-zinc-400 focus:border-teal-400/60';
 const primaryBtn = 'rounded-full bg-teal-400 px-4 py-1.5 text-[13px] font-medium text-black transition-colors hover:bg-teal-300 disabled:opacity-40';
 const ghostBtn = 'inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-[12px] text-zinc-300 transition-colors hover:border-white/25 hover:text-zinc-50 disabled:opacity-40';
 
@@ -56,7 +56,7 @@ function coerce(raw: string): unknown {
 }
 
 function Insights({ items }: { items: SimInsight[] }) {
-  if (!items.length) return <p className="text-[12px] text-zinc-500">The run finished with no change large enough to report.</p>;
+  if (!items.length) return <p className="text-[12px] text-zinc-400">The run finished with no change large enough to report.</p>;
   return (
     <ul className="space-y-1.5">
       {items.map((i, k) => (
@@ -130,12 +130,12 @@ function OverviewTab({ entity, onFork, forking, onDeleted }: { entity: WorldEnti
 
       <div>
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-[12px] uppercase tracking-wide text-zinc-500">Properties</span>
+          <span className="text-[12px] uppercase tracking-wide text-zinc-400">Properties</span>
           <button type="button" onClick={() => setProps((p) => [...p, ['', '']])} className="inline-flex items-center gap-1 text-[12px] text-teal-300 hover:text-teal-200">
             <Plus className="h-3 w-3" /> Add
           </button>
         </div>
-        {props.length === 0 && <p className="text-[12px] text-zinc-600">No custom properties. Simulations can read any numeric property you add.</p>}
+        {props.length === 0 && <p className="text-[12px] text-zinc-400">No custom properties. Simulations can read any numeric property you add.</p>}
         <div className="space-y-1.5">
           {props.map(([k, v], i) => (
             <div key={i} className="flex gap-1.5">
@@ -144,7 +144,7 @@ function OverviewTab({ entity, onFork, forking, onDeleted }: { entity: WorldEnti
             </div>
           ))}
         </div>
-        {props.length > 0 && <p className="mt-1 text-[11px] text-zinc-600">Properties merge on save; the backend can add or change a key but not remove one.</p>}
+        {props.length > 0 && <p className="mt-1 text-[11px] text-zinc-400">Properties merge on save; the backend can add or change a key but not remove one.</p>}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -166,7 +166,7 @@ function OverviewTab({ entity, onFork, forking, onDeleted }: { entity: WorldEnti
         )}
       </div>
 
-      <p className="border-t border-white/10 pt-3 text-[11px] leading-relaxed text-zinc-600">
+      <p className="border-t border-white/10 pt-3 text-[11px] leading-relaxed text-zinc-400">
         <span className="font-mono">{entity.id}</span><br />
         Created {new Date(entity.createdAt).toLocaleString()} · updated {new Date(entity.updatedAt).toLocaleString()}
         {entity.source?.createdBy && <> · by {entity.source.createdBy}</>}
@@ -202,7 +202,7 @@ function RelationsTab({ entity, relations, others, onSelect }: { entity: WorldEn
   return (
     <div className="space-y-4">
       {relations.length === 0 ? (
-        <p className="text-[13px] text-zinc-500">No relations yet. Connect this entity below and it will show up in the Graph view and in simulations.</p>
+        <p className="text-[13px] text-zinc-400">No relations yet. Connect this entity below and it will show up in the Graph view and in simulations.</p>
       ) : (
         <ul className="space-y-1.5">
           {relations.map((r) => {
@@ -211,13 +211,13 @@ function RelationsTab({ entity, relations, others, onSelect }: { entity: WorldEn
             return (
               <li key={r.id} className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
                 <div className="flex items-center gap-2 text-[13px]">
-                  <span className="text-zinc-500">{r.direction === 'incoming' ? '←' : '→'}</span>
+                  <span className="text-zinc-400">{r.direction === 'incoming' ? '←' : '→'}</span>
                   <span className="rounded-full bg-teal-400/10 px-2 py-0.5 text-[11px] text-teal-300">{r.type.replace('_', ' ')}</span>
                   <button type="button" onClick={() => onSelect(otherId)} className="min-w-0 truncate text-zinc-100 hover:text-teal-200" title="Open this entity">
                     {other?.name || otherId}
                   </button>
                 </div>
-                <div className="mt-1.5 flex gap-4 text-[11px] text-zinc-500">
+                <div className="mt-1.5 flex gap-4 text-[11px] text-zinc-400">
                   <span>strength {pct(r.strength)}%</span><span>confidence {pct(r.confidence)}%</span>
                 </div>
               </li>
@@ -227,7 +227,7 @@ function RelationsTab({ entity, relations, others, onSelect }: { entity: WorldEn
       )}
 
       <form onSubmit={(e) => { e.preventDefault(); if (target) add.mutate(); }} className="space-y-2.5 rounded-xl border border-white/10 p-3">
-        <p className="text-[12px] uppercase tracking-wide text-zinc-500">Connect</p>
+        <p className="text-[12px] uppercase tracking-wide text-zinc-400">Connect</p>
         <div className="flex gap-1.5">
           {(['out', 'in'] as const).map((d) => (
             <button key={d} type="button" onClick={() => setDir(d)} className={cn('flex-1 rounded-lg border px-2 py-1.5 text-[12px] transition-colors', dir === d ? 'border-teal-400/60 text-teal-200' : 'border-white/10 text-zinc-400 hover:text-zinc-200')}>
@@ -244,7 +244,7 @@ function RelationsTab({ entity, relations, others, onSelect }: { entity: WorldEn
         </select>
         <Slider label="Strength" value={strength} onChange={setStrength} />
         <button type="submit" disabled={!target || add.isPending} className={primaryBtn}>{add.isPending ? 'Connecting…' : 'Create relation'}</button>
-        {candidates.length === 0 && <p className="text-[11px] text-zinc-600">Spawn a second entity first.</p>}
+        {candidates.length === 0 && <p className="text-[11px] text-zinc-400">Spawn a second entity first.</p>}
       </form>
     </div>
   );
@@ -297,7 +297,7 @@ function SimulateTab({ entity, relations }: { entity: WorldEntity; relations: Wo
           <button key={id} type="button" onClick={() => setMode(id)} className={cn('flex-1 rounded-lg border px-2 py-1.5 text-[12px] transition-colors', mode === id ? 'border-teal-400/60 text-teal-200' : 'border-white/10 text-zinc-400 hover:text-zinc-200')}>{l}</button>
         ))}
       </div>
-      <p className="text-[12px] leading-relaxed text-zinc-500">
+      <p className="text-[12px] leading-relaxed text-zinc-400">
         {mode === 'whatif'
           ? 'Change one property and see how it ripples through connected entities. Results are hypothetical and never written back.'
           : `Step the model forward over this entity and its ${relations.length} neighbour${relations.length !== 1 ? 's' : ''}.`}
@@ -327,7 +327,7 @@ function SimulateTab({ entity, relations }: { entity: WorldEntity; relations: Wo
           <p className="text-[12px] text-zinc-400">{label}</p>
           <Insights items={insights} />
           {summary && (
-            <p className="border-t border-white/10 pt-2 text-[11px] text-zinc-500">
+            <p className="border-t border-white/10 pt-2 text-[11px] text-zinc-400">
               {summary.totalEvents} causal event{summary.totalEvents !== 1 ? 's' : ''} · {summary.causalPathCount} path{summary.causalPathCount !== 1 ? 's' : ''}
             </p>
           )}
@@ -375,7 +375,7 @@ function TerminalTab() {
   return (
     <div className="space-y-2">
       <div className="h-56 overflow-y-auto whitespace-pre-wrap rounded-lg bg-black p-3 font-mono text-[12px] text-teal-300">
-        {output.length === 0 ? <p className="text-zinc-500">Ready. Risky commands are held for a council vote before they run.</p>
+        {output.length === 0 ? <p className="text-zinc-400">Ready. Risky commands are held for a council vote before they run.</p>
           : output.map((l, i) => <div key={i} className={l.startsWith('$') ? 'text-zinc-100' : ''}>{l}</div>)}
         <div ref={endRef} />
       </div>
@@ -403,7 +403,7 @@ export function EntityInspector({
     queryFn: () => wm<{ entity: WorldEntity; relations: WorldRelation[] }>('get_entity', { entityId }),
   });
 
-  if (isLoading) return <div className="flex items-center gap-2 p-4 text-[13px] text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
+  if (isLoading) return <div className="flex items-center gap-2 p-4 text-[13px] text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
   if (error || !data) return <p className="p-4 text-[13px] text-rose-300">{(error as Error)?.message || 'Could not load this entity.'}</p>;
 
   const { entity, relations } = data;
@@ -411,14 +411,14 @@ export function EntityInspector({
     <div>
       <div className="flex items-center gap-2 px-4 pt-4">
         <span className={cn('h-2.5 w-2.5 rounded-full', TYPE_DOT[entity.type] || 'bg-zinc-500')} />
-        <span className="text-[12px] uppercase tracking-wide text-zinc-500">{entity.type}</span>
-        <span className="ml-auto inline-flex items-center gap-1 text-[12px] text-zinc-500">{relations.length} <ArrowRight className="h-3 w-3" /> relations</span>
+        <span className="text-[12px] uppercase tracking-wide text-zinc-400">{entity.type}</span>
+        <span className="ml-auto inline-flex items-center gap-1 text-[12px] text-zinc-400">{relations.length} <ArrowRight className="h-3 w-3" /> relations</span>
       </div>
       <div className="mt-3 flex gap-1 border-b border-white/10 px-3">
         {TABS.map((t) => (
           <button key={t.id} type="button" onClick={() => setTab(t.id)} aria-current={tab === t.id ? 'page' : undefined}
-            className={cn('-mb-px border-b-2 px-2.5 py-2 text-[13px] transition-colors', tab === t.id ? 'border-teal-400 text-zinc-50' : 'border-transparent text-zinc-500 hover:text-zinc-200')}>
-            {t.label}{t.id === 'relations' && relations.length > 0 && <span className="ml-1 text-[11px] text-zinc-500">{relations.length}</span>}
+            className={cn('-mb-px border-b-2 px-2.5 py-2 text-[13px] transition-colors', tab === t.id ? 'border-teal-400 text-zinc-50' : 'border-transparent text-zinc-400 hover:text-zinc-200')}>
+            {t.label}{t.id === 'relations' && relations.length > 0 && <span className="ml-1 text-[11px] text-zinc-400">{relations.length}</span>}
           </button>
         ))}
       </div>

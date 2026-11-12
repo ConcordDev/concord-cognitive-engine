@@ -430,7 +430,7 @@ function GraphTab({ graph, busy, mutate }: {
                       <button
                         disabled={busy}
                         onClick={() => mutate('node-update', { id: selNode.id, attributeKey: k, deleteAttribute: true }, 'Attribute removed')}
-                        className="text-gray-600 hover:text-red-400"
+                        className="text-gray-400 hover:text-red-400"
                         aria-label={`Delete attribute ${k}`}
                       >
                         <X className="w-3 h-3" />
@@ -478,7 +478,7 @@ function GraphTab({ graph, busy, mutate }: {
                         <button
                           disabled={busy}
                           onClick={() => mutate('edge-delete', { id: e.id }, 'Edge deleted')}
-                          className="text-gray-600 hover:text-red-400"
+                          className="text-gray-400 hover:text-red-400"
                           aria-label="Delete edge"
                         >
                           <X className="w-3 h-3" />
@@ -556,7 +556,7 @@ function SchemasTab({ schemas, busy, mutate }: {
               </label>
               <button
                 onClick={() => setAttrs((arr) => arr.filter((_, j) => j !== i))}
-                className="text-gray-600 hover:text-red-400"
+                className="text-gray-400 hover:text-red-400"
                 aria-label="Remove attribute"
               >
                 <X className="w-3.5 h-3.5" />
@@ -858,7 +858,7 @@ function PathTab({ graph }: { graph: GraphState }) {
           <option value="">From entity…</option>
           {graph.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
         </select>
-        <Route className="w-4 h-4 text-gray-600" />
+        <Route className="w-4 h-4 text-gray-400" />
         <select value={to} onChange={(e) => setTo(e.target.value)} className="input-lattice text-sm flex-1 min-w-[140px]">
           <option value="">To entity…</option>
           {graph.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}

@@ -8,13 +8,13 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Camera, FileInput, Loader2, Play, Trash2 } from 'lucide-react';
+import { Camera, FileInput, Loader2, Play } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import { cn } from '@/lib/utils';
 import { wm, type SimulationSummary, type SnapshotSummary, type WorldSimulation } from '@/components/entity/entity-model';
 
 const toast = (type: 'success' | 'error', message: string) => useUIStore.getState().addToast({ type, message });
-const fieldCls = 'rounded-lg border border-white/10 bg-transparent px-3 py-2 text-[13px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-teal-400/60';
+const fieldCls = 'rounded-lg border border-white/10 bg-transparent px-3 py-2 text-[13px] text-zinc-100 outline-none placeholder:text-zinc-400 focus:border-teal-400/60';
 const primaryBtn = 'inline-flex items-center gap-1.5 rounded-full bg-teal-400 px-4 py-1.5 text-[13px] font-medium text-black transition-colors hover:bg-teal-300 disabled:opacity-40';
 
 function Section({ title, hint, children }: { title: string; hint: string; children: React.ReactNode }) {
@@ -22,7 +22,7 @@ function Section({ title, hint, children }: { title: string; hint: string; child
     <section className="space-y-2.5 rounded-xl border border-white/10 p-3.5">
       <div>
         <h3 className="text-[13px] font-medium text-zinc-100">{title}</h3>
-        <p className="mt-0.5 text-[12px] leading-relaxed text-zinc-500">{hint}</p>
+        <p className="mt-0.5 text-[12px] leading-relaxed text-zinc-400">{hint}</p>
       </div>
       {children}
     </section>
@@ -38,7 +38,6 @@ export function WorldOverview({ entityCount }: { entityCount: number }) {
   const [steps, setSteps] = useState(20);
   const [dtuId, setDtuId] = useState('');
   const [openSim, setOpenSim] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const snapshots = useQuery({ queryKey: ['wm-snapshots'], queryFn: () => wm<{ snapshots: SnapshotSummary[] }>('list_snapshots') });
   const sims = useQuery({ queryKey: ['wm-simulations'], queryFn: () => wm<{ simulations: SimulationSummary[] }>('list_simulations') });
@@ -61,20 +60,6 @@ export function WorldOverview({ entityCount }: { entityCount: number }) {
   const sim = useMutation({
     mutationFn: () => wm<{ simulation: WorldSimulation }>('simulate', { type: 'evolution', steps, hypothesis: hypothesis.trim() || 'Evolve the whole world model' }),
     onSuccess: (r) => { toast('success', `Simulation finished with ${r.simulation.insights?.length ?? 0} insight(s).`); setOpenSim(r.simulation.id); refresh(); },
-    onError: (e: Error) => toast('error', e.message),
-  });
-
-  // Two-step deletes (FIX-entity-010): the first click arms the confirm
-  // on that row; the second removes the snapshot / history run.
-  const delSnap = useMutation({
-    mutationFn: (id: string) => wm('delete_snapshot', { snapshotId: id }),
-    onSuccess: () => { toast('success', 'Snapshot deleted.'); setConfirmDelete(null); refresh(); },
-    onError: (e: Error) => toast('error', e.message),
-  });
-
-  const delSim = useMutation({
-    mutationFn: (id: string) => wm('delete_simulation', { simId: id }),
-    onSuccess: (_r, id) => { toast('success', 'Simulation run deleted.'); setConfirmDelete(null); if (openSim === id) setOpenSim(null); refresh(); },
     onError: (e: Error) => toast('error', e.message),
   });
 
@@ -108,31 +93,24 @@ export function WorldOverview({ entityCount }: { entityCount: number }) {
       </Section>
 
       <Section title="Simulation history" hint="Every run is recorded. Open one to read its insights.">
-        {sims.isLoading ? <Loader2 className="h-4 w-4 animate-spin text-zinc-500" /> : simList.length === 0 ? (
-          <p className="text-[12px] text-zinc-600">No simulations yet.</p>
+        {sims.isLoading ? <Loader2 className="h-4 w-4 animate-spin text-zinc-400" /> : simList.length === 0 ? (
+          <p className="text-[12px] text-zinc-400">No simulations yet.</p>
         ) : (
           <ul className="space-y-1">
             {simList.slice(0, 8).map((s) => (
               <li key={s.id}>
-                <div className="flex w-full items-center gap-1 rounded-lg px-1 hover:bg-white/[0.05]">
-                  <button type="button" onClick={() => setOpenSim(openSim === s.id ? null : s.id)} className="flex min-w-0 flex-1 items-center gap-2 px-1 py-1.5 text-left text-[12px]">
-                    <span className="min-w-0 flex-1 truncate text-zinc-200">{s.hypothesis || s.type}</span>
-                    <span className="shrink-0 text-zinc-500">{s.insightCount} insight{s.insightCount !== 1 ? 's' : ''}</span>
-                  </button>
-                  {confirmDelete === `sim:${s.id}` ? (
-                    <button type="button" aria-label={`Confirm delete simulation ${s.id}`} onClick={() => delSim.mutate(s.id)} disabled={delSim.isPending} className="shrink-0 px-1 text-[11px] font-medium text-rose-300 hover:text-rose-200 disabled:opacity-40">Confirm</button>
-                  ) : (
-                    <button type="button" aria-label={`Delete simulation ${s.id}`} onClick={() => setConfirmDelete(`sim:${s.id}`)} className="shrink-0 p-1 text-zinc-500 hover:text-rose-300"><Trash2 className="h-3 w-3" /></button>
-                  )}
-                </div>
+                <button type="button" onClick={() => setOpenSim(openSim === s.id ? null : s.id)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12px] hover:bg-white/[0.05]">
+                  <span className="min-w-0 flex-1 truncate text-zinc-200">{s.hypothesis || s.type}</span>
+                  <span className="shrink-0 text-zinc-400">{s.insightCount} insight{s.insightCount !== 1 ? 's' : ''}</span>
+                </button>
                 {openSim === s.id && (
                   <div className="mx-2 mb-1 rounded-lg bg-black/30 p-2.5 text-[12px] text-zinc-300">
                     {simDetail.isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : simDetail.data ? (
-                      simDetail.data.simulation.insights.length === 0 ? <p className="text-zinc-500">No change large enough to report.</p> : (
+                      simDetail.data.simulation.insights.length === 0 ? <p className="text-zinc-400">No change large enough to report.</p> : (
                         <ul className="space-y-1">{simDetail.data.simulation.insights.map((i, k) => <li key={k}>· {i.description}</li>)}</ul>
                       )
                     ) : <p className="text-rose-300">Could not load this run.</p>}
-                    <p className="mt-1.5 text-[11px] text-zinc-600">{when(s.createdAt)}</p>
+                    <p className="mt-1.5 text-[11px] text-zinc-400">{when(s.createdAt)}</p>
                   </div>
                 )}
               </li>
@@ -152,11 +130,6 @@ export function WorldOverview({ entityCount }: { entityCount: number }) {
               <li key={s.id} className="flex items-center gap-2 text-zinc-400">
                 <span className="min-w-0 flex-1 truncate text-zinc-200">{s.label}</span>
                 <span className="shrink-0">{s.entityCount} ent · {s.relationCount} rel</span>
-                {confirmDelete === `snap:${s.id}` ? (
-                  <button type="button" aria-label={`Confirm delete snapshot ${s.id}`} onClick={() => delSnap.mutate(s.id)} disabled={delSnap.isPending} className="shrink-0 px-1 text-[11px] font-medium text-rose-300 hover:text-rose-200 disabled:opacity-40">Confirm</button>
-                ) : (
-                  <button type="button" aria-label={`Delete snapshot ${s.id}`} onClick={() => setConfirmDelete(`snap:${s.id}`)} className="shrink-0 p-1 text-zinc-500 hover:text-rose-300"><Trash2 className="h-3 w-3" /></button>
-                )}
               </li>
             ))}
           </ul>

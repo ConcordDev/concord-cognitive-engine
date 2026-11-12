@@ -33,21 +33,21 @@ export function MindsPanel() {
   });
 
   if (isError) return <div className="flex justify-center p-8"><ErrorState error={(error as Error)?.message} onRetry={refetch} /></div>;
-  if (isLoading) return <div className="flex items-center gap-2 text-[14px] text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading minds…</div>;
+  if (isLoading) return <div className="flex items-center gap-2 text-[14px] text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading minds…</div>;
 
   const minds = data?.entities ?? [];
   if (minds.length === 0) {
     return (
       <div className="max-w-xl rounded-2xl border border-dashed border-white/15 p-8 text-center">
         <p className="text-[15px] text-zinc-300">No emergent minds are registered yet.</p>
-        <p className="mt-1 text-[13px] text-zinc-500">They appear here as soon as the substrate spawns one.</p>
+        <p className="mt-1 text-[13px] text-zinc-400">They appear here as soon as the substrate spawns one.</p>
       </div>
     );
   }
 
   return (
     <div className="pb-24">
-      <p className="mb-4 max-w-2xl text-[13px] leading-relaxed text-zinc-500">
+      <p className="mb-4 max-w-2xl text-[13px] leading-relaxed text-zinc-400">
         Emergent entities that perceive and feel through the qualia engine. Open one to see its senses, body map, presence and planetary channel.
       </p>
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -63,12 +63,12 @@ export function MindsPanel() {
                   <span className="truncate font-mono text-[13px] text-zinc-200">{m.entityId}</span>
                 </div>
                 <dl className="mt-3 grid grid-cols-3 gap-2 text-[12px]">
-                  <div><dt className="text-zinc-500">Dominant</dt><dd className="mt-0.5 truncate text-zinc-100">{m.dominantOS || '—'}</dd></div>
-                  <div><dt className="text-zinc-500">Active OS</dt><dd className="mt-0.5 tabular-nums text-zinc-100">{m.activeOSCount}</dd></div>
-                  <div><dt className="text-zinc-500">Channels</dt><dd className="mt-0.5 tabular-nums text-zinc-100">{m.totalChannels}</dd></div>
+                  <div><dt className="text-zinc-400">Dominant</dt><dd className="mt-0.5 truncate text-zinc-100">{m.dominantOS || '—'}</dd></div>
+                  <div><dt className="text-zinc-400">Active OS</dt><dd className="mt-0.5 tabular-nums text-zinc-100">{m.activeOSCount}</dd></div>
+                  <div><dt className="text-zinc-400">Channels</dt><dd className="mt-0.5 tabular-nums text-zinc-100">{m.totalChannels}</dd></div>
                 </dl>
                 {alerts > 0 && <p className="mt-2.5 text-[12px] text-amber-300">{alerts} policy alert{alerts !== 1 ? 's' : ''}</p>}
-                {m.lastUpdated && <p className="mt-2 text-[11px] text-zinc-600">updated {new Date(m.lastUpdated).toLocaleTimeString()}</p>}
+                {m.lastUpdated && <p className="mt-2 text-[11px] text-zinc-400">updated {new Date(m.lastUpdated).toLocaleTimeString()}</p>}
               </button>
             </li>
           );
