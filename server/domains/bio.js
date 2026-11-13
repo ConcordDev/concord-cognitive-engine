@@ -808,7 +808,8 @@ export default function registerBioActions(registerLensAction) {
   // 90 nt suits whole-sequence analysis; the plasmid map passes a
   // construct-scale floor and STATES it in its result — a silent floor is
   // how the map's "auto-annotates ORFs" note came to be half-kept.
-  function findOrfs(seq, minOrfNt = 90) {
+  const ORF_MIN_NT_DEFAULT = 90;
+  function findOrfs(seq, minOrfNt = ORF_MIN_NT_DEFAULT) {
     const upper = seq.toUpperCase();
     const orfs = [];
     // Forward frames only (simplified)
@@ -868,7 +869,7 @@ export default function registerBioActions(registerLensAction) {
       // Unlabelled, two surfaces quoting different rules for similar
       // sequences read as two models disagreeing.
       result.tmModel = seq.length < 14 ? "Wallace rule (2·AT + 4·GC), sequences < 14 nt" : "Basic formula 64.9 + 41·(GC − 16.4)/N, sequences ≥ 14 nt";
-      if (kind === "dna") result.orfs = findOrfs(seq);
+      if (kind === "dna") { result.orfs = findOrfs(seq); result.orfMinNt = ORF_MIN_NT_DEFAULT; }
     } else {
       // Protein composition
       const composition = {};

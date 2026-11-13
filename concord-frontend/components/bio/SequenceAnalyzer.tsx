@@ -30,6 +30,7 @@ interface AnalysisResult {
   tm?: number;
   tmModel?: string;
   orfs?: Array<{ frame: number; start: number; end: number; length: number; protein?: string }>;
+  orfMinNt?: number;
   composition?: Record<string, number>;
   molecularWeight?: number;
 }
@@ -232,6 +233,9 @@ export function SequenceAnalyzer() {
               {analysis.tmModel && <p className="col-span-2 text-[10px] text-zinc-400 sm:col-span-4">Tm model: {analysis.tmModel}</p>}
               {analysis.molecularWeight !== undefined && <Stat label="MW (avg)" value={`${analysis.molecularWeight} Da`} />}
               {analysis.orfs !== undefined && <Stat label="ORFs" value={`${analysis.orfs.length}`} />}
+              {analysis.orfs !== undefined && analysis.orfs.length === 0 && analysis.orfMinNt !== undefined && (
+                <p className="col-span-2 text-[10px] text-zinc-400 sm:col-span-4">No ORFs at the {analysis.orfMinNt} nt minimum — frames shorter than {analysis.orfMinNt} nt are not reported.</p>
+              )}
             </dl>
           </div>
           {analysis.orfs && analysis.orfs.length > 0 && (
