@@ -63,8 +63,11 @@ export function AnimationStudioSection() {
   const create = async () => {
     const preset = presets[form.preset];
     if (!preset) { setError('Presets still loading.'); return; }
+    // FIX-animation-002: a blank title silently became 'Untitled
+    // animation'. The title is required, and the form says so.
+    if (!form.title.trim()) { setError('Give the animation a title.'); return; }
     const r = await lensRun('animation', 'anim-create', {
-      title: form.title.trim() || 'Untitled animation',
+      title: form.title.trim(),
       width: preset.width, height: preset.height, fps: form.fps,
     });
     if (r.data?.ok === false) { setError(r.data?.error || 'Failed'); return; }

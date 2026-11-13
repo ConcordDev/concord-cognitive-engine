@@ -683,6 +683,7 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
   const [segments, setSegments] = useState<RigSegment[]>([]);
   const [selFrame, setSelFrame] = useState(anim.frames[0]?.id || '');
   const [name, setName] = useState('');
+  const [boneError, setBoneError] = useState<string | null>(null);
   const [parentId, setParentId] = useState('');
   const previewRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -724,13 +725,20 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
   }, [segments, anim.width, anim.height]);
 
   const addBone = async () => {
+    // FIX-animation-002: a blank name silently became 'Bone N' on the
+    // server and a refusal showed nothing at all. The name is required
+    // and the panel now says so; refusals surface in the same line.
+    if (!name.trim()) { setBoneError('Give the bone a name.'); return; }
     const r = await lensRun('animation', 'rig-bone-add', {
       animId: anim.id, name: name.trim(), parentId: parentId || undefined,
     });
     if (r.data?.ok) {
       setName('');
+      setBoneError(null);
       await loadRig();
       onChange();
+    } else {
+      setBoneError(r.data?.error || 'Could not add the bone.');
     }
   };
 
@@ -778,6 +786,9 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
       </div>
       <canvas ref={previewRef} width={W} height={H}
         className="w-full rounded border border-zinc-700 bg-zinc-900" />
+      {boneError && (
+        <p role="alert" className="text-[11px] text-rose-400">{boneError}</p>
+      )}
       {bones.length === 0 ? (
         <p className="text-[11px] text-zinc-400 italic">No bones yet. Add a root bone to start the armature.</p>
       ) : (
