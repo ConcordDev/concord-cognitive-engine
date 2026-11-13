@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit, MapView, type MapMarker } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface SeriesPoint { year: number; value: number }
@@ -785,6 +786,15 @@ function SavedView() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Delete one of the caller's own saved charts (FIX-society-006) —
+  // the server checks ownership; a shared permalink alone never
+  // authorizes a delete.
+  const remove = useCallback(async (id: string) => {
+    const env = await macro<{ deleted: string }>('wb-delete-chart', { id });
+    if (env.ok) load();
+    else setError(env.error || 'could not delete the chart');
+  }, [load]);
+
   // Four mutually-exclusive UX states (honest by construction — every branch is
   // a pure function of the real wb-list-charts macro result): LOADING (role=
   // status), ERROR (role=alert + working Retry), EMPTY, POPULATED.
@@ -834,6 +844,14 @@ function SavedView() {
                   className="ml-auto rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/20">
                   Copy link
                 </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => remove(c.id)}
+                  armLabel="Delete"
+                  confirmLabel="Delete chart?"
+                  armAriaLabel={`Delete saved chart ${c.title}`}
+                  confirmAriaLabel="Confirm delete saved chart"
+                  className="rounded border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-200 hover:bg-red-500/20"
+                />
               </li>
             );
           })}

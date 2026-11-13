@@ -504,6 +504,37 @@ export default function registerHRActions(registerLensAction) {
     return { ok: true, result: { employee: emp } };
   });
 
+  // Permanent delete — terminated records only. An active employee must
+  // be offboarded first, so a delete can never silently erase someone
+  // still on the roster. The employee's own onboarding tasks, reviews
+  // and goals go with the record; nothing is left pointing at a person
+  // who no longer exists in the store.
+  registerLensAction("hr", "employee-delete", (ctx, _a, params = {}) => {
+    const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = hrAid(ctx);
+    const emp = findEmployee(s, userId, params.id);
+    if (!emp) return { ok: false, error: "employee not found" };
+    if (emp.status !== "terminated") {
+      return { ok: false, error: "only a terminated (former) employee can be permanently deleted — offboard them first" };
+    }
+    const emps = s.employees.get(userId) || [];
+    const i = emps.findIndex((e) => e.id === emp.id);
+    if (i >= 0) emps.splice(i, 1);
+    const cascade = (map) => {
+      const arr = map.get(userId) || [];
+      const kept = arr.filter((r) => r.employeeId !== emp.id);
+      map.set(userId, kept);
+      return arr.length - kept.length;
+    };
+    const removed = {
+      onboardingTasks: cascade(s.onboarding),
+      reviews: cascade(s.reviews),
+      goals: cascade(s.goals),
+    };
+    saveHrState();
+    return { ok: true, result: { deleted: emp.id, removed } };
+  });
+
   // ── Org / departments ───────────────────────────────────────────────
   registerLensAction("hr", "department-list", (ctx, _a, _params = {}) => {
     const s = getHrState(); if (!s) return { ok: false, error: "STATE unavailable" };

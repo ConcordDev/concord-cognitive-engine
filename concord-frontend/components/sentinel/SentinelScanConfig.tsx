@@ -198,6 +198,11 @@ export function SentinelScanConfig() {
                 <Plus className="h-3.5 w-3.5" /> Add rule
               </button>
             </div>
+            {!rulePattern.trim() && (
+              <p role="note" className="text-[11px] text-blue-300/70">
+                A rule pattern is required to add the rule.
+              </p>
+            )}
           </div>
         </div>
       </div>

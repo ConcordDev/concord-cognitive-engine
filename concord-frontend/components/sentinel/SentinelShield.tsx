@@ -354,6 +354,11 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
                 {reportBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                 Submit report
               </button>
+              {!reportDesc.trim() && (
+                <p role="note" className="mt-1 text-[11px] text-blue-300/70">
+                  Describe what you observed to submit the report.
+                </p>
+              )}
               {reportResult && (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <p className="text-[11px] text-blue-400">{reportResult.message}</p>

@@ -629,6 +629,24 @@ export default function registerSocietyActions(register) {
     return { ok: true, result: { charts, count: charts.length } };
   });
 
+  /**
+   * wb-delete-chart — Remove one of the caller's own saved charts.
+   * Loading a chart by id stays ownerless (permalinks are shareable by
+   * design); deleting is owner-only, so a shared link can never be
+   * used to erase the chart it points at.
+   * params: { id }
+   */
+  registerLensAction("society", "wb-delete-chart", (ctx, _artifact, params = {}) => {
+    const id = String(params.id || "").trim();
+    if (!id) return { ok: false, error: "id required" };
+    const store = chartStore();
+    const record = store.get(id);
+    if (!record) return { ok: false, error: "chart not found" };
+    if (record.owner !== userId(ctx)) return { ok: false, error: "only the chart's owner can delete it" };
+    store.delete(id);
+    return { ok: true, result: { deleted: id } };
+  });
+
   // ── Feature: Region / income-group aggregates and rankings ──────────
   /**
    * wb-region-rankings — Latest indicator value for every World Bank

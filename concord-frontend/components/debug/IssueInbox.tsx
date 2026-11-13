@@ -313,6 +313,11 @@ export function IssueInbox() {
           )}
           Record Exception
         </button>
+        {!form.message.trim() && (
+          <p role="note" className="text-[11px] text-gray-400">
+            An exception message is required to record an exception.
+          </p>
+        )}
       </div>
 
       {/* External ingest (Q1): per-project keys + the Sentry-compatible endpoint */}

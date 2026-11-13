@@ -10,6 +10,7 @@ import { Loader2, Plus, UserRound, ChevronLeft, Network, Check } from 'lucide-re
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface Employee {
   id: string; name: string; title: string | null; department: string;
@@ -107,6 +108,16 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
     if (r.data?.ok === false) { setError(r.data?.error || 'Rehire failed'); return; }
     if (selected?.id === emp.id && r.data?.result?.employee) setSelected(r.data.result.employee as Employee);
     setSavedNote(`${emp.name} is active again.`);
+    await refresh(); onChange();
+  };
+  // Permanent delete (FIX-hr-003) — former employees only; the server
+  // refuses an active employee in words, and the record's onboarding
+  // tasks / reviews / goals go with it.
+  const removeForever = async (emp: Employee) => {
+    const r = await lensRun('hr', 'employee-delete', { id: emp.id });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Delete failed'); return; }
+    if (selected?.id === emp.id) setSelected(null);
+    setSavedNote(`${emp.name}'s record was permanently deleted.`);
     await refresh(); onChange();
   };
   const startEdit = (emp: Employee) => {
@@ -382,8 +393,18 @@ export function HrPeoplePanel({ onChange }: { onChange: () => void }) {
                     </span>
                   </span>
                 </button>
-                <button type="button" onClick={() => rehire(e)}
-                  className="text-[11px] px-2 py-1 rounded bg-emerald-700/30 text-emerald-300 hover:bg-emerald-700/50">Rehire</button>
+                <span className="flex items-center gap-2 shrink-0">
+                  <button type="button" onClick={() => rehire(e)}
+                    className="text-[11px] px-2 py-1 rounded bg-emerald-700/30 text-emerald-300 hover:bg-emerald-700/50">Rehire</button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => removeForever(e)}
+                    armLabel="Delete"
+                    confirmLabel="Delete forever?"
+                    armAriaLabel={`Permanently delete ${e.name}'s record`}
+                    confirmAriaLabel="Confirm permanent delete"
+                    className="text-[11px] px-2 py-1 rounded bg-red-700/25 text-red-300 hover:bg-red-700/45"
+                  />
+                </span>
               </li>
             ))}
           </ul>

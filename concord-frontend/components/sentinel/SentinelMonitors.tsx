@@ -180,6 +180,11 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
             >
               <Plus className="h-3.5 w-3.5" /> Create monitor
             </button>
+            {!name.trim() && (
+              <p role="note" className="text-[11px] text-blue-300/70">
+                A monitor name is required to create the monitor.
+              </p>
+            )}
           </div>
         </div>
 

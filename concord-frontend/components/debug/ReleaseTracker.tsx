@@ -145,6 +145,11 @@ export function ReleaseTracker() {
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
           Track Release
         </button>
+        {!form.version.trim() && (
+          <p role="note" className="text-[11px] text-gray-400">
+            A version is required to track a release (e.g. v1.4.0).
+          </p>
+        )}
       </div>
 
       {error && <p className="text-xs text-red-400">{error}</p>}

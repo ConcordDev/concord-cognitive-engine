@@ -536,8 +536,16 @@ export default function registerLegacyActions(registerLensAction) {
       const i = arr.findIndex(c => c.id === params.id);
       if (i < 0) return { ok: false, error: "codebase not found" };
       arr.splice(i, 1);
+      // The codebase's debt snapshots go with it — left behind they are
+      // orphaned rows no surface can reach in context (debtTrend would
+      // keep charting a codebase that no longer exists). Snapshots with
+      // no codebaseId are manual, label-keyed records and stay.
+      const snaps = s.snapshots.get(lgUid(ctx)) || [];
+      const kept = snaps.filter(sn => sn.codebaseId !== params.id);
+      const snapshotsRemoved = snaps.length - kept.length;
+      if (snapshotsRemoved > 0) s.snapshots.set(lgUid(ctx), kept);
       lgSave();
-      return { ok: true, result: { deleted: params.id } };
+      return { ok: true, result: { deleted: params.id, snapshotsRemoved } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
