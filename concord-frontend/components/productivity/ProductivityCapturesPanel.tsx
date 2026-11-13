@@ -84,7 +84,7 @@ export function ProductivityCapturesPanel() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-zinc-100">{c.title || 'Untitled capture'}</p>
                 {c.data?.content && <p className="mt-0.5 whitespace-pre-wrap text-xs text-zinc-400">{c.data.content}</p>}
-                <p className="mt-1 text-[10px] text-zinc-500">
+                <p className="mt-1 text-[10px] text-zinc-400">
                   {new Date(c.data?.capturedAt || c.createdAt || '').toLocaleString()}
                 </p>
               </div>
@@ -95,7 +95,7 @@ export function ProductivityCapturesPanel() {
                 </span>
               ) : (
                 <button type="button" aria-label={`Delete capture ${c.title || ''}`} onClick={() => setConfirming(c.id)}
-                  className="shrink-0 p-1 text-zinc-500 opacity-0 hover:text-rose-300 group-hover:opacity-100">
+                  className="shrink-0 p-1 text-zinc-400 opacity-0 hover:text-rose-300 group-hover:opacity-100">
                   <Trash2 className="h-3.5 w-3.5" aria-hidden />
                 </button>
               )}

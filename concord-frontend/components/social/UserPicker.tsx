@@ -54,7 +54,7 @@ export function UserPicker({
     return (
       <span className="inline-flex items-center gap-1.5 rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[12px] text-white">
         {value.displayName || value.username}
-        <span className="text-zinc-500">@{value.username}</span>
+        <span className="text-zinc-400">@{value.username}</span>
         <button type="button" aria-label={`Clear ${ariaLabel}`} onClick={() => { onPick(null); setQuery(''); }} className="text-zinc-400 hover:text-white">
           <X className="h-3 w-3" aria-hidden />
         </button>
@@ -83,11 +83,11 @@ export function UserPicker({
               onClick={() => { onPick(u); setOpen(false); }}
               className="block w-full px-2.5 py-1.5 text-left text-[12px] text-zinc-200 hover:bg-zinc-800"
             >
-              {u.displayName || u.username} <span className="text-zinc-500">@{u.username}</span>
+              {u.displayName || u.username} <span className="text-zinc-400">@{u.username}</span>
             </button>
           ))}
           {searched && results.length === 0 && (
-            <span className="block px-2.5 py-1.5 text-[12px] text-zinc-500">No users match “{query.trim()}”.</span>
+            <span className="block px-2.5 py-1.5 text-[12px] text-zinc-400">No users match “{query.trim()}”.</span>
           )}
         </span>
       )}

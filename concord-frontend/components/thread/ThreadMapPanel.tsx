@@ -621,7 +621,7 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
           {/* FIX-thread-003: the form never said who can see a thread.
               Threads here are the owner's own records — no share or
               publish control exists on this surface — so say so. */}
-          <p role="note" className="mt-2 text-xs text-gray-500">
+          <p role="note" className="mt-2 text-xs text-gray-400">
             Threads are private — only you can see the threads you create here.
           </p>
         </div>

@@ -843,7 +843,7 @@ function FlowMapSection() {
       ) : (
         <>
           <TreeDiagram root={tree} />
-          <p className="text-[10px] text-gray-500">These flows live in your account&rsquo;s Data Controls and are shared across lenses — a flow registered from another lens appears here too.</p>
+          <p className="text-[10px] text-gray-400">These flows live in your account&rsquo;s Data Controls and are shared across lenses — a flow registered from another lens appears here too.</p>
           <div className="space-y-1 pt-1">
             {data?.flows.map((f) => (
               <div

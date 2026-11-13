@@ -184,7 +184,7 @@ function NotesTab({ onOpen }: { onOpen: (id: string) => void }) {
           {/* FIX-research-004: Save disabled itself in silence on an empty
               title. The precondition is named while it is missing. */}
           {!draft.title.trim() && (
-            <p className="text-[11px] text-zinc-500" role="note">Give the note a title to save it.</p>
+            <p className="text-[11px] text-zinc-400" role="note">Give the note a title to save it.</p>
           )}
         </div>
       )}

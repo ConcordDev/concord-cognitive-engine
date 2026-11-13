@@ -453,7 +453,7 @@ export function ScoresPanel() {
                       </td>
                       <td className="py-2 px-2 text-right font-mono text-neon-cyan">
                         {getComposite(d) == null
-                          ? <span className="text-gray-500 font-sans text-xs">unscored</span>
+                          ? <span className="text-gray-400 font-sans text-xs">unscored</span>
                           : `${((getComposite(d) as number) * 100).toFixed(0)}%`}
                       </td>
                       {CRETI_KEYS.map(key => {
@@ -480,7 +480,7 @@ export function ScoresPanel() {
                 {selectedDtu.title || selectedDtu.summary?.slice(0, 60) || 'DTU Detail'}
               </h2>
               {cretiScores(selectedDtu) == null && (
-                <p className="text-xs text-gray-500 mb-3">
+                <p className="text-xs text-gray-400 mb-3">
                   This DTU has not been CRETI-scored yet — its record carries the CRETI text, not dimension scores.
                 </p>
               )}

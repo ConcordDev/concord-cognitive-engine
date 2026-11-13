@@ -253,7 +253,7 @@ function UsabilityScoreResult({ result }: { result: Record<string, unknown> }) {
         ))}
       </div>
       {typeof result.formula === 'string' && (
-        <div className="text-[10px] text-gray-500 space-y-0.5">
+        <div className="text-[10px] text-gray-400 space-y-0.5">
           <p>{result.formula as string}</p>
           {result.components != null && (
             <p>
