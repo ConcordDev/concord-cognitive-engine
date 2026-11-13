@@ -11,10 +11,20 @@
  *
  * No mock/seed data — an empty backend renders the empty state and the first
  * report the operator files is the first real artifact.
+ *
+ * Scoping (FIX-crisis-ops-002): a report filed from the all-reports view —
+ * or before a crisis was selected — carries no crisisId. The triage board
+ * lists every report the operator filed, so a per-crisis list that silently
+ * dropped the unscoped ones read as "no reports filed" while triage showed
+ * the report. The per-crisis view now keeps this crisis's reports first and
+ * shows the unscoped ones in their own labelled group, with an attach action
+ * that files one against this crisis (the full record is re-sent, so no
+ * field is lost). Ids compare as strings, matching the server's own
+ * world_crises lookup.
  */
 
 import { useState, useCallback } from 'react';
-import { ClipboardList, Plus, Trash2, MapPin } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, MapPin, Link2 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 
 interface ReportData {
@@ -27,7 +37,7 @@ interface ReportData {
 const SEVERITIES = ['info', 'minor', 'major', 'critical'];
 
 export function IncidentReportPanel({ crisisId }: { crisisId?: string }) {
-  const { items, isLoading, isError, create, remove } = useLensData<ReportData>(
+  const { items, isLoading, isError, create, update, remove } = useLensData<ReportData>(
     'crisis-ops',
     'incident_report',
     { noSeed: true, limit: 50 },
@@ -64,9 +74,75 @@ export function IncidentReportPanel({ crisisId }: { crisisId?: string }) {
   }, [title, body, severity, location, crisisId, create, reset, saving]);
 
   // Scope to the selected crisis when one is active; otherwise show all.
+  // Ids compare as strings (the server compares world_crises ids the same
+  // way), and reports carrying no crisisId are NOT this crisis's — they are
+  // the unscoped group below, never silently dropped.
   const visible = crisisId
-    ? items.filter((r) => r.data?.crisisId === crisisId)
+    ? items.filter((r) => r.data?.crisisId != null && String(r.data.crisisId) === String(crisisId))
     : items;
+  const unscoped = crisisId
+    ? items.filter((r) => r.data?.crisisId == null)
+    : [];
+
+  const attach = useCallback(async (r: (typeof items)[number]) => {
+    if (!crisisId) return;
+    const tags = Array.isArray(r.meta?.tags) ? [...(r.meta.tags as string[])] : ['incident_report'];
+    if (!tags.includes(`crisis:${crisisId}`)) tags.push(`crisis:${crisisId}`);
+    await update(r.id, {
+      data: { ...(r.data || {}), crisisId },
+      meta: { ...(r.meta || {}), tags },
+    });
+  }, [crisisId, update]);
+
+  const renderReport = (r: (typeof items)[number], showAttach: boolean) => (
+    <li key={r.id} className="rounded-lg border border-white/10 bg-black/20 p-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <span className="text-xs font-semibold text-amber-200">{r.title}</span>
+          <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-300">
+            {r.data?.severity || r.meta?.status || 'minor'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {showAttach && (
+            <button
+              type="button"
+              onClick={() => { void attach(r); }}
+              aria-label={`Attach report ${r.title} to this crisis`}
+              className="flex items-center gap-1 px-1 text-[11px] font-medium text-amber-200 hover:text-amber-100"
+            >
+              <Link2 className="h-3 w-3" /> Attach to this crisis
+            </button>
+          )}
+          {confirmDeleteId === r.id ? (
+            <button
+              type="button"
+              onClick={() => { setConfirmDeleteId(null); void remove(r.id); }}
+              aria-label={`Confirm delete report ${r.title}`}
+              className="px-1 text-[11px] font-medium text-rose-300 hover:text-rose-200"
+            >
+              Confirm
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteId(r.id)}
+              aria-label={`Delete report ${r.title}`}
+              className="text-gray-500 hover:text-rose-300"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+      {r.data?.body && <p className="mt-1 text-[11px] text-gray-300">{r.data.body}</p>}
+      {r.data?.location && (
+        <p className="mt-1 flex items-center gap-1 text-[11px] text-gray-400">
+          <MapPin className="h-3 w-3" />{r.data.location}
+        </p>
+      )}
+    </li>
+  );
 
   return (
     <div>
@@ -143,51 +219,31 @@ export function IncidentReportPanel({ crisisId }: { crisisId?: string }) {
           Could not load incident reports. Retry from the refresh control.
         </p>
       )}
-      {!isLoading && !isError && visible.length === 0 && (
+      {!isLoading && !isError && visible.length === 0 && unscoped.length === 0 && (
         <p className="rounded border border-white/10 bg-white/5 p-3 text-center text-xs text-gray-400">
           No incident reports filed{crisisId ? ' for this crisis' : ''} yet. File the first sitrep above.
         </p>
       )}
+      {!isLoading && !isError && visible.length === 0 && unscoped.length > 0 && (
+        <p className="rounded border border-white/10 bg-white/5 p-3 text-center text-xs text-gray-400">
+          No incident reports filed for this crisis yet — {unscoped.length} report{unscoped.length === 1 ? '' : 's'} filed without a crisis {unscoped.length === 1 ? 'is' : 'are'} listed below.
+        </p>
+      )}
       {!isLoading && !isError && visible.length > 0 && (
         <ul className="space-y-2">
-          {visible.map((r) => (
-            <li key={r.id} className="rounded-lg border border-white/10 bg-black/20 p-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="text-xs font-semibold text-amber-200">{r.title}</span>
-                  <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-300">
-                    {r.data?.severity || r.meta?.status || 'minor'}
-                  </span>
-                </div>
-                {confirmDeleteId === r.id ? (
-                  <button
-                    type="button"
-                    onClick={() => { setConfirmDeleteId(null); void remove(r.id); }}
-                    aria-label={`Confirm delete report ${r.title}`}
-                    className="px-1 text-[11px] font-medium text-rose-300 hover:text-rose-200"
-                  >
-                    Confirm
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteId(r.id)}
-                    aria-label={`Delete report ${r.title}`}
-                    className="text-gray-500 hover:text-rose-300"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-              {r.data?.body && <p className="mt-1 text-[11px] text-gray-300">{r.data.body}</p>}
-              {r.data?.location && (
-                <p className="mt-1 flex items-center gap-1 text-[11px] text-gray-400">
-                  <MapPin className="h-3 w-3" />{r.data.location}
-                </p>
-              )}
-            </li>
-          ))}
+          {visible.map((r) => renderReport(r, false))}
         </ul>
+      )}
+      {!isLoading && !isError && crisisId && unscoped.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-2 text-[11px] text-gray-400">
+            Filed without a crisis ({unscoped.length}) — filed before a crisis was selected, or from the
+            all-reports view. The triage board lists them; attach one to file it under this crisis.
+          </p>
+          <ul className="space-y-2">
+            {unscoped.map((r) => renderReport(r, true))}
+          </ul>
+        </div>
       )}
     </div>
   );
