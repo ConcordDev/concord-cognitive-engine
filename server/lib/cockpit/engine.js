@@ -14,6 +14,7 @@ import { nextAction } from "./retry-policy.js";
 import { runTool } from "./executor.js";
 import { getEffect, failEffect } from "./idempotency.js";
 import { needsConfirm, buildConfirmCard } from "./confirm.js";
+import { checkBudget, retryAfterSec } from "./budget.js";
 import { effectiveSpec } from "./tool-spec.js";
 
 const TERMINAL_RUN = new Set(["done", "failed", "cancelled"]);
@@ -69,13 +70,6 @@ export function resolveRefs(args, steps) {
   return args === null || args === undefined ? args : resolve(args);
 }
 
-function budgetPause(run, steps) {
-  const done = steps.filter((s) => s.status === "done").length;
-  if ((run.usage?.toolCalls || 0) >= run.budget.maxToolCalls) return "budget";
-  if (done >= run.budget.maxSteps) return "budget";
-  return null;
-}
-
 /**
  * Advance a run by at most one step.
  * @returns {Promise<{ ok: boolean, status: string, advanced: boolean, reason?: string }>}
@@ -106,11 +100,12 @@ export async function tickRun(a) {
       emit({ type: "cockpit:run", runId, status: "running" });
     }
     let steps = listSteps(db, runId);
-    const paused = budgetPause(run, steps);
-    if (paused) {
-      updateRun(db, runId, { status: "paused", statusReason: paused });
-      emit({ type: "cockpit:run", runId, status: "paused", reason: paused });
-      return { ok: true, status: "paused", advanced: false, reason: paused };
+    const budget = checkBudget(run, steps, nowMs());
+    if (!budget.ok) {
+      const reason = `budget:${budget.reason}`;
+      updateRun(db, runId, { status: "paused", statusReason: reason, resumeAt: null });
+      emit({ type: "cockpit:run", runId, status: "paused", reason });
+      return { ok: true, status: "paused", advanced: false, reason };
     }
 
     const byId = new Map(steps.map((s) => [s.id, s]));
@@ -166,6 +161,7 @@ export async function tickRun(a) {
     const repairs = [...step.repairs];
     const prior = steps.filter((s) => s.status === "done").sort((x, y) => y.seq - x.seq).map((s) => ({ values: s.resultSummary?.values || {} }));
 
+    let lastRaw = null;
     const failStep = async (errorClass, errorText, failedTool) => {
       const spec = failedTool ? getSpec(failedTool) : (step.tool ? getSpec(step.tool) : null);
       let action = nextAction({ errorClass, attempt, required: step.required, spec, triedTools: [...tried, ...(failedTool ? [failedTool] : [])] });
@@ -191,7 +187,7 @@ export async function tickRun(a) {
           return { ok: true, status: "awaiting_confirm", advanced: false };
         case "pause":
           updateStep(db, step.id, { status: "ready", ...base });
-          updateRun(db, runId, { status: "paused", statusReason: "rate_limited", resumeAt: nowSec() + 600 });
+          updateRun(db, runId, { status: "paused", statusReason: "rate_limited", resumeAt: nowSec() + retryAfterSec(lastRaw) });
           emit({ type: "cockpit:run", runId, status: "paused", reason: "rate_limited" });
           return { ok: true, status: "paused", advanced: false };
         case "skip":
@@ -287,7 +283,7 @@ export async function tickRun(a) {
       // 10. Execute.
       res = await runTool({ db, run, step, call, deps: { ...deps, getSpec } });
       addUsage(db, runId, { toolCalls: 1 });
-      if (!res.ok) return failStep(res.errorClass || "tool_error", res.error, call.tool);
+      if (!res.ok) { lastRaw = res.raw; return failStep(res.errorClass || "tool_error", res.error, call.tool); }
     }
 
     // 11. Verify.
