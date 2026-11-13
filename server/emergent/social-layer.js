@@ -1565,7 +1565,15 @@ export function markAllNotificationsRead(STATE, userId) {
 
 export function getUnreadCount(STATE, userId) {
   const social = getSocialState(STATE);
-  const notifs = social.notifications.get(userId) || [];
+  let notifs = social.notifications.get(userId) || [];
+  // FIX-social-003: the count must measure the same set the list
+  // shows. getNotifications hides notification types the user muted
+  // (notificationTypes); the count skipped that filter, so the badge
+  // and the panel could disagree by exactly the muted unread.
+  const typePrefs = social.profiles.get(userId)?.notificationTypes;
+  if (typePrefs && typeof typePrefs === "object") {
+    notifs = notifs.filter((n) => typePrefs[n.type] !== false);
+  }
   const count = notifs.filter(n => !n.read).length;
   return { ok: true, userId, unreadCount: count };
 }

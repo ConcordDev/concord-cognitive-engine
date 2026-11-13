@@ -237,7 +237,24 @@ export default function SocialHubPage() {
     refetchInterval: 30_000,
     enabled: Boolean(currentUserId),
   });
-  const unreadCount = unreadData?.count ?? 0;
+  // FIX-social-003: the panel this badge opens counts BOTH stores
+  // (social + the platform queue), but this badge read only the
+  // social count — 25 on the tab against 75 unread in the panel.
+  // Mirror NotificationBell: add the platform queue's unread.
+  const { data: platformUnread } = useQuery({
+    queryKey: ['notification-platform-count', currentUserId],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/api/notifications/count');
+        return (res.data as { unread?: number }).unread ?? 0;
+      } catch {
+        return 0;
+      }
+    },
+    refetchInterval: 30_000,
+    enabled: Boolean(currentUserId),
+  });
+  const unreadCount = (unreadData?.count ?? 0) + (platformUnread ?? 0);
 
   const PLACES: { id: PlaceId | 'create'; label: string; keys: string; icon: typeof Home; badge?: number }[] = [
     { id: 'home', label: 'Home', keys: '1', icon: Home },

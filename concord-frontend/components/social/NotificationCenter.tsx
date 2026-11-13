@@ -391,7 +391,10 @@ function NotificationCenter({
   const notificationsQuery = useQuery({
     queryKey: ['notifications', userId],
     queryFn: async () => {
-      const params: Record<string, unknown> = { userId, limit: 50 };
+      // FIX-social-003: fetch the routes' full window (200) so the
+      // header's unread chip counts the same population the badge
+      // totals — at 50 it silently undercounted anyone past a page.
+      const params: Record<string, unknown> = { userId, limit: 200 };
       if (filter === 'unread') {
         params.unreadOnly = true;
       }
@@ -411,7 +414,7 @@ function NotificationCenter({
   const platformQuery = useQuery({
     queryKey: ['platform-notifications', userId],
     queryFn: async () => {
-      const res = await api.get('/api/notifications', { params: { limit: 50 } });
+      const res = await api.get('/api/notifications', { params: { limit: 200 } });
       const raw = res.data?.notifications;
       const items = (Array.isArray(raw) ? raw : []) as Array<Record<string, unknown>>;
       return items.map((n): Notification => {
