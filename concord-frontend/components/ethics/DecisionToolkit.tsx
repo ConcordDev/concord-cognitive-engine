@@ -391,24 +391,28 @@ function MultiFrameworkPanel() {
           {options.map((o, i) => (
             <div key={i} className="grid grid-cols-12 gap-2 items-center">
               <input
+                aria-label={`Option ${i + 1} name`}
                 className={cn(ds.input, 'col-span-3')}
                 placeholder={`Option ${i + 1} name`}
                 value={o.name}
                 onChange={(e) => setOpt(i, 'name', e.target.value)}
               />
               <input
+                aria-label={`Option ${i + 1} description`}
                 className={cn(ds.input, 'col-span-5')}
                 placeholder="Description"
                 value={o.description}
                 onChange={(e) => setOpt(i, 'description', e.target.value)}
               />
               <input
+                aria-label={`Option ${i + 1} benefit score 0-100`}
                 type="number" className={cn(ds.input, 'col-span-2')}
                 placeholder="Benefit 0-100"
                 value={o.benefitScore}
                 onChange={(e) => setOpt(i, 'benefitScore', e.target.value)}
               />
               <input
+                aria-label={`Option ${i + 1} harm score 0-100`}
                 type="number" className={cn(ds.input, 'col-span-2')}
                 placeholder="Harm 0-100"
                 value={o.harmScore}
@@ -417,6 +421,11 @@ function MultiFrameworkPanel() {
             </div>
           ))}
         </div>
+        {options.some((o) => o.name.trim() && (o.benefitScore === '' || o.harmScore === '')) && (
+          <p className="text-[11px] text-zinc-400">
+            Frameworks score from the benefit and harm numbers: give each option both scores (0–100), or describe it with ethical keywords, before analyzing — options without either come back unscored.
+          </p>
+        )}
         <div className="flex items-center gap-2">
           <button
             className={ds.btnSecondary}
