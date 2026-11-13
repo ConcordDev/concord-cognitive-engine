@@ -127,7 +127,7 @@ export function CountryPicker(props: Props) {
       <select
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
-        className="w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+        className="min-h-11 w-full rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
       >
         {COUNTRIES.map((c) => (
           <option key={c.code} value={c.code}>{c.name}</option>

@@ -387,14 +387,14 @@ export function DataExplorer() {
           <div className="max-h-64 space-y-1 overflow-y-auto">
             {choropleth.countries.slice(0, 60).map((c, i) => (
               <div key={c.code} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1 text-[11px]">
-                <span className="w-6 text-right font-mono text-zinc-600">{i + 1}</span>
+                <span className="w-6 text-right font-mono text-zinc-400">{i + 1}</span>
                 <span className="w-12 font-mono text-zinc-400">{c.code}</span>
                 <span className="flex-1 truncate text-zinc-200">{c.name}</span>
                 <div className="h-1.5 w-20 overflow-hidden rounded-full bg-zinc-800">
                   <div className="h-full rounded-full bg-neon-cyan" style={{ width: `${c.intensity * 100}%` }} />
                 </div>
                 <span className="w-20 text-right font-mono text-neon-cyan">{fmt(c.value, choropleth.indicator)}</span>
-                <span className="w-10 text-right font-mono text-zinc-600">{c.year}</span>
+                <span className="w-10 text-right font-mono text-zinc-400">{c.year}</span>
               </div>
             ))}
           </div>
@@ -641,7 +641,7 @@ export function DataExplorer() {
                 <span className="font-mono text-[10px] text-zinc-400">
                   {new Date(v.createdAt).toLocaleDateString()}
                 </span>
-                <StickyDeleteConfirm onConfirm={() => { void deleteView(v.id); }} className="text-zinc-600 hover:text-rose-400" armAriaLabel={`Delete view ${v.label}`} confirmLabel={`Delete “${v.label}”?`} confirmAriaLabel={`Confirm delete view ${v.label}`} armLabel={<Trash2 className="h-3.5 w-3.5" />} />
+                <StickyDeleteConfirm onConfirm={() => { void deleteView(v.id); }} className="text-zinc-400 hover:text-rose-400" armAriaLabel={`Delete view ${v.label}`} confirmLabel={`Delete “${v.label}”?`} confirmAriaLabel={`Confirm delete view ${v.label}`} armLabel={<Trash2 className="h-3.5 w-3.5" />} />
               </div>
             ))}
           </div>
