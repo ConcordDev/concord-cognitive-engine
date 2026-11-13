@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { cn } from '@/lib/utils';
+import { onRovingTabsKeyDown, rovingTabIndex } from '@/lib/a11y/roving-tabs';
 
 export interface NorthStarTab {
   id: string;
@@ -92,6 +93,7 @@ export function NorthStarFrame({
           ref={navRef}
           className="no-scrollbar mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1"
           aria-label={tabsLabel ?? `${crumb} views`}
+          onKeyDown={onRovingTabsKeyDown}
           data-fade-right={fadeRight ? 'true' : undefined}
           style={fadeRight ? {
             maskImage: 'linear-gradient(to right, black calc(100% - 28px), transparent)',
@@ -107,6 +109,7 @@ export function NorthStarFrame({
                 type="button"
                 onClick={() => onTab?.(t.id)}
                 aria-current={on ? 'page' : undefined}
+                tabIndex={rovingTabIndex(on, tabs.indexOf(t), tabs.some((x) => x.id === activeTab))}
                 title={t.hint ? `${t.hint}${t.keys ? ` (${t.keys})` : ''}` : undefined}
                 className={cn(
                   'inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
