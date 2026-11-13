@@ -32,7 +32,7 @@ function setupDB() {
       purchases INTEGER NOT NULL DEFAULT 0, last_trade_at INTEGER, PRIMARY KEY (user_id, fence_npc_id));
   `);
   db.prepare(`INSERT INTO concord_link_messages (id, sender_id, sender_kind, receiver_id, receiver_kind, payload, encryption_level, source_world, dest_world, status)
-              VALUES ('m1', ?, 'user', 'npc_x', 'npc', 'meet at the old mill', 'basic', 'concordia', 'fantasy', 'intercepted')`).run(A);
+              VALUES ('m1', ?, 'npc', 'npc_x', 'npc', 'meet at the old mill', 'basic', 'concordia', 'fantasy', 'intercepted')`).run(A);
   db.prepare(`INSERT INTO users (id, sparks) VALUES (?, 10000), (?, 10000)`).run(A, B);
   const s = surfaceInterceptedMessage(db, "m1", { probability: 1.0 });
   return { db, listingId: s.listing.id };
@@ -44,7 +44,10 @@ describe("INC-73 black market purchase redaction", () => {
     const r = purchaseListing(db, { listingId, buyerId: B });
     assert.equal(r.ok, true);
     assert.equal(r.message.payload, "meet at the old mill");
-    assert.match(r.message.senderLabel, /traveller from concordia/);
+    // FIX-black-market-010: the intercept is fictional NPC traffic now —
+    // the label says so; the redaction contract (no ids anywhere) is unchanged.
+    assert.match(r.message.senderLabel, /voice from concordia \(fictional NPC\)/);
+    assert.equal(r.message.fictional, true);
     const json = JSON.stringify(r);
     assert.equal(json.includes(A), false);
     assert.equal(json.includes(B), false);

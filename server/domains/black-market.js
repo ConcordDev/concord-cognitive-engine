@@ -1,6 +1,9 @@
 // server/domains/black-market.js
-// Black-market lens — Sael's stall. Surfaces intercepted Concord Link
-// messages flagged for the underground bazaar. Sparks currency only;
+// Black-market lens — Sael's stall. Surfaces FICTIONAL NPC intercepts —
+// invented messages from generated characters, labelled as fiction on
+// the surface (founder ruling, FIX-black-market-010). A real user's
+// Concord Link message is never surfaced or sold here; the surfacing
+// gate lives in server/lib/black-market.js. Sparks currency only;
 // there is no real-money codepath.
 //
 // The base `listings` / `tiers` macros read the live `creative_artifacts`
