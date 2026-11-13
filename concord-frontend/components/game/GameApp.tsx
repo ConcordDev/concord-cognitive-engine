@@ -1073,7 +1073,8 @@ export default function GameApp() {
       {/* ================================================================= */}
       {activeTab === 'habits' && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          <HabitHub onXpChange={(xp) => setPlayerXp((prev) => (xp > prev ? xp : prev))} />
+          {/* HabitHub keeps its own habit-ledger XP in its own panel. It used to max-merge that total into the header's profile XP (onXpChange), so the header flipped between two different economies depending on load order (FIX-game-001). The header shows profile XP only. */}
+          <HabitHub />
         </motion.div>
       )}
 

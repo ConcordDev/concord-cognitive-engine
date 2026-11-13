@@ -68520,13 +68520,12 @@ app.get("/api/game/leaderboard", (req, res) => {
   const knownUsers = new Set(Array.from(STATE.gameProfiles.keys()));
   dtusArray().forEach(d => { if (d.authorId) knownUsers.add(d.authorId); if (d.source) knownUsers.add(d.source); });
   for (const uid of knownUsers) {
-    if (!STATE.gameProfiles.has(uid)) getGameProfile(uid);
-    const p = STATE.gameProfiles.get(uid);
-    const userDtus = dtusArray().filter(d => d.authorId === uid || d.source === uid);
-    const questXp = sumCompletedQuestXp(uid).xp;
-    p.xp = (userDtus.length * 10) + (userDtus.filter(d => d.tier === "mega").length * 50) + (userDtus.filter(d => d.tier === "hyper").length * 100) + questXp;
-    p.level = Math.floor(Math.sqrt(p.xp / 100)) + 1;
-    p.badges = computeAchievements(uid).filter(a => a.earned).map(a => a.id);
+    // One XP computation: the leaderboard reads the same refreshed
+    // profile /api/game/profile serves. Its own copy of the formula
+    // had drifted — it omitted the votes x5 term refreshGameProfile
+    // counts — so the leaderboard's row for the signed-in user
+    // disagreed with their header/dashboard XP (FIX-game-001).
+    refreshGameProfile(uid);
   }
   const entries = Array.from(STATE.gameProfiles.values())
     .map(p => ({ userId: p.userId, xp: p.xp || 0, level: p.level || 1, badges: (p.badges || []).length, badgeList: p.badges || [] }))
