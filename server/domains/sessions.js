@@ -6,7 +6,10 @@
 //
 //   sessions.start          — create a session, return id + initial state.
 //   sessions.advance        — transition current_step; append 'advanced' event.
-//   sessions.update_state   — deep-merge into state_json; append 'state_merged' event.
+//   sessions.update_state   — deep-merge into state_json; append 'state_merged' event
+//                             (consecutive merges at one step coalesce into the
+//                             burst's first event — the log records that state was
+//                             edited at the step, not every keystroke: FIX-kingdoms-005).
 //   sessions.get            — load one session + most recent N events.
 //   sessions.list_mine      — caller's sessions, status-filtered.
 //   sessions.close          — transition to 'completed' or 'abandoned'.
@@ -214,10 +217,23 @@ export default function registerSessionsMacros(register) {
       db.prepare(`UPDATE lens_sessions SET state_json = ?, updated_at = ? WHERE id = ? AND user_id = ?`)
         .run(nextJson, now, sessionId, userId);
 
-      db.prepare(`
-        INSERT INTO lens_session_events (session_id, event_kind, from_step, to_step, note, payload_json, created_at)
-        VALUES (?, 'state_merged', ?, ?, NULL, ?, ?)
-      `).run(sessionId, row.current_step, row.current_step, JSON.stringify(input.statePatch).slice(0, MAX_EVENT_PAYLOAD_BYTES), now);
+      // Coalesce a burst of merges at one step into a single log event
+      // (FIX-kingdoms-005): form fields merge on every keystroke, so an
+      // uncoalesced log filled with duplicate 'state_merged' rows at the
+      // same step and drowned the real transitions. The state itself
+      // always merges (above); the event is appended only when the
+      // latest event is not already a merge at this step.
+      const lastEvent = db.prepare(`
+        SELECT event_kind, to_step FROM lens_session_events
+        WHERE session_id = ? ORDER BY id DESC LIMIT 1
+      `).get(sessionId);
+      const alreadyLogged = lastEvent && lastEvent.event_kind === 'state_merged' && lastEvent.to_step === row.current_step;
+      if (!alreadyLogged) {
+        db.prepare(`
+          INSERT INTO lens_session_events (session_id, event_kind, from_step, to_step, note, payload_json, created_at)
+          VALUES (?, 'state_merged', ?, ?, NULL, ?, ?)
+        `).run(sessionId, row.current_step, row.current_step, JSON.stringify(input.statePatch).slice(0, MAX_EVENT_PAYLOAD_BYTES), now);
+      }
     } catch (e) {
       return { ok: false, reason: "db_error", error: String(e?.message || e) };
     }
