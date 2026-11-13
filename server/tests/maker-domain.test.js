@@ -93,4 +93,31 @@ describe("maker domain", () => {
     assert.equal(res.ok, false);
     assert.equal(res.reason, "nothing_to_update");
   });
+
+  // FIX-maker-001 — duplicate names refused by name (create + rename).
+  it("create refuses a second make with the same name (case-insensitive), spec intact on the first", async () => {
+    const first = await call("create", ctxFor("user_dup"), { name: "Lamp", spec: "oak base" });
+    assert.equal(first.ok, true);
+    const dup = await call("create", ctxFor("user_dup"), { name: "  lamp ", spec: "different" });
+    assert.equal(dup.ok, false);
+    assert.equal(dup.reason, "duplicate_name");
+    assert.match(dup.error, /already on the bench/);
+    const listed = await call("list", ctxFor("user_dup"));
+    assert.equal(listed.makes.length, 1);
+    assert.equal(listed.makes[0].spec, "oak base");
+  });
+
+  it("another user may use the same name; a rename onto a sibling is refused", async () => {
+    const other = await call("create", ctxFor("user_dup_b"), { name: "Lamp", spec: "theirs" });
+    assert.equal(other.ok, true);
+    const a = await call("create", ctxFor("user_dup"), { name: "Stool", spec: "s" });
+    const b = await call("create", ctxFor("user_dup"), { name: "Chair", spec: "c" });
+    assert.equal(a.ok, true); assert.equal(b.ok, true);
+    const ren = await call("update", ctxFor("user_dup"), { id: b.make.id, name: "Stool" });
+    assert.equal(ren.ok, false);
+    assert.equal(ren.reason, "duplicate_name");
+    // Renaming to its own name (case change) is not a duplicate.
+    const self = await call("update", ctxFor("user_dup"), { id: b.make.id, name: "CHAIR" });
+    assert.equal(self.ok, true);
+  });
 });
