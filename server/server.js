@@ -51485,19 +51485,23 @@ try {
 // GB-1500 cockpit routes (failure counts now; run routes in later tickets).
 try {
   const { mountCockpitRoutes } = await import("./routes/cockpit.js");
-  mountCockpitRoutes({ app, db });
+  const { makeExec: _cockpitMakeExec } = await import("./lib/cockpit/executor.js");
+  const { verifyStep: _cockpitVerify } = await import("./lib/cockpit/verifier.js");
+  const { publishRun: _cockpitPublish } = await import("./lib/cockpit/events.js");
+  // One factory for the routes and the pump, so a run behaves the same however it is driven.
+  globalThis.__cockpitMakeDeps = (run) => ({
+    exec: _cockpitMakeExec({ db, userId: run.userId, sessionId: run.chatSessionId, runMacro, lensActions: LENS_ACTIONS, surface: run.surface }),
+    lensActions: LENS_ACTIONS,
+    verify: _cockpitVerify,
+    emit: (e) => _cockpitPublish(e.runId, e),
+  });
+  mountCockpitRoutes({ app, db, makeDeps: globalThis.__cockpitMakeDeps, lensActions: LENS_ACTIONS });
 } catch (e) { console.warn("[cockpit] routes not mounted:", e?.message || e); }
 
 // GB-1500 cockpit pump: resumes due runs. Does nothing unless CONCORD_COCKPIT_RUNS is on.
 try {
   const { startCockpitPump } = await import("./lib/cockpit/pump.js");
-  const { makeExec } = await import("./lib/cockpit/executor.js");
-  const { verifyStep } = await import("./lib/cockpit/verifier.js");
-  globalThis.__cockpitPump = startCockpitPump({ db, makeDeps: (run) => ({
-    exec: makeExec({ db, userId: run.userId, sessionId: run.chatSessionId, runMacro, lensActions: LENS_ACTIONS, surface: run.surface }),
-    lensActions: LENS_ACTIONS,
-    verify: verifyStep,
-  }) });
+  globalThis.__cockpitPump = startCockpitPump({ db, makeDeps: globalThis.__cockpitMakeDeps });
 } catch (e) { console.warn("[cockpit] pump not started:", e?.message || e); }
 
 // MCP tools address (domain, macro) pairs that may live in EITHER registry:

@@ -15,6 +15,7 @@ import { runTool } from "./executor.js";
 import { getEffect, failEffect } from "./idempotency.js";
 import { needsConfirm, buildConfirmCard } from "./confirm.js";
 import { checkBudget, retryAfterSec } from "./budget.js";
+import { makeStepReceipt } from "./receipts.js";
 import { effectiveSpec } from "./tool-spec.js";
 
 const TERMINAL_RUN = new Set(["done", "failed", "cancelled"]);
@@ -292,13 +293,17 @@ export async function tickRun(a) {
     updateRun(db, runId, { status: "verifying" });
     const stepNow = { ...step, status: "verifying", result: res.result, resultSummary: summary };
     const v = await verify({ db, run, step: stepNow, call, result: res });
+    // A pause the person asked for while this step ran must survive: only leave `verifying`.
+    const backToRunning = () => { if (getRun(db, runId)?.status === "verifying") updateRun(db, runId, { status: "running" }); };
     if (v.pass) {
-      updateStep(db, step.id, { status: "done", finishedAt: nowSec(), errorClass: null });
-      updateRun(db, runId, { status: "running" });
-      emit({ type: "cockpit:step", runId, seq: step.seq, total, status: "done", label: getSpec(call?.tool)?.title || step.goal, receiptId: v.receiptId || null });
+      let receipt = null;
+      try { receipt = makeStepReceipt({ run, step: stepNow, call, result: res, checks: v.checks }); } catch { receipt = null; }
+      updateStep(db, step.id, { status: "done", finishedAt: nowSec(), errorClass: null, ...(receipt ? { receipt } : {}) });
+      backToRunning();
+      emit({ type: "cockpit:step", runId, seq: step.seq, total, status: "done", label: getSpec(call?.tool)?.title || step.goal, receiptId: receipt ? step.id : null });
       return { ok: true, status: "running", advanced: true };
     }
-    updateRun(db, runId, { status: "running" });
+    backToRunning();
     const failed = (v.checks || []).filter((c) => c.pass === false).map((c) => c.kind).join(", ");
     return failStep(v.errorClass || "verify_failed", `The result failed these checks: ${failed || "unknown"}.`, call?.tool || null);
   } finally {
