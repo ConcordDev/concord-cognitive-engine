@@ -181,6 +181,18 @@ export function useCourtshipDesk() {
       setPending(false);
     }
   }, [refresh, addToast]);
+  // FIX-courtship-001: there was no way to START a courtship from the
+  // lens — the panel only listed existing ones and its empty state
+  // sent users out to an NPC's context menu in the world. A first
+  // interaction is what creates the courtship server-side
+  // (courtInteraction inserts the row), so beginning one is a single
+  // positive interaction with a partner not yet courted.
+  const startCourtship = useCallback(async (partnerKind: string, partnerId: string) => {
+    const id = partnerId.trim();
+    if (!id) return;
+    await interact({ partner_kind: partnerKind, partner_id: id } as Courtship, 1);
+  }, [interact]);
+
   const propose = (c: Courtship) =>
     act('/api/courtship/propose', { partnerKind: c.partner_kind, partnerId: c.partner_id });
   const wed = (c: Courtship) =>
@@ -323,6 +335,7 @@ export function useCourtshipDesk() {
     setDissolveTarget,
     refresh,
     interact,
+    startCourtship,
     propose,
     wed,
     conceive,
