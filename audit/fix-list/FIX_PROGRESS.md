@@ -2190,3 +2190,28 @@ Eleven of the section's twelve tickets are FIXED_PENDING_VERIFY; the twelfth is 
 | FIX-music-002 | music | medium | FIXED_PENDING_VERIFY | 17d81a8a7 |
 
 Riders: FIX-detective-003 title-truncation half not locatable in code (see its ticket row — left to the desk live re-walk); FIX-music-002 shell nav/Help overlay half is shell-owned (FIX-015 area). Strip halves of FIX-mining-010 + FIX-integrations-009 cured by the landed shell genus c86910c5c (B5) and credited there; B3 frame delta = root overflow-x-clip (office ruling 2026-11-12).
+
+## B3 §3 — theme 7 Lighthouse a11y bundles (CB-0436) — 16 FIXED_PENDING_VERIFY
+
+First B3 section under the per-seat append regime (founder ruling 2026-11-12): rows live in audit/fix-list/records/b3.jsonl; the desk unions them at batch check. Pattern per bundle: every select named from its field semantics (or verified already named full-tag), panel/view titles normalized per composed view, dim 500/600-step text raised one step, small controls to the min-h-11 floor — shared design-system files untouched (local cn composition), shared class consts (PlatformConsole input, supplychain INPUT) floored once at the const. Each bundle pinned by tests/<lens>-a11y-bundle.test.tsx with a pristine negative control on file.
+
+| ticket | pushed commit |
+|---|---|
+| FIX-accounting-007 | 312d54f1e |
+| FIX-animation-006 | fae7d6446 |
+| FIX-consulting-007 | 01090815d |
+| FIX-desert-003 | 87b8c3466 |
+| FIX-environment-007 | 668d2118a |
+| FIX-expert-mode-006 | 097e9c306 |
+| FIX-global-011 | 3406b1fa8 |
+| FIX-linguistics-003 | 5fc28b834 |
+| FIX-mentorship-004 | 4ace081ad |
+| FIX-paper-007 | 1f1a4d067 |
+| FIX-philosophy-002 | 03bb88e82 |
+| FIX-platform-008 | 4bb2474c8 |
+| FIX-plugins-003 | 9b6afba97 |
+| FIX-sports-005 | a2e3934b7 |
+| FIX-supplychain-005 | 8b33a5a8b |
+| FIX-travel-005 | ff87edec4 |
+
+Push discipline: 13 files had moved on the branch since the section's base (other seats' tickets in the same files). Whole-file pushes would have reverted them, so those files were three-way merged (base = section base blob) and the affected bundles' suites re-run green against the merged content before pushing; the two expert-mode conflicts resolved by carrying CB-0492's StickyDeleteConfirm replacement with this section's floor + contrast applied to it. Riders: consulting-007 CSP-eval (grep-verified absent — Lighthouse artifact), environment-007 WebGL stall (canvas, not markup), platform-008 Tab leg (closed by the shared shell skip-link fix, credited), sports-005 perf leg (live payload weight — the desk's disposition).
