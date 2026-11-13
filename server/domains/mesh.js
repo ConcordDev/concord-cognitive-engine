@@ -333,6 +333,16 @@ export default function registerMeshActions(register) {
       const body = String(data.body || data.text || "").trim();
       const to = data.to || data.nodeId || data.channelId || "broadcast";
       if (!body) return { ok: false, error: "message body required" };
+      // FIX-mesh-005: a provided priority was stored verbatim on the
+      // queued frame and rendered raw in the Queue tab — junk values
+      // (the audit saw the literal 'not-a-number') showed as a
+      // priority class. The vocabulary is queuePrioritize's own list;
+      // refuse anything else by name. Absent still defaults to
+      // "general" at enqueue.
+      const MESH_PRIORITIES = ["threat", "economic", "consciousness", "knowledge", "general"];
+      if (data.priority != null && data.priority !== "" && !MESH_PRIORITIES.includes(data.priority)) {
+        return { ok: false, error: "priority must be one of: threat, economic, consciousness, knowledge, general" };
+      }
 
       const nodes = userMap(meshState().meshNodes, uid);
       const channels = userMap(meshState().meshChannels, uid);

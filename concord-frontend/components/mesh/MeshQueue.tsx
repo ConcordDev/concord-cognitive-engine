@@ -99,15 +99,21 @@ export function MeshQueue() {
             </p>
           )}
           <ul className="space-y-1.5">
-          {visibleFrames.map((f) => (
+          {visibleFrames.map((f) => {
+            // FIX-mesh-005: frames queued before the server validated
+            // priority can carry a junk class; render the class the
+            // queue sorter already assigns them ('general') instead of
+            // the raw stored string.
+            const shownPriority = PRIORITIES.includes(f.priority) ? f.priority : 'general';
+            return (
             <li key={f.id} className="flex flex-wrap items-center gap-2 rounded border border-teal-900/30 bg-teal-950/10 px-3 py-2 text-xs">
-              <span className={`rounded px-1.5 py-0.5 text-[10px] ${PRIORITY_TONE[f.priority]}`}>{f.priority}</span>
+              <span className={`rounded px-1.5 py-0.5 text-[10px] ${PRIORITY_TONE[shownPriority]}`}>{shownPriority}</span>
               <span className="font-mono text-teal-200">→ {f.toName}</span>
               <span className="text-[10px] text-teal-500">{f.sizeBytes} B · {f.attempts} attempt{f.attempts !== 1 ? 's' : ''}</span>
               <span className="rounded bg-teal-900/40 px-1.5 py-0.5 text-[10px] text-teal-400">{f.state}</span>
               <span className="ml-auto flex items-center gap-1.5">
                 <select
-                  value={f.priority}
+                  value={shownPriority}
                   onChange={(e) => prioritize.mutate({ frameId: f.id, priority: e.target.value })}
                   aria-label={`Priority for frame to ${f.toName}`}
                   className="rounded border border-teal-900/50 bg-black px-1.5 py-1 text-[10px] text-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400"
@@ -132,7 +138,8 @@ export function MeshQueue() {
                 </button>
               </span>
             </li>
-          ))}
+            );
+          })}
           </ul>
         </>
       )}
