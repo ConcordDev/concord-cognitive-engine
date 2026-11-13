@@ -81,6 +81,7 @@ export function ProjectStudio() {
   const [commentBody, setCommentBody] = useState('');
 
   // Form state
+  const [fPublished, setFPublished] = useState(true);
   const [fTitle, setFTitle] = useState('');
   const [fDesc, setFDesc] = useState('');
   const [fDiscipline, setFDiscipline] = useState('illustration');
@@ -129,6 +130,11 @@ export function ProjectStudio() {
       tools: fTools.split(',').map((t) => t.trim()).filter(Boolean),
       tags: fTags.split(',').map((t) => t.trim()).filter(Boolean),
       coverUrl: fCover, images, processSteps,
+      // The draft/private choice (FIX-artistry-002). The server has
+      // always honoured it — create defaults published, update flips
+      // it, list/view/feed enforce it for non-owners — the form just
+      // never sent it, so every project published on submit.
+      published: fPublished,
     };
     const r = editingId
       ? await lensRun('artistry', 'projectUpdate', { projectId: editingId, ...fields })
@@ -136,28 +142,36 @@ export function ProjectStudio() {
     setSaving(false);
     if (r.data?.ok) {
       const updatedId = editingId;
+      useUIStore.getState().addToast({
+        type: 'success',
+        message: updatedId
+          ? (fPublished ? 'Project saved — published, everyone can see it.' : 'Project saved — draft, only you can see it.')
+          : (fPublished ? 'Project published — everyone can see it.' : 'Draft saved — only you can see it.'),
+      });
       setShowForm(false);
       setEditingId(null);
       setSaveError(null);
+      setFPublished(true);
       setFTitle(''); setFDesc(''); setFTools(''); setFTags(''); setFCover(''); setFImages(''); setFSteps('');
       load();
       if (updatedId && openId === updatedId) void openProject(updatedId);
     } else {
       setSaveError(String(r.data?.error || 'Could not save the project.').replace(/_/g, ' '));
     }
-  }, [fTitle, fDesc, fDiscipline, fTools, fTags, fCover, fImages, fSteps, load, editingId, openId, openProject]);
+  }, [fTitle, fDesc, fDiscipline, fTools, fTags, fCover, fImages, fSteps, fPublished, load, editingId, openId, openProject]);
 
   const openEdit = useCallback((p: Project) => {
     setEditingId(p.id);
     setConfirmDeleteId(null);
     setSaveError(null);
+    setFPublished(p.published !== false);
     setFTitle(p.title); setFDesc(p.description || ''); setFDiscipline(p.discipline);
     setFTools((p.tools || []).join(', ')); setFTags((p.tags || []).join(', ')); setFCover(p.coverUrl || '');
     setFImages([...(p.images || [])].sort((a, b) => a.order - b.order).map((im) => (im.caption ? `${im.url}|${im.caption}` : im.url)).join('\n'));
     setFSteps((p.processSteps || []).map((st) => (st.detail ? `${st.title}|${st.detail}` : st.title)).join('\n'));
     setShowForm(true);
   }, []);
-  const closeForm = useCallback(() => { setShowForm(false); setEditingId(null); setSaveError(null); }, []);
+  const closeForm = useCallback(() => { setShowForm(false); setEditingId(null); setSaveError(null); setFPublished(true); }, []);
 
   // Reads the selected file as a base64 data: URL (same FileReader.readAsDataURL
   // idiom used by PatientChartPanel.tsx's onPhotoFileSelected / TravelDocsPanel.tsx's
@@ -310,7 +324,9 @@ export function ProjectStudio() {
                     <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{p.views}</span>
                     <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{p.appreciations ?? 0}</span>
                     <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{p.commentCount ?? 0}</span>
-                    {!p.published && <span className="text-yellow-500">Draft</span>}
+                    {p.published
+                      ? <span className="text-emerald-500">Published</span>
+                      : <span className="text-yellow-500">Draft — only you</span>}
                   </div>
                 </div>
               </button>
@@ -367,8 +383,15 @@ export function ProjectStudio() {
                 {uploadError && <p className="text-[11px] text-red-400">{uploadError}</p>}
               </div>
               <textarea value={fSteps} onChange={(e) => setFSteps(e.target.value)} placeholder="Process steps — one per line: title|detail" rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm" />
+              <label className="flex items-center gap-2 text-sm text-gray-300">
+                Visibility
+                <select aria-label="Project visibility" value={fPublished ? 'published' : 'draft'} onChange={(e) => setFPublished(e.target.value === 'published')} className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm">
+                  <option value="published">Published — everyone can see it</option>
+                  <option value="draft">Draft — only you</option>
+                </select>
+              </label>
               <button onClick={submit} disabled={saving || !fTitle.trim()} className="w-full py-2 bg-neon-pink/20 rounded-lg text-sm hover:bg-neon-pink/30 disabled:opacity-50">
-                {saving ? 'Saving...' : editingId ? 'Save changes' : 'Publish Project'}
+                {saving ? 'Saving...' : editingId ? 'Save changes' : fPublished ? 'Publish Project' : 'Save as Draft'}
               </button>
               {saveError && <p role="alert" className="text-xs text-rose-400">{saveError}</p>}
             </div>
