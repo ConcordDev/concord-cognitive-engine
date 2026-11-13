@@ -2,6 +2,7 @@
 import Database from "better-sqlite3";
 import { up as up501 } from "../../migrations/501_cockpit_runs.js";
 import * as store from "../../lib/cockpit/run-store.js";
+import { createMockModel } from "../../lib/cockpit/mock-model.js";
 
 export function memDb() {
   const db = new Database(":memory:");
@@ -36,4 +37,30 @@ export function fakeExec(table) {
 /** Pre-approve a tool for a run (needs CKPT-13's approval store); tests that exercise writes use this. */
 export function preapprove(db, runId, tool) {
   return store.addApproval?.(db, runId, { stepId: null, tool, argsHash: null, scope: "run_tool", userId: "u1", at: Date.now() });
+}
+
+/** A deps object whose exec, stepCall and emit record everything. */
+export function scenarioDeps({ execTable, modelScript, events = [], extra = {} }) {
+  const exec = fakeExec(execTable);
+  const mock = createMockModel({ steps: modelScript });
+  const packets = [];
+  return {
+    exec, events, packets, mock,
+    deps: {
+      exec, sleep: async () => {},
+      stepCall: (a) => { packets.push(a.packet); return mock.next(a); },
+      onPacket: (p) => { /* packets are captured in stepCall too; this proves the engine hook fires */ events.push({ type: "test:packet", estTokens: p.estTokens, menu: p.menu?.length ?? 0 }); },
+      emit: (e) => events.push(e),
+      ...extra,
+    },
+  };
+}
+
+/**
+ * Simulate a process restart: the dead owner's lease expires (as a real crash leaves it) and the caller
+ * gets fresh deps. Nothing else is written.
+ */
+export function simulateRestart(db, runId, makeFresh) {
+  store.expireLeaseForTest(db, runId);
+  return makeFresh();
 }

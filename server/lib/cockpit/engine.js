@@ -242,6 +242,7 @@ export async function tickRun(a) {
         run, step, priorSteps: steps, menu, profile: run.modelProfile, userId: run.userId, deps: { recall: deps.recall, exec: deps.exec, lensActions: deps.lensActions },
         constraints: userAnswer ? [`User said: ${String(userAnswer).slice(0, 300)}`] : [],
       });
+      try { deps.onPacket?.(packet); } catch { /* test hook only */ }
       const reask = REASK_CLASSES.has(step.errorClass) ? step.errorText : null;
       const r = await stepCall({ db, userId: run.userId, profile: run.modelProfile, packet, forcedTool: forced, reask });
       addUsage(db, runId, { modelCalls: r.modelCalls || 0, tokensIn: r.tokensIn || 0, tokensOut: r.tokensOut || 0 });

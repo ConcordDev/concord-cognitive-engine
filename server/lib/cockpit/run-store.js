@@ -205,6 +205,10 @@ export function releaseLease(db, runId, owner) {
     return db.prepare("UPDATE cockpit_runs SET lease_owner = NULL, lease_until = NULL WHERE id = ? AND lease_owner = ?").run(runId, owner).changes === 1;
   } catch { return false; }
 }
+/** Test only: make the current lease look dead, as a crashed owner's would. */
+export function expireLeaseForTest(db, runId) {
+  try { return db.prepare("UPDATE cockpit_runs SET lease_until = 0 WHERE id = ?").run(runId).changes === 1; } catch { return false; }
+}
 export function findDueRuns(db, now = nowSec(), limit = 5) {
   try {
     return db.prepare(
