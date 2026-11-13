@@ -14,7 +14,6 @@
  * Every rendered value comes from a real macro call. No mock data.
  */
 
-import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Truck, Package, Star, TrendingUp, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,7 +43,7 @@ interface SupResult { suppliers: ScoredSup[]; topSupplier: string | null; atRisk
 interface ForecastPt { period: string; predicted: number; confidence: string }
 interface ForecastResult { historicalPeriods: number; avgDemand: number; trend: string; forecast: ForecastPt[]; method?: string; alpha?: number; mapePct?: number; accuracy?: string }
 
-const AREA = 'w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-white font-mono placeholder:text-zinc-600';
+const AREA = 'w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-white font-mono placeholder:text-zinc-400';
 const FIELD_LABEL = 'text-[10px] uppercase tracking-wider font-semibold';
 
 /* Example lines for a bulk editor, shown OUTSIDE the input so example
@@ -54,10 +53,10 @@ function ExampleBlock({ lines, onLoad }: { lines: string; onLoad: () => void }) 
   return (
     <div className="rounded border border-dashed border-zinc-800 bg-zinc-900/20 px-2 py-1.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-semibold">Example — not your data</span>
+        <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-semibold">Example — not your data</span>
         <button type="button" onClick={onLoad} className="text-[10px] font-semibold text-teal-300 hover:text-teal-200">Load example</button>
       </div>
-      <pre className="mt-1 whitespace-pre-wrap font-mono text-[10px] text-zinc-500">{lines}</pre>
+      <pre className="mt-1 whitespace-pre-wrap font-mono text-[10px] text-zinc-400">{lines}</pre>
     </div>
   );
 }
@@ -253,8 +252,8 @@ export function SupplyChainActionPanel() {
     try {
       const task = `Supply-chain ops review. ${leadResult ? `Lead times avg ${leadResult.avgLeadTimeDays}d (${leadResult.reliability}).` : ''} ${invResult ? `${invResult.needsReorder} of ${invResult.totalItems} items need reorder.` : ''} ${supResult ? `Top supplier ${supResult.topSupplier}, ${supResult.atRisk} at-risk suppliers.` : ''} ${foreResult ? `Demand ${foreResult.trend}.` : ''} Identify the single biggest resilience risk + one concrete mitigation. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = readAgentReply(r.data);
-      if (reply.ok) { setAgentReply(reply.text); ok('Risk ready.'); } else err(reply.reason);
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Risk ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -272,13 +271,13 @@ export function SupplyChainActionPanel() {
     <div className="space-y-4">
       <header className="flex items-center gap-2">
         <Truck className="h-4 w-4 text-blue-400" />
-        <h3 className="text-sm font-semibold text-white">Scorecards &amp; quick analysis</h3>
+        <h2 className="text-sm font-semibold text-white">Scorecards &amp; quick analysis</h2>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">lead time · EOQ · supplier scorecard · forecast</span>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-1.5">
-          <label className={cn(FIELD_LABEL, 'text-blue-400')}>Orders — <span className="normal-case text-zinc-500">reference | supplier | orderDate | receivedDate</span></label>
+          <label className={cn(FIELD_LABEL, 'text-blue-400')}>Orders — <span className="normal-case text-zinc-400">reference | supplier | orderDate | receivedDate</span></label>
           <textarea value={ordersText} onChange={(e) => setOrdersText(e.target.value)} rows={4} className={AREA} />
           <ExampleBlock lines={'PO-101 | Acme Corp | 2026-05-01 | 2026-05-09\nPO-102 | Globex | 2026-06-02 | '} onLoad={() => setOrdersText('PO-101 | Acme Corp | 2026-05-01 | 2026-05-09\nPO-102 | Globex | 2026-06-02 | ')} />
           <button onClick={actLead} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-500 disabled:opacity-50">
@@ -286,7 +285,7 @@ export function SupplyChainActionPanel() {
           </button>
         </div>
         <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-1.5">
-          <label className={cn(FIELD_LABEL, 'text-green-400')}>Inventory — <span className="normal-case text-zinc-500">name | dailyDemand | leadTimeDays | currentStock | orderCost | holdingCost</span></label>
+          <label className={cn(FIELD_LABEL, 'text-green-400')}>Inventory — <span className="normal-case text-zinc-400">name | dailyDemand | leadTimeDays | currentStock | orderCost | holdingCost</span></label>
           <textarea value={invText} onChange={(e) => setInvText(e.target.value)} rows={4} className={AREA} />
           <ExampleBlock lines={'Widget A | 12 | 7 | 40 | 50 | 5\nWidget B | 6 | 5 | 90 | 60 | 4'} onLoad={() => setInvText('Widget A | 12 | 7 | 40 | 50 | 5\nWidget B | 6 | 5 | 90 | 60 | 4')} />
           <button onClick={actInv} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-green-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-green-500 disabled:opacity-50">
@@ -294,7 +293,7 @@ export function SupplyChainActionPanel() {
           </button>
         </div>
         <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-1.5">
-          <label className={cn(FIELD_LABEL, 'text-amber-400')}>Suppliers — <span className="normal-case text-zinc-500">name | qualityScore | onTimePercent | priceCompetitiveness | responsiveness</span></label>
+          <label className={cn(FIELD_LABEL, 'text-amber-400')}>Suppliers — <span className="normal-case text-zinc-400">name | qualityScore | onTimePercent | priceCompetitiveness | responsiveness</span></label>
           <textarea value={supText} onChange={(e) => setSupText(e.target.value)} rows={4} className={AREA} />
           <ExampleBlock lines={'Acme Corp | 45 | 55\nGlobex | 80 | 92 | 70 | 85'} onLoad={() => setSupText('Acme Corp | 45 | 55\nGlobex | 80 | 92 | 70 | 85')} />
           <button onClick={actSup} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-amber-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-amber-500 disabled:opacity-50">
@@ -302,14 +301,14 @@ export function SupplyChainActionPanel() {
           </button>
         </div>
         <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-1.5">
-          <label className={cn(FIELD_LABEL, 'text-cyan-400')}>Demand history — <span className="normal-case text-zinc-500">space/comma-separated, oldest first</span></label>
+          <label className={cn(FIELD_LABEL, 'text-cyan-400')}>Demand history — <span className="normal-case text-zinc-400">space/comma-separated, oldest first</span></label>
           <textarea value={histText} onChange={(e) => setHistText(e.target.value)} rows={4} className={AREA} />
           <ExampleBlock lines="120 95 140 180 130 100 155 200" onLoad={() => setHistText('120 95 140 180 130 100 155 200')} />
           <div className="flex items-center gap-2">
-            <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold" htmlFor="sc-alpha">Smoothing α</label>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold" htmlFor="sc-alpha">Smoothing α</label>
             <input id="sc-alpha" type="number" min="0.05" max="0.95" step="0.05" value={alphaText} onChange={(e) => setAlphaText(e.target.value)}
               className="w-20 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" />
-            <span className="text-[10px] text-zinc-500">higher α follows recent demand faster</span>
+            <span className="text-[10px] text-zinc-400">higher α follows recent demand faster</span>
           </div>
           <button onClick={actFore} disabled={busy !== null} className="flex items-center gap-1.5 rounded bg-cyan-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-cyan-500 disabled:opacity-50">
             {busy === 'fore' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />} Forecast demand
@@ -336,9 +335,9 @@ export function SupplyChainActionPanel() {
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Scorecard · top: {supResult.topSupplier ?? 'none scored'}</div>
             {supResult.suppliers.slice(0, 5).map((s, i) => s.totalScore === null
-              ? <div key={i} className="text-[10px] text-zinc-500 mt-0.5"><span className="font-mono">{s.supplier}</span> · not scored — no metrics supplied</div>
-              : <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex items-center gap-2"><span className={cn('font-mono w-16 truncate', s.tier ? TIER_COLOR[s.tier] : '')}>{s.supplier}</span><div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-amber-400" style={{ width: `${s.totalScore}%` }} /></div><span className="font-mono text-amber-200">{s.totalScore}</span>{(s.missingInputs?.length ?? 0) > 0 && <span className="text-zinc-500">on {s.scoredOn?.length ?? 0}/4 metrics</span>}</div>)}
-            {supResult.method && <div className="text-[9px] text-zinc-500 mt-1.5">{supResult.method}</div>}
+              ? <div key={i} className="text-[10px] text-zinc-400 mt-0.5"><span className="font-mono">{s.supplier}</span> · not scored — no metrics supplied</div>
+              : <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex items-center gap-2"><span className={cn('font-mono w-16 truncate', s.tier ? TIER_COLOR[s.tier] : '')}>{s.supplier}</span><div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-amber-400" style={{ width: `${s.totalScore}%` }} /></div><span className="font-mono text-amber-200">{s.totalScore}</span>{(s.missingInputs?.length ?? 0) > 0 && <span className="text-zinc-400">on {s.scoredOn?.length ?? 0}/4 metrics</span>}</div>)}
+            {supResult.method && <div className="text-[9px] text-zinc-400 mt-1.5">{supResult.method}</div>}
           </div>
         )}
         {foreResult && (
@@ -346,7 +345,7 @@ export function SupplyChainActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Forecast · {foreResult.trend}</div>
             <div className="text-2xl font-bold text-cyan-300">{foreResult.avgDemand}<span className="text-xs text-zinc-400"> avg</span></div>
             {foreResult.forecast.map((f, i) => <div key={i} className="text-[11px] text-zinc-300">{f.period}: <span className="text-cyan-200 font-mono">{f.predicted}</span> <span className="text-zinc-400">({f.confidence})</span></div>)}
-            {foreResult.method && <div className="text-[9px] text-zinc-500 mt-1.5">Exponential smoothing (α {foreResult.alpha}){foreResult.mapePct !== undefined ? ` · in-sample MAPE ${foreResult.mapePct}% (${foreResult.accuracy})` : ''} — the forecast holds the smoothed level, it does not extrapolate a trend.</div>}
+            {foreResult.method && <div className="text-[9px] text-zinc-400 mt-1.5">Exponential smoothing (α {foreResult.alpha}){foreResult.mapePct !== undefined ? ` · in-sample MAPE ${foreResult.mapePct}% (${foreResult.accuracy})` : ''} — the forecast holds the smoothed level, it does not extrapolate a trend.</div>}
           </div>
         )}
       </div>

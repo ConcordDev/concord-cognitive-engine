@@ -122,7 +122,7 @@ function parseNumberList(text: string): number[] {
 
 /* ─────────────────────────── small atoms ───────────────────────────── */
 
-const INPUT = 'w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white';
+const INPUT = 'min-h-11 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white';
 const LABEL = 'text-[9px] uppercase tracking-wider text-zinc-400 font-semibold';
 const BTN = 'flex items-center gap-1 rounded px-2.5 py-1 text-[11px] font-semibold transition-colors';
 
@@ -143,10 +143,10 @@ function ExampleBlock({ lines, onLoad }: { lines: string; onLoad: () => void }) 
   return (
     <div className="rounded border border-dashed border-zinc-800 bg-zinc-900/20 px-2 py-1.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-semibold">Example — not your data</span>
+        <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-semibold">Example — not your data</span>
         <button type="button" onClick={onLoad} className="text-[10px] font-semibold text-teal-300 hover:text-teal-200">Load example</button>
       </div>
-      <pre className="mt-1 whitespace-pre-wrap font-mono text-[10px] text-zinc-500">{lines}</pre>
+      <pre className="mt-1 whitespace-pre-wrap font-mono text-[10px] text-zinc-400">{lines}</pre>
     </div>
   );
 }
@@ -225,7 +225,7 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
           type="search" value={shipQuery} onChange={(e) => setShipQuery(e.target.value)}
           placeholder="Search shipments by reference, carrier, origin, or destination…"
           aria-label="Search shipments"
-          className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-500"
+          className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-400"
         />
       )}
 
@@ -247,7 +247,7 @@ function ShipmentsPanel({ notify }: { notify: (f: Feedback) => void }) {
                       : s.health === 'exception' ? 'bg-rose-500/20 text-rose-300'
                         : 'bg-blue-500/20 text-blue-300')}>{s.status.replace(/_/g, ' ')}</span>
               </div>
-              <button onClick={() => del(s.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete shipment"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button onClick={() => del(s.id)} className="text-zinc-400 hover:text-rose-400" aria-label="Delete shipment"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
             <div className="text-[10px] text-zinc-400 mt-0.5">
               {s.origin || '?'} <ArrowRight className="inline w-2.5 h-2.5" /> {s.destination || '?'}
@@ -339,14 +339,14 @@ function NetworkPanel({ notify }: { notify: (f: Feedback) => void }) {
     <div className="space-y-3">
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-2">
         <div>
-          <div className={LABEL}>Nodes — one per line: <span className="text-zinc-600 normal-case">id | label | kind | location | capacity</span></div>
+          <div className={LABEL}>Nodes — one per line: <span className="text-zinc-400 normal-case">id | label | kind | location | capacity</span></div>
           <textarea className={cn(INPUT, 'font-mono')} rows={4} value={nodesText} onChange={(e) => setNodesText(e.target.value)} />
         </div>
         <div>
-          <div className={LABEL}>Edges — one per line: <span className="text-zinc-600 normal-case">fromId &gt; toId | leadTimeDays | volume</span></div>
+          <div className={LABEL}>Edges — one per line: <span className="text-zinc-400 normal-case">fromId &gt; toId | leadTimeDays | volume</span></div>
           <textarea className={cn(INPUT, 'font-mono')} rows={3} value={edgesText} onChange={(e) => setEdgesText(e.target.value)} />
         </div>
-        {loadedSaved && <p className="text-[10px] text-zinc-500">Showing your saved network — edit the lines and Save to replace it.</p>}
+        {loadedSaved && <p className="text-[10px] text-zinc-400">Showing your saved network — edit the lines and Save to replace it.</p>}
         <ExampleBlock
           lines={'s1 | Shenzhen Mill | supplier | Shenzhen | 5000\nw1 | LA DC | warehouse | Los Angeles | 8000\nc1 | West Retail | customer | San Francisco | 0\n\ns1 > w1 | 21 | 4000\nw1 > c1 | 3 | 3500'}
           onLoad={() => {
@@ -435,7 +435,7 @@ function EchelonPanel({ notify }: { notify: (f: Feedback) => void }) {
   return (
     <div className="space-y-3">
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-2">
-        <div className={LABEL}>Echelons — one per line: <span className="text-zinc-600 normal-case">location | tier | dailyDemand | leadTimeDays | currentStock | demandStdDev</span></div>
+        <div className={LABEL}>Echelons — one per line: <span className="text-zinc-400 normal-case">location | tier | dailyDemand | leadTimeDays | currentStock | demandStdDev</span></div>
         <textarea className={cn(INPUT, 'font-mono')} rows={4} value={text} onChange={(e) => setText(e.target.value)} />
         <ExampleBlock
           lines={'LA DC | regional | 120 | 7 | 900 | 40\nDallas DC | regional | 80 | 5 | 250 | 25\nCentral Hub | central | 220 | 14 | 4000 | 90'}
@@ -537,7 +537,7 @@ function ScenarioPanel({ notify }: { notify: (f: Feedback) => void }) {
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 grid grid-cols-2 md:grid-cols-4 gap-2">
         <div><div className={LABEL}>Scenario name</div><input className={INPUT} value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div><div className={LABEL}>Disruption</div>
-          <select className={INPUT} value={disruption} onChange={(e) => setDisruption(e.target.value)}>
+          <select aria-label="Disruption type" className={INPUT} value={disruption} onChange={(e) => setDisruption(e.target.value)}>
             {DISRUPTIONS.map((d) => <option key={d} value={d}>{d.replace(/_/g, ' ')}</option>)}
           </select>
         </div>
@@ -557,7 +557,7 @@ function ScenarioPanel({ notify }: { notify: (f: Feedback) => void }) {
           type="search" value={scenarioQuery} onChange={(e) => setScenarioQuery(e.target.value)}
           placeholder="Search scenarios by name or disruption…"
           aria-label="Search scenarios"
-          className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-500"
+          className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-400"
         />
       )}
 
@@ -717,19 +717,19 @@ function ExceptionsPanel({ notify }: { notify: (f: Feedback) => void }) {
     <div className="space-y-3">
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 grid grid-cols-1 md:grid-cols-2 gap-2">
         <div>
-          <div className={LABEL}>Inventory — <span className="text-zinc-600 normal-case">name | currentStock | dailyDemand | leadTimeDays | reorderPoint</span></div>
+          <div className={LABEL}>Inventory — <span className="text-zinc-400 normal-case">name | currentStock | dailyDemand | leadTimeDays | reorderPoint</span></div>
           <textarea className={cn(INPUT, 'font-mono')} rows={3} value={invText} onChange={(e) => setInvText(e.target.value)} />
           <ExampleBlock lines={'Widget A | 0 | 12 | 7 | 90\nWidget B | 40 | 6 | 5'} onLoad={() => setInvText('Widget A | 0 | 12 | 7 | 90\nWidget B | 40 | 6 | 5')} />
         </div>
         <div>
-          <div className={LABEL}>Suppliers — <span className="text-zinc-600 normal-case">name | qualityScore | onTimePercent</span></div>
+          <div className={LABEL}>Suppliers — <span className="text-zinc-400 normal-case">name | qualityScore | onTimePercent</span></div>
           <textarea className={cn(INPUT, 'font-mono')} rows={3} value={supText} onChange={(e) => setSupText(e.target.value)} />
           <ExampleBlock lines={'Acme Corp | 45 | 55\nGlobex | 80 | 92'} onLoad={() => setSupText('Acme Corp | 45 | 55\nGlobex | 80 | 92')} />
         </div>
         <button onClick={() => scan(true)} disabled={busy} className={cn(BTN, 'bg-rose-600 text-white hover:bg-rose-500 md:col-span-2 justify-center')}>
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />} Scan exceptions (incl. live shipments &amp; POs)
         </button>
-        <p className="text-[10px] text-zinc-500 md:col-span-2">Scan results also update the Overview control tower.</p>
+        <p className="text-[10px] text-zinc-400 md:col-span-2">Scan results also update the Overview control tower.</p>
       </div>
 
       {result && (
@@ -738,7 +738,7 @@ function ExceptionsPanel({ notify }: { notify: (f: Feedback) => void }) {
             <Stat label="Critical" value={result.critical} tone="text-rose-300" />
             <Stat label="Warnings" value={result.warning} tone="text-amber-300" />
           </div>
-          {result.ropModel && <p className="text-[10px] text-zinc-500">{result.ropModel}</p>}
+          {result.ropModel && <p className="text-[10px] text-zinc-400">{result.ropModel}</p>}
           <div className="space-y-1.5">
             {result.alerts.map((a) => (
               <div key={a.id} className={cn('rounded-md border px-2.5 py-1.5',
@@ -829,7 +829,7 @@ function WorkOrdersPanel({ notify }: { notify: (f: Feedback) => void }) {
               type="search" value={poQuery} onChange={(e) => setPoQuery(e.target.value)}
               placeholder="Search purchase orders by number, item, or supplier…"
               aria-label="Search purchase orders"
-              className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-500"
+              className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-400"
             />
           )}
           <div className="space-y-2">
@@ -848,14 +848,14 @@ function WorkOrdersPanel({ notify }: { notify: (f: Feedback) => void }) {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] text-emerald-300 font-mono">${wo.totalCost.toLocaleString()}</span>
-                    <button onClick={() => del(wo.id)} className="text-zinc-600 hover:text-rose-400" aria-label="Delete work order"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => del(wo.id)} className="text-zinc-400 hover:text-rose-400" aria-label="Delete work order"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 <div className="mt-1.5 flex items-center gap-1">
                   {data.stages.map((st, i) => (
                     <div key={st} className="flex items-center gap-1 flex-1">
                       <div className={cn('flex-1 h-1 rounded-full', i <= data.stages.indexOf(wo.stage) ? 'bg-teal-500' : 'bg-zinc-800')} />
-                      <span className={cn('text-[8px] uppercase whitespace-nowrap', st === wo.stage ? 'text-teal-300 font-semibold' : 'text-zinc-600')}>{st}</span>
+                      <span className={cn('text-[8px] uppercase whitespace-nowrap', st === wo.stage ? 'text-teal-300 font-semibold' : 'text-zinc-400')}>{st}</span>
                     </div>
                   ))}
                 </div>
@@ -915,7 +915,7 @@ function SpendPanel({ notify }: { notify: (f: Feedback) => void }) {
   return (
     <div className="space-y-3">
       <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5 space-y-2">
-        <div className={LABEL}>Orders — one per line: <span className="text-zinc-600 normal-case">supplier | category | quantity | unitCost</span> (work orders are auto-included)</div>
+        <div className={LABEL}>Orders — one per line: <span className="text-zinc-400 normal-case">supplier | category | quantity | unitCost</span> (work orders are auto-included)</div>
         <textarea className={cn(INPUT, 'font-mono')} rows={4} value={text} onChange={(e) => setText(e.target.value)} />
         <ExampleBlock
           lines={'Acme Corp | raw materials | 500 | 4.20\nGlobex | packaging | 1200 | 0.85\nAcme Corp | raw materials | 300 | 4.50'}
@@ -999,7 +999,7 @@ export function SupplyChainPlanner() {
     <div className="rounded-lg border border-teal-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-teal-500/10 pb-2">
         <Network className="h-4 w-4 text-teal-400" />
-        <h3 className="text-sm font-semibold text-white">Integrated Planning Workbench</h3>
+        <h2 className="text-sm font-semibold text-white">Integrated Planning Workbench</h2>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
           SAP-IBP parity
         </span>
@@ -1050,7 +1050,7 @@ function ScenarioDelete({ name, onConfirm }: { name: string; onConfirm: () => vo
       armLabel={<Trash2 className="w-3.5 h-3.5" />}
       confirmLabel={`Delete scenario “${name}”?`}
       armAriaLabel="Delete scenario"
-      className="text-zinc-600 hover:text-rose-400"
+      className="text-zinc-400 hover:text-rose-400"
     />
   );
 }
