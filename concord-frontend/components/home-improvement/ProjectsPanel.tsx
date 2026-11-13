@@ -202,7 +202,8 @@ export function ProjectsPanel() {
               <select value={newProject.room} onChange={e => setNewProject(p => ({ ...p, room: e.target.value }))} className="input-lattice">
                 {ROOM_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
-              <input type="number" value={newProject.budget || ''} onChange={e => setNewProject(p => ({ ...p, budget: Number(e.target.value) }))} placeholder="Budget..." className="input-lattice" />
+              <input type="number" min={0} value={newProject.budget || ''} onChange={e => setNewProject(p => ({ ...p, budget: Number(e.target.value) }))} placeholder="Budget..." className="input-lattice" />
+              {Number(newProject.budget) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Budget can&apos;t be negative.</span>}
               <input value={newProject.notes} onChange={e => setNewProject(p => ({ ...p, notes: e.target.value }))} placeholder="Notes (optional)..." className="input-lattice" />
             </div>
             <button onClick={createProject} disabled={busy || !newProject.name.trim()} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
@@ -342,8 +343,9 @@ export function ProjectsPanel() {
                             />
                             <input
                               value={expenseDraft.amount} onChange={e => setExpenseDraft(d => ({ ...d, amount: e.target.value }))}
-                              type="number" placeholder="$" className="input-lattice text-xs"
+                              type="number" min={0} placeholder="$" className="input-lattice text-xs"
                             />
+                            {Number(expenseDraft.amount) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Amount can&apos;t be negative.</span>}
                             <select value={expenseDraft.kind} onChange={e => setExpenseDraft(d => ({ ...d, kind: e.target.value as HiExpense['kind'] }))} className="input-lattice text-xs">
                               {EXPENSE_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
                             </select>

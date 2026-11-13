@@ -155,6 +155,7 @@ function ZoningAnalysisTool() {
         </Field>
         <Field label="Lot size (sqft)">
           <input inputMode="numeric" value={lotSizeSqFt} onChange={(e) => setLotSizeSqFt(e.target.value)} className={inputCls} />
+          {lotSizeSqFt.trim() !== '' && !(Number(lotSizeSqFt) > 0) && <span role="note" className="col-span-full text-xs text-rose-300">Lot size must be greater than 0.</span>}
         </Field>
       </div>
       {error && <div className={errCls}>{error}</div>}
@@ -487,6 +488,7 @@ function SunStudyTool() {
         </Field>
         <Field label="Lot size (sqft)">
           <input inputMode="numeric" value={lotSizeSqFt} onChange={(e) => setLotSizeSqFt(e.target.value)} className={inputCls} />
+          {lotSizeSqFt.trim() !== '' && !(Number(lotSizeSqFt) > 0) && <span role="note" className="col-span-full text-xs text-rose-300">Lot size must be greater than 0.</span>}
         </Field>
         <Field label="Date (UTC)">
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />

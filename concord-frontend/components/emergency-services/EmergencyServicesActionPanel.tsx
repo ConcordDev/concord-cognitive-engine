@@ -226,7 +226,9 @@ export function EmergencyServicesActionPanel() {
           <input type="text" value={dispatchIncident} onChange={(e) => setDispatchIncident(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Incident description" />
           <div className="grid grid-cols-2 gap-1">
             <input type="number" min="1" max="5" value={dispatchPriority} onChange={(e) => setDispatchPriority(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Priority 1-5" />
+            {dispatchPriority !== '' && (Number(dispatchPriority) < 1 || Number(dispatchPriority) > 5) && <span role="note" className="col-span-full text-xs text-rose-300">Priority must be 1–5.</span>}
             <input type="number" min="0" step="0.1" value={dispatchDistance} onChange={(e) => setDispatchDistance(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Distance km" />
+            {dispatchDistance !== '' && Number(dispatchDistance) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Distance can&apos;t be negative.</span>}
           </div>
           <input type="text" value={dispatchUnit} onChange={(e) => setDispatchUnit(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Available unit" />
         </div>

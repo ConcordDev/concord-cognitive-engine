@@ -194,6 +194,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <input placeholder="Cost ($)" inputMode="decimal" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          {form.cost.trim() !== '' && Number(form.cost) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Cost can&apos;t be negative.</span>}
           <input placeholder="Photo URL (optional)" value={form.photo} onChange={(e) => { setForm({ ...form, photo: e.target.value }); setVisionNote(null); }}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={analyzePhoto} disabled={visionBusy || !form.photo.trim()}

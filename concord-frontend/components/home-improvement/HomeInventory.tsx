@@ -141,7 +141,8 @@ export function HomeInventory() {
             <label className="text-xs text-gray-400">Purchase date
               <input value={form.purchaseDate} onChange={(e) => setForm((f) => ({ ...f, purchaseDate: e.target.value }))} type="date" className="input-lattice w-full" />
             </label>
-            <input value={form.purchasePrice} onChange={(e) => setForm((f) => ({ ...f, purchasePrice: e.target.value }))} type="number" placeholder="Purchase price $" className="input-lattice" />
+            <input value={form.purchasePrice} onChange={(e) => setForm((f) => ({ ...f, purchasePrice: e.target.value }))} type="number" min={0} placeholder="Purchase price $" className="input-lattice" />
+            {Number(form.purchasePrice) < 0 && <span role="note" className="col-span-full text-xs text-rose-300">Price can&apos;t be negative.</span>}
             <label className="text-xs text-gray-400">Warranty expires
               <input value={form.warrantyExpires} onChange={(e) => setForm((f) => ({ ...f, warrantyExpires: e.target.value }))} type="date" className="input-lattice w-full" />
             </label>
