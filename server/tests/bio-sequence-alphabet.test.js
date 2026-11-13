@@ -21,10 +21,15 @@ function analyze(params) {
 before(() => { registerBioActions(register); });
 
 describe("bio sequence-analyze alphabet validation (FIX-bio-001)", () => {
-  it("refuses 'ATGXYZ' naming X, Y, Z (the audit case)", () => {
+  it("refuses 'ATGXYZ' naming X and Z (the audit case; Y is a valid IUPAC code)", () => {
+    // Correction (2026-11-13, post-landing): this case originally
+    // expected "X, Y, Z" — contradicting the IUPAC case below, since
+    // Y (pyrimidine) IS a valid ambiguity code for DNA. The code was
+    // right; the expectation was wrong. ATGXYZ is refused naming the
+    // genuinely invalid characters, X and Z.
     const r = analyze({ sequence: "ATGXYZ", kind: "dna" });
     assert.equal(r.ok, false);
-    assert.match(r.error, /X, Y, Z are not valid nucleotides for a DNA sequence/);
+    assert.match(r.error, /X, Z are not valid nucleotides for a DNA sequence/);
   });
 
   it("valid DNA still analyzes with the audit's own metrics", () => {

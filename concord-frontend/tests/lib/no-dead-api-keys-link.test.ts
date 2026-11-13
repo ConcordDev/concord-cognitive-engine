@@ -18,7 +18,11 @@ function* walk(dir: string): Generator<string> {
 }
 
 describe('no page links to the retired /api-keys route (FIX-expert-mode-008)', () => {
-  it('no href targets /api-keys anywhere in app/ or components/', () => {
+  // 30s: this pin walks the whole app/ + components/ tree; under a
+  // parallel full-suite run on a loaded box the default 10s vitest
+  // timeout can expire before the walk finishes (seen 2026-11-13 —
+  // the assertion itself passes; solo run is ~1s).
+  it('no href targets /api-keys anywhere in app/ or components/', { timeout: 30000 }, () => {
     const offenders: string[] = [];
     for (const root of ['app', 'components']) {
       for (const file of walk(join(process.cwd(), root))) {
