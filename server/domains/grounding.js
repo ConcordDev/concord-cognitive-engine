@@ -1058,6 +1058,48 @@ export default function registerGroundingActions(registerLensAction) {
   });
 
   /**
+   * recordActivity
+   * Append a non-check workbench activity to the audit trail
+   * (FIX-grounding-012). recordCheck covers fact checks; Source tier,
+   * Decompose, and the verification-DTU mint ran without leaving any
+   * trail entry, so the Audit trail tab could not reconstruct them.
+   * The panel reports each completed activity here, best-effort, the
+   * same courtesy pattern as recordCheck.
+   * params: { kind: "source-tier" | "decompose" | "mint", claim?, summary?, dtuId? }
+   */
+  registerLensAction("grounding", "recordActivity", (ctx, _a, params = {}) => {
+    try {
+      const g = getGroundingState();
+      if (!g) return { ok: false, error: "STATE unavailable" };
+      const userId = gActor(ctx);
+      const LABELS = {
+        "source-tier": "source tier scored",
+        "decompose": "claim decomposed",
+        "mint": "verification DTU minted",
+      };
+      const label = LABELS[params.kind];
+      if (!label) return { ok: false, error: "kind must be one of: source-tier, decompose, mint" };
+      const dtuId = gClean(params.dtuId, 80);
+      if (params.kind === "mint" && !dtuId) return { ok: false, error: "dtuId required for a mint record" };
+      const entry = {
+        id: gId("audit"),
+        action: label,
+        claim: gClean(params.claim, 1000).slice(0, 160),
+        verdict: params.kind === "mint" ? dtuId : (gClean(params.summary, 160) || label),
+        ...(dtuId ? { dtuId } : {}),
+        at: new Date().toISOString(),
+      };
+      gList(g.trail, userId).unshift(entry);
+      const trail = g.trail.get(userId);
+      if (trail.length > 400) trail.length = 400;
+      saveGrounding();
+      return { ok: true, result: { recorded: entry } };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  });
+
+  /**
    * auditTrail
    * Return the per-user claim verification history + audit log.
    * params: { limit? }

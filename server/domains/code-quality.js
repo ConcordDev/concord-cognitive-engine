@@ -340,8 +340,12 @@ function analyzeFile({ file, source, language }) {
 
   // --- metrics ---------------------------------------------------------
   const totalLines = rawLines.length;
-  const fileComplexity = fns.reduce((s, f) => s + f.complexity, 1);
-  const avgComplexity = fns.length ? fileComplexity / fns.length : 1;
+  // FIX-code-quality-003: the sum started at 1 (a phantom base point),
+  // so a single function of complexity 4 reported AVG 5 > MAX 4. The
+  // average is the plain mean of the functions' complexities, and an
+  // empty file averages 0 like its max — avg ≤ max always holds.
+  const fileComplexity = fns.reduce((s, f) => s + f.complexity, 0);
+  const avgComplexity = fns.length ? fileComplexity / fns.length : 0;
   const dupLines = dupBlocks.reduce((s, b) => s + b.length * b.occurrences, 0);
   const duplicationPct = codeLines ? Math.round((dupLines / codeLines) * 1000) / 10 : 0;
   const commentDensity = codeLines ? Math.round((commentLines / (codeLines + commentLines)) * 100) : 0;
@@ -1184,7 +1188,7 @@ function aggregateMetrics(fileReports) {
     maxComplexity = Math.max(maxComplexity, m.maxComplexity);
     dupLines += (m.duplicationPct / 100) * m.codeLines;
   }
-  const avgComplexity = functionCount ? cxSum / functionCount : 1;
+  const avgComplexity = functionCount ? cxSum / functionCount : 0;
   const duplicationPct = codeLines
     ? Math.round((dupLines / codeLines) * 1000) / 10 : 0;
   const findingCount = fileReports.reduce((s, r) => s + r.findings.length, 0);

@@ -308,7 +308,18 @@ export default function registerLockActions(registerLensAction) {
    */
   registerLensAction("lock", "fairnessScore", (ctx, artifact, params) => {
   try {
-    const waits = artifact.data?.processWaits || [];
+    // FIX-lock-005: the profiler never called this action — it was
+    // the one server analysis with no surface. Explicit processWaits
+    // input still wins; with none supplied, derive the waits from
+    // the caller's recorded lock trace (the same store the other
+    // profiler analyses read), so the Fairness tab scores the real
+    // trace instead of demanding a hand-built payload.
+    let waits = artifact.data?.processWaits || [];
+    if (waits.length === 0) {
+      waits = tracesFor(ctx)
+        .filter((ev) => (ev.waitMs || 0) > 0)
+        .map((ev) => ({ processId: ev.thread, waitMs: ev.waitMs, resource: ev.lock, attempts: 1 }));
+    }
     if (waits.length === 0) {
       return { ok: true, result: { message: "No wait data to analyze." } };
     }

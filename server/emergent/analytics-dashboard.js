@@ -93,9 +93,12 @@ export function takeSnapshot(STATE) {
   analytics.lastSnapshotAt = now;
   analytics.metrics.snapshotsTaken++;
 
-  // Keep last 288 snapshots (24 hours at 5-min intervals)
-  if (analytics.snapshots.length > 288) {
-    analytics.snapshots = analytics.snapshots.slice(-288);
+  // Keep last 2016 snapshots (7 days at 5-min intervals). The growth
+  // view offers 7d/30d/90d ranges; the old 288 cap (24 hours) meant
+  // anything past a day was structurally empty. Longer ranges show
+  // the retained window.
+  if (analytics.snapshots.length > 2016) {
+    analytics.snapshots = analytics.snapshots.slice(-2016);
   }
 
   return { ok: true, snapshot };
@@ -196,19 +199,39 @@ export function getDtuGrowthTrends(STATE, options = {}) {
 
   let snapshots = analytics.snapshots;
 
-  // Filter by period
+  // Filter by period. FIX-analytics-007: "90d" used to fall through to
+  // the 24h window, so the 90d view silently queried a single day.
   const now = Date.now();
-  const periodMs = period === "24h" ? 86400000 : period === "7d" ? 604800000 : period === "30d" ? 2592000000 : 86400000;
+  const PERIOD_MS = { "24h": 86400000, "7d": 604800000, "30d": 2592000000, "90d": 7776000000 };
+  const periodMs = PERIOD_MS[period] || 86400000;
   snapshots = snapshots.filter(s => now - s.ts < periodMs);
 
-  // Build growth series
+  // Build growth series. FIX-analytics-007: the Platform growth panel
+  // reads { ts, users, dtus } points and a totals block; this function
+  // returned only { timestamp, totalDtus, totalProfiles } and no
+  // totals at all, so every cell rendered a dash and the chart had no
+  // plottable time or values — under a "Live" page label. The panel's
+  // field names now ride alongside the native ones (users = profiles,
+  // dtus = total DTUs), and totals come from the latest snapshot in
+  // range. activeUsers / revenueUsd are not captured by snapshots and
+  // are reported as null (the panel renders those two as dashes,
+  // honestly) rather than invented.
   const series = snapshots.map(s => ({
     timestamp: s.timestamp,
+    ts: s.timestamp,
     totalDtus: s.totalDtus,
+    dtus: s.totalDtus || 0,
     atlasDtus: s.atlasDtus || 0,
     publicDtus: s.publicDtus || 0,
     totalProfiles: s.totalProfiles || 0,
+    users: s.totalProfiles || 0,
   }));
+  const totals = series.length > 0 ? {
+    users: series[series.length - 1].totalProfiles,
+    dtus: series[series.length - 1].totalDtus,
+    activeUsers: null,
+    revenueUsd: null,
+  } : null;
 
   // Calculate growth rate
   const first = series[0];
@@ -220,7 +243,7 @@ export function getDtuGrowthTrends(STATE, options = {}) {
     period,
   } : null;
 
-  return { ok: true, series, growth, dataPoints: series.length };
+  return { ok: true, series, growth, totals, dataPoints: series.length };
 }
 
 // ── Citation Analytics ───────────────────────────────────────────────────

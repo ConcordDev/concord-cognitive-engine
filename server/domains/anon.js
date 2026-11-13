@@ -324,7 +324,13 @@ export default function registerAnonActions(registerLensAction) {
     const records = artifact.data?.records || [];
     if (records.length === 0) return { ok: true, result: { message: "No records to anonymize." } };
 
-    const k = params.k || 3;
+    // FIX-anon-002: k was silently defaulted (params.k || 3) with no
+    // surface control and no validation. Refuse a k that cannot mean
+    // anything, in words.
+    const k = Number(params.k ?? 3);
+    if (!Number.isInteger(k) || k < 2 || k > records.length) {
+      return { ok: false, error: `k must be a whole number between 2 and ${records.length} (the record count) — got ${JSON.stringify(params.k ?? null)}` };
+    }
 
     // Auto-detect quasi-identifiers if not specified
     const qids = artifact.data?.quasiIdentifiers || [];
@@ -349,11 +355,15 @@ export default function registerAnonActions(registerLensAction) {
       if (value == null) return "*";
       const str = String(value);
 
-      // Numeric generalization: widen range
-      const num = parseFloat(str);
-      if (!isNaN(num)) {
+      // FIX-anon-002: generalize by the value's TYPE. Only real numbers
+      // are quantities and take widening ranges. A numeric STRING is a
+      // code (a ZIP "94110" is not ninety-four thousand of anything) and
+      // takes prefix truncation like every other string — parseFloat
+      // used to bucket ZIPs into nonsense ranges ("94100-94199", and
+      // "0-9999999999" at the level cap).
+      if (typeof value === "number" && Number.isFinite(value)) {
         const bucketSize = Math.pow(10, level);
-        const lower = Math.floor(num / bucketSize) * bucketSize;
+        const lower = Math.floor(value / bucketSize) * bucketSize;
         return `${lower}-${lower + bucketSize - 1}`;
       }
 

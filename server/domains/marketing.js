@@ -1269,6 +1269,14 @@ export default function registerMarketingActions(registerLensAction) {
     const headings = Math.max(0, Math.round(mkNum(params.headingCount)));
     const images = Math.max(0, Math.round(mkNum(params.imageCount)));
     const imagesWithAlt = Math.min(images, Math.max(0, Math.round(mkNum(params.imagesWithAlt))));
+    // FIX-marketing-012: this audit scores pasted page content — it does
+    // not fetch the URL. A URL-only run used to score the empty form
+    // (14/100, 1/7 checks, 0 words) and SAVE it as an audit of the page.
+    // With no content at all there is nothing to audit: refuse in words
+    // and save nothing.
+    if (!title && !metaDescription && !bodyText && headings === 0 && images === 0) {
+      return { ok: false, error: "No page content to audit — this audit scores pasted content and does not fetch the URL. Paste the page's title, meta description, and body text (headings and image counts help too), then run the audit again." };
+    }
     const words = bodyText ? bodyText.split(/\s+/).filter(Boolean) : [];
     const wordCount = words.length;
     let keywordCount = 0;

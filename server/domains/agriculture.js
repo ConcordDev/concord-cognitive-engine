@@ -2142,6 +2142,22 @@ export default function registerAgricultureActions(registerLensAction) {
     return { ok: true, result: { grids } };
   });
 
+  // FIX-agriculture-013: stored soil grids had no delete at all — a
+  // generated or imported grid could never be removed. Owner-scoped,
+  // mirroring scout-delete.
+  registerLensAction("agriculture", "soil-grid-delete", (ctx, _a, params = {}) => {
+    const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = agriActor(ctx);
+    const id = String(params.id || "");
+    if (!id) return { ok: false, error: "id required" };
+    const bucket = ensureAgBucket(s, "soilGrids", userId);
+    const idx = bucket.findIndex((g) => g.id === id);
+    if (idx < 0) return { ok: false, error: "grid not found" };
+    bucket.splice(idx, 1);
+    saveAgriState();
+    return { ok: true, result: { deleted: id } };
+  });
+
   registerLensAction("agriculture", "soil-grid-import-results", (ctx, _a, params = {}) => {
   try {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };

@@ -40,8 +40,27 @@ export default function registerExperienceActions(registerLensAction) {
     const timeOnTask = parseFloat(data.avgTimeSeconds) || 0;
     const errors = parseInt(data.errorCount) || 0;
     const satisfaction = parseFloat(data.satisfactionScore) || 0;
-    const sus = Math.round(taskSuccess * 25 + Math.max(0, 100 - timeOnTask / 2) * 0.25 + Math.max(0, 100 - errors * 10) * 0.25 + satisfaction * 0.25);
-    return { ok: true, result: { taskSuccessRate: taskSuccess, avgTimeSeconds: timeOnTask, errorCount: errors, satisfactionScore: satisfaction, susScore: Math.min(100, sus), grade: sus >= 80 ? "A" : sus >= 68 ? "B" : sus >= 50 ? "C" : "D", benchmark: "Industry average SUS score is 68" } };
+    // FIX-experience-002: taskSuccessRate is a PERCENT (the form labels
+    // it "%" and the result renders it with "%"), but the formula
+    // multiplied it by 25 as if it were a 0-1 fraction — 80% success
+    // alone contributed 2000 points and the clamp pinned every
+    // realistic session at 100/A. All four terms are percents now,
+    // each contributing at most 25, and the result carries the
+    // components + formula so the score can be hand-checked.
+    if (taskSuccess < 0 || taskSuccess > 100) return { ok: false, error: "taskSuccessRate must be a percent from 0 to 100" };
+    if (satisfaction < 0 || satisfaction > 100) return { ok: false, error: "satisfactionScore must be a percent from 0 to 100" };
+    if (timeOnTask < 0) return { ok: false, error: "avgTimeSeconds must be 0 or more" };
+    if (errors < 0) return { ok: false, error: "errorCount must be 0 or more" };
+    const timeTerm = Math.max(0, 100 - timeOnTask / 2);
+    const errorTerm = Math.max(0, 100 - errors * 10);
+    const components = {
+      taskSuccess: Math.round(taskSuccess * 0.25 * 10) / 10,
+      time: Math.round(timeTerm * 0.25 * 10) / 10,
+      errors: Math.round(errorTerm * 0.25 * 10) / 10,
+      satisfaction: Math.round(satisfaction * 0.25 * 10) / 10,
+    };
+    const sus = Math.round(taskSuccess * 0.25 + timeTerm * 0.25 + errorTerm * 0.25 + satisfaction * 0.25);
+    return { ok: true, result: { taskSuccessRate: taskSuccess, avgTimeSeconds: timeOnTask, errorCount: errors, satisfactionScore: satisfaction, susScore: Math.min(100, sus), grade: sus >= 80 ? "A" : sus >= 68 ? "B" : sus >= 50 ? "C" : "D", benchmark: "Industry average SUS score is 68", components, formula: "score = 0.25 × (task success % + max(0, 100 − avg seconds ÷ 2) + max(0, 100 − 10 × errors) + satisfaction %)" } };
   });
   registerLensAction("experience", "heuristicEval", (ctx, artifact, _params) => {
     const heuristics = ["Visibility of system status", "Match between system and real world", "User control and freedom", "Consistency and standards", "Error prevention", "Recognition rather than recall", "Flexibility and efficiency", "Aesthetic and minimalist design", "Help users recognize errors", "Help and documentation"];

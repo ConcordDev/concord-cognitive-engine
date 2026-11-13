@@ -378,12 +378,49 @@ export default function registerVoiceActions(registerLensAction) {
     const rec = vcList(s, vcActor(ctx)).find((r) => r.id === params.id);
     if (!rec) return { ok: false, error: "recording not found" };
     if (rec.segments.length === 0) return { ok: false, error: "recording has no transcript" };
-    // Highlights are explicit summary points; otherwise pick the longest segments.
+    // Highlights are explicit summary points — the user's own picks,
+    // kept as marked. Otherwise (FIX-voice-010): the old fallback
+    // repeated the five LONGEST segments verbatim as "key points" —
+    // whole multi-sentence blocks copied from the transcript, which
+    // is a quote list, not a summary. The deterministic fallback now
+    // does sentence-level extractive scoring (Luhn-style): split the
+    // transcript into sentences, score each by the transcript-wide
+    // frequency of its content words, and take the most central
+    // sentences (deduped, in transcript order). For the abstractive
+    // summary, recording-summary-llm remains the opt-in path.
     const highlighted = rec.segments.filter((g) => g.highlighted);
-    const keyPoints = (highlighted.length > 0
-      ? highlighted
-      : [...rec.segments].sort((a, b) => b.text.length - a.text.length).slice(0, 5).sort((a, b) => a.startSec - b.startSec)
-    ).map((g) => g.text.slice(0, 200));
+    let keyPoints;
+    if (highlighted.length > 0) {
+      keyPoints = highlighted.map((g) => g.text.slice(0, 200));
+    } else {
+      const STOP = new Set(["the", "a", "an", "and", "or", "but", "of", "to", "in", "on", "for", "with", "is", "are", "was", "were", "be", "it", "its", "this", "that", "we", "you", "i", "they", "he", "she", "so", "as", "at", "by", "from", "have", "has", "had", "will", "would", "can", "could", "should", "our", "your", "their", "there", "here", "what", "when", "how", "all", "any", "if", "then", "than", "too", "very", "just"]);
+      const sentences = [];
+      for (const g of rec.segments) {
+        for (const part of String(g.text).split(/(?<=[.!?])\s+/)) {
+          const text = part.trim();
+          if (text) sentences.push({ text, startSec: g.startSec });
+        }
+      }
+      const freq = new Map();
+      const wordsOf = (t) => t.toLowerCase().replace(/[^a-z0-9\s'-]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !STOP.has(w));
+      for (const s of sentences) for (const w of wordsOf(s.text)) freq.set(w, (freq.get(w) || 0) + 1);
+      const seenNorm = new Set();
+      const scored = [];
+      sentences.forEach((s, idx) => {
+        const norm = s.text.toLowerCase().replace(/\s+/g, " ");
+        if (seenNorm.has(norm)) return;
+        seenNorm.add(norm);
+        const ws = wordsOf(s.text);
+        if (ws.length === 0) return;
+        const score = ws.reduce((n, w) => n + (freq.get(w) || 0), 0) / Math.sqrt(ws.length);
+        scored.push({ ...s, idx, score });
+      });
+      keyPoints = scored
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+        .sort((a, b) => a.idx - b.idx)
+        .map((s) => s.text.slice(0, 200));
+    }
     const actionItems = [];
     for (const g of rec.segments) {
       const low = g.text.toLowerCase();

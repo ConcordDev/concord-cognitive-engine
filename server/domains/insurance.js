@@ -461,6 +461,23 @@ export default function registerInsuranceActions(register) {
     const carrier = String(params.carrier || "").trim();
     const policyNumber = String(params.policyNumber || "").trim();
     if (!carrier || !policyNumber) return { ok: false, error: "carrier and policyNumber required" };
+    // FIX-insurance-006: policy/claim text sailed in unbounded (300+
+    // chars accepted whole). The domain's own conventions govern:
+    // names at 120 (client-add), identifiers at 64. Refuse by name
+    // over the limit instead of storing silently.
+    if (carrier.length > 120) return { ok: false, error: "carrier must be 120 characters or fewer" };
+    if (policyNumber.length > 64) return { ok: false, error: "policyNumber must be 64 characters or fewer" };
+    if (params.insuredName != null && String(params.insuredName).trim().length > 120) return { ok: false, error: "insuredName must be 120 characters or fewer" };
+    // Dates, when supplied, must be real calendar dates, and the
+    // renewal may not precede the start.
+    const isRealDate = (v) => {
+      if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+      const d = new Date(`${v}T00:00:00Z`);
+      return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+    };
+    if (params.effectiveDate != null && params.effectiveDate !== "" && !isRealDate(params.effectiveDate)) return { ok: false, error: "effectiveDate must be a real date (YYYY-MM-DD)" };
+    if (params.renewalDate != null && params.renewalDate !== "" && !isRealDate(params.renewalDate)) return { ok: false, error: "renewalDate must be a real date (YYYY-MM-DD)" };
+    if (params.effectiveDate && params.renewalDate && String(params.renewalDate) < String(params.effectiveDate)) return { ok: false, error: "renewalDate must not be before effectiveDate" };
     const badNum = badNumericField(params, ["annualPremium", "deductible", "liabilityLimit"]);
     if (badNum) return { ok: false, error: `invalid_${badNum}` };
     // Optional clientId resolution (persisted Client/CRM entity, above) —
@@ -516,6 +533,11 @@ export default function registerInsuranceActions(register) {
     const carrier = String(params.carrier || "").trim();
     const description = String(params.description || "").trim();
     if (!carrier || !description) return { ok: false, error: "carrier and description required" };
+    // FIX-insurance-006: same unbounded-text leg on the claim form —
+    // carrier at the domain's 120 name limit, description at the
+    // platform's 5,000 description limit (INPUT_LIMITS), refused by name.
+    if (carrier.length > 120) return { ok: false, error: "carrier must be 120 characters or fewer" };
+    if (description.length > 5000) return { ok: false, error: "description must be 5,000 characters or fewer" };
     const badNum = badNumericField(params, ["claimAmount"]);
     if (badNum) return { ok: false, error: `invalid_${badNum}` };
     // Optional clientId resolution (persisted Client/CRM entity, above) —
