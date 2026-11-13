@@ -389,7 +389,7 @@ function AchievementsLensInner() {
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search achievements… (/)"
                     aria-label="Search achievements"
-                    className="w-40 rounded-full border border-white/10 bg-white/[0.03] py-1.5 pl-7 pr-3 text-xs text-slate-200 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none sm:w-56"
+                    className="w-40 rounded-full border border-white/10 bg-white/[0.03] py-1.5 pl-7 pr-3 text-xs text-slate-200 placeholder:text-slate-400 focus:border-teal-400 focus:outline-none sm:w-56"
                   />
                 </div>
                 <label className="sr-only" htmlFor="achievements-sort">Sort achievements</label>

@@ -148,7 +148,7 @@ export function TitlesPanel({ refreshSignal }: { refreshSignal?: number }) {
               >
                 <div className="min-w-0">
                   <div className="truncate text-xs font-medium text-slate-100">{t.title}</div>
-                  <div className="text-[10px] text-slate-500">earned {formatRelativeTime(t.earnedAt * 1000)}</div>
+                  <div className="text-[10px] text-slate-400">earned {formatRelativeTime(t.earnedAt * 1000)}</div>
                 </div>
                 {isActive ? (
                   <button

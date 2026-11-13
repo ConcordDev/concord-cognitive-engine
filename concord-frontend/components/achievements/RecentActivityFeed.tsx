@@ -176,7 +176,7 @@ export function RecentActivityFeed({
                   </span>{' '}
                   unlocked <span className="text-slate-100">{it.title}</span>
                 </span>
-                <span className="shrink-0 text-slate-500">{formatRelativeTime(it.earnedAt * 1000)}</span>
+                <span className="shrink-0 text-slate-400">{formatRelativeTime(it.earnedAt * 1000)}</span>
               </li>
             );
           })}
