@@ -102,7 +102,7 @@ export function AccountingKeepMenu({ facts, platform = 'x' }: Props) {
     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-500/20 bg-zinc-900/40 p-3">
       <div className="flex items-center gap-1.5">
         <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-        <h4 className="text-[11px] font-semibold text-zinc-300">Keep this journal entry</h4>
+        <h3 className="text-[11px] font-semibold text-zinc-300">Keep this journal entry</h3>
       </div>
       <div className="flex items-center gap-2">
         <button

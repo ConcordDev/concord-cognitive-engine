@@ -174,7 +174,7 @@ export function BillsPanel() {
           <Receipt className="w-4 h-4 text-emerald-400" />
           <span className="text-sm font-semibold text-gray-200">Bills</span>
           <span className="text-[10px] text-gray-400 font-mono tabular-nums">{bills.length}</span>
-          <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Filter bills" value={filter} onChange={e => setFilter(e.target.value as typeof filter)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="open">Open</option>
             <option value="paid">Paid</option>
             <option value="all">All</option>
@@ -246,7 +246,7 @@ export function BillsPanel() {
               )}
             </div>
             <input type="number" step="0.01" value={draft.total} onChange={e => setDraft({ ...draft, total: e.target.value })} placeholder="Total *" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
-            <select value={draft.expenseAccountId} onChange={e => setDraft({ ...draft, expenseAccountId: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+            <select aria-label="Expense account" value={draft.expenseAccountId} onChange={e => setDraft({ ...draft, expenseAccountId: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
               <option value="">Expense account…</option>
               {expenseAccounts.map(a => <option key={a.id} value={a.id}>{a.code} {a.name}</option>)}
             </select>

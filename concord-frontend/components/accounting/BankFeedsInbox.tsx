@@ -270,7 +270,7 @@ export function BankFeedsInbox() {
                   {sugg ? (
                     <>
                       <Sparkles className={cn('w-3 h-3 flex-shrink-0', sugg.highConfidence ? 'text-emerald-400' : 'text-amber-400')} />
-                      <select
+                      <select aria-label="Suggested account"
                         value={sugg.suggestedAccountId}
                         onChange={e => setSuggestions(prev => {
                           const next = new Map(prev);
@@ -301,7 +301,7 @@ export function BankFeedsInbox() {
                     </>
                   ) : (
                     <>
-                      <select
+                      <select aria-label="Accept into account"
                         defaultValue=""
                         onChange={(e) => { if (e.target.value) acceptOne(t.id, e.target.value); }}
                         className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white max-w-[260px] ml-auto"

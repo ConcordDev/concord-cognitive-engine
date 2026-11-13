@@ -50,7 +50,7 @@ export function AcRatiosPanel() {
       </div>
 
       <div className="bg-black/30 border border-white/10 rounded-lg p-3">
-        <h3 className="text-xs font-semibold text-gray-300 mb-2">Underlying totals</h3>
+        <h2 className="text-xs font-semibold text-gray-300 mb-2">Underlying totals</h2>
         <ul className="grid grid-cols-2 gap-1 text-[11px] text-gray-400">
           <li>Current assets: <span className="font-mono tabular-nums text-gray-200">${r.totals.currentAssets.toLocaleString()}</span></li>
           <li>Total assets: <span className="font-mono tabular-nums text-gray-200">${r.totals.totalAssets.toLocaleString()}</span></li>

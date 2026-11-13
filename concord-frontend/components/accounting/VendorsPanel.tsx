@@ -98,10 +98,10 @@ export function VendorsPanel() {
           <input value={draft.email} onChange={e => setDraft({ ...draft, email: e.target.value })} placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={draft.phone} onChange={e => setDraft({ ...draft, phone: e.target.value })} placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={draft.taxId} onChange={e => setDraft({ ...draft, taxId: e.target.value })} placeholder="EIN / SSN" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
-          <select value={draft.paymentTerms} onChange={e => setDraft({ ...draft, paymentTerms: e.target.value as Vendor['paymentTerms'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Payment terms" value={draft.paymentTerms} onChange={e => setDraft({ ...draft, paymentTerms: e.target.value as Vendor['paymentTerms'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {TERMS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
-          <select value={draft.defaultExpenseAccountId} onChange={e => setDraft({ ...draft, defaultExpenseAccountId: e.target.value })} className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Default expense account" value={draft.defaultExpenseAccountId} onChange={e => setDraft({ ...draft, defaultExpenseAccountId: e.target.value })} className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="">Default expense account…</option>
             {expenseAccounts.map(a => <option key={a.id} value={a.id}>{a.code} {a.name}</option>)}
           </select>
@@ -126,10 +126,10 @@ export function VendorsPanel() {
                   <input value={editDraft.email} onChange={e => setEditDraft({ ...editDraft, email: e.target.value })} placeholder="Email" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                   <input value={editDraft.phone} onChange={e => setEditDraft({ ...editDraft, phone: e.target.value })} placeholder="Phone" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                   <input value={editDraft.taxId} onChange={e => setEditDraft({ ...editDraft, taxId: e.target.value })} placeholder="EIN / SSN" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
-                  <select value={editDraft.paymentTerms} onChange={e => setEditDraft({ ...editDraft, paymentTerms: e.target.value as Vendor['paymentTerms'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+                  <select aria-label="Payment terms" value={editDraft.paymentTerms} onChange={e => setEditDraft({ ...editDraft, paymentTerms: e.target.value as Vendor['paymentTerms'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
                     {TERMS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                   </select>
-                  <select value={editDraft.defaultExpenseAccountId} onChange={e => setEditDraft({ ...editDraft, defaultExpenseAccountId: e.target.value })} className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+                  <select aria-label="Default expense account" value={editDraft.defaultExpenseAccountId} onChange={e => setEditDraft({ ...editDraft, defaultExpenseAccountId: e.target.value })} className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
                     <option value="">Default expense account…</option>
                     {expenseAccounts.map(a => <option key={a.id} value={a.id}>{a.code} {a.name}</option>)}
                   </select>

@@ -37,7 +37,7 @@ export function Form1099Panel() {
         <FileText className="w-4 h-4 text-amber-400" />
         <span className="text-sm font-semibold text-gray-200">1099-NEC summary</span>
         {data && <span className="text-[10px] text-gray-400 font-mono tabular-nums">threshold ≥ ${data.threshold} per IRS</span>}
-        <select value={year} onChange={e => setYear(Number(e.target.value))} className="ml-auto text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums">
+        <select aria-label="Tax year" value={year} onChange={e => setYear(Number(e.target.value))} className="ml-auto text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums">
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
       </header>

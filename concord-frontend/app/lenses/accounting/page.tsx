@@ -93,10 +93,10 @@ export default function AccountingLensPage() {
           <div className="flex shrink-0 items-center gap-3 pt-2">
             {balance != null && (
               <div className="text-right leading-tight">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">Wallet</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Wallet</div>
                 <div className="font-mono text-sm tabular-nums text-zinc-100">
                   {Math.round(balance).toLocaleString()} CC
-                  {tier && <span className="ml-1 text-[10px] uppercase text-zinc-500">{tier}</span>}
+                  {tier && <span className="ml-1 text-[10px] uppercase text-zinc-400">{tier}</span>}
                 </div>
               </div>
             )}
@@ -112,7 +112,7 @@ export default function AccountingLensPage() {
         <details className="rounded-xl border border-lattice-border bg-lattice-surface/40 backdrop-blur-sm overflow-hidden">
           <summary className="px-4 py-2 text-[10px] uppercase tracking-wider text-gray-400 cursor-pointer hover:bg-white/[0.02] flex items-center justify-between">
             <span>Macro context — World Bank indicators</span>
-            <span className="text-gray-600">expand</span>
+            <span className="text-gray-400">expand</span>
           </summary>
           <div className="p-2 border-t border-white/10">
             <IndicatorChart

@@ -201,7 +201,7 @@ export function AccountingActionPanel() {
     <div className="rounded-lg border border-emerald-500/20 bg-lattice-surface/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-emerald-500/10 pb-2">
         <Calculator className="h-4 w-4 text-emerald-400" />
-        <h3 className="text-sm font-semibold text-white">Accounting bench</h3>
+        <h2 className="text-sm font-semibold text-white">Accounting bench</h2>
         <span className="rounded bg-lattice-elevated px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-gray-400">TB · P&L · AR aging · variance · validate</span>
       </header>
 

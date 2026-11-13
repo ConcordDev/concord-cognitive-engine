@@ -90,7 +90,7 @@ export function RecurringInvoicesPanel() {
         <div className="px-4 py-3 border-b border-white/10 grid grid-cols-12 gap-2">
           <input value={draft.customerName} onChange={e => setDraft({ ...draft, customerName: e.target.value })} placeholder="Customer *" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input type="number" step="0.01" value={draft.total} onChange={e => setDraft({ ...draft, total: e.target.value })} placeholder="Amount *" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />
-          <select value={draft.cadence} onChange={e => setDraft({ ...draft, cadence: e.target.value as Recurring['cadence'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Cadence" value={draft.cadence} onChange={e => setDraft({ ...draft, cadence: e.target.value as Recurring['cadence'] })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {CADENCES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
           <input type="date" value={draft.startAt} onChange={e => setDraft({ ...draft, startAt: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono tabular-nums" />

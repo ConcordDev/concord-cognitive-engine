@@ -105,7 +105,7 @@ export function ExpensesPanel() {
 
       {creating && (
         <div className="px-4 py-3 border-b border-white/10 grid grid-cols-12 gap-2">
-          <select value={draft.accountId} onChange={e => setDraft({ ...draft, accountId: e.target.value })} className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Expense account" value={draft.accountId} onChange={e => setDraft({ ...draft, accountId: e.target.value })} className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="">Expense account *</option>
             {expenseAccounts.map(a => <option key={a.id} value={a.id}>{a.code} {a.name}</option>)}
           </select>

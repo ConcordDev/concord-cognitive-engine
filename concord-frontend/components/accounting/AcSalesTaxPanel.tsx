@@ -63,7 +63,7 @@ export function AcSalesTaxPanel() {
       </div>
 
       <section className="bg-black/30 border border-white/10 rounded-lg p-3">
-        <h3 className="text-xs font-semibold text-gray-300 mb-2">Record a remittance</h3>
+        <h2 className="text-xs font-semibold text-gray-300 mb-2">Record a remittance</h2>
         <div className="flex items-center gap-2">
           <input placeholder="Amount paid" inputMode="decimal" value={payment} onChange={(e) => setPayment(e.target.value)} className={inp} />
           <button type="button" onClick={recordPayment} className={btn}>Record payment</button>
@@ -72,7 +72,7 @@ export function AcSalesTaxPanel() {
       </section>
 
       <section className="bg-black/30 border border-white/10 rounded-lg p-3">
-        <h3 className="text-xs font-semibold text-gray-300 mb-2">Tax codes</h3>
+        <h2 className="text-xs font-semibold text-gray-300 mb-2">Tax codes</h2>
         <div className="flex items-center gap-2 mb-2">
           <input placeholder="Code name (e.g. CA)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inp} />
           <input placeholder="Rate %" inputMode="decimal" value={form.rate} onChange={(e) => setForm({ ...form, rate: e.target.value })}
@@ -85,8 +85,8 @@ export function AcSalesTaxPanel() {
               <li key={c.id} className="flex items-center gap-2 text-xs text-gray-300 bg-black/20 rounded px-2 py-1">
                 <span className="flex-1">{c.name}</span>
                 <span className="text-gray-400 font-mono tabular-nums">{c.rate}%</span>
-                <button aria-label="Delete" type="button" onClick={() => lensRun({ domain: 'accounting', action: 'tax-code-delete', input: { id: c.id } }).then(refresh)}
-                  className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button aria-label="Delete tax code" type="button" onClick={() => lensRun({ domain: 'accounting', action: 'tax-code-delete', input: { id: c.id } }).then(refresh)}
+                  className="text-gray-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>

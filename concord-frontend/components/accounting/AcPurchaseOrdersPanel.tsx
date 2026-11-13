@@ -61,8 +61,8 @@ export function AcPurchaseOrdersPanel() {
   return (
     <div className="space-y-4 p-1">
       <section className="bg-black/30 border border-white/10 rounded-lg p-3 space-y-2">
-        <h3 className="text-xs font-semibold text-gray-300">New purchase order</h3>
-        <select value={vendorId} onChange={(e) => setVendorId(e.target.value)} className={inp}>
+        <h2 className="text-xs font-semibold text-gray-300">New purchase order</h2>
+        <select aria-label="Vendor" value={vendorId} onChange={(e) => setVendorId(e.target.value)} className={inp}>
           <option value="">Select vendor…</option>
           {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
         </select>
