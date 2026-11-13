@@ -1191,7 +1191,7 @@ export default function CouncilLensPage() {
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
+              <input aria-label="Search proposals…  /"
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
@@ -1508,13 +1508,13 @@ export default function CouncilLensPage() {
           </div>
           {showAmendmentForm && (
             <div className="mt-3 p-3 bg-lattice-elevated rounded-lg space-y-2">
-              <input
+              <input aria-label="Amendment title"
                 value={amendmentForm.title}
                 onChange={(e) => setAmendmentForm((f) => ({ ...f, title: e.target.value }))}
                 placeholder="Amendment title"
                 className={ds.input}
               />
-              <textarea
+              <textarea aria-label="Describe the proposed change"
                 value={amendmentForm.description}
                 onChange={(e) => setAmendmentForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder="Describe the proposed change..."
@@ -1602,7 +1602,7 @@ export default function CouncilLensPage() {
             ))}
           </div>
           <div className="flex gap-2">
-            <input
+            <input aria-label="Add to the discussion"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddComment(p.id)}
@@ -2079,7 +2079,7 @@ export default function CouncilLensPage() {
             {d.status === 'active' && (
               <div className="space-y-2">
                 <div className="flex gap-2">
-                  <input
+                  <input aria-label="Add a point to the debate"
                     value={debatePointText}
                     onChange={(e) => setDebatePointText(e.target.value)}
                     placeholder="Add a point to the debate..."
@@ -2467,7 +2467,7 @@ export default function CouncilLensPage() {
                     className={cn(
                       'text-[10px] mt-1 flex-shrink-0 w-32',
                       ds.textMono,
-                      'text-gray-600'
+                      'text-gray-400'
                     )}
                   >
                     {formatDateTime(entry.timestamp)}
@@ -2952,14 +2952,14 @@ export default function CouncilLensPage() {
               <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
                 <div>
                   <label className={ds.label}>Title</label>
-                  <input
+                  <input aria-label="Title"
                     value={newProposal.title}
                     onChange={(e) => setNewProposal((p) => ({ ...p, title: e.target.value }))}
                     placeholder="Proposal title..."
                     maxLength={200}
                     className={ds.input}
                   />
-                  {newProposal.title.length > 0 && <span className="text-[10px] text-gray-500">{newProposal.title.length}/200</span>}
+                  {newProposal.title.length > 0 && <span className="text-[10px] text-gray-400">{newProposal.title.length}/200</span>}
                 </div>
                 <div className={ds.grid2}>
                   <div>
@@ -3000,7 +3000,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Description</label>
-                  <textarea
+                  <textarea aria-label="Description"
                     value={newProposal.description}
                     onChange={(e) => setNewProposal((p) => ({ ...p, description: e.target.value }))}
                     rows={5}
@@ -3010,7 +3010,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Impact Assessment</label>
-                  <textarea
+                  <textarea aria-label="Impact Assessment"
                     value={newProposal.impactAssessment}
                     onChange={(e) =>
                       setNewProposal((p) => ({ ...p, impactAssessment: e.target.value }))
@@ -3022,7 +3022,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Tags (comma-separated)</label>
-                  <input
+                  <input aria-label="Tags (comma-separated)"
                     value={newProposal.tags}
                     onChange={(e) => setNewProposal((p) => ({ ...p, tags: e.target.value }))}
                     placeholder="governance, policy, transparency"
@@ -3098,7 +3098,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Description</label>
-                  <input
+                  <input aria-label="Description"
                     value={newBudgetItem.description}
                     onChange={(e) =>
                       setNewBudgetItem((b) => ({ ...b, description: e.target.value }))
@@ -3110,7 +3110,7 @@ export default function CouncilLensPage() {
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Amount ($)</label>
-                    <input
+                    <input aria-label="Amount ($)"
                       type="number"
                       value={newBudgetItem.amount}
                       onChange={(e) => setNewBudgetItem((b) => ({ ...b, amount: e.target.value }))}
@@ -3138,7 +3138,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Justification</label>
-                  <textarea
+                  <textarea aria-label="Justification"
                     value={newBudgetItem.justification}
                     onChange={(e) =>
                       setNewBudgetItem((b) => ({ ...b, justification: e.target.value }))
@@ -3183,7 +3183,7 @@ export default function CouncilLensPage() {
               <div className="p-5 space-y-4">
                 <div>
                   <label className={ds.label}>Committee Name</label>
-                  <input
+                  <input aria-label="Committee Name"
                     value={newCommittee.name}
                     onChange={(e) => setNewCommittee((c) => ({ ...c, name: e.target.value }))}
                     placeholder="e.g. Ethics Review Committee"
@@ -3192,7 +3192,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Description</label>
-                  <textarea
+                  <textarea aria-label="Description"
                     value={newCommittee.description}
                     onChange={(e) =>
                       setNewCommittee((c) => ({ ...c, description: e.target.value }))
@@ -3237,7 +3237,7 @@ export default function CouncilLensPage() {
               <div className="p-5 space-y-4">
                 <div>
                   <label className={ds.label}>Debate Topic</label>
-                  <textarea
+                  <textarea aria-label="Debate Topic"
                     value={newDebate.topic}
                     onChange={(e) => setNewDebate((d) => ({ ...d, topic: e.target.value }))}
                     rows={3}
@@ -3247,7 +3247,7 @@ export default function CouncilLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Time per Speaker (seconds)</label>
-                  <input
+                  <input aria-label="Time per Speaker (seconds)"
                     type="number"
                     value={newDebate.timePerSpeaker}
                     onChange={(e) =>

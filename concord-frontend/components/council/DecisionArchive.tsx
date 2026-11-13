@@ -189,14 +189,14 @@ function ArchivePane() {
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
+            <input aria-label="Search resolutions, summaries, tags"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search resolutions, summaries, tags…"
               className={cn(ds.input, 'pl-10 !w-72')}
             />
           </div>
-          <select
+          <select aria-label="Filter by outcome"
             value={outcomeFilter}
             onChange={(e) => setOutcomeFilter(e.target.value as 'all' | DecisionRecord['outcome'])}
             className={cn(ds.select, '!w-36')}
@@ -297,7 +297,7 @@ function ArchivePane() {
               <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
                 <div>
                   <label className={ds.label}>Resolution Title</label>
-                  <input
+                  <input aria-label="Resolution Title"
                     value={form.title}
                     onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                     placeholder="e.g. Adopt remote-work policy"
@@ -306,7 +306,7 @@ function ArchivePane() {
                 </div>
                 <div>
                   <label className={ds.label}>Summary</label>
-                  <textarea
+                  <textarea aria-label="Summary"
                     value={form.summary}
                     onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
                     rows={3}
@@ -317,7 +317,7 @@ function ArchivePane() {
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Outcome</label>
-                    <select
+                    <select aria-label="Outcome"
                       value={form.outcome}
                       onChange={(e) => setForm((f) => ({ ...f, outcome: e.target.value as DecisionRecord['outcome'] }))}
                       className={ds.select}
@@ -330,7 +330,7 @@ function ArchivePane() {
                   </div>
                   <div>
                     <label className={ds.label}>Decided On</label>
-                    <input
+                    <input aria-label="Decided On"
                       type="date"
                       value={form.decidedAt}
                       onChange={(e) => setForm((f) => ({ ...f, decidedAt: e.target.value }))}
@@ -341,7 +341,7 @@ function ArchivePane() {
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Votes For</label>
-                    <input
+                    <input aria-label="Votes For"
                       type="number"
                       min={0}
                       value={form.votesFor}
@@ -352,7 +352,7 @@ function ArchivePane() {
                   </div>
                   <div>
                     <label className={ds.label}>Votes Against</label>
-                    <input
+                    <input aria-label="Votes Against"
                       type="number"
                       min={0}
                       value={form.votesAgainst}
@@ -364,7 +364,7 @@ function ArchivePane() {
                 </div>
                 <div>
                   <label className={ds.label}>Tags (comma-separated)</label>
-                  <input
+                  <input aria-label="Tags (comma-separated)"
                     value={form.tags}
                     onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
                     placeholder="hr, policy, governance"
@@ -457,7 +457,7 @@ function TabulatorPane() {
         <div className="space-y-2 mb-4">
           {candidates.map((c, idx) => (
             <div key={idx} className="flex gap-2">
-              <input
+              <input aria-label={`Candidate ${idx + 1}`}
                 value={c}
                 onChange={(e) => {
                   const next = [...candidates];
@@ -490,7 +490,7 @@ function TabulatorPane() {
         <div className="space-y-2 mb-4">
           {ballots.map((b, idx) => (
             <div key={b.id} className="flex gap-2 flex-wrap">
-              <input
+              <input aria-label={`Voter ${idx + 1}`}
                 value={b.voter}
                 onChange={(e) => {
                   const next = [...ballots];
@@ -500,7 +500,7 @@ function TabulatorPane() {
                 placeholder={`Voter ${idx + 1}`}
                 className={cn(ds.input, '!w-32')}
               />
-              <input
+              <input aria-label="Ranking — e.g. Alice, Bob, Carol"
                 value={b.ranking}
                 onChange={(e) => {
                   const next = [...ballots];
