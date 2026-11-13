@@ -307,6 +307,7 @@ export function FormulaNotebookPanel() {
             )}
             <div className="flex gap-2">
               <button type="button" onClick={handleSaveFormula} disabled={!newFormulaName.trim() || !newFormulaLatex.trim()} className={ds.btnPrimary}>Save</button>
+              {!newFormulaName.trim() ? <span role="note" className="text-xs text-gray-400 self-center">Formula name is required.</span> : !newFormulaLatex.trim() && <span role="note" className="text-xs text-gray-400 self-center">Formula LaTeX is required.</span>}
               <button type="button" onClick={() => setShowAddFormula(false)} className={ds.btnGhost}>Cancel</button>
             </div>
             {formulaSaveError && (

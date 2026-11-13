@@ -208,6 +208,7 @@ export function ProjectsPanel() {
             <button onClick={createProject} disabled={busy || !newProject.name.trim()} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
               {busy ? 'Creating...' : 'Create Project'}
             </button>
+            {!newProject.name.trim() && <span role="note" className="text-xs text-gray-400">Project name is required.</span>}
           </motion.div>
         )}
       </AnimatePresence>
@@ -321,6 +322,7 @@ export function ProjectsPanel() {
                               placeholder="Add a task..." className="input-lattice text-xs flex-1"
                             />
                             <button onClick={() => addTask(p.id)} disabled={busy || !taskDraft.trim()} className="btn-neon text-xs px-3 disabled:opacity-50">Add</button>
+                            {!taskDraft.trim() && <span role="note" className="text-xs text-gray-400 self-center">Describe the task to add it.</span>}
                           </div>
                         </div>
 
@@ -347,6 +349,7 @@ export function ProjectsPanel() {
                             </select>
                           </div>
                           <button onClick={() => logExpense(p.id)} disabled={busy || !expenseDraft.label.trim() || !expenseDraft.amount} className="btn-neon green text-xs w-full disabled:opacity-50">Log expense</button>
+                          {!expenseDraft.label.trim() ? <span role="note" className="text-xs text-gray-400">Expense label is required.</span> : !expenseDraft.amount && <span role="note" className="text-xs text-gray-400">Expense amount is required.</span>}
                         </div>
                       </motion.div>
                     )}

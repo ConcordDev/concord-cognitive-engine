@@ -687,6 +687,7 @@ export function MoodTracker() {
               )}
               {submitting ? 'Saving...' : 'Log Check-in'}
             </button>
+            {selectedMood == null && <span role="note" className="text-xs text-gray-400">Pick a mood to check in.</span>}
 
             {lastResult && (
               <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-sm text-emerald-400 flex items-center gap-2">

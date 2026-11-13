@@ -170,6 +170,7 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                     )}
                     Capture
                   </button>
+                  {!content.trim() && <span role="note" className="text-xs text-gray-400 self-center">Write something to capture.</span>}
                 </div>
               </div>
             </motion.div>
