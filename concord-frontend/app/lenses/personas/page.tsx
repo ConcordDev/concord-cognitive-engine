@@ -237,7 +237,7 @@ export default function PersonasPage() {
                   </div>
                 ) : mine.length === 0 ? (
                   <div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-white/10 bg-[#111] p-8 text-center italic text-zinc-400">
-                    No personas yet. Use the <strong>Create</strong> tab to author your first.
+                    <p>No personas yet. Use the <strong>Create</strong> tab to author your first.</p>
                   </div>
                 ) : (
                   <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
