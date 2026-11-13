@@ -162,6 +162,8 @@ const AgentModePanel = dynamicSprint11(() => import('@/components/chat/AgentMode
 const InitiativeBell = dynamicSprint11(() => import('@/components/chat/InitiativeBell'), { ssr: false });
 import { useEvent } from '@/lib/realtime/event-bus';
 import { createSseParser, waitForSavedReply, fetchSessionMessages, type SavedChatMessage } from '@/lib/chat/reply-reconcile';
+import { RunCard } from '@/components/cockpit/RunCard';
+import { isCockpitEvent, type PublicRun, type PublicStep } from '@/lib/cockpit/run-client';
 import {
   recommendLenses,
   createSessionContext,
@@ -234,6 +236,8 @@ interface Message {
   artifacts?: ChatArtifact[];
   /** Brain was unreachable. Render as a notice, not an assistant answer. */
   aiUnavailable?: boolean;
+  /** A cockpit task this message belongs to; the run card draws it from server events. */
+  cockpitRunId?: string;
   retrieval?: {
     kind?: string;
     label?: string;
@@ -809,6 +813,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             dtuRefs: Array.isArray(meta.dtuRefs) ? (meta.dtuRefs as Message['dtuRefs']) : undefined,
             sources: Array.isArray(meta.sources) ? (meta.sources as Message['sources']) : undefined,
             artifacts: Array.isArray(meta.artifacts) ? (meta.artifacts as ChatArtifact[]) : undefined,
+            cockpitRunId: typeof (meta.cockpit as { runId?: unknown } | undefined)?.runId === 'string' ? ((meta.cockpit as { runId: string }).runId) : undefined,
             webAugmented: !!meta.webAugmented,
             confidence: meta.answerConfidence === 'low' ? 'low' : undefined,
             confidenceReason: typeof meta.answerConfidenceReason === 'string' ? meta.answerConfidenceReason : undefined,
@@ -1329,6 +1334,7 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             artifacts: meta.artifacts,
             answerConfidence: meta.answerConfidence,
             answerConfidenceReason: meta.answerConfidenceReason,
+            ...(meta.cockpit ? { meta: { cockpit: meta.cockpit } } : {}),
             recovered: true,
           };
         } finally {
@@ -1382,6 +1388,14 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
             if (typeof data.chunk === 'string' && data.chunk) {
               accumulated += data.chunk;
               setStreamingContent(accumulated);
+            }
+            // Cockpit events ride the same progress channel. RunCard owns the run's state;
+            // here we only make sure a card exists in the open transcript.
+            if (isCockpitEvent(progress)) {
+              const runId = progress.runId;
+              setLocalMessages((prev) => (prev.some((m) => m.cockpitRunId === runId) ? prev : [...prev, {
+                id: `run-${runId}`, role: 'assistant', content: '', timestamp: new Date().toISOString(), cockpitRunId: runId,
+              }]));
             }
             if (data.done) {
               gotDone = true;
@@ -1591,7 +1605,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
           || undefined,
       };
 
-      setLocalMessages((prev) => [...prev, assistantMsg]);
+      // A cockpit reply names its run. If the run card already exists (appended from the
+      // event stream), update that message's text instead of adding a second message.
+      const cockpitRunId = (data.meta as { cockpit?: { runId?: string | null } } | undefined)?.cockpit?.runId || undefined;
+      if (cockpitRunId) assistantMsg.cockpitRunId = cockpitRunId;
+      setLocalMessages((prev) => {
+        if (cockpitRunId) {
+          const at = prev.findIndex((m) => m.cockpitRunId === cockpitRunId);
+          if (at >= 0) return prev.map((m, i) => (i === at ? { ...m, content: assistantMsg.content } : m));
+        }
+        return [...prev, assistantMsg];
+      });
 
       // Update conversation registry metadata
       if (selectedConversation) {
@@ -1694,6 +1718,17 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
       setLocalMessages((prev) => [...prev, errorMsg]);
     },
   });
+
+  // FIX-chat-001: the finished reply reaches the open transcript from the run's own event
+  // stream, whether or not the original chat response is still open.
+  const handleRunFinished = useCallback((run: PublicRun, steps: PublicStep[]) => {
+    const last = [...steps].reverse().find((s) => s.status === 'done' && s.summary);
+    const text = run.status === 'done'
+      ? (last?.summary ?? 'Finished, but the last step returned no text.')
+      : steps.filter((s) => s.error).map((s) => `${s.label}: ${s.error}`).join('\n') || 'The task stopped.';
+    setLocalMessages((prev) => (prev.some((m) => m.id === `run-done-${run.id}`) ? prev
+      : [...prev, { id: `run-done-${run.id}`, role: 'assistant', content: text, timestamp: new Date().toISOString() }]));
+  }, []);
 
   const handleRegenerate = useCallback(() => {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
@@ -2491,6 +2526,8 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
                       shadowsUsed={message.shadowsUsed}
                     />
                   )}
+
+                {message.cockpitRunId && <RunCard runId={message.cockpitRunId} onFinished={handleRunFinished} />}
 
                 {/* Tool call results */}
                 {message.toolCalls && message.toolCalls.length > 0 && (
