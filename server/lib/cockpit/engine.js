@@ -227,7 +227,7 @@ export async function tickRun(a) {
         profile: run.modelProfile, lensActions: deps.lensActions, exclude,
       });
       const packet = await buildContextPacket({
-        run, step, priorSteps: steps, menu, profile: run.modelProfile, userId: run.userId, deps: { recall: deps.recall },
+        run, step, priorSteps: steps, menu, profile: run.modelProfile, userId: run.userId, deps: { recall: deps.recall, exec: deps.exec, lensActions: deps.lensActions },
         constraints: userAnswer ? [`User said: ${String(userAnswer).slice(0, 300)}`] : [],
       });
       const reask = REASK_CLASSES.has(step.errorClass) ? step.errorText : null;

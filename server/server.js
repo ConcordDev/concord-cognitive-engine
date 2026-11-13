@@ -29215,7 +29215,27 @@ if (_isTimeQuery(prompt)) {
 // is never a weather question — let the compute router take it.
 if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
   const tz = String(localSettings?.timezone || "America/New_York");
-  const loc = _extractLocation(prompt) || String(localSettings?.defaultLocation || "Poughkeepsie, NY");
+  let loc = _extractLocation(prompt) || String(localSettings?.defaultLocation || "Poughkeepsie, NY");
+  // GB-1500 CKPT-18 (FIX-forecast-001): a "place" that is really the whole sentence is re-read with one constrained call.
+  const _wxExtracted = _extractLocation(prompt);
+  if (_wxExtracted && (_wxExtracted.length > 40 || _wxExtracted.split(/\s+/).length > 4)) {
+    try {
+      const { cockpitFlag: _ckFlag } = await import("./lib/cockpit/flags.js");
+      if (_ckFlag("ASK_CONTEXT")) {
+        const { extractSlots: _extractSlots } = await import("./lib/cockpit/slot-extract.js");
+        const { defaultProfile: _ckProfile } = await import("./lib/cockpit/model-caps.js");
+        const sl = await _extractSlots({ text: prompt, slots: [{ name: "place", description: "city or region the person wants weather for", required: true }], profile: _ckProfile(), db, userId: ctx?.actor?.userId });
+        if (sl.ok) loc = sl.values.place;
+        else {
+          const reply = "Which place do you want the forecast for?";
+          sess.messages.push({ role:"assistant", content: reply, ts: nowISO(), meta: { llmUsed:false, source:"weather" } });
+          _persistDeterministicTurn(reply, { llmUsed: false, source: "weather" });
+          saveStateDebounced();
+          return { ok:true, reply, sessionId, mode, llmUsed:false, meta:{ panel:"chat", sessionId, mode, llmUsed:false, source:"weather" } };
+        }
+      }
+    } catch { /* fall through to the extracted place */ }
+  }
   try {
     const wx = await getWeather(loc, { timeZone: tz });
     if (!wx.ok) {

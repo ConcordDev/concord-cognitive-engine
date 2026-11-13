@@ -70,7 +70,7 @@ export async function handleChatTurn(a) {
       return reply(`You already have ${active} tasks running. Wait for one to finish or cancel one.`, { runId: null, kind: "refused", status: null });
     }
     const created = createRun(a.db, {
-      userId: a.userId, surface: a.surface || "chat", goal: String(a.message).slice(0, 2000),
+      userId: a.userId, surface: a.lensContext ? "ask" : (a.surface || "chat"), goal: String(a.message).slice(0, 2000),
       chatSessionId: a.chatSessionId, lensContext: a.lensContext || null, modelProfile: profile, budget: budgetFromEnv(),
     });
     if (!created.ok) return null;

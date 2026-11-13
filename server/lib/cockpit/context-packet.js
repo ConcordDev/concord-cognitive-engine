@@ -3,6 +3,8 @@ import { selectPreset } from "../dhtp.js";
 import { MODEL_PROFILES } from "./model-caps.js";
 import { packetMessages } from "./step-llm.js";
 import { defang } from "./result-summary.js";
+import { cockpitFlag } from "./flags.js";
+import { lensContextEvidence, lensDisplayName } from "./lens-context.js";
 
 export function estimateTokens(text) { return Math.ceil(String(text || "").length / 4); }
 
@@ -28,7 +30,8 @@ const measure = (packet) => packetMessages(packet).reduce((n, m) => n + m.conten
 
 /**
  * @param {{ run: object, step: object, priorSteps: object[], menu: object[], profile: string,
- *           userId: string, constraints?: string[], lensEvidence?: object[], deps?: { recall?: Function } }} a
+ *           userId: string, constraints?: string[], lensEvidence?: object[],
+ *           deps?: { recall?: Function, exec?: Function, lensActions?: Map, lensContext?: Function } }} a
  */
 export async function buildContextPacket(a) {
   const budget = (MODEL_PROFILES[a.profile] || MODEL_PROFILES["marker-only"]).packetBudgetIn;
@@ -42,7 +45,16 @@ export async function buildContextPacket(a) {
   const prior = [...deps, ...rest].slice(0, 6).map(toPrior).filter((p) => Object.keys(p.values).length);
 
   // Evidence: lens first, then the user's own recalled notes. Recall is always user-scoped.
-  const evidence = (a.lensEvidence || []).slice(0, 3).map((e) => ({ ...e, snippet: defang(e.snippet) }));
+  // CKPT-18: with the flag on, an Ask run carries what its lens is and what it holds, ahead of recalled notes.
+  let lensEvidence = a.lensEvidence || [];
+  const asked = a.run.lensContext && cockpitFlag("ASK_CONTEXT");
+  if (asked && !lensEvidence.length) {
+    try {
+      const le = await (a.deps?.lensContext || lensContextEvidence)({ lensId: a.run.lensContext, exec: a.deps?.exec, lensActions: a.deps?.lensActions });
+      lensEvidence = le.evidence || [];
+    } catch { /* lens context is optional */ }
+  }
+  const evidence = lensEvidence.slice(0, 3).map((e) => ({ ...e, snippet: defang(e.snippet) }));
   const recall = a.deps?.recall || globalThis.__concordRecallMemory;
   if (typeof recall === "function") {
     try {
@@ -57,7 +69,8 @@ export async function buildContextPacket(a) {
     } catch { /* recall is optional */ }
   }
 
-  const constraints = [...(a.constraints || []), "Use ids and values from Known values. Do not invent ids."].slice(0, 6);
+  const askLine = asked ? [`The person is asking from the ${lensDisplayName(a.run.lensContext)} page. Answer about that unless they name something else.`] : [];
+  const constraints = [...askLine, ...(a.constraints || []), "Use ids and values from Known values. Do not invent ids."].slice(0, 6);
   const packet = {
     presetId: selectPreset(a.run.goal)?.preset?.id || "cockpit.step",
     goal: a.step.goal,
