@@ -51,10 +51,17 @@ function MarketLensPage() {
 
   const newListing = useCallback(() => {
     setActive('listings');
+    // FIX-market-005: this used to focus the first input in the lens
+    // — the search box — so 'New listing' never opened the form. The
+    // listings panel owns the form state; tell it to open, then focus
+    // the form's first field once it has rendered.
     requestAnimationFrame(() => {
-      const el = document.querySelector<HTMLElement>('[data-lens-theme="market"] input:not([type="file"]), [data-lens-theme="market"] textarea');
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el?.focus();
+      window.dispatchEvent(new CustomEvent('market:open-new-listing'));
+      requestAnimationFrame(() => {
+        const el = document.querySelector<HTMLElement>('[data-market-create-form] select, [data-market-create-form] input');
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el?.focus();
+      });
     });
   }, []);
 
