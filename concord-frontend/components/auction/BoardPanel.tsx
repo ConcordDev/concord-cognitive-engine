@@ -9,13 +9,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { Plus, Coins, Clock, X, Check, AlertCircle, RefreshCcw, BarChart3 } from 'lucide-react';
 import { subscribe } from '@/lib/realtime/socket';
 import { type AuctionRow, fmtTime } from '@/components/auction/auction-shared';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 
 export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string) => void }) {
+  // FIX-auction-009: bids and escrow draw on the wallet, but the lens
+  // showed no balance anywhere. Display-only, via the shared hook.
+  const ccBalance = useWalletBalance();
   const [auctions, setAuctions] = useState<AuctionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [bidTarget, setBidTarget] = useState<AuctionRow | null>(null);
   const [bidAmount, setBidAmount] = useState('');
-  const [createForm, setCreateForm] = useState({ title: '', itemKind: 'dtu' as 'dtu' | 'inventory', itemId: '', startCc: '1', buyoutCc: '', durationS: '3600' });
+  const [createForm, setCreateForm] = useState({ title: '', itemKind: 'dtu' as 'dtu' | 'inventory', itemId: '', startCc: '', buyoutCc: '', durationS: '3600' });
   const [createError, setCreateError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -135,6 +139,9 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
   return (
     <div>
       <div className="mb-3 flex items-center justify-end gap-2">
+        <span className="mr-auto flex items-center gap-1.5 text-[11px] text-amber-200/90" aria-label={`Your balance: ${ccBalance} CC`}>
+          <Coins className="h-3.5 w-3.5 text-amber-300" /> Balance: <span className="font-mono font-semibold">{ccBalance.toLocaleString()} CC</span>
+        </span>
         <button onClick={refresh} aria-label="Refresh" className="rounded-full border border-amber-500/30 bg-amber-500/10 p-1.5 text-amber-300 hover:bg-amber-500/20">
           <RefreshCcw className="h-3.5 w-3.5" />
         </button>
@@ -234,7 +241,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
               <h2 className="text-sm font-semibold text-amber-100">Bid on {bidTarget.title || bidTarget.itemId}</h2>
               <button onClick={() => setBidTarget(null)} aria-label="Close" className="rounded p-1 text-slate-400 hover:bg-slate-800"><X className="h-3.5 w-3.5" /></button>
             </header>
-            <p className="mb-3 text-[11px] text-amber-300/80">Current bid: {bidTarget.currentBidCc} CC. Next bid must exceed this.</p>
+            <p className="mb-3 text-[11px] text-amber-300/80">Current bid: {bidTarget.currentBidCc} CC. Next bid must exceed this. Your balance: {ccBalance.toLocaleString()} CC.</p>
             <input type="number" min={bidTarget.currentBidCc + 1} step={1} value={bidAmount}
               onChange={(e) => setBidAmount(e.target.value)}
               className="block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100 focus:border-amber-500/50 focus:outline-none" />
@@ -286,8 +293,8 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
               </label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <label className="block">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Start CC</span>
-                  <input type="number" value={createForm.startCc} onChange={(e) => setCreateForm({ ...createForm, startCc: e.target.value })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Start CC (more than 0)</span>
+                  <input type="number" min={1} placeholder="e.g. 25" value={createForm.startCc} onChange={(e) => setCreateForm({ ...createForm, startCc: e.target.value })} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[12px] text-slate-100" />
                 </label>
                 <label className="block">
                   <span className="text-[10px] uppercase tracking-wider text-slate-400">Buyout (opt)</span>
