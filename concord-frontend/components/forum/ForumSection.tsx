@@ -122,7 +122,7 @@ export function ForumSection() {
         {activeTab === 'topics' && (
           <FmTopicsPanel key={topicsKey.current} onChange={refresh}
             initialTopicId={pendingTopic} onTopicConsumed={() => setPendingTopic(null)}
-            canModerate={canModerate} viewerId={viewerId} />
+            canModerate={canModerate} viewerId={viewerId} viewerName={user?.username ?? null} />
         )}
         {activeTab === 'communities' && <FmCommunitiesPanel onChange={refresh} canModerate={canModerate} viewerId={viewerId} />}
         {activeTab === 'trending' && <FmTrendingPanel onOpenTopic={openTopic} />}

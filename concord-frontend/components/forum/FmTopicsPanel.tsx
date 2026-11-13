@@ -25,6 +25,7 @@ interface Topic {
   id: string; categoryId: string | null; subforumId: string | null; title: string;
   body: string; format?: string; images?: string[]; tags: string[];
   author: string; authorId?: string; pinned: boolean; locked: boolean; score: number; replyCount?: number;
+  createdAt?: string;
   editedAt?: string;
   awards?: { id: string; icon: string; name: string }[];
 }
@@ -39,6 +40,15 @@ const FLAG_REASONS = [
 
 const EMPTY_DRAFT: RichDraft = { body: '', format: 'plain', images: [] };
 
+function timeAgo(iso?: string) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(diff / 3600000);
+  if (h < 1) return 'just now';
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
 let composeRequested = false;
 export const FORUM_COMPOSE_EVENT = 'forum:new-topic';
 export function requestForumCompose() {
@@ -47,13 +57,14 @@ export function requestForumCompose() {
 }
 
 export function FmTopicsPanel({
-  onChange, initialTopicId, onTopicConsumed, canModerate = false, viewerId = null,
+  onChange, initialTopicId, onTopicConsumed, canModerate = false, viewerId = null, viewerName = null,
 }: {
   onChange: () => void;
   initialTopicId?: string | null;
   onTopicConsumed?: () => void;
   canModerate?: boolean;
   viewerId?: string | null;
+  viewerName?: string | null;
 }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subforums, setSubforums] = useState<Subforum[]>([]);
@@ -142,6 +153,7 @@ export function FmTopicsPanel({
   const addTopic = async () => {
     if (!form.title.trim()) { setError('Topic title is required.'); return; }
     const r = await lensRun('forum', 'topic-create', {
+      author: viewerName || undefined,
       title: form.title.trim(),
       body: draft.body.trim(),
       format: draft.format,
@@ -196,6 +208,7 @@ export function FmTopicsPanel({
   const submitReply = async (parentId: string | null, d: RichDraft) => {
     if (!openTopic || !d.body.trim()) return;
     const r = await lensRun('forum', 'post-reply', {
+      author: viewerName || undefined,
       topicId: openTopic.id, parentId: parentId || undefined,
       body: d.body.trim(), format: d.format, images: d.images,
     });
@@ -347,7 +360,7 @@ export function FmTopicsPanel({
               <div className="mt-1.5"><FmMarkdown text={openTopic.body} format={openTopic.format} /></div>
             )}
             <p className="mt-1 text-[10px] text-zinc-400">
-              by {openTopic.author}{openTopic.editedAt ? ' · edited' : ''}
+              by {openTopic.author}{openTopic.createdAt ? ` · ${timeAgo(openTopic.createdAt)}` : ''}{openTopic.editedAt ? ' · edited' : ''}
             </p>
             {editingTopic && (
               <div className="mt-2 space-y-2">
@@ -551,7 +564,7 @@ export function FmTopicsPanel({
                   {(t.awards || []).map((a) => <span key={a.id} className="text-[11px]">{a.icon}</span>)}
                 </p>
                 <p className="text-[10px] text-zinc-400">
-                  {t.replyCount || 0} replies · by {t.author}{t.editedAt ? ' · edited' : ''}
+                  {t.replyCount || 0} replies · by {t.author}{t.createdAt ? ` · ${timeAgo(t.createdAt)}` : ''}{t.editedAt ? ' · edited' : ''}
                   {t.subforumId && subforumName[t.subforumId] && (
                     <span className="text-orange-400/70"> · {subforumName[t.subforumId]}</span>
                   )}
