@@ -108,7 +108,7 @@ export function MarketPanel() {
                 </p>
                 <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
                   <h3 className="mb-2 text-xs font-semibold text-zinc-300">List a dying NPC (mentor)</h3>
-                  <p className="mb-2 text-[10px] text-zinc-500">
+                  <p className="mb-2 text-[10px] text-zinc-400">
                     As a mentor, pre-arrange an heir for one of your dying NPCs. Buyers lock the slot; it resolves on the NPC’s death.
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
