@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
@@ -35,7 +36,19 @@ const VIEWS: { id: StakeView; label: string; keys: string; icon: typeof Coins }[
 ];
 
 export default function StakingPage() {
-  const [view, setView] = useState<StakeView>('stake');
+  // FIX-staking-014: the stake form restores through the shared lens
+  // UI-state store — it used to reset to the Core (Medium) pool and
+  // blank defaults on every reload, losing the pool/amount/lock the
+  // user had set up.
+  const { restore, persist } = useLensStatePersistence('staking');
+  const [initialUi] = useState(() => restore() ?? {});
+  const [view, setViewState] = useState<StakeView>(
+    (['stake', 'positions', 'earnings', 'markets'] as const).includes(initialUi.view as StakeView) ? (initialUi.view as StakeView) : 'stake',
+  );
+  const setView = (v: StakeView) => {
+    setViewState(v);
+    persist({ ...(restore() ?? {}), view: v });
+  };
   useLensCommand(
     [
       {
@@ -51,13 +64,19 @@ export default function StakingPage() {
     { lensId: 'staking' },
   );
 
-  const [poolId, setPoolId] = useState('core');
-  const [principalText, setPrincipalText] = useState('');
-  const [monthsText, setMonthsText] = useState('6');
+  const [poolId, setPoolIdState] = useState(typeof initialUi.poolId === 'string' ? initialUi.poolId : 'core');
+  const [principalText, setPrincipalTextState] = useState(typeof initialUi.principalText === 'string' ? initialUi.principalText : '');
+  const [monthsText, setMonthsTextState] = useState(typeof initialUi.monthsText === 'string' ? initialUi.monthsText : '6');
   const principalCc = Number(principalText);
   const months = Number(monthsText);
-  const [autoCompound, setAutoCompound] = useState(false);
-  const [liquidReceipt, setLiquidReceipt] = useState(false);
+  const [autoCompound, setAutoCompoundState] = useState(initialUi.autoCompound === true);
+  const [liquidReceipt, setLiquidReceiptState] = useState(initialUi.liquidReceipt === true);
+  const persistForm = (patch: Record<string, unknown>) => persist({ ...(restore() ?? {}), ...patch });
+  const setPoolId = (v: string) => { setPoolIdState(v); persistForm({ poolId: v }); };
+  const setPrincipalText = (v: string) => { setPrincipalTextState(v); persistForm({ principalText: v }); };
+  const setMonthsText = (v: string) => { setMonthsTextState(v); persistForm({ monthsText: v }); };
+  const setAutoCompound = (v: boolean) => { setAutoCompoundState(v); persistForm({ autoCompound: v }); };
+  const setLiquidReceipt = (v: boolean) => { setLiquidReceiptState(v); persistForm({ liquidReceipt: v }); };
   const [status, setStatus] = useState<string | null>(null);
   const [ccBalance, setCcBalance] = useState<number | null>(null);
   const [ccBalanceNote, setCcBalanceNote] = useState<string | null>(null);

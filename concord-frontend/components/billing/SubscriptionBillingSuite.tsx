@@ -168,6 +168,14 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
   const [proSub, setProSub] = useState('');
   const [proNewPlan, setProNewPlan] = useState('');
   const [proResult, setProResult] = useState<MacroJSON | null>(null);
+  // FIX-billing-007: destructive/immediate actions arm a confirmation
+  // first — nothing cancels or switches on a single click.
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [confirmApply, setConfirmApply] = useState(false);
+  // FIX-billing-008: plan edit + record deletion state.
+  const [editPlan, setEditPlan] = useState<MacroJSON | null>(null);
+  const [confirmDeletePlanId, setConfirmDeletePlanId] = useState<string | null>(null);
+  const [confirmDeleteSubId, setConfirmDeleteSubId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -240,6 +248,9 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
 
   const applyProration = async () => {
     if (!proSub || !proNewPlan) return;
+    // FIX-billing-007: the first click arms, the second applies.
+    if (!confirmApply) { setConfirmApply(true); return; }
+    setConfirmApply(false);
     setBusy(true);
     try {
       setProResult(await run('subscription-proration', { subscriptionId: proSub, newPlanId: proNewPlan, apply: true }));
@@ -249,11 +260,54 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
   };
 
   const cancelSub = async (id: string, immediate: boolean) => {
+    // FIX-billing-007: "cancel now" is immediate and irreversible from
+    // the customer's side of the record — it confirms first.
+    if (immediate && confirmCancelId !== id) { setConfirmCancelId(id); return; }
+    setConfirmCancelId(null);
     setBusy(true);
     try {
       await run('subscription-cancel', { subscriptionId: id, immediate });
       await reload();
     } catch (e) { onError(e instanceof Error ? e.message : 'cancel failed'); }
+    setBusy(false);
+  };
+
+  // FIX-billing-008 handlers.
+  const saveEditPlan = async () => {
+    if (!editPlan) return;
+    const priced = boundedMoney(String(editPlan.amount ?? ''));
+    if (!priced.ok) { onError(priced.error); return; }
+    setBusy(true);
+    try {
+      await run('plan-update', {
+        planId: editPlan.id, name: editPlan.name, interval: editPlan.interval,
+        amount: priced.value, trialDays: Number(editPlan.trialDays || 0),
+      });
+      setEditPlan(null);
+      await reload();
+    } catch (e) { onError(e instanceof Error ? e.message : 'update failed'); }
+    setBusy(false);
+  };
+
+  const deletePlan = async (id: string) => {
+    if (confirmDeletePlanId !== id) { setConfirmDeletePlanId(id); return; }
+    setConfirmDeletePlanId(null);
+    setBusy(true);
+    try {
+      await run('plan-delete', { planId: id });
+      await reload();
+    } catch (e) { onError(e instanceof Error ? e.message : 'delete failed'); }
+    setBusy(false);
+  };
+
+  const deleteSub = async (id: string) => {
+    if (confirmDeleteSubId !== id) { setConfirmDeleteSubId(id); return; }
+    setConfirmDeleteSubId(null);
+    setBusy(true);
+    try {
+      await run('subscription-delete', { subscriptionId: id });
+      await reload();
+    } catch (e) { onError(e instanceof Error ? e.message : 'delete failed'); }
     setBusy(false);
   };
 
@@ -299,11 +353,40 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
           <div className="mb-2 text-xs font-semibold text-zinc-200">Plans ({plans.length})</div>
           <div className="space-y-1">
             {plans.map((p) => (
-              <div key={p.id} className="flex items-center justify-between rounded bg-zinc-950 px-2.5 py-1.5 text-xs">
+              <div key={p.id} className="flex items-center justify-between gap-2 rounded bg-zinc-950 px-2.5 py-1.5 text-xs">
                 <span className="text-white">{p.name}</span>
                 <span className="text-zinc-400">{money(p.amount, p.currency)} / {p.interval}{p.trialDays > 0 ? ` · ${p.trialDays}d trial` : ''}</span>
+                <span className="flex items-center gap-2">
+                  <button onClick={() => setEditPlan({ ...p })} className="text-[10px] text-zinc-400 hover:text-cyan-300">edit</button>
+                  <button onClick={() => deletePlan(p.id)} className={`text-[10px] ${confirmDeletePlanId === p.id ? 'font-semibold text-red-300' : 'text-zinc-400 hover:text-red-300'}`}>
+                    {confirmDeletePlanId === p.id ? 'confirm delete?' : 'delete'}
+                  </button>
+                </span>
               </div>
             ))}
+          </div>
+        </Card>
+      )}
+
+      {editPlan && (
+        <Card>
+          <div className="mb-2 text-xs font-semibold text-zinc-200">Edit plan — {editPlan.name}</div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <Field label="Name"><input className={inputCls} value={String(editPlan.name || '')} onChange={(e) => setEditPlan({ ...editPlan, name: e.target.value })} /></Field>
+            <Field label="Interval">
+              <select className={inputCls} value={String(editPlan.interval || 'monthly')} onChange={(e) => setEditPlan({ ...editPlan, interval: e.target.value })}>
+                <option value="weekly">weekly</option>
+                <option value="monthly">monthly</option>
+                <option value="quarterly">quarterly</option>
+                <option value="annual">annual</option>
+              </select>
+            </Field>
+            <Field label="Amount"><input className={inputCls} type="number" value={String(editPlan.amount ?? '')} onChange={(e) => setEditPlan({ ...editPlan, amount: e.target.value })} /></Field>
+            <Field label="Trial days"><input className={inputCls} type="number" value={String(editPlan.trialDays ?? 0)} onChange={(e) => setEditPlan({ ...editPlan, trialDays: e.target.value })} /></Field>
+            <div className="flex items-end gap-2">
+              <Btn onClick={saveEditPlan} busy={busy}>Save</Btn>
+              <Btn onClick={() => setEditPlan(null)} kind="ghost">Cancel</Btn>
+            </div>
           </div>
         </Card>
       )}
@@ -342,8 +425,15 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
                   {su.status !== 'canceled' && (
                     <>
                       <button onClick={() => cancelSub(su.id, false)} className="text-[10px] text-zinc-400 hover:text-amber-300">cancel@end</button>
-                      <button onClick={() => cancelSub(su.id, true)} className="text-[10px] text-zinc-400 hover:text-red-300">cancel now</button>
+                      <button onClick={() => cancelSub(su.id, true)} className={`text-[10px] ${confirmCancelId === su.id ? 'font-semibold text-red-300' : 'text-zinc-400 hover:text-red-300'}`}>
+                        {confirmCancelId === su.id ? 'confirm cancel now?' : 'cancel now'}
+                      </button>
                     </>
+                  )}
+                  {su.status === 'canceled' && (
+                    <button onClick={() => deleteSub(su.id)} className={`text-[10px] ${confirmDeleteSubId === su.id ? 'font-semibold text-red-300' : 'text-zinc-400 hover:text-red-300'}`}>
+                      {confirmDeleteSubId === su.id ? 'confirm delete?' : 'delete'}
+                    </button>
                   )}
                 </div>
               </div>
@@ -356,19 +446,19 @@ function PlansPanel({ onError }: { onError: (e: string) => void }) {
         <div className="mb-2 text-xs font-semibold text-zinc-200">Mid-cycle proration</div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Field label="Subscription">
-            <select className={inputCls} value={proSub} onChange={(e) => setProSub(e.target.value)}>
+            <select className={inputCls} value={proSub} onChange={(e) => { setProSub(e.target.value); setConfirmApply(false); }}>
               <option value="">—</option>
               {subs.map((su) => <option key={su.id} value={su.id}>{su.customerName}</option>)}
             </select>
           </Field>
           <Field label="Switch to plan">
-            <select className={inputCls} value={proNewPlan} onChange={(e) => setProNewPlan(e.target.value)}>
+            <select className={inputCls} value={proNewPlan} onChange={(e) => { setProNewPlan(e.target.value); setConfirmApply(false); }}>
               <option value="">—</option>
               {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </Field>
           <div className="flex items-end"><Btn onClick={previewProration} busy={busy} kind="ghost">Preview</Btn></div>
-          <div className="flex items-end"><Btn onClick={applyProration} busy={busy}>Apply switch</Btn></div>
+          <div className="flex items-end"><Btn onClick={applyProration} busy={busy}>{confirmApply ? 'Confirm switch' : 'Apply switch'}</Btn></div>
         </div>
         {proResult && (
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -484,9 +574,18 @@ function CouponsPanel({ onError }: { onError: (e: string) => void }) {
   const [applyAmount, setApplyAmount] = useState('100');
   const [applyResult, setApplyResult] = useState<MacroJSON | null>(null);
   const [busy, setBusy] = useState(false);
+  // FIX-billing-010: redemption attribution + confirmation state.
+  const [subs, setSubs] = useState<MacroJSON[]>([]);
+  const [redeemSubId, setRedeemSubId] = useState('');
+  const [confirmRedeem, setConfirmRedeem] = useState(false);
+  // FIX-billing-008: coupon deletion state.
+  const [confirmDeleteCouponId, setConfirmDeleteCouponId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    try { setCoupons((await run('coupon-list'))?.coupons || []); }
+    try {
+      setCoupons((await run('coupon-list'))?.coupons || []);
+      setSubs((await run('subscription-list'))?.subscriptions || []);
+    }
     catch (e) { onError(e instanceof Error ? e.message : 'load failed'); }
   }, [onError]);
 
@@ -509,11 +608,38 @@ function CouponsPanel({ onError }: { onError: (e: string) => void }) {
 
   const apply = async (redeem: boolean) => {
     if (!applyCode.trim()) { onError('enter a code to apply'); return; }
+    // FIX-billing-010: a redemption is a state change with a count and
+    // (optionally) an attribution — it confirms before it lands.
+    if (redeem && !confirmRedeem) { setConfirmRedeem(true); return; }
+    setConfirmRedeem(false);
     setBusy(true);
     try {
-      setApplyResult(await run('coupon-apply', { code: applyCode, amount: Number(applyAmount), redeem }));
+      setApplyResult(await run('coupon-apply', {
+        code: applyCode, amount: Number(applyAmount), redeem,
+        ...(redeem && redeemSubId ? { subscriptionId: redeemSubId } : {}),
+      }));
       if (redeem) await reload();
     } catch (e) { onError(e instanceof Error ? e.message : 'apply failed'); }
+    setBusy(false);
+  };
+
+  const toggleCoupon = async (c: MacroJSON) => {
+    setBusy(true);
+    try {
+      await run('coupon-update', { couponId: c.id, active: !c.active });
+      await reload();
+    } catch (e) { onError(e instanceof Error ? e.message : 'update failed'); }
+    setBusy(false);
+  };
+
+  const deleteCoupon = async (id: string) => {
+    if (confirmDeleteCouponId !== id) { setConfirmDeleteCouponId(id); return; }
+    setConfirmDeleteCouponId(null);
+    setBusy(true);
+    try {
+      await run('coupon-delete', { couponId: id });
+      await reload();
+    } catch (e) { onError(e instanceof Error ? e.message : 'delete failed'); }
     setBusy(false);
   };
 
@@ -547,12 +673,18 @@ function CouponsPanel({ onError }: { onError: (e: string) => void }) {
           <div className="mb-2 text-xs font-semibold text-zinc-200">Coupons ({coupons.length})</div>
           <div className="space-y-1">
             {coupons.map((c) => (
-              <div key={c.id} className="flex items-center justify-between rounded bg-zinc-950 px-2.5 py-1.5 text-xs">
+              <div key={c.id} className="flex items-center justify-between gap-2 rounded bg-zinc-950 px-2.5 py-1.5 text-xs">
                 <span className="font-mono text-cyan-300">{c.code}</span>
                 <span className="text-zinc-400">{c.kind === 'percent' ? `${c.value}% off` : money(c.value)} · {c.duration}</span>
                 <span className="text-zinc-400">
                   {c.redemptions} / {c.maxRedemptions ?? '∞'} used
                   <span className={`ml-2 ${c.active ? 'text-emerald-400' : 'text-zinc-600'}`}>{c.active ? 'active' : 'inactive'}</span>
+                </span>
+                <span className="flex items-center gap-2">
+                  <button onClick={() => toggleCoupon(c)} className="text-[10px] text-zinc-400 hover:text-cyan-300">{c.active ? 'deactivate' : 'activate'}</button>
+                  <button onClick={() => deleteCoupon(c.id)} className={`text-[10px] ${confirmDeleteCouponId === c.id ? 'font-semibold text-red-300' : 'text-zinc-400 hover:text-red-300'}`}>
+                    {confirmDeleteCouponId === c.id ? 'confirm delete?' : 'delete'}
+                  </button>
                 </span>
               </div>
             ))}
@@ -562,12 +694,23 @@ function CouponsPanel({ onError }: { onError: (e: string) => void }) {
 
       <Card>
         <div className="mb-2 text-xs font-semibold text-zinc-200">Apply / redeem a code</div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Field label="Code"><input className={inputCls} value={applyCode} onChange={(e) => setApplyCode(e.target.value)} /></Field>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <Field label="Code"><input className={inputCls} value={applyCode} onChange={(e) => { setApplyCode(e.target.value); setConfirmRedeem(false); }} /></Field>
           <Field label="Amount"><input className={inputCls} type="number" value={applyAmount} onChange={(e) => setApplyAmount(e.target.value)} /></Field>
+          <Field label="Redeem for (subscription)">
+            <select className={inputCls} value={redeemSubId} onChange={(e) => { setRedeemSubId(e.target.value); setConfirmRedeem(false); }}>
+              <option value="">— unattributed —</option>
+              {subs.map((su) => <option key={su.id} value={su.id}>{su.customerName}</option>)}
+            </select>
+          </Field>
           <div className="flex items-end"><Btn onClick={() => apply(false)} busy={busy} kind="ghost">Preview</Btn></div>
-          <div className="flex items-end"><Btn onClick={() => apply(true)} busy={busy}>Redeem</Btn></div>
+          <div className="flex items-end"><Btn onClick={() => apply(true)} busy={busy}>{confirmRedeem ? 'Confirm redemption' : 'Redeem'}</Btn></div>
         </div>
+        {confirmRedeem && (
+          <p className="mt-2 text-[11px] text-amber-300">
+            Redeeming counts against the coupon{redeemSubId ? ` and attributes it to ${subs.find((s) => s.id === redeemSubId)?.customerName || 'the selected subscription'}` : ' (unattributed)'}. Click Confirm redemption to proceed.
+          </p>
+        )}
         {applyResult && (
           <div className="mt-2 grid grid-cols-3 gap-2">
             <Stat label="Discount" value={money(applyResult.discount)} accent="text-emerald-300" />
@@ -587,9 +730,19 @@ function DunningPanel({ onError }: { onError: (e: string) => void }) {
   const [amount, setAmount] = useState('99');
   const [reason, setReason] = useState('card_declined');
   const [busy, setBusy] = useState(false);
+  // FIX-billing-010: a case can be opened against the subscription whose
+  // payment failed — the server has always validated the link; the form
+  // never offered it.
+  const [subs, setSubs] = useState<MacroJSON[]>([]);
+  const [openSubId, setOpenSubId] = useState('');
+  // FIX-billing-008: case deletion state.
+  const [confirmDeleteCaseId, setConfirmDeleteCaseId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    try { setData(await run('dunning-list')); }
+    try {
+      setData(await run('dunning-list'));
+      setSubs((await run('subscription-list'))?.subscriptions || []);
+    }
     catch (e) { onError(e instanceof Error ? e.message : 'load failed'); }
   }, [onError]);
 
@@ -599,9 +752,20 @@ function DunningPanel({ onError }: { onError: (e: string) => void }) {
   const open = async () => {
     setBusy(true);
     try {
-      await run('dunning-open', { amount: Number(amount), reason });
+      await run('dunning-open', { amount: Number(amount), reason, ...(openSubId ? { subscriptionId: openSubId } : {}) });
       await reload();
     } catch (e) { onError(e instanceof Error ? e.message : 'open failed'); }
+    setBusy(false);
+  };
+
+  const deleteCase = async (id: string) => {
+    if (confirmDeleteCaseId !== id) { setConfirmDeleteCaseId(id); return; }
+    setConfirmDeleteCaseId(null);
+    setBusy(true);
+    try {
+      await run('dunning-delete', { dunningId: id });
+      await reload();
+    } catch (e) { onError(e instanceof Error ? e.message : 'delete failed'); }
     setBusy(false);
   };
 
@@ -626,7 +790,7 @@ function DunningPanel({ onError }: { onError: (e: string) => void }) {
 
       <Card>
         <div className="mb-2 text-xs font-semibold text-zinc-200">Open dunning case for a failed payment</div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Field label="Amount"><input className={inputCls} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
           <Field label="Reason">
             <select className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)}>
@@ -636,6 +800,12 @@ function DunningPanel({ onError }: { onError: (e: string) => void }) {
               <option value="processing_error">processing_error</option>
             </select>
           </Field>
+          <Field label="Subscription (whose payment failed)">
+            <select className={inputCls} value={openSubId} onChange={(e) => setOpenSubId(e.target.value)}>
+              <option value="">— unlinked —</option>
+              {subs.map((su) => <option key={su.id} value={su.id}>{su.customerName}</option>)}
+            </select>
+          </Field>
           <div className="flex items-end"><Btn onClick={open} busy={busy}><Plus className="h-3.5 w-3.5" />Open case</Btn></div>
         </div>
       </Card>
@@ -643,11 +813,18 @@ function DunningPanel({ onError }: { onError: (e: string) => void }) {
       {cases.map((d) => (
         <Card key={d.id}>
           <div className="mb-2 flex items-center justify-between text-xs">
-            <span className="text-white">{money(d.amount, d.currency)} · {d.reason}</span>
-            <span className={`rounded px-1.5 py-0.5 text-[10px] ${
-              d.status === 'in_progress' ? 'bg-amber-500/20 text-amber-300'
-                : d.status === 'recovered' ? 'bg-emerald-500/20 text-emerald-300'
-                  : 'bg-red-500/20 text-red-300'}`}>{d.status}</span>
+            <span className="text-white">{money(d.amount, d.currency)} · {d.reason}
+              {d.subscriptionId && <span className="ml-2 text-zinc-400">for {subs.find((s) => s.id === d.subscriptionId)?.customerName || d.subscriptionId}</span>}
+            </span>
+            <span className="flex items-center gap-2">
+              <span className={`rounded px-1.5 py-0.5 text-[10px] ${
+                d.status === 'in_progress' ? 'bg-amber-500/20 text-amber-300'
+                  : d.status === 'recovered' ? 'bg-emerald-500/20 text-emerald-300'
+                    : 'bg-red-500/20 text-red-300'}`}>{d.status}</span>
+              <button onClick={() => deleteCase(d.id)} className={`text-[10px] ${confirmDeleteCaseId === d.id ? 'font-semibold text-red-300' : 'text-zinc-400 hover:text-red-300'}`}>
+                {confirmDeleteCaseId === d.id ? 'confirm delete?' : 'delete'}
+              </button>
+            </span>
           </div>
           <div className="space-y-1">
             {(d.schedule || []).map((a: MacroJSON) => (

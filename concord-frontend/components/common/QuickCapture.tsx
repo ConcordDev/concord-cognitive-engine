@@ -135,6 +135,10 @@ function QuickCapture({ domain }: QuickCaptureProps) {
                 <input
                   type="text"
                   placeholder="Title (optional)"
+                  // FIX-wallet-008: cap the title at the platform's title
+                  // limit (INPUT_LIMITS.title = 200) — it accepted 600
+                  // chars that the record layer then had to swallow.
+                  maxLength={200}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-neon-cyan"

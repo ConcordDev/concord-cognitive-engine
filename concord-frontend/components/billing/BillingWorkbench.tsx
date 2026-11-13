@@ -266,6 +266,12 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
         </div>
       </div>
 
+      {/* FIX-billing-015: the stat cards, transaction breakdown and
+          7-Day Token Flow chart are Overview content. They used to render
+          unconditionally above EVERY tab — the Economy tab repeated the
+          whole Overview above Live economy. They belong to Overview. */}
+      {tab === 'overview' && (
+      <>
       {/* Stat Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
@@ -339,6 +345,8 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
         </div>
         {transactions.length === 0 && <p className="mt-2 text-sm text-zinc-400">No token movement yet. Income and spending appear here once you have transactions.</p>}
       </motion.div>
+      </>
+      )}
 
       {tab === 'overview' && (
         <div className="space-y-6">
@@ -422,13 +430,20 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
             </div>
             <div className="flex items-center gap-2">
               <button
+                // FIX-billing-011: with zero transactions there is nothing
+                // to summarize — the button disables (like Export CSV
+                // beside it) instead of minting an empty record, and the
+                // result speaks through the in-app toast, never a native
+                // browser alert.
+                disabled={transactions.length === 0}
+                title={transactions.length === 0 ? 'No transactions yet — a tax summary needs at least one' : undefined}
                 onClick={async () => {
                   try {
                     const resp = await apiHelpers.economy.createTaxSummary({ year: new Date().getFullYear() });
-                    alert(`Tax Summary DTU created: ${(resp.data as Record<string, unknown>)?.dtuId || 'success'}`);
+                    useUIStore.getState().addToast({ type: 'success', message: `Tax Summary DTU created: ${(resp.data as Record<string, unknown>)?.dtuId || 'success'}` });
                   } catch (e) { console.error('[Billing] Failed to create tax summary:', e); useUIStore.getState().addToast({ type: 'error', message: 'Failed to create tax summary' }); }
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <BarChart3 className="w-4 h-4" />
                 Tax Summary DTU

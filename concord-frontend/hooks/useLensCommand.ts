@@ -118,7 +118,22 @@ export function useLensCommand(commands: LensCommand[], options: UseLensCommandO
   // Bind keys via react-hotkeys-hook. We pass a single comma-separated
   // string so the hook count stays stable across renders, then dispatch
   // by the hotkey that fired.
-  const allKeys = namespacedCommands.map((c) => c.keys).join(',');
+  // FIX-billing-013 (shared mechanism): react-hotkeys-hook v5 splits
+  // sequences on '>' by default — the platform's two-key space-chord
+  // convention ('g o', 'g t', …) parsed as ONE unmatchable key named
+  // "g o", so every lens's advertised tab chords were inert while
+  // single keys fired. Bind a two-key space chord in the library's
+  // '>' sequence form; the registered/displayed keys stay 'g o', and
+  // single keys — including the ' ' spacebar binding — pass through
+  // untouched.
+  const bindKeys = (keys: string) => {
+    // The library's key name for the spacebar is 'space'; a literal
+    // ' ' registration never matches an event either.
+    if (keys === ' ') return 'space';
+    const m = /^(\S) (\S)$/.exec(keys.trim());
+    return m ? `${m[1]}>${m[2]}` : keys;
+  };
+  const allKeys = namespacedCommands.map((c) => bindKeys(c.keys)).join(',');
   useHotkeys(
     allKeys || 'f24', // dummy when empty so hook is stable
     (event, handler) => {
@@ -130,7 +145,10 @@ export function useLensCommand(commands: LensCommand[], options: UseLensCommandO
       const fired = (handler as { hotkey?: string; keys?: string[] }).hotkey
         ?? (handler as { keys?: string[] }).keys?.join('+');
       const matched = cmds.find((c) =>
-        c.keys === fired || c.keys.replace(/\s+/g, '') === fired
+        c.keys === fired
+        || bindKeys(c.keys) === fired
+        || (fired != null && c.keys === fired.replace(/>/g, ' '))
+        || c.keys.replace(/\s+/g, '') === fired
       );
       if (!matched || !(matched.enabled ?? true)) return;
       // Per-command form-tag discipline (Q82 / RCA-form-hotkey-steal):

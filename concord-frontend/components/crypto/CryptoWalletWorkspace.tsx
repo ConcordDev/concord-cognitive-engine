@@ -71,6 +71,18 @@ interface WalletData {
   isDefault: boolean;
 }
 
+// FIX-crypto-011: a stored timestamp that does not parse must never
+// render as the literal words "Invalid Date", and must not poison
+// the sort with NaN — undated rows say so and sort as oldest.
+function txTimeMs(ts: unknown): number {
+  const t = new Date(ts as string).getTime();
+  return Number.isNaN(t) ? 0 : t;
+}
+function fmtTxTime(ts: unknown): string {
+  const t = txTimeMs(ts);
+  return t === 0 ? 'date not recorded' : new Date(t).toLocaleString();
+}
+
 function looksLikeChainAddress(address: string, chainId: string): boolean {
   const value = String(address || '').trim();
   if (chainId === 'bitcoin') return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(value);
@@ -173,7 +185,12 @@ export function CryptoWalletWorkspace() {
   const [chartTokenId, setChartTokenId] = useState<string>('bitcoin');
   const [chartCandles, setChartCandles] = useState<Array<{ time: number; open: number; high: number; low: number; close: number; volume?: number }>>([]);
   const [chartLoading, setChartLoading] = useState(false);
+  // FIX-crypto-007: a failed candle fetch speaks instead of leaving an
+  // unexplained empty chart (the failure used to go only to console).
+  const [chartError, setChartError] = useState<string | null>(null);
   const [chartDays, setChartDays] = useState<number>(30);
+  // FIX-crypto-009: wallet removal confirms first.
+  const [confirmDeleteWalletId, setConfirmDeleteWalletId] = useState<string | null>(null);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [showReceive, setShowReceive] = useState(false);
   const [receiveAddress, setReceiveAddress] = useState<string>('');
@@ -234,6 +251,7 @@ export function CryptoWalletWorkspace() {
     let cancelled = false;
     if (activeTab !== 'chart') return;
     setChartLoading(true);
+    setChartError(null);
     (async () => {
       try {
         const res = await api.post('/api/lens/run', {
@@ -243,7 +261,7 @@ export function CryptoWalletWorkspace() {
         if (!cancelled) setChartCandles(res?.data?.result?.candles || []);
       } catch (e) {
         console.error('[Crypto] candles failed', e);
-        if (!cancelled) setChartCandles([]);
+        if (!cancelled) { setChartCandles([]); setChartError('Price history is unavailable right now (the market source did not respond). Your holdings and cost basis are unaffected.'); }
       } finally {
         if (!cancelled) setChartLoading(false);
       }
@@ -440,7 +458,7 @@ export function CryptoWalletWorkspace() {
 
   const filteredTransactions = transactions
     .filter(tx => txFilter === 'all' || tx.type === txFilter)
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    .sort((a, b) => txTimeMs(b.timestamp) - txTimeMs(a.timestamp));
 
   const isLoading = chainsLoading || txLoading || walletsLoading;
 
@@ -461,7 +479,7 @@ export function CryptoWalletWorkspace() {
   for (const chain of chains) {
     chainSparklines[chain.symbol] = transactions
       .filter(tx => tx.symbol === chain.symbol)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort((a, b) => txTimeMs(b.timestamp) - txTimeMs(a.timestamp))
       .slice(0, 5);
   }
 
@@ -629,13 +647,16 @@ export function CryptoWalletWorkspace() {
   }, []);
 
   const handleDeleteWallet = useCallback(async (id: string) => {
+    // FIX-crypto-009: first click arms, second click removes.
+    if (confirmDeleteWalletId !== id) { setConfirmDeleteWalletId(id); return; }
+    setConfirmDeleteWalletId(null);
     try {
       await removeWallet(id);
     } catch (e) {
       console.error('Delete wallet failed:', e);
       useUIStore.getState().addToast({ type: 'error', message: 'Failed to delete wallet' });
     }
-  }, [removeWallet]);
+  }, [removeWallet, confirmDeleteWalletId]);
 
   // ── Error / Loading ───────────────────────────────────────────────────────
 
@@ -1044,7 +1065,7 @@ export function CryptoWalletWorkspace() {
                           <div>
                             <p className="text-sm font-medium">{tx.description}</p>
                             <div className="flex items-center gap-2 text-xs text-gray-400">
-                              <span>{new Date(tx.timestamp).toLocaleString()}</span>
+                              <span>{fmtTxTime(tx.timestamp)}</span>
                               {tx.to && <span>To: {tx.to}</span>}
                             </div>
                           </div>
@@ -1165,12 +1186,12 @@ export function CryptoWalletWorkspace() {
                           </button>
                           <button
                             onClick={() => handleDeleteWallet(wallet.id)}
-                            className="p-2 text-gray-400 hover:text-neon-pink transition-colors rounded-lg hover:bg-neon-pink/10"
+                            className={`p-2 transition-colors rounded-lg ${confirmDeleteWalletId === wallet.id ? 'text-rose-200 bg-rose-500/25' : 'text-gray-400 hover:text-neon-pink hover:bg-neon-pink/10'}`}
                             type="button"
-                            aria-label="Remove wallet"
-                            title="Remove wallet"
+                            aria-label={confirmDeleteWalletId === wallet.id ? 'Confirm remove wallet' : 'Remove wallet'}
+                            title={confirmDeleteWalletId === wallet.id ? 'Click again to confirm removal' : 'Remove wallet'}
                           >
-                            <X className="w-4 h-4" />
+                            {confirmDeleteWalletId === wallet.id ? <span className="text-[10px] font-semibold px-0.5">Sure?</span> : <X className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>
@@ -1208,6 +1229,9 @@ export function CryptoWalletWorkspace() {
                   </div>
                   <span className="ml-auto text-[10px] text-gray-400">Powered by TradingView Lightweight Charts · <DataAttribution provider="coingecko" /></span>
                 </div>
+                {chartError && !chartLoading && (
+                  <div role="alert" className="rounded border border-amber-500/30 bg-amber-500/[0.04] px-3 py-2 text-[11px] text-amber-300">{chartError}</div>
+                )}
                 <CandleChart
                   candles={chartCandles}
                   loading={chartLoading}

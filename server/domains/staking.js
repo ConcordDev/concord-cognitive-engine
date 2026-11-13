@@ -43,9 +43,13 @@ const STAKING_ESCROW_ID = "staking_escrow";
 
 // ── Staking pools (products) ──────────────────────────────────────────────
 const POOLS = [
-  { id: "flex", name: "Flex Pool", risk: "low", baseBps: 60, perMonth: 8, capBps: 400, minStake: 10, earlyPenaltyPct: 0.10, description: "Conservative pool. Lower yield, smallest early-exit penalty." },
-  { id: "core", name: "Core Pool", risk: "medium", baseBps: 100, perMonth: 20, capBps: 1200, minStake: 25, earlyPenaltyPct: 0.25, description: "Balanced pool. The classic lock-earn-redeem product." },
-  { id: "growth", name: "Growth Pool", risk: "high", baseBps: 160, perMonth: 32, capBps: 2000, minStake: 100, earlyPenaltyPct: 0.45, description: "Aggressive pool. Highest yield, steepest early-exit penalty." },
+  // FIX-staking-014: descriptions lead with the pool's own name — the old
+  // leads ("Conservative pool", "Balanced pool", "Aggressive pool") read as
+  // a second, competing name for the same product (the Flex card was read
+  // as a "Conservative" pool while APR history called it Flex).
+  { id: "flex", name: "Flex Pool", risk: "low", baseBps: 60, perMonth: 8, capBps: 400, minStake: 10, earlyPenaltyPct: 0.10, description: "Flex pool — the conservative tier. Lower yield, smallest early-exit penalty." },
+  { id: "core", name: "Core Pool", risk: "medium", baseBps: 100, perMonth: 20, capBps: 1200, minStake: 25, earlyPenaltyPct: 0.25, description: "Core pool — the balanced tier. The classic lock-earn-redeem product." },
+  { id: "growth", name: "Growth Pool", risk: "high", baseBps: 160, perMonth: 32, capBps: 2000, minStake: 100, earlyPenaltyPct: 0.45, description: "Growth pool — the aggressive tier. Highest yield, steepest early-exit penalty." },
 ];
 
 function poolById(id) {
