@@ -115,6 +115,24 @@ export function MarketListingsPanel() {
     queryFn: () => apiHelpers.economy.balance().then((r) => r.data),
   });
 
+  // FIX-market-002: 'Your Library' read listings.library, but the
+  // listings route is an alias for the browse macro, whose payload
+  // has never carried a library field — the stat was 0 for everyone.
+  // The caller's library is their own DTUs: the same /api/dtus/mine
+  // total the Analytics 'Total DTUs' card grounds on.
+  const { data: mine } = useQuery({
+    queryKey: ['market-my-dtus'],
+    queryFn: () => apiHelpers.dtus.myDtus({ limit: 1 }).then((r) => r.data),
+  });
+
+  // FIX-market-005: the frame CTA / 'n' hotkey ask for the form via
+  // this event (the panel owns showCreate).
+  useEffect(() => {
+    const open = () => setShowCreate(true);
+    window.addEventListener('market:open-new-listing', open);
+    return () => window.removeEventListener('market:open-new-listing', open);
+  }, []);
+
   const [ownedDtus, setOwnedDtus] = useState<Array<{ id: string; title?: string }>>([]);
   const [dtuId, setDtuId] = useState('');
   useEffect(() => {
@@ -180,7 +198,10 @@ export function MarketListingsPanel() {
   const totalVolume = listings?.volume ?? 0;
   const totalTransactions = listings?.transactions ?? 0;
   const totalListings = catalog.length;
-  const libraryCount = listings?.library?.length ?? 0;
+  const libraryCount = listings?.library?.length
+    ?? (typeof (mine as { total?: number })?.total === 'number'
+      ? (mine as { total: number }).total
+      : ((mine as { dtus?: unknown[] })?.dtus?.length ?? 0));
 
   if (isLoading) {
     return (
@@ -225,7 +246,7 @@ export function MarketListingsPanel() {
       )}
 
       {showCreate && (
-        <div className="panel p-4 space-y-3 border border-neon-purple/20">
+        <div data-market-create-form className="panel p-4 space-y-3 border border-neon-purple/20">
           <h2 className="font-semibold flex items-center gap-2">
             <Store className="w-4 h-4 text-neon-purple" />
             New Listing
