@@ -135,7 +135,7 @@ export default function AnimationPage() {
         )}
 
         {phase === 'loading' && (
-          <p data-testid="animation-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+          <p data-testid="animation-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-400">
             Opening the animation studio.
           </p>
         )}
