@@ -93,6 +93,11 @@ export function MeshSignal() {
                 />
               </div>
             )}
+            {metrics.length > 0 && metrics.every((m) => m.rssiDbm == null) && (
+              <p className="mb-2 text-xs text-teal-300/80">
+                No signal readings yet. Strength (RSSI) appears once a transport reports a peer; until then each row shows &quot;no data&quot;.
+              </p>
+            )}
             <div className="overflow-x-auto rounded-lg border border-teal-900/40">
               <table className="w-full text-left text-xs">
                 <thead className="bg-teal-950/30 text-[10px] uppercase tracking-wider text-teal-600">

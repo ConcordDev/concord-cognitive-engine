@@ -48,6 +48,7 @@ export function JobList({
   onRetry,
   onRemove,
   onSelect,
+  emptyHint,
 }: {
   jobs: QueueJob[];
   busyId: string | null;
@@ -55,6 +56,8 @@ export function JobList({
   onRetry: (id: string) => void;
   onRemove: (id: string) => void;
   onSelect: (job: QueueJob) => void;
+  /** Overrides the empty-state line (the Scheduled tab has no enqueue form of its own). */
+  emptyHint?: string;
 }) {
   // FIX-queue-006: the list had no in-lens find control (the header
   // Search button is the global DTU search). Search filters the held
@@ -63,7 +66,7 @@ export function JobList({
   if (jobs.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
-        No jobs. Enqueue one above to get started.
+        {emptyHint ?? 'No jobs. Enqueue one above to get started.'}
       </p>
     );
   }

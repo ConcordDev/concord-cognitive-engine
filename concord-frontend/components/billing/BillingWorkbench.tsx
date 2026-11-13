@@ -302,6 +302,7 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
             const typeMap = new Map<string, number>();
             transactions.forEach(t => typeMap.set(t.type || 'other', (typeMap.get(t.type || 'other') || 0) + 1));
             const badgeColors: Record<string, string> = { purchase: 'bg-green-500/20 text-green-400', credit: 'bg-cyan-500/20 text-cyan-400', usage: 'bg-pink-500/20 text-pink-400', spend: 'bg-pink-500/20 text-pink-400', debit: 'bg-red-500/20 text-red-400' };
+            if (typeMap.size === 0) return <p className="text-sm text-zinc-400">No transactions yet. Purchases, credits and spend will be broken down by type here.</p>;
             return Array.from(typeMap.entries()).map(([type, count]) => (
               <span key={type} className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize ${badgeColors[type] || 'bg-gray-500/20 text-gray-400'}`}>
                 {type}: {count}
@@ -336,6 +337,7 @@ export function BillingWorkbench({ tab }: { tab: BillingView }) {
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500/60" />Income</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-500/60" />Spending</span>
         </div>
+        {transactions.length === 0 && <p className="mt-2 text-sm text-zinc-400">No token movement yet. Income and spending appear here once you have transactions.</p>}
       </motion.div>
 
       {tab === 'overview' && (

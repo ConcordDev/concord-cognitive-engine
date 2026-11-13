@@ -439,6 +439,9 @@ export function ScoresPanel() {
                   </tr>
                 </thead>
                 <tbody>
+                  {sortedDtus.length === 0 && (
+                    <tr><td colSpan={99} className="py-6 text-center text-xs text-gray-400">No DTUs match the current filters. Lower the minimum score or clear the filter.</td></tr>
+                  )}
                   {sortedDtus.slice(0, 50).map(d => (
                     <tr
                       key={d.id}
