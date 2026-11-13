@@ -861,7 +861,7 @@ export default function registerHistoryActions(registerLensAction) {
     if (!title) return { ok: false, error: "wikipedia article title required" };
     let data;
     try {
-      const url = `${WIKI_API}?action=query&format=json&prop=extracts&explaintext=1&redirects=1&titles=${encodeURIComponent(title)}`;
+      const url = `${WIKI_API}?action=query&format=json&prop=extracts%7Ccoordinates&explaintext=1&redirects=1&titles=${encodeURIComponent(title)}`;
       data = await wikiFetch(url);
     } catch (e) {
       return { ok: false, error: `wikipedia unreachable: ${e instanceof Error ? e.message : String(e)}` };
@@ -908,6 +908,20 @@ export default function registerHistoryActions(registerLensAction) {
     if (picked.length === 0) {
       return { ok: false, error: `No dated events could be extracted from "${page.title}".` };
     }
+    // FIX-history-004: an imported timeline never had map points — the
+    // query asked only for the extract and every event was stamped
+    // lat/lng null, so the Map view was empty for every import. When
+    // the article itself is geotagged (Wikipedia's coordinates prop),
+    // its events belong to that place: stamp the article's coordinates
+    // on them, named by the article title. Articles without
+    // coordinates keep nulls — no location is ever invented, and any
+    // event can be moved or cleared in the Map view as before.
+    const pageCoords = Array.isArray(page.coordinates)
+      ? page.coordinates.find((c) => c && c.primary) || page.coordinates[0]
+      : null;
+    const aLat = pageCoords ? hsLat(pageCoords.lat) : null;
+    const aLng = pageCoords ? hsLng(pageCoords.lon) : null;
+    const located = aLat != null && aLng != null;
     const timeline = {
       id: hsId("tl"),
       title: hsClean(params.timelineTitle, 200) || `${page.title} — Timeline`,
@@ -915,7 +929,10 @@ export default function registerHistoryActions(registerLensAction) {
       events: picked.map((e) => ({
         id: hsId("ev"), title: e.title, year: e.year, dateLabel: e.dateLabel,
         category: "wikipedia", description: e.description,
-        track: "main", lat: null, lng: null, place: "", media: [],
+        track: "main",
+        lat: located ? aLat : null, lng: located ? aLng : null,
+        place: located ? hsClean(page.title, 200) : "",
+        media: [],
         createdAt: hsNow(),
       })),
       eras: [],
@@ -933,6 +950,7 @@ export default function registerHistoryActions(registerLensAction) {
         timeline: {
           id: timeline.id, title: timeline.title, description: timeline.description,
           eventCount: timeline.events.length, sourceArticle: page.title,
+          location: located ? { lat: aLat, lng: aLng, place: hsClean(page.title, 200) } : null,
         },
         extractedCount: extracted.length,
         usedCount: picked.length,
