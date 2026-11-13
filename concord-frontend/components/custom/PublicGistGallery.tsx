@@ -24,7 +24,13 @@ export function PublicGistGallery() {
   const gists = useQuery({
     queryKey: ['public-gists', tick],
     queryFn: async () => {
-      const res = await lensRun('repos', 'github-gists-public', {});
+      // tick > 0 means this fetch exists because Refresh was pressed:
+      // ask the server for a real re-fetch (FIX-custom-004) — without
+      // force it answered from its 30-minute cache and the gallery's
+      // timestamp never moved, so Refresh and the freshness banner
+      // disagreed. A failed forced fetch still returns the cache,
+      // marked stale with its true (old) timestamp.
+      const res = await lensRun('repos', 'github-gists-public', { force: tick > 0 });
       if (!res.data?.ok) throw new Error(res.data?.reason || res.data?.error || 'github_unavailable');
       const out = res.data.result as { items?: Gist[]; stale?: boolean; fetchedAt?: number } | null;
       return { items: out?.items || [], stale: !!out?.stale, fetchedAt: out?.fetchedAt ?? null };

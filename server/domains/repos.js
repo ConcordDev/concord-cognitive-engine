@@ -747,7 +747,7 @@ export default function registerReposActions(registerLensAction) {
   /** github-repo-meta — releases | forks of one repo (owner/repo charset-validated). */
   ghAction("github-repo-meta", async (p) => ghReply(await githubRepoMeta({ owner: p.owner, repo: p.repo, kind: p.kind }), { owner: p.owner, repo: p.repo, kind: p.kind }));
   /** github-gists-public — newest public gists. */
-  ghAction("github-gists-public", async () => ghReply(await githubGistsPublic()));
+  ghAction("github-gists-public", async (p) => ghReply(await githubGistsPublic({ force: p.force === true })));
   /** github-advisories — global security advisories, optional allowlisted ecosystem/severity. */
   ghAction("github-advisories", async (p) => ghReply(await githubAdvisories({ ecosystem: p.ecosystem, severity: p.severity }), { ecosystem: p.ecosystem || "", severity: p.severity || "" }));
 
