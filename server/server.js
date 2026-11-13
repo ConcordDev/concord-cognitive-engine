@@ -59751,7 +59751,7 @@ register("whiteboard", "update", (ctx, input) => {
   try { _wbSyncShadows(dtu, wb.title); }
   catch (e) { structuredLog("error", "whiteboard_artifact_sync_failed", { id: whiteboardId, error: String(e?.message || e) }); }
   saveStateDebounced();
-  realtimeEmit("whiteboard:updated", { whiteboardId, elementCount: wb.elements.length }, {});
+  realtimeEmit("whiteboard:updated", { whiteboardId, elementCount: wb.elements.length }, { userId: dtu.ownerId || ctx?.actor?.userId || "" });
   return { ok: true, whiteboard: wb };
 });
 
