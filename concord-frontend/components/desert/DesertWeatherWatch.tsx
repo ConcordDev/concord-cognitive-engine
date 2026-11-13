@@ -118,7 +118,7 @@ export function DesertWeatherWatch() {
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400">Peak UV now</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">{peakUv ? `${peakUv.uv!.uvIndex} · ${peakUv.uv!.uvLevel}` : '—'}</div>
-          {peakUv && <div className="text-[10px] text-zinc-500">{peakUv.d.label}</div>}
+          {peakUv && <div className="text-[10px] text-zinc-400">{peakUv.d.label}</div>}
         </div>
       </div>
       <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
