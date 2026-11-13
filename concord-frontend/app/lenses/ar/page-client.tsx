@@ -78,6 +78,7 @@ import { DensityToggle, StatTile, StatTileGrid } from '@/components/ui';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useQuery } from '@tanstack/react-query';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -113,17 +114,30 @@ export default function ARLensPage() {
   // extra network round-trip beyond what the Asset Library tab already
   // fetches when mounted.
   const { items: models } = useLensData('ar', 'Model3D', { seed: [] });
-  const [sceneCount, setSceneCount] = useState<number | null>(null);
-  const [targetCount, setTargetCount] = useState<number | null>(null);
-  const refreshCounts = useCallback(() => {
-    lensRun('ar', 'sceneList', {}).then((r) => {
-      if (r.data?.ok) setSceneCount((r.data.result as { count?: number } | null)?.count ?? 0);
-    }).catch((e) => console.warn('[ar] scene list load failed:', e));
-    lensRun('ar', 'imageTargetList', {}).then((r) => {
-      if (r.data?.ok) setTargetCount((r.data.result as { count?: number } | null)?.count ?? 0);
-    }).catch((e) => console.warn('[ar] target list load failed:', e));
-  }, []);
-  useEffect(() => { refreshCounts(); }, [refreshCounts]);
+  // Header counts ride a react-query read of the SAME list calls the
+  // Scene Studio renders (sceneList / imageTargetList return
+  // count = list length). SceneStudio reports every list reload
+  // through onCountsStale → refreshCounts, so the header can no longer
+  // sit at a stale mount-time snapshot while the list beside it has
+  // already moved (FIX-ar-003 / FIX-ar-010).
+  const countsQuery = useQuery({
+    queryKey: ['ar', 'counts'],
+    queryFn: async () => {
+      const [s, t] = await Promise.all([
+        lensRun('ar', 'sceneList', {}),
+        lensRun('ar', 'imageTargetList', {}),
+      ]);
+      return {
+        scenes: (s.data?.result as { count?: number } | null)?.count ?? 0,
+        targets: (t.data?.result as { count?: number } | null)?.count ?? 0,
+      };
+    },
+  });
+  const sceneCount = countsQuery.data?.scenes ?? null;
+  const targetCount = countsQuery.data?.targets ?? null;
+  const countsRefetchRef = useRef(countsQuery.refetch);
+  countsRefetchRef.current = countsQuery.refetch;
+  const refreshCounts = useCallback(() => { void countsRefetchRef.current(); }, []);
 
   const switchTab = useCallback((next: Tab) => {
     setTab((prev) => {
@@ -417,7 +431,7 @@ export default function ARLensPage() {
         <div role="tabpanel" aria-label={TABS.find((t) => t.id === tab)?.label}>
           {tab === 'studio' && (
             <section className="rounded-xl border border-lattice-border bg-zinc-950/40 p-4">
-              <SceneStudio />
+              <SceneStudio onCountsStale={refreshCounts} />
             </section>
           )}
           {tab === 'diagnostics' && (

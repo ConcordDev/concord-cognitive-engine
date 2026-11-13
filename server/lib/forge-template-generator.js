@@ -1578,9 +1578,24 @@ export function getForgeTemplateSections(templateId = "blank") {
 
 /**
  * List available templates.
+ *
+ * Each entry is projected with a `language` derived from the languages
+ * of the sections it actually contains (FORGE_SECTIONS carry the
+ * language; the template entries themselves never did). The template
+ * catalogue's Languages / Categories stats derive from the payload's
+ * `language` / `category` fields — with no language projected, every
+ * template read as languageless and the Languages stat rendered a
+ * definitive 0 over a full catalogue (FIX-forge-007). `category` is
+ * authored on the template entries in forge-constants.js.
  */
 export function listForgeTemplates() {
-  return Object.values(FORGE_TEMPLATES);
+  const languageBySection = new Map(FORGE_SECTIONS.map((s) => [s.id, s.language]));
+  return Object.values(FORGE_TEMPLATES).map((t) => {
+    const languages = [
+      ...new Set((t.sections || []).map((id) => languageBySection.get(id)).filter(Boolean)),
+    ];
+    return { ...t, language: languages.length ? languages.join(", ") : null };
+  });
 }
 
 // Deep merge helper

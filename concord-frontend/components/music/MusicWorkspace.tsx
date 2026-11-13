@@ -18,7 +18,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import type { DTU } from '@/lib/api/generated-types';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -197,6 +197,33 @@ export function MusicWorkspace() {
       })),
     [playlistItems]
   );
+
+  // ---- Home stat cards count the library the Listen view renders ----
+  // The cards used to read the generic per-lens artifact store (the
+  // useLensData 'track'/'playlist' rows above) while Listen renders
+  // the music domain's track-list / playlist-list payloads — two
+  // different stores, so Home showed 0 tracks / 0 playlists for a user
+  // whose library lives in the domain store (FIX-music-008). The
+  // Tracks / Playlists / Total Plays cards now derive from the same
+  // list payloads Listen renders; the workspace's own rows stay as
+  // the fallback until that read lands or if it fails.
+  const { data: library } = useQuery({
+    queryKey: ['music', 'home-library'],
+    queryFn: async () => {
+      const [t, p] = await Promise.all([
+        lensRun('music', 'track-list', {}),
+        lensRun('music', 'playlist-list', {}),
+      ]);
+      const libTracks = (t.data?.result as { tracks?: { playCount?: number }[] } | null)?.tracks;
+      const libPlaylists = (p.data?.result as { playlists?: unknown[] } | null)?.playlists;
+      if (!Array.isArray(libTracks) || !Array.isArray(libPlaylists)) return null;
+      return {
+        tracks: libTracks.length,
+        playlists: libPlaylists.length,
+        plays: libTracks.reduce((s, x) => s + (x.playCount || 0), 0),
+      };
+    },
+  });
 
   // ---- Seed DTU fallback: when library is empty, surface global music-tagged DTUs ----
   const { data: seedDTUData } = useQuery({
@@ -918,7 +945,7 @@ export function MusicWorkspace() {
                     {
                       icon: Music,
                       label: 'Tracks',
-                      value: tracks.length,
+                      value: library?.tracks ?? tracks.length,
                       color: 'text-neon-cyan',
                       bg: 'from-cyan-500/10 to-transparent',
                     },
@@ -932,14 +959,14 @@ export function MusicWorkspace() {
                     {
                       icon: ListMusic,
                       label: 'Playlists',
-                      value: playlists.length,
+                      value: library?.playlists ?? playlists.length,
                       color: 'text-neon-green',
                       bg: 'from-green-500/10 to-transparent',
                     },
                     {
                       icon: Headphones,
                       label: 'Total Plays',
-                      value: tracks.reduce((s, t) => s + (t.playCount || 0), 0).toLocaleString(),
+                      value: (library?.plays ?? tracks.reduce((s, t) => s + (t.playCount || 0), 0)).toLocaleString(),
                       color: 'text-neon-pink',
                       bg: 'from-pink-500/10 to-transparent',
                     },

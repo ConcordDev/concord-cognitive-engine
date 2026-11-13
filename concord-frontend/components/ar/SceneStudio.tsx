@@ -305,7 +305,7 @@ function Viewport({ scene, selectedId, onSelect, canvasRef, simRunning, meshRefs
 // ---------------------------------------------------------------------------
 // Main studio surface.
 // ---------------------------------------------------------------------------
-export function SceneStudio() {
+export function SceneStudio({ onCountsStale }: { onCountsStale?: () => void } = {}) {
   const [scenes, setScenes] = useState<SceneSummary[]>([]);
   const [scene, setScene] = useState<SceneModel | null>(null);
   const [transformDraft, setTransformDraft] = useState<Record<string, string>>({});
@@ -432,11 +432,17 @@ export function SceneStudio() {
   const loadScenes = useCallback(async () => {
     const r = await lensRun('ar', 'sceneList', {});
     if (r.data?.ok) setScenes((r.data.result as any)?.scenes || []);
-  }, []);
+    // The page header's counts derive from this same list — tell the
+    // page to re-read them on every reload, so the header can never
+    // sit at a stale snapshot after a save/delete (FIX-ar-003).
+    onCountsStale?.();
+  }, [onCountsStale]);
   const loadTargets = useCallback(async () => {
     const r = await lensRun('ar', 'imageTargetList', {});
     if (r.data?.ok) setTargets((r.data.result as any)?.targets || []);
-  }, []);
+    // Same discipline for the image-target count (FIX-ar-010).
+    onCountsStale?.();
+  }, [onCountsStale]);
 
   useEffect(() => {
     loadScenes();
