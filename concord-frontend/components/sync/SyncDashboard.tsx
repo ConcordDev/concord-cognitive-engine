@@ -169,7 +169,9 @@ export function SyncDashboard() {
 
   const registerDevice = async () => {
     const label = newLabel.trim();
-    if (!label) return;
+    // FIX-sync-003: a blank label silently did nothing; say so.
+    if (!label) { flash('Enter a device label'); return; }
+    if (label.length > 200) { flash('Device label must be 200 characters or fewer'); return; }
     setBusy('register');
     const r = await lensRun(DOMAIN, 'register_device', { deviceLabel: label, autoSync: false });
     setBusy(null);
@@ -251,6 +253,8 @@ export function SyncDashboard() {
   const applyQuota = async (id: string) => {
     const gb = Number(quotaInput);
     if (!Number.isFinite(gb) || gb <= 0) { flash('Enter a positive GB value'); return; }
+    // FIX-sync-003: the ceiling the server enforces, stated before sending.
+    if (gb > 1000000) { flash('Quota must be no more than 1,000,000 GB'); return; }
     setBusy(`quota:${id}`);
     const r = await lensRun(DOMAIN, 'set_quota', { deviceId: id, quotaGb: gb });
     setBusy(null);
@@ -439,7 +443,7 @@ export function SyncDashboard() {
         </h2>
         <div className="flex gap-2">
           <input
-            type="text" value={newLabel}
+            type="text" value={newLabel} maxLength={200} aria-label="Device label"
             onChange={(e) => setNewLabel(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void registerDevice(); }}
             placeholder="Device label (e.g. 'MacBook Pro')"
@@ -547,7 +551,7 @@ export function SyncDashboard() {
                   {quotaEditor === d.id && (
                     <div className="mt-2 flex items-center gap-2">
                       <input
-                        type="number" min={1} value={quotaInput}
+                        type="number" min={1} max={1000000} value={quotaInput}
                         onChange={(e) => setQuotaInput(e.target.value)}
                         className="w-24 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100"
                       />

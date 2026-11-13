@@ -59,6 +59,30 @@ describe("sync.register_device + list_devices", () => {
   });
 });
 
+describe("sync FIX-sync-003 — label and quota bounds speak", () => {
+  it("a device label over the platform name limit (200) is refused in words", () => {
+    const r = call("register_device", ctxA, { deviceLabel: "x".repeat(201) });
+    assert.equal(r.ok, false);
+    assert.match(r.error, /200 characters or fewer/);
+    const ok = call("register_device", ctxA, { deviceLabel: "x".repeat(200) });
+    assert.equal(ok.ok, true);
+  });
+
+  it("quota refuses zero/negative and over-ceiling values in words, accepts the ceiling", () => {
+    const dev = call("register_device", ctxA, { deviceLabel: "Quota rig" }).result.device;
+    const zero = call("set_quota", ctxA, { deviceId: dev.id, quotaGb: 0 });
+    assert.equal(zero.ok, false);
+    assert.match(zero.error, /greater than 0 GB/);
+    const neg = call("set_quota", ctxA, { deviceId: dev.id, quotaGb: -5 });
+    assert.equal(neg.ok, false);
+    const huge = call("set_quota", ctxA, { deviceId: dev.id, quotaGb: 2000000 });
+    assert.equal(huge.ok, false);
+    assert.match(huge.error, /no more than 1,000,000 GB/);
+    const atMax = call("set_quota", ctxA, { deviceId: dev.id, quotaGb: 1000000 });
+    assert.equal(atMax.ok, true);
+  });
+});
+
 describe("sync.sync_now", () => {
   it("rejects an unknown device", () => {
     const r = call("sync_now", ctxA, { deviceId: "nope" });
