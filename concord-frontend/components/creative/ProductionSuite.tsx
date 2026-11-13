@@ -180,6 +180,7 @@ function ReviewTab() {
   const [showNew, setShowNew] = useState(false);
   const [name, setName] = useState('');
   const [kind, setKind] = useState<'video' | 'image'>('video');
+  const [uploadedKind, setUploadedKind] = useState<'video' | 'image' | null>(null);
   const [src, setSrc] = useState('');
   const [duration, setDuration] = useState('');
   const [project, setProject] = useState('');
@@ -216,6 +217,7 @@ function ReviewTab() {
       const { src: uploadedSrc, kind: detectedKind } = await uploadReviewFile(file);
       setSrc(uploadedSrc);
       setKind(detectedKind);
+      setUploadedKind(detectedKind);
       if (!name.trim()) setName(file.name.replace(/\.[^.]+$/, ''));
     } catch (e: unknown) {
       setUploadErr(e instanceof Error ? e.message : 'Upload failed');
@@ -226,6 +228,21 @@ function ReviewTab() {
 
   const createAsset = async () => {
     if (!name.trim()) return;
+    // FIX-creative-010: an image saved as a Video asset leaves the
+    // player spinning forever. Uploaded files already detect their
+    // kind — a mismatch with the manual select is refused in words;
+    // pasted URLs are checked by extension the same way.
+    const trimmedSrc = src.trim();
+    if (trimmedSrc.startsWith('/api/artifact/') && uploadedKind && uploadedKind !== kind) {
+      setUploadErr(`The uploaded file is ${uploadedKind === 'image' ? 'an image' : 'a video'}, but the asset type is set to ${kind === 'image' ? 'Image' : 'Video'}. Switch the type to match the file.`);
+      return;
+    }
+    if (trimmedSrc && !trimmedSrc.startsWith('/api/artifact/')) {
+      const isImageUrl = /\.(png|jpe?g|gif|webp|avif|svg)(\?.*)?$/i.test(trimmedSrc);
+      const isVideoUrl = /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(trimmedSrc);
+      if (kind === 'video' && isImageUrl) { setUploadErr('That URL points at an image, but the asset type is Video. Switch the type to Image or use a video file.'); return; }
+      if (kind === 'image' && isVideoUrl) { setUploadErr('That URL points at a video, but the asset type is Image. Switch the type to Video or use an image file.'); return; }
+    }
     if (kind === 'video' && duration.trim()) {
       const seconds = Number(duration);
       if (!Number.isFinite(seconds) || seconds < 0) { setUploadErr('Duration must be a number of seconds that is 0 or greater.'); return; }
@@ -238,7 +255,7 @@ function ReviewTab() {
     });
     setBusy(false);
     if (r.data.ok && r.data.result) {
-      setName(''); setSrc(''); setDuration(''); setProject(''); setShowNew(false); setUploadErr(null);
+      setName(''); setSrc(''); setDuration(''); setProject(''); setShowNew(false); setUploadErr(null); setUploadedKind(null);
       await loadAssets();
       setSelected(r.data.result.asset.id);
       notifyCreativeDashboardDirty();
