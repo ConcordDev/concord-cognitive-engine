@@ -36,3 +36,13 @@ describe('FIX-import-006 — import drop areas and file controls are named', () 
     expect(restore).toContain('aria-label="Choose a DTU export file to restore"');
   });
 });
+
+describe('FIX-import-005 map-fields blank guard', () => {
+  it('refuses a blank Map-to-fields run with the requirement stated', () => {
+    expect(desk).toContain("Enter at least one target field to map to (comma-separated).");
+    expect(desk).toContain("action === 'mapFields' && targetFieldsInput");
+  });
+  it('surfaces the guard error in the mapFields result area', () => {
+    expect(desk).toContain('if (d.error)');
+  });
+});

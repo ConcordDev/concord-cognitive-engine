@@ -197,6 +197,15 @@ export function ImportDeskPanel() {
 
   const handleImportAction = useCallback(async (action: string) => {
     if (analysisRows.length === 0) return;
+    // FIX-import-005: Map Fields with a blank 'Map to fields' input ran
+    // anyway and rendered a silent '0 mapped' — the form now refuses
+    // with the requirement stated, in the result area. (Dedup keys are
+    // deliberately NOT guarded: blank there means 'all columns', as
+    // its placeholder documents.)
+    if (action === 'mapFields' && targetFieldsInput.split(',').map((s) => s.trim()).filter(Boolean).length === 0) {
+      setImportActionResult({ action, data: { error: 'Enter at least one target field to map to (comma-separated).' } });
+      return;
+    }
     setActionBusy(true);
     try {
       let input: Record<string, unknown> = { rows: analysisRows };
@@ -1043,7 +1052,14 @@ export function ImportDeskPanel() {
             );
           }
           if (importActionResult.action === 'mapFields') {
-            const d = importActionResult.data as MapFieldsResult;
+            const d = importActionResult.data as MapFieldsResult & { error?: string };
+            if (d.error) {
+              return (
+                <div className="pt-2 border-t border-lattice-border">
+                  <p role="alert" className="text-xs text-red-400">{d.error}</p>
+                </div>
+              );
+            }
             return (
               <div className="space-y-3 pt-2 border-t border-lattice-border">
                 <h3 className="text-sm font-semibold text-neon-cyan">Field Mappings — {d.mappingCount} mapped</h3>
