@@ -15,6 +15,30 @@ export default function registerLegacyActions(registerLensAction) {
   try {
     const modules = artifact.data?.modules || [];
     if (modules.length === 0) return { ok: true, result: { message: "No modules to analyze." } };
+    // FIX-legacy-004: module metrics were read with no sign checks, so
+    // a -5 line count (or negative coverage, which INFLATES the debt
+    // score) ran to completion with no word. Counts and ages can't be
+    // negative; coverage is a percent; duplication is a ratio.
+    const METRIC_RULES = [
+      ["linesOfCode", "lines of code", 0, null],
+      ["cyclomaticComplexity", "cyclomatic complexity", 0, null],
+      ["dependencyCount", "dependency count", 0, null],
+      ["dependencyAgeYears", "dependency age (years)", 0, null],
+      ["testCoverage", "test coverage", 0, 100],
+      ["duplicateRatio", "duplicate ratio", 0, 1],
+      ["lastModifiedDaysAgo", "last modified (days ago)", 0, null],
+    ];
+    for (const mod of modules) {
+      const label = mod && mod.name ? `Module "${mod.name}"` : "A module";
+      for (const [key, words, min, max] of METRIC_RULES) {
+        const v = mod ? mod[key] : undefined;
+        if (v == null || v === "") continue;
+        const n = Number(v);
+        if (!Number.isFinite(n) || n < min || (max != null && n > max)) {
+          return { ok: false, error: `${label}: ${words} must be ${max != null ? `between ${min} and ${max}` : "0 or more"}` };
+        }
+      }
+    }
 
     const analyzed = modules.map(mod => {
       const loc = mod.linesOfCode || 0;
