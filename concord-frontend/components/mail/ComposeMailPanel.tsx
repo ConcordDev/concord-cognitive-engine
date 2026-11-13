@@ -73,11 +73,15 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
       if (d) {
         const urlTo = typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search).get('to') : null;
-        if (!urlTo && d.toUserId) setComposeTo(d.toUserId);
-        if (d.subject) setComposeSubject(d.subject);
-        if (d.body) setComposeBody(d.body);
-        if (d.attachmentCc) setComposeCcText(String(d.attachmentCc));
-        if (d.codCc) setComposeCodText(String(d.codCc));
+        // Draft restore must never clobber typing already in progress
+        // (FIX-mail-007): the get resolves async, and a stale draft
+        // landing mid-keystroke scrambles the field. Only fill fields
+        // that are still empty when it arrives.
+        if (!urlTo && d.toUserId) setComposeTo((prev) => prev || d.toUserId);
+        if (d.subject) setComposeSubject((prev) => prev || d.subject);
+        if (d.body) setComposeBody((prev) => prev || d.body);
+        if (d.attachmentCc) setComposeCcText((prev) => prev || String(d.attachmentCc));
+        if (d.codCc) setComposeCodText((prev) => prev || String(d.codCc));
         if (d.attachmentDtuIds?.length) {
           setComposeAttachments(d.attachmentDtuIds.map((id) => ({
             id, title: d.attachmentTitles?.[id] || id,
