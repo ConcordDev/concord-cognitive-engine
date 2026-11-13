@@ -157,7 +157,7 @@ export function StorefrontManager() {
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-gray-400 mt-1">No products selected = whole catalog is exposed.</p>
+            <p className="text-[10px] text-gray-400 mt-1">No products selected = your storefront shows no products. Tick a product to make it public.</p>
           </div>
 
           {/* Buyer preview */}
