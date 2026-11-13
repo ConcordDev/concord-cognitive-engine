@@ -54,6 +54,13 @@ describe("agriculture — fields CRUD", () => {
     assert.equal(r.ok, true);
     assert.equal(r.result.field.name, "North 40");
     assert.equal(r.result.field.acreage, 40);
+    // FIX-agriculture-011 pin: a negative longitude round-trips signed
+    // through create + list (the walk showed it unsigned; no layer in
+    // the branch drops the sign — this pin holds that).
+    const list = call("field-list", ctxA, {});
+    const stored = list.result.fields.find((f) => f.name === "North 40");
+    assert.equal(stored.lng, -93.5);
+    assert.equal(stored.lat, 41.5);
   });
 
   it("rejects out-of-range latitude", () => {
@@ -511,6 +518,16 @@ describe("agriculture.soil-grid-* (sampling grid + lab import)", () => {
     const ctxS = { actor: { userId: "user_soil" }, userId: "user_soil" };
     const f = call("field-create", ctxS, { name: "Soil 40", acreage: 40, lat: 42, lng: -93 });
     const g = call("soil-grid-generate", ctxS, { fieldId: f.result.field.id, acresPerSample: 5 });
+    // FIX-agriculture-012: out-of-range acresPerSample is refused by
+    // name, not silently clamped into range.
+    const neg = call("soil-grid-generate", ctxS, { fieldId: f.result.field.id, acresPerSample: -1 });
+    assert.equal(neg.ok, false);
+    assert.match(neg.error, /between 0\.5 and 40/);
+    const huge = call("soil-grid-generate", ctxS, { fieldId: f.result.field.id, acresPerSample: 1000 });
+    assert.equal(huge.ok, false);
+    const atMax = call("soil-grid-generate", ctxS, { fieldId: f.result.field.id, acresPerSample: 40 });
+    assert.equal(atMax.ok, true);
+    assert.equal(atMax.result.grid.acresPerSample, 40);
     assert.equal(g.ok, true);
     assert.ok(g.result.grid.sampleCount >= 1);
     assert.equal(g.result.grid.points[0].lab, null);

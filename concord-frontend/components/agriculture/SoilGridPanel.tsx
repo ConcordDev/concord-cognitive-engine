@@ -122,6 +122,12 @@ export function SoilGridPanel({
 
   async function generate() {
     if (!fieldId) return;
+    // FIX-agriculture-012: state the range before sending (the server
+    // refuses outside it by name as well).
+    if (!Number.isFinite(acresPerSample) || acresPerSample < 0.5 || acresPerSample > 40) {
+      setError('Acres per sample must be between 0.5 and 40.');
+      return;
+    }
     setError(null);
     setInfo(null);
     setGenerating(true);
@@ -219,6 +225,9 @@ export function SoilGridPanel({
         <input
           type="number"
           step="0.5"
+          min={0.5}
+          max={40}
+          aria-label="Acres per sample"
           value={acresPerSample}
           onChange={(e) => setAcresPerSample(Number(e.target.value))}
           placeholder="Acres / sample"

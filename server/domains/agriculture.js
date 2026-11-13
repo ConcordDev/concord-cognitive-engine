@@ -2085,7 +2085,18 @@ export default function registerAgricultureActions(registerLensAction) {
     const minLat = Number(bounds.minLat), maxLat = Number(bounds.maxLat);
     const minLng = Number(bounds.minLng), maxLng = Number(bounds.maxLng);
     if (![minLat, maxLat, minLng, maxLng].every(Number.isFinite)) return { ok: false, error: "invalid bounds" };
-    const acresPerSample = Math.max(0.5, Math.min(40, Number(params.acresPerSample) || 2.5));
+    // FIX-agriculture-012: acresPerSample was silently clamped into
+    // range — a typed -1 generated a grid at the floor value with no
+    // word. A provided value must sit inside the range the clamp
+    // itself defined (0.5–40) and is refused by name outside it;
+    // absent still defaults to 2.5.
+    if (params.acresPerSample != null) {
+      const aps = Number(params.acresPerSample);
+      if (!Number.isFinite(aps) || aps < 0.5 || aps > 40) {
+        return { ok: false, error: "acresPerSample must be between 0.5 and 40" };
+      }
+    }
+    const acresPerSample = params.acresPerSample == null ? 2.5 : Number(params.acresPerSample);
     // Field size: declared acreage, else the area of the bounds (no assumed 40 ac).
     const _fa = optNum(field?.acreage ?? params.acreage);
     const fieldAcres = Math.max(1, _fa !== null && _fa > 0 ? _fa : Math.abs((maxLat - minLat) * 111320 * (maxLng - minLng) * 111320 * Math.cos(((minLat + maxLat) / 2) * Math.PI / 180)) / 4046.86);
