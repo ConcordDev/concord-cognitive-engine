@@ -8,8 +8,7 @@
  * owns its hooks. Page is a thin shell.
  */
 
-import { useMemo, useState, type ComponentType } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { useState, type ComponentType } from 'react';
 import { Download, Wrench, LayoutGrid } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
@@ -38,7 +37,6 @@ const PANELS: Record<ExportView, ComponentType> = {
 export default function ExportLensPage() {
   useLensNav('export');
   useLensIdentity('export');
-  const reduceMotion = useReducedMotion();
   const [active, setActive] = useState<ExportView>('desk');
 
   useLensCommand(
@@ -53,18 +51,6 @@ export default function ExportLensPage() {
   );
 
   const Panel = PANELS[active];
-  const motionProps = useMemo(
-    () => (reduceMotion
-      ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
-      : {
-          initial: { opacity: 0, y: 8 },
-          animate: { opacity: 1, y: 0 },
-          exit: { opacity: 0, y: -6 },
-          transition: { duration: 0.16 },
-        }),
-    [reduceMotion],
-  );
-
   return (
     <LensShell lensId="export" asMain={false}>
 
@@ -79,11 +65,10 @@ export default function ExportLensPage() {
         tabsLabel="Export views"
       >
         <div className="pt-4">
-          <AnimatePresence mode="wait">
-            <motion.div key={active} {...motionProps}>
-              <Panel />
-            </motion.div>
-          </AnimatePresence>
+          {/* FIX-export-009: tab switches render instantly — the
+              crossfade left the previous tab half-faded over the new
+              one, which read as stale content. */}
+          <Panel />
         </div>
       </NorthStarFrame>
     </LensShell>
