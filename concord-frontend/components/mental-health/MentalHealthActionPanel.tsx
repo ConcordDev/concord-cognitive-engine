@@ -166,8 +166,14 @@ export function MentalHealthActionPanel() {
       if (messageId) { ok('Sent. 60s to recall.'); setRecipient(''); }
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
+  const [publishArmed, setPublishArmed] = useState(false);
   async function actPublish() {
     if (!statsResult) { err('Load CDC stats first.'); return; }
+    // FIX-mental-health-004: publishing is the lens's only public
+    // action — it arms first and publishes on the confirming click,
+    // and says plainly that it carries public CDC data only.
+    if (!publishArmed) { setPublishArmed(true); ok('This publishes a PUBLIC card with CDC statistics only — none of your personal records. Click Publish again to confirm.'); return; }
+    setPublishArmed(false);
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
@@ -198,7 +204,7 @@ export function MentalHealthActionPanel() {
     { id: 'prompt' as ActionId, label: 'Journal', desc: 'journalPrompt seed', icon: BookOpen, accent: '#a855f7', handler: actPrompt },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private wellness DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send wellness check', icon: Send, accent: '#f59e0b', handler: actDm },
-    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public stats card', icon: Globe, accent: '#15803d', handler: actPublish },
+    { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : publishArmed ? 'Confirm publish' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : publishArmed ? 'Public CDC data only — click to confirm' : 'PUBLIC stats card — asks first', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Action', desc: 'Agent: 10-min action', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 

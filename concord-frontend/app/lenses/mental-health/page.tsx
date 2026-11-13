@@ -177,6 +177,11 @@ export default function MentalHealthLensPage() {
         cta={view === 'analysis' ? undefined : { label: 'Find a coping strategy', icon: Sparkles, onClick: () => setView('analysis'), title: 'Pick what you are dealing with and get strategies' }}
       >
         <div data-lens-theme="mental-health" className="space-y-5 pb-28">
+      {/* Privacy notice — FIX-mental-health-004: the lens never stated
+          that tracking records are private to the account. */}
+      <p role="note" className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-gray-300">
+        Private to you: your mood check-ins, journal entries, and other records in this lens are visible only to your account. Nothing on your tracking views is public. The only public action anywhere in this lens is publishing a CDC public-statistics card from the Toolkit — it contains public CDC data, never your records, and it asks for confirmation first.
+      </p>
       {/* Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
