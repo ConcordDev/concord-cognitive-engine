@@ -23,6 +23,7 @@ import { openLensTool, useAvailableLensTools, type LensTool } from '@/lib/lens-d
 import { ContentPublisher } from '@/components/lens/ContentPublisher';
 import { useLensPublishTarget } from '@/lib/lens-publish-target';
 import { ExportMenu } from '@/components/common/ExportMenu';
+import { rememberOverlayOpener } from '@/lib/a11y/overlay-keyboard';
 
 const TOOLS: Array<{ tool: LensTool; icon: ComponentType<{ className?: string }>; label: string; shortcut?: string }> = [
   { tool: 'capture', icon: Plus, label: 'Quick capture', shortcut: '⌘N' },
@@ -138,7 +139,7 @@ export function LensToolbar({ domain, domainLabel }: { domain: string; domainLab
           {kayPending > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-teal-400" aria-hidden="true" />}
         </button>
         {open && (
-          <div ref={menuRef} role="menu" className="absolute right-0 top-full z-50 mt-1.5 w-60 rounded-xl border border-white/10 bg-[#141414] p-1 shadow-2xl">
+          <div ref={menuRef} role="menu" onClickCapture={() => rememberOverlayOpener(buttonRef.current)} className="absolute right-0 top-full z-50 mt-1.5 w-60 rounded-xl border border-white/10 bg-[#141414] p-1 shadow-2xl">
             <a role="menuitem" href={`/lenses/chat?context=${encodeURIComponent(domain)}`} className={itemCls}>
               <MessageCircle className="h-4 w-4 text-zinc-500" />
               <span className="flex-1">Ask about {domainLabel}</span>

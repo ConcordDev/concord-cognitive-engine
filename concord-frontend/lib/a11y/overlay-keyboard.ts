@@ -60,6 +60,27 @@ function moveTab(list: HTMLElement, from: HTMLElement, key: string): boolean {
   return true;
 }
 
+// The control that opened the top overlay. Menus that launch panels (the
+// Lens tools menu) unmount on click, so focus would fall to <body>; they
+// register their trigger here and Escape hands focus back to it.
+let opener: HTMLElement | null = null;
+
+export function rememberOverlayOpener(el: HTMLElement | null): void {
+  opener = el;
+}
+
+function restoreOpenerFocus(): void {
+  const target = opener;
+  opener = null;
+  if (!target) return;
+  // Wait a frame so the closing panel has unmounted before focus moves.
+  requestAnimationFrame(() => {
+    if (!target.isConnected) return;
+    const active = document.activeElement;
+    if (!active || active === document.body || !active.isConnected) target.focus();
+  });
+}
+
 export function handleOverlayKeyDown(event: KeyboardEvent): void {
   const target = event.target instanceof HTMLElement ? event.target : null;
 
@@ -79,6 +100,7 @@ export function handleOverlayKeyDown(event: KeyboardEvent): void {
     if (closeOverlay(overlay)) {
       event.preventDefault();
       event.stopPropagation();
+      restoreOpenerFocus();
     }
     return;
   }
