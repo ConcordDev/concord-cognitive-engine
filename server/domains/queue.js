@@ -670,7 +670,7 @@ export default function registerQueueActions(registerLensAction) {
         job.status = "completed";
         job.error = null;
         job.result = { ok: true, manual: true, output: `marked completed manually — no worker executed ${job.name}`, at: job.finishedAt };
-        logEvent(s, userId, "completed", `${job.name} completed in ${job.durationMs}ms`, job.id);
+        logEvent(s, userId, "completed", `${job.name} marked completed manually in ${job.durationMs}ms — no worker executed it`, job.id);
       }
       // Record throughput sample.
       const tp = userThroughput(s, userId);

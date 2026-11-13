@@ -129,6 +129,11 @@ export function JobDetailDrawer({
         {job.result != null && (
           <div className="mt-3">
             <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Result</div>
+            {(job.result as { manual?: boolean; output?: string })?.manual === true && (
+              <p className="mb-1 text-[11px] text-amber-300">
+                {(job.result as { output?: string }).output || 'Marked completed manually — no worker executed this job.'}
+              </p>
+            )}
             <pre className="max-h-32 overflow-auto rounded border border-zinc-800 bg-black/40 p-2 text-[11px] text-emerald-300">
               {JSON.stringify(job.result, null, 2)}
             </pre>

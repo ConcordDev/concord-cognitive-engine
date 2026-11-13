@@ -121,6 +121,11 @@ export function JobList({
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${STATUS_STYLE[j.status] || 'bg-zinc-700 text-zinc-300'}`}>
                     {j.status}
                   </span>
+                  {j.status === 'completed' && j.result?.manual === true && (
+                    <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-300">
+                      manual · no worker ran this
+                    </span>
+                  )}
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${PRIORITY_STYLE[j.priority]}`}>
                     {j.priority}
                   </span>
