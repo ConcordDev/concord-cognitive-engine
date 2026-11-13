@@ -18,6 +18,7 @@ import {
   listOpenLfg,
   inviteFromLfg,
 } from "../lib/lfg.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 // Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
 // silently clamp through the lib's Math.min/max bounds and still return ok:true.
@@ -32,7 +33,50 @@ function badNumericField(input, keys) {
   return null;
 }
 
+
+// ── lens export provider (FIX-lfg-007) ────────────────────────────────
+// An open LFG request is a row in lfg_requests — not an artifact and not
+// STATE — so the shared export told a queued player they had nothing to
+// export. Emit the caller's own OPEN, unexpired requests, projecting the
+// same fields listOpenLfg projects. The requester's raw id is never an
+// export field (the lib's identity-display rule); the rows are the
+// caller's own regardless.
+function lfgExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.userId || null;
+  if (!db || !userId) return [];
+  try {
+    const rows = db.prepare(`
+      SELECT id, world_id AS worldId, role, party_type AS partyType, note,
+             created_at AS createdAt, expires_at AS expiresAt,
+             party_max_size AS partyMaxSize, current_party_size AS currentSize
+        FROM lfg_requests
+       WHERE requester_user_id = ? AND status = 'open' AND expires_at > unixepoch()
+       ORDER BY created_at DESC
+       LIMIT 1000
+    `).all(userId);
+    return rows.map((r) => ({
+      id: r.id,
+      type: "lfg-request",
+      title: r.note || (r.role ? `LFG: ${r.role}` : "LFG request"),
+      createdAt: r.createdAt ?? null,
+      updatedAt: r.createdAt ?? null,
+      data: {
+        worldId: r.worldId || null,
+        role: r.role || null,
+        partyType: r.partyType || null,
+        partyMaxSize: r.partyMaxSize ?? null,
+        currentSize: r.currentSize ?? null,
+        expiresAt: r.expiresAt ?? null,
+      },
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export default function registerLfgMacros(register) {
+  registerLensExportProvider("lfg", lfgExportRows);
   /**
    * lfg.post — post a Looking-For-Group request. Auto-cancels any prior
    * OPEN request from the same user in the same world (a player can't be
