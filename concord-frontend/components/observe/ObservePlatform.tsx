@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ChartKit, TimelineView } from '@/components/viz';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 const DOMAIN = 'observe';
 
@@ -248,7 +249,7 @@ function DashboardsTab() {
               <div key={d.id} className={`flex items-center gap-1 px-2 py-1 rounded ${active?.id === d.id ? 'bg-cyan-500/15' : 'bg-zinc-900'}`}>
                 <button onClick={() => setActive(d)} className="flex-1 text-left text-[11px] text-zinc-200 truncate">{d.title}</button>
                 <span className="text-[10px] text-zinc-400">{d.widgets?.length || 0}w</span>
-                <button aria-label="Delete" onClick={() => del(d.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <StickyDeleteConfirm onConfirm={() => del(d.id)} armAriaLabel={`Delete ${d.title}`} confirmAriaLabel={`Confirm delete ${d.title}`} className="text-zinc-600 hover:text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
               </div>
             ))}
           </div>
@@ -269,7 +270,7 @@ function DashboardsTab() {
                   <div key={w.id} className="rounded border border-zinc-800 bg-zinc-900/60 p-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-zinc-200">{w.title}</span>
-                      <button aria-label="Delete" onClick={() => removeWidget(w.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                      <StickyDeleteConfirm onConfirm={() => removeWidget(w.id)} armAriaLabel={`Delete ${w.title}`} confirmAriaLabel={`Confirm delete ${w.title}`} className="text-zinc-600 hover:text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
                     </div>
                     <div className="text-[10px] text-zinc-400 mt-0.5">{w.kind}{w.metric ? ` · ${w.metric} (${w.agg})` : ''}</div>
                   </div>
@@ -551,7 +552,7 @@ function MonitorsTab() {
                 <span className="text-[11px] text-zinc-200 flex-1 truncate">{m.name}</span>
                 <span className="text-[10px] text-zinc-400">{m.type} · {m.severity}</span>
                 {ev && <span className={`text-[10px] ${ev.breached ? 'text-rose-400' : 'text-emerald-400'}`}>{ev.reason}</span>}
-                <button aria-label="Delete" onClick={() => del(m.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <StickyDeleteConfirm onConfirm={() => del(m.id)} armAriaLabel={`Delete ${m.name}`} confirmAriaLabel={`Confirm delete ${m.name}`} className="text-zinc-600 hover:text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
               </div>
             );
           })}
@@ -630,7 +631,7 @@ function SyntheticsTab() {
               <button onClick={() => runCheck(c.id)} disabled={busy === c.id} className="text-cyan-400 hover:text-cyan-300">
                 {busy === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
               </button>
-              <button aria-label="Delete" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              <StickyDeleteConfirm onConfirm={() => del(c.id)} armAriaLabel={`Delete ${c.name}`} confirmAriaLabel={`Confirm delete ${c.name}`} className="text-zinc-600 hover:text-rose-400" armLabel={<Trash2 className="w-3 h-3" />} />
             </div>
             );
           })}

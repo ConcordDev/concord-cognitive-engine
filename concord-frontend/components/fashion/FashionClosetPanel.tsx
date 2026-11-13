@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, Repeat, Scissors, Eye, Shirt, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 import { closetItemEditInput } from './closet-item-edit';
@@ -243,9 +244,13 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
                   <button aria-label={`Edit ${i.name}`} type="button" onClick={() => beginEdit(i)} className="text-zinc-500 hover:text-fuchsia-300">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
-                  <button aria-label={`Delete ${i.name}`} type="button" onClick={() => del(i.id)} className="text-zinc-600 hover:text-rose-400">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => del(i.id)}
+                    armAriaLabel={`Delete ${i.name}`}
+                    confirmAriaLabel={`Confirm delete ${i.name}`}
+                    className="text-zinc-600 hover:text-rose-400"
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  />
                 </div>
               </div>
               {editingId === i.id && (

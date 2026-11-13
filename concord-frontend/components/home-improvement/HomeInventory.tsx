@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Boxes, Plus, Trash2, Loader2, ShieldCheck, ShieldAlert,
   ShieldX, FileText, Package,
@@ -169,7 +170,7 @@ export function HomeInventory() {
                     <p className="text-sm font-medium text-white truncate">{a.name}</p>
                     <p className="text-xs text-gray-400">{a.category} · {a.room.replace(/_/g, ' ')}{a.brand ? ` · ${a.brand}` : ''}{a.model ? ` ${a.model}` : ''}</p>
                   </div>
-                  <button aria-label="Delete" onClick={() => remove(a.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <StickyDeleteConfirm onConfirm={() => remove(a.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400 p-1" armLabel={<Trash2 className="w-3.5 h-3.5" />} disabled={busy} />
                 </div>
                 <div className="flex items-center gap-3 text-xs">
                   <span className={`flex items-center gap-1 ${w.cls}`}><WIcon className="w-3.5 h-3.5" />{w.label}</span>

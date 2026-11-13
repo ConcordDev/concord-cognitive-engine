@@ -10,6 +10,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   Hammer, Plus, Search, Trash2, DollarSign,
   CheckCircle2, Wrench, ChevronDown,
@@ -275,7 +276,7 @@ export function ProjectsPanel() {
                     </button>
                     <div className="flex items-center gap-1 ml-3">
                       <ChevronDown className={cn('w-4 h-4 text-gray-500 transition-transform', expanded && 'rotate-180')} onClick={() => setExpandedId(expanded ? null : p.id)} />
-                      <button onClick={() => deleteProject(p.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+                      <StickyDeleteConfirm onConfirm={() => deleteProject(p.id)} armAriaLabel={`Delete ${p.name}`} confirmAriaLabel={`Confirm delete ${p.name}`} className="text-gray-400 hover:text-red-400 p-1" armLabel={busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} disabled={busy} />
                     </div>
                   </div>
 

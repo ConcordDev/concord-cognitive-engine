@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Layers, Repeat, Trash2, ChevronRight } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 
@@ -128,9 +129,13 @@ export function FashionOutfitsPanel({ onChange }: { onChange: () => void }) {
                   className="ml-2 flex items-center gap-1 px-2 py-1 text-[11px] bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg">
                   <Repeat className="w-3 h-3" /> Wear
                 </button>
-                <button aria-label="Delete" type="button" onClick={() => del(o.id)} className="ml-1 text-zinc-600 hover:text-rose-400">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => del(o.id)}
+                  armAriaLabel="Delete"
+                  confirmAriaLabel="Confirm delete"
+                  className="ml-1 text-zinc-600 hover:text-rose-400"
+                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                />
               </div>
               {open === o.id && (
                 <div className="border-t border-zinc-800 px-3 py-2 bg-zinc-950/50">

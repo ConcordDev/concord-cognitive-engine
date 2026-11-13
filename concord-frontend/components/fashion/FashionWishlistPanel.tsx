@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Plus, Heart, Trash2, ExternalLink, ShoppingBag, X } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 
 interface WishlistEntry {
   id: string;
@@ -152,10 +153,14 @@ export function FashionWishlistPanel({ onChange }: { onChange?: () => void }) {
                   </p>
                   {w.note && <p className="text-[11px] text-zinc-500 mt-1">{w.note}</p>}
                 </div>
-                <button aria-label="Remove" type="button" onClick={() => remove(w.id)} disabled={busy === w.id}
-                  className="text-zinc-600 hover:text-rose-400 shrink-0 disabled:opacity-50">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <StickyDeleteConfirm
+                  onConfirm={() => remove(w.id)}
+                  armAriaLabel="Remove"
+                  confirmAriaLabel="Confirm remove"
+                  disabled={busy === w.id}
+                  className="text-zinc-600 hover:text-rose-400 shrink-0 disabled:opacity-50"
+                  armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                />
               </div>
 
               {convertForm?.id === w.id ? (

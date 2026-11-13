@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, Heart, Bookmark, Share2, Trash2, Users, Copy, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
 
 interface Outfit { id: string; name: string }
@@ -198,10 +199,13 @@ export function FashionSocialPanel() {
                   <Bookmark className={cn('w-3.5 h-3.5', p.savedByMe && 'fill-amber-400')} /> {p.saves}
                 </button>
                 {p.mine && (
-                  <button aria-label="Delete" type="button" onClick={() => del(p.id)}
-                    className="ml-auto text-zinc-600 hover:text-rose-400">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => del(p.id)}
+                    armAriaLabel="Delete"
+                    confirmAriaLabel="Confirm delete"
+                    className="ml-auto text-zinc-600 hover:text-rose-400"
+                    armLabel={<Trash2 className="w-3.5 h-3.5" />}
+                  />
                 )}
               </div>
             </li>

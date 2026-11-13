@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import {
   CalendarClock, Plus, Trash2, Loader2, CheckCircle2,
   AlertTriangle, Snowflake, Sun, Leaf, Flower2,
@@ -199,9 +200,7 @@ export function MaintenanceReminders() {
                 <button onClick={() => complete(r.id)} disabled={busy} className="text-neon-green hover:text-green-300 p-1" title="Mark done & reschedule">
                   <CheckCircle2 className="w-4 h-4" />
                 </button>
-                <button aria-label="Delete" onClick={() => remove(r.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <StickyDeleteConfirm onConfirm={() => remove(r.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400 p-1" armLabel={<Trash2 className="w-3.5 h-3.5" />} disabled={busy} />
               </div>
             );
           })}

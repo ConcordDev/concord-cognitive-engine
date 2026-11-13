@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { Wrench, Plus, Trash2, Loader2, Star, Phone, Mail, BadgeCheck, FileText } from 'lucide-react';
 
 interface Quote {
@@ -158,7 +159,7 @@ export function ContractorDirectory() {
                     {p.quoteCount > 0 && <span className="text-neon-green">Lowest quote: ${p.lowestQuote.toLocaleString()}</span>}
                   </div>
                 </button>
-                <button aria-label="Delete" onClick={() => removePro(p.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                <StickyDeleteConfirm onConfirm={() => removePro(p.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400 p-1" armLabel={<Trash2 className="w-3.5 h-3.5" />} disabled={busy} />
               </div>
 
               {openPro === p.id && (

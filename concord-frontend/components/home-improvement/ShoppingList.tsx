@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz';
 import {
   ShoppingCart, Plus, Trash2, Loader2, ExternalLink,
@@ -158,7 +159,7 @@ export function ShoppingList() {
                   {it.vendorUrl && (
                     <a href={it.vendorUrl} target="_blank" rel="noopener noreferrer" className="text-neon-cyan p-1"><ExternalLink className="w-3.5 h-3.5" /></a>
                   )}
-                  <button aria-label="Delete" onClick={() => remove(it.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <StickyDeleteConfirm onConfirm={() => remove(it.id)} armAriaLabel="Delete" confirmAriaLabel="Confirm delete" className="text-gray-400 hover:text-red-400 p-1" armLabel={<Trash2 className="w-3.5 h-3.5" />} disabled={busy} />
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   <input
