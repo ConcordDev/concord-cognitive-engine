@@ -130,7 +130,14 @@ export function MentorshipMessagesPanel() {
       {showNew && (
         <div className="panel p-3 space-y-2">
           <input value={newPartner} onChange={(e) => setNewPartner(e.target.value)} placeholder="Partner user ID" className="input-lattice w-full" />
-          <button onClick={() => { if (newPartner.trim()) { setShowNew(false); void openThread(newPartner.trim()); } }} className="btn-neon green w-full text-sm">
+          <button onClick={() => {
+            // FIX-mentorship-006: a blank partner ID silently did
+            // nothing — speak through the panel's error line, in the
+            // voice of the lens's session form ('Partner ID and start
+            // time are required.').
+            if (!newPartner.trim()) { setError('Partner user ID is required.'); return; }
+            setShowNew(false); void openThread(newPartner.trim());
+          }} className="btn-neon green w-full text-sm">
             Open conversation
           </button>
         </div>
