@@ -155,7 +155,9 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
   // Query params: page (1-based, default 1), limit (default 20, max 100)
   router.get("/", (req, res) => {
     try {
-      const allWorlds = listWorlds(db);
+      // FIX-world-creator-013: this list is public — playtest copies
+      // (private, owner-only) never enumerate here.
+      const allWorlds = listWorlds(db).filter((w) => !w.rule_modulators?.playtest);
       const page = Math.max(1, parseInt(req.query.page) || 1);
       const limit = Math.min(parseInt(req.query.limit) || 20, 100);
       const offset = (page - 1) * limit;
@@ -224,6 +226,16 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
       const { name, universe_type, description, physics_modulators, rule_modulators } = req.body;
       if (!name || !universe_type) return res.status(400).json({ error: "name and universe_type required" });
 
+      // FIX-world-creator-013 (founder ruling A, 2026-11-13): a
+      // playtest mint is a private, owner-only copy — stamp the
+      // marker onto the row so every public enumeration can cut it.
+      // Only the world-creator playtest payload carries the marker;
+      // a directly founded world stays an open world as designed.
+      const ruleMods = { ...(rule_modulators || {}) };
+      const playtestDraftId = req.body.playtest && typeof req.body.playtest.draftId === "string"
+        ? req.body.playtest.draftId.slice(0, 80) : "";
+      if (playtestDraftId) ruleMods.playtest = { draftId: playtestDraftId, private: true };
+
       const id = `world-${crypto.randomUUID()}`;
       db.prepare(`
         INSERT INTO worlds (id, name, universe_type, description, physics_modulators, rule_modulators, created_by)
@@ -231,7 +243,7 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
       `).run(
         id, name, universe_type, description || "",
         JSON.stringify(physics_modulators || {}),
-        JSON.stringify(rule_modulators    || {}),
+        JSON.stringify(ruleMods),
         req.user.id,
       );
 

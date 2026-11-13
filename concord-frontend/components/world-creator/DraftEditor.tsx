@@ -216,7 +216,16 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
       const data = await res.json();
       const worldId = data?.world?.id;
       if (worldId) {
-        await lensRun('world-creator', 'draft-publish', { id: draftId, visibility: draft?.visibility || 'private', publishedWorldId: worldId });
+        // FIX-world-creator-013: the link back to this draft is what
+        // keeps the playtest copy accounted for — never swallow its
+        // failure. The copy itself stays private either way, and
+        // deleting this draft discards it.
+        const pub = await lensRun('world-creator', 'draft-publish', { id: draftId, visibility: draft?.visibility || 'private', publishedWorldId: worldId });
+        if (!pub.data?.ok) {
+          setBusy(false);
+          setErr(`Playtest world ${worldId} was created but could not be linked to this draft (${pub.data?.error || 'unknown error'}). It stays private — deleting this draft will discard it.`);
+          return;
+        }
         router.push(`/lenses/world?worldId=${encodeURIComponent(worldId)}`);
       } else router.push('/lenses/world');
     } catch (e) {

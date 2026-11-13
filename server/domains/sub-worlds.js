@@ -205,7 +205,7 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     if (!db) return [];
     try {
       return db.prepare(
-        `SELECT id, name, universe_type, description, created_by, created_at
+        `SELECT id, name, universe_type, description, created_by, created_at, rule_modulators
            FROM worlds WHERE status = 'active'`
       ).all();
     } catch (_e) { return []; }
@@ -215,10 +215,20 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     if (!db || !id) return null;
     try {
       return db.prepare(
-        `SELECT id, name, universe_type, description, created_by, created_at
+        `SELECT id, name, universe_type, description, created_by, created_at, rule_modulators
            FROM worlds WHERE id = ? AND status = 'active'`
       ).get(id) || null;
     } catch (_e) { return null; }
+  }
+  // FIX-world-creator-013 (founder ruling A, 2026-11-13): a playtest
+  // mint carries rule_modulators.playtest — a private, owner-only
+  // copy of a world-creator draft, never a public world.
+  function isPlaytestRow(row) {
+    if (!row?.rule_modulators) return false;
+    try {
+      const mods = typeof row.rule_modulators === "string" ? JSON.parse(row.rule_modulators) : row.rule_modulators;
+      return !!mods?.playtest?.draftId;
+    } catch (_e) { return false; }
   }
   function creatorDrafts() {
     const wc = globalThis._concordSTATE?.worldCreatorLens;
@@ -300,7 +310,10 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
       description: row.description || "",
       thumbnail: "",
       kind: row.universe_type || "concordia-hub",
-      privacy: "public",
+      // FIX-world-creator-013: a playtest copy reads private in its
+      // owner's own lists too — the hardcoded "public" was the lie
+      // that made a private copy look published.
+      privacy: isPlaytestRow(row) ? "private" : "public",
       status: "active",
       capacity: 16,
       spawned_by_user_id: row.created_by || "",
@@ -457,6 +470,11 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     }
     for (const row of tableWorldRows(ctx)) {
       if (storeIds.has(row.id) || claimedMints.has(row.id)) continue;
+      // FIX-world-creator-013: playtest copies are private — they
+      // never surface in the public gallery, claimed or not (a public
+      // draft's copy surfaces as the draft view above; sharing is
+      // what publishing is for).
+      if (isPlaytestRow(row)) continue;
       all.push(tableView(s, row, me));
     }
     if (query) {all = all.filter((w) =>
@@ -534,7 +552,23 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
     const hit = findWorld(s, clean(params.worldId, 80));
-    if (!hit) return { ok: false, error: "world not found" };
+    if (!hit) {
+      // FIX-world-creator-013: a playtest copy lives only in the
+      // worlds table — the owner's Settings/Delete verb reaches it
+      // here, so a playtest copy is disposable by its owner even
+      // while its draft lives. Owner-only, like the store path.
+      const row = tableWorldRow(ctx, clean(params.worldId, 80));
+      if (row && isPlaytestRow(row)) {
+        if (row.created_by !== me) return { ok: false, error: "only the owner can archive" };
+        if (params.hardDelete === true) {
+          deleteWorldRow(ctx, row.id);
+          return { ok: true, result: { deleted: true, world_id: row.id } };
+        }
+        setWorldRowStatus(ctx, row.id, "archived");
+        return { ok: true, result: { archived: true, world_id: row.id } };
+      }
+      return { ok: false, error: "world not found" };
+    }
     // Only the owner may archive/delete; editors cannot.
     if (hit.world.spawned_by_user_id !== me) return { ok: false, error: "only the owner can archive" };
     if (params.hardDelete === true) {
@@ -574,6 +608,12 @@ export default function registerSubWorldsActions(registerLensActionRaw) {
       if (row) {
         const minted = creatorDrafts().find(({ draft }) => draft.publishedWorldId === row.id);
         if (minted && minted.draft.visibility === "private" && minted.creatorId !== me) {
+          return { ok: false, error: "world is private" };
+        }
+        // FIX-world-creator-013: a playtest copy is owner-only —
+        // nobody else enters it, claimed or not, unless its draft
+        // has been published public (sharing is publishing's job).
+        if (isPlaytestRow(row) && row.created_by !== me && !(minted && minted.draft.visibility === "public")) {
           return { ok: false, error: "world is private" };
         }
         const e = bridgeRecordVisit(s, `world:${row.id}`, me);

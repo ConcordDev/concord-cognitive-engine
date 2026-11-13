@@ -319,6 +319,35 @@ export default function registerWorldCreatorActions(registerLensAction) {
       const i = arr.findIndex((d) => d.id === clean(params.id, 80));
       if (i < 0) return { ok: false, error: "draft not found" };
       const [removed] = arr.splice(i, 1);
+      // FIX-world-creator-013 — the draft's playtest copies die with
+      // it (the ticket's uncleanable-debris leg): every worlds-table
+      // row stamped as THIS draft's playtest copy — the linked mint
+      // and any unlinked orphan alike — is deleted, owner-guarded.
+      // Only playtest-marked rows cascade; founded worlds and store
+      // mirrors never die with a draft. Best-effort: the draft delete
+      // stands even if the table is unreachable.
+      try {
+        const db = ctx?.db;
+        if (db) {
+          const uid = aid(ctx);
+          const doomed = new Set();
+          if (removed.publishedWorldId) doomed.add(removed.publishedWorldId);
+          const rows = db.prepare(`SELECT id, rule_modulators FROM worlds WHERE status = 'active'`).all();
+          for (const row of rows) {
+            let mods = {};
+            try { mods = JSON.parse(row.rule_modulators || "{}"); } catch (_e) { mods = {}; }
+            if (mods?.playtest?.draftId === removed.id) doomed.add(row.id);
+          }
+          for (const id of doomed) {
+            const row = db.prepare(`SELECT created_by, rule_modulators FROM worlds WHERE id = ?`).get(id);
+            if (!row || row.created_by !== uid) continue;
+            let mods = {};
+            try { mods = JSON.parse(row.rule_modulators || "{}"); } catch (_e) { mods = {}; }
+            if (!mods?.playtest) continue;
+            db.prepare(`DELETE FROM worlds WHERE id = ?`).run(id);
+          }
+        }
+      } catch (_e) { /* best-effort cascade */ }
       save();
       if (typeof globalThis._concordSaveStateSync === "function") {
         try { globalThis._concordSaveStateSync(); } catch (_e) { /* the debounced save still runs */ }
@@ -655,6 +684,13 @@ export default function registerWorldCreatorActions(registerLensAction) {
             description: draft.description,
             physics_modulators: {},
             rule_modulators: { ...draft.rules, biome: draft.biome },
+            // FIX-world-creator-013 (founder ruling A, 2026-11-13):
+            // a playtest mint is a PRIVATE, owner-only copy of this
+            // draft — never a public world. The marker rides the POST
+            // so /api/worlds stamps it onto the row; every public
+            // enumeration (GET /api/worlds, Sub-Worlds Discover) cuts
+            // marked rows, and draft-delete discards them.
+            playtest: { draftId: draft.id },
           },
         },
       };
