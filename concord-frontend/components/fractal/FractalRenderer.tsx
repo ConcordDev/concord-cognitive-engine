@@ -146,6 +146,38 @@ function colorFor(iter: number, maxIter: number, lut: Uint8ClampedArray): [numbe
   return [lut[idx * 3], lut[idx * 3 + 1], lut[idx * 3 + 2]];
 }
 
+// FIX-fractal-003: the view coordinate fields were controlled inputs
+// bound straight to numeric state with `parseFloat(x) || 0` on every
+// keystroke — an intermediate '-' parsed to NaN and snapped the field
+// to 0 (so '-1' became '01'), and clearing the field forced a 0 back
+// in. This input keeps the typed text while it is being edited and
+// commits only values that parse; on blur it shows the canonical
+// number again. External changes (drag, zoom) still reflect live
+// whenever the field is not being edited.
+function ViewNumberInput({ value, step, className, onCommit }: {
+  value: number;
+  step: string;
+  className?: string;
+  onCommit: (n: number) => void;
+}) {
+  const [text, setText] = useState<string | null>(null);
+  return (
+    <input
+      type="number"
+      step={step}
+      className={className}
+      value={text ?? String(value)}
+      onFocus={() => setText(String(value))}
+      onChange={(e) => {
+        setText(e.target.value);
+        const n = parseFloat(e.target.value);
+        if (Number.isFinite(n)) onCommit(n);
+      }}
+      onBlur={() => setText(null)}
+    />
+  );
+}
+
 export function FractalRenderer() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderIdRef = useRef(0);
@@ -761,18 +793,18 @@ export function FractalRenderer() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className={lbl}>Julia Re</label>
-                    <input
-                      type="number" step="0.001" className={inputCls}
+                    <ViewNumberInput
+                      step="0.001" className={inputCls}
                       value={view.juliaRe}
-                      onChange={e => setView(v => ({ ...v, juliaRe: parseFloat(e.target.value) || 0 }))}
+                      onCommit={(n) => setView(v => ({ ...v, juliaRe: n }))}
                     />
                   </div>
                   <div>
                     <label className={lbl}>Julia Im</label>
-                    <input
-                      type="number" step="0.001" className={inputCls}
+                    <ViewNumberInput
+                      step="0.001" className={inputCls}
                       value={view.juliaIm}
-                      onChange={e => setView(v => ({ ...v, juliaIm: parseFloat(e.target.value) || 0 }))}
+                      onCommit={(n) => setView(v => ({ ...v, juliaIm: n }))}
                     />
                   </div>
                 </div>
@@ -791,18 +823,18 @@ export function FractalRenderer() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className={lbl}>Center X</label>
-                  <input
-                    type="number" step="0.0001" className={inputCls}
+                  <ViewNumberInput
+                    step="0.0001" className={inputCls}
                     value={view.centerX}
-                    onChange={e => setView(v => ({ ...v, centerX: parseFloat(e.target.value) || 0 }))}
+                    onCommit={(n) => setView(v => ({ ...v, centerX: n }))}
                   />
                 </div>
                 <div>
                   <label className={lbl}>Center Y</label>
-                  <input
-                    type="number" step="0.0001" className={inputCls}
+                  <ViewNumberInput
+                    step="0.0001" className={inputCls}
                     value={view.centerY}
-                    onChange={e => setView(v => ({ ...v, centerY: parseFloat(e.target.value) || 0 }))}
+                    onCommit={(n) => setView(v => ({ ...v, centerY: n }))}
                   />
                 </div>
               </div>
