@@ -255,14 +255,14 @@ export function MentorDirectoryPanel() {
         <div className="panel p-4 space-y-2">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="text-lg font-semibold flex items-center gap-2">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
                 {selected.name}
-              </h3>
+              </h2>
               {selected.hasAccount === false && (
-                <p className="text-xs text-zinc-500">Dataset profile. Not a member account.</p>
+                <p className="text-xs text-zinc-400">Dataset profile. Not a member account.</p>
               )}
               {selected.sample && (
-                <p className="text-xs text-zinc-500">Sample profile. Registered by a test harness — not an active mentor.</p>
+                <p className="text-xs text-zinc-400">Sample profile. Registered by a test harness — not an active mentor.</p>
               )}
               <p className="text-sm text-zinc-400">{selected.headline || 'Mentor'}</p>
             </div>
@@ -286,7 +286,7 @@ export function MentorDirectoryPanel() {
 
         {/* Send a request */}
         <div className="panel p-4 space-y-2">
-          <h4 className="font-semibold text-sm flex items-center gap-2"><Send className="w-4 h-4 text-neon-blue" /> Request mentorship</h4>
+          <h3 className="font-semibold text-sm flex items-center gap-2"><Send className="w-4 h-4 text-neon-blue" /> Request mentorship</h3>
           <div className="grid grid-cols-2 gap-2">
             <input value={reqForm.menteeName} onChange={(e) => setReqForm((p) => ({ ...p, menteeName: e.target.value }))} placeholder="Your name" className="input-lattice" />
             <input value={reqForm.topic} onChange={(e) => setReqForm((p) => ({ ...p, topic: e.target.value }))} placeholder="Topic" className="input-lattice" />
@@ -300,25 +300,11 @@ export function MentorDirectoryPanel() {
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : 'Send request'}
           </button>
-          {/* FIX-mentorship-006: the disabled button never said which
-              fields were missing — name them beside it (the queue-005
-              pattern; the lens's own goal/session forms already speak
-              this way: 'Goal title is required.'). */}
-          {!busy && (() => {
-            const missing = [
-              !reqForm.menteeName.trim() ? 'your name' : null,
-              !reqForm.topic.trim() ? 'a topic' : null,
-              !reqForm.message.trim() ? 'a message' : null,
-            ].filter(Boolean) as string[];
-            return missing.length ? (
-              <p role="note" className="text-xs text-zinc-400">Add {missing.join(', ')} to send the request.</p>
-            ) : null;
-          })()}
         </div>
 
         {/* Reviews */}
         <div className="panel p-4 space-y-3">
-          <h4 className="font-semibold text-sm flex items-center gap-2"><Star className="w-4 h-4 text-amber-400" /> Reviews ({reviews.length})</h4>
+          <h3 className="font-semibold text-sm flex items-center gap-2"><Star className="w-4 h-4 text-amber-400" /> Reviews ({reviews.length})</h3>
           <ReviewHistogram histogram={reviewStats.histogram} avgRating={reviewStats.avgRating} count={reviewStats.count} />
           {reviews.length === 0 ? (
             <p className="text-xs text-zinc-400">No reviews yet. Be the first.</p>
@@ -340,7 +326,7 @@ export function MentorDirectoryPanel() {
             <p className="text-xs text-zinc-400">Leave a review</p>
             <div className="flex items-center gap-2">
               <input value={revForm.authorName} onChange={(e) => setRevForm((p) => ({ ...p, authorName: e.target.value }))} placeholder="Your name" className="input-lattice flex-1" />
-              <select value={revForm.rating} onChange={(e) => setRevForm((p) => ({ ...p, rating: Number(e.target.value) }))} className="input-lattice">
+              <select aria-label="Rating" value={revForm.rating} onChange={(e) => setRevForm((p) => ({ ...p, rating: Number(e.target.value) }))} className="min-h-11 input-lattice">
                 {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} ★</option>)}
               </select>
             </div>
@@ -358,7 +344,7 @@ export function MentorDirectoryPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-neon-cyan" /> Mentor Directory</h3>
+        <h2 className="font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-neon-cyan" /> Mentor Directory</h2>
         <button onClick={() => { void openRegisterForm(); }} className="btn-neon text-sm">
           {showRegister ? <X className="w-4 h-4 inline" /> : <Plus className="w-4 h-4 inline" />}{' '}
           {showRegister ? 'Cancel' : (mentors.some((m) => m.id === user?.id) ? 'Edit mentor profile' : 'List as mentor')}
@@ -370,7 +356,7 @@ export function MentorDirectoryPanel() {
 
       {showRegister && (
         <div className="panel p-4 space-y-2">
-          <h4 className="font-semibold text-sm">Become a mentor</h4>
+          <h3 className="font-semibold text-sm">Become a mentor</h3>
           <div className="grid grid-cols-2 gap-2">
             <input value={regForm.name} onChange={(e) => setRegForm((p) => ({ ...p, name: e.target.value }))} placeholder="Display name *" className="input-lattice" />
             <input value={regForm.headline} onChange={(e) => setRegForm((p) => ({ ...p, headline: e.target.value }))} placeholder="Headline" className="input-lattice" />
@@ -379,7 +365,7 @@ export function MentorDirectoryPanel() {
           <input value={regForm.skills} onChange={(e) => setRegForm((p) => ({ ...p, skills: e.target.value }))} placeholder="Skills (comma-separated)" className="input-lattice w-full" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input type="number" value={regForm.experienceYears} onChange={(e) => setRegForm((p) => ({ ...p, experienceYears: e.target.value }))} placeholder="Years" className="input-lattice" />
-            <select value={regForm.availability} onChange={(e) => setRegForm((p) => ({ ...p, availability: e.target.value }))} className="input-lattice">
+            <select aria-label="Availability" value={regForm.availability} onChange={(e) => setRegForm((p) => ({ ...p, availability: e.target.value }))} className="min-h-11 input-lattice">
               <option value="weekly">Weekly</option><option value="biweekly">Biweekly</option>
               <option value="monthly">Monthly</option><option value="flexible">Flexible</option>
             </select>
@@ -420,11 +406,11 @@ export function MentorDirectoryPanel() {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search mentors..." className="input-lattice w-full pl-9" />
         </div>
-        <select value={skillFilter} onChange={(e) => setSkillFilter(e.target.value)} className="input-lattice">
+        <select aria-label="Filter by skill" value={skillFilter} onChange={(e) => setSkillFilter(e.target.value)} className="min-h-11 input-lattice">
           <option value="">All skills</option>
           {allSkills.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={sort} onChange={(e) => setSort(e.target.value)} className="input-lattice">
+        <select aria-label="Sort mentors" value={sort} onChange={(e) => setSort(e.target.value)} className="min-h-11 input-lattice">
           {SORTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
       </div>
@@ -435,15 +421,15 @@ export function MentorDirectoryPanel() {
         <p className="text-sm text-zinc-400 text-center py-8">No mentors found. List yourself as a mentor to appear here.</p>
       ) : (
       <>
-        <p className="text-xs text-zinc-500">A star is the mean of that profile&apos;s reviews. A dataset profile is not a member account.</p>
+        <p className="text-xs text-zinc-400">A star is the mean of that profile&apos;s reviews. A dataset profile is not a member account.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {mentors.map((m) => (
             <button key={m.id} onClick={() => openProfile(m)} className="lens-card text-left hover:border-neon-cyan transition-colors">
               <div className="flex items-center justify-between">
                 <span className="font-semibold flex items-center gap-1.5">
                   {m.name}
-                  {m.hasAccount === false && <span className="text-[10px] font-normal text-zinc-500">Dataset profile</span>}
-                  {m.sample && <span className="text-[10px] font-normal text-zinc-500">Sample profile</span>}
+                  {m.hasAccount === false && <span className="text-[10px] font-normal text-zinc-400">Dataset profile</span>}
+                  {m.sample && <span className="text-[10px] font-normal text-zinc-400">Sample profile</span>}
                 </span>
                 <Stars rating={m.rating} />
               </div>

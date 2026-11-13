@@ -118,7 +118,7 @@ export function MentorshipGoalsPanel() {
         {error && <p className="text-xs text-red-400">{error}</p>}
         <div className="panel p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">{selected.title}</h3>
+            <h2 className="text-lg font-semibold">{selected.title}</h2>
             <span className={cn('text-xs px-2 py-0.5 rounded', STATUS_STYLE[selected.status])}>{selected.status}</span>
           </div>
           {selected.detail && <p className="text-sm text-zinc-300">{selected.detail}</p>}
@@ -138,13 +138,13 @@ export function MentorshipGoalsPanel() {
               </button>
             ))}
           </div>
-          <p className="text-[11px] text-zinc-500">Status and progress move together: reaching 100% marks the goal done, and marking it done sets progress to 100%.</p>
+          <p className="text-[11px] text-zinc-400">Status and progress move together: reaching 100% marks the goal done, and marking it done sets progress to 100%.</p>
         </div>
 
         {/* Progress chart from check-ins */}
         {selected.checkIns.length > 0 && (
           <div className="panel p-4">
-            <h4 className="font-semibold text-sm mb-2">Progress trend</h4>
+            <h3 className="font-semibold text-sm mb-2">Progress trend</h3>
             <ChartKit
               kind="area"
               xKey="step"
@@ -156,7 +156,7 @@ export function MentorshipGoalsPanel() {
 
         {/* Check-ins */}
         <div className="panel p-4 space-y-2">
-          <h4 className="font-semibold text-sm flex items-center gap-2"><MessageSquarePlus className="w-4 h-4 text-neon-blue" /> Check-ins</h4>
+          <h3 className="font-semibold text-sm flex items-center gap-2"><MessageSquarePlus className="w-4 h-4 text-neon-blue" /> Check-ins</h3>
           {selected.checkIns.length === 0 ? (
             <p className="text-xs text-zinc-400">No check-ins yet.</p>
           ) : selected.checkIns.slice().reverse().map((c) => (
@@ -186,7 +186,7 @@ export function MentorshipGoalsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-neon-green" /> Goal Workspace</h3>
+        <h2 className="font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-neon-green" /> Goal Workspace</h2>
         <button onClick={() => setShowCreate(!showCreate)} className="btn-neon text-sm">
           {showCreate ? <X className="w-4 h-4 inline" /> : <Plus className="w-4 h-4 inline" />} {showCreate ? 'Cancel' : 'New goal'}
         </button>

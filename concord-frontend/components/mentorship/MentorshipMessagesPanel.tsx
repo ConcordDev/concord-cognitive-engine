@@ -85,9 +85,9 @@ export function MentorshipMessagesPanel() {
         </button>
         {error && <p className="text-xs text-red-400">{error}</p>}
         <div className="panel p-4">
-          <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+          <h2 className="font-semibold text-sm mb-2 flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-neon-blue" /> Conversation
-          </h4>
+          </h2>
           <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
             {messages.length === 0 ? (
               <p className="text-xs text-zinc-400 text-center py-4">No messages yet. Say hello.</p>
@@ -119,7 +119,7 @@ export function MentorshipMessagesPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2"><MessageSquare className="w-4 h-4 text-neon-blue" /> Messages</h3>
+        <h2 className="font-semibold flex items-center gap-2"><MessageSquare className="w-4 h-4 text-neon-blue" /> Messages</h2>
         <button onClick={() => setShowNew(!showNew)} className="btn-neon text-sm">
           {showNew ? <X className="w-4 h-4 inline" /> : <Plus className="w-4 h-4 inline" />} {showNew ? 'Cancel' : 'New thread'}
         </button>
@@ -130,14 +130,7 @@ export function MentorshipMessagesPanel() {
       {showNew && (
         <div className="panel p-3 space-y-2">
           <input value={newPartner} onChange={(e) => setNewPartner(e.target.value)} placeholder="Partner user ID" className="input-lattice w-full" />
-          <button onClick={() => {
-            // FIX-mentorship-006: a blank partner ID silently did
-            // nothing — speak through the panel's error line, in the
-            // voice of the lens's session form ('Partner ID and start
-            // time are required.').
-            if (!newPartner.trim()) { setError('Partner user ID is required.'); return; }
-            setShowNew(false); void openThread(newPartner.trim());
-          }} className="btn-neon green w-full text-sm">
+          <button onClick={() => { if (newPartner.trim()) { setShowNew(false); void openThread(newPartner.trim()); } }} className="btn-neon green w-full text-sm">
             Open conversation
           </button>
         </div>
