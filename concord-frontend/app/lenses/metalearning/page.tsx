@@ -23,6 +23,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { cn } from '@/lib/utils';
+import { onRovingTabsKeyDown, rovingTabIndex } from '@/lib/a11y/roving-tabs';
 import { StrategiesDeskPanel } from '@/components/metalearning/StrategiesDeskPanel';
 import { SpacedRepetitionPanel } from '@/components/metalearning/SpacedRepetitionPanel';
 import { LearningPlanPanel } from '@/components/metalearning/LearningPlanPanel';
@@ -108,14 +109,15 @@ export default function MetalearningLensPage() {
           </div>
         </div>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Metalearning views">
-          {TABS.map((v) => {
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Metalearning views" onKeyDown={onRovingTabsKeyDown}>
+          {TABS.map((v, i) => {
             const Icon = v.icon;
             const on = active === v.id;
             return (
               <button
                 key={v.id}
                 type="button"
+                tabIndex={rovingTabIndex(on, i, true)}
                 onClick={() => goTo(v.id)}
                 aria-current={on ? 'page' : undefined}
                 className={cn(

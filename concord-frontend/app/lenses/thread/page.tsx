@@ -23,6 +23,7 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { lensRun } from '@/lib/api/client';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { cn } from '@/lib/utils';
+import { onRovingTabsKeyDown, rovingTabIndex } from '@/lib/a11y/roving-tabs';
 import { ThreadMapPanel } from '@/components/thread/ThreadMapPanel';
 import { ComposerPanel } from '@/components/thread/ComposerPanel';
 import { StudioPanel } from '@/components/thread/StudioPanel';
@@ -125,14 +126,15 @@ export default function ThreadLensPage() {
           </div>
         </div>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Thread views">
-          {VIEWS.map((v) => {
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Thread views" onKeyDown={onRovingTabsKeyDown}>
+          {VIEWS.map((v, i) => {
             const Icon = v.icon;
             const on = active === v.id;
             return (
               <button
                 key={v.id}
                 type="button"
+                tabIndex={rovingTabIndex(on, i, true)}
                 onClick={() => setActive(v.id)}
                 aria-current={on ? 'page' : undefined}
                 title={`${v.hint} (${v.keys})`}

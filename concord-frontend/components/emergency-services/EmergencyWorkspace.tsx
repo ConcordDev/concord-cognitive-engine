@@ -8,6 +8,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
 import { cn } from '@/lib/utils';
+import { onRovingTabsKeyDown, rovingTabIndex } from '@/lib/a11y/roving-tabs';
 import { LimitationNotice } from '@/components/lens/LimitationNotice';
 import { AgencyMutualAidPanel } from './AgencyMutualAidPanel';
 import { CADConsole } from './CADConsole';
@@ -123,8 +124,8 @@ export function EmergencyWorkspace() {
         <EmptyCallBoard onOpen={openBoard} />
       ) : (
         <div className="mt-8 grid gap-6 lg:grid-cols-[9rem_minmax(0,1fr)]">
-          <nav aria-label="Call board tools" className="flex gap-1 overflow-x-auto border-b border-white/10 pb-2 lg:flex-col lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
-            {TOOLS.map((item) => {
+          <nav aria-label="Call board tools" onKeyDown={onRovingTabsKeyDown} className="flex gap-1 overflow-x-auto border-b border-white/10 pb-2 lg:flex-col lg:border-b-0 lg:border-r lg:pb-0 lg:pr-4">
+            {TOOLS.map((item, index) => {
               const Icon = item.icon;
               const active = item.id === tool;
               return (
@@ -133,6 +134,7 @@ export function EmergencyWorkspace() {
                   type="button"
                   onClick={() => selectTool(item.id)}
                   aria-current={active ? 'page' : undefined}
+                  tabIndex={rovingTabIndex(active, index, true)}
                   className={cn(
                     'flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
                     active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200',

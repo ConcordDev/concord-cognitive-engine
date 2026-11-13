@@ -18,6 +18,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { cn } from '@/lib/utils';
+import { onRovingTabsKeyDown, rovingTabIndex } from '@/lib/a11y/roving-tabs';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -108,8 +109,8 @@ export default function CRILensPage() {
           </div>
         </div>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="CRI views">
-          {VIEWS.map((v) => {
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="CRI views" onKeyDown={onRovingTabsKeyDown}>
+          {VIEWS.map((v, index) => {
             const Icon = v.icon;
             const on = active === v.id;
             return (
@@ -118,6 +119,7 @@ export default function CRILensPage() {
                 type="button"
                 onClick={() => setActive(v.id)}
                 aria-current={on ? 'page' : undefined}
+                tabIndex={rovingTabIndex(on, index, true)}
                 title={`${v.hint} (${v.keys})`}
                 className={cn(
                   'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',

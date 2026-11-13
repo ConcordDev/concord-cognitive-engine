@@ -25,6 +25,7 @@ import { BrowserPanel } from '@/components/dtus/BrowserPanel';
 import { WorkbenchPanel } from '@/components/dtus/WorkbenchPanel';
 import { TrendingDtus } from '@/components/dtus/TrendingDtus';
 import { OpsPanel } from '@/components/dtus/OpsPanel';
+import { onRovingTabsKeyDown, rovingTabIndex } from '@/lib/a11y/roving-tabs';
 
 type DtusView = 'browser' | 'workbench' | 'trending' | 'ops';
 
@@ -121,12 +122,13 @@ function DTUBrowserPageInner() {
             Views
           </button>
           {viewsOpen && (
-            <nav id="dtu-view-strip" aria-label="DTU views" className="mt-2 flex flex-wrap gap-2">
-              {VIEWS.map((v) => (
+            <nav id="dtu-view-strip" aria-label="DTU views" className="mt-2 flex flex-wrap gap-2" onKeyDown={onRovingTabsKeyDown}>
+              {VIEWS.map((v, index) => (
                 <button
                   key={v.id}
                   type="button"
                   aria-current={active === v.id ? 'page' : undefined}
+                  tabIndex={rovingTabIndex(active === v.id, index, true)}
                   title={v.hint}
                   onClick={() => setActive(v.id)}
                   className={

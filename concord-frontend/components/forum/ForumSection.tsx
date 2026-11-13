@@ -14,6 +14,7 @@ import {
 import { lensRun } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { onRovingTabsKeyDown, rovingTabIndex } from '@/lib/a11y/roving-tabs';
 import { isForumModerator } from './forumRoles';
 import { FmTopicsPanel, FORUM_COMPOSE_EVENT } from './FmTopicsPanel';
 import { FmCategoriesPanel } from './FmCategoriesPanel';
@@ -99,13 +100,13 @@ export function ForumSection() {
         </div>
       )}
 
-      <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">
-        {tabs.map((t) => {
+      <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto" onKeyDown={onRovingTabsKeyDown}>
+        {tabs.map((t, i) => {
           const Icon = t.icon;
           const active = activeTab === t.id;
           const badge = t.id === 'inbox' && dash && dash.unreadNotifications > 0 ? dash.unreadNotifications : 0;
           return (
-            <button key={t.id} type="button" onClick={() => setTab(t.id)}
+            <button key={t.id} type="button" tabIndex={rovingTabIndex(active, i, true)} onClick={() => setTab(t.id)}
               className={cn('relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-orange-500',
                 active ? 'bg-zinc-900 text-orange-300 border-x border-t border-zinc-800' : 'text-zinc-400 hover:text-zinc-200')}>
               <Icon className="w-3.5 h-3.5" /> {t.label}

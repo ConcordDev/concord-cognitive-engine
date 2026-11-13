@@ -29,6 +29,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { cn } from '@/lib/utils';
+import { onRovingTabsKeyDown, rovingTabIndex } from '@/lib/a11y/roving-tabs';
 import { WorkspacePanel } from '@/components/docs/WorkspacePanel';
 import { GuidePanel } from '@/components/docs/GuidePanel';
 import { AnalysisPanel } from '@/components/docs/AnalysisPanel';
@@ -137,8 +138,8 @@ export default function DocsLensPage() {
           </div>
         </div>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Docs views">
-          {VIEWS.map((v) => {
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Docs views" onKeyDown={onRovingTabsKeyDown}>
+          {VIEWS.map((v, index) => {
             const Icon = v.icon;
             const on = active === v.id;
             return (
@@ -148,6 +149,7 @@ export default function DocsLensPage() {
                 onClick={() => setActive(v.id)}
                 title={`${v.hint} (${v.keys})`}
                 aria-current={on ? 'page' : undefined}
+                tabIndex={rovingTabIndex(on, index, true)}
                 className={cn(
                   'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
                   on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',

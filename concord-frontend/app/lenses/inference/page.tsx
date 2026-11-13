@@ -23,6 +23,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { cn } from '@/lib/utils';
+import { onRovingTabsKeyDown, rovingTabIndex } from '@/lib/a11y/roving-tabs';
 import { InferenceDeskPanel, type DeskMode } from '@/components/inference/InferenceDeskPanel';
 import { RuleEnginePanel } from '@/components/inference/RuleEnginePanel';
 import { FrameworksPanel } from '@/components/inference/FrameworksPanel';
@@ -90,14 +91,15 @@ export default function InferenceLensPage() {
           </div>
         </div>
 
-        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Inference views">
-          {TABS.map((t) => {
+        <nav className="mb-6 inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Inference views" onKeyDown={onRovingTabsKeyDown}>
+          {TABS.map((t, i) => {
             const Icon = t.icon;
             const on = active === t.id;
             return (
               <button
                 key={t.id}
                 type="button"
+                tabIndex={rovingTabIndex(on, i, true)}
                 onClick={() => setActive(t.id)}
                 aria-current={on ? 'page' : undefined}
                 className={cn(
