@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FileText, Plus, Loader2, Send, Check, X } from 'lucide-react';
+import { FileText, Plus, Loader2, Send, Check, X, Pencil } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { cn } from '@/lib/utils';
@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 interface LineItem { desc: string; qty: number; unitPrice: number }
 interface Quote {
   id: string; customerId: string; title: string; description: string;
-  lineItems: LineItem[]; subtotal: number; tax: number; total: number;
+  lineItems: LineItem[]; subtotal: number; taxRate: number; tax: number; total: number;
   status: 'draft' | 'sent' | 'accepted' | 'rejected';
   createdAt: string;
 }
@@ -28,6 +28,7 @@ export function QuotesPanel() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [sendArmed, setSendArmed] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ customerId: '', title: '', taxRate: '8' });
   const [lines, setLines] = useState<LineItem[]>([{ desc: '', qty: 1, unitPrice: 0 }]);
 
@@ -54,19 +55,33 @@ export function QuotesPanel() {
     setLines(prev => prev.map((l, idx) => idx === i ? { ...l, [key]: val } : l));
   }
 
+  function startEdit(q: Quote) {
+    setEditingId(q.id);
+    setForm({ customerId: q.customerId, title: q.title, taxRate: String(q.taxRate ?? 8) });
+    setLines(q.lineItems.length > 0 ? q.lineItems.map(l => ({ ...l })) : [{ desc: '', qty: 1, unitPrice: 0 }]);
+    setCreating(true);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setForm({ customerId: '', title: '', taxRate: '8' });
+    setLines([{ desc: '', qty: 1, unitPrice: 0 }]);
+    setCreating(false);
+  }
+
   async function create() {
     const validLines = lines.filter(l => l.desc.trim() && l.qty > 0);
     if (!form.customerId.trim() || !form.title.trim() || validLines.length === 0) return;
     try {
-      await lensRun({
-        domain: 'trades', action: 'quotes-create',
-        input: { customerId: form.customerId, title: form.title, lineItems: validLines.map(l => ({ ...l, qty: Number(l.qty), unitPrice: Number(l.unitPrice) })), taxRate: Number(form.taxRate) || 0 },
-      });
-      setForm({ customerId: '', title: '', taxRate: '8' });
-      setLines([{ desc: '', qty: 1, unitPrice: 0 }]);
-      setCreating(false);
+      const input = { customerId: form.customerId, title: form.title, lineItems: validLines.map(l => ({ ...l, qty: Number(l.qty), unitPrice: Number(l.unitPrice) })), taxRate: Number(form.taxRate) || 0 };
+      if (editingId) {
+        await lensRun({ domain: 'trades', action: 'quotes-update', input: { id: editingId, ...input } });
+      } else {
+        await lensRun({ domain: 'trades', action: 'quotes-create', input });
+      }
+      cancelEdit();
       await refresh();
-    } catch (e) { console.error('[Quotes] create', e); }
+    } catch (e) { console.error('[Quotes] save', e); }
   }
 
   async function action(id: string, act: 'send' | 'accept' | 'reject') {
@@ -106,7 +121,8 @@ export function QuotesPanel() {
           ))}
           <div className="flex items-center gap-2">
             <button onClick={() => setLines(prev => [...prev, { desc: '', qty: 1, unitPrice: 0 }])} className="px-2 py-1 text-xs rounded bg-violet-500/30 text-violet-300 hover:bg-violet-500/50">+ Line</button>
-            <button onClick={create} className="ml-auto px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold hover:bg-violet-400">Create quote</button>
+            {editingId && <button onClick={cancelEdit} className="px-2 py-1.5 text-xs rounded bg-white/[0.06] text-gray-300 hover:bg-white/[0.12]">Cancel edit</button>}
+            <button onClick={create} className="ml-auto px-3 py-1.5 text-xs rounded bg-violet-500 text-white font-bold hover:bg-violet-400">{editingId ? 'Save changes' : 'Create quote'}</button>
           </div>
         </div>
       )}
@@ -124,6 +140,11 @@ export function QuotesPanel() {
                   <span className="text-sm text-white font-medium flex-1 truncate">{q.title}</span>
                   <span className={cn('text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded', STATUS_COLOUR[q.status])}>{q.status}</span>
                   <span className="font-mono text-sm tabular-nums text-violet-300">${q.total.toFixed(2)}</span>
+                  {q.status === 'draft' && (
+                    <button type="button" onClick={() => startEdit(q)} className="flex min-h-11 min-w-11 items-center justify-center text-violet-300" title="Edit draft" aria-label={`Edit draft ${q.title}`}>
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   {q.status === 'draft' && (
                     <button type="button" onClick={() => { if (sendArmed === q.id) { setSendArmed(null); void action(q.id, 'send'); } else setSendArmed(q.id); }} className="px-1.5 py-0.5 text-[10px] text-cyan-300" title="Send">
                       {sendArmed === q.id ? `Send to ${customerName(q.customerId)}?` : <Send className="w-3 h-3" />}
