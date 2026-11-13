@@ -102,11 +102,11 @@ export function UploadSourcePanel({
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
       <div className="flex items-center gap-2 mb-2">
         <Paperclip className="w-4 h-4 text-sky-400" />
-        <h3 className="text-sm font-semibold text-zinc-200">Document sources</h3>
+        <h2 className="text-sm font-semibold text-zinc-200">Document sources</h2>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-sky-600 hover:bg-sky-500 text-sky-50 font-medium"
+          className="ml-auto inline-flex min-h-11 items-center gap-1 px-2 py-1 rounded text-[11px] bg-sky-600 hover:bg-sky-500 text-sky-50 font-medium"
         >
           <FileUp className="w-3.5 h-3.5" /> {open ? 'Cancel' : 'Add'}
         </button>
@@ -161,7 +161,7 @@ export function UploadSourcePanel({
                   className="flex-1 min-w-0 text-left"
                 >
                   <span className={active ? 'text-sky-300 font-medium' : 'text-zinc-300'}>{u.name}</span>
-                  <span className="text-zinc-600 ml-1.5">{u.chars.toLocaleString()} chars</span>
+                  <span className="text-zinc-400 ml-1.5">{u.chars.toLocaleString()} chars</span>
                 </button>
                 {active && (
                   <button type="button" onClick={() => onSelect(null)} title="Deselect" className="text-sky-400 hover:text-sky-200">
@@ -174,7 +174,7 @@ export function UploadSourcePanel({
                   confirmLabel={`Delete "${u.name}"?`}
                   armAriaLabel={`Delete ${u.name}`}
                   confirmAriaLabel={`Confirm delete ${u.name}`}
-                  className="text-zinc-600 hover:text-red-400"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-red-400"
                 />
               </li>
             );

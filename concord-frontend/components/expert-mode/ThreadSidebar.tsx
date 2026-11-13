@@ -74,11 +74,11 @@ export function ThreadSidebar({
       <div className="flex items-center gap-2 mb-2">
         <MessageSquare className="w-4 h-4 text-amber-400" />
         <h2 className="text-sm font-semibold text-zinc-200">Threads</h2>
-        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-600" />}
+        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />}
         <button
           type="button"
           onClick={onNew}
-          className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-amber-500 hover:bg-amber-400 text-amber-50 font-medium"
+          className="ml-auto inline-flex min-h-11 items-center gap-1 px-2 py-1 rounded text-[11px] bg-amber-500 hover:bg-amber-400 text-amber-50 font-medium"
         >
           <Plus className="w-3.5 h-3.5" /> New
         </button>
@@ -124,7 +124,7 @@ export function ThreadSidebar({
                   onClick={() => exportThread(t)}
                   disabled={exportingId === t.id}
                   title="Export thread as Markdown"
-                  className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-amber-400 transition-opacity disabled:opacity-100"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-amber-400 transition-opacity disabled:opacity-100"
                 >
                   {exportingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                 </button>
@@ -132,7 +132,7 @@ export function ThreadSidebar({
                   type="button"
                   onClick={() => remove(t.id)}
                   title="Delete thread"
-                  className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-red-400 transition-opacity"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-400 transition-opacity"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

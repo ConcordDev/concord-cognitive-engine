@@ -142,12 +142,12 @@ export function SpacesPanel({
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
       <div className="flex items-center gap-2 mb-2">
         <Library className="w-4 h-4 text-violet-400" />
-        <h3 className="text-sm font-semibold text-zinc-200">Spaces</h3>
-        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-600" />}
+        <h2 className="text-sm font-semibold text-zinc-200">Spaces</h2>
+        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />}
         <button
           type="button"
           onClick={() => setCreating((c) => !c)}
-          className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-violet-600 hover:bg-violet-500 text-violet-50 font-medium"
+          className="ml-auto inline-flex min-h-11 items-center gap-1 px-2 py-1 rounded text-[11px] bg-violet-600 hover:bg-violet-500 text-violet-50 font-medium"
         >
           <Plus className="w-3.5 h-3.5" /> {creating ? 'Cancel' : 'New'}
         </button>
@@ -217,7 +217,7 @@ export function SpacesPanel({
                 className="flex-1 min-w-0 text-left"
               >
                 <span className="text-zinc-200 font-medium">{s.name}</span>
-                <span className="text-zinc-600 ml-1.5">
+                <span className="text-zinc-400 ml-1.5">
                   {s.answerCount} answer{s.answerCount === 1 ? '' : 's'}
                 </span>
                 {s.shareToken && <Link2 className="inline w-3 h-3 ml-1 text-violet-400" />}
@@ -226,7 +226,7 @@ export function SpacesPanel({
                 type="button"
                 onClick={() => share(s.id)}
                 title="Share space"
-                className="text-zinc-600 hover:text-violet-400"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-violet-400"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
               </button>
@@ -236,7 +236,7 @@ export function SpacesPanel({
                 confirmLabel={`Delete space "${s.name}"?`}
                 armAriaLabel="Delete space"
                 confirmAriaLabel={`Confirm delete space ${s.name}`}
-                className="text-zinc-600 hover:text-red-400"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-red-400"
               />
             </li>
           ))}
@@ -251,7 +251,7 @@ export function SpacesPanel({
             <button aria-label="Close"
               type="button"
               onClick={() => setOpenSpace(null)}
-              className="ml-auto text-zinc-600 hover:text-zinc-300"
+              className="ml-auto inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-zinc-300"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -272,7 +272,7 @@ export function SpacesPanel({
                     <button aria-label="Remove answer"
                       type="button"
                       onClick={() => removeAnswer(openSpace.id, a.id)}
-                      className="text-zinc-600 hover:text-red-400"
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-red-400"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>

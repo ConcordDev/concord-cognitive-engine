@@ -292,7 +292,7 @@ export default function ExpertModeLens() {
           {/* ---- main column ---- */}
           <div className="min-w-0">
             <header className="mb-5">
-              <p className="max-w-3xl text-[13px] leading-relaxed text-zinc-500">
+              <p className="max-w-3xl text-[13px] leading-relaxed text-zinc-400">
                 Threaded, cited research. Every claim is sourced from your DTUs, the global
                 Concord corpus, and live web search. Set your{' '}
                 <Link
@@ -364,7 +364,7 @@ export default function ExpertModeLens() {
                     ? 'Ask a follow-up — context carries across the thread…'
                     : 'Ask anything — cited, sourced, terse.'
                 }
-                className="flex-1 rounded-full border border-white/10 bg-[#111] px-5 py-3 text-[15px] text-zinc-100 placeholder:text-zinc-500 focus:border-teal-400/60 focus:outline-none"
+                className="flex-1 rounded-full border border-white/10 bg-[#111] px-5 py-3 text-[15px] text-zinc-100 placeholder:text-zinc-400 focus:border-teal-400/60 focus:outline-none"
               />
               <button
                 type="button"
