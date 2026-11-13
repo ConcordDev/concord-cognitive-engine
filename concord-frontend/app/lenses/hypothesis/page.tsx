@@ -13,6 +13,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LensShell } from '@/components/lens/LensShell';
+import { DeprecatedLensNotice } from '@/components/lens/DeprecatedLensNotice';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -61,6 +62,7 @@ export default function HypothesisLensPage() {
     <LensShell lensId="hypothesis" asMain={false}>
 
       <DepthBadge lensId="hypothesis" size="sm" className="ml-2" />
+      <DeprecatedLensNotice lensId="hypothesis" />
       <div data-lens-theme="hypothesis" className="relative min-h-full px-8 pb-28 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
