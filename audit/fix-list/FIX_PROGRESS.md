@@ -2230,3 +2230,15 @@ Push discipline: 13 files had moved on the branch since the section's base (othe
 | FIX-offline-007 | `b98bda3c9` | Labels zinc-400; disabled buttons keep 75% opacity |
 
 Every fix is pinned by a suite under concord-frontend/tests/ with a pristine negative control on file; records are in records/b3.jsonl. Agriculture-009’s delete-confirm leg stays with the StickyDeleteConfirm genus and its typed-text leg was not reproducible from code (ds.input is text-white on the dark surface) — both named for the desk’s live re-walk.
+
+## B3 section 5 - silent outcomes & unworded failures (CB-0525) - 5 FIXED_PENDING_VERIFY
+
+| Ticket | Pushed commit | Shape |
+| --- | --- | --- |
+| FIX-offline-005 | `5e4c35485` | Editor refuses blank bodies / unsafe integers; JSON errors worded |
+| FIX-atlas-007 | `8c8b2cc01` | MapView markers named from place labels; AtlasShell nav aria-labelled |
+| FIX-achievements-005 | `8c3243520` | Contrast leg only: locked cards opacity-80/grayscale-25%; slate-500 to 400 |
+| FIX-sports-007 | `794e3570d` | LensFeedButton names the My Vault save before + after the pull |
+| FIX-forecast-006 | `970fa7b68` | Unknown world id gets a worded error naming the id; empty state names it |
+
+Records in records/b3.jsonl; every fix pinned by a suite with a pristine negative control. Named remainders: achievements-005's count leg stays B6-disposed; atlas-007's share leg was not locatable at branch state (the trigger is named at head) and is left to the desk's live re-walk. (The first bookkeeping push for this section, bae093b82, landed with unchanged content after a local script error; this push carries the actual rows.)
