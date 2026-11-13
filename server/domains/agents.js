@@ -1049,6 +1049,27 @@ export default function registerAgentsActions(registerLensAction) {
     }
   });
 
+  // Undo an import (FIX-agents-013) — drops the caller's install count
+  // back down so the import is reversible. The created agent artifact
+  // itself is removed by the frontend through the generic store, the
+  // same delete the Fleet view uses.
+  registerLensAction("agents", "uninstallTemplate", (ctx, _a, params = {}) => {
+    try {
+      const templateId = aClean(params.templateId || params.id, 80);
+      const tpl = AGENT_TEMPLATES.find(t => t.id === templateId);
+      if (!tpl) return { ok: false, error: "template not found" };
+      const userId = aActor(ctx);
+      const installs = templateInstallsFor(userId);
+      const next = Math.max(0, (installs.get(tpl.id) || 0) - 1);
+      if (next === 0) installs.delete(tpl.id);
+      else installs.set(tpl.id, next);
+      saveAgents();
+      return { ok: true, result: { template: { ...tpl, installs: next } } };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
   // ── Feature 8: task definitions (skill-based routing input) ──────────
   // Structurally cloned from the createSchedule/listSchedules/toggleSchedule/
   // deleteSchedule per-user CRUD family above. Lets a user author a reusable
