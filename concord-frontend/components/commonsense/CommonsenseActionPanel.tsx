@@ -19,6 +19,7 @@
  * use successfully below), so it actually reaches the handler.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Brain, Link2, Lightbulb, ArrowLeftRight, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, GitMerge } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -270,12 +271,12 @@ export function CommonsenseActionPanel() {
     try {
       const task = `Commonsense reasoning brief. ${edgesResult ? `Concept "${edgesResult.concept}": ${edgesResult.count} edges, top: ${edgesResult.edges.slice(0, 3).map(e => e.surfaceText || `${e.relation}: ${e.end}`).join('; ')}.` : ''} ${relResult ? `Relatedness ${relResult.concept1} ↔ ${relResult.concept2}: ${relResult.relatedness.toFixed(2)} (${relResult.interpretation}).` : ''} ${plausResult ? `Statement plausibility: ${plausResult.plausibilityLabel} (${plausResult.plausibilityScore}%).` : ''} Synthesize the most interesting commonsense observation + one follow-up query. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) {
-        const text = typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2);
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        const text = reply.text;
         setAgentReply(text); pipe.publish('commonsense.agentReply', text, { label: 'KG observation' });
         ok('Insight ready.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

@@ -9,6 +9,7 @@
  * server/domains/mentalhealth.js as `mental-health`.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useEffect, useState } from 'react';
 import { Heart, Phone, BarChart3, BookOpen, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -185,8 +186,8 @@ export function MentalHealthActionPanel() {
     try {
       const task = `Wellness companion. Current mood: ${currentMood}. ${moodResult ? `10-day trend: ${moodResult.trend} (avg ${moodResult.avgMood}, var ${moodResult.variance}).` : ''} ${statsResult ? `Regional ${statsResult.stateAbbr} mental distress prevalence: ${statsResult.measures.map(m => `${m.measure} ${m.value}%`).join(', ')}.` : ''} Offer one small, concrete, evidence-based action for today (under 10 minutes). Plain text, 2-3 sentences. End with: "This is not medical advice. If you are in crisis, call/text 988."`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Action ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Action ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

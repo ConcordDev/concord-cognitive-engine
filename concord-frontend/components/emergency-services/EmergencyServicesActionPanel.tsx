@@ -6,6 +6,7 @@
  * resourceReadiness + mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Truck, Radio, Activity, ListChecks, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -169,8 +170,8 @@ export function EmergencyServicesActionPanel() {
     try {
       const task = `EMS dispatch supervisor brief. ${dispResult ? `${dispResult.activeIncidents} active incidents, ${dispResult.available} units available${dispResult.coverageGap ? ' (coverage gap)' : ''}.` : ''} ${readyResult ? `Readiness ${readyResult.overallReadiness}% (${readyResult.status})${readyResult.shortages.length ? `, shortages: ${readyResult.shortages.join(', ')}` : ''}.` : ''} ${logResult ? `${logResult.total24h} runs in 24h, avg ${logResult.avgResponseMinutes}min response.` : ''} Identify single most urgent action this shift + one staffing recommendation. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Brief ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

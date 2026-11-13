@@ -6,6 +6,7 @@
  * regressionFit + mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Sigma, Calculator, Grid3x3, FunctionSquare, TrendingUp,
@@ -228,8 +229,8 @@ export function MathActionPanel() {
       const task = `Math problem: "${problem}". ${statsResult ? `Stats: mean ${statsResult.mean}, σ (population) ${statsResult.stdDev}.` : ''} ${regressResult ? `Regression: ${regressResult.equation} R²=${regressResult.rSquared}.` : ''} Provide a step-by-step solution path. Plain text, numbered steps.`;
       const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('steps-agent-timeout')), 30_000); });
       const r = await Promise.race([api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } }), timeout]);
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Steps ready (agent).'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Steps ready (agent).'); } else err(reply.reason);
     } catch (e) {
       if (e instanceof Error && e.message === 'steps-agent-timeout') {
         err('The Steps Agent did not return within 30s, so the request was stopped instead of leaving the bench locked. Equations and expressions are answered directly by the Step Solver.');

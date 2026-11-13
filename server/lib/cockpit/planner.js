@@ -68,22 +68,29 @@ export async function planRun(a) {
   const goal = String(a.goal || "").trim();
   if (!goal) return { ok: false, source: "single", steps: [], reason: "empty_goal" };
 
+  const allow = Array.isArray(a.allowTools) ? new Set(a.allowTools) : null;
+  // A tool-less agent never calls a tool: one step, no tool, the engine answers in writing.
+  if (allow && allow.size === 0) return single(goal);
+
   for (const t of PLAN_TEMPLATES) {
     let hit = false;
     try { hit = t.match(goal); } catch { hit = false; }
     if (!hit) continue;
     const built = t.build(goal);
+    if (allow && built.some((st) => st.tool && !allow.has(st.tool))) continue;
     const norm = normalizePlan(built, { candidateIds: built.map((s) => s.tool).filter(Boolean) });
     if (norm.ok) return { ok: true, source: "template", templateId: t.id, steps: norm.steps };
   }
 
   try {
     const { menu } = await buildToolMenu({ goal, profile: "local-30b", lensContext: a.lensContext, lensActions: a.lensActions });
-    const candidateIds = menu.map((m) => m.id).slice(0, 8);
+    const allowed = allow ? menu.filter((m) => allow.has(m.id)) : menu;
+    if (allow && allowed.length === 0) return single(goal);
+    const candidateIds = allowed.map((m) => m.id).slice(0, 8);
     const slot = (MODEL_PROFILES[a.profile] || MODEL_PROFILES["local-2b"]).slot;
     const messages = [
       { role: "system", content: PLAN_SYSTEM },
-      { role: "user", content: `Task: ${goal}\nTools:\n${menu.map((m) => `- ${m.id}: ${m.description}`).join("\n")}` },
+      { role: "user", content: `Task: ${goal}\nTools:\n${allowed.map((m) => `- ${m.id}: ${m.description}`).join("\n")}` },
     ];
     let parsed = null;
     if (a.deps?.mock) {

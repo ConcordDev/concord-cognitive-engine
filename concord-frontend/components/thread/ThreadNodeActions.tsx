@@ -18,6 +18,7 @@
  *                          and surface the key turns" — renders inline
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Pin, GitBranch, Send, Globe, Wand2,
@@ -203,11 +204,11 @@ export function ThreadNodeActions({ node, threadName, threadId, threadFullConten
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 4 },
       });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) {
-        setSynthReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        setSynthReply(reply.text);
         ok('Synthesis ready.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

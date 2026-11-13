@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   ChefHat, Scale, DollarSign, UtensilsCrossed, Trash2,
@@ -180,8 +181,8 @@ export function FoodActionPanel() {
     try {
       const task = `Recipe: "${recipeName || 'untitled'}", ${recipeServings} servings. Ingredients: ${parseIngredients().map(i => `${i.name} ${i.quantity}${i.unit}`).join(', ')}. ${costResult?.items?.[0] ? `Food cost ${costResult.items[0].foodCostPct}%.` : ''} Suggest 3 substitutions that lower cost without sacrificing flavour. Plain text, one per line.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Substitutions ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Substitutions ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

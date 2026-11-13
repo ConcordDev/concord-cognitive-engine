@@ -6,6 +6,7 @@
  * / violationEscalation + mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Landmark, Users, FileSearch, AlertOctagon, FileBadge,
@@ -145,8 +146,8 @@ export function GovernmentActionPanel() {
     try {
       const task = `Civic context: ZIP ${zip}, ${reps.length} reps known, tracking "${billQuery}" (${bills.length} bills). ${permitResult ? `Permit timeline ~${permitResult.estimatedWeeks}w.` : ''} Draft a 3-line constituent letter advocating for action on the top relevant bill. Plain text.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Letter draft ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Letter draft ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

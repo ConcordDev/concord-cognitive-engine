@@ -6,6 +6,7 @@
  * rotationPlan / waterSchedule / predict-yield + mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Sprout, Cloud, Droplet, TrendingUp, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -175,8 +176,8 @@ export function AgricultureActionPanel() {
     try {
       const task = `Farm operator brief for ${crop} on ${acres} acres. ${wxResult ? `7-day forecast: ${wxResult.forecast7.slice(0, 3).map(d => `${d.date} ${d.tempMin}-${d.tempMax}°C ${d.precip}mm`).join('; ')}.` : ''} ${waterResult ? `Water need: ${(waterResult.totalGallonsAllFields ?? 0).toLocaleString()} gal/${waterResult.daysAhead ?? 7}d.` : ''} ${yieldResult ? `Predicted yield: ${yieldResult.estimatedYieldPerAcre} ${yieldResult.unit}/ac.` : ''} Identify the single most urgent operational action for the next 7 days + one risk. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Action ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Action ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

@@ -34,6 +34,7 @@
  * time — premiseExtract's `premises` field is a COUNT, not an array).
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Brain, CheckCircle2, GitFork, AlertTriangle, ListChecks,
@@ -327,11 +328,11 @@ export function ArgumentWorkbench() {
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 5 },
       });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) {
-        setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        setAgentReply(reply.text);
         ok('Counter-derivation ready.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

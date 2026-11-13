@@ -17,6 +17,7 @@
  *                          given the progression on these lifts"
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useEffect, useState } from 'react';
 import {
   Dumbbell, TrendingUp, Heart, Sparkles, Send, Globe, Wand2, Save,
@@ -311,14 +312,11 @@ export function WorkoutFinishPanel() {
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 4 },
       });
-      const result = r.data?.result as { answer?: unknown; reply?: unknown; summary?: unknown; output?: unknown; reason?: string } | string | null;
-      const reply = result && typeof result === 'object'
-        ? (result.answer ?? result.reply ?? result.summary ?? result.output)
-        : result;
-      if (reply) {
-        setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        setAgentReply(reply.text);
         ok('Next workout drafted.');
-      } else err(r.data?.message || r.data?.error || (result && typeof result === 'object' ? result.reason : null) || 'Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

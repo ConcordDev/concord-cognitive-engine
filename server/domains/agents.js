@@ -300,10 +300,40 @@ export default function registerAgentsActions(registerLensAction) {
       if (!agentId) return { ok: false, error: "agentId required" };
       const agentName = aClean(params.agentName, 120) || agentId;
       const goal = aClean(params.goal, 500) || "Complete assigned objective";
+      const toolless = Array.isArray(params.tools) && params.tools.length === 0;
       const tools = Array.isArray(params.tools) && params.tools.length
         ? params.tools.map(t => aClean(t, 60)).filter(Boolean)
         : ["dtu_read", "summarize", "classify"];
       const maxSteps = Math.min(Math.max(aNum(params.maxSteps, 5), 1), 20);
+
+      // CKPT-19: with CONCORD_COCKPIT_RUNS on, the run is a cockpit run (goal-shaped steps, receipts,
+      // confirm cards). A tool-less agent (tools: [] on purpose) gets a written answer and no tool call.
+      try {
+        const { cockpitFlag } = await import("../lib/cockpit/flags.js");
+        if (cockpitFlag("RUNS") && ctx?.db) {
+          const { runAgentOnCore } = await import("../lib/cockpit/agents-run.js");
+          const core = await runAgentOnCore({
+            db: ctx.db, userId, goal, allowTools: toolless ? [] : tools, maxSteps,
+            runMacro: ctx.runMacro || globalThis.__concordRunMacro, lensActions: ctx.lensActions || globalThis.__concordLensActions,
+          });
+          if (core) {
+            const tokens = Number(core.usage?.tokensIn || 0) + Number(core.usage?.tokensOut || 0);
+            const run = {
+              id: aId("run"), agentId, agentName, goal, status: core.status, stoppedReason: null,
+              steps: core.steps, stepCount: core.steps.length,
+              totalLatencyMs: core.steps.reduce((x, st) => x + st.latencyMs, 0), totalTokens: tokens, tokensEstimated: true,
+              cockpitRunId: core.cockpitRunId, startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
+            };
+            const coreRuns = arr(s.runs, userId);
+            coreRuns.unshift(run);
+            if (coreRuns.length > 200) coreRuns.length = 200;
+            const b = submap(s.budgets, userId).get(agentId);
+            if (b) { b.tokensUsed = (b.tokensUsed || 0) + tokens; submap(s.budgets, userId).set(agentId, b); }
+            saveAgents();
+            return { ok: true, result: { run, budgetRemaining: b ? Math.max(0, b.tokenLimit - b.tokensUsed) : null } };
+          }
+        }
+      } catch { /* fall through to the existing loop */ }
 
       // Budget enforcement
       const budgetMap = submap(s.budgets, userId);

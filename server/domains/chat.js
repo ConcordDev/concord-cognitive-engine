@@ -119,9 +119,25 @@ export default function registerChatActions(registerLensAction) {
       activityTimeline = { buckets, bucketDurationMs: Math.round(bucketSize), peakBucket: buckets.indexOf(Math.max(...buckets)) };
     }
 
+    // FIX-chat-014: the drawer renders `summary`, `keyPoints` and `participants`; the macro used to
+    // return none of them, so a successful Summarize showed an empty card. Compose them from the analysis.
+    const participantCount = new Set(messages.map(m => m.author).filter(Boolean)).size;
+    const topTerms = keywords.slice(0, 5).map(k => k.term);
+    const summary = `${messages.length} message${messages.length === 1 ? "" : "s"} from ${participantCount || 1} participant${participantCount === 1 ? "" : "s"}`
+      + (topTerms.length ? `, mostly about ${topTerms.join(", ")}` : "")
+      + `. ${decisions.length} decision${decisions.length === 1 ? "" : "s"}, ${actionItems.length} action item${actionItems.length === 1 ? "" : "s"}, ${questions.filter(q => !q.answered).length} open question${questions.filter(q => !q.answered).length === 1 ? "" : "s"}.`;
+    const keyPoints = [
+      ...decisions.slice(0, 3).map(d => `Decision (${d.author || "unknown"}): ${String(d.text).slice(0, 160)}`),
+      ...actionItems.slice(0, 3).map(a => `Action (${a.possibleAssignee || "unassigned"}): ${String(a.text).slice(0, 160)}`),
+      ...questions.filter(q => !q.answered).slice(0, 3).map(q => `Open question (${q.author || "unknown"}): ${String(q.text).slice(0, 160)}`),
+    ];
+
     return {
       ok: true,
       result: {
+        summary,
+        keyPoints,
+        participants: participantCount,
         messageCount: messages.length,
         keywords,
         decisions: { count: decisions.length, items: decisions.slice(0, 10) },

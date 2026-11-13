@@ -14,6 +14,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { RunCard } from '@/components/cockpit/RunCard';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { TreeDiagram, TreeNode, TimelineView, TimelineEvent, ChartKit } from '@/components/viz';
 import {
@@ -40,6 +41,7 @@ interface AgentRun {
   stoppedReason: string | null; steps: RunStep[]; stepCount: number;
   totalLatencyMs: number; totalTokens: number; startedAt: string; finishedAt: string;
   trigger?: string;
+  cockpitRunId?: string;
 }
 interface GraphNode { id: string; agentId: string | null; label: string; role: string }
 interface GraphEdge { from: string; to: string; label: string }
@@ -296,6 +298,9 @@ function RunsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () => 
             )}
             {runTree && <TreeDiagram root={runTree} />}
             {/* per-step input/output detail */}
+            {selectedRun.cockpitRunId ? (
+              <RunCard runId={selectedRun.cockpitRunId} />
+            ) : (
             <div className="max-h-56 space-y-1.5 overflow-y-auto">
               {selectedRun.steps.map((st) => (
                 <div key={st.index} className="rounded border border-zinc-800 bg-zinc-900 p-2">
@@ -317,6 +322,7 @@ function RunsPanel({ agents, onChange }: { agents: AgentLite[]; onChange: () => 
                 </div>
               ))}
             </div>
+            )}
           </>
         )}
       </div>

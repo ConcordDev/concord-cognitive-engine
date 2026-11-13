@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useEffect, useState } from 'react';
 import { Mic, Users, Smile, Search, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -199,7 +200,7 @@ export function VoiceActionPanel() {
       const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
       if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Coaching ready.'); }
       else {
-        // F4/D6 — never the bare "Agent returned empty.": when the agent
+        // F4/D6 — never a bare empty-agent message: when the agent
         // returns nothing, the bench coaches DETERMINISTICALLY from its own
         // computed results, labelled as computed; with nothing computed yet
         // the refusal says what to run first.

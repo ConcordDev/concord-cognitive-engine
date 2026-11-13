@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Radio, Signal, Map, DollarSign, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -165,8 +166,8 @@ export function TelecommunicationsActionPanel() {
     try {
       const task = `Network ops review. ${capResult ? `Capacity ${capResult.utilization} (${capResult.status}), per-user ${capResult.usedPerUser} used.` : ''} ${sigResult ? `MOS ${sigResult.mosScore} (${sigResult.voiceQuality}), latency ${sigResult.latencyMs}ms.` : ''} ${costResult ? `Margin ${costResult.marginPercent}%${costResult.profitable ? '' : ' UNPROFITABLE'}.` : ''} Identify the single most urgent capex or opex action. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Action ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Action ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

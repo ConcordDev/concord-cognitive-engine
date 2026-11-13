@@ -14,6 +14,7 @@
  *   5. Follow-up (agent) → chat_agent.do "next question + reasoning"
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Sparkles, Quote, Send, Globe, Wand2,
@@ -176,11 +177,11 @@ export function AnswerActionPanel({ query, answer, sources, provider, model }: A
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 4 },
       });
-      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) {
-        setFollowupReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
+      const reply = readAgentReply(r.data);
+      if (reply.ok) {
+        setFollowupReply(reply.text);
         ok('Follow-up ready.');
-      } else err('Agent returned empty.');
+      } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }

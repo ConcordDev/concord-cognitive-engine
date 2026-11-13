@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useEffect, useState } from 'react';
 import { Megaphone, FlaskConical, Filter, Users, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -197,8 +198,8 @@ export function MarketingActionPanel() {
     try {
       const task = `Growth marketing review. ${roiResult ? `Campaign ${roiResult.campaign}: ROI ${roiResult.roi}% (${roiResult.grade}).` : ''} ${abResult ? `A/B: ${abResult.recommendation}.` : ''} ${funnelResult ? `Funnel leak: ${funnelResult.biggestLeakage} (${funnelResult.leakageRate}%).` : ''} ${segResult?.highValue ? `High-value segment: ${segResult.highValue}.` : ''} Identify the single highest-ROI next action this quarter. Plain text, 3 sentences max.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Play ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Play ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

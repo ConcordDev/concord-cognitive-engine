@@ -60,6 +60,6 @@ describe('EventActionRail prep with agent (FIX-calendar-014)', () => {
   it('a genuinely empty result still says so', async () => {
     lensRunMock.mockResolvedValue({ data: { ok: true, result: { toolCalls: [] } } });
     await clickPrep();
-    await waitFor(() => expect(screen.getByText('Agent returned empty.')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('The agent finished without writing anything.')).toBeInTheDocument());
   });
 });

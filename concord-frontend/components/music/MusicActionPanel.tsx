@@ -6,6 +6,7 @@
  * publish/agent. Tight compact-template variant.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Music, Activity, Key, ListMusic, Disc3,
@@ -145,8 +146,8 @@ export function MusicActionPanel() {
     try {
       const task = `Track: "${trackTitle || 'untitled'}". ${bpmResult ? `BPM ${bpmResult.bpm}.` : ''} ${keyResult ? `Key ${keyResult.key} ${keyResult.scale}.` : ''} ${chordResult ? `Chords: ${chordResult.progression?.join(' ')}.` : ''} Suggest 3 production moves (compression / EQ / arrangement) that elevate this track. Plain text.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Production moves ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Production moves ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

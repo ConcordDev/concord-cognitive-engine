@@ -11,6 +11,7 @@
  * from a real macro round-trip — no mock data.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Hammer, GitBranch, ShieldCheck, TrendingUp, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -231,8 +232,8 @@ export function ConstructionActionPanel() {
     try {
       const task = `Construction PM review. ${takeoffResult ? `Estimate $${takeoffResult.grandTotal.toLocaleString()}${takeoffResult.costPerSqFt ? ` ($${takeoffResult.costPerSqFt}/sf)` : ''}.` : ''} ${cpmResult ? `${cpmResult.projectDuration}-day schedule, critical path: ${cpmResult.criticalPath.join(' → ')}.` : ''} ${safetyResult ? `Safety ${safetyResult.complianceRate}% (${safetyResult.rating})${safetyResult.criticalFailures.length ? `, critical: ${safetyResult.criticalFailures.join(', ')}` : ''}.` : ''} ${progResult ? `Status: ${progResult.projectStatus}${progResult.behindPhases.length ? `, behind: ${progResult.behindPhases.join(', ')}` : ''}.` : ''} Identify single highest-priority action for the week + one risk to flag. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Brief ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Brief ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

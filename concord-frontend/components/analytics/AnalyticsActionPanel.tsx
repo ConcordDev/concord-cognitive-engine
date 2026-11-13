@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useEffect, useState } from 'react';
 import { BarChart3, Filter, Users, TrendingUp, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -168,21 +169,9 @@ export function AnalyticsActionPanel() {
     try {
       const task = `Analytics review. ${funnelResult ? `Funnel: ${funnelResult.overallConversion}% conversion, worst drop at ${funnelResult.worstDropoff} (${funnelResult.worstDropoffRate}%).` : ''} ${cohortResult ? `Best cohort: ${cohortResult.bestCohort}.` : ''} ${anomResult ? `${anomResult.anomaliesFound} anomalies.` : ''} ${trendResult ? `Trend ${trendResult.trend}.` : ''} Identify the single biggest growth lever this quarter. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const result = r.data?.result as
-        | { answer?: unknown; reply?: unknown; summary?: unknown; output?: unknown; ok?: boolean; reason?: string; error?: string }
-        | undefined;
-      // chat_agent.do returns its analysis in `answer` (server/lib/chat-agent.js
-      // runAgentLoop: { ok, answer, toolCalls, ... } — the field AgentModePanel
-      // reads). This action used to read reply/summary/output only, so every
-      // successful run landed on "Agent returned empty." (Review 4 F4). The
-      // older aliases stay as fallbacks, and a macro-level failure surfaces
-      // its specific reason instead of the same empty message.
-      const reply = result?.answer ?? result?.reply ?? result?.summary ?? result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Lever ready.'); }
-      else if (result?.ok === false || r.data?.ok === false) {
-        const reason = result?.reason || result?.error || r.data?.error;
-        err(reason ? `Agent unavailable: ${reason}.` : 'Agent returned empty.');
-      } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Lever ready.'); }
+      else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 

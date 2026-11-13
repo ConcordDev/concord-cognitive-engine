@@ -6,6 +6,7 @@
  * mint/DM/publish/agent.
  */
 
+import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { Globe2, BarChart3, GitCompareArrows, BookOpen, Sparkles, Send, Globe, Wand2, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -139,8 +140,8 @@ export function SocietyActionPanel() {
     try {
       const task = `World-Bank data analyst. ${indicatorResult ? `${indicatorResult.countryName} ${indicatorResult.indicator}: latest ${indicatorResult.latest?.value.toLocaleString()} (${indicatorResult.latest?.year}), ${indicatorResult.count} years of data.` : ''} ${countryResult ? `Region: ${countryResult.region}, income: ${countryResult.incomeLevel}.` : ''} ${compareResult ? `Comparison points: ${compareResult.points.slice(0, 5).map(p => `${p.country}=${p.value.toLocaleString()}`).join(', ')}.` : ''} Identify the single most notable trend or comparison + one policy implication. Plain text, 3 sentences max.`;
       const r = await api.post('/api/lens/run', { domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
-      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Insight ready.'); } else err('Agent returned empty.');
+      const reply = readAgentReply(r.data);
+      if (reply.ok) { setAgentReply(reply.text); ok('Insight ready.'); } else err(reply.reason);
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
