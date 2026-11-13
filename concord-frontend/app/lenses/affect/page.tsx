@@ -105,7 +105,7 @@ export default function AffectLensPage() {
           <AffectStateStrip />
 
           <nav
-            className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1"
+            className="inline-flex max-w-full items-center gap-1 overflow-x-auto no-scrollbar rounded-full border border-white/10 bg-white/[0.03] p-1"
             aria-label="Affect views"
             onKeyDown={onRovingTabsKeyDown}
           >
@@ -119,7 +119,7 @@ export default function AffectLensPage() {
                   onClick={() => activate(v.id)}
                   title={`${v.hint} (${v.keys})`}
                   className={cn(
-                    'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                    'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
                     on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
                   )}
                   aria-current={on ? 'page' : undefined}
@@ -165,7 +165,7 @@ export default function AffectLensPage() {
             type="button"
             onClick={() => activate('mood')}
             title="Log a mood check-in (N)"
-            className="fixed bottom-8 right-8 z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 px-6 py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300"
+            className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] right-[4.75rem] z-30 inline-flex items-center gap-2 rounded-full bg-teal-400 min-h-[44px] max-w-[calc(100vw-6.5rem)] px-4 py-2.5 sm:px-6 sm:py-3.5 text-[15px] font-medium text-black shadow-[0_8px_32px_rgba(45,212,191,0.25)] transition-colors hover:bg-teal-300 md:bottom-8 lg:right-8"
           >
             <Plus className="h-4 w-4" />
             Check in
