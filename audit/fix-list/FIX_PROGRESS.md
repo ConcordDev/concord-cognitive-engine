@@ -2294,3 +2294,11 @@ Records in records/b3.jsonl; every fix pinned by a suite with a pristine negativ
 - FIX-black-market-012 — watch-update server action + inline edit on saved searches. `6c6ef94d5`.
 
 Stayed OPEN: FIX-auction-007 · FIX-questmarket-007 (delete-confirm present at branch state on both shared feed surfaces) · FIX-auction-010 (publisher confirms in place with a View post link) · FIX-questmarket-003 (full description path traced clean, parity 36/36) · FIX-questmarket-009 (the CTA overlap class is fixed at the shared frame) · FIX-questmarket-010 (session transport 502/503, desk class) · FIX-black-market-004 (all six load actions resolve in-tree; no failing action named — live-repro set).
+
+## Mobile-clip slice — B3 (GB-1531 pool; founder-directed assignment 2026-11-13)
+
+16 ids: 1 FIXED_PENDING_VERIFY, 15 stayed OPEN with named verdicts (bridge completion post).
+
+- FIX-forum-005 — the forum page's hand-rolled FAB kept the frame CTA's pre-fix wide-pill shape; it now collapses to icon-only below sm with the label as its accessible name (frame-parity). `1bfac6d82`; pin tests/forum-mobile-fab.test.tsx.
+
+Stayed OPEN, all traced to the SHARED frame/shell shapes at branch state (the founder-ruled NorthStarFrame (c) tab shape — scrolling strip, shrink-0 whitespace-nowrap buttons, fade cue — and the achievements-004/deities-007 CTA shape — icon collapse below sm, pb-36 root reserve; shared evidence pinned in tests/north-star-frame-mobile-shape.test.tsx `58658a7c3` + tests/north-star-frame-cta.test.tsx 2/2; the 2026-11-09/10 walk predates both landings): FIX-bio-009 · FIX-chem-009 · FIX-diy-008 · FIX-emergency-services-012 (shell chrome leg) · FIX-engineering-007 · FIX-experience-007 · FIX-fashion-013 · FIX-federation-007 · FIX-grounding-002 · FIX-home-improvement-016 · FIX-law-enforcement-005 · FIX-math-005 · FIX-neuro-004 · FIX-news-005 · FIX-organ-006. Per-lens premise detail in the bridge SECTION DONE post; no per-lens fork made, per the founder's mobile ruling.
