@@ -20,7 +20,14 @@ export function OverviewPanel() {
 
   return (
     <section>
-      <h2 className="mb-3 text-base font-semibold text-fuchsia-200">Consent corpus snapshot</h2>
+      <h2 className="mb-1 text-base font-semibold text-fuchsia-200">Consent corpus snapshot</h2>
+      {/* FIX-lattice-010: these are platform-wide aggregates across
+          every creator on this instance — say so at the surface, so
+          the totals are never read as the viewer's own corpus. */}
+      <p className="mb-3 text-xs text-fuchsia-500">
+        Platform-wide totals across every creator on this instance — not just your DTUs.
+        Your own consent state lives in the Consent tab.
+      </p>
       {corpusStats.isLoading ? (
         <Loading label="Loading corpus stats…" />
       ) : corpusStats.isError ? (
@@ -34,14 +41,14 @@ export function OverviewPanel() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <Stat label="Total rows" value={corpusStats.data!.totals.total} />
-            <Stat label="Consented (DTU rows)" value={corpusStats.data!.totals.consented} />
+            <Stat label="Total rows (platform-wide)" value={corpusStats.data!.totals.total} />
+            <Stat label="Consented (DTU rows) · platform-wide" value={corpusStats.data!.totals.consented} />
             <Stat label="Consent ratio" value={`${(corpusStats.data!.totals.ratio * 100).toFixed(1)}%`} />
           </div>
           <div className="mt-3">
             <KeepRecordActions key={kept?.body} record={kept} />
           </div>
-          <h3 className="mt-6 mb-2 text-sm font-semibold text-fuchsia-300">Per-table consent</h3>
+          <h3 className="mt-6 mb-2 text-sm font-semibold text-fuchsia-300">Per-table consent (platform-wide)</h3>
           <div className="overflow-x-auto rounded border border-fuchsia-900/40">
             <table className="w-full font-mono text-xs">
               <thead className="bg-fuchsia-950/40 text-fuchsia-400">
