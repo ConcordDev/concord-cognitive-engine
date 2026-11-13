@@ -30687,6 +30687,10 @@ ${_operatorV6Block}` : "";
       }
       results.push(result);
       ctx.log("chat_tools", "Tool executed", { tool: call.tool, ok: result.ok, error: result.error || null });
+      try {
+        const { recordToolOutcomeEvent } = await import("./lib/cockpit/telemetry.js");
+        recordToolOutcomeEvent(ctx?.db, { userId: ctx?.actor?.userId, sessionId: ctx?.reqMeta?.sessionId || null, surface: "chat", call, result });
+      } catch { /* telemetry never blocks a turn */ }
     }
     return results;
   };
@@ -51458,6 +51462,12 @@ try {
 } catch (streamErr) {
   structuredLog("warn", "chat_agent_stream_mount_failed", { error: String(streamErr?.message || streamErr) });
 }
+
+// GB-1500 cockpit routes (failure counts now; run routes in later tickets).
+try {
+  const { mountCockpitRoutes } = await import("./routes/cockpit.js");
+  mountCockpitRoutes({ app, db });
+} catch (e) { console.warn("[cockpit] routes not mounted:", e?.message || e); }
 
 // MCP tools address (domain, macro) pairs that may live in EITHER registry:
 // most exposed tools are canonical macros (MACROS, reachable by runMacro), but

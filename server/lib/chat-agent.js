@@ -36,6 +36,7 @@
 import { sanitizeAgentHistory, DONT_INVENT_LINE } from "./chat/agent-history-sanitize.js";
 import { brainChat, provenanceFrom } from "./byo-router.js";
 import { normalizeToolCall, normalizeCallParams } from "./chat/tool-call-normalize.js";
+import { cockpitFlag } from "./cockpit/flags.js";
 import {
   resolveAgentMaxTokens,
   resolveChatTimeoutMs,
@@ -2830,12 +2831,18 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       }
       // Item 2 — record into long-term memory (fire-and-forget; never blocks).
       if (db && userId) {
-        import("./agent-action-log.js").then(({ recordAction }) => recordAction(db, {
-          userId, sessionId: opts.sessionId || null,
-          action: `tool:${call.tool}`, input: call.params ?? call.args ?? null,
-          output: result.result ?? result.text ?? result.answer ?? result.error ?? null,
-          tool: call.tool, outcome: result.ok ? "ok" : "error",
-        })).catch(() => {});
+        if (cockpitFlag("TELEMETRY")) {
+          import("./cockpit/telemetry.js").then(({ recordToolOutcomeEvent }) =>
+            recordToolOutcomeEvent(db, { userId, sessionId: opts.sessionId || null, surface: opts.surface || "agent", call, result })
+          ).catch(() => {});
+        } else {
+          import("./agent-action-log.js").then(({ recordAction }) => recordAction(db, {
+            userId, sessionId: opts.sessionId || null,
+            action: `tool:${call.tool}`, input: call.params ?? call.args ?? null,
+            output: result.result ?? result.text ?? result.answer ?? result.error ?? null,
+            tool: call.tool, outcome: result.ok ? "ok" : "error",
+          })).catch(() => {});
+        }
       }
     }
 
