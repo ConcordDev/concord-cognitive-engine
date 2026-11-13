@@ -710,8 +710,12 @@ Generate the plan.`;
   // ─── Strava + Garmin Connect 2026 parity ────────────────────────────
   // Activities, segments, routes, training-load (CTL/ATL/TSB),
   // Garmin physiology (readiness/body-battery/HRV/VO2max/race-predictor),
-  // goals, PRs, gear, clubs, challenges. All STATE-backed, per-user
-  // scoped, real sports-science math. No fabricated data.
+  // goals, PRs, gear, clubs, challenges. All STATE-backed, real
+  // sports-science math. No fabricated data. Scoping is split, and
+  // the split is the design (Strava parity, FIX-fitness-003):
+  // activities, goals, PRs and gear are per-user; segments, clubs
+  // and challenges are SHARED platform-wide — created by a member,
+  // visible to every member. The create flows say so in the UI.
 
   const fid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const fnow = () => new Date().toISOString();
@@ -1703,7 +1707,9 @@ Generate the plan.`;
   // Parity backlog — Strava / Garmin 2026 feature gap closure.
   // GPS recording + GPX import, wearable sync, map heatmap, photos +
   // comments, live Beacon, training-plan calendar, fitness-freshness.
-  // All STATE-backed, per-user scoped, real user input only.
+  // All STATE-backed, real user input only. Scoping follows the
+  // parity split above: personal training data is per-user;
+  // segments, clubs and challenges are shared platform-wide.
   // ════════════════════════════════════════════════════════════════════
 
   function getFitState2() {

@@ -198,6 +198,7 @@ export function StravaSegmentsPanel() {
             className="col-span-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium rounded-lg px-2 py-1.5">
             Use my current location
           </button>
+          <p className="col-span-2 text-[11px] text-zinc-400">Shared with everyone on Concord — segments are public leaderboards, like Strava.</p>
           <button type="button" onClick={create}
             className="col-span-2 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">
             Create segment

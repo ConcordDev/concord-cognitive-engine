@@ -99,6 +99,7 @@ export function StravaClubsPanel() {
             <Plus className="w-3.5 h-3.5" /> Create
           </button>
         </div>
+        <p className="text-[11px] text-zinc-400 mb-2">Shared with everyone on Concord — clubs are public and anyone can join.</p>
         {clubs.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic">No clubs yet.</p>
         ) : (
@@ -145,6 +146,7 @@ export function StravaClubsPanel() {
           <input id="fitness-target-3" name="target-3" aria-label="Target" placeholder="Target" inputMode="decimal" value={chForm.target} onChange={(e) => setChForm({ ...chForm, target: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         </div>
+        <p className="text-[11px] text-zinc-400 mb-2">Shared with everyone on Concord — challenges are public and anyone can join.</p>
         <button type="button" onClick={createChallenge}
           className="w-full mb-2 flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg py-1.5">
           <Plus className="w-3.5 h-3.5" /> Create challenge
