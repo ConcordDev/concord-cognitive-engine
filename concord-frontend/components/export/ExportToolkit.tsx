@@ -199,7 +199,7 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
 }
 
 // ── [M] incremental / delta export ──────────────────────────────────
-function IncrementalExport({ dtus }: { dtus: Dtu[] }) {
+export function IncrementalExport({ dtus }: { dtus: Dtu[] }) {
   const [cursors, setCursors] = useState<Cursor[]>([]);
   const [result, setResult] = useState<{ changedRecords: number; unchangedRecords: number; isFirstRun: boolean; newCursor: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -218,8 +218,13 @@ function IncrementalExport({ dtus }: { dtus: Dtu[] }) {
         const res = r.data.result as { changedRecords: number; unchangedRecords: number; isFirstRun: boolean; newCursor: string | null; records: Dtu[] };
         setResult(res);
         if (commit && res.records.length > 0) {
-          dl(`concord-delta-${Date.now()}.json`, JSON.stringify(res.records, null, 2), 'application/json');
-          await lensRun('export', 'record-run', { format: 'json', itemCount: res.records.length, byteLength: JSON.stringify(res.records).length, dataSources: ['dtus'], trigger: 'incremental', filename: `concord-delta-${Date.now()}.json` });
+          // FIX-export-008: retain the exact downloaded payload in the
+          // history record so the run can be re-downloaded, like the
+          // desk panel's text formats already could.
+          const payload = JSON.stringify(res.records, null, 2);
+          const filename = `concord-delta-${Date.now()}.json`;
+          dl(filename, payload, 'application/json');
+          await lensRun('export', 'record-run', { format: 'json', itemCount: res.records.length, byteLength: JSON.stringify(res.records).length, dataSources: ['dtus'], trigger: 'incremental', filename, payload });
         }
         await refresh();
       }
@@ -325,7 +330,7 @@ function SelectiveFields({ dtus }: { dtus: Dtu[] }) {
 }
 
 // ── [S] PDF export ──────────────────────────────────────────────────
-function PdfExport({ dtus }: { dtus: Dtu[] }) {
+export function PdfExport({ dtus }: { dtus: Dtu[] }) {
   const [title, setTitle] = useState('Concord Export');
   const [busy, setBusy] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
@@ -338,7 +343,10 @@ function PdfExport({ dtus }: { dtus: Dtu[] }) {
         const res = r.data.result as { base64: string; byteLength: number; recordCount: number };
         dl(`${title.replace(/[^a-z0-9]+/gi, '_')}.pdf`, b64ToArrayBuffer(res.base64), 'application/pdf');
         setInfo(`Generated ${fmtBytes(res.byteLength)} PDF with ${res.recordCount} record(s)`);
-        await lensRun('export', 'record-run', { format: 'pdf', itemCount: res.recordCount, byteLength: res.byteLength, dataSources: ['dtus'], trigger: 'manual', filename: `${title}.pdf` });
+        // FIX-export-008: retain the PDF (base64, as generated) so the
+        // history entry can be re-downloaded; history-download returns
+        // the encoding and ExportHistory decodes it back to bytes.
+        await lensRun('export', 'record-run', { format: 'pdf', itemCount: res.recordCount, byteLength: res.byteLength, dataSources: ['dtus'], trigger: 'manual', filename: `${title}.pdf`, payload: res.base64, payloadEncoding: 'base64' });
       } else {
         setInfo(r.data?.error || 'PDF generation failed');
       }
@@ -363,7 +371,7 @@ function PdfExport({ dtus }: { dtus: Dtu[] }) {
 }
 
 // ── [S] encrypted / password-protected archive ──────────────────────
-function EncryptedArchive({ dtus }: { dtus: Dtu[] }) {
+export function EncryptedArchive({ dtus }: { dtus: Dtu[] }) {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
@@ -378,9 +386,12 @@ function EncryptedArchive({ dtus }: { dtus: Dtu[] }) {
         const res = r.data.result as { algorithm: string; salt: string; plainChecksum: string; ciphertextBase64: string; byteLength: number };
         // Pack salt + checksum + ciphertext into a self-describing envelope so it round-trips.
         const envelope = packEncEnvelope({ algorithm: res.algorithm, salt: res.salt, plainChecksum: res.plainChecksum, ciphertextBase64: res.ciphertextBase64 });
-        dl(`concord-export-${Date.now()}.enc`, envelope, 'application/octet-stream');
+        const encFilename = `concord-export-${Date.now()}.enc`;
+        dl(encFilename, envelope, 'application/octet-stream');
         setInfo(`Encrypted ${fmtBytes(res.byteLength)} archive (${res.algorithm}). Keep the password — it is required to decrypt.`);
-        await lensRun('export', 'record-run', { format: 'enc', itemCount: dtus.length, byteLength: res.byteLength, dataSources: ['dtus'], trigger: 'manual', filename: 'concord-export.enc' });
+        // FIX-export-008: retain the exact envelope downloaded above
+        // so this run can be re-downloaded from history.
+        await lensRun('export', 'record-run', { format: 'enc', itemCount: dtus.length, byteLength: res.byteLength, dataSources: ['dtus'], trigger: 'manual', filename: encFilename, payload: envelope });
       } else {
         setInfo(r.data?.error || 'Encryption failed');
       }
@@ -638,7 +649,7 @@ function CloudDestinations() {
 }
 
 // ── [S] export history log + re-download ────────────────────────────
-function ExportHistory() {
+export function ExportHistory() {
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [totalBytes, setTotalBytes] = useState(0);
 
@@ -658,8 +669,11 @@ function ExportHistory() {
   const redownload = async (run: RunRecord) => {
     const r = await lensRun('export', 'history-download', { id: run.id });
     if (r.data?.ok && r.data.result) {
-      const res = r.data.result as { filename: string; payload: string };
-      dl(res.filename, res.payload, 'application/octet-stream');
+      const res = r.data.result as { filename: string; payload: string; encoding?: string };
+      // FIX-export-008: payloads retained as base64 (PDF) decode back
+      // to bytes; utf8 payloads (JSON, envelopes) download as-is.
+      if (res.encoding === 'base64') dl(res.filename, b64ToArrayBuffer(res.payload), 'application/octet-stream');
+      else dl(res.filename, res.payload, 'application/octet-stream');
     }
   };
   const clear = async () => { await lensRun('export', 'history-clear', {}); await refresh(); };
@@ -689,7 +703,7 @@ function ExportHistory() {
                     <Download className="h-3 w-3" /> Re-download
                   </button>
                 ) : (
-                  <span className="text-[10px] text-zinc-400">no payload retained</span>
+                  <span className="text-[10px] text-zinc-400">No file retained for this run — re-run the export to download it again.</span>
                 )}
               </li>
             ))}
