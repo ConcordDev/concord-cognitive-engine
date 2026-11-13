@@ -58,6 +58,15 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
     });
   };
 
+  const resetLayout = async () => {
+    setSaveErr(null);
+    try {
+      const r = await lensRun('self', 'resetLayout', {});
+      if (r.data?.ok) { setEditing(false); void load(); onChanged(); }
+      else setSaveErr(r.data?.error ?? 'Reset failed.');
+    } catch { setSaveErr('Network error.'); }
+  };
+
   const saveLayout = async () => {
     setSaveErr(null);
     if (draft.length === 0) { setSaveErr('Pick at least one tile.'); return; }
@@ -109,6 +118,12 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
               className="rounded bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500"
             >
               Save layout
+            </button>
+            <button
+              onClick={() => void resetLayout()}
+              className="rounded border border-rose-900/40 px-3 py-1.5 text-xs text-rose-300 hover:text-rose-100"
+            >
+              Reset to default
             </button>
             <span className="text-[10px] text-rose-400">{draft.length}/8 selected</span>
           </div>

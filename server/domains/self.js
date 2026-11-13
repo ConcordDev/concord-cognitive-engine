@@ -453,10 +453,21 @@ export default function registerSelfActions(registerLensAction) {
       ok: true,
       result: {
         tiles,
-        isDefault: !s.layouts.has(actor(ctx)),
+        // Default is a property of the tiles, not of whether a row
+        // exists: a saved layout identical to the default IS the default
+        // (before this, restoring the default tiles by hand still read
+        // 'custom layout' forever — FIX-self-010).
+        isDefault: tiles.length === DEFAULT_LAYOUT.length && tiles.every((t, i) => t === DEFAULT_LAYOUT[i]),
         available: TILE_KEYS.map((k) => ({ key: k, label: METRICS[k].label, unit: METRICS[k].unit })),
       },
     };
+  });
+
+  registerLensAction("self", "resetLayout", (ctx, _a, _params = {}) => {
+    const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    s.layouts.delete(actor(ctx));
+    save();
+    return { ok: true, result: { tiles: DEFAULT_LAYOUT, isDefault: true } };
   });
 
   // ─── streaks — consecutive-day logging streaks per subsystem ─────────
