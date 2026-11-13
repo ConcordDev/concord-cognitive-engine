@@ -77,13 +77,13 @@ export function PluginInstallConsent({ plugin, onCancel, onInstalled }: PluginIn
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold text-slate-100">Install {plugin.name}</h2>
-            <p className="mt-0.5 text-[11px] text-slate-500">v{plugin.version} · by {plugin.authorId}</p>
+            <p className="mt-0.5 text-[11px] text-slate-400">v{plugin.version} · by {plugin.authorId}</p>
           </div>
           <button
             onClick={onCancel}
             data-overlay-close=""
             aria-label="Cancel install"
-            className="rounded-md p-1 text-slate-500 hover:bg-zinc-900 hover:text-slate-300"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-1 text-slate-400 hover:bg-zinc-900 hover:text-slate-300"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -109,7 +109,7 @@ export function PluginInstallConsent({ plugin, onCancel, onInstalled }: PluginIn
             This plugin is asking for
           </h3>
           {capabilities.length === 0 ? (
-            <p className="text-[11px] text-slate-500">No macro-domain grants declared.</p>
+            <p className="text-[11px] text-slate-400">No macro-domain grants declared.</p>
           ) : (
             <ul className="space-y-1" aria-label="Requested capabilities">
               {capabilities.map((cap) => (
