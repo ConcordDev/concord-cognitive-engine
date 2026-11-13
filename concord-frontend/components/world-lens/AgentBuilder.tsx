@@ -243,7 +243,12 @@ export default function AgentBuilder() {
     setTestResult('Simulating with sample event...');
     setTimeout(() => {
       const actions: Record<string, string> = {
-        monitor: 'Log anomaly event and notify #ops channel',
+        // The test line is built from the actual selection — it used to
+        // be a fixed string naming the anomaly event even when the user
+        // had checked something else, or nothing (FIX-society-004).
+        monitor: monitorEvents.length > 0
+          ? `Log ${monitorEvents.join(', ')} and notify #ops channel`
+          : 'No events selected — check at least one event to watch',
         alert: `Send alert: ${alertMetric} ${alertOperator} ${alertThreshold}`,
         report: `Generate ${reportSchedule} report with ${reportContent.length || 1} sections`,
         auto_bid: 'Place bid of 250 credits on matching listing',
@@ -259,28 +264,50 @@ export default function AgentBuilder() {
 
   const handleCreate = async () => {
     if (!agentName.trim()) return;
+    // A monitor agent watches exactly the events the user checked
+    // (FIX-society-004). The form used to save only the first checked
+    // event and silently substitute 'sensor:anomaly-detected' when
+    // none were checked, so the saved agent never matched the form.
+    // A schedule holds one event trigger, so the agent gets one
+    // schedule per checked event; an empty selection refuses in words.
+    if (selectedType === 'monitor' && monitorEvents.length === 0) {
+      setTestResult('Select at least one event to watch — nothing was created.');
+      return;
+    }
     // Derive a spec from the type-specific config so the backend schedule is real.
     let kind = 'interval';
     let spec = '3600000';
-    if (selectedType === 'monitor') {
-      kind = 'event';
-      spec = monitorEvents[0] || 'sensor:anomaly-detected';
-    } else if (selectedType === 'report') {
+    if (selectedType === 'report') {
       kind = 'interval';
       spec = reportSchedule === 'daily' ? '86400000' : reportSchedule === 'weekly' ? '604800000' : '2592000000';
     } else if (selectedType === 'custom' && customRules[0]) {
       kind = 'event';
       spec = customRules[0].trigger;
     }
+    const agentId = agentName.trim().toLowerCase().replace(/\s+/g, '-');
+    const goal = selectedTypeInfo?.desc || agentName.trim();
     try {
-      await lensRun('agents', 'createSchedule', {
-        agentId: agentName.trim().toLowerCase().replace(/\s+/g, '-'),
-        agentName: agentName.trim(),
-        kind,
-        spec,
-        goal: selectedTypeInfo?.desc || agentName.trim(),
-        enabled: activateOnCreate,
-      });
+      if (selectedType === 'monitor') {
+        for (const evt of monitorEvents) {
+          await lensRun('agents', 'createSchedule', {
+            agentId,
+            agentName: agentName.trim(),
+            kind: 'event',
+            spec: evt,
+            goal,
+            enabled: activateOnCreate,
+          });
+        }
+      } else {
+        await lensRun('agents', 'createSchedule', {
+          agentId,
+          agentName: agentName.trim(),
+          kind,
+          spec,
+          goal,
+          enabled: activateOnCreate,
+        });
+      }
       await loadAgents();
     } catch {
       // leave list as-is; surfaced via toast by the api client
