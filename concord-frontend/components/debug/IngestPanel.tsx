@@ -289,6 +289,8 @@ export function IngestPanel({ onIngested }: { onIngested?: () => void }) {
       {/* Create */}
       <div className="flex items-center gap-2">
         <input
+          name="label"
+          aria-label="Key label"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="Key label (e.g. storefront web app)"

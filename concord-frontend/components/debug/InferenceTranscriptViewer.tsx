@@ -178,6 +178,8 @@ function InferenceTranscriptViewer() {
       <div className="flex gap-2">
         <input
           type="text"
+          name="filterInferenceId"
+          aria-label="Filter by inference ID"
           value={filterInferenceId}
           onChange={(e) => setFilterInferenceId(e.target.value)}
           placeholder="Filter by inference ID"
@@ -185,6 +187,8 @@ function InferenceTranscriptViewer() {
         />
         <input
           type="number"
+          name="minLatency"
+          aria-label="Minimum latency in milliseconds"
           value={minLatency}
           onChange={(e) => setMinLatency(e.target.value)}
           placeholder="Min latency (ms)"

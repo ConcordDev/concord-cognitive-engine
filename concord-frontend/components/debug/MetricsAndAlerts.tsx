@@ -405,12 +405,16 @@ export function MetricsAndAlerts() {
         {/* Create rule */}
         <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border grid grid-cols-2 md:grid-cols-6 gap-2">
           <input
+            name="ruleName"
+            aria-label="Rule name"
             value={ruleForm.name}
             onChange={(e) => setRuleForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Rule name"
             className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs md:col-span-2"
           />
           <select
+            name="ruleKind"
+            aria-label="Rule kind"
             value={ruleForm.kind}
             onChange={(e) => setRuleForm((f) => ({ ...f, kind: e.target.value as typeof ruleForm.kind }))}
             className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs disabled:opacity-50"
@@ -424,6 +428,8 @@ export function MetricsAndAlerts() {
           {ruleForm.kind === 'metric' && (
             <>
               <input
+                name="ruleMetric"
+                aria-label="Metric name"
                 value={ruleForm.metric}
                 onChange={(e) => setRuleForm((f) => ({ ...f, metric: e.target.value }))}
                 placeholder="metric"
@@ -438,6 +444,8 @@ export function MetricsAndAlerts() {
                 ))}
               </datalist>
               <select
+                name="ruleOperator"
+                aria-label="Comparison operator"
                 value={ruleForm.op}
                 onChange={(e) => setRuleForm((f) => ({ ...f, op: e.target.value }))}
                 className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs font-mono"
@@ -449,6 +457,8 @@ export function MetricsAndAlerts() {
                 ))}
               </select>
               <input
+                name="ruleThreshold"
+                aria-label="Threshold"
                 value={ruleForm.threshold}
                 onChange={(e) => setRuleForm((f) => ({ ...f, threshold: e.target.value }))}
                 placeholder="threshold"
@@ -458,6 +468,8 @@ export function MetricsAndAlerts() {
             </>
           )}
           <select
+            name="ruleSeverity"
+            aria-label="Rule severity"
             value={ruleForm.severity}
             onChange={(e) => setRuleForm((f) => ({ ...f, severity: e.target.value }))}
             className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-xs"

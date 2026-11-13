@@ -48,7 +48,7 @@ describe('Crisis Ops roster and timeline refusals', () => {
       expect(screen.getByText('r59 watchdog-test responder')).toBeInTheDocument();
     });
     expect(screen.getByText(/assigned by Ada Lovelace/)).toBeInTheDocument();
-    expect(screen.queryByLabelText('Remove')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Remove /)).not.toBeInTheDocument();
     expect(document.body.textContent).not.toContain(RAW_ID);
   });
 
@@ -59,7 +59,7 @@ describe('Crisis Ops roster and timeline refusals', () => {
     await waitFor(() => {
       expect(screen.getByText(/\(you\)/)).toBeInTheDocument();
     });
-    expect(screen.getByLabelText('Remove')).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Remove /)).toBeInTheDocument();
   });
 
   it('shows an unassign refusal as a failure and leaves the roster in place', async () => {
@@ -72,8 +72,9 @@ describe('Crisis Ops roster and timeline refusals', () => {
     });
     const { TeamPanel } = await import('@/components/crisis-ops/TeamPanel');
     render(React.createElement(TeamPanel, { crisisId: 'cr_1' }));
-    const remove = await screen.findByLabelText('Remove');
-    fireEvent.click(remove);
+    // Unassign is a two-step confirm now: arm, then confirm.
+    fireEvent.click(await screen.findByLabelText(/^Remove /));
+    fireEvent.click(await screen.findByLabelText(/^Confirm remove /));
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toMatch(/cannot remove this assignment/i);
     expect(screen.getByText('r59 watchdog-test responder')).toBeInTheDocument();

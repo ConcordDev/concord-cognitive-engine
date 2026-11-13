@@ -17,6 +17,8 @@ export function InspectorPanel() {
   </h2>
   <div className="flex gap-3">
     <select
+      name="inspectType"
+      aria-label="Entity type"
       className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm"
       value={inspectType}
       onChange={(e) => setInspectType(e.target.value)}
@@ -28,6 +30,8 @@ export function InspectorPanel() {
     </select>
     <input
       className="flex-1 px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-blue outline-none font-mono"
+      name="inspectEntity"
+      aria-label="Entity ID"
       placeholder="Enter entity ID..."
       value={inspectEntity}
       onChange={(e) => setInspectEntity(e.target.value)}

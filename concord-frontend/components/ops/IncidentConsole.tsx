@@ -376,14 +376,14 @@ function IncidentsTab({
               input and service select beside them at the same height. All
               four meet the 44px floor together so the row stays coherent. */}
           <input
-            value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Incident title"
+            value={title} onChange={(e) => setTitle(e.target.value)} name="title" aria-label="Incident title" placeholder="Incident title"
             className="min-h-11 min-w-[200px] flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white"
           />
-          <select value={sev} onChange={(e) => setSev(e.target.value as Sev)} aria-label="Severity"
+          <select name="incidentSeverity" value={sev} onChange={(e) => setSev(e.target.value as Sev)} aria-label="Severity"
             className="min-h-11 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white">
             {(['sev1', 'sev2', 'sev3', 'sev4'] as Sev[]).map((s) => <option key={s} value={s}>{s.toUpperCase()}</option>)}
           </select>
-          <select value={svc} onChange={(e) => setSvc(e.target.value)} aria-label="Service"
+          <select name="service" value={svc} onChange={(e) => setSvc(e.target.value)} aria-label="Service"
             className="min-h-11 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white">
             <option value="">— no service —</option>
             {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -491,7 +491,7 @@ function IncidentsTab({
 
             <div className="space-y-1.5">
               <div className="flex gap-1.5">
-                <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add timeline note"
+                <input value={note} onChange={(e) => setNote(e.target.value)} name="timelineNote" aria-label="Timeline note" placeholder="Add timeline note"
                   className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
                 <button
                   disabled={!note.trim()}
@@ -500,9 +500,9 @@ function IncidentsTab({
                 >Note</button>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <input value={pageTarget} onChange={(e) => setPageTarget(e.target.value)} placeholder="Page responder"
+                <input value={pageTarget} onChange={(e) => setPageTarget(e.target.value)} name="pageTarget" aria-label="Page responder" placeholder="Page responder"
                   className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
-                <select value={pageChannel} onChange={(e) => setPageChannel(e.target.value as Channel)}
+                <select name="pageChannel" aria-label="Page channel" value={pageChannel} onChange={(e) => setPageChannel(e.target.value as Channel)}
                   className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white">
                   {(['push', 'sms', 'email'] as Channel[]).map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -554,16 +554,16 @@ function AlertsTab({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
-        <input value={sig} onChange={(e) => setSig(e.target.value)} placeholder="Alert signature (e.g. db-timeout)"
+        <input value={sig} onChange={(e) => setSig(e.target.value)} name="alertSignature" aria-label="Alert signature" placeholder="Alert signature (e.g. db-timeout)"
           className="min-w-[180px] flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white font-mono" />
-        <input value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Message"
+        <input value={msg} onChange={(e) => setMsg(e.target.value)} name="alertMessage" aria-label="Alert message" placeholder="Message"
           className="min-w-[160px] flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
-        <select value={sev} onChange={(e) => setSev(e.target.value as Sev)}
+        <select name="alertSeverity" aria-label="Alert severity" value={sev} onChange={(e) => setSev(e.target.value as Sev)}
           className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white">
           {(['sev1', 'sev2', 'sev3', 'sev4'] as Sev[]).map((s) => <option key={s} value={s}>{s.toUpperCase()}</option>)}
         </select>
         <label className="flex items-center gap-1 text-[11px] text-zinc-400">
-          <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} /> auto-create incident
+          <input type="checkbox" name="autoCreate" checked={auto} onChange={(e) => setAuto(e.target.checked)} /> auto-create incident
         </label>
         <button
           disabled={!sig.trim() || busy === 'alert-ingest'}
@@ -631,16 +631,16 @@ function ServicesTab({
       <div className="space-y-3">
         <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
           <div className="flex flex-wrap gap-2">
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Service name"
+            <input value={name} onChange={(e) => setName(e.target.value)} name="serviceName" aria-label="Service name" placeholder="Service name"
               className="min-w-[140px] flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
-            <input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="Owner"
+            <input value={owner} onChange={(e) => setOwner(e.target.value)} name="owner" aria-label="Service owner" placeholder="Owner"
               className="min-w-[100px] flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
-            <select value={tier} onChange={(e) => setTier(e.target.value)}
+            <select name="tier" aria-label="Service tier" value={tier} onChange={(e) => setTier(e.target.value)}
               className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white">
               {['critical', 'high', 'standard'].map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
-          <input value={keys} onChange={(e) => setKeys(e.target.value)} placeholder="Alert keys (comma-separated)"
+          <input value={keys} onChange={(e) => setKeys(e.target.value)} name="alertKeys" aria-label="Alert keys (comma-separated)" placeholder="Alert keys (comma-separated)"
             className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white font-mono" />
           {services.length > 0 && (
             <div>
@@ -710,12 +710,12 @@ function OnCallTab({
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
           <p className="text-[10px] uppercase tracking-wider text-zinc-400">Add shift</p>
-          <input value={resp} onChange={(e) => setResp(e.target.value)} placeholder="Responder"
+          <input value={resp} onChange={(e) => setResp(e.target.value)} name="shiftResponder" aria-label="Responder" placeholder="Responder"
             className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
           <div className="flex gap-2">
-            <input type="datetime-local" value={from} onChange={(e) => setFrom(e.target.value)}
+            <input type="datetime-local" name="shiftFrom" aria-label="Shift start" value={from} onChange={(e) => setFrom(e.target.value)}
               className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] text-white" />
-            <input type="datetime-local" value={to} onChange={(e) => setTo(e.target.value)}
+            <input type="datetime-local" name="shiftTo" aria-label="Shift end" value={to} onChange={(e) => setTo(e.target.value)}
               className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] text-white" />
           </div>
           <button
@@ -727,15 +727,15 @@ function OnCallTab({
         <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
           <p className="text-[10px] uppercase tracking-wider text-zinc-400">Shift override / swap</p>
           <div className="flex gap-2">
-            <input value={ovrResp} onChange={(e) => setOvrResp(e.target.value)} placeholder="Covering responder"
+            <input value={ovrResp} onChange={(e) => setOvrResp(e.target.value)} name="overrideResponder" aria-label="Covering responder" placeholder="Covering responder"
               className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
-            <input value={ovrReason} onChange={(e) => setOvrReason(e.target.value)} placeholder="Reason"
+            <input value={ovrReason} onChange={(e) => setOvrReason(e.target.value)} name="overrideReason" aria-label="Override reason" placeholder="Reason"
               className="w-24 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
           </div>
           <div className="flex gap-2">
-            <input type="datetime-local" value={ovrFrom} onChange={(e) => setOvrFrom(e.target.value)}
+            <input type="datetime-local" name="overrideFrom" aria-label="Override start" value={ovrFrom} onChange={(e) => setOvrFrom(e.target.value)}
               className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] text-white" />
-            <input type="datetime-local" value={ovrTo} onChange={(e) => setOvrTo(e.target.value)}
+            <input type="datetime-local" name="overrideTo" aria-label="Override end" value={ovrTo} onChange={(e) => setOvrTo(e.target.value)}
               className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-[11px] text-white" />
           </div>
           <button
@@ -802,16 +802,16 @@ function PoliciesTab({
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
         <p className="text-[10px] uppercase tracking-wider text-zinc-400">New escalation policy</p>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Policy name"
+        <input value={name} onChange={(e) => setName(e.target.value)} name="policyName" aria-label="Policy name" placeholder="Policy name"
           className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
         {tiers.map((t, i) => (
           <div key={i} className="flex gap-1.5">
             <span className="self-center text-[10px] text-zinc-400">T{i + 1}</span>
             <input value={t.afterMinutes} onChange={(e) => setTiers((ts) => ts.map((x, j) => j === i ? { ...x, afterMinutes: e.target.value.replace(/[^\d.]/g, '') } : x))}
-              placeholder="after min" className="w-20 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+              name="tierAfterMinutes" aria-label="Minutes after previous tier" placeholder="after min" className="w-20 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
             <input value={t.target} onChange={(e) => setTiers((ts) => ts.map((x, j) => j === i ? { ...x, target: e.target.value } : x))}
-              placeholder="target" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
-            <select value={t.channel} onChange={(e) => setTiers((ts) => ts.map((x, j) => j === i ? { ...x, channel: e.target.value as Channel } : x))}
+              name="tierTarget" aria-label="Escalation target" placeholder="target" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+            <select name="tierChannel" aria-label="Escalation channel" value={t.channel} onChange={(e) => setTiers((ts) => ts.map((x, j) => j === i ? { ...x, channel: e.target.value as Channel } : x))}
               className="rounded border border-zinc-800 bg-zinc-900 px-1 py-1 text-[11px] text-white">
               {(['push', 'sms', 'email'] as Channel[]).map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -852,7 +852,7 @@ function PoliciesTab({
                 <input
                   value={ev?.minutes || ''}
                   onChange={(e) => setEvalState((s) => ({ ...s, [p.id]: { minutes: e.target.value.replace(/[^\d.]/g, ''), result: s[p.id]?.result || null } }))}
-                  placeholder="min open" className="w-20 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
+                  name="evalMinutes" aria-label="Minutes open" placeholder="min open" className="w-20 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
                 <button onClick={() => evaluate(p.id)}
                   className="rounded bg-zinc-700 px-2 py-1 text-[11px] text-white hover:bg-zinc-600">Evaluate</button>
               </div>

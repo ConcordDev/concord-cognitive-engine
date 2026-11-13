@@ -1124,6 +1124,8 @@ export function CryptoWalletWorkspace() {
                             {/* Address with copy-on-hover effect */}
                             <button
                               onClick={() => handleCopyAddress(wallet.address)}
+                              type="button"
+                              aria-label={`Copy address ${shortAddr}`}
                               className="flex items-center gap-1.5 mt-0.5 group/addr"
                               title="Click to copy full address"
                             >
@@ -1146,6 +1148,8 @@ export function CryptoWalletWorkspace() {
                           <button
                             onClick={() => { setReceiveAddress(wallet.address); setShowReceive(true); }}
                             className="p-2 text-gray-400 hover:text-cyan-300 transition-colors rounded-lg hover:bg-cyan-500/10"
+                            type="button"
+                            aria-label="Receive to this wallet (QR code)"
                             title="Receive (QR)"
                           >
                             <ArrowDownLeft className="w-4 h-4" />
@@ -1153,6 +1157,8 @@ export function CryptoWalletWorkspace() {
                           <button
                             onClick={() => handleCopyAddress(wallet.address)}
                             className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                            type="button"
+                            aria-label="Copy wallet address"
                             title="Copy address"
                           >
                             {copiedAddress === wallet.address ? <Check className="w-4 h-4 text-neon-green" /> : <Copy className="w-4 h-4" />}
@@ -1160,6 +1166,8 @@ export function CryptoWalletWorkspace() {
                           <button
                             onClick={() => handleDeleteWallet(wallet.id)}
                             className="p-2 text-gray-400 hover:text-neon-pink transition-colors rounded-lg hover:bg-neon-pink/10"
+                            type="button"
+                            aria-label="Remove wallet"
                             title="Remove wallet"
                           >
                             <X className="w-4 h-4" />
