@@ -206,6 +206,11 @@ export function DataExplorer() {
     });
     if (r.data.ok && r.data.result) {
       setShareLink(r.data.result.shareLink);
+      // A successful save supersedes an earlier failure's error
+      // (FIX-global-009): the banner outlived the failed Run it belonged
+      // to and sat beside the new share link, claiming the view had
+      // failed while the saved list showed it saved.
+      setError(null);
       void refreshViews();
       // The page's Saved Views stat card reads its own query; refresh it
       // too or the count lags the list until a reload (FIX-global-008).
@@ -218,6 +223,7 @@ export function DataExplorer() {
   const deleteView = useCallback(async (id: string) => {
     const r = await lensRun('global', 'deleteView', { id });
     if (r.data.ok) {
+      setError(null);
       void refreshViews();
       // Same stat-card refresh as the save path (FIX-global-008): the
       // card kept showing the deleted view in its count until a reload.
@@ -227,6 +233,9 @@ export function DataExplorer() {
 
   const applyView = useCallback((v: SavedView) => {
     const c = v.config || {};
+    // Applying a saved view replaces the screen's subject — an earlier
+    // failure's error no longer describes anything visible (FIX-global-009).
+    setError(null);
     setMode(v.mode as Mode);
     if (typeof c.indicator === 'string') setIndicator(c.indicator);
     if (typeof c.indicatorX === 'string') setIndicatorX(c.indicatorX);
