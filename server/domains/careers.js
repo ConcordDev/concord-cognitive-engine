@@ -25,6 +25,7 @@ import {
 } from "../lib/career-contracts.js";
 import { findEmployers } from "../lib/career-employers.js";
 import { requireActor } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 function enabled() { return process.env.CONCORD_LIVING_CAREER !== "0"; }
 function gate(ctx) {
@@ -100,7 +101,76 @@ function writeProgress(db, uid, trackId, p) {
   } catch { return false; }
 }
 
+
+// ── lens export provider (FIX-careers-002) ────────────────────────────
+// The careers export once dumped site-wide records; the shared export
+// scoping fixes (2026-11-10, FIX-feed-001) keep the generic legs inside
+// the lens and the caller, but the lens's own data still never reached
+// the export at all: contracts live in the career_contracts table and
+// ladder/shift standing in player_career_progress, both behind the
+// careers.* macros and invisible to the artifact/DTU/state legs. This
+// provider emits exactly the lens's careers data for the caller —
+// their contracts and their per-track progress. The counterparty's
+// raw id is never an export field; their kind is part of the bargain.
+function careersExportRows(ctx) {
+  if (!enabled()) return [];
+  const db = ctx?.db;
+  if (!db) return [];
+  const auth = requireActor(ctx);
+  if (!auth.ok) return [];
+  const uid = auth.actorId;
+  const rows = [];
+  try {
+    for (const c of listContractsFor(db, "player", uid)) {
+      const asWorker = c.worker_kind === "player" && c.worker_id === uid;
+      rows.push({
+        id: c.id,
+        type: "contract",
+        title: c.role || c.track_id || c.id,
+        createdAt: c.created_at ?? null,
+        updatedAt: c.updated_at ?? c.created_at ?? null,
+        data: {
+          trackId: c.track_id,
+          tier: c.tier,
+          role: c.role || null,
+          baseWageSparks: c.base_wage_sparks,
+          payModel: c.pay_model,
+          durationDays: c.duration_days,
+          signingBonusSparks: c.signing_bonus_sparks,
+          status: c.status,
+          myRole: asWorker ? "worker" : "employer",
+          counterpartyKind: asWorker ? c.employer_kind : c.worker_kind,
+        },
+      });
+    }
+  } catch { /* contracts table unavailable — progress may still export */ }
+  try {
+    const progress = db.prepare(
+      `SELECT track_id, tier, xp, highest_tier, shifts, last_shift_day FROM player_career_progress WHERE user_id = ? ORDER BY updated_at DESC`,
+    ).all(uid);
+    for (const r of progress) {
+      rows.push({
+        id: `progress:${r.track_id}`,
+        type: "track-progress",
+        title: r.track_id,
+        createdAt: null,
+        updatedAt: null,
+        data: {
+          trackId: r.track_id,
+          tier: r.tier,
+          xp: r.xp,
+          highestTier: r.highest_tier,
+          shifts: r.shifts,
+          lastShiftDay: r.last_shift_day ?? null,
+        },
+      });
+    }
+  } catch { /* progress table unavailable */ }
+  return rows;
+}
+
 export default function registerCareerMacros(register) {
+  registerLensExportProvider("careers", careersExportRows);
   register("careers", "tracks", async (ctx) => {
     const g = gate(ctx); if (g) return g;
     const tracks = Object.keys(TRACKS).map((id) => ({ id, category: TRACKS[id].category, activity: activityFor(id), branch: TRACKS[id].branchAt5 }));
