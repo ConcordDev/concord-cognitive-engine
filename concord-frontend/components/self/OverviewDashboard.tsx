@@ -24,6 +24,10 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string[]>([]);
   const [saveErr, setSaveErr] = useState<string | null>(null);
+  // Metrics present in the ledger but not pinned as tiles (FIX-self-004):
+  // logging Water used to leave it invisible on Overview except in the
+  // total count. Derived from the readings feed, not from totals.
+  const [unshown, setUnshown] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -39,6 +43,13 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
         throw new Error(ov.data.error || 'Could not load your overview.');
       }
       if (ov.data?.ok && ov.data.result) setOverview(ov.data.result);
+      try {
+        const rd = await lensRun<{ readings: Array<{ metric: string }> }>('self', 'readings', { limit: 500 });
+        const rows = rd.data?.result?.readings || [];
+        const tilesNow = ov.data?.result?.tiles || [];
+        const present = [...new Set(rows.map((r) => r.metric))].filter((m) => !tilesNow.includes(m));
+        setUnshown(present);
+      } catch { /* the hint is additive; the overview stands without it */ }
       if (ly.data?.ok && ly.data.result) {
         setLayout(ly.data.result);
         setDraft(ly.data.result.tiles);
@@ -165,6 +176,13 @@ export function OverviewDashboard({ refreshKey, onChanged }: { refreshKey: numbe
             {overview.totalReadings} total reading{overview.totalReadings === 1 ? '' : 's'} in your ledger
             {layout?.isDefault ? ' · default layout' : ' · custom layout'}.
           </p>
+          {unshown.length > 0 && (
+            <p className="text-[11px] text-rose-300">
+              Also in your ledger:{' '}
+              {unshown.map((m) => layout?.available.find((t) => t.key === m)?.label || m).join(', ')}
+              {' '}— use Customize to pin {unshown.length === 1 ? 'it' : 'them'} here.
+            </p>
+          )}
         </>
       ) : (
         <p className="rounded border border-rose-900/30 bg-rose-950/10 px-4 py-8 text-center text-xs text-rose-600">
