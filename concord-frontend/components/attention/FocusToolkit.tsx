@@ -66,6 +66,7 @@ const minToHHMM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}
 const todayKey = () => calendarDateKey();
 
 export function FocusToolkit() {
+  const [confirmReleaseId, setConfirmReleaseId] = useState<string | null>(null);
   // ── pomodoro ──
   const [timer, setTimer] = useState<PomTimer | null>(null);
   const [remaining, setRemaining] = useState(0);
@@ -457,9 +458,18 @@ export function FocusToolkit() {
                 <span className="text-gray-300">
                   <span className="font-mono text-neon-blue">{minToHHMM(b.startMinute)}–{minToHHMM(b.endMinute)}</span> · {b.title}
                 </span>
-                <button onClick={() => releaseBlock(b.id)} className="text-gray-600 hover:text-red-400" aria-label="Release block">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {/* FIX-strategic-adds-007: releasing a focus block removes
+                    the record — two-step confirm, first click arms. */}
+                {confirmReleaseId === b.id ? (
+                  <span className="inline-flex items-center gap-1">
+                    <button onClick={() => { setConfirmReleaseId(null); void releaseBlock(b.id); }} className="px-1.5 py-0.5 text-[11px] font-medium text-rose-300 hover:bg-rose-500/10 rounded">Release?</button>
+                    <button onClick={() => setConfirmReleaseId(null)} className="px-1.5 py-0.5 text-[11px] text-zinc-400 hover:bg-white/[0.05] rounded">Keep</button>
+                  </span>
+                ) : (
+                  <button onClick={() => setConfirmReleaseId(b.id)} className="text-gray-600 hover:text-red-400" aria-label="Release block">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             ))}
             {calBlocks.length === 0 && <p className="rounded border border-dashed border-zinc-800 py-3 text-center text-xs text-gray-400">No focus blocks reserved today.</p>}

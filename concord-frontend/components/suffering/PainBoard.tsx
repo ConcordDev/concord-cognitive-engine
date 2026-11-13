@@ -154,7 +154,7 @@ export function PainBoard({
             rows={2}
             className="w-full bg-white/5 border border-white/10 rounded px-2.5 py-1.5 text-sm"
           />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
             {(['severity', 'frequency', 'impact', 'effort'] as const).map((k) => (
               <label key={k} className="text-xs text-gray-400">
                 <span className="capitalize flex justify-between">

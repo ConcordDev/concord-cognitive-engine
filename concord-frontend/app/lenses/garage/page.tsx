@@ -109,6 +109,7 @@ export default function GarageLensPage() {
   const [worldIdDraft, setWorldIdDraft] = useState('concordia-hub');
   const [tab, setTab] = useState<FleetTab>('world');
   const [filterKind, setFilterKind] = useState<string>('all');
+  const [fleetQuery, setFleetQuery] = useState('');
 
   const [worldFleet, setWorldFleet] = useState<Vehicle[] | null>(null);
   const [myFleet, setMyFleet] = useState<Vehicle[] | null>(null);
@@ -188,8 +189,18 @@ export default function GarageLensPage() {
   const activeFleet = tab === 'world' ? worldFleet : myFleet;
   const filteredFleet = useMemo(() => {
     if (!activeFleet) return [];
-    return filterKind === 'all' ? activeFleet : activeFleet.filter((v) => v.kind === filterKind);
-  }, [activeFleet, filterKind]);
+    // FIX-garage-006: the fleet had a kind filter but no search — the
+    // query matches id, kind and owner, case-insensitively.
+    const q = fleetQuery.trim().toLowerCase();
+    return activeFleet.filter((v) => {
+      if (filterKind !== 'all' && v.kind !== filterKind) return false;
+      if (!q) return true;
+      return v.id.toLowerCase().includes(q)
+        || v.kind.toLowerCase().includes(q)
+        || (v.ownerDisplay || '').toLowerCase().includes(q)
+        || (v.owner_id || '').toLowerCase().includes(q);
+    });
+  }, [activeFleet, filterKind, fleetQuery]);
 
   const kindCounts = useMemo(() => {
     const counts: Record<string, number> = { cart: 0, boat: 0, canal_taxi: 0 };
@@ -411,11 +422,19 @@ export default function GarageLensPage() {
             >
               My fleet {myFleet ? `(${myFleet.length})` : ''}
             </button>
+            <input
+              type="search"
+              value={fleetQuery}
+              onChange={(e) => setFleetQuery(e.target.value)}
+              placeholder="Search fleet…"
+              aria-label="Search fleet"
+              className={cn(ds.input, 'ml-auto my-1.5 w-44 py-1.5 text-xs')}
+            />
             <select
               value={filterKind}
               onChange={(e) => setFilterKind(e.target.value)}
               aria-label="Filter by vehicle kind"
-              className={cn(ds.select, 'ml-auto my-1.5 w-36 py-1 text-xs')}
+              className={cn(ds.select, 'my-1.5 w-36 py-1 text-xs')}
             >
               <option value="all">All kinds</option>
               {VEHICLE_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
@@ -449,9 +468,11 @@ export default function GarageLensPage() {
                 icon={<Car className="h-5 w-5" aria-hidden="true" />}
                 title={tab === 'world' ? 'No vehicles in this world yet' : 'You don’t own any vehicles yet'}
                 description={
-                  tab === 'world'
-                    ? `No ${filterKind === 'all' ? '' : `${filterKind} `}vehicles are spawned in ${worldId}.`
-                    : 'Spawn one above to start your fleet.'
+                  fleetQuery.trim()
+                    ? `No vehicles match “${fleetQuery.trim()}” in this fleet.`
+                    : tab === 'world'
+                      ? `No ${filterKind === 'all' ? '' : `${filterKind} `}vehicles are spawned in ${worldId}.`
+                      : 'Spawn one above to start your fleet.'
                 }
               />
             )}

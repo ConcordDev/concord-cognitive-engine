@@ -131,6 +131,7 @@ function CadTab() {
   const [byPriority, setByPriority] = useState<Record<string, number>>({});
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [armingCad, setArmingCad] = useState<'call' | 'unit' | null>(null);
 
   const [callType, setCallType] = useState('');
   const [callLoc, setCallLoc] = useState('');
@@ -233,7 +234,16 @@ function CadTab() {
             <Field label="Latitude" value={callLat} onChange={(e) => setCallLat(e.target.value)} placeholder="37.77" type="number" />
             <Field label="Longitude" value={callLon} onChange={(e) => setCallLon(e.target.value)} placeholder="-122.41" type="number" />
           </div>
-          <Btn busy={busy === 'call'} onClick={createCall}><Siren className="w-3.5 h-3.5" /> Log Call</Btn>
+          {/* FIX-law-enforcement-007: logging a call writes a shared
+              record — two-step confirm, first click arms. */}
+          {armingCad === 'call' ? (
+            <span className="inline-flex items-center gap-2">
+              <Btn busy={busy === 'call'} onClick={() => { setArmingCad(null); void createCall(); }}><Siren className="w-3.5 h-3.5" /> Confirm Log Call</Btn>
+              <button type="button" onClick={() => setArmingCad(null)} className="text-xs text-zinc-400 hover:text-zinc-200">Cancel</button>
+            </span>
+          ) : (
+            <Btn busy={busy === 'call'} onClick={() => setArmingCad('call')}><Siren className="w-3.5 h-3.5" /> Log Call</Btn>
+          )}
         </div>
 
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 space-y-2">
@@ -246,7 +256,16 @@ function CadTab() {
             <Field label="Latitude" value={unitLat} onChange={(e) => setUnitLat(e.target.value)} placeholder="37.78" type="number" />
             <Field label="Longitude" value={unitLon} onChange={(e) => setUnitLon(e.target.value)} placeholder="-122.42" type="number" />
           </div>
-          <Btn busy={busy === 'unit'} onClick={registerUnit}><Car className="w-3.5 h-3.5" /> Add Unit</Btn>
+          {/* FIX-law-enforcement-007: registering a unit writes a shared
+              record — two-step confirm, first click arms. */}
+          {armingCad === 'unit' ? (
+            <span className="inline-flex items-center gap-2">
+              <Btn busy={busy === 'unit'} onClick={() => { setArmingCad(null); void registerUnit(); }}><Car className="w-3.5 h-3.5" /> Confirm Add Unit</Btn>
+              <button type="button" onClick={() => setArmingCad(null)} className="text-xs text-zinc-400 hover:text-zinc-200">Cancel</button>
+            </span>
+          ) : (
+            <Btn busy={busy === 'unit'} onClick={() => setArmingCad('unit')}><Car className="w-3.5 h-3.5" /> Add Unit</Btn>
+          )}
         </div>
       </div>
 

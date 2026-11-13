@@ -106,6 +106,7 @@ export function LawEnforcementActionPanel() {
   const [recipient, setRecipient] = useState('');
 
   const [busy, setBusy] = useState<ActionId | null>(null);
+  const [armingConfirm, setArmingConfirm] = useState<'dm' | 'publish' | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [caseResult, setCaseResult] = useState<CaseResult | null>(null);
   const [patrolResult, setPatrolResult] = useState<PatrolResult | null>(null);
@@ -397,18 +398,40 @@ export function LawEnforcementActionPanel() {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         {actions.map(act => {
           const Icon = act.icon; const isBusy = busy === act.id;
+          // FIX-law-enforcement-007: the two outbound tiles — DM (sends a
+          // beat report to a person) and Publish (mints a PUBLIC DTU) —
+          // arm a named confirm before they fire. Analysis tiles run
+          // directly, as before.
+          const needsConfirm = act.id === 'dm' || act.id === 'publish';
+          const armed = armingConfirm === act.id;
           return (
-            <button key={act.id} type="button" disabled={!!busy} onClick={act.handler}
-              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
+            <button key={act.id} type="button" disabled={!!busy}
+              onClick={() => { if (needsConfirm && !armed) { setArmingConfirm(act.id); return; } setArmingConfirm(null); void act.handler(); }}
+              aria-pressed={needsConfirm ? armed : undefined}
+              className={cn('flex flex-col items-start gap-1.5 p-2.5 rounded-lg text-left border transition-all', armed ? 'bg-amber-500/10 border-amber-500/50' : 'bg-zinc-900/40 border-zinc-800 hover:bg-zinc-800/60 hover:border-zinc-700', 'disabled:opacity-40 disabled:cursor-not-allowed')}>
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: act.accent + '20', color: act.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{armed ? `Confirm ${act.label}?` : act.label}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{armed ? 'Click again to confirm — or Cancel below' : act.desc}</div>
             </button>
           );
         })}
       </div>
+      {armingConfirm && (
+        <div role="alert" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
+          <span>
+            {armingConfirm === 'dm'
+              ? `Send this beat report${recipient.trim() ? ` to ${recipient.trim()}` : ''}? It leaves the lens as a direct message.`
+              : 'Publish these crime stats as a public, anonymized DTU? Anyone will be able to read it.'}
+          </span>
+          <button type="button" className="rounded bg-amber-600/30 px-2 py-1 font-medium text-amber-100 hover:bg-amber-600/50"
+            onClick={() => { const a = actions.find((x) => x.id === armingConfirm); setArmingConfirm(null); if (a) void a.handler(); }}>
+            {armingConfirm === 'dm' ? 'Confirm send' : 'Confirm publish'}
+          </button>
+          <button type="button" className="rounded bg-zinc-700/40 px-2 py-1 text-zinc-300" onClick={() => setArmingConfirm(null)}>Cancel</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {caseResult && (

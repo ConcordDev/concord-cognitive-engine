@@ -101,7 +101,7 @@ export function ProductivityTaskSection({ activeTab, onTabChange }: Productivity
       )}
 
       <div className="mb-5 flex flex-wrap items-center gap-3">
-        <nav className="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Task manager views">
+        <nav className="no-scrollbar inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.03] p-1" aria-label="Task manager views">
           {PRODUCTIVITY_TABS.map((t) => {
             const Icon = t.icon;
             const active = tab === t.id;

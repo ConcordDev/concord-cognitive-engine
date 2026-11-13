@@ -377,8 +377,10 @@ export function ComponentWorkbench() {
                 {busy && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
               </div>
 
-              {/* tabs */}
-              <div className="mb-3 flex flex-wrap gap-1 border-b border-zinc-800">
+              {/* tabs — FIX-ux-suite-013: the row wrapped to two rows at
+                  390px; tab rows scroll with the platform shape instead
+                  (single row, no wrap, hidden scrollbar). */}
+              <div className="no-scrollbar mb-3 flex gap-1 overflow-x-auto border-b border-zinc-800">
                 {([
                   ['preview', 'Preview', Eye],
                   ['props', 'Controls', SlidersHorizontal],
@@ -389,7 +391,7 @@ export function ComponentWorkbench() {
                   <button
                     key={id}
                     onClick={() => setTab(id)}
-                    className={`-mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-[11px] font-medium ${tab === id ? 'border-fuchsia-500 text-fuchsia-300' : 'border-transparent text-zinc-400 hover:text-zinc-300'}`}
+                    className={`-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 py-1.5 text-[11px] font-medium ${tab === id ? 'border-fuchsia-500 text-fuchsia-300' : 'border-transparent text-zinc-400 hover:text-zinc-300'}`}
                   >
                     <Icon className="h-3.5 w-3.5" /> {label}
                   </button>

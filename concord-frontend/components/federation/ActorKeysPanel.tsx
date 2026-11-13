@@ -45,6 +45,9 @@ export function ActorKeysPanel() {
   const [algo, setAlgo] = useState('rsa-sha256');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [armingRegister, setArmingRegister] = useState(false);
+  // Editing any register field disarms the confirm (FIX-federation-002).
+  useEffect(() => { setArmingRegister(false); }, [domain, keyId, publicKey, algo]);
 
   const [verifyDomain, setVerifyDomain] = useState('');
   const [verifyKeyId, setVerifyKeyId] = useState('');
@@ -145,15 +148,39 @@ export function ActorKeysPanel() {
           className="bg-black/60 border border-white/10 rounded px-3 py-2 text-xs text-gray-200 font-mono sm:col-span-2"
         />
       </div>
-      <button
-        type="button"
-        onClick={register}
-        disabled={busy}
-        className="px-3 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 rounded text-white text-sm inline-flex items-center gap-1 mb-2"
-      >
-        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-        Register key
-      </button>
+      {/* FIX-federation-002: registering a key can ROTATE an existing
+          signing key (registerActorKey returns rotated) — it arms a
+          named confirm first; editing any field disarms it. */}
+      {armingRegister ? (
+        <span className="inline-flex items-center gap-2 mb-2">
+          <button
+            type="button"
+            onClick={() => { setArmingRegister(false); void register(); }}
+            disabled={busy}
+            className="px-3 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 rounded text-white text-sm inline-flex items-center gap-1"
+          >
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+            Confirm register{keyId.trim() ? ` — rotates any existing key “${keyId.trim()}”` : ''}
+          </button>
+          <button
+            type="button"
+            onClick={() => setArmingRegister(false)}
+            className="px-3 py-2 bg-zinc-700/60 hover:bg-zinc-700 rounded text-zinc-200 text-sm"
+          >
+            Cancel
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setArmingRegister(true)}
+          disabled={busy}
+          className="px-3 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 rounded text-white text-sm inline-flex items-center gap-1 mb-2"
+        >
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+          Register key
+        </button>
+      )}
       {err && <div className="text-rose-300 text-xs mb-2">{err}</div>}
 
       {/* Verify */}

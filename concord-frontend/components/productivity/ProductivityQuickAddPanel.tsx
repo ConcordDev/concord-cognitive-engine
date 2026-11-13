@@ -83,10 +83,10 @@ export function ProductivityQuickAddPanel({ onChange }: { onChange: () => void }
           onKeyDown={(e) => { if (e.key === 'Enter') void add(); }}
           placeholder="submit report tomorrow 5pm p1 #work @urgent"
           aria-label="Natural language quick add"
-          className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+          className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500"
         />
         <button type="button" onClick={add} disabled={adding || !text.trim()}
-          className="flex items-center gap-1 px-3 py-2 text-xs font-medium bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white rounded-lg">
+          className="flex items-center gap-1 px-3 py-2.5 text-xs font-medium bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white rounded-lg">
           {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Add
         </button>
       </div>

@@ -102,13 +102,13 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
       <div className="flex items-center gap-2">
         <div className="flex flex-wrap gap-1 flex-1">
           <button type="button" onClick={() => setProjectFilter('')}
-            className={cn('text-[11px] px-2 py-0.5 rounded-full border', projectFilter === '' ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-zinc-700 text-zinc-400')}>
+            className={cn('text-[11px] px-2.5 py-1.5 rounded-full border', projectFilter === '' ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-zinc-700 text-zinc-400')}>
             All
           </button>
           {projects.map((p) => (
             <span key={p.id} className="inline-flex items-center">
               <button type="button" onClick={() => setProjectFilter(p.id)}
-                className={cn('text-[11px] pl-2 pr-1 py-0.5 rounded-l-full border-y border-l',
+                className={cn('text-[11px] pl-2.5 pr-1.5 py-1.5 rounded-l-full border-y border-l',
                   projectFilter === p.id ? 'border-red-700/50 bg-red-950/40 text-red-300' : 'border-zinc-700 text-zinc-400')}>
                 {p.name} ({p.taskCount})
               </button>
@@ -118,12 +118,12 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
                 <span className="inline-flex items-center">
                   <button type="button" onClick={() => delProject(p.id)}
                     aria-label={`Confirm delete ${p.name}`}
-                    className="text-[11px] px-1.5 py-0.5 border-y bg-rose-950/60 text-rose-300 hover:bg-rose-900/60">
+                    className="text-[11px] px-2 py-1.5 border-y bg-rose-950/60 text-rose-300 hover:bg-rose-900/60">
                     Delete?
                   </button>
                   <button type="button" onClick={() => setConfirmingProjectDelete(null)}
                     aria-label="Cancel delete"
-                    className={cn('text-[11px] px-1 py-0.5 rounded-r-full border-y border-r text-zinc-400',
+                    className={cn('text-[11px] px-2 py-1.5 rounded-r-full border-y border-r text-zinc-400',
                       projectFilter === p.id ? 'border-red-700/50 bg-red-950/40' : 'border-zinc-700')}>
                     ✕
                   </button>
@@ -131,7 +131,7 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
               ) : (
                 <button type="button" onClick={() => setConfirmingProjectDelete(p.id)}
                   aria-label={`Delete ${p.name}`}
-                  className={cn('text-[11px] px-1 py-0.5 rounded-r-full border-y border-r text-zinc-400 hover:text-rose-400',
+                  className={cn('text-[11px] px-2 py-1.5 rounded-r-full border-y border-r text-zinc-400 hover:text-rose-400',
                     projectFilter === p.id ? 'border-red-700/50 bg-red-950/40' : 'border-zinc-700')}>
                   ✕
                 </button>

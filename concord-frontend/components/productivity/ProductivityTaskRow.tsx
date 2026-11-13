@@ -46,9 +46,13 @@ export function ProductivityTaskRow({ task, onChange, showDelete = true }: {
   return (
     <li className="bg-zinc-900/70 border border-zinc-800 rounded-lg">
       <div className="flex items-center gap-2 px-3 py-2">
+        {/* FIX-productivity-012: the complete toggle's hit area is the
+            40px box; the visible circle stays 16px inside it. */}
         <button aria-label="Confirm" type="button" onClick={complete}
-          className="w-4 h-4 rounded-full border border-zinc-600 hover:border-red-500 flex items-center justify-center shrink-0">
-          <Check className="w-3 h-3 text-transparent hover:text-red-400" />
+          className="flex h-10 w-10 -my-2 items-center justify-center shrink-0">
+          <span className="w-4 h-4 rounded-full border border-zinc-600 hover:border-red-500 flex items-center justify-center">
+            <Check className="w-3 h-3 text-transparent hover:text-red-400" />
+          </span>
         </button>
         <Flag className={cn('w-3 h-3 shrink-0', PRIORITY_COLOR[task.priority] || 'text-zinc-600')} />
         <div className="min-w-0 flex-1">
@@ -65,15 +69,15 @@ export function ProductivityTaskRow({ task, onChange, showDelete = true }: {
           aria-expanded={editing}
           aria-label={editing ? `Close ${task.content}` : `Edit ${task.content}`}
           onClick={() => setEditing((v) => !v)}
-          className="text-[11px] text-zinc-400 hover:text-zinc-100 shrink-0"
+          className="px-2 py-2 text-[11px] text-zinc-400 hover:text-zinc-100 shrink-0"
         >
           {editing ? 'Close' : 'Edit'}
         </button>
         {showDelete && (
           <StickyDeleteConfirm
             onConfirm={del}
-            className="text-zinc-600 hover:text-rose-400 shrink-0"
-            armLabel={<Trash2 className="w-3.5 h-3.5" />}
+            className="p-2.5 text-zinc-600 hover:text-rose-400 shrink-0"
+            armLabel={<Trash2 className="w-4 h-4" />}
             armAriaLabel={`Delete task ${task.content}`}
             confirmLabel="Delete this task?"
             confirmAriaLabel="Confirm delete task"

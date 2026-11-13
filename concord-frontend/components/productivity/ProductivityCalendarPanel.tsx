@@ -110,7 +110,7 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
       {/* Month nav */}
       <div className="flex items-center justify-between">
         <button type="button" onClick={() => setAnchor((a) => shiftMonth(a, -1))}
-          className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300" aria-label="Previous month">
+          className="grid h-10 w-10 place-items-center rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300" aria-label="Previous month">
           <ChevronLeft className="w-4 h-4" />
         </button>
         <div className="flex items-center gap-1.5 text-sm font-semibold text-zinc-100">
@@ -118,7 +118,7 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
           {cal?.month} <span className="text-[11px] font-normal text-zinc-400">· {cal?.totalScheduled} scheduled</span>
         </div>
         <button type="button" onClick={() => setAnchor((a) => shiftMonth(a, 1))}
-          className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300" aria-label="Next month">
+          className="grid h-10 w-10 place-items-center rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300" aria-label="Next month">
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>

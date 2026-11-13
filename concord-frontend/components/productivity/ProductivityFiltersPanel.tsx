@@ -103,17 +103,17 @@ export function ProductivityFiltersPanel({ onChange }: { onChange: () => void })
         </div>
         <div className="grid grid-cols-2 gap-2">
           <select aria-label="Filter by project" value={query.projectId} onChange={(e) => setQuery({ ...query, projectId: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-2.5 text-xs text-zinc-100">
             <option value="">Any project</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           <select aria-label="Filter by priority" value={query.priority} onChange={(e) => setQuery({ ...query, priority: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-2.5 text-xs text-zinc-100">
             <option value="">Any priority</option>
             {[1, 2, 3, 4].map((p) => <option key={p} value={p}>Priority {p}</option>)}
           </select>
           <select aria-label="Filter by due date" value={query.due} onChange={(e) => setQuery({ ...query, due: e.target.value as DueBucket })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-2.5 text-xs text-zinc-100">
             <option value="">Any due date</option>
             <option value="overdue">Overdue</option>
             <option value="today">Due today</option>
@@ -121,9 +121,9 @@ export function ProductivityFiltersPanel({ onChange }: { onChange: () => void })
             <option value="none">No due date</option>
           </select>
           <input aria-label="Filter by label" placeholder="Label" value={query.label} onChange={(e) => setQuery({ ...query, label: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-2.5 text-xs text-zinc-100" />
           <input aria-label="Filter by text search" placeholder="Text search" value={query.search} onChange={(e) => setQuery({ ...query, search: e.target.value })}
-            className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-2.5 text-xs text-zinc-100" />
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={runAdHoc}

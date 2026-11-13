@@ -53,6 +53,18 @@
   --lens-gradient: linear-gradient(135deg, transparent, transparent);
 }
 
+/* FIX-translation-007: native form controls (select dropdown popups,
+   scrollbars, date pickers) render with the OS color scheme unless the
+   page declares one — in the dark theme the open option list came out
+   white-on-white, readable only by keyboard. Declare the scheme with
+   the theme so native popups match it. */
+:root {
+  color-scheme: dark;
+}
+[data-theme="light"], .light {
+  color-scheme: light;
+}
+
 :root {
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 10, 10, 15;
