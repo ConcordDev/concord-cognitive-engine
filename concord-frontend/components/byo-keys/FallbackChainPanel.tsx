@@ -17,6 +17,8 @@ export function FallbackChainPanel() {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await lensRun<{ chains: Record<string, string[]> }>('byo_keys', 'list_fallbacks', {});
@@ -32,8 +34,13 @@ export function FallbackChainPanel() {
 
   const save = async (slot: string) => {
     setBusy(true);
-    await lensRun('byo_keys', 'set_fallback', { slot, chain: draft });
+    const r = await lensRun('byo_keys', 'set_fallback', { slot, chain: draft });
     setBusy(false);
+    // Same contract as the budget panel (FIX-byo-keys-009): a refusal
+    // speaks and the editor stays open; an empty chain is a clear.
+    if (!r.data?.ok) { setError(String(r.data?.error || r.data?.message || 'That chain was not saved.')); return; }
+    setError(null);
+    setNotice(draft.length === 0 ? 'Fallback chain cleared.' : null);
     setEditing(null);
     refresh();
   };
@@ -59,6 +66,12 @@ export function FallbackChainPanel() {
         If a slot&apos;s primary key fails (rate limit, outage, bad key), Concord retries through
         the next <em>active</em> slot in its chain — in order.
       </p>
+      {error && (
+        <div className="mb-3 text-[11px] text-red-400" data-testid="fallback-error">{error}</div>
+      )}
+      {notice && (
+        <div className="mb-3 text-[11px] text-zinc-400" data-testid="fallback-notice">{notice}</div>
+      )}
 
       <ul className="space-y-2">
         {SLOTS.map((slot) => {

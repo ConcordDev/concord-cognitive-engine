@@ -109,6 +109,7 @@ export default function ByoKeysLens() {
   const [editing, setEditing] = useState<string | null>(null); // slot being edited
   const [form, setForm] = useState({ provider: 'anthropic', modelId: '', apiKey: '' });
   const [testResult, setTestResult] = useState<{ slot: string; ok: boolean; error?: string } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [modelPicker, setModelPicker] = useState<{ slot: string; provider: string; modelId: string | null } | null>(null);
   const [brainMode, setBrainMode] = useState<'private' | 'high_power'>('private');
@@ -158,6 +159,7 @@ export default function ByoKeysLens() {
   };
 
   const cancelEdit = () => {
+    setSaveError(null);
     setEditing(null);
     setForm({ provider: 'anthropic', modelId: '', apiKey: '' });
   };
@@ -166,9 +168,13 @@ export default function ByoKeysLens() {
     const allowBlank = form.provider === 'concord_default' || form.provider === 'ollama';
     const keyProblem = apiKeyError(form.apiKey, { allowBlank });
     if (keyProblem) {
-      useUIStore.getState().addToast({ type: 'warning', message: keyProblem });
+      // Inline and persistent (FIX-byo-keys-006): a toast alone evaporates
+      // before the user can act on it, and an empty edit-save read as
+      // nothing happening at all.
+      setSaveError(keyProblem);
       return;
     }
+    setSaveError(null);
     const apiKey = form.apiKey.trim();
     setBusy(true);
     const r = await macro('byo_keys', 'set', {
@@ -181,7 +187,7 @@ export default function ByoKeysLens() {
       cancelEdit();
       refresh();
     } else {
-      useUIStore.getState().addToast({ type: 'error', message: `Save failed: ${r?.reason || 'unknown'}` });
+      setSaveError(`Save failed: ${String(r?.error || r?.reason || 'unknown').replace(/_/g, ' ')}`);
     }
   };
 
@@ -395,6 +401,9 @@ export default function ByoKeysLens() {
                             </p>
                           </div>
                         </>
+                      )}
+                      {saveError && (
+                        <p role="alert" className="text-xs text-red-400">{saveError}</p>
                       )}
                       <div className="flex gap-2">
                         <button

@@ -257,6 +257,12 @@ describe("byo_keys — key health", () => {
     assert.equal(row.provider, "anthropic");
   });
 
+  it("test on a slot with no key fails with the reason in words (FIX-byo-keys-007)", async () => {
+    const r = await call("test", ctxA, { slot: "repair" });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "That brain slot has no key saved yet.");
+  });
+
   it("health_list never surfaces health for a slot with no key (FIX-byo-keys-008)", async () => {
     await call("record_health", ctxA, { slot: "repair", ok: false, error: "stale failure" });
     const r = await call("health_list", ctxA);

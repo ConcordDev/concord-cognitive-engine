@@ -115,7 +115,35 @@ export default function registerByoKeysMacros(register) {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
     if (!db || !userId) return { ok: false, reason: "no_actor" };
-    const r = await testConnection(db, userId, input?.slot);
+    const raw = await testConnection(db, userId, input?.slot);
+    // A failed test always carries its reason in words (FIX-byo-keys-007):
+    // before this, the reason tokens ('no_override', 'key_undecryptable')
+    // surfaced raw when they surfaced at all, and a provider failure with
+    // no error string read as a bare 'test failed'.
+    const REASON_WORDS = {
+      missing_inputs: "That brain slot has no key saved yet.",
+      no_override: "That brain slot has no key saved yet.",
+      key_undecryptable: "The saved key could not be decrypted — save it again.",
+      no_actor: "Not signed in.",
+    };
+    let r = raw;
+    if (!raw?.ok) {
+      let words = REASON_WORDS[raw?.reason] || null;
+      if (!words && typeof raw?.error === "string" && raw.error.trim()) {
+        const t = raw.error.trim();
+        if (t.startsWith("{") || t.startsWith("[")) {
+          try {
+            const parsed = JSON.parse(t);
+            const obj = Array.isArray(parsed) ? parsed[0] : parsed;
+            const msg = obj && (typeof obj.message === "string" ? obj.message
+              : typeof obj.error === "string" ? obj.error
+              : obj.error?.message);
+            words = typeof msg === "string" && msg ? msg : "The provider returned an error.";
+          } catch { words = "The provider returned an error."; }
+        } else words = t;
+      }
+      r = { ...raw, error: words || "The provider did not answer — try again." };
+    }
     // Mirror the outcome into the health substrate so the list shows it.
     if (userId && VALID_SLOTS.has(input?.slot)) {
       const hm = userMap("health", userId);
