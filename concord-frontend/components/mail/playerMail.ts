@@ -15,6 +15,7 @@ export interface MailDraft {
   codCc: number;
   attachmentDtuIds: string[];
   attachmentTitles: Record<string, string>;
+  parentId?: string;
   updatedAt: number;
 }
 
@@ -51,6 +52,7 @@ export function sendFailureText(error: string | undefined): string {
   if (error === 'dtu_not_owned') return 'Not sent. You can only attach DTUs you own.';
   if (error === 'insufficient_funds') return 'Not sent. Not enough Concord Coin to escrow that gift.';
   if (error === 'cannot_mail_self') return 'Not sent. You cannot mail yourself.';
+  if (error === 'parent_not_found') return 'Not sent. The mail this replies to could not be found.';
   if (error === 'subject_required') return 'Not sent. A subject is required.';
   if (error === 'missing_users' || error === 'no_user' || error === 'recipient_unresolved') return 'Not sent. Pick a recipient who has a Concord account.';
   return error ? `Not sent. ${error.replace(/_/g, ' ')}.` : 'Not sent.';

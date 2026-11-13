@@ -223,6 +223,9 @@ export default function registerMailMacros(register) {
       attachmentTitles: (input.attachmentTitles && typeof input.attachmentTitles === "object")
         ? Object.fromEntries(Object.entries(input.attachmentTitles).slice(0, 12).map(([k, v]) => [String(k), String(v).slice(0, 120)]))
         : {},
+      // FIX-mail-016: a reply draft keeps its thread link, so a restored
+      // reply still threads under the original when it is finally sent.
+      parentId: String(input.parentId || "").slice(0, 128),
       updatedAt: Date.now(),
     };
     const blank = !draft.toUserId && !draft.subject && !draft.body && draft.attachmentDtuIds.length === 0;

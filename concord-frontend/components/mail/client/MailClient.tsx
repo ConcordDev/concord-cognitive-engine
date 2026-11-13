@@ -20,6 +20,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useUIStore } from '@/store/ui';
 import { MailFolderPanel } from '@/components/mail/MailFolderPanel';
 import { ComposeMailPanel } from '@/components/mail/ComposeMailPanel';
+import type { ComposeSeed } from '@/components/mail/types';
 import {
   NOT_CONNECTED, SYSTEM_FOLDERS, fmtListDate, forwardDraft, gmail, gmailErrorText, replyDraft, senderName,
   type Draft, type FullMessage, type GmailLabel, type Outgoing, type ThreadSummary,
@@ -495,10 +496,15 @@ export function ConcordMailbox({ composeSignal = 0 }: { composeSignal?: number }
   });
   useEffect(() => { persistConcordTab({ tab }); }, [tab, persistConcordTab]);
   if (tab !== 'compose') lastFolderRef.current = tab;
+  // FIX-mail-016: a reply/forward hands the composer a seed (recipient,
+  // quoted body, thread parent). Any other route into Compose — the tab
+  // button, the floating compose signal — starts from a blank seed.
+  const [composeSeed, setComposeSeed] = useState<ComposeSeed | null>(null);
   const lastCompose = useRef(composeSignal);
   useEffect(() => {
     if (composeSignal !== lastCompose.current) {
       lastCompose.current = composeSignal;
+      setComposeSeed(null);
       setTab('compose');
     }
   }, [composeSignal]);
@@ -507,19 +513,19 @@ export function ConcordMailbox({ composeSignal = 0 }: { composeSignal?: number }
       <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-white/5 px-3 py-2">
         <div role="tablist" aria-label="Mail folders" className="flex gap-1">
           {CONCORD_TABS.map((t) => (
-            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
+            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => { if (t.id === 'compose') setComposeSeed(null); setTab(t.id); }}
               className={cn('rounded-full px-3 py-1 text-[12px] transition-colors', tab === t.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200')}>{t.label}</button>
           ))}
         </div>
         <span className="ml-auto text-[11px] text-zinc-500">Player-to-player mail with items, CC and cash on delivery</span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {tab === 'compose' && <ComposeMailPanel onSent={() => setTab('sent')} />}
+        {tab === 'compose' && <ComposeMailPanel onSent={() => setTab('sent')} seed={composeSeed} />}
         {/* FIX-mail-019: the folder panel stays mounted (hidden) while
             composing, so its filter/search/selection survive the round trip
             instead of resetting on remount. */}
         <div className={tab === 'compose' ? 'hidden' : undefined}>
-          <MailFolderPanel folder={tab === 'compose' ? lastFolderRef.current : tab} onCompose={() => setTab('compose')} />
+          <MailFolderPanel folder={tab === 'compose' ? lastFolderRef.current : tab} onCompose={(seed) => { setComposeSeed(seed ?? null); setTab('compose'); }} />
         </div>
       </div>
     </Panel>

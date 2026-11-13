@@ -9,7 +9,7 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 import { playerMail, sendFailureText } from './playerMail';
-import { MAX_ATTACHMENTS, type DTU } from './types';
+import { MAX_ATTACHMENTS, type ComposeSeed, type DTU } from './types';
 
 // FIX-mail-017: the server refuses amounts outside 0..1,000,000 CC
 // (badNumericField in server/domains/mail.js). The fields hold the
@@ -24,7 +24,7 @@ function parseAmount(text: string): number | null {
   return Math.round(n * 100) / 100;
 }
 
-export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
+export function ComposeMailPanel({ onSent, seed }: { onSent: () => void; seed?: ComposeSeed | null }) {
   const [composeTo, setComposeTo] = useState('');
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
@@ -52,6 +52,9 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const [recipientError, setRecipientError] = useState<string | null>(null);
+  // FIX-mail-016: when this compose is a reply, the id of the mail it
+  // answers — the send carries it and the mail threads under the original.
+  const [parentId, setParentId] = useState<string | null>(null);
 
   // FIX-mail-002: compose autosaves as a draft (Gmail-style) — a reload
   // restores the in-progress mail instead of emptying the form.
@@ -64,11 +67,22 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
     if (to) setComposeTo(to);
   }, []);
 
+  // FIX-mail-016: a reply/forward seed (handed over by the folder panel)
+  // wins over the autosaved draft for this mount — the draft stays saved
+  // for a later plain compose.
+  useEffect(() => {
+    if (!seed) return;
+    if (seed.toUserId) setComposeTo(seed.toUserId);
+    setComposeSubject(seed.subject);
+    setComposeBody(seed.body);
+    setParentId(seed.parentId ?? null);
+  }, [seed]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const j = await playerMail('draft-get');
-      if (cancelled) return;
+      if (cancelled || seed) { draftHydrated.current = true; return; }
       const d = j.ok ? j.draft : null;
       if (d) {
         const urlTo = typeof window !== 'undefined'
@@ -82,6 +96,7 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
         if (d.body) setComposeBody((prev) => prev || d.body);
         if (d.attachmentCc) setComposeCcText((prev) => prev || String(d.attachmentCc));
         if (d.codCc) setComposeCodText((prev) => prev || String(d.codCc));
+        if (d.parentId) setParentId((prev) => prev || d.parentId);
         if (d.attachmentDtuIds?.length) {
           setComposeAttachments(d.attachmentDtuIds.map((id) => ({
             id, title: d.attachmentTitles?.[id] || id,
@@ -92,7 +107,7 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
       draftHydrated.current = true;
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [seed]);
 
   useEffect(() => {
     if (!draftHydrated.current) return;
@@ -105,11 +120,12 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
         codCc: parseAmount(composeCodText) ?? 0,
         attachmentDtuIds: composeAttachments.map((d) => d.id),
         attachmentTitles: Object.fromEntries(composeAttachments.map((d) => [d.id, d.title || d.id])),
+        parentId: parentId || '',
       });
       if (j.ok) setDraftSavedAt(Date.now());
     }, 800);
     return () => clearTimeout(t);
-  }, [composeTo, composeSubject, composeBody, composeCcText, composeCodText, composeAttachments]);
+  }, [composeTo, composeSubject, composeBody, composeCcText, composeCodText, composeAttachments, parentId]);
 
   const handleAttachDtu = useCallback((dtu: DTU) => {
     setComposeAttachments((prev) => {
@@ -153,11 +169,13 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
         attachmentCc: gift,
         codCc: cod,
         attachmentDtuIds: composeAttachments.map((d) => d.id),
+        ...(parentId ? { parentId } : {}),
       });
       if (j.ok && j.id) {
         setFlash({ kind: 'ok', msg: `Mail sent. ${j.id}` });
         setComposeTo(''); setComposeSubject(''); setComposeBody(''); setComposeCcText(''); setComposeCodText('');
         setComposeAttachments([]);
+        setParentId(null);
         onSent();
       } else {
         const msg = sendFailureText(j.ok ? undefined : j.error);
@@ -165,7 +183,7 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
         setFlash({ kind: 'err', msg });
       }
     } finally { setBusy(null); }
-  }, [composeTo, composeSubject, composeBody, composeCcText, composeCodText, composeAttachments, onSent]);
+  }, [composeTo, composeSubject, composeBody, composeCcText, composeCodText, composeAttachments, parentId, onSent]);
 
   return (
     <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
@@ -176,6 +194,11 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
       )}
       <form onSubmit={handleSend} className={cn(ds.panelBare, 'p-4')}>
         <h2 className="mb-3 text-sm font-semibold text-white">Compose mail</h2>
+        {parentId && (
+          <p className="mb-2 text-[11px] text-gray-400" role="status">
+            This is a reply — it will thread under the original mail in both inboxes.
+          </p>
+        )}
         <label className="mb-2 block">
           <span className={ds.overline}>Recipient</span>
           <div className="mt-1">

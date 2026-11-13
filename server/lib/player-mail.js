@@ -62,6 +62,23 @@ export function sendMail(db, input) {
   const codCc = Math.max(0, Number(input?.codCc) || 0);
   const worldId = input?.worldId || null;
 
+  // FIX-mail-016: a reply names the mail it answers (parentId). The link
+  // is only honoured when the parent exists and the sender is a party to
+  // it — a forged parent id must not thread a mail under a stranger's
+  // conversation, and a dangling one must not silently unthread.
+  const parentId = String(input?.parentId || "").trim() || null;
+  if (parentId) {
+    let parentRow = null;
+    try {
+      parentRow = db.prepare(`SELECT from_user_id AS fromUser, to_user_id AS toUser FROM player_mail WHERE id = ?`).get(parentId);
+    } catch {
+      return { ok: false, error: "parent_lookup_failed" };
+    }
+    if (!parentRow || (parentRow.fromUser !== fromUserId && parentRow.toUser !== fromUserId)) {
+      return { ok: false, error: "parent_not_found" };
+    }
+  }
+
   // A listed DTU is attached only when this sender still owns it. Anything
   // else is refused before escrow, so the mail row never claims a transfer
   // that claim cannot honestly perform.
@@ -113,10 +130,10 @@ export function sendMail(db, input) {
     db.prepare(`
       INSERT INTO player_mail
         (id, from_user_id, to_user_id, world_id, subject, body,
-         attachment_dtu_ids, attachment_cc, cod_cc, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch() + ? * 86400)
+         attachment_dtu_ids, attachment_cc, cod_cc, expires_at, parent_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch() + ? * 86400, ?)
     `).run(id, fromUserId, toUserId, worldId, subject, body,
-            JSON.stringify(attachmentDtuIds), attachmentCc, codCc, DEFAULT_TTL_DAYS);
+            JSON.stringify(attachmentDtuIds), attachmentCc, codCc, DEFAULT_TTL_DAYS, parentId);
   });
 
   try {
@@ -140,7 +157,7 @@ export function listInbox(db, userId, opts = {}) {
     return db.prepare(`
       SELECT id, from_user_id AS fromUser, to_user_id AS toUser, world_id AS worldId, subject, body,
              status, sent_at AS sentAt, read_at AS readAt, claimed_at AS claimedAt,
-             declined_at AS declinedAt,
+             declined_at AS declinedAt, parent_id AS parentId,
              expires_at AS expiresAt, attachment_dtu_ids, attachment_cc AS attachmentCc,
              cod_cc AS codCc
       FROM player_mail
@@ -159,7 +176,7 @@ export function listSent(db, userId, opts = {}) {
     return db.prepare(`
       SELECT id, from_user_id AS fromUser, to_user_id AS toUser, world_id AS worldId, subject, body,
              status, sent_at AS sentAt, read_at AS readAt, claimed_at AS claimedAt,
-             declined_at AS declinedAt,
+             declined_at AS declinedAt, parent_id AS parentId,
              expires_at AS expiresAt, attachment_dtu_ids, attachment_cc AS attachmentCc,
              cod_cc AS codCc
       FROM player_mail
@@ -177,7 +194,8 @@ export function getMail(db, mailId, userId) {
     const row = db.prepare(`
       SELECT id, from_user_id AS fromUser, to_user_id AS toUser, world_id AS worldId,
              subject, body, status, sent_at AS sentAt, read_at AS readAt,
-             claimed_at AS claimedAt, declined_at AS declinedAt, expires_at AS expiresAt,
+             claimed_at AS claimedAt, declined_at AS declinedAt, parent_id AS parentId,
+             expires_at AS expiresAt,
              attachment_dtu_ids, attachment_cc AS attachmentCc, cod_cc AS codCc
       FROM player_mail WHERE id = ?
     `).get(mailId);
