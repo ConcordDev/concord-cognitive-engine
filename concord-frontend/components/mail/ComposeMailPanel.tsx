@@ -7,6 +7,7 @@ import { DTUPickerModal } from '@/components/dtu/DTUPickerModal';
 import { RecipientSearchInput } from '@/components/message/RecipientSearchInput';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api/client';
 import { playerMail, sendFailureText } from './playerMail';
 import { MAX_ATTACHMENTS, type DTU } from './types';
 
@@ -30,6 +31,22 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
   const [composeCcText, setComposeCcText] = useState('');
   const [composeCodText, setComposeCodText] = useState('');
   const [amountError, setAmountError] = useState<string | null>(null);
+  // FIX-mail-010: the server refuses self-mail ('cannot mail self'),
+  // but the composer only found out from a red banner AFTER Send.
+  // Learn the signed-in id up front so the refusal is explained at
+  // the recipient field, before Send is ever pressed.
+  const [myId, setMyId] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/api/auth/me')
+      .then((res) => {
+        const id = (res.data as { user?: { id?: string } } | undefined)?.user?.id;
+        if (!cancelled && id) setMyId(String(id));
+      })
+      .catch(() => { /* fail-soft: the server refusal stays the backstop */ });
+    return () => { cancelled = true; };
+  }, []);
+  const isSelfRecipient = !!myId && composeTo.trim() === myId;
   const [composeAttachments, setComposeAttachments] = useState<DTU[]>([]);
   const [showDtuPicker, setShowDtuPicker] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -164,6 +181,11 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
               inputId="mail-compose-recipient"
             />
             {recipientError && <p className="mt-1 text-[11px] text-rose-300" role="alert">{recipientError}</p>}
+            {isSelfRecipient && (
+              <p className="mt-1 text-[11px] text-amber-300" role="note">
+                That&rsquo;s you — player mail can&rsquo;t be sent to yourself, so Send stays off until you pick someone else.
+              </p>
+            )}
           </div>
         </label>
         <label className="mb-2 block">
@@ -247,7 +269,7 @@ export function ComposeMailPanel({ onSent }: { onSent: () => void }) {
         <div className="flex items-center gap-3">
           <button
             type="submit"
-            disabled={!composeTo.trim() || !composeSubject.trim() || busy === 'send'}
+            disabled={!composeTo.trim() || !composeSubject.trim() || busy === 'send' || isSelfRecipient}
             className={cn(ds.btnPrimary, 'px-3 py-1.5 text-[12px]')}
           >
             <Send className="h-3.5 w-3.5" />

@@ -15,6 +15,9 @@ vi.mock('@/components/mail/playerMail', () => ({
   playerMail: (action: string, input?: unknown) => playerMail(action, input),
   sendFailureText: () => 'Send failed.',
 }));
+vi.mock('@/lib/api/client', () => ({
+  api: { get: vi.fn(() => Promise.resolve({ data: {} })), post: vi.fn(), delete: vi.fn() },
+}));
 vi.mock('@/components/message/RecipientSearchInput', () => ({
   RecipientSearchInput: ({ value, onChange }: { value: string; onChange: (v: string) => void }) =>
     React.createElement('input', {
