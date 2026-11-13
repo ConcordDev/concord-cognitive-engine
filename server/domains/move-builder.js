@@ -26,6 +26,7 @@ import {
   ELEMENT_EFFECT_BIAS,
 } from "../lib/move-descriptor.js";
 import crypto from "node:crypto";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 
 // Reject a poisoned numeric input (NaN/Infinity/1e308/negative) before it can
 // silently clamp through the Math.min/max bounds or be persisted. A caller that
@@ -132,7 +133,61 @@ function dtuColumns(db) {
   catch { return new Set(); }
 }
 
+
+// ── lens export provider (FIX-move-builder-014) ────────────────────────
+// A minted move persists ONLY as a row in the legacy `dtus` table
+// (type='move_recipe', creator_id=caller, meta in `data`). The platform
+// DTU read model (dtu/list) reads the separate dtu-store corpus, so it
+// never returns minted moves at all — the header export honestly found
+// nothing. This provider reads the same table the domain's own list
+// macro reads, in the same two shapes (runtime type/creator_id/data;
+// minimal body_json/owner_user_id), and emits the caller's moves.
+function moveBuilderExportRows(ctx) {
+  const db = ctx?.db;
+  const userId = ctx?.actor?.userId || ctx?.userId || null;
+  if (!db || !userId) return [];
+  const cols = dtuColumns(db);
+  let rows = [];
+  try {
+    if (cols.has("type") && cols.has("creator_id") && cols.has("data")) {
+      rows = db.prepare(`
+        SELECT id, title, data AS body, created_at FROM dtus
+        WHERE type = 'move_recipe' AND creator_id = ?
+        ORDER BY rowid DESC LIMIT 1000
+      `).all(userId);
+    } else if (cols.has("body_json") && cols.has("owner_user_id")) {
+      rows = db.prepare(`
+        SELECT id, title, body_json AS body FROM dtus
+        WHERE owner_user_id = ? AND body_json LIKE '%"kind":"move_recipe"%'
+        ORDER BY rowid DESC LIMIT 1000
+      `).all(userId);
+    } else {
+      return [];
+    }
+  } catch { return []; }
+  return rows.map((r) => {
+    let meta = {};
+    try { meta = JSON.parse(r.body || "{}"); } catch { meta = {}; }
+    return {
+      id: r.id,
+      type: "move",
+      title: r.title || meta.name || "Untitled move",
+      createdAt: r.created_at ?? null,
+      updatedAt: r.created_at ?? null,
+      data: {
+        element: meta.element || null,
+        skillKind: meta.skill_kind || null,
+        tier: meta.tier ?? null,
+        allocation: meta.allocation || null,
+        motion: meta.motion || null,
+        balanced: meta.balanced ?? null,
+      },
+    };
+  });
+}
+
 export default function registerMoveBuilderMacros(register) {
+  registerLensExportProvider("move-builder", moveBuilderExportRows);
   /**
    * move-builder.compose — PURE preview. Given a skill kind + element + modifier
    * allocation, return the derived motion descriptor (what it animates as) and
