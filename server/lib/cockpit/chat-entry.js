@@ -13,7 +13,7 @@ import { scrubUserFacingToolNames } from "../chat/tool-turn-reply.js";
 
 const reply = (text, cockpit) => ({ handled: true, reply: text, meta: { cockpit } });
 
-function replyFor(run, steps, kind) {
+export function replyFor(run, steps, kind) {
   const done = steps.filter((s) => s.status === "done").length;
   switch (run.status) {
     case "done": {
@@ -50,7 +50,7 @@ export async function handleChatTurn(a) {
   }
 
   const makeDeps = (run) => ({
-    exec: makeExec({ db: a.db, userId: a.userId, sessionId: a.chatSessionId, runMacro: a.runMacro, lensActions: a.lensActions, surface: run.surface }),
+    exec: makeExec({ db: a.db, userId: a.userId, sessionId: a.chatSessionId, runMacro: a.runMacro, lensActions: a.lensActions, surface: run.surface, runId: run.id }),
     lensActions: a.lensActions,
     verify: verifyStep,
     ...(a.deps?.engineDeps || {}),

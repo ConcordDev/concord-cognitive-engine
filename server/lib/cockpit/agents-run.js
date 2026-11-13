@@ -39,7 +39,7 @@ export async function runAgentOnCore({ db, userId, goal, allowTools, maxSteps, r
   await driveRun({
     db, runId, owner: `agents:${process.pid}`, deadlineMs,
     deps: {
-      exec: deps.exec || makeExec({ db, userId, sessionId: null, runMacro, lensActions, surface: "agents_lens" }),
+      exec: deps.exec || makeExec({ db, userId, sessionId: null, runMacro, lensActions, surface: "agents_lens", runId }),
       lensActions, verify: verifyStep, ...(deps.engineDeps || {}),
       emit: (e) => { publishRun(e.runId, e); },
     },

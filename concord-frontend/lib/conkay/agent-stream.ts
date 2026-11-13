@@ -27,6 +27,15 @@ export interface AgentDone {
   /** Set by the server only when the small local backup model answered (GPU brain offline). */
   confidence?: 'low';
   confidenceReason?: string;
+  /** Set when the cockpit ran this turn as a run (the `done` event carries it). */
+  cockpitRunId?: string;
+}
+
+/** A `cockpit:*` SSE event (step / run / confirm progress) for a run the server started. */
+export interface CockpitEvent {
+  event: string;
+  runId?: string;
+  [k: string]: unknown;
 }
 
 export interface SseEvent {
@@ -70,6 +79,8 @@ export async function streamConKayAgent(args: {
   onToolCall: (call: AgentToolCall) => void;
   /** A song, image, audio preview or 3D model the server attached to this turn. */
   onArtifact?: (artifact: Record<string, unknown>) => void;
+  /** A cockpit progress event. Never a token. */
+  onCockpit?: (e: CockpitEvent) => void;
 }): Promise<AgentDone> {
   const res = await fetch(`${getApiBase()}/api/chat-agent/stream`, {
     method: 'POST',
@@ -97,6 +108,7 @@ export async function streamConKayAgent(args: {
       if (event === 'token') args.onToken(String((data as { chunk?: unknown }).chunk ?? ''));
       else if (event === 'tool_call') args.onToolCall(data as AgentToolCall);
       else if (event === 'artifact') args.onArtifact?.(data);
+      else if (event.startsWith('cockpit:')) args.onCockpit?.({ ...data, event, runId: data.runId ? String(data.runId) : undefined });
       else if (event === 'done') {
         done = {
           ok: data.ok !== false,
@@ -105,6 +117,7 @@ export async function streamConKayAgent(args: {
           model: data.model ? String(data.model) : undefined,
           confidence: data.answerConfidence === 'low' ? 'low' : undefined,
           confidenceReason: data.answerConfidenceReason ? String(data.answerConfidenceReason) : undefined,
+          cockpitRunId: data.cockpitRunId ? String(data.cockpitRunId) : undefined,
         };
       }
     }

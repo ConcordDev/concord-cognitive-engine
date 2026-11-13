@@ -1559,7 +1559,10 @@ export function ConKayOverlay() {
         const parsed = parseSseBuffer(buf);
         buf = parsed.rest;
         for (const { event, data } of parsed.events) {
-          if (event === 'artifact') {
+          if (event.startsWith('cockpit:')) {
+            // GB-1500 CKPT-20 — a cockpit run the server started for this turn; the store keeps its id.
+            if (data?.runId) useConkayRunStore.getState().cockpitRunSeen(String(data.runId));
+          } else if (event === 'artifact') {
             addArtifact(data);
             syncMessage();
           } else if (event === 'tool_call') {

@@ -2018,6 +2018,19 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         if (ctx.marathonSessionId) return { tool: call.tool, ok: false, error: "start_long_task is not available inside a background job" };
         const userId = ctx.actor?.userId;
         if (!ctx.db || !userId) return { tool: call.tool, ok: false, error: "no signed-in user" };
+        // GB-1500 CKPT-20: with the flags on, a long task is a cockpit run (pump-driven, receipts, resume).
+        // A run's own tools never start another run (ctx.cockpitRunId).
+        try {
+          const { cockpitFlag } = await import("./cockpit/flags.js");
+          if (cockpitFlag("LONG_TASK") && cockpitFlag("RUNS") && !ctx.cockpitRunId) {
+            const { startCockpitLongTask } = await import("./cockpit/long-task-bridge.js");
+            const goalText = String(call.params?.goal || "").trim() || String(ctx.userPrompt || "").trim();
+            const cr = await startCockpitLongTask({ db: ctx.db, userId, goal: goalText, mode: call.params?.mode || null,
+              chatSessionId: ctx.actor?.sessionId || null, lensActions });
+            if (cr.ok) return { tool: call.tool, ok: true, jobId: cr.runId, mode: call.params?.mode || "general", message: cr.message, cockpitRunId: cr.runId };
+            if (cr.reason === "too_many_runs") return { tool: call.tool, ok: false, error: "You already have tasks running. Wait for one to finish or cancel one.", reason: cr.reason };
+          }
+        } catch { /* any other failure falls through to the marathon path */ }
         const lt = await import("./long-task.js");
         const goal = String(call.params?.goal || "").trim() || String(ctx.userPrompt || "").trim();
         const r = lt.startLongTask(ctx.db, {

@@ -51539,7 +51539,7 @@ try {
   const { publishRun: _cockpitPublish } = await import("./lib/cockpit/events.js");
   // One factory for the routes and the pump, so a run behaves the same however it is driven.
   globalThis.__cockpitMakeDeps = (run) => ({
-    exec: _cockpitMakeExec({ db, userId: run.userId, sessionId: run.chatSessionId, runMacro, lensActions: LENS_ACTIONS, surface: run.surface }),
+    exec: _cockpitMakeExec({ db, userId: run.userId, sessionId: run.chatSessionId, runMacro, lensActions: LENS_ACTIONS, surface: run.surface, runId: run.id }),
     lensActions: LENS_ACTIONS,
     verify: _cockpitVerify,
     emit: (e) => _cockpitPublish(e.runId, e),

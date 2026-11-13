@@ -18,6 +18,15 @@ import { checkBudget, retryAfterSec } from "./budget.js";
 import { makeStepReceipt } from "./receipts.js";
 import { effectiveSpec } from "./tool-spec.js";
 
+// CKPT-20: a finished long_task run posts its result back to the thread. Never throws, never blocks the tick.
+function notifyTerminal(db, runId) {
+  try {
+    const run = getRun(db, runId);
+    if (!run || run.surface !== "long_task") return;
+    void import("./long-task-bridge.js").then((m) => m.deliverRunResult(db, run, listSteps(db, runId))).catch(() => {});
+  } catch { /* delivery is best-effort */ }
+}
+
 const TERMINAL_RUN = new Set(["done", "failed", "cancelled"]);
 const TERMINAL_STEP = new Set(["done", "skipped", "failed"]);
 const REASK_CLASSES = new Set(["bad_args", "verify_failed", "fake_success", "looped", "not_found", "unknown_tool"]);
@@ -126,10 +135,12 @@ export async function tickRun(a) {
       if (required.every((s) => s.status === "done")) {
         updateRun(db, runId, { status: "done", finishedAt: nowSec() });
         emit({ type: "cockpit:run", runId, status: "done", ...runProgress(steps) });
+        notifyTerminal(db, runId);
         return { ok: true, status: "done", advanced: false };
       }
       updateRun(db, runId, { status: "failed", statusReason: "required_step_failed", finishedAt: nowSec() });
       emit({ type: "cockpit:run", runId, status: "failed", ...runProgress(steps) });
+      notifyTerminal(db, runId);
       return { ok: true, status: "failed", advanced: false, reason: "required_step_failed" };
     }
 
@@ -203,6 +214,7 @@ export async function tickRun(a) {
           updateStep(db, step.id, { status: "failed", finishedAt: nowSec(), ...base });
           updateRun(db, runId, { status: "failed", statusReason: `hard_stop:${String(errorText || "").slice(0, 80)}`, finishedAt: nowSec() });
           emit({ type: "cockpit:run", runId, status: "failed", reason: "hard_stop" });
+          notifyTerminal(db, runId);
           return { ok: true, status: "failed", advanced: false, reason: "hard_stop" };
       }
     };

@@ -87,6 +87,8 @@ interface ConkayRunState {
   active: boolean;
   /** The real `done`/error outcome of the last finished run, or null while active. */
   finalError: string | null;
+  /** The cockpit run the server started for this turn (from a `cockpit:*` event or `done`), or null. */
+  cockpitRunId: string | null;
   /** Monotonic step counter for the current run (reset on runStarted). */
   _seq: number;
 
@@ -96,7 +98,9 @@ interface ConkayRunState {
   /** A real `tool_call` SSE event arrived — append it as the next ordered step. */
   toolCallReceived: (raw: RawToolCall) => void;
   /** The real `done` event (or a stream error) landed — stop the running state. */
-  runFinished: (outcome?: { ok?: boolean; error?: string }) => void;
+  runFinished: (outcome?: { ok?: boolean; error?: string; cockpitRunId?: string }) => void;
+  /** A real `cockpit:*` SSE event named its run. Keeps the first id. */
+  cockpitRunSeen: (runId: string) => void;
   /** Clear all run state (e.g. when ConKay tears down). */
   reset: () => void;
 }
@@ -176,10 +180,14 @@ export const useConkayRunStore = create<ConkayRunState>((set) => ({
   steps: [],
   active: false,
   finalError: null,
+  cockpitRunId: null,
   _seq: 0,
 
   runStarted: () =>
-    set(() => ({ steps: [], active: true, finalError: null, _seq: 0 })),
+    set(() => ({ steps: [], active: true, finalError: null, cockpitRunId: null, _seq: 0 })),
+
+  cockpitRunSeen: (runId) =>
+    set((s) => (s.cockpitRunId ? s : { ...s, cockpitRunId: runId })),
 
   toolCallReceived: (raw) =>
     set((s) => {
@@ -191,9 +199,10 @@ export const useConkayRunStore = create<ConkayRunState>((set) => ({
     set((s) => ({
       ...s,
       active: false,
+      cockpitRunId: s.cockpitRunId || outcome?.cockpitRunId || null,
       finalError:
         outcome && outcome.ok === false ? String(outcome.error || 'run failed') : null,
     })),
 
-  reset: () => set(() => ({ steps: [], active: false, finalError: null, _seq: 0 })),
+  reset: () => set(() => ({ steps: [], active: false, finalError: null, cockpitRunId: null, _seq: 0 })),
 }));

@@ -20,13 +20,15 @@ export function toAgentCall(call, key = null) {
 }
 
 /** Build the production exec for a user. */
-export function makeExec({ db, userId, sessionId, runMacro, lensActions, surface }) {
+export function makeExec({ db, userId, sessionId, runMacro, lensActions, surface, runId = null }) {
   const role = (() => {
     try { return db.prepare("SELECT role FROM users WHERE id = ?").get(userId)?.role || "member"; } catch { return "member"; }
   })();
   // `internal` is always false for runs: a run never bypasses the council gate, whatever the role.
   const ctx = {
     db, userPrompt: "", surface,
+    // A run's tools never start another run (start_long_task checks this).
+    cockpitRunId: runId || "cockpit",
     actor: { userId, id: userId, sessionId: sessionId || null, role, internal: false },
     reqMeta: { sessionId: sessionId || null },
     log: () => {},
