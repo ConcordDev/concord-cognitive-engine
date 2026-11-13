@@ -440,6 +440,35 @@ export default function registerDeitiesActions(registerLensAction) {
       || templates[0]
       || null;
   }
+  // Colour a reply by intent — FIX-deities-003: the four commune
+  // intents used to differ only in the params; the reply text was the
+  // reception template alone, so greet/petition/offering/question all
+  // read identically. A deity whose author wrote an intent template
+  // speaks that; otherwise this deterministic line, derived from
+  // intent + reception + the dominant tone axis, answers the intent.
+  // Pure-compute, no LLM, in the module's voice.
+  function intentLine(intent, reception, d) {
+    const tone = d.toneVector || {};
+    if (intent === "petition") {
+      if (reception === "received") return "Your petition is heard, and weighed kindly.";
+      if (reception === "refused") return "Your petition goes unheard.";
+      return "Your petition is heard; no answer is given yet.";
+    }
+    if (intent === "question") {
+      if (reception === "refused") return "Your question is not answered.";
+      if (reception === "received") {
+        if (tone.mystery >= 0.66) return "An answer forms, veiled: watch what changes first.";
+        if (tone.refusal >= 0.66) return "An answer is given, edged with warning.";
+        if (tone.warmth >= 0.66) return "An answer is given plainly, and it is enough for now.";
+        return "An answer is given, brief and certain.";
+      }
+      return tone.mystery >= 0.66
+        ? "The answer stays veiled, for now."
+        : "No answer comes; the silence itself is the reply.";
+    }
+    if (intent === "offering") return "You come empty-handed; that, too, is noted.";
+    return null;
+  }
   // Colour an utterance by tone — prefix/suffix flourishes derived from the
   // three axes. Pure-compute, deterministic, no LLM.
   function toneFlourish(tone) {
@@ -472,12 +501,22 @@ export default function registerDeitiesActions(registerLensAction) {
       else { reception = "neutral"; trigger = "greet"; }
       // Intent shifts the trigger lookup for a petition/offering when received.
       if (reception === "received" && intent === "offering") trigger = "commune_high_alignment";
-      const tmpl = pickTemplate(d.dialogueTemplates, trigger);
+      // An author-written intent template (trigger = the intent) speaks
+      // for that intent directly; otherwise the reception template
+      // answers and intentLine adds the intent's own colour.
+      const intentTmpl = intent !== "greet"
+        ? d.dialogueTemplates.find((t) => t.trigger === intent)
+        : null;
+      const tmpl = intentTmpl || pickTemplate(d.dialogueTemplates, trigger);
       const flourish = toneFlourish(d.toneVector);
       const lines = [];
       if (flourish.length) lines.push(flourish[0]);
       lines.push(tmpl ? tmpl.text : `${d.name} is silent.`);
-      if (reception === "received" && offering) {
+      if (!intentTmpl && !(intent === "offering" && offering)) {
+        const il = intentLine(intent, reception, d);
+        if (il) lines.push(il);
+      }
+      if (reception !== "refused" && offering) {
         lines.push(`Your offering — "${offering}" — is acknowledged.`);
       }
       if (reception === "refused") {
