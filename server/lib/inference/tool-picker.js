@@ -32,7 +32,7 @@ function cosineSimilarity(a, b) {
 async function tryEmbed(text) {
   if (!EMBEDDINGS_ENABLED) return null;
   try {
-    const { embed } = await import("../embeddings.js");
+    const { embed } = await import("../../embeddings.js");
     return await embed(text);
   } catch {
     return null;
@@ -48,13 +48,15 @@ async function tryEmbed(text) {
  */
 async function getToolsInScope(scope) {
   try {
-    const { getLensTools } = await import("../lens-economy-wiring.js");
-    const tools = [];
-    for (const domain of (scope || [])) {
-      const domainTools = getLensTools?.(domain) || [];
-      tools.push(...domainTools);
-    }
-    return tools;
+    // GB-1500 CKPT-06: the old import of getLensTools never existed, so this
+    // always returned []. The typed cockpit specs are the real tool set.
+    const { cockpitAgentToolIds, getToolSpec } = await import("../cockpit/tool-spec.js");
+    const wanted = new Set(scope || []);
+    return cockpitAgentToolIds()
+      .map((id) => getToolSpec(id))
+      .filter(Boolean)
+      .filter((t) => wanted.size === 0 || wanted.has("agent") || wanted.has(t.id))
+      .map((t) => ({ name: t.id, description: t.description, inputSchema: t.inputSchema }));
   } catch {
     return [];
   }

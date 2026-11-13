@@ -112,6 +112,32 @@ export function startLongTask(db, { userId, goal, title = null, mode = null, ori
   return { ok: true, jobId: r.sessionId, mode: m, budgetCap: cap, maxTurns: turns };
 }
 
+/**
+ * CKPT-20: post a finished cockpit run's text. A chat origin gets the message in its thread; any other
+ * origin gets a notice row in the same store takePendingLongTaskNotices reads (no new table).
+ * Returns { ok, postedTo }.
+ */
+export async function enqueueLongTaskNotice(db, { userId, surface = "agent", sessionId = null, text, runId = null } = {}) {
+  if (!db || !userId || !text) return { ok: false, reason: "missing_inputs" };
+  const body = String(text).slice(0, 12000);
+  if (surface === "chat" && sessionId) {
+    try {
+      const { persistChatMessage } = await import("./chat-session-store.js");
+      persistChatMessage(db, sessionId, { role: "assistant", content: body, ts: Date.now(), meta: { source: "long_task", runId } });
+      const sess = globalThis._concordSTATE?.sessions?.get?.(sessionId);
+      if (sess && Array.isArray(sess.messages)) sess.messages.push({ role: "assistant", content: body, ts: new Date().toISOString(), meta: { source: "long_task", runId } });
+      return { ok: true, postedTo: "chat" };
+    } catch { /* fall through to a notice row */ }
+  }
+  try {
+    const id = `ltn_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    const meta = { longTask: 1, pendingNotice: 1, resultText: body, deliveredAt: Date.now(), cockpitRunId: runId, origin: { surface: ["chat", "conkay", "agent"].includes(surface) ? surface : "agent", sessionId } };
+    db.prepare(`INSERT INTO agent_marathon_sessions (id, user_id, title, goal, status, meta_json, completed_at) VALUES (?, ?, ?, ?, 'completed', ?, unixepoch())`)
+      .run(id, userId, "Background task", "cockpit run result", JSON.stringify(meta));
+    return { ok: true, postedTo: "notice" };
+  } catch (e) { return { ok: false, reason: "enqueue_failed", error: e?.message }; }
+}
+
 /** Run the first tick right away so the job starts without waiting for the heartbeat. */
 export function kickLongTask({ db, jobId, runMacro, lensActions }) {
   if (!db || !jobId || typeof runMacro !== "function") return false;

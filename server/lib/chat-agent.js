@@ -36,6 +36,7 @@
 import { sanitizeAgentHistory, DONT_INVENT_LINE } from "./chat/agent-history-sanitize.js";
 import { brainChat, provenanceFrom } from "./byo-router.js";
 import { normalizeToolCall, normalizeCallParams } from "./chat/tool-call-normalize.js";
+import { cockpitFlag } from "./cockpit/flags.js";
 import {
   resolveAgentMaxTokens,
   resolveChatTimeoutMs,
@@ -103,7 +104,7 @@ const ECHOED_TOOL_RESULT_RE = /^\s*\[TOOL_RESULT:/;
 // Order: this map is the source of truth for what's REQUIRED, not for the
 // full param shape. Optional params are documented in TOOL_SCHEMA_BLOCK but
 // not enforced here. Keep this list in sync with TOOL_SCHEMA_BLOCK.
-const TOOL_REQUIRED_PARAMS = {
+export const TOOL_REQUIRED_PARAMS = {
   web_search:        ["query"],
   run_compute:       ["key", "input"],
   dtu_search:        ["query"],
@@ -895,6 +896,19 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
   // JSON-string arguments, tool "lens.action") onto the schema first.
   call = normalizeToolCall(call, AGENT_TOOL_NAMES) || call;
   if (!call.params || typeof call.params !== "object") call = { ...call, params: {} };
+  // GB-1500 CKPT-03: typed validate + repair (alias, fuzzy name, key/type fixes,
+  // prior-value defaults). Off by default; tools without a spec fall through.
+  if (cockpitFlag("REPAIR")) {
+    const { validateAndRepair } = await import("./cockpit/validate-repair.js");
+    const { getToolSpec, cockpitAgentToolIds } = await import("./cockpit/tool-spec.js");
+    if (getToolSpec(call.tool)) {
+      const vr = validateAndRepair({ tool: call.tool, args: call.params }, {
+        menuIds: cockpitAgentToolIds(), getSpec: (id) => getToolSpec(id, { lensActions }),
+      });
+      if (vr.ok) call = { ...call, tool: vr.call.tool, params: vr.call.args, repairs: vr.repairs };
+      else return { tool: call.tool, ok: false, error: "missing required param(s) or invalid input", errors: vr.errors, retryHint: vr.reask, repairs: vr.repairs };
+    }
+  }
   // Param-validator gate (R-concay-tools-3): catch empty `{}` blocks the
   // model emits before they reach the macro router. The brain sees the
   // surgical error on the next turn and self-corrects — no LLM guesswork
@@ -1161,8 +1175,10 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             params: actionInput,
             dry_run: call.params.dry_run === true || call.params.preview === true,
             preview: call.params.preview === true,
-            approval: call.params.approval === true,
-            approval_token: call.params.approval_token || call.params.approvalToken || null,
+            // GB-1500 CKPT-13: only a person (via the cockpit executor) may approve. A model
+            // writing approval:true in its own call no longer counts.
+            approval: cockpitFlag("STRIP_APPROVAL") ? ctx?.cockpitApproved === true : call.params.approval === true,
+            approval_token: cockpitFlag("STRIP_APPROVAL") ? null : (call.params.approval_token || call.params.approvalToken || null),
             idempotency_key: call.params.idempotency_key || null,
           },
           ctx?.STATE || ctx?.state || null,
@@ -2002,6 +2018,19 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         if (ctx.marathonSessionId) return { tool: call.tool, ok: false, error: "start_long_task is not available inside a background job" };
         const userId = ctx.actor?.userId;
         if (!ctx.db || !userId) return { tool: call.tool, ok: false, error: "no signed-in user" };
+        // GB-1500 CKPT-20: with the flags on, a long task is a cockpit run (pump-driven, receipts, resume).
+        // A run's own tools never start another run (ctx.cockpitRunId).
+        try {
+          const { cockpitFlag } = await import("./cockpit/flags.js");
+          if (cockpitFlag("LONG_TASK") && cockpitFlag("RUNS") && !ctx.cockpitRunId) {
+            const { startCockpitLongTask } = await import("./cockpit/long-task-bridge.js");
+            const goalText = String(call.params?.goal || "").trim() || String(ctx.userPrompt || "").trim();
+            const cr = await startCockpitLongTask({ db: ctx.db, userId, goal: goalText, mode: call.params?.mode || null,
+              chatSessionId: ctx.actor?.sessionId || null, lensActions });
+            if (cr.ok) return { tool: call.tool, ok: true, jobId: cr.runId, mode: call.params?.mode || "general", message: cr.message, cockpitRunId: cr.runId };
+            if (cr.reason === "too_many_runs") return { tool: call.tool, ok: false, error: "You already have tasks running. Wait for one to finish or cancel one.", reason: cr.reason };
+          }
+        } catch { /* any other failure falls through to the marathon path */ }
         const lt = await import("./long-task.js");
         const goal = String(call.params?.goal || "").trim() || String(ctx.userPrompt || "").trim();
         const r = lt.startLongTask(ctx.db, {
@@ -2543,6 +2572,16 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   const _elevated = _roleResolved && (callerRole === "owner" || callerRole === "founder");
   // Offer only the tools this caller can run (run_python: founder/sovereign + WASM).
   try { messages[0].content = messages[0].content.replace(TOOL_SCHEMA_BLOCK, () => toolSchemaBlockFor({ role: callerRole })); } catch { /* keep the full schema */ }
+  // GB-1500 CKPT-06: a short per-turn tool menu instead of all ~34 tools.
+  if (cockpitFlag("MENU")) {
+    try {
+      const { buildToolMenu, menuSchemaBlock } = await import("./cockpit/tool-menu.js");
+      const fullBlock = toolSchemaBlockFor({ role: callerRole });
+      const { menu } = await buildToolMenu({ goal: message, profile: "local-30b", lensActions, role: callerRole });
+      const block = menuSchemaBlock(menu, fullBlock);
+      if (block) messages[0].content = messages[0].content.replace(fullBlock, () => block);
+    } catch { /* keep the full schema */ }
+  }
   const ctx = {
     db,
     // Tests inject a fixed OpenStax lookup; production uses openstax-lookup.js.
@@ -2774,7 +2813,13 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       }
       if (_deadlineMs) ctx.chatGenTimeoutMs = Math.max(1, _left() - _budgetReserveMs);
       let result = await raceDeadline(
-        executeToolCall(ctx, runMacro, lensActions, call),
+        cockpitFlag("RETRY")
+          ? (async () => {
+              const { runWithRetry } = await import("./cockpit/retry-policy.js");
+              const { getToolSpec } = await import("./cockpit/tool-spec.js");
+              return (await runWithRetry((c) => executeToolCall(ctx, runMacro, lensActions, c), call, { getSpec: (id) => getToolSpec(id, { lensActions }) })).result;
+            })()
+          : executeToolCall(ctx, runMacro, lensActions, call),
         _deadlineMs ? _deadlineMs - 1_000 : 0,
         () => ({ tool: call.tool, ok: false, stage: "budget", reason: "timeout", error: "It ran out of time before this step finished." }),
       );
@@ -2830,12 +2875,18 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       }
       // Item 2 — record into long-term memory (fire-and-forget; never blocks).
       if (db && userId) {
-        import("./agent-action-log.js").then(({ recordAction }) => recordAction(db, {
-          userId, sessionId: opts.sessionId || null,
-          action: `tool:${call.tool}`, input: call.params ?? call.args ?? null,
-          output: result.result ?? result.text ?? result.answer ?? result.error ?? null,
-          tool: call.tool, outcome: result.ok ? "ok" : "error",
-        })).catch(() => {});
+        if (cockpitFlag("TELEMETRY")) {
+          import("./cockpit/telemetry.js").then(({ recordToolOutcomeEvent }) =>
+            recordToolOutcomeEvent(db, { userId, sessionId: opts.sessionId || null, surface: opts.surface || "agent", call, result })
+          ).catch(() => {});
+        } else {
+          import("./agent-action-log.js").then(({ recordAction }) => recordAction(db, {
+            userId, sessionId: opts.sessionId || null,
+            action: `tool:${call.tool}`, input: call.params ?? call.args ?? null,
+            output: result.result ?? result.text ?? result.answer ?? result.error ?? null,
+            tool: call.tool, outcome: result.ok ? "ok" : "error",
+          })).catch(() => {});
+        }
       }
     }
 
@@ -2869,7 +2920,16 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     // A failed tool, or a plain create_dtu save, is answered from the tool
     // results — never a free-generated follow-up that leaks prompt fragments
     // ("Mention in a sentence.") or drops the stored title (INC-SWEEP F3).
-    const skipFollowup = shouldSkipToolFollowup(results, { allowRetry: recoveriesUsed < _maxRecoveries });
+    // GB-1500 CKPT-05: a hard stop ends the turn; every other class keeps going
+    // until the retry allowance (at least 4) is spent.
+    let skipFollowup;
+    if (cockpitFlag("RETRY")) {
+      const { classifyFailure } = await import("./cockpit/failure-taxonomy.js");
+      const _anyHard = results.some((x) => x && !x.ok && classifyFailure(x).hard);
+      skipFollowup = _anyHard || shouldSkipToolFollowup(results, { allowRetry: recoveriesUsed < Math.max(_maxRecoveries, 4) });
+    } else {
+      skipFollowup = shouldSkipToolFollowup(results, { allowRetry: recoveriesUsed < _maxRecoveries });
+    }
     if (skipFollowup) {
       finalAnswer = guardPlaybackClaim(
         composeToolTurnReply(results)
