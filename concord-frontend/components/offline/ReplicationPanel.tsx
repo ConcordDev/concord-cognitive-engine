@@ -408,14 +408,32 @@ export function ReplicationPanel({
       setErr('document id required');
       return;
     }
+    if (!draftBody.trim()) {
+      setErr('document body required — a blank body would store an empty document');
+      return;
+    }
+    // JSON.parse silently rounds integers past the safe range; refuse
+    // them in words instead of storing a different number (FIX-offline-005).
+    const huge = draftBody.match(/-?\d{16,}/g)?.find((lit) => {
+      try { return !Number.isSafeInteger(Number(lit)); } catch { return false; }
+    });
+    if (huge) {
+      setErr(`the number ${huge} is too large to store exactly — it would be rounded; quote it as a string instead`);
+      return;
+    }
     let body: Record<string, unknown>;
     try {
-      body = draftBody.trim() ? JSON.parse(draftBody) : {};
+      body = JSON.parse(draftBody);
       if (typeof body !== 'object' || body === null || Array.isArray(body)) {
         throw new Error('body must be a JSON object');
       }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'invalid JSON body');
+      if (e instanceof Error && e.message === 'body must be a JSON object') {
+        setErr('body must be a JSON object');
+      } else {
+        const pos = e instanceof Error ? /position (\d+)/.exec(e.message)?.[1] : undefined;
+        setErr(`body is not valid JSON${pos ? ` (problem near character ${pos})` : ''} — check for missing quotes, commas, or braces`);
+      }
       return;
     }
     await putDoc(id, body);
