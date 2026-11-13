@@ -2242,3 +2242,38 @@ Every fix is pinned by a suite under concord-frontend/tests/ with a pristine neg
 | FIX-forecast-006 | `970fa7b68` | Unknown world id gets a worded error naming the id; empty state names it |
 
 Records in records/b3.jsonl; every fix pinned by a suite with a pristine negative control. Named remainders: achievements-005's count leg stays B6-disposed; atlas-007's share leg was not locatable at branch state (the trigger is named at head) and is left to the desk's live re-walk. (The first bookkeeping push for this section, bae093b82, landed with unchanged content after a local script error; this push carries the actual rows.)
+
+## Slice B3 (GB-1521 / CB-0533) — muse-b3 — 2026-11-13
+
+79 ids dispositioned entire: **30 FIXED_PENDING_VERIFY** (28 commits, pushed once at slice completion under CB-0529 batch-and-hold; the stack was cherry-picked onto head 27a4aba18 first — base-blob guard caught 3 moved files, all merged clean), **49 left OPEN with named verdicts** in the slice log (premise failures at branch state carry NOT_REPRODUCING_AT_HEAD; desk/server/data classes named per ticket in the bridge completion post). Every fix is pinned by a suite with a pristine negative control. Records: the 30 rows appended to records/b3.jsonl with this block.
+
+| FIX | commit | note |
+|---|---|---|
+| FIX-fashion-001 | `156844835` | Trend rows persist via useLensStatePersistence |
+| FIX-engineering-001 | `57dfd8275` | Save updates the loaded part instead of duplicating |
+| FIX-hypothesis-003 | `b4e3216fe` | Statement capped at 280; Run Test gated on valid inputs |
+| FIX-pets-008 | `9b0f34d9e` | Non-image photo URLs refused in words |
+| FIX-hypothesis-008 + FIX-suffering-013 | `87d2206ed` | Shared DeprecatedLensNotice surfaces the registry status |
+| FIX-cognition-001 | `8c1cd7d40` | Answer-flow buttons respect the busy guard (FE leg; endpoint 500 named for the desk) |
+| FIX-self-004 | `2ed70bd32` | Overview names logged metrics with no tile |
+| FIX-chem-005 | `7f9d4c564` | Plain-language danger banner leads high-severity results |
+| FIX-forum-002 | `16def0a53` | Author username sent; thread timestamps rendered |
+| FIX-neuro-001 | `289bc74ef` | ERP units, deduped components, single-epoch caveat |
+| FIX-affect-008 | `20150de71` | Markup legs: controls named, dim text raised (CLS leg = desk re-run) |
+| FIX-security-009 | `42d9abeea` | Markup legs: ~100 controls named (CSP-eval = artifact) |
+| FIX-government-005 + FIX-government-021 | `1eb7aeed5` | 181 controls named; Pay disabled honestly when Stripe unconfigured |
+| FIX-bio-002 | `9c4960218` | Result carries orfMinNt; zero-ORF result words the floor |
+| FIX-cri-014 | `aabaf7f1b` | lens-activity-labels gains a cri section + quietOps; tab-load reads are views |
+| FIX-ethics-011 | `43b779891` | Pre-submit scoring guidance; option fields named |
+| FIX-insurance-014 | `a3be1b29d` | Beneficiary directory picker; own id printed |
+| FIX-mail-007 | `2a0a31508` | Draft restore fills only empty fields |
+| FIX-society-008 | `7b80cb8fa` | Population series exempt from per-capita/inflation transforms |
+| FIX-creative-010 | `461bd398f` | Asset kind must match the media type |
+| FIX-news-002 | `908eebe7b` | Live desk sort + source filter |
+| FIX-productivity-008 | `4dd9860e8` | Real Pomodoro countdown with start/stop |
+| FIX-veterinary-009 | `5c7692454` | Lab order flow on the existing substrate |
+| FIX-engineering-011 | `031c784fc` | FEA receipts: FoS, max moment, support reactions |
+| FIX-export-009 | `a52157faf` | Tab switches render instantly (no crossfade flash) |
+| FIX-mental-health-004 | `4558923aa` | Workspace tier, records-private notice, publish confirmation (records-visibility leg = desk/design) |
+| FIX-byo-keys-013 | `68091f723` | Catalog paging, sort, row detail (custom-provider leg = feature build, named) |
+| FIX-graph-004 | `7d36e7c97` | Field pan/zoom: drag, wheel-at-pointer, zoom buttons |
