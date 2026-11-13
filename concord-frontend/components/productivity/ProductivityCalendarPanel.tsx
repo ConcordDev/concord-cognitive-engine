@@ -179,10 +179,10 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-200 rounded-lg">
           <Download className="w-3.5 h-3.5" /> Export tasks as .ics
         </button>
-        <input placeholder="Google Calendar iCal feed URL (https://…)" value={icsUrl}
+        <input aria-label="Google Calendar iCal feed URL" placeholder="Google Calendar iCal feed URL (https://…)" value={icsUrl}
           onChange={(e) => setIcsUrl(e.target.value)}
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
-        <textarea placeholder="…or paste ICS text" value={icsText} onChange={(e) => setIcsText(e.target.value)}
+        <textarea aria-label="ICS calendar text" placeholder="…or paste ICS text" value={icsText} onChange={(e) => setIcsText(e.target.value)}
           rows={3}
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100 font-mono" />
         <button type="button" onClick={importIcs} disabled={busy}

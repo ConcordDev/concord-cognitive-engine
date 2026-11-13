@@ -159,6 +159,7 @@ export function LiteratureReviewPanel() {
 
       <input
         type="text"
+        aria-label="Review title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Review title (optional)"
@@ -187,6 +188,7 @@ export function LiteratureReviewPanel() {
         <div className="flex gap-2">
           <input
             type="text"
+            aria-label="Add dimension"
             value={dimInput}
             onChange={(e) => setDimInput(e.target.value)}
             onKeyDown={(e) => {

@@ -89,6 +89,7 @@ export function NewsBiasSpectrum() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <input
             type="text"
+            aria-label="Filter the spectrum by keyword"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter the spectrum by a story keyword…"
@@ -133,7 +134,7 @@ export function NewsBiasSpectrum() {
               <span>{pctLabel(result.coverage?.right, 'Right')}</span>
             </div>
             {result.coverage?.reason && (
-              <p className="text-[10px] text-zinc-500 mt-1">{biasUnavailableText(result.coverage.reason)}</p>
+              <p className="text-[10px] text-zinc-400 mt-1">{biasUnavailableText(result.coverage.reason)}</p>
             )}
           </div>
 

@@ -150,7 +150,7 @@ function NotesTab({ onOpen }: { onOpen: (id: string) => void }) {
       </button>
       {creating && (
         <div className="rounded border border-fuchsia-500/30 bg-fuchsia-500/5 p-3 space-y-2">
-          <input type="text" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+          <input type="text" aria-label="Note title" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
             placeholder="Title" maxLength={200}
             className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100" />
           <WikiLinkTextarea
@@ -253,6 +253,7 @@ function WikiLinkTextarea({
     <div className="relative">
       <textarea
         ref={ref}
+        aria-label={placeholder ?? 'Note body'}
         value={value}
         onChange={handleChange}
         onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
@@ -442,7 +443,7 @@ function NoteEditor({ noteId, onBack, onOpenNote }: { noteId: string; onBack: ()
 
       {editing ? (
         <>
-          <input type="text" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+          <input type="text" aria-label="Note title" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
             className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100" />
           <WikiLinkTextarea
             value={draft.body}
@@ -524,7 +525,7 @@ function SearchTab({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <div className="p-3 space-y-3">
       <div className="flex gap-2">
-        <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+        <input type="text" aria-label="Search notes" value={query} onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') search(); }}
           placeholder="Search notes"
           className="flex-1 px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100" />

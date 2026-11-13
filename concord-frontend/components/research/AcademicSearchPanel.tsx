@@ -84,6 +84,7 @@ export function AcademicSearchPanel() {
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
+            aria-label="Academic search query"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -94,6 +95,7 @@ export function AcademicSearchPanel() {
           />
         </div>
         <select
+          aria-label="Search provider"
           value={provider}
           onChange={(e) => setProvider(e.target.value as Provider)}
           className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-200"

@@ -94,6 +94,7 @@ export function PlanExportPanel() {
         </h3>
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <select
+            aria-label="Zone type"
             value={zoneType}
             onChange={(e) => setZoneType(e.target.value)}
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
@@ -109,6 +110,7 @@ export function PlanExportPanel() {
             onChange={(e) => setLotSizeSqFt(e.target.value)}
             type="number"
             placeholder="Lot size (sqft)"
+            aria-label="Lot size (sqft)"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
@@ -116,6 +118,7 @@ export function PlanExportPanel() {
             onChange={(e) => setBaselinePopulation(e.target.value)}
             type="number"
             placeholder="Baseline population"
+            aria-label="Baseline population"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
@@ -123,6 +126,7 @@ export function PlanExportPanel() {
             onChange={(e) => setBaselineJobs(e.target.value)}
             type="number"
             placeholder="Baseline jobs"
+            aria-label="Baseline jobs"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
         </div>
@@ -216,6 +220,7 @@ export function PlanExportPanel() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Report title"
+            aria-label="Report title"
             className="min-w-[220px] flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <button

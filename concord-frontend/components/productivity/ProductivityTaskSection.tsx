@@ -108,7 +108,7 @@ export function ProductivityTaskSection({ activeTab, onTabChange }: Productivity
                 aria-pressed={active}
                 title={`${t.label} — press ${t.chord}`}
                 className={cn('inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200')}>
+                  active ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200')}>
                 <Icon className="h-3.5 w-3.5" /> {t.label}
                 <kbd aria-hidden="true" className="hidden rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px] text-white/30 md:inline-block">{t.hint}</kbd>
               </button>
@@ -144,7 +144,7 @@ function Stat({ label, value, alert }: { label: string; value: number; alert?: b
   return (
     <div className="bg-[#111] px-2 py-3 text-center">
       <p className={cn('text-xl font-semibold', alert ? 'text-amber-400' : 'text-zinc-100')}>{value}</p>
-      <p className="text-[10px] uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="text-[10px] uppercase tracking-wide text-zinc-400">{label}</p>
     </div>
   );
 }

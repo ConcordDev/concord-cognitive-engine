@@ -192,7 +192,7 @@ export function NeuroActionPanel() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <select value={signalKind} onChange={(e) => setSignalKind(e.target.value as typeof signalKind)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
+        <select value={signalKind} onChange={(e) => setSignalKind(e.target.value as typeof signalKind)} aria-label="Signal kind" className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white">
           <option value="composite">Composite 2-ch</option>
           <option value="alpha">Alpha 10 Hz</option>
           <option value="beta">Beta 20 Hz</option>
@@ -200,7 +200,7 @@ export function NeuroActionPanel() {
           <option value="gamma">Gamma 40 Hz</option>
         </select>
         <div className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-zinc-400 font-mono">{channels.length} ch · {channels[0].samples.length} samp · {channels[0].sampleRate} Hz</div>
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" aria-label="DM recipient" />
         {simState && <div className="bg-zinc-900 border border-cyan-700 rounded px-3 py-1.5 text-[11px] text-cyan-300 font-mono">sim: {simState.kind}</div>}
       </div>
 
@@ -259,7 +259,7 @@ export function NeuroActionPanel() {
                 ))}
               </div>
             ) : (
-              <div className="text-[10px] text-zinc-500 mt-1">{erpResult.peaks.length} peak{erpResult.peaks.length === 1 ? '' : 's'}, none matched a known component</div>
+              <div className="text-[10px] text-zinc-400 mt-1">{erpResult.peaks.length} peak{erpResult.peaks.length === 1 ? '' : 's'}, none matched a known component</div>
             )}
           </div>
         )}

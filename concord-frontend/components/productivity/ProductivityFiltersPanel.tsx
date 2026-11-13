@@ -102,17 +102,17 @@ export function ProductivityFiltersPanel({ onChange }: { onChange: () => void })
           <Filter className="w-3 h-3" /> Build a query
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <select value={query.projectId} onChange={(e) => setQuery({ ...query, projectId: e.target.value })}
+          <select aria-label="Filter by project" value={query.projectId} onChange={(e) => setQuery({ ...query, projectId: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             <option value="">Any project</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <select value={query.priority} onChange={(e) => setQuery({ ...query, priority: e.target.value })}
+          <select aria-label="Filter by priority" value={query.priority} onChange={(e) => setQuery({ ...query, priority: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             <option value="">Any priority</option>
             {[1, 2, 3, 4].map((p) => <option key={p} value={p}>Priority {p}</option>)}
           </select>
-          <select value={query.due} onChange={(e) => setQuery({ ...query, due: e.target.value as DueBucket })}
+          <select aria-label="Filter by due date" value={query.due} onChange={(e) => setQuery({ ...query, due: e.target.value as DueBucket })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             <option value="">Any due date</option>
             <option value="overdue">Overdue</option>
@@ -120,9 +120,9 @@ export function ProductivityFiltersPanel({ onChange }: { onChange: () => void })
             <option value="upcoming">Upcoming</option>
             <option value="none">No due date</option>
           </select>
-          <input placeholder="Label" value={query.label} onChange={(e) => setQuery({ ...query, label: e.target.value })}
+          <input aria-label="Filter by label" placeholder="Label" value={query.label} onChange={(e) => setQuery({ ...query, label: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <input placeholder="Text search" value={query.search} onChange={(e) => setQuery({ ...query, search: e.target.value })}
+          <input aria-label="Filter by text search" placeholder="Text search" value={query.search} onChange={(e) => setQuery({ ...query, search: e.target.value })}
             className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         </div>
         <div className="flex gap-2">
@@ -130,7 +130,7 @@ export function ProductivityFiltersPanel({ onChange }: { onChange: () => void })
             className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
             <Play className="w-3.5 h-3.5" /> Run
           </button>
-          <input placeholder="Save as…" value={filterName} onChange={(e) => setFilterName(e.target.value)}
+          <input aria-label="Saved filter name" placeholder="Save as…" value={filterName} onChange={(e) => setFilterName(e.target.value)}
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={save}
             className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg">

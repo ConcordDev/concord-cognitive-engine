@@ -155,6 +155,7 @@ function InlineComposer({
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={placeholder}
+        aria-label={label}
         rows={2}
         className="w-full bg-lattice-deep border border-lattice-border rounded px-2 py-1.5 text-sm resize-none focus:outline-none focus:border-neon-purple/50"
         onKeyDown={(e) => {
@@ -167,7 +168,7 @@ function InlineComposer({
         }}
       />
       <div className="flex items-center justify-between mt-1.5">
-        <span className="text-[10px] text-gray-500">⌘/Ctrl + Enter to post</span>
+        <span className="text-[10px] text-gray-400">⌘/Ctrl + Enter to post</span>
         <div className="flex gap-1.5">
           {onCancel && (
             <button onClick={onCancel} className="px-2 py-1 text-xs rounded bg-lattice-elevated text-gray-400 hover:text-white">
@@ -606,6 +607,7 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
             onChange={(e) => setNewThreadTitle(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !creatingThread) void handleCreateThread(); if (e.key === 'Escape') setNewThreadOpen(false); }}
             placeholder="Thread title…"
+            aria-label="New thread title"
             className="flex-1 bg-lattice-deep border border-lattice-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-neon-purple/50"
           />
           <button disabled={creatingThread} onClick={handleCreateThread} className="btn-neon px-3 py-1.5 text-sm disabled:opacity-40">
@@ -626,6 +628,7 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
                 ref={searchInputRef}
                 type="text"
                 placeholder="Search threads…"
+                aria-label="Search threads"
                 value={threadSearch}
                 onChange={(e) => setThreadSearch(e.target.value)}
                 className="w-full bg-lattice-deep border border-lattice-border rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-neon-purple/50"
@@ -666,7 +669,7 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); void handleDeleteThread(thread.id); }}
-                        className="absolute right-2 top-2 p-1 rounded opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400"
+                        className="absolute right-2 top-2 p-1 rounded opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400"
                         aria-label="Delete thread"
                         title="Delete thread"
                       >
@@ -766,6 +769,7 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
                       value={nodeSearch}
                       onChange={(e) => setNodeSearch(e.target.value)}
                       placeholder="Filter messages in this view…"
+                      aria-label="Filter messages in this view"
                       className="w-full bg-lattice-deep border border-lattice-border rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-neon-purple/50"
                     />
                   </div>

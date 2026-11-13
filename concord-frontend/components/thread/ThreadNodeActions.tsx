@@ -265,6 +265,7 @@ export function ThreadNodeActions({ node, threadName, threadId, threadFullConten
             onChange={(e) => setDmRecipient(e.target.value)}
             className="w-full bg-lattice-elevated border border-pink-400/30 rounded px-2 py-1 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-pink-400/40"
             placeholder="recipient user id"
+            aria-label="Recipient user id"
             autoFocus
           />
           <div className="flex items-center gap-1.5">

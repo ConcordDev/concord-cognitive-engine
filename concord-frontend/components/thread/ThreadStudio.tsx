@@ -295,10 +295,10 @@ function MediaTab({ drafts }: { drafts: DraftMeta[] }) {
                 {['image', 'video', 'gif'].map(k => <option key={k} value={k}>{k}</option>)}
               </select>
             </div>
-            <input value={url} onChange={e => setUrl(e.target.value)} placeholder="Media URL (hosted or data URL)"
+            <input value={url} onChange={e => setUrl(e.target.value)} placeholder="Media URL (hosted or data URL)" aria-label="Media URL"
               className="w-full bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200" />
             <div className="flex gap-1.5">
-              <input value={alt} onChange={e => setAlt(e.target.value)} placeholder="Alt text"
+              <input value={alt} onChange={e => setAlt(e.target.value)} placeholder="Alt text" aria-label="Media alt text"
                 className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200" />
               <button onClick={attach} className="px-2 py-1 text-xs rounded bg-sky-600 hover:bg-sky-500 text-white inline-flex items-center gap-1">
                 <Plus className="w-3 h-3" />Attach
@@ -448,13 +448,14 @@ function AiTab() {
     <div className="space-y-2">
       <textarea value={content} onChange={e => setContent(e.target.value)} rows={6}
         placeholder="Paste thread text — get a stronger hook or a tighter rewrite…"
+        aria-label="Thread text to rewrite"
         className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-sky-500" />
       <div className="flex flex-wrap gap-1.5">
         <button onClick={suggestHooks} disabled={busy || !content.trim()}
           className="px-2 py-1 text-xs rounded bg-sky-600 hover:bg-sky-500 text-white inline-flex items-center gap-1 disabled:opacity-40">
           <Sparkles className="w-3 h-3" />Suggest hooks
         </button>
-        <select value={mode} onChange={e => setMode(e.target.value as typeof mode)}
+        <select value={mode} onChange={e => setMode(e.target.value as typeof mode)} aria-label="Rewrite mode"
           className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">
           {(['tighten', 'punchier', 'expand'] as const).map(m => <option key={m} value={m}>{m}</option>)}
         </select>
@@ -525,6 +526,7 @@ function StyleTab() {
     <div className="space-y-2">
       <textarea value={content} onChange={e => setContent(e.target.value)} rows={5}
         placeholder="Thread text — preview numbering styles and CTA below…"
+        aria-label="Thread text to preview"
         className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-sky-500" />
       <div className="flex flex-wrap gap-1.5 items-center">
         <span className="text-[10px] text-zinc-400">Numbering:</span>
@@ -546,7 +548,7 @@ function StyleTab() {
           ))}
         </div>
       )}
-      <input value={ctaText} onChange={e => setCtaText(e.target.value)} placeholder="CTA text appended to the final post"
+      <input value={ctaText} onChange={e => setCtaText(e.target.value)} placeholder="CTA text appended to the final post" aria-label="CTA text"
         className="w-full bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200" />
       {posts.length === 0 ? <Empty label="Write thread text to preview the styled split" /> : (
         <div className="space-y-1.5 max-h-72 overflow-y-auto">
@@ -694,14 +696,14 @@ function AnalyticsTab({ drafts, onChange }: { drafts: DraftMeta[]; onChange: () 
                   <span>{t.likes} likes</span>
                   <span>{t.reposts} reposts</span>
                   <span>{t.replies} replies</span>
-                  {t.metricsSource && <span className="text-zinc-500">from {t.metricsSource === 'manual' ? 'your entry' : t.metricsSource}</span>}
+                  {t.metricsSource && <span className="text-zinc-400">from {t.metricsSource === 'manual' ? 'your entry' : t.metricsSource}</span>}
                 </div>
               )}
               {ready && openId === t.publishId && (
                 <div className="mt-2 space-y-1.5">
                   {(t.posts || []).map(p => (
                     <div key={p.index} className="flex items-start gap-2 rounded border border-zinc-800 bg-zinc-950 p-1.5">
-                      <span className="text-[10px] text-zinc-500 w-5">{p.index}</span>
+                      <span className="text-[10px] text-zinc-400 w-5">{p.index}</span>
                       <p className="flex-1 whitespace-pre-wrap text-[11px] text-zinc-200">{p.text}</p>
                       <button onClick={() => copy(`${t.publishId}:${p.index}`, p.text)} className="text-[10px] text-sky-400 hover:text-sky-300 shrink-0">
                         {copied === `${t.publishId}:${p.index}` ? 'Copied' : 'Copy'}

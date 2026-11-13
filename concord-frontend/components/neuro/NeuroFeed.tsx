@@ -24,7 +24,7 @@ export function NeuroFeed() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2"><Brain className="h-5 w-5 text-fuchsia-400" /><h2 className="text-sm font-semibold text-white">Neuroscience research</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">arxiv · {q}</span></div>
         <div className="flex items-center gap-2">
-          <select value={q} onChange={(e) => setQ(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{QUERIES.map((qq) => <option key={qq.id} value={qq.id}>{qq.label}</option>)}</select>
+          <select value={q} onChange={(e) => setQ(e.target.value)} aria-label="Research query" className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{QUERIES.map((qq) => <option key={qq.id} value={qq.id}>{qq.label}</option>)}</select>
           {list.length > 0 && <SaveAsDtuButton compact apiSource="arxiv-neuro" apiUrl={`https://export.arxiv.org/api/query?search_query=${q}`} title={`arXiv neuro — ${q} (${list.length})`} content={list.slice(0, 15).map((p, i) => `${i + 1}. ${p.title}\n   ${p.authors.slice(0, 3).join(', ')} · ${p.published.slice(0, 10)}\n   ${p.link}`).join('\n\n')} extraTags={['neuro', 'arxiv', q]} rawData={{ query: q, papers: list }} />}
         </div>
       </header>

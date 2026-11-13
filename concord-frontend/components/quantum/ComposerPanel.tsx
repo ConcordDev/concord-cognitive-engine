@@ -350,7 +350,7 @@ export function ComposerPanel() {
               <StepBack className="w-4 h-4" /> Prev
             </button>
             <input type="range" min={0} max={frames.length - 1} value={frameIdx}
-              onChange={(e) => setFrameIdx(Number(e.target.value))} className="flex-1" />
+              onChange={(e) => setFrameIdx(Number(e.target.value))} aria-label="Animation frame" className="flex-1" />
             <button onClick={() => setFrameIdx((i) => Math.min(frames.length - 1, i + 1))}
               disabled={frameIdx === frames.length - 1}
               className="btn-neon flex items-center gap-1 disabled:opacity-40">
@@ -472,7 +472,7 @@ export function ComposerPanel() {
           <Zap className="w-4 h-4 text-neon-green" /> Noise Model &amp; Error Analysis
         </h2>
         <div className="flex flex-wrap items-center gap-2">
-          <select value={selectedPreset} onChange={(e) => setSelectedPreset(e.target.value)}
+          <select value={selectedPreset} onChange={(e) => setSelectedPreset(e.target.value)} aria-label="Noise preset"
             className="bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-gray-200">
             {noisePresets.map((np) => (
               <option key={np.id} value={np.id}>{np.label}</option>
@@ -534,6 +534,7 @@ export function ComposerPanel() {
         </h2>
         <textarea value={qasm} onChange={(e) => setQasm(e.target.value)}
           placeholder="OpenQASM 2.0 source — Export current circuit, or paste QASM and Import."
+          aria-label="OpenQASM source"
           spellCheck={false}
           className="w-full h-32 bg-black/40 border border-white/10 rounded p-2 font-mono text-xs text-gray-200" />
         <div className="flex gap-2">

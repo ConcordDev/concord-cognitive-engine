@@ -157,15 +157,18 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
             value={apn}
             onChange={(e) => setApn(e.target.value)}
             placeholder="Parcel APN / id"
+            aria-label="Parcel APN or id"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="Street address"
+            aria-label="Street address"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <select
+            aria-label="Zone type"
             value={zoneType}
             onChange={(e) => setZoneType(e.target.value)}
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white"
@@ -181,6 +184,7 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
             onChange={(e) => setLotSizeSqFt(e.target.value)}
             type="number"
             placeholder="Lot size (sqft)"
+            aria-label="Lot size (sqft)"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
@@ -189,6 +193,7 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
             type="number"
             step="0.0001"
             placeholder="Latitude"
+            aria-label="Latitude"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
@@ -197,18 +202,21 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
             type="number"
             step="0.0001"
             placeholder="Longitude"
+            aria-label="Longitude"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
             value={owner}
             onChange={(e) => setOwner(e.target.value)}
             placeholder="Owner (optional)"
+            aria-label="Owner"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
           <input
             value={district}
             onChange={(e) => setDistrict(e.target.value)}
             placeholder="District (optional)"
+            aria-label="District"
             className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder-zinc-600"
           />
         </div>
@@ -241,7 +249,7 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
           <Ruler className="h-4 w-4 text-emerald-400" /> Parcel Map
         </h3>
         <CityMap parcels={mapParcels} height={380} />
-        <p className="mt-2 text-[10px] text-zinc-500">
+        <p className="mt-2 text-[10px] text-zinc-400">
           Schematic layout — zone-coloured parcels + relative spacing, not a georeferenced map.
         </p>
       </div>
@@ -251,7 +259,7 @@ export function ParcelManager({ onParcelsChange }: { onParcelsChange?: (p: Parce
           <MapPinned className="h-4 w-4 text-emerald-400" /> Live Basemap (OpenStreetMap)
         </h3>
         <MapView markers={basemapMarkers} className="h-[380px]" />
-        <p className="mt-2 text-[10px] text-zinc-500">
+        <p className="mt-2 text-[10px] text-zinc-400">
           {basemapMarkers.length > 0
             ? `Real street/imagery context for ${basemapMarkers.length} parcel${basemapMarkers.length === 1 ? '' : 's'} with coordinates on file — pan/zoom, click a pin for detail.`
             : 'No parcels with coordinates on file yet — add one above with a latitude/longitude to plot it here. The basemap itself is live and pannable now.'}

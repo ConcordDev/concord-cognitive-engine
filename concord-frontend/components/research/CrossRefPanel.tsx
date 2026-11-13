@@ -228,6 +228,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
         <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
+          aria-label="Search CrossRef by title, author, or DOI"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Title, author, DOI…"

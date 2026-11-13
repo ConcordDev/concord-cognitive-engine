@@ -141,7 +141,7 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
         </div>
       </div>
       <div className="flex gap-2">
-        <input value={projName} onChange={(e) => setProjName(e.target.value)} placeholder="New project…"
+        <input aria-label="New project name" value={projName} onChange={(e) => setProjName(e.target.value)} placeholder="New project…"
           className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
         <button type="button" onClick={createProject}
           className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
@@ -156,15 +156,15 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
       </button>
       {showAdd && (
         <div className="grid grid-cols-3 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-          <input placeholder="What needs doing?" value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })}
+          <input aria-label="Task description" placeholder="What needs doing?" value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })}
             className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}
+          <select aria-label="Task priority" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             {[1, 2, 3, 4].map((p) => <option key={p} value={p}>Priority {p}</option>)}
           </select>
-          <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+          <input type="date" aria-label="Task due date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <select value={form.recurring} onChange={(e) => setForm({ ...form, recurring: e.target.value })}
+          <select aria-label="Task repeat" value={form.recurring} onChange={(e) => setForm({ ...form, recurring: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             <option value="">One-time</option>
             <option value="daily">Daily</option>
@@ -176,12 +176,12 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
             <option value="every 7 days">Every 7 days</option>
             <option value="every 14 days">Every 14 days</option>
           </select>
-          <select value={form.projectId} onChange={(e) => setForm({ ...form, projectId: e.target.value })}
+          <select aria-label="Task project" value={form.projectId} onChange={(e) => setForm({ ...form, projectId: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
             <option value="">No project</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <input placeholder="Labels (comma)" value={form.labels} onChange={(e) => setForm({ ...form, labels: e.target.value })}
+          <input aria-label="Task labels" placeholder="Labels (comma)" value={form.labels} onChange={(e) => setForm({ ...form, labels: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={add}
             className="bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg">Add</button>
@@ -210,7 +210,7 @@ export function ProductivityTasksPanel({ onChange }: { onChange: () => void }) {
             <ul className="space-y-1">
               {completed.map((t) => (
                 <li key={t.id} className="flex items-center gap-2 bg-zinc-900/40 border border-zinc-800/70 rounded-lg px-3 py-2">
-                  <span className="flex-1 min-w-0 text-xs text-zinc-500 line-through truncate">{t.content}</span>
+                  <span className="flex-1 min-w-0 text-xs text-zinc-400 line-through truncate">{t.content}</span>
                   {t.dueDate && <span className="text-[10px] text-zinc-600">{t.dueDate}</span>}
                   <button type="button" onClick={() => reopenTask(t.id)}
                     className="px-2 py-0.5 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shrink-0">

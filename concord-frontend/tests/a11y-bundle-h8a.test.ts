@@ -1,5 +1,5 @@
 /**
- * H8a — Lighthouse a11y bundle for lenses A–M: every form control in the
+ * H8a/H8b — Lighthouse a11y bundle for lenses A–Z (the 20 lens folders below): every form control in the
  * lens's own folders is named (aria-label / aria-labelledby / id / wrapping
  * label) and no small muted text stays at the 500 shade (below AA on dark).
  */
@@ -20,6 +20,15 @@ const LENSES: Record<string, string[]> = {
   math: ['components/math', 'app/lenses/math'],
   message: ['components/message', 'app/lenses/message'],
   metacognition: ['components/metacognition', 'app/lenses/metacognition'],
+  neuro: ['components/neuro', 'app/lenses/neuro'],
+  news: ['components/news', 'app/lenses/news'],
+  organ: ['components/organ', 'app/lenses/organ'],
+  productivity: ['components/productivity', 'app/lenses/productivity'],
+  quantum: ['components/quantum', 'app/lenses/quantum'],
+  research: ['components/research', 'app/lenses/research'],
+  root: ['components/root', 'app/lenses/root'],
+  thread: ['components/thread', 'app/lenses/thread'],
+  'urban-planning': ['components/urban-planning', 'app/lenses/urban-planning'],
 };
 
 function files(dir: string): string[] {
@@ -61,7 +70,7 @@ function insideLabel(src: string, at: number): boolean {
   return field >= 0 && before.indexOf('</Field>', field) < 0;
 }
 
-describe.each(Object.entries(LENSES))('H8a %s', (_lens, dirs) => {
+describe.each(Object.entries(LENSES))('H8a/H8b %s', (_lens, dirs) => {
   const all = dirs.flatMap(files);
 
   it('every select is named', () => {
@@ -69,6 +78,8 @@ describe.each(Object.entries(LENSES))('H8a %s', (_lens, dirs) => {
     for (const f of all) {
       const s = readFileSync(f, 'utf8');
       for (const { tag, at } of openingTags(s, 'select')) {
+        const lineStart = s.lastIndexOf('\n', at) + 1;
+        if (/^\s*(\*|\/\/|\/\*)/.test(s.slice(lineStart, at + 1))) continue; // a comment, not markup
         if (/aria-label|aria-labelledby|\bid=|\{\.\.\./.test(tag)) continue;
         if (insideLabel(s, at)) continue;
         unnamed.push(`${f.replace(root, '')}:${s.slice(0, at).split('\n').length}`);

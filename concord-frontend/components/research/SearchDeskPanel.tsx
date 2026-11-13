@@ -479,7 +479,7 @@ export function SearchDeskPanel() {
             "analysis" was the generation-as-execution defect. It is
             labelled as what it is now; real library analysis lives in
             the Library view ("Analyze library"). */}
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-400">
           Frames your question into a testable scaffold — constructs, framing, threats to validity.
           It does not read your library; to analyse your references, use{' '}
           <span className="text-neon-cyan">Analyze library</span> in the Library view.
@@ -487,6 +487,7 @@ export function SearchDeskPanel() {
         <div className="flex gap-3">
           <input
             type="text"
+            aria-label="Hypothesis or research question"
             value={hypothesis}
             onChange={(e) => setHypothesis(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleRunAnalysis()}
@@ -571,6 +572,7 @@ export function SearchDeskPanel() {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
           ref={queryInputRef}
+          aria-label="Search query"
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -585,6 +587,7 @@ export function SearchDeskPanel() {
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-gray-400" />
           <select
+            aria-label="Filter by domain"
             value={domainFilter}
             onChange={(e) => setDomainFilter(e.target.value)}
             className="px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-white"
@@ -598,6 +601,7 @@ export function SearchDeskPanel() {
           </select>
         </div>
         <select
+          aria-label="Filter by level"
           value={tierFilter}
           onChange={(e) => setTierFilter(e.target.value)}
           className="px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-white"
@@ -609,6 +613,7 @@ export function SearchDeskPanel() {
           <option value="shadow">Shadow level</option>
         </select>
         <select
+          aria-label="Sort results"
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'relevance' | 'date' | 'tier')}
           className="px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-white"
@@ -843,7 +848,7 @@ export function SearchDeskPanel() {
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-gray-500">
+        <p className="text-[11px] text-gray-400">
           Citation Network is computed from your library — its related-reference links are the
           network&apos;s edges. Methodology Score and Reproducibility Check were removed from this
           rail: their rubrics score study data (sample sizes, p-values, protocols) that a library
@@ -887,7 +892,7 @@ export function SearchDeskPanel() {
                         .map((p) => (
                           <li key={String(p.id)} className="text-gray-300 truncate">
                             • {String(p.title ?? p.id)}{' '}
-                            <span className="text-gray-500">
+                            <span className="text-gray-400">
                               — cited by {String(p.inDegree ?? 0)} · cites {String(p.outDegree ?? 0)} in
                               your library
                             </span>

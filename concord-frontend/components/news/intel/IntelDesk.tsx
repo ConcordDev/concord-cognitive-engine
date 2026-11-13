@@ -246,7 +246,7 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
             {feed.isLoading ? (
               <Skeleton variant="line" lines={6} />
             ) : sources.length === 0 ? (
-              <p className="py-3 text-[11px] text-zinc-500">No sources in this feed.</p>
+              <p className="py-3 text-[11px] text-zinc-400">No sources in this feed.</p>
             ) : (
               <div className="max-h-[26rem] space-y-0.5 overflow-y-auto pr-1">
                 {sources.map(([src, n]) => (
@@ -262,7 +262,7 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
                     )}
                   >
                     <span className="truncate">{src}</span>
-                    <span className="shrink-0 font-mono text-[10px] text-zinc-500">{n}</span>
+                    <span className="shrink-0 font-mono text-[10px] text-zinc-400">{n}</span>
                   </button>
                 ))}
               </div>
@@ -304,7 +304,7 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
           ) : (
             <div className="space-y-2">
               {(asOf || meta?.stale) && (
-                <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                <div className="flex items-center gap-2 text-[11px] text-zinc-400">
                   {asOf && <span>as of {asOf}</span>}
                   {meta?.stale && (
                     <span
@@ -350,7 +350,7 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
                         >
                           {h.title || '(untitled)'}
                         </a>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-zinc-500">
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-zinc-400">
                           <span className="font-medium text-zinc-400" title={h.attribution || undefined}>{h.source || 'unknown'}</span>
                           {h.sourceCountry && <span className="uppercase">{h.sourceCountry}</span>}
                           <span>·</span>
@@ -378,7 +378,7 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
                             'flex h-6 w-6 items-center justify-center rounded transition-colors',
                             isSel
                               ? 'bg-cyan-500/20 text-cyan-300'
-                              : 'text-zinc-500 hover:bg-cyan-500/10 hover:text-cyan-300',
+                              : 'text-zinc-400 hover:bg-cyan-500/10 hover:text-cyan-300',
                           )}
                         >
                           {isSel ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
@@ -406,7 +406,7 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
                           href={h.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                          className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
                           aria-label="Open source"
                         >
                           <ExternalLink className="h-3 w-3" />
@@ -484,7 +484,7 @@ export function BriefingCard({
         <h2 className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
           <Sun className="h-3 w-3" /> Daily briefing
         </h2>
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-400">
           Briefing needs the live feed. It builds from real GDELT stories across world, business, tech and
           science — retry when the feed is reachable.
         </p>
@@ -506,7 +506,7 @@ export function BriefingCard({
         <Sun className="h-3 w-3 text-amber-400" /> Daily briefing
       </h2>
       <p className="mt-2 text-xs text-zinc-300">{briefing.greeting}</p>
-      <p className="text-[10px] text-zinc-500">{briefing.date}</p>
+      <p className="text-[10px] text-zinc-400">{briefing.date}</p>
       {briefing.stale && (
         <p className="mt-1 text-[10px] uppercase tracking-wide text-amber-300">
           Stale — showing the last good briefing while a refresh is pending

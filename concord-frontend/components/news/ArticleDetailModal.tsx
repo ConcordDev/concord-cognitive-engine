@@ -207,7 +207,7 @@ export function ArticleDetailModal({ onMutated }: { onMutated?: () => void } = {
           {article.summary ? (
             <p className="text-sm leading-relaxed text-zinc-200">{article.summary}</p>
           ) : (
-            <p className="text-sm italic text-zinc-500">No summary provided for this story.</p>
+            <p className="text-sm italic text-zinc-400">No summary provided for this story.</p>
           )}
 
           {script && (

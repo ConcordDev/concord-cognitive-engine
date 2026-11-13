@@ -313,6 +313,7 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Project name"
+            aria-label="New project name"
             className={inputCls}
           />
           <select
@@ -346,6 +347,7 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
           value={form.description}
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           placeholder="Description (optional)"
+          aria-label="Project description"
           rows={2}
           className={cn(inputCls, 'mt-2')}
         />
@@ -355,12 +357,14 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
             onChange={(e) => setForm((f) => ({ ...f, budget: e.target.value }))}
             type="number"
             placeholder="Budget ($, optional)"
+            aria-label="Project budget"
             className={inputCls}
           />
           <input
             value={form.permitNumber}
             onChange={(e) => setForm((f) => ({ ...f, permitNumber: e.target.value }))}
             placeholder="Permit number (optional)"
+            aria-label="Permit number"
             className={inputCls}
           />
           <input
@@ -434,7 +438,7 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
                       </span>
                     </div>
                     {p.description && <p className="mt-0.5 text-xs text-zinc-400">{p.description}</p>}
-                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-zinc-500">
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-zinc-400">
                       {p.parcelId && (
                         <span>
                           Parcel: {p.parcelApn}
@@ -534,7 +538,7 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
 
                 {nextOptions.length > 0 && (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] text-zinc-500">Advance:</span>
+                    <span className="text-[10px] text-zinc-400">Advance:</span>
                     {nextOptions.map((st) => (
                       <button
                         key={st}
@@ -560,7 +564,7 @@ export function ProjectTracker({ onDataChanged }: { onDataChanged?: () => void }
 
                 <button
                   onClick={() => toggleHistory(p.id)}
-                  className="mt-2 inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-300"
+                  className="mt-2 inline-flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-300"
                 >
                   <History className="h-3 w-3" />
                   {historyOpen ? 'Hide' : 'Show'} status history ({p.statusHistory.length})

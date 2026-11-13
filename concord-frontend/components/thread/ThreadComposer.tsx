@@ -247,7 +247,7 @@ export function ThreadComposer() {
         {/* Editor */}
         <div>
           <div className="flex gap-1.5 mb-1.5">
-            <select value={platform} onChange={e => setPlatform(e.target.value)}
+            <select value={platform} onChange={e => setPlatform(e.target.value)} aria-label="Platform"
               className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">
               {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
@@ -256,12 +256,12 @@ export function ThreadComposer() {
               {active ? 'Save' : 'Create draft'}
             </button>
           </div>
-          <textarea value={content} onChange={e => setContent(e.target.value)} rows={11}
+          <textarea value={content} onChange={e => setContent(e.target.value)} rows={11} aria-label="Thread text"
             placeholder="Write your thread — paragraphs and long text auto-split into numbered posts…"
             className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-sky-500" />
           {active && (
             <div className="flex gap-1.5 mt-1.5">
-              <input type="datetime-local" value={schedAt} onChange={e => setSchedAt(e.target.value)}
+              <input type="datetime-local" aria-label="Schedule time" value={schedAt} onChange={e => setSchedAt(e.target.value)}
                 className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-[11px] text-zinc-200" />
               <button onClick={schedule} disabled={!schedAt} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 disabled:opacity-40 inline-flex items-center gap-1">
                 <Calendar className="w-3 h-3" />Queue

@@ -77,6 +77,7 @@ export function ProductivityQuickAddPanel({ onChange }: { onChange: () => void }
 
       <div className="flex gap-2">
         <input
+          aria-label="Quick add task"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') void add(); }}
