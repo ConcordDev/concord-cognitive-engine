@@ -121,7 +121,7 @@ function CommentNode({
               {collapsed ? <Plus className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
             </button>
             <span className="text-[10px] font-medium text-orange-300">{node.author}</span>
-            {node.editedAt && <span className="text-[10px] text-zinc-500">edited</span>}
+            {node.editedAt && <span className="text-[10px] text-zinc-400">edited</span>}
             {kids.length > 0 && (
               <span className="text-[10px] text-zinc-400">
                 {countDescendants(node)} repl{countDescendants(node) === 1 ? 'y' : 'ies'}

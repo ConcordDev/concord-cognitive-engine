@@ -88,6 +88,7 @@ export function ModelPickerModal({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          aria-label="Filter models"
           placeholder="Filter models…"
           className="w-full px-3 py-1.5 mb-3 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
         />

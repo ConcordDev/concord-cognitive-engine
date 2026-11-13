@@ -237,7 +237,7 @@ export function ChemActionPanel() {
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-lime-400 font-semibold">Analyze (molecularAnalysis)</div>
           <div className="flex gap-1">
-            <input type="text" value={analyzeFormula} onChange={(e) => setAnalyzeFormula(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono" placeholder="C6H12O6" />
+            <input type="text" aria-label="Analyze formula" value={analyzeFormula}onChange={(e) => setAnalyzeFormula(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono" placeholder="C6H12O6" />
             <button type="button" disabled={!!busy} onClick={actAnalyze} className="px-2 rounded bg-lime-500/20 text-lime-300 hover:bg-lime-500/30 text-[11px] disabled:opacity-40">
               {busy === 'analyze' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Microscope className="w-3 h-3" />}
             </button>
@@ -246,7 +246,7 @@ export function ChemActionPanel() {
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-fuchsia-400 font-semibold">Balance (balanceReaction)</div>
           <div className="flex gap-1">
-            <input type="text" value={balanceEquation} onChange={(e) => setBalanceEquation(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono" placeholder="H2 + O2 -> H2O" />
+            <input type="text" aria-label="Balance equation" value={balanceEquation}onChange={(e) => setBalanceEquation(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono" placeholder="H2 + O2 -> H2O" />
             <button type="button" disabled={!!busy} onClick={actBalance} className="px-2 rounded bg-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/30 text-[11px] disabled:opacity-40">
               {busy === 'balance' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
             </button>
@@ -255,8 +255,8 @@ export function ChemActionPanel() {
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-orange-400 font-semibold">Solution pH (solutionChemistry)</div>
           <div className="flex gap-1">
-            <input type="text" value={solConcentration} onChange={(e) => setSolConcentration(e.target.value)} className="w-16 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono" placeholder="mol/L" />
-            <select value={solType} onChange={(e) => setSolType(e.target.value as typeof solType)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-1 py-1.5 text-[11px] text-white">
+            <input type="text" aria-label="Solution concentration" value={solConcentration}onChange={(e) => setSolConcentration(e.target.value)} className="w-16 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white font-mono" placeholder="mol/L" />
+            <select aria-label="Solution type" value={solType}onChange={(e) => setSolType(e.target.value as typeof solType)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-1 py-1.5 text-[11px] text-white">
               <option value="strong-acid">strong acid</option>
               <option value="strong-base">strong base</option>
             </select>
@@ -270,24 +270,24 @@ export function ChemActionPanel() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">Compound</div>
-          <input type="text" value={formula} onChange={(e) => setFormula(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="C6H12O6" />
+          <input type="text" aria-label="Compound formula" value={formula}onChange={(e) => setFormula(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="C6H12O6" />
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Molarity (2 of 3)</div>
-          <input type="text" value={molMoles} onChange={(e) => setMolMoles(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="moles" />
-          <input type="text" value={molLiters} onChange={(e) => setMolLiters(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="liters" />
-          <input type="text" value={molMolarity} onChange={(e) => setMolMolarity(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="molarity" />
+          <input type="text" aria-label="Molarity moles" value={molMoles}onChange={(e) => setMolMoles(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="moles" />
+          <input type="text" aria-label="Molarity liters" value={molLiters}onChange={(e) => setMolLiters(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="liters" />
+          <input type="text" aria-label="Molarity" value={molMolarity}onChange={(e) => setMolMolarity(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="molarity" />
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">pH</div>
-          <input type="text" value={phConcentration} onChange={(e) => setPhConcentration(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="concentration mol/L" />
-          <select value={phKind} onChange={(e) => setPhKind(e.target.value as typeof phKind)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
+          <input type="text" aria-label="pH concentration" value={phConcentration}onChange={(e) => setPhConcentration(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="concentration mol/L" />
+          <select aria-label="pH kind" value={phKind}onChange={(e) => setPhKind(e.target.value as typeof phKind)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
             <option value="acid">acid</option>
             <option value="base">base</option>
             <option value="h_plus">[H+]</option>
             <option value="oh_minus">[OH-]</option>
           </select>
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <input type="text" aria-label="DM recipient" value={recipient}onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
           <input type="text" value={dmMessage} onChange={(e) => setDmMessage(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="Message (optional — sent with the bench results)" aria-label="DM message" />
           <div className="flex items-center gap-2 flex-wrap">
             <RecallSlot ctl={dmRecall} />
@@ -297,10 +297,10 @@ export function ChemActionPanel() {
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-cyan-400 font-semibold">Dilution (3 of 4)</div>
           <div className="grid grid-cols-2 gap-1">
-            <input type="text" value={dilM1} onChange={(e) => setDilM1(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="M1" />
-            <input type="text" value={dilV1} onChange={(e) => setDilV1(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="V1" />
-            <input type="text" value={dilM2} onChange={(e) => setDilM2(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="M2" />
-            <input type="text" value={dilV2} onChange={(e) => setDilV2(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="V2" />
+            <input type="text" aria-label="Dilution M1" value={dilM1}onChange={(e) => setDilM1(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="M1" />
+            <input type="text" aria-label="Dilution V1" value={dilV1}onChange={(e) => setDilV1(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="V1" />
+            <input type="text" aria-label="Dilution M2" value={dilM2}onChange={(e) => setDilM2(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="M2" />
+            <input type="text" aria-label="Dilution V2" value={dilV2}onChange={(e) => setDilV2(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" placeholder="V2" />
           </div>
         </div>
       </div>

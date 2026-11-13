@@ -148,7 +148,7 @@ export function LatticeSeedPanel() {
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`px-3 py-1.5 text-xs ${tab === t.id ? 'text-white border-b-2 border-neon-cyan' : 'text-gray-500 hover:text-gray-300'}`}
+            className={`px-3 py-1.5 text-xs ${tab === t.id ? 'text-white border-b-2 border-neon-cyan' : 'text-gray-400 hover:text-gray-300'}`}
           >
             {t.label}
           </button>
@@ -158,16 +158,18 @@ export function LatticeSeedPanel() {
       {tab === 'queue' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="space-y-3">
-            <h3 className="text-xs uppercase tracking-wide text-gray-500 flex items-center gap-1.5">
+            <h3 className="text-xs uppercase tracking-wide text-gray-400 flex items-center gap-1.5">
               <BookPlus className="w-3.5 h-3.5" /> Source
             </h3>
             <input
+              aria-label="Source label"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Label (required)"
               className="w-full px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded-lg text-xs text-white placeholder-gray-500"
             />
             <input
+              aria-label="Root URL (optional)"
               value={rootUrl}
               onChange={(e) => setRootUrl(e.target.value)}
               placeholder="Root URL (optional)"
@@ -182,7 +184,7 @@ export function LatticeSeedPanel() {
               <Plus className="w-3 h-3" /> Add source
             </button>
             <ul className="text-xs space-y-1 max-h-32 overflow-auto">
-              {sources.length === 0 && <li className="text-gray-500">No sources yet.</li>}
+              {sources.length === 0 && <li className="text-gray-400">No sources yet.</li>}
               {sources.map((s) => (
                 <li key={s.id}>
                   <button
@@ -191,17 +193,18 @@ export function LatticeSeedPanel() {
                     className={`text-left w-full px-2 py-1 rounded ${sourceId === s.id ? 'bg-neon-cyan/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}
                   >
                     <span className="font-medium">{s.label}</span>
-                    {s.rootUrl && <span className="text-gray-500 font-mono ml-2">{s.rootUrl}</span>}
+                    {s.rootUrl && <span className="text-gray-400 font-mono ml-2">{s.rootUrl}</span>}
                   </button>
                 </li>
               ))}
             </ul>
           </div>
           <div className="space-y-3">
-            <h3 className="text-xs uppercase tracking-wide text-gray-500 flex items-center gap-1.5">
+            <h3 className="text-xs uppercase tracking-wide text-gray-400 flex items-center gap-1.5">
               <ListTodo className="w-3.5 h-3.5" /> Pages
             </h3>
             <input
+              aria-label="Page URL to queue"
               value={pageUrl}
               onChange={(e) => setPageUrl(e.target.value)}
               placeholder="https://… page to queue"
@@ -227,7 +230,7 @@ export function LatticeSeedPanel() {
               </button>
             </div>
             <ul className="text-xs space-y-1 max-h-48 overflow-auto font-mono">
-              {pages.length === 0 && <li className="text-gray-500 font-sans">No pages queued.</li>}
+              {pages.length === 0 && <li className="text-gray-400 font-sans">No pages queued.</li>}
               {pages.map((p) => (
                 <li key={p.id} className="flex items-start gap-2">
                   <span className={
@@ -245,6 +248,7 @@ export function LatticeSeedPanel() {
       {tab === 'hypotheses' && (
         <div className="space-y-3">
           <textarea
+            aria-label="Excerpt to propose hypotheses from"
             value={hypText}
             onChange={(e) => setHypText(e.target.value)}
             placeholder="Paste an excerpt to propose testable directions…"
@@ -260,10 +264,10 @@ export function LatticeSeedPanel() {
             <FlaskConical className="w-3 h-3" /> Propose hypotheses
           </button>
           <ul className="space-y-3">
-            {hypotheses.length === 0 && <li className="text-xs text-gray-500">No hypotheses yet — ingest a page or paste an excerpt.</li>}
+            {hypotheses.length === 0 && <li className="text-xs text-gray-400">No hypotheses yet — ingest a page or paste an excerpt.</li>}
             {hypotheses.map((h) => (
               <li key={h.id} className="border border-lattice-border rounded-lg p-3 space-y-2">
-                <div className="text-[11px] text-gray-500 flex justify-between">
+                <div className="text-[11px] text-gray-400 flex justify-between">
                   <span>#{h.id} {h.sourceLabel || 'manual'}</span>
                   <span>{new Date(h.createdAt).toLocaleString()}</span>
                 </div>
@@ -290,7 +294,7 @@ export function LatticeSeedPanel() {
           </label>
           <ul className="space-y-3">
             {dtus.length === 0 && (
-              <li className="text-xs text-gray-500">
+              <li className="text-xs text-gray-400">
                 {trustedOnly ? 'No trusted auto-DTUs yet.' : 'No auto-DTUs yet.'}
               </li>
             )}
@@ -302,10 +306,10 @@ export function LatticeSeedPanel() {
                     d.trustLevel === 'trusted' ? 'bg-neon-green/15 text-neon-green' : 'bg-amber-500/15 text-amber-400'
                   }`}>{d.trustLevel}</span>
                 </div>
-                <div className="text-[11px] text-gray-500 font-mono">{d.key} · {d.layer} · {d.kind}</div>
+                <div className="text-[11px] text-gray-400 font-mono">{d.key} · {d.layer} · {d.kind}</div>
                 <p className="text-xs text-gray-300">{d.summary}</p>
                 {d.mintedDtuId
-                  ? <div className="text-[11px] text-gray-500">Substrate DTU {d.mintedDtuId}</div>
+                  ? <div className="text-[11px] text-gray-400">Substrate DTU {d.mintedDtuId}</div>
                   : <div className="text-[11px] text-gray-600">No substrate id yet — catalog row only.</div>}
                 {d.trustLevel !== 'trusted' && (
                   <button
@@ -326,6 +330,7 @@ export function LatticeSeedPanel() {
       {tab === 'jobs' && (
         <div className="space-y-3">
           <input
+            aria-label="Research topic"
             value={jobTopic}
             onChange={(e) => setJobTopic(e.target.value)}
             placeholder="Research topic"
@@ -340,7 +345,7 @@ export function LatticeSeedPanel() {
             Run research job
           </button>
           <ul className="space-y-3">
-            {jobs.length === 0 && <li className="text-xs text-gray-500">No persisted research jobs yet.</li>}
+            {jobs.length === 0 && <li className="text-xs text-gray-400">No persisted research jobs yet.</li>}
             {jobs.map((j) => (
               <li key={j.id} className="border border-lattice-border rounded-lg p-3 space-y-2">
                 <div className="flex justify-between text-xs">

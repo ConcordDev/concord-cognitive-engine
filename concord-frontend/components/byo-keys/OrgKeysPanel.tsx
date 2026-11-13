@@ -107,12 +107,14 @@ export function OrgKeysPanel() {
         <div className="mb-4 rounded-lg bg-zinc-950 ring-1 ring-zinc-800 p-3 space-y-2">
           <input
             type="text"
+            aria-label="Group label"
             value={createForm.label}
             onChange={(e) => setCreateForm((f) => ({ ...f, label: e.target.value }))}
             placeholder="Group label (e.g. 'Eng team — Anthropic')"
             className="w-full px-2 py-1.5 rounded-md bg-zinc-900 text-zinc-100 text-xs ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
           />
           <select
+            aria-label="Group provider"
             value={createForm.provider}
             onChange={(e) => setCreateForm((f) => ({ ...f, provider: e.target.value }))}
             className="w-full px-2 py-1.5 rounded-md bg-zinc-900 text-zinc-100 text-xs ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
@@ -202,12 +204,14 @@ export function OrgKeysPanel() {
               <div className="mt-2 flex gap-2 border-t border-zinc-800 pt-2">
                 <input
                   type="text"
+                  aria-label="Member user ID"
                   value={memberForm.memberId}
                   onChange={(e) => setMemberForm((f) => f && { ...f, memberId: e.target.value })}
                   placeholder="member user id"
                   className="flex-1 px-2 py-1 rounded-md bg-zinc-900 text-zinc-100 text-[11px] ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
                 />
                 <select
+                  aria-label="Member role"
                   value={memberForm.role}
                   onChange={(e) => setMemberForm((f) => f && { ...f, role: e.target.value })}
                   className="px-2 py-1 rounded-md bg-zinc-900 text-zinc-100 text-[11px] ring-1 ring-zinc-700 focus:outline-none"

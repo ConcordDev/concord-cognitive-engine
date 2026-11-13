@@ -152,8 +152,8 @@ export function BioResearchPanel() {
 
       {tool === 'align' && (
         <div className="space-y-2 text-xs">
-          <textarea value={seqA} onChange={(e) => setSeqA(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white font-mono" placeholder="Sequence A" />
-          <textarea value={seqB} onChange={(e) => setSeqB(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white font-mono" placeholder="Sequence B" />
+          <textarea aria-label="Sequence A" value={seqA} onChange={(e) => setSeqA(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white font-mono" placeholder="Sequence A" />
+          <textarea aria-label="Sequence B" value={seqB} onChange={(e) => setSeqB(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white font-mono" placeholder="Sequence B" />
           <button type="button" disabled={busy} onClick={() => run<AlignResult>('sequenceAlign', { sequenceA: seqA, sequenceB: seqB }, setAlignResult)}
             className="px-3 py-1.5 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40 flex items-center gap-1.5">
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GitCompare className="w-3.5 h-3.5" />} Align (Needleman-Wunsch)
@@ -173,8 +173,8 @@ export function BioResearchPanel() {
 
       {tool === 'expression' && (
         <div className="space-y-2 text-xs">
-          <p className="text-zinc-500">gene,condition,expression — one row per sample, needs exactly 2 conditions.</p>
-          <textarea value={exprRows} onChange={(e) => setExprRows(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white font-mono" />
+          <p className="text-zinc-400">gene,condition,expression — one row per sample, needs exactly 2 conditions.</p>
+          <textarea aria-label="Expression rows (gene,condition,expression CSV)" value={exprRows} onChange={(e) => setExprRows(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white font-mono" />
           <button type="button" disabled={busy} onClick={() => {
             const samples = exprRows.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
               const [gene, condition, expression] = line.split(',').map(s => s.trim());
@@ -195,7 +195,7 @@ export function BioResearchPanel() {
                     {exprResult.genes && exprResult.genes.length > 0 && (
                       <div className="overflow-x-auto pt-1">
                         <table className="w-full text-[11px] font-mono">
-                          <thead><tr className="text-left text-zinc-500">
+                          <thead><tr className="text-left text-zinc-400">
                             <th className="py-0.5 pr-2">Gene</th><th className="py-0.5 pr-2">{exprResult.conditions?.conditionA}</th><th className="py-0.5 pr-2">{exprResult.conditions?.conditionB}</th><th className="py-0.5 pr-2">FC</th><th className="py-0.5 pr-2">log2FC</th><th className="py-0.5">Call</th>
                           </tr></thead>
                           <tbody>
@@ -213,7 +213,7 @@ export function BioResearchPanel() {
                         </table>
                       </div>
                     )}
-                    {exprResult.rule && <p className="text-[10px] text-zinc-500 pt-1">{exprResult.rule}</p>}
+                    {exprResult.rule && <p className="text-[10px] text-zinc-400 pt-1">{exprResult.rule}</p>}
                   </>
                 )}
               </motion.div>
@@ -226,14 +226,14 @@ export function BioResearchPanel() {
         <div className="space-y-2 text-xs">
           {phyloSeqs.map((s, i) => (
             <div key={i} className="flex gap-1.5">
-              <input value={s.id} onChange={(e) => updateSeqList(phyloSeqs, setPhyloSeqs, i, 'id', e.target.value)} className="w-20 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="label" />
-              <input value={s.sequence} onChange={(e) => updateSeqList(phyloSeqs, setPhyloSeqs, i, 'sequence', e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white font-mono" placeholder="sequence" />
-              {phyloSeqs.length > 2 && <button type="button" onClick={() => setPhyloSeqs(phyloSeqs.filter((_, idx) => idx !== i))} className="text-zinc-500 hover:text-red-400" aria-label={`Remove sequence ${s.id || i + 1}`}><X className="w-3.5 h-3.5" aria-hidden="true" /></button>}
+              <input aria-label={`Phylo sequence ${i + 1} label`} value={s.id} onChange={(e) => updateSeqList(phyloSeqs, setPhyloSeqs, i, 'id', e.target.value)}className="w-20 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="label" />
+              <input aria-label={`Phylo sequence ${i + 1}`} value={s.sequence} onChange={(e) => updateSeqList(phyloSeqs, setPhyloSeqs, i, 'sequence', e.target.value)}className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white font-mono" placeholder="sequence" />
+              {phyloSeqs.length > 2 && <button type="button" onClick={() => setPhyloSeqs(phyloSeqs.filter((_, idx) => idx !== i))} className="text-zinc-400hover:text-red-400" aria-label={`Remove sequence ${s.id || i + 1}`}><X className="w-3.5 h-3.5" aria-hidden="true" /></button>}
             </div>
           ))}
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => phyloSeqs.length < 20 && setPhyloSeqs([...phyloSeqs, { id: `seq${phyloSeqs.length + 1}`, sequence: '' }])} className="px-2 py-1 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700 flex items-center gap-1"><Plus className="w-3 h-3" /> Add sequence</button>
-            <select value={phyloModel} onChange={(e) => setPhyloModel(e.target.value as typeof phyloModel)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white">
+            <select aria-label="Phylogenetic model" value={phyloModel}onChange={(e) => setPhyloModel(e.target.value as typeof phyloModel)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white">
               <option value="jukes-cantor">Jukes-Cantor</option>
               <option value="kimura">Kimura 2-parameter</option>
             </select>
@@ -265,14 +265,14 @@ export function BioResearchPanel() {
         <div className="space-y-2 text-xs">
           {motifSeqs.map((s, i) => (
             <div key={i} className="flex gap-1.5">
-              <input value={s.id} onChange={(e) => updateSeqList(motifSeqs, setMotifSeqs, i, 'id', e.target.value)} className="w-20 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="label" />
-              <input value={s.sequence} onChange={(e) => updateSeqList(motifSeqs, setMotifSeqs, i, 'sequence', e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white font-mono" placeholder="sequence" />
-              {motifSeqs.length > 1 && <button type="button" onClick={() => setMotifSeqs(motifSeqs.filter((_, idx) => idx !== i))} className="text-zinc-500 hover:text-red-400" aria-label={`Remove sequence ${s.id || i + 1}`}><X className="w-3.5 h-3.5" aria-hidden="true" /></button>}
+              <input aria-label={`Motif sequence ${i + 1} label`} value={s.id} onChange={(e) => updateSeqList(motifSeqs, setMotifSeqs, i, 'id', e.target.value)}className="w-20 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="label" />
+              <input aria-label={`Motif sequence ${i + 1}`} value={s.sequence} onChange={(e) => updateSeqList(motifSeqs, setMotifSeqs, i, 'sequence', e.target.value)}className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white font-mono" placeholder="sequence" />
+              {motifSeqs.length > 1 && <button type="button" onClick={() => setMotifSeqs(motifSeqs.filter((_, idx) => idx !== i))} className="text-zinc-400hover:text-red-400" aria-label={`Remove sequence ${s.id || i + 1}`}><X className="w-3.5 h-3.5" aria-hidden="true" /></button>}
             </div>
           ))}
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => motifSeqs.length < 20 && setMotifSeqs([...motifSeqs, { id: `seq${motifSeqs.length + 1}`, sequence: '' }])} className="px-2 py-1 rounded bg-zinc-800 text-zinc-300 hover:bg-zinc-700 flex items-center gap-1"><Plus className="w-3 h-3" /> Add sequence</button>
-            <input type="number" min={3} max={20} value={motifLen} onChange={(e) => setMotifLen(e.target.value)} className="w-16 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="k-mer len" />
+            <input type="number" aria-label="k-mer length" min={3} max={20} value={motifLen} onChange={(e) => setMotifLen(e.target.value)}className="w-16 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="k-mer len" />
             <button type="button" disabled={busy} onClick={() => run<MotifResult>('motifDetection', { sequences: motifSeqs.filter(s => s.sequence.trim()), motifLength: parseInt(motifLen) || 6 }, setMotifResult)}
               className="px-3 py-1.5 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40 flex items-center gap-1.5">
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ScanSearch className="w-3.5 h-3.5" />} Find conserved motifs
@@ -301,12 +301,12 @@ export function BioResearchPanel() {
       {tool === 'organism' && (
         <div className="space-y-2 text-xs">
           <div className="grid grid-cols-2 gap-1.5">
-            <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Species name" />
-            <select value={orgKingdom} onChange={(e) => setOrgKingdom(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white">
+            <input aria-label="Species name" value={orgName} onChange={(e) => setOrgName(e.target.value)}className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Species name" />
+            <select aria-label="Kingdom" value={orgKingdom}onChange={(e) => setOrgKingdom(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white">
               {['Animalia', 'Plantae', 'Fungi', 'Bacteria', 'Archaea', 'Protista'].map(k => <option key={k} value={k}>{k}</option>)}
             </select>
-            <input value={orgHabitat} onChange={(e) => setOrgHabitat(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Habitat" />
-            <input value={orgTraits} onChange={(e) => setOrgTraits(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Traits (comma-separated)" />
+            <input aria-label="Habitat" value={orgHabitat}onChange={(e) => setOrgHabitat(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Habitat" />
+            <input aria-label="Traits (comma-separated)" value={orgTraits}onChange={(e) => setOrgTraits(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Traits (comma-separated)" />
           </div>
           <button type="button" disabled={busy || !orgName.trim()} onClick={() => run<OrganismResult>('profile-organism', { name: orgName, kingdom: orgKingdom, habitat: orgHabitat, traits: orgTraits }, setOrgResult)}
             className="px-3 py-1.5 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40 flex items-center gap-1.5">
@@ -317,7 +317,7 @@ export function BioResearchPanel() {
               <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-md border border-emerald-500/25 bg-emerald-500/5 p-3 space-y-1">
                 <p className="text-white font-semibold">{orgResult.name} <span className="text-zinc-400 font-normal">({orgResult.kingdom})</span></p>
                 <p className="text-zinc-300">{orgResult.summary}</p>
-                <p className="text-zinc-500">{orgResult.evolutionaryNotes}</p>
+                <p className="text-zinc-400">{orgResult.evolutionaryNotes}</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -328,12 +328,12 @@ export function BioResearchPanel() {
         <div className="space-y-2 text-xs">
           {pathwaySteps.map((s, i) => (
             <div key={i} className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
-              <input value={s.substrate} onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, substrate: e.target.value } : p))} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="substrate" />
-              <input value={s.enzyme} onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, enzyme: e.target.value } : p))} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="enzyme" />
-              <input value={s.product} onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, product: e.target.value } : p))} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="product" />
+              <input aria-label={`Pathway step ${i + 1} substrate`} value={s.substrate}onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, substrate: e.target.value } : p))} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="substrate" />
+              <input aria-label={`Pathway step ${i + 1} enzyme`} value={s.enzyme}onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, enzyme: e.target.value } : p))} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="enzyme" />
+              <input aria-label={`Pathway step ${i + 1} product`} value={s.product}onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, product: e.target.value } : p))} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="product" />
               <div className="flex gap-1">
-                <input value={s.deltaG} onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, deltaG: e.target.value } : p))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="ΔG kJ/mol" />
-                {pathwaySteps.length > 1 && <button type="button" onClick={() => setPathwaySteps(pathwaySteps.filter((_, idx) => idx !== i))} className="text-zinc-500 hover:text-red-400" aria-label={`Remove pathway step ${s.substrate ? `"${s.substrate}"` : i + 1}`}><X className="w-3.5 h-3.5" aria-hidden="true" /></button>}
+                <input aria-label={`Pathway step ${i + 1} ΔG kJ/mol`} value={s.deltaG}onChange={(e) => setPathwaySteps(pathwaySteps.map((p, idx) => idx === i ? { ...p, deltaG: e.target.value } : p))} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-white" placeholder="ΔG kJ/mol" />
+                {pathwaySteps.length > 1 && <button type="button" onClick={() => setPathwaySteps(pathwaySteps.filter((_, idx) => idx !== i))} className="text-zinc-400 hover:text-red-400" aria-label={`Remove pathway step ${s.substrate ? `"${s.substrate}"` : i + 1}`}><X className="w-3.5 h-3.5" aria-hidden="true" /></button>}
               </div>
             </div>
           ))}
@@ -358,8 +358,8 @@ export function BioResearchPanel() {
 
       {tool === 'protocol' && (
         <div className="space-y-2 text-xs">
-          <p className="text-zinc-500">One step per line.</p>
-          <textarea value={protocolSteps} onChange={(e) => setProtocolSteps(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" />
+          <p className="text-zinc-400">One step per line.</p>
+          <textarea aria-label="Protocol steps, one per line" value={protocolSteps} onChange={(e) => setProtocolSteps(e.target.value)} rows={5} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" />
           <button type="button" disabled={busy} onClick={() => run<ProtocolResult>('review-protocol', { steps: protocolSteps.split('\n').map(s => s.trim()).filter(Boolean) }, setProtocolResult)}
             className="px-3 py-1.5 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40 flex items-center gap-1.5">
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ClipboardCheck className="w-3.5 h-3.5" />} Review protocol
@@ -380,9 +380,9 @@ export function BioResearchPanel() {
       {tool === 'gene' && (
         <div className="space-y-2 text-xs">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
-            <input value={geneSymbol} onChange={(e) => setGeneSymbol(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white font-mono" placeholder="Gene symbol (TP53)" />
-            <input value={geneOrganism} onChange={(e) => setGeneOrganism(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Organism" />
-            <input value={geneFunction} onChange={(e) => setGeneFunction(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Known function (optional)" />
+            <input aria-label="Gene symbol" value={geneSymbol}onChange={(e) => setGeneSymbol(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white font-mono" placeholder="Gene symbol (TP53)" />
+            <input aria-label="Gene organism" value={geneOrganism}onChange={(e) => setGeneOrganism(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Organism" />
+            <input aria-label="Known gene function" value={geneFunction}onChange={(e) => setGeneFunction(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Known function (optional)" />
           </div>
           <button type="button" disabled={busy || !geneSymbol.trim()} onClick={() => run<GeneFunctionResult>('link-gene-function', { gene: geneSymbol, organism: geneOrganism, function: geneFunction }, setGeneResult)}
             className="px-3 py-1.5 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40 flex items-center gap-1.5">
@@ -395,11 +395,11 @@ export function BioResearchPanel() {
                   {geneResult.chain.map((c, i) => (
                     <span key={i} className="flex items-center gap-1">
                       <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-emerald-200">{c.entity}</span>
-                      {i < geneResult.chain.length - 1 && <span className="text-zinc-500">→</span>}
+                      {i < geneResult.chain.length - 1 && <span className="text-zinc-400">→</span>}
                     </span>
                   ))}
                 </div>
-                {geneResult.functionNote && <p className="text-[10px] text-zinc-500">{geneResult.functionNote}</p>}
+                {geneResult.functionNote && <p className="text-[10px] text-zinc-400">{geneResult.functionNote}</p>}
                 <div className="flex items-center gap-3">
                   {geneResult.externalLinks.map(l => <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300">{l.source}</a>)}
                 </div>
@@ -411,7 +411,7 @@ export function BioResearchPanel() {
 
       {tool === 'evolution' && (
         <div className="space-y-2 text-xs">
-          <input value={evoOrganisms} onChange={(e) => setEvoOrganisms(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Organisms, comma-separated" />
+          <input aria-label="Organisms, comma-separated" value={evoOrganisms}onChange={(e) => setEvoOrganisms(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white" placeholder="Organisms, comma-separated" />
           <button type="button" disabled={busy} onClick={() => run<EvolutionResult>('trace-evolution', { organisms: evoOrganisms.split(',').map(s => s.trim()).filter(Boolean) }, setEvoResult)}
             className="px-3 py-1.5 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40 flex items-center gap-1.5">
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GitBranch className="w-3.5 h-3.5" />} Trace relationship
@@ -420,7 +420,7 @@ export function BioResearchPanel() {
             {evoResult && (
               <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-md border border-emerald-500/25 bg-emerald-500/5 p-3 space-y-1">
                 <p className="text-zinc-300">{evoResult.commonality}</p>
-                <p className="text-zinc-500">{evoResult.suggestion}</p>
+                <p className="text-zinc-400">{evoResult.suggestion}</p>
                 {evoResult.closestPair && <p className="text-zinc-400">Closest pair: {evoResult.closestPair.a} ↔ {evoResult.closestPair.b} ({evoResult.closestPair.relation})</p>}
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {evoResult.organisms.map(o => <span key={o.name} className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">{o.name} · {o.group}{o.subgroup ? ` · ${o.subgroup}` : ''}</span>)}
@@ -433,7 +433,7 @@ export function BioResearchPanel() {
 
       {tool === 'fasta' && (
         <div className="space-y-2 text-xs">
-          <textarea value={fastaText} onChange={(e) => setFastaText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white font-mono" placeholder=">header&#10;SEQUENCE" />
+          <textarea aria-label="FASTA input" value={fastaText}onChange={(e) => setFastaText(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-white font-mono" placeholder=">header&#10;SEQUENCE" />
           <button type="button" disabled={busy} onClick={() => run<FastaResult>('parse-fasta', { text: fastaText }, setFastaResult)}
             className="px-3 py-1.5 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40 flex items-center gap-1.5">
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />} Parse FASTA
@@ -444,7 +444,7 @@ export function BioResearchPanel() {
                 <p className="text-zinc-400">{fastaResult.count} record(s)</p>
                 {fastaResult.records.map(r => (
                   <div key={r.id} className="font-mono">
-                    <span className="text-emerald-300">{r.id}</span> <span className="text-zinc-500 font-sans">({r.length} bp)</span>
+                    <span className="text-emerald-300">{r.id}</span> <span className="text-zinc-400 font-sans">({r.length} bp)</span>
                     <p className="text-zinc-400 truncate">{r.sequence.slice(0, 60)}{r.sequence.length > 60 ? '…' : ''}</p>
                   </div>
                 ))}

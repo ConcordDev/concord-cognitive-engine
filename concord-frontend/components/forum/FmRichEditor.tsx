@@ -77,7 +77,7 @@ export function FmRichEditor({
             : <p className="text-[11px] text-zinc-400 italic">Nothing to preview yet.</p>}
         </div>
       ) : (
-        <textarea ref={ref} value={value.body} rows={rows} placeholder={placeholder}
+        <textarea ref={ref} aria-label={placeholder} value={value.body} rows={rows} placeholder={placeholder}
           onChange={(e) => onChange({ ...value, body: e.target.value })}
           className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 resize-y" />
       )}
@@ -85,7 +85,7 @@ export function FmRichEditor({
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5 flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2">
           <ImagePlus className="w-3.5 h-3.5 text-zinc-400" />
-          <input placeholder="Embed image URL" value={imageUrl}
+          <input aria-label="Embed image URL" placeholder="Embed image URL" value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addImage(); } }}
             className="flex-1 bg-transparent py-1.5 text-[11px] text-zinc-100 focus:outline-none" />

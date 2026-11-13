@@ -64,7 +64,7 @@ export function OpenRouterCatalog() {
       <form onSubmit={(e) => e.preventDefault()} className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
-          <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter (e.g. opus, claude, gpt-4, qwen, llama)…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
+          <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Filter models" placeholder="Filter (e.g. opus, claude, gpt-4, qwen, llama)…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
         <span className="font-mono text-[10px] text-zinc-400">{filtered.length} / {models.data?.length ?? '—'}</span>
       </form>

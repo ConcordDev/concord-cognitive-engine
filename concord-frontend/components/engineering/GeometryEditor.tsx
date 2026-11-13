@@ -235,6 +235,7 @@ export function GeometryEditor({
         <div>
           <label className="text-xs text-gray-400">Part Name</label>
           <input
+            aria-label="Part name"
             value={partName}
             onChange={(e) => setPartName(e.target.value)}
             className="w-full bg-black/30 border border-white/10 rounded px-2 py-1 text-sm mt-1"
@@ -265,6 +266,7 @@ export function GeometryEditor({
               <input
                 type="number"
                 step="0.001"
+                aria-label={FIELD_LABEL[f]}
                 value={params[f] ?? ''}
                 onChange={(e) => setField(f, e.target.value)}
                 className="w-full bg-black/30 border border-white/10 rounded px-2 py-1 text-sm font-mono mt-1"
@@ -275,6 +277,7 @@ export function GeometryEditor({
         <div>
           <label className="text-xs text-gray-400">Material</label>
           <select
+            aria-label="Material"
             value={material}
             onChange={(e) => setMaterial(e.target.value)}
             className="w-full bg-black/30 border border-white/10 rounded px-2 py-1 text-sm mt-1"

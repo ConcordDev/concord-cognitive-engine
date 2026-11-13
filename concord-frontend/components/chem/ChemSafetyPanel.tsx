@@ -141,7 +141,7 @@ export function ChemSafetyPanel() {
       {tool === 'safety' && (
         <div className="space-y-2.5">
           <div className="flex gap-2">
-            <input type="text" value={safetyName} onChange={(e) => setSafetyName(e.target.value)}
+            <input type="text" aria-label="Compound name for safety lookup" value={safetyName} onChange={(e) => setSafetyName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && runSafety()}
               placeholder="Compound name (e.g. sulfuric acid, methanol, cyanide)"
               className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-xs text-white" />
@@ -163,13 +163,13 @@ export function ChemSafetyPanel() {
                     <span key={p} className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px] font-mono">{p}</span>
                   ))}
                 </div>
-                <p className="text-zinc-300"><span className="text-zinc-500">Handling: </span>{safetyResult.handling}</p>
-                <p className="text-zinc-300"><span className="text-zinc-500">Storage: </span>{safetyResult.storage}</p>
+                <p className="text-zinc-300"><span className="text-zinc-400">Handling: </span>{safetyResult.handling}</p>
+                <p className="text-zinc-300"><span className="text-zinc-400">Storage: </span>{safetyResult.storage}</p>
                 <div className="grid grid-cols-2 gap-2 mt-1">
-                  <p className="text-zinc-400"><span className="text-zinc-500">Skin: </span>{safetyResult.firstAid.skin}</p>
-                  <p className="text-zinc-400"><span className="text-zinc-500">Eye: </span>{safetyResult.firstAid.eye}</p>
-                  <p className="text-zinc-400"><span className="text-zinc-500">Inhalation: </span>{safetyResult.firstAid.inhalation}</p>
-                  <p className="text-zinc-400"><span className="text-zinc-500">Ingestion: </span>{safetyResult.firstAid.ingestion}</p>
+                  <p className="text-zinc-400"><span className="text-zinc-400">Skin: </span>{safetyResult.firstAid.skin}</p>
+                  <p className="text-zinc-400"><span className="text-zinc-400">Eye: </span>{safetyResult.firstAid.eye}</p>
+                  <p className="text-zinc-400"><span className="text-zinc-400">Inhalation: </span>{safetyResult.firstAid.inhalation}</p>
+                  <p className="text-zinc-400"><span className="text-zinc-400">Ingestion: </span>{safetyResult.firstAid.ingestion}</p>
                 </div>
                 <div className="flex items-center gap-3 pt-1 border-t border-amber-500/10">
                   {safetyResult.sources.map(s => (
@@ -189,11 +189,11 @@ export function ChemSafetyPanel() {
           <div className="space-y-1.5">
             {compoundList.map((c, i) => (
               <div key={i} className="flex gap-2">
-                <input type="text" value={c} onChange={(e) => setCompoundAt(i, e.target.value)}
+                <input type="text" aria-label={`Compound ${i + 1}`} value={c} onChange={(e) => setCompoundAt(i, e.target.value)}
                   placeholder={`Compound ${i + 1} (e.g. ${i === 0 ? 'bleach' : 'ammonia'})`}
                   className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-xs text-white" />
                 {compoundList.length > 2 && (
-                  <button type="button" onClick={() => removeCompoundSlot(i)} className="text-zinc-500 hover:text-red-400" aria-label="Remove compound">
+                  <button type="button" onClick={() => removeCompoundSlot(i)} className="text-zinc-400 hover:text-red-400" aria-label="Remove compound">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -235,7 +235,7 @@ export function ChemSafetyPanel() {
       {tool === 'element' && (
         <div className="space-y-2.5">
           <div className="flex gap-2">
-            <input type="text" value={elSymbol} onChange={(e) => setElSymbol(e.target.value)}
+            <input type="text" aria-label="Element symbol or name" value={elSymbol} onChange={(e) => setElSymbol(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && runElement()}
               placeholder="Symbol or name (e.g. Fe, gold, uranium)"
               className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-xs text-white font-mono" />
@@ -253,11 +253,11 @@ export function ChemSafetyPanel() {
                     <div className="flex items-baseline gap-2">
                       <span className="text-lg font-bold text-white">{elResult.symbol}</span>
                       <span className="text-cyan-300">{elResult.name}</span>
-                      <span className="text-zinc-500">Z={elResult.z} · {elResult.category}</span>
+                      <span className="text-zinc-400">Z={elResult.z} · {elResult.category}</span>
                     </div>
                     <p className="text-zinc-300">{elResult.summary}</p>
                     <p className="text-zinc-400">Uses: {elResult.uses?.join(', ')}</p>
-                    <p className="text-zinc-500">{elResult.history}</p>
+                    <p className="text-zinc-400">{elResult.history}</p>
                   </div>
                 ) : (
                   <div className="text-zinc-400">

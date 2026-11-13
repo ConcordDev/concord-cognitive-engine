@@ -261,6 +261,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
               <label className={ds.label}>Name</label>
               <input
                 className={ds.input}
+                aria-label="Name"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
               />
@@ -270,6 +271,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
               <textarea
                 className={ds.textarea}
                 rows={2}
+                aria-label="Description"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
               />
@@ -279,6 +281,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                 <label className={ds.label}>Status</label>
                 <select
                   className={ds.select}
+                  aria-label="Status"
                   value={formStatus}
                   onChange={(e) => setFormStatus(e.target.value as Status)}
                 >
@@ -293,6 +296,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                 <label className={ds.label}>Category</label>
                 <select
                   className={ds.select}
+                  aria-label="Category"
                   value={formCategory}
                   onChange={(e) => setFormCategory(e.target.value)}
                 >
@@ -312,6 +316,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <label className={ds.label}>Difficulty</label>
                     <select
                       className={ds.select}
+                      aria-label="Difficulty"
                       value={formDifficulty}
                       onChange={(e) => setFormDifficulty(e.target.value)}
                     >
@@ -327,6 +332,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <input
                       type="number"
                       className={ds.input}
+                      aria-label="Budget"
                       value={formBudget}
                       onChange={(e) => setFormBudget(e.target.value)}
                     />
@@ -338,6 +344,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <input
                       type="number"
                       className={ds.input}
+                      aria-label="Estimated hours"
                       value={formEstimatedHours}
                       onChange={(e) => setFormEstimatedHours(e.target.value)}
                     />
@@ -347,6 +354,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <input
                       type="number"
                       className={ds.input}
+                      aria-label="Hours spent"
                       value={formHoursSpent}
                       onChange={(e) => setFormHoursSpent(e.target.value)}
                     />
@@ -356,6 +364,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <input
                       type="number"
                       className={ds.input}
+                      aria-label="Cost"
                       value={formCost}
                       onChange={(e) => setFormCost(e.target.value)}
                     />
@@ -371,6 +380,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <label className={ds.label}>Brand</label>
                     <input
                       className={ds.input}
+                      aria-label="Brand"
                       value={formBrand}
                       onChange={(e) => setFormBrand(e.target.value)}
                     />
@@ -379,6 +389,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <label className={ds.label}>Condition</label>
                     <select
                       className={ds.select}
+                      aria-label="Condition"
                       value={formCondition}
                       onChange={(e) => setFormCondition(e.target.value)}
                     >
@@ -394,6 +405,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <label className={ds.label}>Storage Location</label>
                   <input
                     className={ds.input}
+                    aria-label="Storage location"
                     value={formLocation}
                     onChange={(e) => setFormLocation(e.target.value)}
                   />
@@ -409,6 +421,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <input
                       type="number"
                       className={ds.input}
+                      aria-label="Quantity"
                       value={formQuantity}
                       onChange={(e) => setFormQuantity(e.target.value)}
                     />
@@ -417,6 +430,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <label className={ds.label}>Unit</label>
                     <select
                       className={ds.select}
+                      aria-label="Unit"
                       value={formUnit}
                       onChange={(e) => setFormUnit(e.target.value)}
                     >
@@ -432,6 +446,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                     <input
                       type="number"
                       className={ds.input}
+                      aria-label="Unit price"
                       value={formUnitPrice}
                       onChange={(e) => setFormUnitPrice(e.target.value)}
                     />
@@ -441,6 +456,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <label className={ds.label}>Supplier</label>
                   <input
                     className={ds.input}
+                    aria-label="Supplier"
                     value={formSupplier}
                     onChange={(e) => setFormSupplier(e.target.value)}
                   />
@@ -449,6 +465,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <label className={ds.label}>Storage Location</label>
                   <input
                     className={ds.input}
+                    aria-label="Storage location"
                     value={formLocation}
                     onChange={(e) => setFormLocation(e.target.value)}
                   />
@@ -463,6 +480,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <input
                     type="number"
                     className={ds.input}
+                    aria-label="Step number"
                     value={formStep}
                     onChange={(e) => setFormStep(e.target.value)}
                   />
@@ -472,6 +490,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <textarea
                     className={ds.textarea}
                     rows={3}
+                    aria-label="Instruction"
                     value={formInstruction}
                     onChange={(e) => setFormInstruction(e.target.value)}
                   />
@@ -481,6 +500,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <textarea
                     className={ds.textarea}
                     rows={2}
+                    aria-label="Safety notes"
                     value={formSafetyNotes}
                     onChange={(e) => setFormSafetyNotes(e.target.value)}
                   />
@@ -494,6 +514,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <label className={ds.label}>Difficulty</label>
                   <select
                     className={ds.select}
+                    aria-label="Difficulty"
                     value={formDifficulty}
                     onChange={(e) => setFormDifficulty(e.target.value)}
                   >
@@ -509,6 +530,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
                   <input
                     type="number"
                     className={ds.input}
+                    aria-label="Estimated budget"
                     value={formBudget}
                     onChange={(e) => setFormBudget(e.target.value)}
                   />
@@ -520,6 +542,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
               <label className={ds.label}>Tags</label>
               <input
                 className={ds.input}
+                aria-label="Tags"
                 value={formTags}
                 onChange={(e) => setFormTags(e.target.value)}
                 placeholder="Comma-separated..."
@@ -530,6 +553,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
               <textarea
                 className={ds.textarea}
                 rows={2}
+                aria-label="Notes"
                 value={formNotes}
                 onChange={(e) => setFormNotes(e.target.value)}
               />
@@ -558,6 +582,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             className={cn(ds.input, 'pl-10')}
+            aria-label="Search items"
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -565,6 +590,7 @@ export function DiyLibraryPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
         </div>
         <select
           className={cn(ds.select, 'w-auto')}
+          aria-label="Filter by status"
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
         >

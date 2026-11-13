@@ -50,6 +50,7 @@ export function LoadsPanel() {
                 <td className="py-1 px-2">
                   <select
                     className="bg-black/30 border border-white/10 rounded px-1"
+                    aria-label="Load node"
                     value={l.nodeId}
                     onChange={(e) => updateLoad(i, 'nodeId', e.target.value)}
                   >
@@ -108,6 +109,7 @@ export function LoadsPanel() {
             value={lcName}
             onChange={(e) => setLcName(e.target.value)}
             placeholder="Load case name"
+            aria-label="Load case name"
             className="flex-1 bg-black/30 border border-white/10 rounded px-2 py-1 text-xs"
           />
           <button

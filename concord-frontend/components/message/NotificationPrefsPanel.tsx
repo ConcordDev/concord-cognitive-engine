@@ -135,6 +135,7 @@ export function NotificationPrefsPanel({ channels }: { channels: ChannelLite[] }
         <div className="flex items-center gap-2 text-[11px] text-gray-400">
           <span>From</span>
           <input
+            aria-label="Do not disturb start time"
             type="time"
             value={prefs.dndStart}
             onChange={(e) => persist({ dndStart: e.target.value })}
@@ -142,6 +143,7 @@ export function NotificationPrefsPanel({ channels }: { channels: ChannelLite[] }
           />
           <span>to</span>
           <input
+            aria-label="Do not disturb end time"
             type="time"
             value={prefs.dndEnd}
             onChange={(e) => persist({ dndEnd: e.target.value })}
@@ -154,6 +156,7 @@ export function NotificationPrefsPanel({ channels }: { channels: ChannelLite[] }
         <div className="text-xs font-semibold text-gray-300">Keyword alerts</div>
         <div className="flex items-center gap-1.5">
           <input
+            aria-label="Keyword alert"
             value={keywordDraft}
             onChange={(e) => setKeywordDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') addKeyword(); }}
@@ -217,6 +220,7 @@ export function NotificationPrefsPanel({ channels }: { channels: ChannelLite[] }
           <>
             <div className="flex items-center gap-1.5">
               <select
+                aria-label="Test channel"
                 value={testChannelId || channels[0]?.id || ''}
                 onChange={(e) => setTestChannelId(e.target.value)}
                 className="px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white"
@@ -224,6 +228,7 @@ export function NotificationPrefsPanel({ channels }: { channels: ChannelLite[] }
                 {channels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
               </select>
               <input
+                aria-label="Sample message text"
                 value={testText}
                 onChange={(e) => setTestText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void runTest(); }}

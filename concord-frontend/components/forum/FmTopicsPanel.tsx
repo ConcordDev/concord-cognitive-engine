@@ -346,7 +346,7 @@ export function FmTopicsPanel({
             {openTopic.body && !editingTopic && (
               <div className="mt-1.5"><FmMarkdown text={openTopic.body} format={openTopic.format} /></div>
             )}
-            <p className="mt-1 text-[10px] text-zinc-500">
+            <p className="mt-1 text-[10px] text-zinc-400">
               by {openTopic.author}{openTopic.editedAt ? ' · edited' : ''}
             </p>
             {editingTopic && (
@@ -433,7 +433,7 @@ export function FmTopicsPanel({
                     </button>
                   ))}
                 </div>
-                <input value={flagNote} onChange={(e) => setFlagNote(e.target.value)} placeholder="Note for the moderators (optional)"
+                <input aria-label="Note for the moderators" value={flagNote} onChange={(e) => setFlagNote(e.target.value)} placeholder="Note for the moderators (optional)"
                   className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-[11px] text-zinc-100" />
                 <div className="flex justify-end gap-2">
                   <button type="button" onClick={() => setFlagOpen(false)} className="px-2.5 py-1 text-[11px] text-zinc-400 hover:text-zinc-200">Cancel</button>
@@ -485,21 +485,21 @@ export function FmTopicsPanel({
 
       {composeOpen ? (
         <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
-          <input placeholder="Topic title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+          <input aria-label="Topic title" placeholder="Topic title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <FmRichEditor value={draft} onChange={setDraft} rows={4} placeholder="Body — supports markdown and image embeds" />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+            <select aria-label="Topic category" value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
               <option value="">No category</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <select value={form.subforumId} onChange={(e) => setForm({ ...form, subforumId: e.target.value })}
+            <select aria-label="Topic community" value={form.subforumId} onChange={(e) => setForm({ ...form, subforumId: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
               <option value="">No community</option>
               {subforums.map((s) => <option key={s.id} value={s.id}>{s.icon} {s.name}</option>)}
             </select>
-            <input placeholder="Tags (comma-sep)" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })}
+            <input aria-label="Tags (comma-separated)" placeholder="Tags (comma-sep)" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <button type="button" onClick={addTopic}
               className="flex items-center justify-center gap-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-medium rounded-lg">
@@ -512,12 +512,12 @@ export function FmTopicsPanel({
       ) : null}
 
       <div className="flex items-center gap-2 flex-wrap">
-        <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)}
+        <select aria-label="Filter by category" value={filterCat} onChange={(e) => setFilterCat(e.target.value)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100">
           <option value="">All categories</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        <select value={filterSub} onChange={(e) => setFilterSub(e.target.value)}
+        <select aria-label="Filter by community" value={filterSub} onChange={(e) => setFilterSub(e.target.value)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100">
           <option value="">All communities</option>
           {subforums.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}

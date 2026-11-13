@@ -114,6 +114,7 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
           Answer the structured prompts to turn a decision into a lesson. Saving counts toward your reflection streak.
         </p>
         <input
+          aria-label="Reflection title"
           className="input-lattice w-full"
           placeholder="Reflection title (optional)"
           value={title}
@@ -124,6 +125,7 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
             <div key={p.id}>
               <label className="text-sm text-gray-300 block mb-1">{p.question}</label>
               <textarea
+                aria-label={p.question}
                 className="input-lattice w-full"
                 rows={2}
                 placeholder="Your answer..."
@@ -136,6 +138,7 @@ export function ReflectionPrompts({ decisionId }: { decisionId?: string }) {
         <div>
           <label className="text-sm text-gray-300 block mb-1">Free-form note</label>
           <textarea
+            aria-label="Free-form note"
             className="input-lattice w-full"
             rows={2}
             placeholder="Anything else worth recording..."

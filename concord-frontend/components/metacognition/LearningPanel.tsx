@@ -36,6 +36,7 @@ export function LearningPanel() {
             </p>
             <div className="flex gap-3">
               <input
+                aria-label="Domain to assess"
                 type="text"
                 placeholder="Domain to assess — e.g. logic, language, math..."
                 className="input-lattice flex-1"
@@ -219,7 +220,7 @@ export function LearningPanel() {
                           {current != null ? `${pct(current).toFixed(0)}%` : 'no record yet'}
                         </span>
                         {resolved > 0 && (
-                          <span className="text-xs text-gray-500 ml-1">
+                          <span className="text-xs text-gray-400 ml-1">
                             ({correct}/{resolved})
                           </span>
                         )}

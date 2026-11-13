@@ -100,6 +100,7 @@ export function FilesPanel({ channelId, channelName }: { channelId: string; chan
         <span className="text-[10px] text-gray-400">{files.length} files · {fmtBytes(totalBytes)}</span>
         <div className="ml-auto flex items-center gap-2">
           <select
+            aria-label="Filter by file type"
             value={kindFilter}
             onChange={(e) => setKindFilter(e.target.value)}
             className="px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-gray-300"

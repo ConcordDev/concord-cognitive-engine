@@ -101,11 +101,11 @@ function JourneyMapTool() {
         {stages.map((s, i) => (
           <div key={i} className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-2">
-              <input className={`${inputCls} flex-1`} value={s.name} onChange={e => update(i, { name: e.target.value })} placeholder={`Stage ${i + 1} name`} />
-              <select className={`${inputCls} max-w-[130px]`} value={s.emotion} onChange={e => update(i, { emotion: e.target.value })}>
+              <input className={`${inputCls} flex-1`} aria-label={`Stage ${i + 1} name`} value={s.name} onChange={e => update(i, { name: e.target.value })} placeholder={`Stage ${i + 1} name`} />
+              <select className={`${inputCls} max-w-[130px]`} aria-label={`Stage ${i + 1} emotion`} value={s.emotion} onChange={e => update(i, { emotion: e.target.value })}>
                 {EMOTIONS.map(em => <option key={em} value={em}>{em}</option>)}
               </select>
-              <button onClick={() => removeStage(i)} className="text-gray-500 hover:text-red-400" aria-label="remove stage"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button onClick={() => removeStage(i)} className="text-gray-400 hover:text-red-400" aria-label="remove stage"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Field label="Touchpoints (comma-separated)"><input className={inputCls} value={s.touchpoints} onChange={e => update(i, { touchpoints: e.target.value })} placeholder="app, email, support chat" /></Field>
@@ -293,7 +293,7 @@ function HeuristicEvalTool() {
         {NIELSEN_HEURISTICS.map((h, i) => (
           <div key={h} className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
             <button onClick={() => setOpen(open === i ? null : i)} className="w-full flex items-center justify-between text-left">
-              <span className="text-xs text-white flex items-center gap-2"><span className="text-gray-500 font-mono w-4">{i + 1}</span>{h}</span>
+              <span className="text-xs text-white flex items-center gap-2"><span className="text-gray-400 font-mono w-4">{i + 1}</span>{h}</span>
               <span className="flex items-center gap-2 text-[11px] text-gray-400">
                 score {evals[i].score}/10{Number(evals[i].severity) > 0 && <span className="text-red-400">sev {evals[i].severity}</span>}
               </span>

@@ -219,24 +219,27 @@ export function EngineeringActionPanel() {
             </button>
           </div>
           <div className="mt-1 space-y-1 max-h-40 overflow-y-auto pr-0.5" data-testid="tol-parts">
-            {tolParts.length === 0 && <p className="text-[10px] text-zinc-500">No parts yet — add each dimension in the stack with +.</p>}
+            {tolParts.length === 0 && <p className="text-[10px] text-zinc-400">No parts yet — add each dimension in the stack with +.</p>}
             {tolParts.map((p, i) => (
               <div key={i} className="flex items-center gap-1">
                 <input
                   value={p.name}
                   onChange={(e) => setTolField(i, 'name', e.target.value)}
+                  aria-label="Tolerance part name"
                   placeholder="Part"
                   className="min-w-0 flex-1 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-white"
                 />
                 <input
                   value={p.nominal}
                   onChange={(e) => setTolField(i, 'nominal', e.target.value)}
+                  aria-label="Nominal dimension"
                   placeholder="Nom."
                   className="w-14 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-white font-mono text-right"
                 />
                 <input
                   value={p.tolerance}
                   onChange={(e) => setTolField(i, 'tolerance', e.target.value)}
+                  aria-label="Tolerance"
                   placeholder="±Tol"
                   className="w-14 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-white font-mono text-right"
                 />
@@ -249,18 +252,18 @@ export function EngineeringActionPanel() {
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Stress</div>
-          <input type="text" value={forceN} onChange={(e) => setForceN(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Force N" />
-          <input type="text" value={areaMm2} onChange={(e) => setAreaMm2(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Area mm²" />
-          <input type="text" value={yieldMpa} onChange={(e) => setYieldMpa(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Yield MPa" />
+          <input type="text" value={forceN} onChange={(e) => setForceN(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Force N" aria-label="Force in newtons" />
+          <input type="text" value={areaMm2} onChange={(e) => setAreaMm2(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Area mm²" aria-label="Area in square millimetres" />
+          <input type="text" value={yieldMpa} onChange={(e) => setYieldMpa(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Yield MPa" aria-label="Yield strength in MPa" />
         </div>
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold">Units</div>
-          <input type="text" value={unitValue} onChange={(e) => setUnitValue(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Value" />
+          <input type="text" value={unitValue} onChange={(e) => setUnitValue(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1 text-[11px] text-white font-mono" placeholder="Value" aria-label="Value to convert" />
           <div className="grid grid-cols-2 gap-1">
-            <select value={unitFrom} onChange={(e) => setUnitFrom(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">{[...new Set(UNIT_PAIRS.map(p => p[0]))].map(u => <option key={u} value={u}>{u}</option>)}</select>
-            <select value={unitTo} onChange={(e) => setUnitTo(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">{[...new Set(UNIT_PAIRS.map(p => p[1]))].map(u => <option key={u} value={u}>{u}</option>)}</select>
+            <select aria-label="Convert from unit" value={unitFrom} onChange={(e) => setUnitFrom(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">{[...new Set(UNIT_PAIRS.map(p => p[0]))].map(u => <option key={u} value={u}>{u}</option>)}</select>
+            <select aria-label="Convert to unit" value={unitTo} onChange={(e) => setUnitTo(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white">{[...new Set(UNIT_PAIRS.map(p => p[1]))].map(u => <option key={u} value={u}>{u}</option>)}</select>
           </div>
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" />
+          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" placeholder="DM recipient" aria-label="DM recipient" />
           <div className="flex items-center gap-2 flex-wrap">
             <RecallSlot ctl={dmRecall} />
             <RecallSlot ctl={publishRecall} />

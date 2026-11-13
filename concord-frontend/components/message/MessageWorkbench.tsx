@@ -171,12 +171,12 @@ function SearchTab() {
   return (
     <div className="p-3 space-y-3">
       <div className="space-y-2">
-        <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+        <input type="text" aria-label="Search messages" value={query} onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') search(); }}
           placeholder="Search across messages"
           className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100" />
         <div className="flex gap-2">
-          <input type="text" value={sender} onChange={(e) => setSender(e.target.value)}
+          <input type="text" aria-label="Sender filter" value={sender} onChange={(e) => setSender(e.target.value)}
             placeholder="from: (optional)"
             className="flex-1 px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100" />
           <button type="button" onClick={search} disabled={loading || query.trim().length < 2}
@@ -285,7 +285,7 @@ function ReactionsTab() {
     <div className="p-3 space-y-3">
       <p className="text-[10px] text-gray-400">Add reactions to any message by messageId.</p>
       <div className="flex gap-2">
-        <input type="text" value={messageId} onChange={(e) => setMessageId(e.target.value)}
+        <input type="text" aria-label="Message ID" value={messageId} onChange={(e) => setMessageId(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
           placeholder="messageId" className="flex-1 px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
         <button type="button" onClick={load}

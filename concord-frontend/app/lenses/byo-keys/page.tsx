@@ -357,6 +357,7 @@ export default function ByoKeysLens() {
                       <div>
                         <label className="block text-xs text-zinc-400 mb-1">Provider</label>
                         <select
+                          aria-label="Provider"
                           value={form.provider}
                           onChange={e => setForm(f => ({ ...f, provider: e.target.value }))}
                           className="w-full px-3 py-1.5 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-teal-400 focus:outline-none"
@@ -375,6 +376,7 @@ export default function ByoKeysLens() {
                             </label>
                             <input
                               type="text"
+                              aria-label="Model ID"
                               value={form.modelId}
                               onChange={e => setForm(f => ({ ...f, modelId: e.target.value }))}
                               placeholder={selectedProvider?.defaultModels[slot] || ''}
@@ -388,6 +390,7 @@ export default function ByoKeysLens() {
                               )}
                             </label>
                             <input
+                              aria-label="API key"
                               type="password"
                               value={form.apiKey}
                               onChange={e => setForm(f => ({ ...f, apiKey: e.target.value }))}

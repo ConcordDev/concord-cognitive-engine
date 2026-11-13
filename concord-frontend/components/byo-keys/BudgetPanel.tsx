@@ -154,7 +154,7 @@ export function BudgetPanel() {
                   <div>
                     <label className="block text-[10px] text-zinc-400 mb-1">Monthly USD cap</label>
                     <input
-                      type="number" min="0" step="0.01"
+                      type="number" aria-label="Monthly USD cap" min="0" step="0.01"
                       value={form.usd}
                       onChange={(e) => setForm((f) => ({ ...f, usd: e.target.value }))}
                       placeholder="(no cap)"
@@ -164,7 +164,7 @@ export function BudgetPanel() {
                   <div>
                     <label className="block text-[10px] text-zinc-400 mb-1">Monthly token cap</label>
                     <input
-                      type="number" min="0" step="1000"
+                      type="number" aria-label="Monthly token cap" min="0" step="1000"
                       value={form.tokens}
                       onChange={(e) => setForm((f) => ({ ...f, tokens: e.target.value }))}
                       placeholder="(no cap)"

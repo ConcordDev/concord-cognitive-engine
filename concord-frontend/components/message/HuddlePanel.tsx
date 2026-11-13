@@ -171,6 +171,7 @@ export function HuddlePanel({ channelId, channelName }: { channelId: string; cha
         <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-2">
           <div className="text-xs font-semibold text-gray-300">Start a huddle</div>
           <input
+            aria-label="Huddle topic"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             placeholder="Topic (optional)"
@@ -178,6 +179,7 @@ export function HuddlePanel({ channelId, channelName }: { channelId: string; cha
           />
           <div className="flex items-center gap-2">
             <select
+              aria-label="Huddle mode"
               value={mode}
               onChange={(e) => setMode(e.target.value as 'audio' | 'video')}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-white"
