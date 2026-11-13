@@ -490,7 +490,11 @@ export function CreateEpisodePanel({ onCreated }: { onCreated?: () => void }) {
 
       <button
         onClick={handleCreateEpisode}
-        disabled={!formTitle.trim() || creating}
+        // FIX-podcast-001: the button used to disable on a blank title
+        // with no word anywhere (and a not-allowed cursor), leaving the
+        // handler's own 'Episode title is required' error unreachable.
+        // It now stays enabled while idle and lets that guard speak.
+        disabled={creating}
         className="w-full py-3 rounded-xl bg-purple-400/20 text-purple-400 font-medium hover:bg-purple-400/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
       >
         {creating ? 'Creating…' : 'Create Episode'}
