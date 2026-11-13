@@ -217,6 +217,11 @@ export function ChemSafetyPanel() {
                 className={cn('rounded-md border p-3 space-y-2 text-xs',
                   interResult.severity === 'high' ? 'border-red-500/30 bg-red-500/5' : interResult.severity === 'medium' ? 'border-amber-500/30 bg-amber-500/5' : 'border-emerald-500/30 bg-emerald-500/5')}>
                 <p className="text-zinc-200">{interResult.summary}</p>
+                {interResult.severity === 'high' && (
+                  <p role="alert" className="rounded bg-red-500/15 px-2 py-1.5 font-medium text-red-200">
+                    Never mix these. It can make a poison gas. Leave the area and tell an adult.
+                  </p>
+                )}
                 {interResult.interactions.map((it, i) => (
                   <div key={i} className="flex items-start gap-2 py-1 border-t border-white/5">
                     <span className={cn('px-1.5 py-0.5 rounded text-[10px] uppercase shrink-0', it.severity === 'high' ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300')}>{it.severity}</span>
