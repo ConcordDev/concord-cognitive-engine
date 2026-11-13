@@ -35,6 +35,7 @@ interface Roll {
   id: string;
   name: string;
   createdAt: string;
+  visibility: string;
   frames: Frame[];
 }
 
@@ -68,6 +69,7 @@ function rollsFrom(rows: unknown): Roll[] {
       id,
       name: name.trim(),
       createdAt: typeof (row as { createdAt?: unknown }).createdAt === 'string' ? (row as { createdAt: string }).createdAt : '',
+      visibility: (row as { visibility?: unknown }).visibility === 'public' ? 'public' : 'private',
       frames: framesFrom((row as { frames?: unknown }).frames),
     });
   }
@@ -221,6 +223,20 @@ export default function PhotographyPage() {
     }
   }, []);
 
+  const setRollVisibility = useCallback(async (rollId: string, visibility: string) => {
+    setBusy(true);
+    setActionError('');
+    try {
+      const updated = await lensRun('photography', 'shoot-update', { rollId, visibility });
+      if (!updated.data?.ok) throw new Error(updated.data?.error || 'Could not change that roll.');
+      setRolls(await readRolls());
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not change that roll.');
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
   const deleteRoll = useCallback(async (rollId: string) => {
     setBusy(true);
     setActionError('');
@@ -312,6 +328,19 @@ export default function PhotographyPage() {
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="font-vault text-[1.5rem] leading-8 text-zinc-100">{roll.name}</h2>
                     <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-1.5 text-[13px] text-zinc-400">
+                        Visibility
+                        <select
+                          aria-label={`Visibility for ${roll.name}`}
+                          value={roll.visibility}
+                          disabled={busy}
+                          onChange={(event) => { void setRollVisibility(roll.id, event.target.value); }}
+                          className="rounded-md border border-white/10 bg-zinc-900 px-1.5 py-1 text-[13px] text-zinc-100"
+                        >
+                          <option value="private">Private</option>
+                          <option value="public">Public</option>
+                        </select>
+                      </label>
                       <label className="cursor-pointer text-[13px] text-zinc-400 underline hover:text-zinc-200">
                         {addingTo === roll.id && busy ? 'Adding…' : 'Add photo'}
                         <input

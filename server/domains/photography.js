@@ -212,7 +212,7 @@ export default function registerPhotographyActions(registerLensAction) {
     if (existing) return existing;
     const row = readRollRows(ctx).find((r) => r.id === rollId);
     if (!row) return null;
-    const shoot = { id: row.id, name: row.name, date: null, location: null, client: null, createdAt: row.created_at || phnow() };
+    const shoot = { id: row.id, name: row.name, date: null, location: null, client: null, visibility: "private", createdAt: row.created_at || phnow() };
     phlistB(s.shoots, userId).push(shoot);
     const photos = phlistB(s.photos, userId);
     for (const frameRow of readFrameRows(ctx, rollId)) {
@@ -254,6 +254,7 @@ export default function registerPhotographyActions(registerLensAction) {
         date: null,
         location: null,
         client: null,
+        visibility: "private",
         createdAt: row.created_at || "",
         photoCount: frames.length,
         frames,
@@ -523,6 +524,11 @@ export default function registerPhotographyActions(registerLensAction) {
       date: phclean(params.date, 10) || null,
       location: phclean(params.location, 120) || null,
       client: phclean(params.client, 120) || null,
+      // Rolls record their audience (FIX-photography-002). Private is
+      // the default and, today, the enforced reality: nothing in the
+      // lens reads another member's rolls. The field exists so the
+      // state is stated and labelled, never left to guesswork.
+      visibility: ["public", "private"].includes(params.visibility) ? params.visibility : "private",
       createdAt,
     };
     const userId = phaid(ctx);
@@ -642,6 +648,7 @@ export default function registerPhotographyActions(registerLensAction) {
     if (params.date !== undefined) shoot.date = phclean(params.date, 10) || null;
     if (params.location !== undefined) shoot.location = phclean(params.location, 120) || null;
     if (params.client !== undefined) shoot.client = phclean(params.client, 120) || null;
+    if (params.visibility !== undefined) shoot.visibility = ["public", "private"].includes(params.visibility) ? params.visibility : "private";
     writeRollRow(ctx, shoot);
     savePhotoState();
     return { ok: true, result: { shoot } };
