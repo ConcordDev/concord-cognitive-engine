@@ -39,7 +39,7 @@ function StatChip({ label, value, tone }: { label: string; value: string; tone?:
   const cls = tone === 'bad' ? 'text-rose-300' : tone === 'warn' ? 'text-amber-300' : tone === 'good' ? 'text-neon-green' : 'text-white';
   return (
     <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="text-[10px] uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`text-sm font-semibold font-mono ${cls}`}>{value}</p>
     </div>
   );
@@ -183,8 +183,8 @@ export function PlatformAnalysisPanel() {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             <input value={incidentDraft.service} onChange={(e) => setIncidentDraft((d) => ({ ...d, service: e.target.value }))}
               placeholder="Service name" className="input-lattice text-xs col-span-2 sm:col-span-1" />
-            <select value={incidentDraft.severity} onChange={(e) => setIncidentDraft((d) => ({ ...d, severity: e.target.value as IncidentRow['severity'] }))}
-              className="input-lattice text-xs">
+            <select aria-label="Incident severity" value={incidentDraft.severity} onChange={(e) => setIncidentDraft((d) => ({ ...d, severity: e.target.value as IncidentRow['severity'] }))}
+              className="min-h-11 input-lattice text-xs">
               <option value="critical">Critical</option>
               <option value="major">Major</option>
               <option value="minor">Minor</option>
@@ -204,9 +204,9 @@ export function PlatformAnalysisPanel() {
                 <div key={i.id} className="flex items-center gap-2 rounded bg-black/30 px-2 py-1 text-xs">
                   <ShieldAlert className={`w-3 h-3 ${i.severity === 'critical' ? 'text-rose-400' : i.severity === 'major' ? 'text-amber-400' : 'text-zinc-400'}`} />
                   <span className="font-medium">{i.service}</span>
-                  <span className="text-gray-500">{i.severity}</span>
-                  <span className="flex-1 text-gray-500">{new Date(i.start).toLocaleString()} → {i.end ? new Date(i.end).toLocaleString() : 'ongoing'}</span>
-                  <button onClick={() => removeIncident(i.id)} className="text-gray-500 hover:text-rose-400" aria-label={`Remove incident for ${i.service}`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
+                  <span className="text-gray-400">{i.severity}</span>
+                  <span className="flex-1 text-gray-400">{new Date(i.start).toLocaleString()} → {i.end ? new Date(i.end).toLocaleString() : 'ongoing'}</span>
+                  <button onClick={() => removeIncident(i.id)} className="text-gray-400 hover:text-rose-400" aria-label={`Remove incident for ${i.service}`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
                 </div>
               ))}
             </div>
@@ -264,7 +264,7 @@ export function PlatformAnalysisPanel() {
               {metricRows.map((m, i) => (
                 <span key={m.id} className="flex items-center gap-1 rounded bg-black/30 px-2 py-1 text-[11px] text-gray-300">
                   day {i + 1}: cpu {m.cpu} · mem {m.memory} · disk {m.disk} · conn {m.connections}
-                  <button onClick={() => removeMetric(m.id)} className="text-gray-500 hover:text-rose-400" aria-label={`Remove capacity sample for day ${i + 1}`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
+                  <button onClick={() => removeMetric(m.id)} className="text-gray-400 hover:text-rose-400" aria-label={`Remove capacity sample for day ${i + 1}`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
                 </span>
               ))}
             </div>
@@ -283,9 +283,9 @@ export function PlatformAnalysisPanel() {
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {Object.entries(capacityResult.resources as Record<string, Record<string, unknown>>).map(([k, v]) => (
                   <div key={k} className="rounded bg-black/30 px-2 py-1.5 text-xs">
-                    <p className="text-gray-500 uppercase text-[10px]">{k}</p>
+                    <p className="text-gray-400 uppercase text-[10px]">{k}</p>
                     <p className="text-white">{String(v.current)}% → {String((v.forecast as Record<string, unknown>)?.projectedValue)}%</p>
-                    <p className="text-gray-500">{String((v.trend as Record<string, unknown>)?.classification)}</p>
+                    <p className="text-gray-400">{String((v.trend as Record<string, unknown>)?.classification)}</p>
                   </div>
                 ))}
               </div>
@@ -308,15 +308,15 @@ export function PlatformAnalysisPanel() {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <input value={serviceDraft.name} onChange={(e) => setServiceDraft((d) => ({ ...d, name: e.target.value }))}
               placeholder="Service name" className="input-lattice text-xs" />
-            <select value={serviceDraft.tier} onChange={(e) => setServiceDraft((d) => ({ ...d, tier: e.target.value }))} className="input-lattice text-xs">
+            <select aria-label="Service tier" value={serviceDraft.tier} onChange={(e) => setServiceDraft((d) => ({ ...d, tier: e.target.value }))} className="min-h-11 input-lattice text-xs">
               <option value="edge">edge</option>
               <option value="app">app</option>
               <option value="data">data</option>
               <option value="infra">infra</option>
             </select>
-            <select multiple value={serviceDraft.dependencies ? serviceDraft.dependencies.split(',') : []}
+            <select aria-label="Dependencies" multiple value={serviceDraft.dependencies ? serviceDraft.dependencies.split(',') : []}
               onChange={(e) => setServiceDraft((d) => ({ ...d, dependencies: Array.from(e.target.selectedOptions).map((o) => o.value).join(',') }))}
-              className="input-lattice text-xs h-16" disabled={serviceNames.length === 0}>
+              className="min-h-11 input-lattice text-xs h-16" disabled={serviceNames.length === 0}>
               {serviceNames.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
             <button onClick={addService} disabled={!serviceDraft.name.trim()} className="btn-secondary text-xs flex items-center justify-center gap-1 disabled:opacity-40">
@@ -328,9 +328,9 @@ export function PlatformAnalysisPanel() {
               {services.map((s) => (
                 <div key={s.id} className="flex items-center gap-2 rounded bg-black/30 px-2 py-1 text-xs">
                   <span className="font-medium">{s.name}</span>
-                  <span className="text-gray-500">{s.tier}</span>
-                  <span className="flex-1 text-gray-500">{s.dependencies ? `depends on ${s.dependencies}` : 'no dependencies'}</span>
-                  <button onClick={() => removeService(s.id)} className="text-gray-500 hover:text-rose-400" aria-label={`Remove service "${s.name}"`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
+                  <span className="text-gray-400">{s.tier}</span>
+                  <span className="flex-1 text-gray-400">{s.dependencies ? `depends on ${s.dependencies}` : 'no dependencies'}</span>
+                  <button onClick={() => removeService(s.id)} className="text-gray-400 hover:text-rose-400" aria-label={`Remove service "${s.name}"`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
                 </div>
               ))}
             </div>

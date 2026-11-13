@@ -41,7 +41,7 @@ async function run(name: string, params: Record<string, unknown> = {}): Promise<
 }
 
 const card = 'rounded-lg border border-lattice-border bg-lattice-elevated';
-const input = 'input-lattice text-xs py-1 px-2 bg-lattice-surface border border-lattice-border rounded';
+const input = 'input-lattice min-h-11 text-xs py-1 px-2 bg-lattice-surface border border-lattice-border rounded';
 const btn = 'btn-secondary text-xs flex items-center gap-1 disabled:opacity-50';
 
 // ─── Deployments ─────────────────────────────────────────────────────
@@ -433,7 +433,7 @@ function AlertsTab() {
       <div className={`${card} p-3 space-y-2`}>
         <p className="text-xs text-gray-400 flex items-center gap-1"><BellRing className="w-3 h-3" /> Notification channel</p>
         <div className="flex flex-wrap items-end gap-2">
-          <select className={input} value={chKind} onChange={(e) => setChKind(e.target.value)}>
+          <select aria-label="Channel kind" className={input} value={chKind} onChange={(e) => setChKind(e.target.value)}>
             <option value="in-app">in-app</option>
             <option value="webhook">webhook</option>
             <option value="email">email</option>
@@ -446,17 +446,17 @@ function AlertsTab() {
       <div className={`${card} p-3 space-y-2`}>
         <p className="text-xs text-gray-400">Threshold alert rule</p>
         <div className="flex flex-wrap items-end gap-2">
-          <select className={input} value={metric} onChange={(e) => setMetric(e.target.value)}>
+          <select aria-label="Metric" className={input} value={metric} onChange={(e) => setMetric(e.target.value)}>
             {['cpu', 'memory', 'requests', 'latencyMs', 'errorRate'].map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
-          <select className={input} value={op} onChange={(e) => setOp(e.target.value)}>
+          <select aria-label="Operator" className={input} value={op} onChange={(e) => setOp(e.target.value)}>
             {['>', '>=', '<', '<='].map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
           <input className={`${input} w-20`} value={threshold} onChange={(e) => setThreshold(e.target.value)} />
-          <select className={input} value={severity} onChange={(e) => setSeverity(e.target.value)}>
+          <select aria-label="Severity" className={input} value={severity} onChange={(e) => setSeverity(e.target.value)}>
             {['info', 'warning', 'critical'].map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-          <select className={input} value={channelId} onChange={(e) => setChannelId(e.target.value)}>
+          <select aria-label="Channel" className={input} value={channelId} onChange={(e) => setChannelId(e.target.value)}>
             <option value="">no channel</option>
             {channels.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>

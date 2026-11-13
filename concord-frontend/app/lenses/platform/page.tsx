@@ -68,10 +68,10 @@ function EventStreamPanel({ events = [], connected }: { events?: Array<{ type: s
         </h2>
         <div className="flex items-center gap-3">
           {eventTypes.length > 0 && (
-            <select
+            <select aria-label="Filter by event type"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="input-lattice text-xs py-1"
+              className="min-h-11 input-lattice text-xs py-1"
             >
               <option value="">All types ({safeEvents.length})</option>
               {eventTypes.map(t => (
@@ -340,7 +340,7 @@ export default function PlatformPage() {
             <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs ${connected ? 'bg-emerald-500/10 text-emerald-300' : 'bg-white/5 text-zinc-400'}`}>
               <span className={`h-2 w-2 rounded-full ${connected ? 'animate-pulse bg-emerald-400' : 'bg-zinc-500'}`} />
               {connected ? 'Live' : 'Polling'}
-              {events.length > 0 && <span className="text-[10px] text-zinc-500">({events.length} events)</span>}
+              {events.length > 0 && <span className="text-[10px] text-zinc-400">({events.length} events)</span>}
             </span>
           </>
         }
