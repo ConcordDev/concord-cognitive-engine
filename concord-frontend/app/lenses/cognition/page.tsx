@@ -359,7 +359,7 @@ export default function CognitionPage() {
                         placeholder="What did you settle on?"
                         className="w-full border-b border-white/15 bg-transparent pb-1 text-[14px] text-zinc-100 outline-none" />
                       <div className="flex gap-3 text-[13px]">
-                        <button type="button" onClick={() => { void saveAnswer(trace.id); }} className="inline-flex min-h-[40px] items-center text-teal-300 underline">Mark answered</button>
+                        <button type="button" disabled={busy} onClick={() => { void saveAnswer(trace.id); }} className="inline-flex min-h-[40px] items-center text-teal-300 underline disabled:opacity-50">Mark answered</button>
                         <button type="button" onClick={() => setAnsweringId(null)} className="inline-flex min-h-[40px] items-center text-zinc-400 underline">Cancel</button>
                       </div>
                     </div>
@@ -367,7 +367,7 @@ export default function CognitionPage() {
                     <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px] text-zinc-400">
                       <button type="button" onClick={() => { setEditingId(trace.id); setEditTitle(trace.title); setEditQuestion(trace.question); }} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200">Edit</button>
                       {trace.answered ? (
-                        <button type="button" onClick={() => { void clearAnswer(trace.id); }} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200">Reopen</button>
+                        <button type="button" disabled={busy} onClick={() => { void clearAnswer(trace.id); }} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200 disabled:opacity-50">Reopen</button>
                       ) : (
                         <button type="button" onClick={() => { setAnsweringId(trace.id); setAnswerText(''); }} className="inline-flex min-h-[40px] items-center underline hover:text-zinc-200">Mark answered</button>
                       )}
