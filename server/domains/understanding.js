@@ -137,6 +137,8 @@ export default function registerUnderstandingActions(registerLensAction) {
       id: n.id,
       title: n.title,
       body: n.body,
+      // Pre-field notes read as private — their true state.
+      visibility: n.visibility === "public" ? "public" : "private",
       tags: n.tags,
       createdAt: n.createdAt,
       updatedAt: n.updatedAt,
@@ -252,6 +254,10 @@ export default function registerUnderstandingActions(registerLensAction) {
       id: uid("und"),
       title,
       body,
+      // Notes record their audience (FIX-understanding-004). Private
+      // is the default: notes are personal records, read only by
+      // their owner in this lens; public is an explicit choice.
+      visibility: ["public", "private"].includes(params.visibility) ? params.visibility : "private",
       tags: cleanTags(params.tags),
       createdAt: ts,
       updatedAt: ts,
@@ -317,6 +323,7 @@ export default function registerUnderstandingActions(registerLensAction) {
       if (note.revisions.length > 50) note.revisions.splice(0, note.revisions.length - 50);
     }
     if (params.tags != null) note.tags = cleanTags(params.tags);
+    if (params.visibility != null && ["public", "private"].includes(params.visibility)) note.visibility = params.visibility;
     if (params.reviewEnabled != null) {
       ensureSrs(note).enabled = !!params.reviewEnabled;
     }

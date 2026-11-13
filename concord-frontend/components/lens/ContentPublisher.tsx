@@ -101,7 +101,12 @@ export function ContentPublisher({
   // with the preview + statement below. Undeclared lenses keep the
   // generic shape and the public default, unchanged.
   const minorData = getLensManifest(domain)?.minorData === true;
-  const [visibility, setVisibility] = useState<'public' | 'followers'>(minorData ? 'followers' : 'public');
+  // A lens declaring sharePrivateByDefault (personal records — notes,
+  // journals) gets the same non-public starting point without the
+  // minor-privacy shape: the dialog opens on Followers only, and
+  // Public remains one explicit tap away (FIX-understanding-004).
+  const privateByDefault = minorData || getLensManifest(domain)?.sharePrivateByDefault === true;
+  const [visibility, setVisibility] = useState<'public' | 'followers'>(privateByDefault ? 'followers' : 'public');
 
   const shareUrl = typeof window !== 'undefined'
     ? artifactId
