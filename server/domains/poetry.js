@@ -303,8 +303,10 @@ export default function registerPoetryActions(registerLensAction) {
       if (q) poems = poems.filter((p) => p.title.toLowerCase().includes(q) || p.body.toLowerCase().includes(q));
     }
     poems.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const sharedIds = poSharedPoemIds(s, poActor(ctx));
     const out = poems.map((p) => ({
       id: p.id, title: p.title, form: p.form, status: p.status,
+      sharedToWorkshop: sharedIds.has(p.id),
       lineCount: String(p.body || "").split("\n").filter((l) => l.trim()).length,
       updatedAt: p.updatedAt,
     }));
@@ -314,7 +316,7 @@ export default function registerPoetryActions(registerLensAction) {
   registerLensAction("poetry", "poem-detail", (ctx, _a, params = {}) => {
     const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const poem = poList(s, poActor(ctx)).find((p) => p.id === params.id);
-    if (poem) return { ok: true, result: { poem } };
+    if (poem) return { ok: true, result: { poem: { ...poem, sharedToWorkshop: poSharedPoemIds(s, poActor(ctx)).has(poem.id) } } };
     const row = readPoemRows(ctx).find((item) => item.id === params.id);
     if (!row || typeof row.title !== "string" || !row.title.trim()) return { ok: false, error: "poem not found" };
     return {
@@ -327,6 +329,7 @@ export default function registerPoetryActions(registerLensAction) {
           form: null,
           tags: [],
           status: null,
+          sharedToWorkshop: poSharedPoemIds(s, poActor(ctx)).has(row.id),
           createdAt: row.created_at || "",
           updatedAt: row.updated_at || "",
         },
@@ -875,6 +878,18 @@ export default function registerPoetryActions(registerLensAction) {
   function poShareList(s) {
     if (!(s.workshop instanceof Map)) s.workshop = new Map();
     return s.workshop; // shareId -> shared poem record
+  }
+
+  // The poemIds this user currently has in the workshop (FIX-poetry-002).
+  // A poem's audience state lives only here — list/detail surface it as
+  // `sharedToWorkshop` so the UI can label it instead of leaving the
+  // member to guess whether a poem is private or shared.
+  function poSharedPoemIds(s, userId) {
+    const ids = new Set();
+    for (const v of poShareList(s).values()) {
+      if (v.ownerId === userId && v.poemId) ids.add(v.poemId);
+    }
+    return ids;
   }
 
   /**

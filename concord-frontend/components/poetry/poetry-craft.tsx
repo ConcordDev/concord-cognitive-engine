@@ -20,6 +20,8 @@ export interface PoemMeta {
   title: string;
   form: PoemForm;
   status: 'draft' | 'revising' | 'finished';
+  /** Audience state (FIX-poetry-002): true once shared to the workshop; absent/false = private to the account. */
+  sharedToWorkshop?: boolean;
   lineCount: number;
   updatedAt: string;
 }
@@ -29,6 +31,8 @@ export interface PoemDetail {
   body: string;
   form: PoemForm;
   status: 'draft' | 'revising' | 'finished';
+  /** Audience state (FIX-poetry-002): true once shared to the workshop; absent/false = private to the account. */
+  sharedToWorkshop?: boolean;
   tags: string[];
   createdAt: string;
   updatedAt: string;

@@ -11,8 +11,8 @@ import { Feather, Plus, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
-interface PoemMeta { id: string; title: string; form: string; status: string; lineCount: number }
-interface Poem { id: string; title: string; body: string; form: string; status: string }
+interface PoemMeta { id: string; title: string; form: string; status: string; lineCount: number; sharedToWorkshop?: boolean }
+interface Poem { id: string; title: string; body: string; form: string; status: string; sharedToWorkshop?: boolean }
 interface Analysis {
   lineCount: number; syllablesPerLine: number[]; avgSyllables: number;
   meterConsistency: string; rhymeScheme: string; rhyming: boolean; wordCount: number; detectedForm: string;
@@ -94,7 +94,7 @@ export function PoemWorkspace() {
               <button onClick={() => open(p.id)}
                 className={cn('flex-1 text-left rounded-lg px-2 py-1.5 border', active?.id === p.id ? 'bg-violet-600/15 border-violet-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                 <p className="text-[11px] font-semibold text-zinc-100 truncate">{p.title}</p>
-                <p className="text-[9px] text-zinc-400">{p.form} · {p.lineCount} lines · {p.status}</p>
+                <p className="text-[9px] text-zinc-400">{p.form} · {p.lineCount} lines · {p.status} · {p.sharedToWorkshop ? 'Shared to workshop' : 'Private'}</p>
               </button>
               <button aria-label="Delete" onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
@@ -122,6 +122,9 @@ export function PoemWorkspace() {
               className="px-2.5 py-1.5 text-xs rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 disabled:opacity-40 inline-flex items-center gap-1">
               <Sparkles className="w-3 h-3" />Analyze
             </button>
+            {active && (
+              <span className="ml-auto text-[11px] text-zinc-400">{active.sharedToWorkshop ? 'Shared to workshop' : 'Private — only you'}</span>
+            )}
             {active && (
               <select value={active.status} onChange={e => setStatus(e.target.value)}
                 className="ml-auto bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-[11px] text-zinc-200">
