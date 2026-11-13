@@ -50,7 +50,20 @@ function Panel({ children, className }: { children: ReactNode; className?: strin
 }
 
 export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
-  const [connected, setConnected] = useState<boolean | null>(null);
+  const [connected, setConnectedState] = useState<boolean | null>(null);
+  // FIX-mail-003: ref mirror of the not-connected fact, readable inside
+  // effects without re-firing them. Once Gmail is known unconnected, the
+  // load effects stop firing doomed calls behind the connect wall — a
+  // page load used to cost five failing requests (list + profile +
+  // labels, then profile + labels again when `connected` flipped to
+  // false) and every folder click added another. A successful list load
+  // clears the ref, so a manual Retry after connecting elsewhere still
+  // recovers in-session.
+  const notConnectedRef = useRef(false);
+  const setConnected = useCallback((v: boolean) => {
+    notConnectedRef.current = !v;
+    setConnectedState(v);
+  }, []);
   const [me, setMe] = useState('');
   const [labels, setLabels] = useState<GmailLabel[]>([]);
   // FIX-mail-002: the open mailbox survives a reload — a player-mail
@@ -117,9 +130,13 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
     setEstimate(r.data.resultSizeEstimate);
   }, [folder, query, pages, pageIdx, isConcord, isDrafts, handleFail]);
 
-  useEffect(() => { void Promise.resolve().then(loadList); }, [loadList]);
+  useEffect(() => {
+    if (notConnectedRef.current) return;
+    void Promise.resolve().then(loadList);
+  }, [loadList]);
 
   useEffect(() => {
+    if (notConnectedRef.current) return;
     void Promise.resolve().then(async () => {
       const [p, l] = await Promise.all([gmail.profile(), gmail.labels()]);
       if (p.ok) setMe(p.data.profile.emailAddress);
