@@ -3,7 +3,7 @@
 // and tool calls are the only non-deterministic activities, and each one is
 // written to the store before the cursor moves.
 import { canonicalJson } from "../receipts/attest.js";
-import { acquireLease, releaseLease, getRun, listSteps, updateRun, updateStep, addUsage } from "./run-store.js";
+import { acquireLease, releaseLease, getRun, listSteps, updateRun, updateStep, addUsage, getApprovals } from "./run-store.js";
 import { getToolSpec } from "./tool-spec.js";
 import { validateAndRepair } from "./validate-repair.js";
 import { buildToolMenu } from "./tool-menu.js";
@@ -13,6 +13,7 @@ import { summarizeResult } from "./result-summary.js";
 import { nextAction } from "./retry-policy.js";
 import { runTool } from "./executor.js";
 import { getEffect, failEffect } from "./idempotency.js";
+import { needsConfirm, buildConfirmCard } from "./confirm.js";
 import { effectiveSpec } from "./tool-spec.js";
 
 const TERMINAL_RUN = new Set(["done", "failed", "cancelled"]);
@@ -210,7 +211,9 @@ export async function tickRun(a) {
     };
 
     // 9. Build the call.
-    const args = resolveRefs(step.args, steps);
+    const rawArgs = resolveRefs(step.args, steps);
+    const userAnswer = rawArgs && typeof rawArgs === "object" ? rawArgs.__userAnswer : undefined;
+    const args = rawArgs && typeof rawArgs === "object" && "__userAnswer" in rawArgs ? (({ __userAnswer, ...rest }) => rest)(rawArgs) : rawArgs; // eslint-disable-line no-unused-vars
     let call = null;
     let doneSummary = null;
     if (resumed) {
@@ -228,6 +231,7 @@ export async function tickRun(a) {
       });
       const packet = await buildContextPacket({
         run, step, priorSteps: steps, menu, profile: run.modelProfile, userId: run.userId, deps: { recall: deps.recall },
+        constraints: userAnswer ? [`User said: ${String(userAnswer).slice(0, 300)}`] : [],
       });
       const reask = REASK_CLASSES.has(step.errorClass) ? step.errorText : null;
       const r = await stepCall({ db, userId: run.userId, profile: run.modelProfile, packet, forcedTool: forced, reask });
@@ -246,6 +250,20 @@ export async function tickRun(a) {
         repairs.push(...vr.repairs);
         if (!vr.ok) return failStep("bad_args", vr.reask, null);
         call = vr.call;
+      }
+    }
+
+    // Confirmation gate: write and high-risk calls wait for the person.
+    if (call && !resumed && !doneSummary) {
+      const eff = effectiveSpec(call, { lensActions: deps.lensActions });
+      if (eff) {
+        const gate = needsConfirm({ run, step, call, spec: eff, approvals: getApprovals(run) });
+        if (gate.needed) {
+          updateStep(db, step.id, { status: "awaiting_confirm", args: call.args, tool: call.tool, fallbackTool: null, repairs });
+          updateRun(db, runId, { status: "awaiting_confirm", statusReason: "confirm" });
+          emit({ type: "cockpit:confirm", runId, ...buildConfirmCard({ step, call, spec: eff }) });
+          return { ok: true, status: "awaiting_confirm", advanced: false };
+        }
       }
     }
 

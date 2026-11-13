@@ -15,6 +15,7 @@ const rows = [
   [{ ok: false, error: "forbidden_by_governance" }, "hard_stop"],
   [{ ok: false, error: "insufficient funds" }, "hard_stop"],
   [{ ok: false, error: "something odd" }, "tool_error"],
+  [{ ok: false, reason: "approval_required", error: "High-risk action requires explicit authorization" }, "needs_confirm"],
   [{ ok: true }, "ok"],
 ];
 
@@ -32,6 +33,12 @@ test("hard_stop is hard and not retryable", () => {
 
 test("negative control: consent required is hard_stop, never bad_args", () => {
   assert.equal(classifyFailure({ ok: false, error: "consent required" }).class, "hard_stop");
+});
+
+test("needs_confirm is not retryable and not hard", () => {
+  const c = classifyFailure({ ok: false, reason: "approval_required" });
+  assert.equal(c.hard, false);
+  assert.equal(c.retryable, false);
 });
 
 test("scope_denied is not retryable; others are", () => {

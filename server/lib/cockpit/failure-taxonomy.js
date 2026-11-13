@@ -4,7 +4,7 @@ import { HARD_ERROR_RE } from "../chat/tool-turn-reply.js";
 export const FAILURE_CLASSES = Object.freeze([
   "bad_args", "unknown_tool", "unsupported_input", "not_found", "external", "disabled_tool",
   "tool_error", "scope_denied", "rate_limited", "timeout", "model_empty", "model_malformed",
-  "verify_failed", "fake_success", "looped", "hard_stop",
+  "verify_failed", "fake_success", "looped", "hard_stop", "needs_confirm",
 ]);
 
 /**
@@ -18,10 +18,11 @@ export function classifyFailure(result) {
   const done = (cls) => ({
     class: cls,
     hard: cls === "hard_stop",
-    retryable: cls !== "hard_stop" && cls !== "scope_denied",
+    retryable: cls !== "hard_stop" && cls !== "scope_denied" && cls !== "needs_confirm",
   });
   if (r.reason === "scope_denied" || /scope .* required/i.test(text)) return done("scope_denied");
   if (r.reason === "rate_limited" || /rate.?limit|\b429\b|quota_exhausted/i.test(text)) return done("rate_limited");
+  if (r.reason === "approval_required") return done("needs_confirm");
   if (HARD_ERROR_RE.test(text) && !/code_exec_forbidden/.test(text)) return done("hard_stop");
   if (r.unknownTool === true || /unknown tool|not registered/i.test(text) || r.reason === "not_registered") return done("unknown_tool");
   if (/code_exec_forbidden|not available in this session|is disabled|not connected/i.test(text)) return done("disabled_tool");

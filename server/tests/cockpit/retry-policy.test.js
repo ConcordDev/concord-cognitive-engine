@@ -24,6 +24,9 @@ test("hard_stop and rate_limited never change", () => {
     assert.equal(na("rate_limited", a).kind, "pause");
   }
 });
+test("needs_confirm always asks the person", () => {
+  for (let a = 1; a <= 5; a++) assert.equal(na("needs_confirm", a).kind, "ask_user");
+});
 test("tool_error row", () => {
   assert.deepEqual(na("tool_error", 1), { kind: "retry", delayMs: 1000 });
   assert.equal(na("tool_error", 2).kind, "fallback_tool");

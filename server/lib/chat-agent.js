@@ -1175,8 +1175,10 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
             params: actionInput,
             dry_run: call.params.dry_run === true || call.params.preview === true,
             preview: call.params.preview === true,
-            approval: call.params.approval === true,
-            approval_token: call.params.approval_token || call.params.approvalToken || null,
+            // GB-1500 CKPT-13: only a person (via the cockpit executor) may approve. A model
+            // writing approval:true in its own call no longer counts.
+            approval: cockpitFlag("STRIP_APPROVAL") ? ctx?.cockpitApproved === true : call.params.approval === true,
+            approval_token: cockpitFlag("STRIP_APPROVAL") ? null : (call.params.approval_token || call.params.approvalToken || null),
             idempotency_key: call.params.idempotency_key || null,
           },
           ctx?.STATE || ctx?.state || null,

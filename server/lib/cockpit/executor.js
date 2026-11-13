@@ -6,7 +6,8 @@ import { classifyFailure } from "./failure-taxonomy.js";
 import { getToolSpec, effectiveSpec, parseLensToolId } from "./tool-spec.js";
 import { claimEffect, completeEffect, failEffect, markEffectUnknown } from "./idempotency.js";
 import { recordToolDispatch, recordToolOutcome } from "../marathon-tick-durability.js";
-import { updateStep } from "./run-store.js";
+import { updateStep, getApprovals } from "./run-store.js";
+import { needsConfirm } from "./confirm.js";
 import { recordToolOutcomeEvent } from "./telemetry.js";
 
 /** Turn a cockpit call into an executeToolCall call. */
@@ -30,7 +31,8 @@ export function makeExec({ db, userId, sessionId, runMacro, lensActions, surface
     reqMeta: { sessionId: sessionId || null },
     log: () => {},
   };
-  return async (agentCall) => executeToolCall(ctx, runMacro, lensActions, agentCall);
+  // Only the cockpit executor may set cockpitApproved, and only after a stored person-approval matched.
+  return async (agentCall, opts = {}) => executeToolCall(opts.approved ? { ...ctx, cockpitApproved: true } : ctx, runMacro, lensActions, agentCall);
 }
 
 /**
@@ -51,7 +53,13 @@ export async function runTool(a) {
   let r;
   let key = null;
   let logId = null;
-  // CKPT-13: approval check here
+  // Defence in depth: a write or high-risk call without a matching stored approval never runs.
+  if (eff.risk === "write" || eff.risk === "high") {
+    const gate = needsConfirm({ run: a.run, step: a.step, call: a.call, spec: eff, approvals: getApprovals(a.run) });
+    if (gate.needed) {
+      return { ok: false, tool: a.call.tool, result: null, errorClass: "needs_confirm", error: "This step needs your approval.", retryHint: null, artifacts: [], latencyMs: 0, provider: null, model: null };
+    }
+  }
   if (writes) {
     const claim = claimEffect(a.db, { runId: a.run.id, stepId: a.step.id, tool: a.call.tool, args: a.call.args });
     if (claim.state === "replay") return { ...claim.result, replayed: true };
@@ -63,7 +71,7 @@ export async function runTool(a) {
     }
     key = claim.key;
     logId = recordToolDispatch(a.db, a.run.id, a.step.seq, a.call.tool, a.call.args);
-    updateStep(a.db, a.step.id, { idempotencyKey: key, tool: a.call.tool, args: a.call.args });
+    updateStep(a.db, a.step.id, { idempotencyKey: key, tool: a.call.tool, args: a.call.args, fallbackTool: null });
   }
   let timer;
   try {
@@ -72,7 +80,7 @@ export async function runTool(a) {
       if (typeof timer.unref === "function") timer.unref();
     });
     r = await Promise.race([
-      withJob(`cockpit:${a.call.tool}`, () => a.deps.exec(toAgentCall(a.call, key))),
+      withJob(`cockpit:${a.call.tool}`, () => a.deps.exec(toAgentCall(a.call, key), { approved: eff.risk === "high" })),
       timeout,
     ]);
   } catch (e) {

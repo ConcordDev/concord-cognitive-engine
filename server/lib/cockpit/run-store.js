@@ -215,3 +215,21 @@ export function findDueRuns(db, now = nowSec(), limit = 5) {
     ).all({ now, limit }).map((r) => r.id);
   } catch { return []; }
 }
+
+/** Approvals live in the run's usage_json under `approvals`. */
+export function getApprovals(run) {
+  return Array.isArray(run?.usage?.approvals) ? run.usage.approvals : [];
+}
+export function addApproval(db, runId, approval) {
+  try {
+    const tx = db.transaction(() => {
+      const row = db.prepare("SELECT usage_json FROM cockpit_runs WHERE id = ?").get(runId);
+      if (!row) return false;
+      const usage = safeParse(row.usage_json, {});
+      usage.approvals = [...(Array.isArray(usage.approvals) ? usage.approvals : []), approval];
+      db.prepare("UPDATE cockpit_runs SET usage_json = ?, updated_at = ? WHERE id = ?").run(JSON.stringify(usage), nowSec(), runId);
+      return true;
+    });
+    return tx();
+  } catch { return false; }
+}

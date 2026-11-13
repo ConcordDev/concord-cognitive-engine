@@ -24,8 +24,9 @@ const TABLE = {
   looped:            ["reask", "ask_user", "end", "end"],
   hard_stop:         ["stop_run", "stop_run", "stop_run", "stop_run"],
   in_flight:         ["ask_user", "ask_user", "ask_user", "ask_user"],
+  needs_confirm:     ["ask_user", "ask_user", "ask_user", "ask_user"],
 };
-const FIXED = new Set(["hard_stop", "rate_limited", "scope_denied", "in_flight"]);
+const FIXED = new Set(["hard_stop", "rate_limited", "scope_denied", "in_flight", "needs_confirm"]);
 
 /**
  * @param {{ errorClass: string, attempt: number, required: boolean, spec: object|null, triedTools: string[] }} s
