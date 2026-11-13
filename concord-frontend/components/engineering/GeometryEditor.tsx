@@ -137,6 +137,11 @@ export function GeometryEditor({
   const [params, setParams] = useState<GeomParams>(DEFAULT_PARAMS.box);
   const [material, setMaterial] = useState<string>('steel-a36');
   const [partName, setPartName] = useState('New Part');
+  // The id of the saved part loaded into the editor, when editing one.
+  // Saving used to send no id at all, so every save of a loaded part
+  // minted a duplicate ('<name> 2') instead of updating it
+  // (FIX-engineering-001); the server upserts when the id is carried.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [geom, setGeom] = useState<PartGeometry | null>(null);
   const [mesh, setMesh] = useState<MeshData | null>(null);
   const [computing, setComputing] = useState(false);
@@ -196,18 +201,22 @@ export function GeometryEditor({
   const savePart = useCallback(async () => {
     setStatus('Saving…');
     const r = await lensRun<{ part: SavedPart }>('engineering', 'savePart', {
+      ...(editingId ? { id: editingId } : {}),
       name: partName,
       kind,
       material,
       params,
     });
     if (r.data.ok) {
-      setStatus('Part saved');
+      setStatus(editingId ? 'Part updated' : 'Part saved');
+      // Adopt the saved id: the next save updates this part instead of
+      // minting another copy.
+      if (r.data.result?.part?.id) setEditingId(r.data.result.part.id);
       loadParts();
     } else {
       setStatus(`Error: ${r.data.error}`);
     }
-  }, [partName, kind, material, params, loadParts]);
+  }, [partName, kind, material, params, loadParts, editingId]);
 
   const deletePart = useCallback(
     async (id: string) => {
@@ -222,6 +231,7 @@ export function GeometryEditor({
     setParams(p.params);
     setMaterial(p.material || 'steel-a36');
     setPartName(p.name);
+    setEditingId(p.id);
     setStatus(`Loaded "${p.name}"`);
   };
 
