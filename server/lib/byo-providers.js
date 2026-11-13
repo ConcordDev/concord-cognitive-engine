@@ -92,6 +92,8 @@ async function openaiChat({ apiKey, modelId, messages, opts = {} }) {
     stream: false,
   };
   if (opts.tools?.length) body.tools = opts.tools;
+  if (opts.toolChoice) body.tool_choice = opts.toolChoice;
+  if (opts.parallelToolCalls === false) body.parallel_tool_calls = false;
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -138,6 +140,13 @@ async function anthropicChat({ apiKey, modelId, messages, opts = {} }) {
     messages: msgs,
   };
   if (system) body.system = system;
+  // GB-1500 CKPT-04: strict native tools for the cockpit's one-call-per-step turns.
+  if (opts.tools?.length) body.tools = opts.tools;
+  if (opts.toolChoice) {
+    body.tool_choice = opts.toolChoice === "required"
+      ? { type: "any", disable_parallel_tool_use: opts.parallelToolCalls === false }
+      : opts.toolChoice;
+  }
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -295,6 +304,8 @@ async function openrouterChat({ apiKey, modelId, messages, opts = {} }) {
     stream: false,
   };
   if (opts.tools?.length) body.tools = opts.tools;
+  if (opts.toolChoice) body.tool_choice = opts.toolChoice;
+  if (opts.parallelToolCalls === false) body.parallel_tool_calls = false;
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
