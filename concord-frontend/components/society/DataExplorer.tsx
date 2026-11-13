@@ -331,11 +331,15 @@ function ChartView({ aliases, country, indicator, onCountryChange, onIndicatorCh
   // toggle changes — via wb-transform-series, not a re-fetch.
   useEffect(() => {
     if (!rawData) { setData(null); return; }
-    if (!perCapita && !inflationAdjust) { setData(rawData); return; }
+    // FIX-society-008: transforms never apply to the population series,
+    // even when a toggle was left on from another indicator.
+    const effPerCapita = perCapita && indicator !== 'population';
+    const effInflation = inflationAdjust && indicator !== 'population';
+    if (!effPerCapita && !effInflation) { setData(rawData); return; }
     let cancelled = false;
     (async () => {
       let population = populationCache.current.get(country);
-      if (perCapita && !population) {
+      if (effPerCapita && !population) {
         const popEnv = await macro<ChartSeriesResult>('wb-chart-series', { country, indicator: 'population', perCapita: false, inflationAdjust: false });
         if (popEnv.ok && popEnv.result) {
           population = popEnv.result.series;
@@ -343,14 +347,14 @@ function ChartView({ aliases, country, indicator, onCountryChange, onIndicatorCh
         }
       }
       if (cancelled) return;
-      if (perCapita && !population) {
+      if (effPerCapita && !population) {
         setError('per-capita requires population data, which failed to load');
         setData(rawData);
         return;
       }
       const env = await macro<{ series: SeriesPoint[]; transforms: string[]; min: number | null; max: number | null }>(
         'wb-transform-series',
-        { series: rawData.series, population, perCapita, inflationAdjust },
+        { series: rawData.series, population, perCapita: effPerCapita, inflationAdjust: effInflation },
       );
       if (cancelled) return;
       if (env.ok && env.result) {
@@ -371,7 +375,7 @@ function ChartView({ aliases, country, indicator, onCountryChange, onIndicatorCh
       }
     })();
     return () => { cancelled = true; };
-  }, [rawData, perCapita, inflationAdjust, country]);
+  }, [rawData, perCapita, inflationAdjust, country, indicator]);
 
   const exportCsv = useCallback(async () => {
     if (!data) return;
@@ -411,11 +415,14 @@ function ChartView({ aliases, country, indicator, onCountryChange, onIndicatorCh
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-1 text-zinc-400">
-          <input type="checkbox" checked={perCapita} onChange={(e) => setPerCapita(e.target.checked)} /> per-capita
+        {/* FIX-society-008: neither transform applies to the population
+            series itself — per-capita divides it by itself (a flat 1)
+            and a price deflator on a headcount is meaningless. */}
+        <label className={`flex items-center gap-1 ${indicator === 'population' ? 'text-zinc-600' : 'text-zinc-400'}`} title={indicator === 'population' ? 'Not applicable to the population series' : undefined}>
+          <input type="checkbox" checked={perCapita && indicator !== 'population'} disabled={indicator === 'population'} onChange={(e) => setPerCapita(e.target.checked)} /> per-capita
         </label>
-        <label className="flex items-center gap-1 text-zinc-400">
-          <input type="checkbox" checked={inflationAdjust} onChange={(e) => setInflationAdjust(e.target.checked)} /> inflation-adjusted (USD 2024)
+        <label className={`flex items-center gap-1 ${indicator === 'population' ? 'text-zinc-600' : 'text-zinc-400'}`} title={indicator === 'population' ? 'Not applicable to the population series' : undefined}>
+          <input type="checkbox" checked={inflationAdjust && indicator !== 'population'} disabled={indicator === 'population'} onChange={(e) => setInflationAdjust(e.target.checked)} /> inflation-adjusted (USD 2024)
         </label>
         <button onClick={run} disabled={loading}
           className="inline-flex items-center gap-1.5 rounded border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
