@@ -27,13 +27,16 @@ const STATUS_COLOUR: Record<string, string> = {
 
 const STATUSES = ['label_created', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'exception', 'returned'];
 
-export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void }) {
+export function ShipmentsPanel({ onSelect, createSignal }: { onSelect?: (s: Shipment) => void; createSignal?: number }) {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [edit, setEdit] = useState({ origin: '', destination: '', poNumber: '', consignee: '' });
-  const [form, setForm] = useState({ origin: '', destination: '', mode: 'parcel', weightLbs: '', poNumber: '', consignee: '', trackingNumber: '' });
+  const [form, setForm] = useState({ origin: '', destination: '', mode: 'parcel', weightLbs: '', poNumber: '', consignee: '', trackingNumber: '', estimatedDelivery: '' });
+  // FIX-logistics-008: the page's 'New shipment' CTA bumps this signal —
+  // the form opens instead of the click only switching tabs.
+  useEffect(() => { if (createSignal && createSignal > 0) setCreating(true); }, [createSignal]);
 
   useEffect(() => { refresh(); }, []);
 
@@ -52,9 +55,9 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
     try {
       await lensRun({
         domain: 'logistics', action: 'shipments-create',
-        input: { origin: form.origin, destination: form.destination, mode: form.mode, weightLbs: Number(form.weightLbs) || 0, poNumber: form.poNumber, consignee: form.consignee, trackingNumber: form.trackingNumber },
+        input: { origin: form.origin, destination: form.destination, mode: form.mode, weightLbs: Number(form.weightLbs) || 0, poNumber: form.poNumber, consignee: form.consignee, trackingNumber: form.trackingNumber, estimatedDelivery: form.estimatedDelivery || null },
       });
-      setForm({ origin: '', destination: '', mode: 'parcel', weightLbs: '', poNumber: '', consignee: '', trackingNumber: '' });
+      setForm({ origin: '', destination: '', mode: 'parcel', weightLbs: '', poNumber: '', consignee: '', trackingNumber: '', estimatedDelivery: '' });
       setCreating(false);
       await refresh();
     } catch (e) { console.error('[Shipments] create', e); }
@@ -105,6 +108,7 @@ export function ShipmentsPanel({ onSelect }: { onSelect?: (s: Shipment) => void 
           <input value={form.poNumber} onChange={e => setForm({ ...form, poNumber: e.target.value })} placeholder="PO #" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.consignee} onChange={e => setForm({ ...form, consignee: e.target.value })} placeholder="Consignee" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.trackingNumber} onChange={e => setForm({ ...form, trackingNumber: e.target.value })} placeholder="Carrier tracking # (optional)" title="Concord does not buy labels; enter the tracking number your carrier issued" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input type="date" aria-label="Estimated delivery date" value={form.estimatedDelivery} onChange={e => setForm({ ...form, estimatedDelivery: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={create} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Create</button>
         </div>
       )}

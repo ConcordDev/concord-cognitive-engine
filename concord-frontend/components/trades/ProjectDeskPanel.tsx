@@ -440,7 +440,13 @@ export default function ProjectDeskPanel() {
 
   const handleAction = async (action: string, artifactId?: string) => {
     const targetId = artifactId || editingItem?.id || filtered[0]?.id;
-    if (!targetId) return;
+    if (!targetId) {
+      // FIX-trades-007: the quick actions used to return in silence on an
+      // empty Project Desk. Name the missing precondition in the result
+      // panel instead — the panel renders `message` (below).
+      setActionResult({ message: 'No project yet — add or select a project in the Project Desk first, then run this action on it.' });
+      return;
+    }
     try {
       const result = await runAction.mutateAsync({ id: targetId, action });
       if (result.ok === false) {
@@ -2366,6 +2372,9 @@ export default function ProjectDeskPanel() {
             <button onClick={() => setActionResult(null)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button>
           </div>
           <div className="space-y-3">
+            {typeof actionResult.message === 'string' && (
+              <p className="text-sm text-gray-300">{actionResult.message}</p>
+            )}
             {/* calculateEstimate */}
             {actionResult.grandTotal !== undefined && actionResult.subtotal !== undefined && (
               <div className="space-y-2">

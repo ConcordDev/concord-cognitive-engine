@@ -54,6 +54,9 @@ const VIEWS: { id: LogView; label: string; keys: string; icon: typeof Truck }[] 
 export default function LogisticsLensPage() {
   useLensNav('logistics');
   const [active, setActive] = useState<LogView>('fleet');
+  // FIX-logistics-008: the 'New shipment' CTA used to only switch tabs.
+  // The bump tells ShipmentsPanel to open its create form.
+  const [createSignal, setCreateSignal] = useState(0);
   const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('logistics');
   const { data: summary, isLoading, isError, refetch } = useDashboardSummary();
   useEffect(() => { void refetch(); }, [active, refetch]);
@@ -98,7 +101,7 @@ export default function LogisticsLensPage() {
         activeTab={active}
         onTab={(id) => setActive(id as LogView)}
         tabsLabel="Logistics views"
-        cta={{ label: 'New shipment', icon: Plus, onClick: () => setActive('shipments'), title: 'Open the shipments desk' }}
+        cta={{ label: 'New shipment', icon: Plus, onClick: () => { setActive('shipments'); setCreateSignal((n) => n + 1); }, title: 'Start a new shipment' }}
       >
         <LiveFeed
           articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
@@ -113,7 +116,7 @@ export default function LogisticsLensPage() {
 
         <div className="pt-4">
           {active === 'fleet' && <FleetVehiclesPanel />}
-          {active === 'shipments' && <ShipmentsPanel />}
+          {active === 'shipments' && <ShipmentsPanel createSignal={createSignal} />}
           {active === 'tracker' && <ShipmentTracker />}
           {active === 'warehouse' && <WarehouseInventory />}
           {active === 'routes' && <RouteOptimizer />}

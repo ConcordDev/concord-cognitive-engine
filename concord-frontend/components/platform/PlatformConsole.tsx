@@ -52,6 +52,9 @@ function DeploymentsTab() {
   const [ref, setRef] = useState('main');
   const [environment, setEnvironment] = useState('production');
   const [openLogs, setOpenLogs] = useState<string | null>(null);
+  // FIX-platform-004: the Refresh button spun and stopped — a failed or
+  // empty refresh read exactly like a good one. The outcome speaks.
+  const [refreshNote, setRefreshNote] = useState<string | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [sha, setSha] = useState('');
@@ -59,7 +62,13 @@ function DeploymentsTab() {
   const load = useCallback(async () => {
     setLoading(true);
     const r = await run('deploy-list');
-    if (r) setDeployments(r.deployments || []);
+    if (r) {
+      const list = (r.deployments || []) as unknown[];
+      setDeployments(r.deployments || []);
+      setRefreshNote(`Refreshed — ${list.length} release${list.length === 1 ? '' : 's'} recorded.`);
+    } else {
+      setRefreshNote('Could not refresh the releases — try again.');
+    }
     setLoading(false);
   }, []);
 
@@ -110,6 +119,7 @@ function DeploymentsTab() {
         <button className={btn} onClick={load} disabled={loading}>
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </button>
+        {refreshNote && <p className="text-[11px] text-gray-400 self-center" role="status">{refreshNote}</p>}
       </div>
 
       {deployments.length === 0 ? (
