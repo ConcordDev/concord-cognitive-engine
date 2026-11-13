@@ -567,9 +567,9 @@ export function DailyTodayPanel() {
     );
   }
   return (
-    <div className="h-full flex bg-transparent text-white overflow-hidden min-h-0">
+    <div className="h-full flex flex-col md:flex-row bg-transparent text-white overflow-y-auto md:overflow-hidden min-h-0">
       {/* =================== LEFT SIDEBAR =================== */}
-      <aside className="w-72 border-r border-lattice-border bg-lattice-surface/40 flex flex-col shrink-0">
+      <aside className="w-full border-b border-lattice-border bg-lattice-surface/40 flex flex-col shrink-0 md:w-72 md:border-b-0 md:border-r">
         {/* Mini calendar */}
         <div className="p-4 border-b border-lattice-border">
           <div className="flex items-center justify-between mb-3">
@@ -636,7 +636,7 @@ export function DailyTodayPanel() {
       </aside>
 
       {/* =================== MAIN CONTENT =================== */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="min-w-0 shrink-0 md:shrink md:flex-1 md:overflow-y-auto">
         <div className="max-w-4xl mx-auto p-6 space-y-6">
           {/* Date header */}
           <div className="flex items-center justify-between">
