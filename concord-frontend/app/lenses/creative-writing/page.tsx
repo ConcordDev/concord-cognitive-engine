@@ -86,6 +86,24 @@ async function fetchFullPage(id: string): Promise<ProjectGetResult> {
   return res.data.result;
 }
 
+// FIX-creative-writing-007: the CSV export now carries the body in
+// both shapes. The JSON export is project-get's result verbatim —
+// project.body is the manuscript prose and scenes carry their own
+// body — but the hand-rolled CSV dropped both, so a CSV of a page
+// lost the writing itself. csvCell already quotes multiline prose.
+export function buildPageCsv(full: ProjectGetResult): string {
+  const scenes = Array.isArray(full.scenes) ? full.scenes : [];
+  if (scenes.length > 0) {
+    const header = csvRow(['id', 'title', 'chapterId', 'order', 'wordCount', 'status', 'body']);
+    const rows = scenes.map((sc) => csvRow([sc.id, sc.title, sc.chapterId, sc.order, sc.wordCount, sc.status, sc.body]));
+    return [header, ...rows].join('\n');
+  }
+  const p = full.project || {};
+  const header = csvRow(['id', 'title', 'genre', 'targetWords', 'wordCount', 'createdAt', 'updatedAt', 'body']);
+  const row = csvRow([p.id, p.title, p.genre, p.targetWords, full.wordCount ?? 0, p.createdAt, p.updatedAt, p.body]);
+  return [header, row].join('\n');
+}
+
 type Phase = 'loading' | 'ready' | 'error';
 
 interface RawPage {
@@ -296,19 +314,7 @@ export default function CreativeWritingPage() {
     setExportError('');
     try {
       const full = await fetchFullPage(id);
-      const scenes = Array.isArray(full.scenes) ? full.scenes : [];
-      let csv: string;
-      if (scenes.length > 0) {
-        const header = csvRow(['id', 'title', 'chapterId', 'order', 'wordCount', 'status']);
-        const rows = scenes.map((sc) => csvRow([sc.id, sc.title, sc.chapterId, sc.order, sc.wordCount, sc.status]));
-        csv = [header, ...rows].join('\n');
-      } else {
-        const p = full.project || {};
-        const header = csvRow(['id', 'title', 'genre', 'targetWords', 'wordCount', 'createdAt', 'updatedAt']);
-        const row = csvRow([p.id, p.title, p.genre, p.targetWords, full.wordCount ?? 0, p.createdAt, p.updatedAt]);
-        csv = [header, row].join('\n');
-      }
-      downloadFile(`${slug(itemTitle)}.csv`, csv, 'text/csv');
+      downloadFile(`${slug(itemTitle)}.csv`, buildPageCsv(full), 'text/csv');
     } catch (err) {
       setExportError(err instanceof Error ? err.message : 'Could not export that page as CSV.');
     } finally {
