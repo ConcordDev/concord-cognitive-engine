@@ -2215,3 +2215,18 @@ First B3 section under the per-seat append regime (founder ruling 2026-11-12): r
 | FIX-travel-005 | ff87edec4 |
 
 Push discipline: 13 files had moved on the branch since the section's base (other seats' tickets in the same files). Whole-file pushes would have reverted them, so those files were three-way merged (base = section base blob) and the affected bundles' suites re-run green against the merged content before pushing; the two expert-mode conflicts resolved by carrying CB-0492's StickyDeleteConfirm replacement with this section's floor + contrast applied to it. Riders: consulting-007 CSP-eval (grep-verified absent — Lighthouse artifact), environment-007 WebGL stall (canvas, not markup), platform-008 Tab leg (closed by the shared shell skip-link fix, credited), sports-005 perf leg (live payload weight — the desk's disposition).
+
+## B3 § 4 — theme 7 remainder: single-issue a11y (CB-0517) — 8 FIXED_PENDING_VERIFY
+
+| Ticket | Pushed commit | Shape |
+| --- | --- | --- |
+| FIX-agriculture-009 | `575db3e8d` | EditorModal Field links label↔control (useId + htmlFor) + placeholder raise; dim text up (a11y legs only) |
+| FIX-announcements-002 | `ff95cfc76` | Admin-only note zinc-400; chip leg verify-only on the shared strip scroll fix |
+| FIX-conkay-001 | `5abc6dbc1` | aria-invalid + aria-describedby wired to the role=alert on rejected fields |
+| FIX-council-007 | `dee870d5f` | 54 fields named from visible labels/semantics; dim helper text raised |
+| FIX-forestry-011 | `7e6e8117b` | Helper text + stand metadata zinc-500 → zinc-400 |
+| FIX-inheritance-010 | `902ad4600` | Labels zinc-400; Name field maxLength 200 + live counter |
+| FIX-materials-012 | `0a5aee17f` | Subtitles/labels zinc-500 → zinc-400 (8 instances) |
+| FIX-offline-007 | `b98bda3c9` | Labels zinc-400; disabled buttons keep 75% opacity |
+
+Every fix is pinned by a suite under concord-frontend/tests/ with a pristine negative control on file; records are in records/b3.jsonl. Agriculture-009’s delete-confirm leg stays with the StickyDeleteConfirm genus and its typed-text leg was not reproducible from code (ds.input is text-white on the dark surface) — both named for the desk’s live re-walk.
