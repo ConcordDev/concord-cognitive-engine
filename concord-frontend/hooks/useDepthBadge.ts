@@ -705,6 +705,19 @@ const LENS_DEPTH_OVERRIDE: Record<string, Pick<DepthBadgeInfo, 'label' | 'captio
     label: 'Live',
     caption: 'Player mail is real: messages, items and Concord Coin move between accounts on this instance and persist on Concord’s backend. The Gmail side is your own Google account, connected by you and revocable; until you connect it, that side shows its connect wall and holds nothing.',
   },
+  /**
+   * Household (FIX-household-001): the manifest tier is REAL_FREE for
+   * the lens's reference content (seasonal checklists, maintenance
+   * schedules), but the generic caption — "Real but static /
+   * open-access dataset" — hangs over the member's own household
+   * records (members, meal plans, chores, budgets), which are private
+   * per-account data. The override names both halves so nobody reads
+   * the badge as describing their own records.
+   */
+  household: {
+    label: 'Real',
+    caption: 'Reference content (seasonal checklists, maintenance schedules) is real, from open sources. Your household’s own records — members, meal plans, chores and budgets — are yours alone, saved privately on your account.',
+  },
 };
 
 export function useDepthBadge(lensId: string): DepthBadgeInfo | null {
