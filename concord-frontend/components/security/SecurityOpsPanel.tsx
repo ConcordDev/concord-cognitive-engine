@@ -401,13 +401,13 @@ export function SecurityOpsPanel({ openCaseNonce = 0 }: { openCaseNonce?: number
             <div data-lens-theme="security" className={ds.grid2}>
               <div>
                 <label className={ds.label}>Severity</label>
-                <select className={ds.select} value={(formData.severity as string) || 'P3'} onChange={e => setFormData({ ...formData, severity: e.target.value })}>
+                <select  aria-label="Severity" className={ds.select} value={(formData.severity as string) || 'P3'} onChange={e => setFormData({ ...formData, severity: e.target.value })}>
                   {SEVERITY_LIST.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
                 <label className={ds.label}>Incident Type</label>
-                <select className={ds.select} value={(formData.type as string) || 'breach'} onChange={e => setFormData({ ...formData, type: e.target.value })}>
+                <select  aria-label="Incident Type" className={ds.select} value={(formData.type as string) || 'breach'} onChange={e => setFormData({ ...formData, type: e.target.value })}>
                   {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
                 </select>
               </div>
@@ -417,19 +417,19 @@ export function SecurityOpsPanel({ openCaseNonce = 0 }: { openCaseNonce?: number
               <DraftedTextarea lensId="security" draftKey="incident_description" initial={(formData.description as string) || ''} onValueChange={(v) => setFormData({ ...formData, description: v })} className={ds.textarea} rows={3} placeholder="Detailed incident description..." />
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Assignee</label><input className={ds.input} value={(formData.assignee as string) || ''} onChange={e => setFormData({ ...formData, assignee: e.target.value })} /></div>
-              <div><label className={ds.label}>Reported By</label><input className={ds.input} value={(formData.reportedBy as string) || ''} onChange={e => setFormData({ ...formData, reportedBy: e.target.value })} /></div>
+              <div><label className={ds.label}>Assignee</label><input aria-label="Assignee" className={ds.input} value={(formData.assignee as string) || ''} onChange={e => setFormData({ ...formData, assignee: e.target.value })} /></div>
+              <div><label className={ds.label}>Reported By</label><input aria-label="Reported By" className={ds.input} value={(formData.reportedBy as string) || ''} onChange={e => setFormData({ ...formData, reportedBy: e.target.value })} /></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>MTTD (minutes)</label><input type="number" className={ds.input} value={(formData.mttd as number) || ''} onChange={e => setFormData({ ...formData, mttd: parseInt(e.target.value) || 0 })} /></div>
-              <div><label className={ds.label}>MTTR (minutes)</label><input type="number" className={ds.input} value={(formData.mttr as number) || ''} onChange={e => setFormData({ ...formData, mttr: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>MTTD (minutes)</label><input aria-label="MTTD (minutes)" type="number" className={ds.input} value={(formData.mttd as number) || ''} onChange={e => setFormData({ ...formData, mttd: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>MTTR (minutes)</label><input aria-label="MTTR (minutes)" type="number" className={ds.input} value={(formData.mttr as number) || ''} onChange={e => setFormData({ ...formData, mttr: parseInt(e.target.value) || 0 })} /></div>
             </div>
             <div className={ds.grid3}>
-              <div><label className={ds.label}>Reported At</label><input type="datetime-local" className={ds.input} value={(formData.reportedAt as string) || ''} onChange={e => setFormData({ ...formData, reportedAt: e.target.value })} /></div>
-              <div><label className={ds.label}>Contained At</label><input type="datetime-local" className={ds.input} value={(formData.containedAt as string) || ''} onChange={e => setFormData({ ...formData, containedAt: e.target.value })} /></div>
-              <div><label className={ds.label}>Closed At</label><input type="datetime-local" className={ds.input} value={(formData.closedAt as string) || ''} onChange={e => setFormData({ ...formData, closedAt: e.target.value })} /></div>
+              <div><label className={ds.label}>Reported At</label><input aria-label="Reported At" type="datetime-local" className={ds.input} value={(formData.reportedAt as string) || ''} onChange={e => setFormData({ ...formData, reportedAt: e.target.value })} /></div>
+              <div><label className={ds.label}>Contained At</label><input aria-label="Contained At" type="datetime-local" className={ds.input} value={(formData.containedAt as string) || ''} onChange={e => setFormData({ ...formData, containedAt: e.target.value })} /></div>
+              <div><label className={ds.label}>Closed At</label><input aria-label="Closed At" type="datetime-local" className={ds.input} value={(formData.closedAt as string) || ''} onChange={e => setFormData({ ...formData, closedAt: e.target.value })} /></div>
             </div>
-            <div><label className={ds.label}>Affected Assets (comma-separated)</label><input className={ds.input} value={((formData.affectedAssets as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, affectedAssets: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
+            <div><label className={ds.label}>Affected Assets (comma-separated)</label><input aria-label="Affected Assets (comma-separated)" className={ds.input} value={((formData.affectedAssets as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, affectedAssets: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
             <div><label className={ds.label}>Root Cause</label><DraftedTextarea lensId="security" draftKey="incident_root_cause" initial={(formData.rootCause as string) || ''} onValueChange={(v) => setFormData({ ...formData, rootCause: v })} className={ds.textarea} rows={2} /></div>
             <div><label className={ds.label}>Lessons Learned</label><DraftedTextarea lensId="security" draftKey="incident_lessons_learned" initial={(formData.lessonsLearned as string) || ''} onValueChange={(v) => setFormData({ ...formData, lessonsLearned: v })} className={ds.textarea} rows={2} /></div>
           </>
@@ -440,57 +440,57 @@ export function SecurityOpsPanel({ openCaseNonce = 0 }: { openCaseNonce?: number
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Asset Type</label>
-                <select className={ds.select} value={(formData.assetType as string) || 'server'} onChange={e => setFormData({ ...formData, assetType: e.target.value })}>
+                <select  aria-label="Asset Type" className={ds.select} value={(formData.assetType as string) || 'server'} onChange={e => setFormData({ ...formData, assetType: e.target.value })}>
                   {ASSET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div>
                 <label className={ds.label}>Criticality</label>
-                <select className={ds.select} value={(formData.criticality as string) || 'medium'} onChange={e => setFormData({ ...formData, criticality: e.target.value })}>
+                <select  aria-label="Criticality" className={ds.select} value={(formData.criticality as string) || 'medium'} onChange={e => setFormData({ ...formData, criticality: e.target.value })}>
                   {ASSET_CRITICALITY.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>IP Address</label><input className={ds.input} value={(formData.ip as string) || ''} onChange={e => setFormData({ ...formData, ip: e.target.value })} placeholder="192.168.1.1" /></div>
-              <div><label className={ds.label}>Owner</label><input className={ds.input} value={(formData.owner as string) || ''} onChange={e => setFormData({ ...formData, owner: e.target.value })} /></div>
+              <div><label className={ds.label}>IP Address</label><input aria-label="IP Address" className={ds.input} value={(formData.ip as string) || ''} onChange={e => setFormData({ ...formData, ip: e.target.value })} placeholder="192.168.1.1" /></div>
+              <div><label className={ds.label}>Owner</label><input aria-label="Owner" className={ds.input} value={(formData.owner as string) || ''} onChange={e => setFormData({ ...formData, owner: e.target.value })} /></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Vulnerability Count</label><input type="number" className={ds.input} value={(formData.vulnerabilityCount as number) || ''} onChange={e => setFormData({ ...formData, vulnerabilityCount: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Vulnerability Count</label><input aria-label="Vulnerability Count" type="number" className={ds.input} value={(formData.vulnerabilityCount as number) || ''} onChange={e => setFormData({ ...formData, vulnerabilityCount: parseInt(e.target.value) || 0 })} /></div>
               <div>
                 <label className={ds.label}>Patch Status</label>
-                <select className={ds.select} value={(formData.patchStatus as string) || 'current'} onChange={e => setFormData({ ...formData, patchStatus: e.target.value })}>
+                <select  aria-label="Patch Status" className={ds.select} value={(formData.patchStatus as string) || 'current'} onChange={e => setFormData({ ...formData, patchStatus: e.target.value })}>
                   {PATCH_STATUSES.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>OS</label><input className={ds.input} value={(formData.os as string) || ''} onChange={e => setFormData({ ...formData, os: e.target.value })} placeholder="Windows, Linux, etc." /></div>
-              <div><label className={ds.label}>Last Scan Date</label><input type="date" className={ds.input} value={(formData.lastScanDate as string) || ''} onChange={e => setFormData({ ...formData, lastScanDate: e.target.value })} /></div>
+              <div><label className={ds.label}>OS</label><input aria-label="OS" className={ds.input} value={(formData.os as string) || ''} onChange={e => setFormData({ ...formData, os: e.target.value })} placeholder="Windows, Linux, etc." /></div>
+              <div><label className={ds.label}>Last Scan Date</label><input aria-label="Last Scan Date" type="date" className={ds.input} value={(formData.lastScanDate as string) || ''} onChange={e => setFormData({ ...formData, lastScanDate: e.target.value })} /></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Location</label><input className={ds.input} value={(formData.location as string) || ''} onChange={e => setFormData({ ...formData, location: e.target.value })} /></div>
-              <div><label className={ds.label}>Department</label><input className={ds.input} value={(formData.department as string) || ''} onChange={e => setFormData({ ...formData, department: e.target.value })} /></div>
+              <div><label className={ds.label}>Location</label><input aria-label="Location" className={ds.input} value={(formData.location as string) || ''} onChange={e => setFormData({ ...formData, location: e.target.value })} /></div>
+              <div><label className={ds.label}>Department</label><input aria-label="Department" className={ds.input} value={(formData.department as string) || ''} onChange={e => setFormData({ ...formData, department: e.target.value })} /></div>
             </div>
-            <div><label className={ds.label}>Compliance Status</label><input className={ds.input} value={(formData.complianceStatus as string) || ''} onChange={e => setFormData({ ...formData, complianceStatus: e.target.value })} placeholder="compliant, non-compliant, pending" /></div>
+            <div><label className={ds.label}>Compliance Status</label><input aria-label="Compliance Status" className={ds.input} value={(formData.complianceStatus as string) || ''} onChange={e => setFormData({ ...formData, complianceStatus: e.target.value })} placeholder="compliant, non-compliant, pending" /></div>
           </>
         );
       case 'Patrol':
         return (
           <>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Route Name</label><input className={ds.input} value={(formData.route as string) || ''} onChange={e => setFormData({ ...formData, route: e.target.value })} /></div>
-              <div><label className={ds.label}>Guard</label><input className={ds.input} value={(formData.guard as string) || ''} onChange={e => setFormData({ ...formData, guard: e.target.value })} /></div>
+              <div><label className={ds.label}>Route Name</label><input aria-label="Route Name" className={ds.input} value={(formData.route as string) || ''} onChange={e => setFormData({ ...formData, route: e.target.value })} /></div>
+              <div><label className={ds.label}>Guard</label><input aria-label="Guard" className={ds.input} value={(formData.guard as string) || ''} onChange={e => setFormData({ ...formData, guard: e.target.value })} /></div>
             </div>
-            <div><label className={ds.label}>Checkpoints (comma-separated)</label><input className={ds.input} value={((formData.checkpoints as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, checkpoints: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} placeholder="Gate A, Building 1, Parking Lot..." /></div>
+            <div><label className={ds.label}>Checkpoints (comma-separated)</label><input aria-label="Checkpoints (comma-separated)" className={ds.input} value={((formData.checkpoints as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, checkpoints: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} placeholder="Gate A, Building 1, Parking Lot..." /></div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Shift Start</label><input type="time" className={ds.input} value={(formData.shiftStart as string) || ''} onChange={e => setFormData({ ...formData, shiftStart: e.target.value })} /></div>
-              <div><label className={ds.label}>Shift End</label><input type="time" className={ds.input} value={(formData.shiftEnd as string) || ''} onChange={e => setFormData({ ...formData, shiftEnd: e.target.value })} /></div>
+              <div><label className={ds.label}>Shift Start</label><input aria-label="Shift Start" type="time" className={ds.input} value={(formData.shiftStart as string) || ''} onChange={e => setFormData({ ...formData, shiftStart: e.target.value })} /></div>
+              <div><label className={ds.label}>Shift End</label><input aria-label="Shift End" type="time" className={ds.input} value={(formData.shiftEnd as string) || ''} onChange={e => setFormData({ ...formData, shiftEnd: e.target.value })} /></div>
             </div>
             <div className={ds.grid3}>
-              <div><label className={ds.label}>Incidents Reported</label><input type="number" className={ds.input} value={(formData.incidentsReported as number) || ''} onChange={e => setFormData({ ...formData, incidentsReported: parseInt(e.target.value) || 0 })} /></div>
-              <div><label className={ds.label}>Avg Response Time (min)</label><input type="number" className={ds.input} value={(formData.responseTime as number) || ''} onChange={e => setFormData({ ...formData, responseTime: parseInt(e.target.value) || 0 })} /></div>
-              <div><label className={ds.label}>Completion Rate (%)</label><input type="number" className={ds.input} value={(formData.completionRate as number) || ''} onChange={e => setFormData({ ...formData, completionRate: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Incidents Reported</label><input aria-label="Incidents Reported" type="number" className={ds.input} value={(formData.incidentsReported as number) || ''} onChange={e => setFormData({ ...formData, incidentsReported: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Avg Response Time (min)</label><input aria-label="Avg Response Time (min)" type="number" className={ds.input} value={(formData.responseTime as number) || ''} onChange={e => setFormData({ ...formData, responseTime: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Completion Rate (%)</label><input aria-label="Completion Rate (%)" type="number" className={ds.input} value={(formData.completionRate as number) || ''} onChange={e => setFormData({ ...formData, completionRate: parseInt(e.target.value) || 0 })} /></div>
             </div>
             <div><label className={ds.label}>Notes</label><DraftedTextarea lensId="security" draftKey="patrol_notes" initial={(formData.notes as string) || ''} onValueChange={(v) => setFormData({ ...formData, notes: v })} className={ds.textarea} rows={2} /></div>
           </>
@@ -499,28 +499,28 @@ export function SecurityOpsPanel({ openCaseNonce = 0 }: { openCaseNonce?: number
         return (
           <>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Camera ID</label><input className={ds.input} value={(formData.cameraId as string) || ''} onChange={e => setFormData({ ...formData, cameraId: e.target.value })} placeholder="CAM-001" /></div>
-              <div><label className={ds.label}>Zone</label><input className={ds.input} value={(formData.zone as string) || ''} onChange={e => setFormData({ ...formData, zone: e.target.value })} placeholder="North Entrance, Parking, etc." /></div>
+              <div><label className={ds.label}>Camera ID</label><input aria-label="Camera ID" className={ds.input} value={(formData.cameraId as string) || ''} onChange={e => setFormData({ ...formData, cameraId: e.target.value })} placeholder="CAM-001" /></div>
+              <div><label className={ds.label}>Zone</label><input aria-label="Zone" className={ds.input} value={(formData.zone as string) || ''} onChange={e => setFormData({ ...formData, zone: e.target.value })} placeholder="North Entrance, Parking, etc." /></div>
             </div>
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Type</label>
-                <select className={ds.select} value={(formData.type as string) || 'indoor'} onChange={e => setFormData({ ...formData, type: e.target.value })}>
+                <select  aria-label="Type" className={ds.select} value={(formData.type as string) || 'indoor'} onChange={e => setFormData({ ...formData, type: e.target.value })}>
                   <option value="indoor">Indoor</option>
                   <option value="outdoor">Outdoor</option>
                   <option value="ptz">PTZ</option>
                   <option value="thermal">Thermal</option>
                 </select>
               </div>
-              <div><label className={ds.label}>Resolution</label><input className={ds.input} value={(formData.resolution as string) || ''} onChange={e => setFormData({ ...formData, resolution: e.target.value })} placeholder="1080p, 4K, etc." /></div>
+              <div><label className={ds.label}>Resolution</label><input aria-label="Resolution" className={ds.input} value={(formData.resolution as string) || ''} onChange={e => setFormData({ ...formData, resolution: e.target.value })} placeholder="1080p, 4K, etc." /></div>
             </div>
-            <div><label className={ds.label}>Coverage Description</label><input className={ds.input} value={(formData.coverage as string) || ''} onChange={e => setFormData({ ...formData, coverage: e.target.value })} /></div>
+            <div><label className={ds.label}>Coverage Description</label><input aria-label="Coverage Description" className={ds.input} value={(formData.coverage as string) || ''} onChange={e => setFormData({ ...formData, coverage: e.target.value })} /></div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Alert Count</label><input type="number" className={ds.input} value={(formData.alertCount as number) || ''} onChange={e => setFormData({ ...formData, alertCount: parseInt(e.target.value) || 0 })} /></div>
-              <div><label className={ds.label}>Recording Retention (days)</label><input className={ds.input} value={(formData.recordingRetention as string) || ''} onChange={e => setFormData({ ...formData, recordingRetention: e.target.value })} /></div>
+              <div><label className={ds.label}>Alert Count</label><input aria-label="Alert Count" type="number" className={ds.input} value={(formData.alertCount as number) || ''} onChange={e => setFormData({ ...formData, alertCount: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Recording Retention (days)</label><input aria-label="Recording Retention (days)" className={ds.input} value={(formData.recordingRetention as string) || ''} onChange={e => setFormData({ ...formData, recordingRetention: e.target.value })} /></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Last Maintenance</label><input type="date" className={ds.input} value={(formData.lastMaintenanceDate as string) || ''} onChange={e => setFormData({ ...formData, lastMaintenanceDate: e.target.value })} /></div>
+              <div><label className={ds.label}>Last Maintenance</label><input aria-label="Last Maintenance" type="date" className={ds.input} value={(formData.lastMaintenanceDate as string) || ''} onChange={e => setFormData({ ...formData, lastMaintenanceDate: e.target.value })} /></div>
               <div className="flex items-center gap-4 pt-6">
                 <label className="flex items-center gap-2 text-sm text-gray-300">
                   <input type="checkbox" checked={(formData.nightVision as boolean) || false} onChange={e => setFormData({ ...formData, nightVision: e.target.checked })} />
@@ -540,24 +540,24 @@ export function SecurityOpsPanel({ openCaseNonce = 0 }: { openCaseNonce?: number
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>Access Level</label>
-                <select className={ds.select} value={(formData.accessLevel as string) || 'internal'} onChange={e => setFormData({ ...formData, accessLevel: e.target.value })}>
+                <select  aria-label="Access Level" className={ds.select} value={(formData.accessLevel as string) || 'internal'} onChange={e => setFormData({ ...formData, accessLevel: e.target.value })}>
                   {ACCESS_LEVELS.map(l => <option key={l} value={l}>{l.replace(/_/g, ' ')}</option>)}
                 </select>
               </div>
-              <div><label className={ds.label}>Badge ID</label><input className={ds.input} value={(formData.badgeId as string) || ''} onChange={e => setFormData({ ...formData, badgeId: e.target.value })} placeholder="BDG-0001" /></div>
+              <div><label className={ds.label}>Badge ID</label><input aria-label="Badge ID" className={ds.input} value={(formData.badgeId as string) || ''} onChange={e => setFormData({ ...formData, badgeId: e.target.value })} placeholder="BDG-0001" /></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Badge Holder</label><input className={ds.input} value={(formData.holder as string) || ''} onChange={e => setFormData({ ...formData, holder: e.target.value })} /></div>
-              <div><label className={ds.label}>Department</label><input className={ds.input} value={(formData.department as string) || ''} onChange={e => setFormData({ ...formData, department: e.target.value })} /></div>
+              <div><label className={ds.label}>Badge Holder</label><input aria-label="Badge Holder" className={ds.input} value={(formData.holder as string) || ''} onChange={e => setFormData({ ...formData, holder: e.target.value })} /></div>
+              <div><label className={ds.label}>Department</label><input aria-label="Department" className={ds.input} value={(formData.department as string) || ''} onChange={e => setFormData({ ...formData, department: e.target.value })} /></div>
             </div>
-            <div><label className={ds.label}>Authorized Zones (comma-separated)</label><input className={ds.input} value={((formData.zones as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, zones: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} placeholder="Lobby, Floor 2, Server Room..." /></div>
+            <div><label className={ds.label}>Authorized Zones (comma-separated)</label><input aria-label="Authorized Zones (comma-separated)" className={ds.input} value={((formData.zones as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, zones: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} placeholder="Lobby, Floor 2, Server Room..." /></div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Valid From</label><input type="date" className={ds.input} value={(formData.validFrom as string) || ''} onChange={e => setFormData({ ...formData, validFrom: e.target.value })} /></div>
-              <div><label className={ds.label}>Valid Until</label><input type="date" className={ds.input} value={(formData.validUntil as string) || ''} onChange={e => setFormData({ ...formData, validUntil: e.target.value })} /></div>
+              <div><label className={ds.label}>Valid From</label><input aria-label="Valid From" type="date" className={ds.input} value={(formData.validFrom as string) || ''} onChange={e => setFormData({ ...formData, validFrom: e.target.value })} /></div>
+              <div><label className={ds.label}>Valid Until</label><input aria-label="Valid Until" type="date" className={ds.input} value={(formData.validUntil as string) || ''} onChange={e => setFormData({ ...formData, validUntil: e.target.value })} /></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Visitor Name</label><input className={ds.input} value={(formData.visitorName as string) || ''} onChange={e => setFormData({ ...formData, visitorName: e.target.value })} /></div>
-              <div><label className={ds.label}>Visitor Company</label><input className={ds.input} value={(formData.visitorCompany as string) || ''} onChange={e => setFormData({ ...formData, visitorCompany: e.target.value })} /></div>
+              <div><label className={ds.label}>Visitor Name</label><input aria-label="Visitor Name" className={ds.input} value={(formData.visitorName as string) || ''} onChange={e => setFormData({ ...formData, visitorName: e.target.value })} /></div>
+              <div><label className={ds.label}>Visitor Company</label><input aria-label="Visitor Company" className={ds.input} value={(formData.visitorCompany as string) || ''} onChange={e => setFormData({ ...formData, visitorCompany: e.target.value })} /></div>
             </div>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 text-sm text-gray-300">
@@ -574,7 +574,7 @@ export function SecurityOpsPanel({ openCaseNonce = 0 }: { openCaseNonce?: number
             <div className={ds.grid2}>
               <div>
                 <label className={ds.label}>IOC Type</label>
-                <select className={ds.select} value={(formData.iocType as string) || 'IP'} onChange={e => setFormData({ ...formData, iocType: e.target.value })}>
+                <select  aria-label="IOC Type" className={ds.select} value={(formData.iocType as string) || 'IP'} onChange={e => setFormData({ ...formData, iocType: e.target.value })}>
                   <option value="IP">IP Address</option>
                   <option value="hash">File Hash</option>
                   <option value="domain">Domain</option>
@@ -582,24 +582,24 @@ export function SecurityOpsPanel({ openCaseNonce = 0 }: { openCaseNonce?: number
                   <option value="url">URL</option>
                 </select>
               </div>
-              <div><label className={ds.label}>IOC Value</label><input className={ds.input} value={(formData.iocValue as string) || ''} onChange={e => setFormData({ ...formData, iocValue: e.target.value })} /></div>
+              <div><label className={ds.label}>IOC Value</label><input aria-label="IOC Value" className={ds.input} value={(formData.iocValue as string) || ''} onChange={e => setFormData({ ...formData, iocValue: e.target.value })} /></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Threat Actor</label><input className={ds.input} value={(formData.threatActor as string) || ''} onChange={e => setFormData({ ...formData, threatActor: e.target.value })} placeholder="APT group, actor name..." /></div>
-              <div><label className={ds.label}>Source</label><input className={ds.input} value={(formData.source as string) || ''} onChange={e => setFormData({ ...formData, source: e.target.value })} placeholder="CISA, internal, vendor..." /></div>
+              <div><label className={ds.label}>Threat Actor</label><input aria-label="Threat Actor" className={ds.input} value={(formData.threatActor as string) || ''} onChange={e => setFormData({ ...formData, threatActor: e.target.value })} placeholder="APT group, actor name..." /></div>
+              <div><label className={ds.label}>Source</label><input aria-label="Source" className={ds.input} value={(formData.source as string) || ''} onChange={e => setFormData({ ...formData, source: e.target.value })} placeholder="CISA, internal, vendor..." /></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>Confidence (0-100)</label><input type="number" min="0" max="100" className={ds.input} value={(formData.confidence as number) || ''} onChange={e => setFormData({ ...formData, confidence: parseInt(e.target.value) || 0 })} /></div>
-              <div><label className={ds.label}>Risk Score (0-100)</label><input type="number" min="0" max="100" className={ds.input} value={(formData.riskScore as number) || ''} onChange={e => setFormData({ ...formData, riskScore: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Confidence (0-100)</label><input aria-label="Confidence (0-100)" type="number" min="0" max="100" className={ds.input} value={(formData.confidence as number) || ''} onChange={e => setFormData({ ...formData, confidence: parseInt(e.target.value) || 0 })} /></div>
+              <div><label className={ds.label}>Risk Score (0-100)</label><input aria-label="Risk Score (0-100)" type="number" min="0" max="100" className={ds.input} value={(formData.riskScore as number) || ''} onChange={e => setFormData({ ...formData, riskScore: parseInt(e.target.value) || 0 })} /></div>
             </div>
             <div className={ds.grid2}>
-              <div><label className={ds.label}>First Seen</label><input type="date" className={ds.input} value={(formData.firstSeen as string) || ''} onChange={e => setFormData({ ...formData, firstSeen: e.target.value })} /></div>
-              <div><label className={ds.label}>Last Seen</label><input type="date" className={ds.input} value={(formData.lastSeen as string) || ''} onChange={e => setFormData({ ...formData, lastSeen: e.target.value })} /></div>
+              <div><label className={ds.label}>First Seen</label><input aria-label="First Seen" type="date" className={ds.input} value={(formData.firstSeen as string) || ''} onChange={e => setFormData({ ...formData, firstSeen: e.target.value })} /></div>
+              <div><label className={ds.label}>Last Seen</label><input aria-label="Last Seen" type="date" className={ds.input} value={(formData.lastSeen as string) || ''} onChange={e => setFormData({ ...formData, lastSeen: e.target.value })} /></div>
             </div>
             <div><label className={ds.label}>Description</label><DraftedTextarea lensId="security" draftKey="threat_description" initial={(formData.description as string) || ''} onValueChange={(v) => setFormData({ ...formData, description: v })} className={ds.textarea} rows={3} /></div>
-            <div><label className={ds.label}>Affected Assets (comma-separated)</label><input className={ds.input} value={((formData.affectedAssets as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, affectedAssets: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
-            <div><label className={ds.label}>Mitigations (comma-separated)</label><input className={ds.input} value={((formData.mitigations as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, mitigations: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
-            <div><label className={ds.label}>Tags (comma-separated)</label><input className={ds.input} value={((formData.tags as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, tags: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
+            <div><label className={ds.label}>Affected Assets (comma-separated)</label><input aria-label="Affected Assets (comma-separated)" className={ds.input} value={((formData.affectedAssets as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, affectedAssets: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
+            <div><label className={ds.label}>Mitigations (comma-separated)</label><input aria-label="Mitigations (comma-separated)" className={ds.input} value={((formData.mitigations as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, mitigations: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
+            <div><label className={ds.label}>Tags (comma-separated)</label><input aria-label="Tags (comma-separated)" className={ds.input} value={((formData.tags as string[]) || []).join(', ')} onChange={e => setFormData({ ...formData, tags: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>
           </>
         );
       default:
@@ -1034,6 +1034,7 @@ export function SecurityOpsPanel({ openCaseNonce = 0 }: { openCaseNonce?: number
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
+              aria-label={`Search ${mode.toLowerCase()}`}
               ref={searchInputRef}
               className={cn(ds.input, 'pl-10')}
               placeholder={`Search ${mode.toLowerCase()}...`}
@@ -1043,7 +1044,7 @@ export function SecurityOpsPanel({ openCaseNonce = 0 }: { openCaseNonce?: number
           </div>
           <div className="flex items-center gap-1">
             <Filter className="w-4 h-4 text-gray-400" />
-            <select className={cn(ds.select, 'w-auto')} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <select aria-label="Filter by status" className={cn(ds.select, 'w-auto')} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
               <option value="all">All Statuses</option>
               {getStatusesForTab(mode).map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
             </select>
@@ -1319,11 +1320,11 @@ export function SecurityOpsPanel({ openCaseNonce = 0 }: { openCaseNonce?: number
               <div className="p-6 space-y-4 overflow-y-auto flex-1">
                 <div>
                   <label className={ds.label}>Title</label>
-                  <input className={ds.input} value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Title..." />
+                  <input aria-label="Title" className={ds.input} value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Title..." />
                 </div>
                 <div>
                   <label className={ds.label}>Status</label>
-                  <select className={ds.select} value={formStatus} onChange={e => setFormStatus(e.target.value)}>
+                  <select  aria-label="Status" className={ds.select} value={formStatus} onChange={e => setFormStatus(e.target.value)}>
                     {getStatusesForTab(mode).map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
                   </select>
                 </div>

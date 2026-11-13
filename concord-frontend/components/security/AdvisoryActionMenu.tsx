@@ -324,7 +324,7 @@ export function AdvisoryActionMenu({ advisory, onClose }: { advisory: AdvisoryLi
             <div className="space-y-3">
               <div>
                 <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Escalate to (user id)</label>
-                <input type="text" value={escalateTo} onChange={(e) => setEscalateTo(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/40" placeholder="incident-lead username" autoFocus />
+                <input aria-label="incident-lead username" type="text" value={escalateTo} onChange={(e) => setEscalateTo(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-400/40" placeholder="incident-lead username" autoFocus />
               </div>
               <button type="button" onClick={actEscalate} disabled={!!busy || !escalateTo.trim()} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-pink-500 text-white text-sm font-semibold hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed">
                 {busy === 'escalate' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -375,7 +375,7 @@ export function AdvisoryActionMenu({ advisory, onClose }: { advisory: AdvisoryLi
             <div className="space-y-3">
               <div>
                 <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Your stack</label>
-                <textarea value={stackDescription} onChange={(e) => setStackDescription(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 resize-none" placeholder="e.g. node 20 + express + react 18, Postgres, deployed on Fly.io…" />
+                <textarea aria-label="Your stack" value={stackDescription} onChange={(e) => setStackDescription(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 resize-none" placeholder="e.g. node 20 + express + react 18, Postgres, deployed on Fly.io…" />
               </div>
               <button type="button" onClick={actAgent} disabled={!!busy || !stackDescription.trim()} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500 text-black text-sm font-semibold hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed">
                 {busy === 'agent' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
