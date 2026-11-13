@@ -335,7 +335,21 @@ export function followUser(STATE, followerId, followedId) {
   social.follows.get(followerId).add(followedId);
   social.followers.get(followedId).add(followerId);
 
-  if (!alreadyFollowing) social.metrics.totalFollows++;
+  if (!alreadyFollowing) {
+    social.metrics.totalFollows++;
+    // FIX-social-015: a new follow notifies the followed user. Every
+    // sibling action already did (like, comment, mention, share, pack
+    // join); follow was the silent one, so "followed you" never
+    // appeared in anyone's notifications. The content is the verb
+    // phrase the notification UI renders after the actor's name.
+    // A repeat follow (alreadyFollowing) notifies nothing.
+    createNotification(STATE, {
+      userId: followedId,
+      type: "follow",
+      fromUserId: followerId,
+      content: "started following you",
+    });
+  }
 
   // Invalidate feed cache for follower
   social.feedCache.delete(followerId);
