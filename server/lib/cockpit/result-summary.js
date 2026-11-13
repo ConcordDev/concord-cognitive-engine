@@ -21,7 +21,7 @@ function maybeParse(v) {
  * @param {object|null} result @param {{ tool: string }} [meta]
  * @returns {{ values: Record<string, string|number|boolean>, text: string }}
  */
-export function summarizeResult(result, meta = {}) { // eslint-disable-line no-unused-vars
+export function summarizeResult(result, meta = {}) {
   const values = {};
   if (!result || typeof result !== "object") return { values, text: "" };
   let level = [result];

@@ -123,8 +123,9 @@ export function reduceRun(state: RunView, e: CockpitEvent): RunView {
     return { ...state, steps, confirm: clears ? null : state.confirm };
   }
   if (e.type === 'cockpit:confirm') {
-    const { type: _t, ...card } = e; // eslint-disable-line @typescript-eslint/no-unused-vars
-    return { ...state, confirm: card as ConfirmCardData };
+    const card: Record<string, unknown> = { ...e };
+    delete card.type;
+    return { ...state, confirm: card as unknown as ConfirmCardData };
   }
   return state;
 }

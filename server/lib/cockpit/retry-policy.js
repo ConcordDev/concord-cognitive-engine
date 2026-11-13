@@ -47,7 +47,7 @@ export function nextAction(s) {
   return { kind: cell };
 }
 
-const defaultSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const defaultSleep = (ms) => new Promise((r) => { setTimeout(r, ms); });
 
 /**
  * Run one call with in-place retries for classes that need no model.
@@ -97,7 +97,7 @@ export async function runWithRetry(exec, call, o = {}) {
 }
 
 /** One bounded agent-loop pass that retries a failed plain-chat tool round. */
-export async function chatAgentRecoveryTurn({ runMacro, ctx, prompt, failed, lensActions }) { // eslint-disable-line no-unused-vars
+export async function chatAgentRecoveryTurn({ runMacro, ctx, prompt, failed, lensActions }) {
   const hints = failed.map((r) => `- ${r.tool}: ${String(r.error || "").slice(0, 200)}${r.retryHint ? ` | ${String(r.retryHint).slice(0, 300)}` : ""}`).join("\n");
   return runMacro("chat_agent", "do", {
     message: `${String(prompt).slice(0, 2000)}\n\n(These tool calls just failed. Do the task another way; do not repeat a failed call.)\n${hints}`,

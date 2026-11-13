@@ -80,7 +80,7 @@ export async function tickRun(a) {
   const deps = a.deps || {};
   const nowMs = () => (deps.now ? deps.now() : Date.now());
   const nowSec = () => Math.floor(nowMs() / 1000);
-  const sleep = deps.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
+  const sleep = deps.sleep || ((ms) => new Promise((r) => { setTimeout(r, ms); }));
   const emit = (e) => { try { (deps.emit || (() => {}))(e); } catch { /* listeners never break a run */ } };
   const stepCall = deps.stepCall || requestStepCall;
   const verify = deps.verify || (async () => ({ pass: true, checks: [] }));
@@ -210,7 +210,7 @@ export async function tickRun(a) {
     // 9. Build the call.
     const rawArgs = resolveRefs(step.args, steps);
     const userAnswer = rawArgs && typeof rawArgs === "object" ? rawArgs.__userAnswer : undefined;
-    const args = rawArgs && typeof rawArgs === "object" && "__userAnswer" in rawArgs ? (({ __userAnswer, ...rest }) => rest)(rawArgs) : rawArgs; // eslint-disable-line no-unused-vars
+    const args = rawArgs && typeof rawArgs === "object" && "__userAnswer" in rawArgs ? (({ __userAnswer, ...rest }) => rest)(rawArgs) : rawArgs;
     let call = null;
     let doneSummary = null;
     if (resumed) {
@@ -319,7 +319,7 @@ export async function driveRun(a) {
     if (a.deadlineMs && Date.now() >= a.deadlineMs) break;
     last = await tickRun(a);
     if (!last.advanced) break;
-    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => { setImmediate(r); });
   }
   return last;
 }
