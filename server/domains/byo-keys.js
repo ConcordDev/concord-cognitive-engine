@@ -98,7 +98,10 @@ export default function registerByoKeysMacros(register) {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
     if (!db || !userId) return { ok: false, reason: "no_actor" };
-    return removeKey(db, userId, input?.slot);
+    const r = removeKey(db, userId, input?.slot);
+    // The key's health record dies with the key (FIX-byo-keys-008).
+    if (r?.ok) { const hm = userMap("health", userId); if (hm) hm.delete(input?.slot); }
+    return r;
   }, { note: "Delete a brain override (key + provider config)." });
 
   register("byo_keys", "set_active", async (ctx, input = {}) => {
@@ -469,8 +472,11 @@ export default function registerByoKeysMacros(register) {
     const slotProviders = new Map(overrides.map((o) => [o.slot, o.provider]));
     const rows = [];
     for (const slot of VALID_SLOTS) {
+      // A slot with no key configured has no health to show — a leftover
+      // health record for a removed key must not keep surfacing its last
+      // error as if the key still existed (FIX-byo-keys-008).
+      if (!slotProviders.has(slot)) continue;
       const h = hm.get(slot);
-      if (!h && !slotProviders.has(slot)) continue;
       rows.push({
         slot,
         provider: slotProviders.get(slot) || null,

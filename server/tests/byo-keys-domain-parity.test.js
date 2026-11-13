@@ -257,6 +257,13 @@ describe("byo_keys — key health", () => {
     assert.equal(row.provider, "anthropic");
   });
 
+  it("health_list never surfaces health for a slot with no key (FIX-byo-keys-008)", async () => {
+    await call("record_health", ctxA, { slot: "repair", ok: false, error: "stale failure" });
+    const r = await call("health_list", ctxA);
+    assert.equal(r.ok, true);
+    assert.equal(r.result.rows.find((x) => x.slot === "repair"), undefined);
+  });
+
   it("health_list reports untested for an override with no health record", async () => {
     addOverride("user_a", "vision", "google", "gemini-pro-vision");
     const r = await call("health_list", ctxA);
