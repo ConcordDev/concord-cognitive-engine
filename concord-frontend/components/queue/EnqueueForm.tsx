@@ -54,6 +54,7 @@ export function EnqueueForm({
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
           placeholder="Job name"
+          aria-label="Job name"
           className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-sm text-white placeholder:text-zinc-600"
         />
         <select
@@ -106,14 +107,22 @@ export function EnqueueForm({
           />
           Simulate failure on process
         </label>
-        <button
-          onClick={submit}
-          disabled={busy || !name.trim()}
-          className="flex items-center gap-1.5 rounded-lg bg-cyan-500/20 px-3 py-1.5 text-sm text-cyan-300 hover:bg-cyan-500/30 disabled:opacity-50"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          Enqueue
-        </button>
+        <div className="flex items-center gap-2">
+          {/* FIX-queue-005: the button disabled on an empty name with no
+              word anywhere — the reason now sits beside it while the
+              name is blank (the worldmodel-003 pattern). */}
+          {!name.trim() && (
+            <span role="note" className="text-xs text-zinc-500">Give the job a name to enqueue it.</span>
+          )}
+          <button
+            onClick={submit}
+            disabled={busy || !name.trim()}
+            className="flex items-center gap-1.5 rounded-lg bg-cyan-500/20 px-3 py-1.5 text-sm text-cyan-300 hover:bg-cyan-500/30 disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Enqueue
+          </button>
+        </div>
       </div>
     </div>
   );
