@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { Stethoscope, AlertTriangle, Activity, FlaskConical, Syringe, ClipboardList, Loader2, Plus, Search, Pencil, X, Check, Camera, Trash2, AlertCircle } from 'lucide-react';
+import { Stethoscope, AlertTriangle, Activity, FlaskConical, Syringe, ClipboardList, Loader2, Plus, Search, Pencil, X, Check, Camera, Trash2, AlertCircle, Download } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui';
@@ -87,6 +87,19 @@ function trendArrow(current: number | null, previous: number | null | undefined)
   return current > previous ? '↑' : '↓';
 }
 
+// FIX-healthcare-008: per-patient export. The lens export menu only
+// offers the lens-wide bundle, so a single patient's record could not
+// be exported without bulk data. The chart panel already holds exactly
+// one patient's complete detail (patients-detail), so the export is
+// that loaded chart — it cannot contain another patient's data.
+export function patientChartExport(data: ChartDetail): { filename: string; json: string } {
+  const mrn = (data.patient.mrn || data.patient.id || 'patient').replace(/[^A-Za-z0-9_-]+/g, '-');
+  return {
+    filename: `patient-chart-${mrn}.json`,
+    json: JSON.stringify({ exportedAt: new Date().toISOString(), ...data }, null, 2),
+  };
+}
+
 export function PatientChartPanel({ patientId }: { patientId: string }) {
   const [data, setData] = useState<ChartDetail | null>(null);
   const [tab, setTab] = useState<'problems' | 'allergies' | 'meds' | 'vitals' | 'labs' | 'immunizations' | 'encounters' | 'photos'>('problems');
@@ -134,6 +147,17 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
       if (kt.data?.ok && kt.data.result?.tests?.length) setKnownTests(kt.data.result.tests);
     } catch (e) { console.error('[Chart] failed', e); }
     finally { if (!silent) setLoading(false); }
+  }
+
+  function exportPatient() {
+    if (!data) return;
+    const { filename, json } = patientChartExport(data);
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function startEditPatient() {
@@ -298,6 +322,9 @@ export function PatientChartPanel({ patientId }: { patientId: string }) {
           <div className="col-span-2"><div className="text-[10px] text-gray-400">Phone / Email</div><div className="text-xs text-white truncate">{p.phone || '—'} {p.email && `· ${p.email}`}</div></div>
           <div className="col-span-3"><div className="text-[10px] text-gray-400">Insurance</div><div className="text-xs text-white truncate">{p.insurancePlan || '—'}</div></div>
           <div className="col-span-1 flex justify-end">
+            <button onClick={exportPatient} aria-label="Export patient chart" title="Export this patient's chart (JSON)" className="p-1.5 rounded text-gray-400 hover:text-cyan-300 hover:bg-white/5">
+              <Download className="w-3.5 h-3.5" />
+            </button>
             <button onClick={startEditPatient} aria-label="Edit patient" className="p-1.5 rounded text-gray-400 hover:text-cyan-300 hover:bg-white/5">
               <Pencil className="w-3.5 h-3.5" />
             </button>
