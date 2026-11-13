@@ -154,6 +154,16 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
 
   const [tab, setTab] = useState<MarketplaceTabId>('browse');
   const [search, setSearch] = useState('');
+  // FIX-marketplace-003: the browse query keyed on the raw search
+  // string, so every keystroke fired two backend requests. The query
+  // reads a 300 ms-debounced copy; the client-side filter below keeps
+  // using the raw string, so visible filtering stays instant while
+  // the network waits for a pause.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [genreFilter, setGenreFilter] = useState('All Categories');
   const [sortBy, setSortBy] = useState<SortOption>('popular');
@@ -222,25 +232,30 @@ export function MarketplaceProvider({ children }: { children: ReactNode }) {
     error: error5,
     refetch: refetch5,
   } = useQuery({
-    queryKey: ['marketplace-browse', category, search],
+    queryKey: ['marketplace-browse', category, debouncedSearch],
     queryFn: async () => {
       // Published seller listings live in the storefront catalog. The
       // plugin browse route is a different store, so a listing that
       // just published never appeared here.
-      const res = await lensRun<{ listings?: Array<Record<string, unknown>> }>('marketplace', 'storefront-browse', {
-        search: search || undefined,
-      });
+      // FIX-marketplace-005: these two reads used to run back to
+      // back, so the listings skeleton lasted their combined time.
+      // They are independent — run them together.
+      const [res, plugins] = await Promise.all([
+        lensRun<{ listings?: Array<Record<string, unknown>> }>('marketplace', 'storefront-browse', {
+          search: debouncedSearch || undefined,
+        }),
+        api.get('/api/marketplace/browse', {
+          params: {
+            category: category !== 'all' ? category : undefined,
+            search: debouncedSearch || undefined,
+          },
+        }).then((r) => (r.data ?? {}) as { items?: unknown[]; results?: unknown[] }).catch(() => ({ items: [] }) as { items?: unknown[]; results?: unknown[] }),
+      ]);
       const body = res.data;
       if (!body || body.ok === false) {
         throw new Error(body?.error || 'Browse failed');
       }
       const listings = body.result?.listings || [];
-      const plugins: { items?: unknown[]; results?: unknown[] } = await api.get('/api/marketplace/browse', {
-        params: {
-          category: category !== 'all' ? category : undefined,
-          search: search || undefined,
-        },
-      }).then((r) => (r.data ?? {}) as { items?: unknown[]; results?: unknown[] }).catch(() => ({ items: [] }));
       const pluginItems = (Array.isArray(plugins.items) ? plugins.items : Array.isArray(plugins.results) ? plugins.results : []) as Record<string, unknown>[];
       return {
         ok: true,
