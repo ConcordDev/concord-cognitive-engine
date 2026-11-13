@@ -42,7 +42,7 @@ export function ParksPanel({ className }: ParksPanelProps) {
     <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden', className)}>
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
         <Trees className="w-4 h-4 text-emerald-300" aria-hidden="true" />
-        <h3 className="text-sm font-medium text-zinc-100 flex-1">National Parks · {state}{view?.kind === 'list' && view.total ? ` (${view.total})` : ''}</h3>
+        <h2 className="text-sm font-medium text-zinc-100 flex-1">National Parks · {state}{view?.kind === 'list' && view.total ? ` (${view.total})` : ''}</h2>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
         <button type="button" onClick={() => void fetchData(state)} disabled={loading} className="p-1 text-zinc-400 hover:text-zinc-200" aria-label="Refresh">
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -50,7 +50,7 @@ export function ParksPanel({ className }: ParksPanelProps) {
       </header>
 
       <div className="px-3 py-2 border-b border-zinc-800/40">
-        <select value={state} onChange={(e) => setState(e.target.value)} className="text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 w-full">
+        <select aria-label="State" value={state} onChange={(e) => setState(e.target.value)} className="min-h-11 text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-100 w-full">
           {STATES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>

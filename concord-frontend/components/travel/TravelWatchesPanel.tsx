@@ -85,8 +85,8 @@ export function TravelWatchesPanel({ onChange }: { onChange: () => void }) {
       <div className="grid grid-cols-4 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
         <input placeholder="Subject (SFO→NRT)" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-        <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}
-          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+        <select aria-label="Watch kind" value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}
+          className="min-h-11 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
           {['flight', 'hotel', 'car'].map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
         <input placeholder="Target $" inputMode="decimal" value={form.targetPrice} onChange={(e) => setForm({ ...form, targetPrice: e.target.value })}
@@ -135,7 +135,7 @@ export function TravelWatchesPanel({ onChange }: { onChange: () => void }) {
                     className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
                     <RefreshCw className="w-3 h-3" /> Update
                   </button>
-                  <button aria-label="Delete" type="button" onClick={() => del(w.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => del(w.id)} className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

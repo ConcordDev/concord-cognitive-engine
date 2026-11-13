@@ -19,7 +19,6 @@
  * handler docblocks in `server/domains/travel.js` for the ground truth).
  */
 
-import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Plane, DollarSign, Briefcase, Clock, FileBadge,
@@ -251,8 +250,8 @@ export function TravelActionPanel() {
     try {
       const task = `Trip: ${destination.trim()} for ${days} days (${travelStyle} style). ${budgetResult ? `Budget $${budgetResult.totalEstimate}.` : ''} Suggest the single best off-the-beaten-path experience for this destination + style. Include why it's better than the obvious tourist option. Plain text.`;
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 3 } });
-      const reply = readAgentReply(r.data);
-      if (reply.ok) { setAgentReply(reply.text); ok('Local tip ready.'); } else err(reply.reason);
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Local tip ready.'); } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
   }
 
@@ -271,31 +270,31 @@ export function TravelActionPanel() {
     <div className="rounded-lg border border-sky-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-sky-500/10 pb-2">
         <Plane className="h-4 w-4 text-sky-400" />
-        <h3 className="text-sm font-semibold text-white">Quick tools</h3>
-        <span className="text-[10px] text-zinc-500">standalone calculators — not tied to a saved trip</span>
+        <h2 className="text-sm font-semibold text-white">Quick tools</h2>
+        <span className="text-[10px] text-zinc-400">standalone calculators — not tied to a saved trip</span>
       </header>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Destination label (e.g. Tokyo)" />
         <input type="text" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Days" />
-        <select value={travelStyle} onChange={(e) => setTravelStyle(e.target.value as TravelStyle)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" aria-label="Budget travel style">
+        <select value={travelStyle} onChange={(e) => setTravelStyle(e.target.value as TravelStyle)} className="min-h-11 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" aria-label="Budget travel style">
           {(['budget', 'moderate', 'luxury'] as const).map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <input type="text" inputMode="decimal" value={flightCost} onChange={(e) => setFlightCost(e.target.value.replace(/[^\d.]/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Flight cost $ (optional)" />
-        <select value={climate} onChange={(e) => setClimate(e.target.value as Climate)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" aria-label="Packing climate">
+        <select value={climate} onChange={(e) => setClimate(e.target.value as Climate)} className="min-h-11 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" aria-label="Packing climate">
           {(['tropical', 'temperate', 'cold'] as const).map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select value={purpose} onChange={(e) => setPurpose(e.target.value as Purpose)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" aria-label="Packing purpose">
+        <select value={purpose} onChange={(e) => setPurpose(e.target.value as Purpose)} className="min-h-11 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" aria-label="Packing purpose">
           {(['leisure', 'business', 'adventure'] as const).map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <input type="text" inputMode="numeric" value={timezoneShift} onChange={(e) => setTimezoneShift(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono" placeholder="Hours offset" />
-        <select value={direction} onChange={(e) => setDirection(e.target.value as Direction)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" aria-label="Jet lag direction">
+        <select value={direction} onChange={(e) => setDirection(e.target.value as Direction)} className="min-h-11 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white" aria-label="Jet lag direction">
           {(['east', 'west'] as const).map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
         <input type="text" value={passportCountry} onChange={(e) => setPassportCountry(e.target.value.toUpperCase().slice(0, 2))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono uppercase" placeholder="Passport (US)" maxLength={2} />
