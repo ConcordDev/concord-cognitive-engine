@@ -69,7 +69,7 @@ export function EventLogPanel() {
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Event Type</label>
                 <select
-                  value={eventFilter}
+ aria-label="Event Type"                  value={eventFilter}
                   onChange={(e) => setEventFilter(e.target.value)}
                   className="input-lattice text-sm"
                 >
@@ -84,7 +84,7 @@ export function EventLogPanel() {
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Dimension</label>
                 <select
-                  value={eventDimFilter}
+ aria-label="Dimension"                  value={eventDimFilter}
                   onChange={(e) => setEventDimFilter(e.target.value)}
                   className="input-lattice text-sm"
                 >

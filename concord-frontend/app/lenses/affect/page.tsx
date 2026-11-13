@@ -87,7 +87,7 @@ export default function AffectLensPage() {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h1 className="mb-1 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Affect</h1>
-              <p className="max-w-2xl text-[14px] text-zinc-500">
+              <p className="max-w-2xl text-[14px] text-zinc-400">
                 Affective Translation Spine: 7D state, derived policy, mood research tools.
               </p>
             </div>

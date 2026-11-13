@@ -591,7 +591,7 @@ export function MoodTracker() {
               <label className="text-xs text-gray-400 block mb-1">Activities</label>
               <div className="flex gap-2">
                 <input
-                  type="text"
+ aria-label="Activities"                  type="text"
                   value={activityInput}
                   onChange={(e) => setActivityInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -1046,7 +1046,7 @@ export function MoodTracker() {
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Time</label>
                 <input
-                  type="time"
+ aria-label="Time"                  type="time"
                   value={newReminderTime}
                   onChange={(e) => setNewReminderTime(e.target.value)}
                   className="input-lattice text-sm"
@@ -1055,7 +1055,7 @@ export function MoodTracker() {
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Trigger</label>
                 <select
-                  value={newReminderCond}
+ aria-label="Trigger"                  value={newReminderCond}
                   onChange={(e) =>
                     setNewReminderCond(
                       e.target.value as 'daily' | 'streak_risk' | 'low_mood',
@@ -1069,6 +1069,7 @@ export function MoodTracker() {
                 </select>
               </div>
               <input
+                aria-label="Reminder label (optional)"
                 type="text"
                 value={newReminderLabel}
                 onChange={(e) => setNewReminderLabel(e.target.value)}

@@ -184,7 +184,7 @@ export function DimensionsPanel() {
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Event Type</label>
                 <select
-                  value={eventType}
+ aria-label="Event Type"                  value={eventType}
                   onChange={(e) => setEventType(e.target.value)}
                   className="input-lattice w-full"
                 >
@@ -200,7 +200,7 @@ export function DimensionsPanel() {
                   Intensity: {intensity.toFixed(2)}
                 </label>
                 <input
-                  type="range"
+ aria-label="Intensity"                  type="range"
                   min="0"
                   max="1"
                   step="0.01"
@@ -214,7 +214,7 @@ export function DimensionsPanel() {
                   Polarity: {polarity.toFixed(2)}
                 </label>
                 <input
-                  type="range"
+ aria-label="Polarity"                  type="range"
                   min="-1"
                   max="1"
                   step="0.01"
