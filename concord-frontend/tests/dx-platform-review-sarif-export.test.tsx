@@ -144,7 +144,10 @@ describe('DxWorkbench ReviewTab — Export SARIF button', () => {
 
     await act(async () => { fireEvent.click(view.getByText('Export SARIF')); });
 
-    await waitFor(() => expect(view.getByText('handler_error')).toBeInTheDocument());
+    // FIX-dx-platform-016 (CB-0485): the raw token no longer reaches the
+    // user — the funnel translates it. The mock still answers
+    // 'handler_error'; the surface now shows its sentence.
+    await waitFor(() => expect(view.getByText('That failed on the server — try again.')).toBeInTheDocument());
     expect(view.queryByText(/Downloaded concord-dx-findings\.sarif/)).not.toBeInTheDocument();
     // no fake success — the download mechanism must never fire on a failed call
     expect(createSpy).not.toHaveBeenCalled();

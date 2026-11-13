@@ -355,6 +355,17 @@ export function ForgeWorkbench() {
         </div>
       </div>
 
+      {/* FIX-forge-001: a failed validate/generate call used to settle
+          silently — the spinner stopped and nothing appeared, because
+          the mutations' error state was never read. Failures now speak,
+          and the buttons above are the retry. */}
+      {validateMutation.isError && (
+        <p className="mx-4 mt-2 text-xs text-red-300">Validation could not reach the server — check your connection and try Validate again.</p>
+      )}
+      {generateMutation.isError && (
+        <p className="mx-4 mt-2 text-xs text-red-300">Generation could not reach the server — check your connection and try Generate App again.</p>
+      )}
+
       {/* Validation result banner */}
       <AnimatePresence>
         {validateMutation.data && (

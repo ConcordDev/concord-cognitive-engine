@@ -421,11 +421,12 @@ export function DecryptedArchive() {
     try {
       const text = await file.text();
       const parsed = readEncEnvelope(text);
-      if (!parsed) { setInfo('Not a recognized .enc envelope (missing salt/ciphertext).'); return; }
+      if (!parsed) { setEnvelope(null); setFileName(null); setInfo('Not a recognized .enc envelope (missing salt/ciphertext) — nothing is loaded now.'); return; }
       setEnvelope({ salt: parsed.salt, plainChecksum: parsed.plainChecksum || '', ciphertextBase64: parsed.ciphertextBase64 });
       setFileName(file.name);
     } catch {
-      setInfo('Could not parse this file as a Concord .enc envelope.');
+      setEnvelope(null); setFileName(null);
+      setInfo('Could not parse this file as a Concord .enc envelope — nothing is loaded now.');
     }
   };
 

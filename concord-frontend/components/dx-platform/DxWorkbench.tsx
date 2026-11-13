@@ -12,6 +12,7 @@ import {
   ShieldCheck, FileJson, TrendingUp,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { dxErrorWords } from './errorWords';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { ChartKit } from '@/components/viz/ChartKit';
 import { downloadFile } from '@/lib/utils';
@@ -80,7 +81,7 @@ export function DxWorkbench() {
         setCodebases(list);
         setActiveCb((prev) => prev || list[0]?.id || '');
       } else {
-        setCbError(r.data?.error || 'Could not load your codebases.');
+        setCbError(dxErrorWords(r.data?.error) || 'Could not load your codebases.');
       }
     } catch {
       setCbError('Network error loading codebases.');
@@ -254,7 +255,7 @@ function CodebasesTab({
         setFiles([]); setName('');
         onIndexed();
       } else {
-        setIndexErr(r.data?.error || 'Index failed.');
+        setIndexErr(dxErrorWords(r.data?.error) || 'Index failed.');
       }
     } finally {
       setIndexing(false);
@@ -349,7 +350,7 @@ function CodebasesTab({
                 const next = renameName.trim();
                 if (!next) { setIndexErr('Enter a new name.'); return; }
                 void lensRun('dx-platform', 'renameCodebase', { codebaseId: activeCb, name: next }).then((r) => {
-                  if (r.data?.ok === false) setIndexErr(r.data?.message || r.data?.error || 'Could not rename that codebase.');
+                  if (r.data?.ok === false) setIndexErr(r.data?.message || dxErrorWords(r.data?.error) || 'Could not rename that codebase.');
                   else { setRenameName(''); setIndexErr(null); onIndexed(); }
                 });
               }} className="rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-200">Rename</button>
@@ -531,7 +532,7 @@ function ReviewTab({ codebases }: { codebases: CodebaseRow[] }) {
         downloadFile(JSON.stringify(sarif, null, 2), 'concord-dx-findings.sarif', 'application/sarif+json');
         setSarifExported(true);
       } else {
-        setSarifError(r.data?.error || 'SARIF export failed.');
+        setSarifError(dxErrorWords(r.data?.error) || 'SARIF export failed.');
       }
     } catch {
       setSarifError('Network error exporting SARIF.');
@@ -770,7 +771,7 @@ function SearchTab({
       if (r.data?.ok && r.data.result) {
         setResult(r.data.result as { results: SearchHit[]; matchCount: number; fileCount: number; truncated: boolean });
       } else {
-        setErr(r.data?.error || 'Search failed.');
+        setErr(dxErrorWords(r.data?.error) || 'Search failed.');
       }
     } finally {
       setLoading(false);
@@ -891,7 +892,7 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
     try {
       const r = await lensRun('dx-platform', 'teamDashboard', { teamId: id });
       if (r.data?.ok && r.data.result) setDash(r.data.result as TeamDash);
-      else setMsg(r.data?.error || 'Dashboard unavailable.');
+      else setMsg(dxErrorWords(r.data?.error) || 'Dashboard unavailable.');
     } finally {
       setLoading(false);
     }
@@ -916,7 +917,7 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
       setInviteHidden(false);
       setMsg('A new invite code is shown once below.');
     } else {
-      setMsg(r.data?.error || 'Invite failed.');
+      setMsg(dxErrorWords(r.data?.error) || 'Invite failed.');
     }
   };
 
@@ -935,8 +936,8 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
       // F2: teamId may already equal id (owner attach) — force a dashboard reload.
       void loadDash(id);
     } else {
-      const err = r.data?.error || 'Join failed.';
-      setMsg(err === 'not_invited' ? 'not_invited — ask a member for an invite code.' : err);
+      const err = dxErrorWords(r.data?.error) || 'Join failed.';
+      setMsg(err);
     }
   };
 
@@ -980,7 +981,7 @@ function TeamTab({ codebases, onChanged }: { codebases: CodebaseRow[]; onChanged
                   <input value={teamId === t.teamId ? teamRename : ''} onChange={(e) => { setTeamId(t.teamId); setTeamRename(e.target.value); }} placeholder="Rename" className="w-24 rounded border border-zinc-800 bg-zinc-900 px-1 py-0.5 text-[11px] text-white" />
                   <button type="button" onClick={() => {
                     void lensRun('dx-platform', 'renameTeam', { teamId: t.teamId, name: teamRename.trim() }).then((r) => {
-                      if (r.data?.ok === false) setMsg(r.data?.message || r.data?.error || 'Could not rename that team.');
+                      if (r.data?.ok === false) setMsg(r.data?.message || dxErrorWords(r.data?.error) || 'Could not rename that team.');
                       else { setTeamRename(''); void loadTeams(); }
                     });
                   }} className="text-zinc-400">Save</button>
