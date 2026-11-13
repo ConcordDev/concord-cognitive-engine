@@ -110,7 +110,7 @@ export function PhilosophyCuration() {
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Network className="w-4 h-4 text-amber-400" />
-        <h3 className="text-sm font-bold text-zinc-100">Curation Studio</h3>
+        <h2 className="text-sm font-bold text-zinc-100">Curation Studio</h2>
       </div>
 
       <div className="flex flex-wrap gap-1 mb-4">
@@ -207,9 +207,9 @@ function ImageGridTab({ channels, onMutate, focus }: { channels: ChannelMeta[]; 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-1.5">
-        <select
+        <select aria-label="Channel for the image block"
           value={channelId} onChange={(e) => setChannelId(e.target.value)}
-          className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200"
+          className="min-h-11 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200"
         >
           {channels.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
         </select>
@@ -256,11 +256,11 @@ function ImageGridTab({ channels, onMutate, focus }: { channels: ChannelMeta[]; 
                   <p className="flex-1 text-[11px] text-zinc-300 line-clamp-2">{b.content}</p>
                   {b.canDelete !== false && (confirmTileId === b.id ? (
                     <span className="flex items-center gap-1 shrink-0">
-                      <button aria-label="Confirm delete" onClick={() => del(b.id)} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-600 text-white font-semibold">Delete?</button>
-                      <button aria-label="Cancel delete" onClick={() => setConfirmTileId(null)} className="px-1.5 py-0.5 text-[10px] rounded bg-zinc-800 text-zinc-300">Keep</button>
+                      <button aria-label="Confirm delete" onClick={() => del(b.id)} className="inline-flex min-h-11 items-center px-1.5 py-0.5 text-[10px] rounded bg-rose-600 text-white font-semibold">Delete?</button>
+                      <button aria-label="Cancel delete" onClick={() => setConfirmTileId(null)} className="inline-flex min-h-11 items-center px-1.5 py-0.5 text-[10px] rounded bg-zinc-800 text-zinc-300">Keep</button>
                     </span>
                   ) : (
-                    <button aria-label="Delete" onClick={() => setConfirmTileId(b.id)} className="opacity-0 group-hover:opacity-100 text-rose-400 shrink-0">
+                    <button aria-label="Delete" onClick={() => setConfirmTileId(b.id)} className="inline-flex min-h-11 min-w-11 items-center justify-center opacity-0 group-hover:opacity-100 text-rose-400 shrink-0">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   ))}
@@ -392,12 +392,12 @@ function SearchTab({ channels, onOpenChannel }: { channels: ChannelMeta[]; onOpe
                         <BlockKindIcon kind={b.kind} />
                         <span className="text-[9px] uppercase font-bold">{b.kind}</span>
                         {b.channelIds.length > 1 && (
-                          <span className="text-[9px] text-zinc-500 ml-auto">in {b.channelIds.length} channels</span>
+                          <span className="text-[9px] text-zinc-400 ml-auto">in {b.channelIds.length} channels</span>
                         )}
                       </div>
                       <p className="text-[11px] text-zinc-300 mt-1">{b.excerpt}</p>
                       {b.channelIds[0] && (
-                        <p className="text-[9px] text-zinc-500 mt-1">in {channelTitle(b.channelIds[0])}</p>
+                        <p className="text-[9px] text-zinc-400 mt-1">in {channelTitle(b.channelIds[0])}</p>
                       )}
                     </button>
                   </li>
@@ -471,7 +471,7 @@ function DiscoverTab() {
                 <span>{c.blockCount} blocks</span>
                 <span>·</span>
                 <span>{c.collaboratorCount} collaborators</span>
-                <span className="ml-auto text-zinc-600">by {c.ownerName || 'a Concord member'}</span>
+                <span className="ml-auto text-zinc-400">by {c.ownerName || 'a Concord member'}</span>
               </div>
             </button>
           ))}
@@ -482,9 +482,9 @@ function DiscoverTab() {
         <div className="bg-zinc-950 border border-amber-800/40 rounded-lg p-3">
           <div className="flex items-center gap-2 mb-2">
             <Globe className="w-3.5 h-3.5 text-amber-400" />
-            <h4 className="text-sm font-bold text-zinc-100">{open.channel.title}</h4>
+            <h3 className="text-sm font-bold text-zinc-100">{open.channel.title}</h3>
             <span className="text-[10px] text-zinc-400">by {open.ownerName || 'a Concord member'}</span>
-            <button aria-label="Open" onClick={() => setOpen(null)} className="ml-auto text-zinc-400 hover:text-zinc-200">
+            <button aria-label="Close" onClick={() => setOpen(null)} className="inline-flex min-h-11 min-w-11 items-center justify-center ml-auto text-zinc-400 hover:text-zinc-200">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -561,9 +561,9 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
 
   return (
     <div className="space-y-3">
-      <select
+      <select aria-label="Channel to manage"
         value={channelId} onChange={(e) => setChannelId(e.target.value)}
-        className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200"
+        className="min-h-11 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200"
       >
         {channels.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
       </select>
@@ -584,7 +584,7 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
             {isPublic ? 'Public' : 'Make public'}
           </button>
         ) : (
-          <span className="text-[10px] text-zinc-500">{isPublic ? 'Public' : 'Private'}</span>
+          <span className="text-[10px] text-zinc-400">{isPublic ? 'Public' : 'Private'}</span>
         )}
       </div>
 
@@ -619,7 +619,7 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
               <li key={u} className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded px-2 py-1">
                 <Users className="w-3 h-3 text-amber-400" />
                 <span className="flex-1 text-[11px] text-zinc-200">{u}</span>
-                {isOwner && <button aria-label="Delete" onClick={() => remove(u)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>}
+                {isOwner && <button aria-label="Delete" onClick={() => remove(u)} className="inline-flex min-h-11 min-w-11 items-center justify-center text-rose-400"><Trash2 className="w-3 h-3" /></button>}
               </li>
             ))}
           </ul>
@@ -668,9 +668,9 @@ function EmbedTab({ channels, onMutate }: { channels: ChannelMeta[]; onMutate: (
         Pull a rich Wikipedia preview (thumbnail + extract) into a channel as an embed block.
       </p>
       <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 flex flex-wrap gap-1.5">
-        <select
+        <select aria-label="Channel for the embed block"
           value={channelId} onChange={(e) => setChannelId(e.target.value)}
-          className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200"
+          className="min-h-11 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200"
         >
           {channels.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
         </select>
@@ -747,9 +747,9 @@ function ReferenceTab() {
   return (
     <div className="space-y-3">
       <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 flex flex-wrap gap-1.5">
-        <select
+        <select aria-label="Reference kind"
           value={kind} onChange={(e) => setKind(e.target.value as 'concept' | 'thinker')}
-          className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200"
+          className="min-h-11 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200"
         >
           <option value="concept">Concept</option>
           <option value="thinker">Thinker</option>
@@ -825,7 +825,7 @@ function ReferenceTab() {
                   <p className="text-[11px] font-semibold text-zinc-200 truncate">{p.title}</p>
                   <p className="text-[9px] text-zinc-400">{p.kind}</p>
                 </button>
-                <button aria-label="Delete" onClick={() => del(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-400">
+                <button aria-label="Delete" onClick={() => del(p.id)} className="inline-flex min-h-11 min-w-11 items-center justify-center opacity-0 group-hover:opacity-100 text-rose-400">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </li>
@@ -912,7 +912,7 @@ function GraphTab() {
               return (
                 <li key={i} className="flex items-center gap-1.5 text-[11px] text-zinc-300 bg-zinc-950 border border-zinc-800 rounded px-2 py-1">
                   <span className="text-amber-300">{a?.label || br.a}</span>
-                  <ChevronRight className="w-3 h-3 text-zinc-600" />
+                  <ChevronRight className="w-3 h-3 text-zinc-400" />
                   <span className="text-amber-300">{b?.label || br.b}</span>
                 </li>
               );
@@ -1054,9 +1054,9 @@ function DebateTab() {
             <span>Public: any signed-in user can read and reply</span>
           </label>
           <div className="flex gap-1.5">
-            <select
+            <select aria-label="Branch"
               value={draft.branch} onChange={(e) => setDraft({ ...draft, branch: e.target.value })}
-              className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200"
+              className="min-h-11 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200"
             >
               {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
@@ -1100,9 +1100,9 @@ function DebateTab() {
 
         {open ? (
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
-            <h4 className="text-sm font-bold text-zinc-100">{open.thread.title}</h4>
+            <h3 className="text-sm font-bold text-zinc-100">{open.thread.title}</h3>
             <p className="text-[11px] text-zinc-400 italic mt-0.5">{open.thread.claim}</p>
-            <p className="text-[10px] text-zinc-500 mt-0.5">
+            <p className="text-[10px] text-zinc-400 mt-0.5">
               {open.thread.public === true ? 'public' : 'private'}
               {debateByline(open.thread) ? ` · ${debateByline(open.thread)}` : ''}
             </p>
@@ -1170,9 +1170,9 @@ function DebateTab() {
             {open.thread.status !== 'resolved' && (
               <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 mt-2 space-y-1.5">
                 <div className="flex gap-1.5">
-                  <select
+                  <select aria-label="Stance"
                     value={post.stance} onChange={(e) => setPost({ ...post, stance: e.target.value })}
-                    className="bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200"
+                    className="min-h-11 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200"
                   >
                     <option value="support">Support</option>
                     <option value="object">Object</option>

@@ -88,7 +88,7 @@ export function PhilosophyChannels() {
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Library className="w-4 h-4 text-indigo-400" />
-        <h3 className="text-sm font-bold text-zinc-100">Idea Channels</h3>
+        <h2 className="text-sm font-bold text-zinc-100">Idea Channels</h2>
       </div>
 
       <div className="flex gap-1.5 mb-3">
@@ -129,12 +129,12 @@ export function PhilosophyChannels() {
 
         {active ? (
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
-            <h4 className="text-sm font-bold text-zinc-100 mb-2">{active.channel.title}</h4>
+            <h3 className="text-sm font-bold text-zinc-100 mb-2">{active.channel.title}</h3>
 
             <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 mb-3 space-y-1.5">
               <div className="flex gap-1.5">
-                <select value={draft.kind} onChange={e => setDraft({ ...draft, kind: e.target.value })}
-                  className="bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">
+                <select aria-label="Block kind" value={draft.kind} onChange={e => setDraft({ ...draft, kind: e.target.value })}
+                  className="min-h-11 bg-zinc-900 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200">
                   <option value="text">Text</option>
                   <option value="quote">Quote</option>
                   <option value="link">Link</option>

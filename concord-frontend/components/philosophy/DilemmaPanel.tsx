@@ -17,7 +17,6 @@
  *                          position across the 6 ethical frameworks"
  */
 
-import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   GitFork, Brain, Scale, Lightbulb,
@@ -246,11 +245,11 @@ export function DilemmaPanel() {
         domain: 'chat_agent', name: 'do',
         input: { task, maxTurns: 5 },
       });
-      const reply = readAgentReply(r.data);
-      if (reply.ok) {
-        setAgentReply(reply.text);
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output ?? r.data?.reply;
+      if (reply) {
+        setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Synthesis ready.');
-      } else err(reply.reason);
+      } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -270,7 +269,7 @@ export function DilemmaPanel() {
     <div className="rounded-lg border border-purple-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-purple-500/10 pb-2">
         <ScrollText className="h-4 w-4 text-purple-400" />
-        <h3 className="text-sm font-semibold text-white">Dilemma workbench</h3>
+        <h2 className="text-sm font-semibold text-white">Dilemma workbench</h2>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
           are.na · IEP
         </span>
