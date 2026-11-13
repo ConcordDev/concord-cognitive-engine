@@ -14,7 +14,51 @@
 // every handler returns { ok, result?, error? }.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+// ── lens export provider (FIX-world-creator-011) ──────────────────────
+// The manifest promises an export and the universal lens chrome mounts
+// the Export menu for this lens, but a creator's worlds never reached
+// it: drafts live in STATE.worldCreatorLens.drafts, a per-user Map, and
+// the export's state leg cannot see inside a Map value — so the menu
+// exported artifacts and DTUs only, never the worlds themselves. This
+// provider emits the caller's drafts at full fidelity (the scene is
+// the record), scoped by the store's own per-user buckets.
+function worldCreatorExportRows(ctx) {
+  const state = globalThis._concordSTATE;
+  const uid = ctx?.actor?.userId || ctx?.userId || null;
+  if (!state || !uid || uid === "anon") return [];
+  const drafts = state.worldCreatorLens?.drafts;
+  if (!(drafts instanceof Map)) return [];
+  const mine = drafts.get(uid);
+  if (!Array.isArray(mine)) return [];
+  return mine.map((d) => ({
+    id: d.id,
+    type: "world-draft",
+    title: d.name || d.id,
+    createdAt: d.createdAt ?? null,
+    updatedAt: d.updatedAt ?? d.createdAt ?? null,
+    data: {
+      name: d.name || "",
+      description: d.description || "",
+      universeType: d.universeType || null,
+      template: d.template ?? null,
+      biome: d.biome || null,
+      visibility: d.visibility || "private",
+      publishedWorldId: d.publishedWorldId ?? null,
+      rules: d.rules || {},
+      terrain: d.terrain || {},
+      props: Array.isArray(d.props) ? d.props : [],
+      spawnPoints: Array.isArray(d.spawnPoints) ? d.spawnPoints : [],
+      zones: Array.isArray(d.zones) ? d.zones : [],
+      npcs: Array.isArray(d.npcs) ? d.npcs : [],
+      factions: Array.isArray(d.factions) ? d.factions : [],
+    },
+  }));
+}
+
 export default function registerWorldCreatorActions(registerLensAction) {
+  registerLensExportProvider("world-creator", worldCreatorExportRows);
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ---- state helpers -------------------------------------------------
   function getState() {
