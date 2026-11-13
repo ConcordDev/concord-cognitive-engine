@@ -497,7 +497,9 @@ export default function registerByoKeysMacros(register) {
     const root = stateRoot();
     if (!root) return { ok: false, reason: "state_unavailable" };
     const { label, provider, slot } = input || {};
-    if (!label || typeof label !== "string") return { ok: false, reason: "label_required" };
+    if (!label || typeof label !== "string" || label.trim().length === 0) return { ok: false, reason: "label_required" };
+    // A group label is a display name, not a document (FIX-byo-keys-011).
+    if (label.trim().length > 80) return { ok: false, reason: "label_too_long" };
     if (!BYO_PROVIDERS.list.includes(provider)) return { ok: false, reason: "invalid_provider" };
     if (slot != null && !VALID_SLOTS.has(slot)) return { ok: false, reason: "invalid_slot" };
     const orgId = `org_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -548,6 +550,34 @@ export default function registerByoKeysMacros(register) {
     const existed = org.members.delete(memberId);
     return { ok: true, result: { orgId, removed: existed, memberCount: org.members.size } };
   }, { note: "Remove a member from an org key group. Owner/admin only; the owner cannot be removed." });
+
+  register("byo_keys", "org_key_delete", async (ctx, input = {}) => {
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_actor" };
+    const root = stateRoot();
+    if (!root) return { ok: false, reason: "state_unavailable" };
+    const { orgId } = input || {};
+    const org = root.orgKeys.get(orgId);
+    if (!org) return { ok: false, reason: "no_org" };
+    if (org.ownerId !== userId) return { ok: false, reason: "not_authorized" };
+    root.orgKeys.delete(orgId);
+    return { ok: true, result: { orgId, deleted: true } };
+  }, { note: "Delete an org key group. Owner only — the group and its membership end for everyone (FIX-byo-keys-004)." });
+
+  register("byo_keys", "org_key_leave", async (ctx, input = {}) => {
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_actor" };
+    const root = stateRoot();
+    if (!root) return { ok: false, reason: "state_unavailable" };
+    const { orgId } = input || {};
+    const org = root.orgKeys.get(orgId);
+    if (!org) return { ok: false, reason: "no_org" };
+    if (!org.members.has(userId)) return { ok: false, reason: "not_a_member" };
+    // The owner's exit is deleting the group, not leaving it headless.
+    if (org.ownerId === userId) return { ok: false, reason: "owner_must_delete" };
+    org.members.delete(userId);
+    return { ok: true, result: { orgId, left: true, memberCount: org.members.size } };
+  }, { note: "Leave an org key group: a member removes themselves. The owner cannot leave — they delete the group instead (FIX-byo-keys-004)." });
 
   register("byo_keys", "org_keys_list", async (ctx) => {
     const userId = ctx?.actor?.userId;

@@ -287,6 +287,36 @@ describe("byo_keys — org-shared keys", () => {
     assert.equal((await call("org_key_create", ctxA, { label: "X", provider: "bogus" })).ok, false);
   });
 
+  it("org_key_create bounds the label (FIX-byo-keys-011)", async () => {
+    const blank = await call("org_key_create", ctxA, { label: "   ", provider: "anthropic" });
+    assert.equal(blank.ok, false);
+    assert.equal(blank.reason, "label_required");
+    const long = await call("org_key_create", ctxA, { label: "x".repeat(81), provider: "anthropic" });
+    assert.equal(long.ok, false);
+    assert.equal(long.reason, "label_too_long");
+  });
+
+  it("org_key_delete is owner-only and org_key_leave lets a member exit (FIX-byo-keys-004)", async () => {
+    const org = (await call("org_key_create", ctxA, { label: "Exit Test", provider: "openai" })).result;
+    await call("org_key_add_member", ctxA, { orgId: org.orgId, memberId: "user_b", role: "user" });
+
+    const ownerLeave = await call("org_key_leave", ctxA, { orgId: org.orgId });
+    assert.equal(ownerLeave.ok, false);
+    assert.equal(ownerLeave.reason, "owner_must_delete");
+
+    const memberLeave = await call("org_key_leave", ctxB, { orgId: org.orgId });
+    assert.equal(memberLeave.result.left, true);
+
+    const denied = await call("org_key_delete", ctxB, { orgId: org.orgId });
+    assert.equal(denied.ok, false);
+    assert.equal(denied.reason, "not_authorized");
+
+    const del = await call("org_key_delete", ctxA, { orgId: org.orgId });
+    assert.equal(del.result.deleted, true);
+    const list = await call("org_keys_list", ctxA);
+    assert.equal(list.result.orgs.find((o) => o.orgId === org.orgId), undefined);
+  });
+
   it("org_key_add_member is owner/admin gated", async () => {
     const org = (await call("org_key_create", ctxA, { label: "Team", provider: "openai" })).result;
     // user_b (not a member) cannot add members.

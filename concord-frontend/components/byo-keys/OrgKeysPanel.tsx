@@ -75,6 +75,16 @@ export function OrgKeysPanel() {
     refresh();
   };
 
+  const deleteGroup = async (orgId: string) => {
+    await lensRun('byo_keys', 'org_key_delete', { orgId });
+    refresh();
+  };
+
+  const leaveGroup = async (orgId: string) => {
+    await lensRun('byo_keys', 'org_key_leave', { orgId });
+    refresh();
+  };
+
   const canManage = (org: OrgGroup) => org.myRole === 'owner' || org.myRole === 'admin';
 
   return (
@@ -135,6 +145,22 @@ export function OrgKeysPanel() {
                   {org.provider} · {org.memberCount} member{org.memberCount === 1 ? '' : 's'} · you are {org.myRole}
                 </div>
               </div>
+              {org.myRole === 'owner' && (
+                <button
+                  onClick={() => void deleteGroup(org.orgId)}
+                  className="px-2 py-1 rounded-md text-[11px] bg-zinc-800 hover:bg-red-900/50 text-red-300 shrink-0"
+                >
+                  delete group
+                </button>
+              )}
+              {org.myRole !== 'owner' && (
+                <button
+                  onClick={() => void leaveGroup(org.orgId)}
+                  className="px-2 py-1 rounded-md text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 shrink-0"
+                >
+                  leave
+                </button>
+              )}
               {canManage(org) && (
                 <button
                   onClick={() => setMemberForm(
