@@ -3,6 +3,7 @@
 import { useState, type ComponentProps, type ReactNode } from 'react';
 import { Wheat } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -106,6 +107,10 @@ function AgricultureFarmDesk() {
           <>
             {pending && <span className="animate-pulse text-xs text-neon-blue">Running…</span>}
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            {/* FIX-agriculture-005: the page had no .dtu export control;
+                the shared header button's fallback exports the lens
+                rows (fields and pins included via the export provider). */}
+            <DTUExportButton domain="agriculture" data={{}} compact />
           </>
         }
         tabs={FARM_DESK_TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}

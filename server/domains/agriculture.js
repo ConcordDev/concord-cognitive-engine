@@ -9,7 +9,84 @@ import { optNum, notComputed, requireList } from "../lib/lens-inputs.js";
 
 import { openMeteoDailyForecast } from "../lib/sourced-inputs.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
+
+// ── lens export provider (FIX-agriculture-005) ────────────────────────
+// The Workbench records — fields and scouting pins — live in
+// STATE.agricultureLens as nested per-user Maps, which the export's
+// state leg cannot enumerate, so the export carried only artifacts
+// and DTUs and the CSV had none of the field data (no acreage, no
+// crop). This provider emits the caller's fields and pins (and any
+// rotation seasons the store holds), scoped by the store's own
+// per-user buckets.
+function agricultureExportRows(ctx) {
+  const state = globalThis._concordSTATE;
+  const uid = ctx?.actor?.userId || ctx?.userId || null;
+  if (!state || !uid || uid === "anon") return [];
+  const bag = state.agricultureLens;
+  if (!bag) return [];
+  const rows = [];
+  const fields = bag.fields instanceof Map ? bag.fields.get(uid) : null;
+  if (fields instanceof Map) {
+    for (const f of fields.values()) {
+      rows.push({
+        id: f.id,
+        type: "field",
+        title: f.name || f.id,
+        createdAt: f.createdAt ?? null,
+        updatedAt: f.updatedAt ?? f.createdAt ?? null,
+        data: {
+          name: f.name || "",
+          acreage: f.acreage ?? null,
+          lat: f.lat ?? null,
+          lng: f.lng ?? null,
+          soilType: f.soilType || null,
+          currentCrop: f.currentCrop || null,
+        },
+      });
+    }
+  }
+  const pins = bag.scouts instanceof Map ? bag.scouts.get(uid) : null;
+  if (Array.isArray(pins)) {
+    for (const pin of pins) {
+      rows.push({
+        id: pin.id,
+        type: "scouting-pin",
+        title: pin.note ? String(pin.note).slice(0, 80) : pin.id,
+        createdAt: pin.createdAt ?? null,
+        updatedAt: pin.createdAt ?? null,
+        data: {
+          fieldId: pin.fieldId,
+          note: pin.note || "",
+          category: pin.category || "other",
+          severity: pin.severity || "low",
+          lat: pin.lat ?? null,
+          lng: pin.lng ?? null,
+        },
+      });
+    }
+  }
+  const rotations = bag.rotations instanceof Map ? bag.rotations.get(uid) : null;
+  if (rotations instanceof Map) {
+    for (const [fieldId, seasons] of rotations.entries()) {
+      if (!Array.isArray(seasons)) continue;
+      seasons.forEach((season, i) => {
+        rows.push({
+          id: `rotation:${fieldId}:${i}`,
+          type: "rotation",
+          title: fieldId,
+          createdAt: null,
+          updatedAt: null,
+          data: { fieldId, ...(season && typeof season === "object" ? season : { season }) },
+        });
+      });
+    }
+  }
+  return rows;
+}
+
 export default function registerAgricultureActions(registerLensAction) {
+  registerLensExportProvider("agriculture", agricultureExportRows);
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * rotationPlan
