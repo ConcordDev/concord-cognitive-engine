@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
@@ -388,17 +388,41 @@ export default function CouncilLensPage() {
     return queryClient.invalidateQueries({ queryKey: ['council', 'shared'] });
   }, [queryClient]);
 
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-    void (async () => {
-      const joined = await lensRun('council', 'member-join', {
-        authorName: actorName || user.username,
-      });
-      if (!cancelled && joined.data.ok) await reloadShared();
-    })();
-    return () => { cancelled = true; };
-  }, [user?.id, user?.username, actorName, reloadShared]);
+  // FIX-council-008 — membership is explicit (founder ruling A,
+  // 2026-11-13): opening this lens NEVER joins the viewer. The
+  // mount-effect auto-join that used to live here is retired entire;
+  // joining and leaving happen only through the Join / Leave controls
+  // in the membership bar under the header.
+  const [membershipBusy, setMembershipBusy] = useState(false);
+  const [membershipError, setMembershipError] = useState<string | null>(null);
+
+  const handleJoinCouncil = useCallback(async () => {
+    if (!user?.id || membershipBusy) return;
+    setMembershipBusy(true);
+    setMembershipError(null);
+    const joined = await lensRun('council', 'member-join', {
+      authorName: actorName || user.username,
+    });
+    setMembershipBusy(false);
+    if (joined.data.ok) {
+      await reloadShared();
+    } else {
+      setMembershipError(joined.data.error || 'Could not join the council.');
+    }
+  }, [user?.id, user?.username, actorName, membershipBusy, reloadShared]);
+
+  const handleLeaveCouncil = useCallback(async () => {
+    if (!user?.id || membershipBusy) return;
+    setMembershipBusy(true);
+    setMembershipError(null);
+    const left = await lensRun('council', 'member-leave', {});
+    setMembershipBusy(false);
+    if (left.data.ok) {
+      await reloadShared();
+    } else {
+      setMembershipError(left.data.error || 'Could not leave the council.');
+    }
+  }, [user?.id, membershipBusy, reloadShared]);
 
   const {
     items: budgetLensItems,
@@ -435,6 +459,7 @@ export default function CouncilLensPage() {
 
   const proposals: Proposal[] = useMemo(() => sharedCouncil?.proposals ?? [], [sharedCouncil]);
   const members: CouncilMember[] = useMemo(() => sharedCouncil?.members ?? [], [sharedCouncil]);
+  const viewerIsCouncilMember = !!user?.id && members.some((m) => m.userId === user.id);
   const auditLog: AuditEntry[] = useMemo(() => sharedCouncil?.audit ?? [], [sharedCouncil]);
   const budgetItems: BudgetItem[] = useMemo(
     () => budgetLensItems.map((i) => ({ ...(i.data as unknown as BudgetItem), id: i.id })),
@@ -1465,7 +1490,11 @@ export default function CouncilLensPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">Sign in to cast your vote. Only council members are eligible.</p>
+                <p className="text-xs text-gray-400">
+                  {user?.id
+                    ? 'Join the council (top of this page) to cast your vote. Only council members are eligible.'
+                    : 'Sign in to cast your vote. Only council members are eligible.'}
+                </p>
               )}
             </div>
           )}
@@ -2812,6 +2841,51 @@ export default function CouncilLensPage() {
           </div>
         </div>
       </header>
+
+      {/* Membership — FIX-council-008: explicit Join / Leave only.
+          Opening this page never joins anyone. */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+        {user?.id ? (
+          viewerIsCouncilMember ? (
+            <>
+              <p className="text-sm text-zinc-300">
+                You are a council member — one of {members.length} eligible{' '}
+                {members.length === 1 ? 'voter' : 'voters'}.
+              </p>
+              <button
+                onClick={handleLeaveCouncil}
+                disabled={membershipBusy}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[14px] text-zinc-300 transition-colors hover:bg-white/10 hover:text-zinc-50 disabled:opacity-50"
+              >
+                Leave the council
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-zinc-300">
+                You are viewing the council as a guest. Join to become an
+                eligible voter — opening this page never joins you.
+              </p>
+              <button
+                onClick={handleJoinCouncil}
+                disabled={membershipBusy}
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-[14px] text-zinc-300 transition-colors hover:bg-white/10 hover:text-zinc-50 disabled:opacity-50"
+              >
+                Join the council
+              </button>
+            </>
+          )
+        ) : (
+          <p className="text-sm text-zinc-400">
+            Sign in, then join the council to become an eligible voter.
+          </p>
+        )}
+        {membershipError && (
+          <p role="alert" className="text-sm text-red-300">
+            {membershipError}
+          </p>
+        )}
+      </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">

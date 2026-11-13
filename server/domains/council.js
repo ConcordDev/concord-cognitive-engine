@@ -921,6 +921,24 @@ export default function registerCouncilActions(registerLensAction) {
     return { ok: true, result: { member, total: cShared(s.members).length } };
   });
 
+  // FIX-council-008 — membership is explicit (founder ruling A,
+  // 2026-11-13): opening the lens never joins anyone, and leaving is
+  // the caller's own opt-out. Removes ONLY the caller's member record;
+  // idempotent — leaving while not a member is a no-op success.
+  registerLensAction("council", "member-leave", (ctx, _a, _params = {}) => {
+    const s = getCouncilState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const gate = cNeedUser(ctx);
+    if (gate) return gate;
+    const userId = cUser(ctx);
+    const list = cShared(s.members);
+    const idx = list.findIndex((m) => m && (m.userId === userId || m.id === userId));
+    if (idx < 0) return { ok: true, result: { member: null, total: list.length, alreadyLeft: true } };
+    list.splice(idx, 1);
+    cSave();
+    return { ok: true, result: { member: null, total: list.length } };
+  });
+
   registerLensAction("council", "proposal-create", (ctx, _a, params = {}) => {
     const s = getCouncilState();
     if (!s) return { ok: false, error: "STATE unavailable" };
