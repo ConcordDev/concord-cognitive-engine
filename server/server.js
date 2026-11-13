@@ -27749,6 +27749,28 @@ register("dtu", "delete", async (ctx, input) => {
   try { noteDtuWrite(); } catch { /* clock */ }
   SEARCH_INDEX.dirty = true;
   EMBEDDINGS.store.delete(id); // Remove from embedding index
+
+  // FIX-world-observatory-009: deleting a lens artifact's CREATE exhaust
+  // DTU (the vault record a Quick Capture makes) removes the artifact it
+  // points at — the capture is one record in two stores, and deleting
+  // the record the user can see must not leave the lens copy behind to
+  // keep exporting with no delete path. Narrow by construction: only
+  // the create-action exhaust cascades (update/run/export exhausts are
+  // lifecycle bookkeeping — the artifact lives on), only while the
+  // artifact is still the same owner's unpublished record (a published
+  // artifact has a life beyond this pointer and keeps it), and a
+  // missing artifact is a no-op (deleted lens-side first).
+  if (dtu.machine?.kind === "lens_exhaust" && dtu.machine?.action === "create" && typeof dtu.machine?.artifactId === "string") {
+    try {
+      const artifact = STATE.lensArtifacts.get(dtu.machine.artifactId);
+      const vis = artifact?.meta?.visibility;
+      if (artifact && artifact.ownerId === dtu.ownerId && vis !== "published" && vis !== "public") {
+        STATE.lensArtifacts.delete(artifact.id);
+        _lensDomainIndexRemove(artifact.domain, artifact.id);
+        _lensEmitDTU(ctx, artifact.domain, "delete", artifact.type, artifact);
+      }
+    } catch (e) { log("dtu.warn", `lens artifact cascade (${id}): ${e?.message}`); }
+  }
   saveStateDebounced();
 
   // Storage audit fix (2026-07-27): clean up the per-DTU legacy artifact
