@@ -112,7 +112,7 @@ export function NorthStarFrame({
                 tabIndex={rovingTabIndex(on, tabs.indexOf(t), tabs.some((x) => x.id === activeTab))}
                 title={t.hint ? `${t.hint}${t.keys ? ` (${t.keys})` : ''}` : undefined}
                 className={cn(
-                  'inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
+                  'inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors focus-visible:ring-inset focus-visible:ring-offset-0',
                   on ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200',
                 )}
               >

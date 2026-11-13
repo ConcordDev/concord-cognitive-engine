@@ -353,7 +353,7 @@ export function AppShell({ children }: AppShellProps) {
             main.focus();
           }
         }}
-        className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-neon-blue focus:text-white focus:rounded-lg focus:outline-none"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-neon-blue focus:text-white focus:rounded-lg focus:outline-none focus:shadow-2xl focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black"
       >
         Skip to main content
       </a>
@@ -391,7 +391,7 @@ export function AppShell({ children }: AppShellProps) {
           id="main-content"
           role="main"
           tabIndex={-1}
-          className={`flex-1 overflow-auto transition-all duration-300 mobile-nav-pad ${
+          className={`flex-1 overflow-auto transition-all duration-300 mobile-nav-pad focus-visible:ring-inset focus-visible:ring-offset-0 ${
             sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
           }`}
           style={installBannerFootprint > 0 ? { paddingBottom: `${installBannerFootprint + 16}px` } : undefined}
