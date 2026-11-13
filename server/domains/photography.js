@@ -237,7 +237,25 @@ export default function registerPhotographyActions(registerLensAction) {
       return {
         ...sh,
         photoCount: mine.length,
-        frames: mine.map((p) => ({ id: p.id, filename: p.filename, mediaId: p.mediaId || null, mimeType: p.mimeType || null, fileSize: p.fileSize || null })),
+        // FIX-photography-008: frames carry their photo ref as a URL
+        // (the FE's own /api/media/<id>/stream pattern) plus the
+        // photo metadata, so an export of a roll includes the photos
+        // themselves, not just filenames.
+        frames: mine.map((p) => ({
+          id: p.id, filename: p.filename,
+          mediaId: p.mediaId || null,
+          url: p.mediaId ? `/api/media/${p.mediaId}/stream` : null,
+          mimeType: p.mimeType || null, fileSize: p.fileSize || null,
+          camera: p.camera ?? null, lens: p.lens ?? null,
+          iso: p.iso ?? null, aperture: p.aperture ?? null,
+          shutter: p.shutter ?? null, focalLength: p.focalLength ?? null,
+          width: p.width ?? null, height: p.height ?? null,
+          captureDate: p.captureDate ?? null,
+          rating: p.rating ?? 0, flag: p.flag || "unflagged",
+          colorLabel: p.colorLabel ?? null,
+          keywords: Array.isArray(p.keywords) ? p.keywords : [],
+          importedAt: p.importedAt || null,
+        })),
       };
     });
     const seen = new Set(shoots.map((sh) => sh.id));
@@ -246,7 +264,15 @@ export default function registerPhotographyActions(registerLensAction) {
       if (typeof row.name !== "string" || !row.name.trim()) continue;
       const frames = readFrameRows(ctx, row.id).map((frame) => ({
         id: frame.id, filename: frame.filename,
-        mediaId: frame.media_id || null, mimeType: frame.mime_type || null, fileSize: frame.file_size || null,
+        mediaId: frame.media_id || null,
+        url: frame.media_id ? `/api/media/${frame.media_id}/stream` : null,
+        mimeType: frame.mime_type || null, fileSize: frame.file_size || null,
+        // The durable frame row deliberately stores no EXIF (see the
+        // rolls comment above); those fields export as null, never invented.
+        camera: null, lens: null, iso: null, aperture: null, shutter: null,
+        focalLength: null, width: null, height: null, captureDate: null,
+        rating: 0, flag: "unflagged", colorLabel: null, keywords: [],
+        importedAt: frame.created_at || null,
       }));
       shoots.push({
         id: row.id,
@@ -1400,7 +1426,8 @@ export default function registerPhotographyActions(registerLensAction) {
   registerLensExportProvider("photography", (ctx) => {
     const s = getPhotoState();
     if (!s) return [];
-    return listShoots(ctx, s).map((sh) => ({
+    const rolls = listShoots(ctx, s);
+    const rows = rolls.map((sh) => ({
       id: sh.id,
       type: "photography_roll",
       title: sh.name,
@@ -1408,5 +1435,44 @@ export default function registerPhotographyActions(registerLensAction) {
       updatedAt: sh.createdAt,
       data: sh,
     }));
+    // FIX-photography-008: one flat row per frame alongside the roll
+    // rows, so the CSV export gets real photo-ref columns (filename,
+    // mediaId, URL, mime, size, EXIF, rating) instead of the refs
+    // existing only nested inside the roll rows where a CSV reader
+    // cannot use them.
+    for (const sh of rolls) {
+      for (const f of sh.frames || []) {
+        rows.push({
+          id: f.id,
+          type: "photography_frame",
+          title: f.filename || f.id,
+          createdAt: f.captureDate || f.importedAt || sh.createdAt,
+          updatedAt: f.captureDate || f.importedAt || sh.createdAt,
+          data: {
+            rollId: sh.id,
+            rollName: sh.name,
+            filename: f.filename,
+            mediaId: f.mediaId,
+            url: f.url,
+            mimeType: f.mimeType,
+            fileSize: f.fileSize,
+            camera: f.camera,
+            lens: f.lens,
+            iso: f.iso,
+            aperture: f.aperture,
+            shutter: f.shutter,
+            focalLength: f.focalLength,
+            width: f.width,
+            height: f.height,
+            captureDate: f.captureDate,
+            rating: f.rating,
+            flag: f.flag,
+            colorLabel: f.colorLabel,
+            keywords: f.keywords,
+          },
+        });
+      }
+    }
+    return rows;
   });
 }
