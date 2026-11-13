@@ -113,7 +113,7 @@ export function PaperSummarizer() {
             {saved.map(entry => (
               <li key={entry.id} className="flex items-center gap-2 text-[11px]">
                 <button onClick={() => { setSummary(entry.summary); setJustSaved(true); }} className="flex-1 text-left text-zinc-300 hover:text-white truncate">
-                  {entry.sourceTitle} <span className="text-zinc-500">· {new Date(entry.savedAt).toLocaleString()}</span>
+                  {entry.sourceTitle} <span className="text-zinc-400">· {new Date(entry.savedAt).toLocaleString()}</span>
                 </button>
                 <button onClick={() => void deleteSaved(entry.id)} className="text-rose-300 underline shrink-0">Delete</button>
               </li>

@@ -842,12 +842,12 @@ export function EditorPanel() {
           />
           <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono pointer-events-none">/</kbd>
         </div>
-        <select value={selectedTag || ''} onChange={e => setSelectedTag(e.target.value || null)} className={cn(ds.select, 'w-auto min-w-[140px]')}>
+        <select aria-label="Filter by tag" value={selectedTag || ''} onChange={e => setSelectedTag(e.target.value || null)} className={cn(ds.select, 'min-h-11 w-auto min-w-[140px]')}>
           <option value="">All Tags</option>
           {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
         </select>
         {(activeTab === 'hypotheses' || activeTab === 'experiments') && (
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={cn(ds.select, 'w-auto min-w-[140px]')}>
+          <select aria-label="Filter by status" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={cn(ds.select, 'min-h-11 w-auto min-w-[140px]')}>
             <option value="">All Statuses</option>
             {(activeTab === 'hypotheses' ? HYPOTHESIS_STATUSES : EXPERIMENT_STATUSES).map(s => (
               <option key={s} value={s}>{s}</option>
@@ -953,7 +953,7 @@ export function EditorPanel() {
                       {sec.heading}
                     </button>
                   ))}
-                  <span className="ml-1 text-[10px] text-zinc-500">Editing: {activeSection} — each section keeps its own text</span>
+                  <span className="ml-1 text-[10px] text-zinc-400">Editing: {activeSection} — each section keeps its own text</span>
                 </div>
                 <PaperComposer
                   content={editorContent}
@@ -1187,13 +1187,13 @@ export function EditorPanel() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className={ds.label}>Strength</label>
-                        <select value={newStrength} onChange={e => setNewStrength(e.target.value as EvidenceData['strength'])} className={ds.select}>
+                        <select aria-label="Evidence strength" value={newStrength} onChange={e => setNewStrength(e.target.value as EvidenceData['strength'])} className={cn(ds.select, 'min-h-11')}>
                           {EVIDENCE_STRENGTHS.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       </div>
                       <div>
                         <label className={ds.label}>Type</label>
-                        <select value={newEvidenceType} onChange={e => setNewEvidenceType(e.target.value as EvidenceData['type'])} className={ds.select}>
+                        <select aria-label="Evidence type" value={newEvidenceType} onChange={e => setNewEvidenceType(e.target.value as EvidenceData['type'])} className={cn(ds.select, 'min-h-11')}>
                           {EVIDENCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                       </div>
@@ -1669,7 +1669,7 @@ function PapersGrid({ items, onEdit, onSelect, onDelete, onValidate, validationR
                   <Edit3 className="w-3 h-3 text-neon-cyan" />
                 </button>
                 <span onClick={e => e.stopPropagation()}>
-                  <StickyDeleteConfirm onConfirm={() => onDelete(item)} armLabel={<Trash2 className="w-3 h-3" />} armAriaLabel="Delete manuscript" confirmLabel="Delete?" className={cn(ds.btnGhost, 'text-xs px-1.5 py-0.5 text-rose-300')} />
+                  <StickyDeleteConfirm onConfirm={() => onDelete(item)} armLabel={<Trash2 className="w-3 h-3" />} armAriaLabel="Delete manuscript" confirmLabel="Delete?" className={cn(ds.btnGhost, 'min-h-11 text-xs px-1.5 py-0.5 text-rose-300')} />
                 </span>
               </div>
             </div>
@@ -1950,7 +1950,7 @@ function SynthesisEngine({ items, allHypotheses, allEvidence, allExperiments, sy
           <select
             value={synthPaperId}
             onChange={(e) => setSynthPaperId(e.target.value)}
-            className={cn(ds.select, 'w-auto min-w-[180px]')}
+            className={cn(ds.select, 'min-h-11 w-auto min-w-[180px]')}
             aria-label="Paper to synthesize"
           >
             {items.length === 0 && <option value="">No papers yet</option>}
@@ -2212,7 +2212,7 @@ function HypothesisDetailFields({ item, allEvidence, onLink, onStatus }: {
           <select
             value={d.status || 'proposed'}
             onChange={(e) => onStatus(item, e.target.value as HypothesisData['status'])}
-            className={cn(ds.select, 'mt-1 w-auto')}
+            className={cn(ds.select, 'min-h-11 mt-1 w-auto')}
             aria-label="Hypothesis status"
           >
             {HYPOTHESIS_STATUSES.map((st) => <option key={st} value={st}>{st}</option>)}

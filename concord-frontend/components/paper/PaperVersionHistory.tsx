@@ -84,7 +84,7 @@ export function PaperVersionHistory({ paperId, currentContent }: { paperId: stri
 
   if (loading) {
     return (
-      <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 py-1">
+      <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 py-1">
         <Loader2 className="w-3 h-3 animate-spin" />Loading version history…
       </div>
     );
@@ -95,7 +95,7 @@ export function PaperVersionHistory({ paperId, currentContent }: { paperId: stri
       <div className="flex items-center gap-1.5">
         <History className="w-3 h-3 text-cyan-400" />
         <span className="text-[11px] font-semibold text-zinc-200">Version history</span>
-        <span className="text-[9px] text-zinc-500">{versions.length} snapshot{versions.length === 1 ? '' : 's'}</span>
+        <span className="text-[9px] text-zinc-400">{versions.length} snapshot{versions.length === 1 ? '' : 's'}</span>
       </div>
 
       {err && <p className="text-[10px] text-rose-300">{err}</p>}
@@ -111,7 +111,7 @@ export function PaperVersionHistory({ paperId, currentContent }: { paperId: stri
       </div>
 
       {versions.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-2 text-center">
+        <p className="text-[11px] text-zinc-400 italic py-2 text-center">
           No versions saved yet — save a snapshot of your notes above to start a history.
         </p>
       ) : (
@@ -121,7 +121,7 @@ export function PaperVersionHistory({ paperId, currentContent }: { paperId: stri
               <li key={v.id} className="flex items-center gap-2 text-[10px] text-zinc-300 bg-zinc-950/60 rounded px-2 py-1">
                 <span className="font-mono text-cyan-400">v{v.versionNumber}</span>
                 <span className="truncate flex-1">{v.label || '(untitled snapshot)'}</span>
-                <span className="text-zinc-500 shrink-0">{new Date(v.createdAt).toLocaleString()}</span>
+                <span className="text-zinc-400 shrink-0">{new Date(v.createdAt).toLocaleString()}</span>
               </li>
             ))}
           </ul>
@@ -135,16 +135,16 @@ export function PaperVersionHistory({ paperId, currentContent }: { paperId: stri
               <div className="flex items-center gap-1.5 flex-wrap">
                 <select aria-label="From version" value={fromV}
                   onChange={e => setFromV(e.target.value ? Number(e.target.value) : '')}
-                  className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-zinc-200">
+                  className="min-h-11 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-zinc-200">
                   <option value="">From…</option>
                   {versions.map(v => (
                     <option key={v.id} value={v.versionNumber}>v{v.versionNumber}{v.label ? ` — ${v.label}` : ''}</option>
                   ))}
                 </select>
-                <span className="text-zinc-600">→</span>
+                <span className="text-zinc-400">→</span>
                 <select aria-label="To version" value={toV}
                   onChange={e => setToV(e.target.value ? Number(e.target.value) : '')}
-                  className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-zinc-200">
+                  className="min-h-11 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-[10px] text-zinc-200">
                   <option value="">To…</option>
                   {versions.map(v => (
                     <option key={v.id} value={v.versionNumber}>v{v.versionNumber}{v.label ? ` — ${v.label}` : ''}</option>
@@ -167,7 +167,7 @@ export function PaperVersionHistory({ paperId, currentContent }: { paperId: stri
                     </span>
                     <span className="text-zinc-400">{diff.diff.wordDelta >= 0 ? '+' : ''}{diff.diff.wordDelta} words</span>
                     <span className="text-zinc-400">{diff.diff.charDelta >= 0 ? '+' : ''}{diff.diff.charDelta} chars</span>
-                    <span className="text-zinc-500 ml-auto">{diff.changeRate}% changed</span>
+                    <span className="text-zinc-400 ml-auto">{diff.changeRate}% changed</span>
                   </div>
                   {diff.addedPreview.length > 0 && (
                     <div className="space-y-0.5">
