@@ -81,3 +81,19 @@ export function getToolSpec(id, ctx = {}) {
   if (Object.prototype.hasOwnProperty.call(AGENT_TOOL_SPECS, id)) return { id, ...AGENT_TOOL_SPECS[id] };
   return null;
 }
+
+/**
+ * The spec with `risk` and `idempotent` resolved for this call. `run_lens_action`
+ * carries no fixed risk: it takes the risk of the action it runs. Anything whose
+ * risk cannot be resolved is treated as a write.
+ */
+export function effectiveSpec(call, ctx = {}) {
+  const spec = getToolSpec(call.tool, ctx);
+  if (!spec) return null;
+  if (spec.risk) return spec;
+  let risk = "write";
+  if (call.tool === "run_lens_action" && call.args?.domain && call.args?.action) {
+    risk = resolveLensRisk(String(call.args.domain), String(call.args.action));
+  }
+  return { ...spec, risk, idempotent: risk === "read" || risk === "compute" };
+}

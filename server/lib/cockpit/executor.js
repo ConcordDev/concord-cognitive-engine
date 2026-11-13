@@ -3,14 +3,19 @@ import { executeToolCall } from "../chat-agent.js";
 import { withJob } from "../loop-job-tracker.js";
 import { scrubUserFacingToolNames } from "../chat/tool-turn-reply.js";
 import { classifyFailure } from "./failure-taxonomy.js";
-import { getToolSpec, parseLensToolId } from "./tool-spec.js";
+import { getToolSpec, effectiveSpec, parseLensToolId } from "./tool-spec.js";
+import { claimEffect, completeEffect, failEffect, markEffectUnknown } from "./idempotency.js";
+import { recordToolDispatch, recordToolOutcome } from "../marathon-tick-durability.js";
+import { updateStep } from "./run-store.js";
 import { recordToolOutcomeEvent } from "./telemetry.js";
 
 /** Turn a cockpit call into an executeToolCall call. */
-export function toAgentCall(call) {
+export function toAgentCall(call, key = null) {
   const lens = parseLensToolId(call.tool);
-  if (lens) return { tool: "run_lens_action", params: { domain: lens.domain, action: lens.action, params: call.args || {} } };
-  return { tool: call.tool, params: call.args || {} };
+  if (lens) {
+    return { tool: "run_lens_action", params: { domain: lens.domain, action: lens.action, params: call.args || {}, ...(key ? { idempotency_key: key } : {}) } };
+  }
+  return { tool: call.tool, params: { ...(call.args || {}), ...(key && call.tool === "run_lens_action" ? { idempotency_key: key } : {}) } };
 }
 
 /** Build the production exec for a user. */
@@ -41,9 +46,25 @@ export async function runTool(a) {
   }
   const t0 = now();
   const wall = Math.min(spec.timeoutMs, a.run?.budget?.stepWallMs ?? spec.timeoutMs);
+  const eff = effectiveSpec(a.call, { lensActions: a.deps.lensActions }) || spec;
+  const writes = eff.risk !== "read";
   let r;
+  let key = null;
+  let logId = null;
   // CKPT-13: approval check here
-  // CKPT-12: claim effect here
+  if (writes) {
+    const claim = claimEffect(a.db, { runId: a.run.id, stepId: a.step.id, tool: a.call.tool, args: a.call.args });
+    if (claim.state === "replay") return { ...claim.result, replayed: true };
+    if (claim.state === "error") {
+      return { ok: false, tool: a.call.tool, result: null, errorClass: "tool_error", error: "Could not record this step, so it was not run.", retryHint: null, artifacts: [], latencyMs: 0, provider: null, model: null };
+    }
+    if (claim.state === "in_flight") {
+      return { ok: false, tool: a.call.tool, result: null, errorClass: "in_flight", error: "This step may already be running.", retryHint: null, artifacts: [], latencyMs: 0, provider: null, model: null };
+    }
+    key = claim.key;
+    logId = recordToolDispatch(a.db, a.run.id, a.step.seq, a.call.tool, a.call.args);
+    updateStep(a.db, a.step.id, { idempotencyKey: key, tool: a.call.tool, args: a.call.args });
+  }
   let timer;
   try {
     const timeout = new Promise((resolve) => {
@@ -51,7 +72,7 @@ export async function runTool(a) {
       if (typeof timer.unref === "function") timer.unref();
     });
     r = await Promise.race([
-      withJob(`cockpit:${a.call.tool}`, () => a.deps.exec(toAgentCall(a.call))),
+      withJob(`cockpit:${a.call.tool}`, () => a.deps.exec(toAgentCall(a.call, key))),
       timeout,
     ]);
   } catch (e) {
@@ -66,7 +87,7 @@ export async function runTool(a) {
       call: { tool: a.call.tool, params: a.call.args }, result: r,
     });
   } catch { /* telemetry never blocks */ }
-  return {
+  const out = {
     ok: !!r.ok,
     tool: a.call.tool,
     result: r.ok ? (r.result ?? r) : null,
@@ -79,4 +100,18 @@ export async function runTool(a) {
     model: null,
     raw: r,
   };
+  if (key) {
+    const stored = { ok: out.ok, tool: out.tool, result: out.result, errorClass: out.errorClass, error: out.error, retryHint: out.retryHint, artifacts: [], latencyMs: out.latencyMs, provider: null, model: null };
+    if (out.ok) {
+      completeEffect(a.db, key, stored);
+      recordToolOutcome(a.db, logId, "completed", out.result);
+    } else if (out.errorClass === "timeout") {
+      // The write may have landed: leave the claim as unknown and the dispatch row as dispatched.
+      markEffectUnknown(a.db, key);
+    } else {
+      failEffect(a.db, key);
+      recordToolOutcome(a.db, logId, "failed", out.error);
+    }
+  }
+  return out;
 }

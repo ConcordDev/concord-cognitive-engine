@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { memDb } from "./_helpers.js";
 import { runTool, toAgentCall } from "../../lib/cockpit/executor.js";
 
-const run = { userId: "u1", chatSessionId: null, surface: "chat", budget: { stepWallMs: 50 } };
+const run = { id: "run_t", userId: "u1", chatSessionId: null, surface: "chat", budget: { stepWallMs: 50 } };
 const step = { id: "stp_1" };
 
 test("toAgentCall: lens id and plain id", () => {

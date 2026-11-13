@@ -12,6 +12,8 @@ import { requestStepCall } from "./step-llm.js";
 import { summarizeResult } from "./result-summary.js";
 import { nextAction } from "./retry-policy.js";
 import { runTool } from "./executor.js";
+import { getEffect, failEffect } from "./idempotency.js";
+import { effectiveSpec } from "./tool-spec.js";
 
 const TERMINAL_RUN = new Set(["done", "failed", "cancelled"]);
 const TERMINAL_STEP = new Set(["done", "skipped", "failed"]);
@@ -140,7 +142,24 @@ export async function tickRun(a) {
       attempt = step.attempts + 1;
       updateStep(db, step.id, { status: "running", startedAt: nowSec(), attempts: attempt });
     }
-    // Resume branch (step was already `running`): CKPT-12 fills this in; until then it is a fresh attempt.
+    // Resume branch: the step was `running` when loaded, so a previous process died or timed out.
+    let resumed = null;
+    if (step.status === "running" && step.idempotencyKey) {
+      const eff = getEffect(db, step.idempotencyKey);
+      if (eff?.status === "completed" && eff.result) {
+        resumed = eff;
+      } else if (eff && (eff.status === "claimed" || eff.status === "unknown")) {
+        const sp = effectiveSpec({ tool: eff.tool, args: step.args || {} }, { lensActions: deps.lensActions });
+        if (sp?.idempotent === true) {
+          failEffect(db, step.idempotencyKey);
+        } else {
+          updateStep(db, step.id, { status: "awaiting_confirm", errorClass: "in_flight", errorText: "This step may already have happened." });
+          updateRun(db, runId, { status: "awaiting_confirm", statusReason: "maybe_done" });
+          emit({ type: "cockpit:confirm", runId, stepId: step.id, kind: "maybe_done", label: step.goal, message: "This step may already have happened." });
+          return { ok: true, status: "awaiting_confirm", advanced: false };
+        }
+      }
+    }
     const total = steps.length;
     const tried = step.repairs.filter((r) => r.kind === "tried").map((r) => r.tool);
     const repairs = [...step.repairs];
@@ -194,11 +213,13 @@ export async function tickRun(a) {
     const args = resolveRefs(step.args, steps);
     let call = null;
     let doneSummary = null;
-    if (step.tool && !step.fallbackTool) {
+    if (resumed) {
+      call = { tool: resumed.tool, args: step.args || {} };
+    } else if (step.tool && !step.fallbackTool) {
       const vr = validateAndRepair({ tool: step.tool, args: args || {} }, { menuIds: [step.tool], getSpec, prior });
       if (vr.ok) { call = vr.call; repairs.push(...vr.repairs); }
     }
-    if (!call) {
+    if (!call && !resumed) {
       const forced = step.tool && !step.fallbackTool ? step.tool : null;
       const exclude = tried.filter((t) => t !== forced);
       const { menu } = await buildToolMenu({
@@ -229,7 +250,9 @@ export async function tickRun(a) {
     }
 
     let res;
-    if (doneSummary) {
+    if (resumed) {
+      res = { ...resumed.result, ok: true, replayed: true };
+    } else if (doneSummary) {
       res = { ok: true, tool: "done", result: doneSummary.result, errorClass: null, error: null, retryHint: null, artifacts: [], latencyMs: 0, provider: null, model: null };
     } else {
       // 13. Loop guard.

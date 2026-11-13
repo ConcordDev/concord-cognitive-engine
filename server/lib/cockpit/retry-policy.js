@@ -23,7 +23,9 @@ const TABLE = {
   scope_denied:      ["ask_user", "ask_user", "ask_user", "ask_user"],
   looped:            ["reask", "ask_user", "end", "end"],
   hard_stop:         ["stop_run", "stop_run", "stop_run", "stop_run"],
+  in_flight:         ["ask_user", "ask_user", "ask_user", "ask_user"],
 };
+const FIXED = new Set(["hard_stop", "rate_limited", "scope_denied", "in_flight"]);
 
 /**
  * @param {{ errorClass: string, attempt: number, required: boolean, spec: object|null, triedTools: string[] }} s
@@ -33,8 +35,7 @@ export function nextAction(s) {
   const end = () => (s.required ? { kind: "ask_user" } : { kind: "skip" });
   const attempt = Math.max(1, Number(s.attempt) || 1);
   const row = TABLE[s.errorClass] || TABLE.tool_error;
-  const fixed = row[0] === "stop_run" || row[0] === "pause" || row[0] === "ask_user" && s.errorClass === "scope_denied";
-  if (attempt > MAX_STEP_ATTEMPTS && !fixed) return end();
+  if (attempt > MAX_STEP_ATTEMPTS && !FIXED.has(s.errorClass)) return end();
   const cell = row[Math.min(attempt, MAX_STEP_ATTEMPTS) - 1];
   const tried = new Set(s.triedTools || []);
   const fb = (s.spec?.fallbacks || []).find((f) => !tried.has(f)) || null;

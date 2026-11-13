@@ -1,6 +1,7 @@
 // Shared test helpers for the cockpit suites (CKPT-08).
 import Database from "better-sqlite3";
 import { up as up501 } from "../../migrations/501_cockpit_runs.js";
+import * as store from "../../lib/cockpit/run-store.js";
 
 export function memDb() {
   const db = new Database(":memory:");
@@ -30,4 +31,9 @@ export function fakeExec(table) {
   };
   fn.calls = [];
   return fn;
+}
+
+/** Pre-approve a tool for a run (needs CKPT-13's approval store); tests that exercise writes use this. */
+export function preapprove(db, runId, tool) {
+  return store.addApproval?.(db, runId, { stepId: null, tool, argsHash: null, scope: "run_tool", userId: "u1", at: Date.now() });
 }
