@@ -103,7 +103,7 @@
     "playwright": "^1.62.0",
     "prom-client": "^15.1.0",
     "pyodide": "^314.0.3",
-    "redis": "^4.7.1",
+    "redis": "^6.3.0",
     "sharp": "^0.35.5",
     "socket.io": "^4.7.4",
     "sqlite-vec": "^0.1.9",
