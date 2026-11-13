@@ -99,7 +99,7 @@ export function NotificationsPanel() {
         )}
         <div className="ml-auto flex items-center gap-2">
           <label className="text-[10px] text-gray-400 inline-flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={unreadOnly} onChange={e => setUnreadOnly(e.target.checked)} className="accent-cyan-500" />
+            <input aria-label="Unread only" type="checkbox" checked={unreadOnly} onChange={e => setUnreadOnly(e.target.checked)} className="accent-cyan-500" />
             Unread only
           </label>
           {unreadCount > 0 && (
@@ -114,10 +114,10 @@ export function NotificationsPanel() {
       <div className="p-3 border-b border-white/10">
         <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><Bell className="w-3 h-3" />Subscribe to in-app notices for a case</div>
         <div className="grid grid-cols-6 gap-2">
-          <select value={subForm.subjectKind} onChange={e => setSubForm({ ...subForm, subjectKind: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Subscription subject kind" value={subForm.subjectKind} onChange={e => setSubForm({ ...subForm, subjectKind: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {SUBJECT_KINDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
-          <input value={subForm.subjectId} onChange={e => setSubForm({ ...subForm, subjectId: e.target.value })} placeholder="Case / record ID" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input aria-label="Case / record ID" value={subForm.subjectId} onChange={e => setSubForm({ ...subForm, subjectId: e.target.value })} placeholder="Case / record ID" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
           <select value={subForm.channel} onChange={e => setSubForm({ ...subForm, channel: e.target.value })} className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" aria-label="Notice label">
             <option value="email">In-app (email label)</option>
             <option value="sms">In-app (SMS label)</option>
@@ -125,7 +125,7 @@ export function NotificationsPanel() {
           </select>
           <button onClick={subscribe} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center justify-center gap-1"><Plus className="w-3 h-3" />Sub</button>
         </div>
-        <input value={subForm.contact} onChange={e => setSubForm({ ...subForm, contact: e.target.value })} placeholder="Contact note stored on the notice row (not delivered)" className="w-full mt-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Contact note stored on the notice row (not delivered)" value={subForm.contact} onChange={e => setSubForm({ ...subForm, contact: e.target.value })} placeholder="Contact note stored on the notice row (not delivered)" className="w-full mt-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         {subError && <div className="mt-1 text-[10px] text-rose-400">{subError}</div>}
         {subscriptions.length > 0 && (
           <ul className="mt-2 flex flex-wrap gap-1.5">
@@ -144,15 +144,15 @@ export function NotificationsPanel() {
       <div className="p-3 border-b border-white/10">
         <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><Send className="w-3 h-3" />Send a manual case update</div>
         <div className="grid grid-cols-6 gap-2">
-          <select value={emitForm.subjectKind} onChange={e => setEmitForm({ ...emitForm, subjectKind: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <select aria-label="Notification subject kind" value={emitForm.subjectKind} onChange={e => setEmitForm({ ...emitForm, subjectKind: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {SUBJECT_KINDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
-          <input value={emitForm.subjectId} onChange={e => setEmitForm({ ...emitForm, subjectId: e.target.value })} placeholder="Case / record ID" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
+          <input aria-label="Case / record ID" value={emitForm.subjectId} onChange={e => setEmitForm({ ...emitForm, subjectId: e.target.value })} placeholder="Case / record ID" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
           <button onClick={sendUpdate} disabled={emitSending} className="col-span-2 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
             {emitSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />} Send
           </button>
         </div>
-        <input value={emitForm.message} onChange={e => setEmitForm({ ...emitForm, message: e.target.value })} placeholder="Update message (e.g. 'Inspection rescheduled to Friday due to weather')" className="w-full mt-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Update message (e.g. 'Inspection rescheduled to Friday due to weather')" value={emitForm.message} onChange={e => setEmitForm({ ...emitForm, message: e.target.value })} placeholder="Update message (e.g. 'Inspection rescheduled to Friday due to weather')" className="w-full mt-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         {emitError && <div className="mt-1 text-[10px] text-rose-400">{emitError}</div>}
       </div>
 

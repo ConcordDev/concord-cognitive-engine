@@ -179,7 +179,7 @@ export function BillTracker() {
         <span className="ml-auto text-[10px] text-gray-400">{watched.length} watching</span>
       </header>
       <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2 flex-wrap text-xs">
-        <input
+        <input aria-label="Search by topic (climate, AI, healthcare…)"
           value={topic}
           onChange={e => setTopic(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') refresh(topic); }}
@@ -187,7 +187,7 @@ export function BillTracker() {
           className="flex-1 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white"
         />
         <button onClick={() => refresh(topic)} className="px-3 py-1 rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Search</button>
-        <select value={filter} onChange={e => setFilter(e.target.value as 'all' | 'watched' | BillStatus)} className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Filter bills" value={filter} onChange={e => setFilter(e.target.value as 'all' | 'watched' | BillStatus)} className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="all">All status</option>
           <option value="watched">Watched only</option>
           <option value="introduced">Introduced</option>

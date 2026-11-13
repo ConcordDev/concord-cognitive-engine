@@ -108,9 +108,9 @@ export function FOIATracker() {
               </button>
             ))}
           </div>
-          <input value={draftAgency} onChange={e => setDraftAgency(e.target.value)} placeholder="Agency (e.g. FBI, GSA, Local PD)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <input value={draftSubject} onChange={e => setDraftSubject(e.target.value)} placeholder="Subject" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <textarea value={draftBody} onChange={e => setDraftBody(e.target.value)} rows={8} placeholder="Request body..." className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono resize-y" />
+          <input aria-label="Agency (e.g. FBI, GSA, Local PD)" value={draftAgency} onChange={e => setDraftAgency(e.target.value)} placeholder="Agency (e.g. FBI, GSA, Local PD)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <input aria-label="Subject" value={draftSubject} onChange={e => setDraftSubject(e.target.value)} placeholder="Subject" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <textarea aria-label="Request body..." value={draftBody} onChange={e => setDraftBody(e.target.value)} rows={8} placeholder="Request body..." className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono resize-y" />
           <LocalRecordNotice channelLabel="FOIA.gov" channelHref="https://www.foia.gov">
             Draft only — Concord saves this draft in your workspace and does not submit FOIA requests to any agency. There is deliberately no Submit here.
           </LocalRecordNotice>

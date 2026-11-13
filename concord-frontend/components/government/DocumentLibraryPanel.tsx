@@ -80,17 +80,17 @@ export function DocumentLibraryPanel() {
       {/* Publish a document */}
       <div className="p-3 border-b border-white/10 space-y-2">
         <div className="grid grid-cols-6 gap-2">
-          <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Document title" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-          <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+          <input aria-label="Document title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Document title" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+          <select aria-label="Document category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
           <label className="text-[10px] text-gray-400 inline-flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={form.requiresSignature} onChange={e => setForm({ ...form, requiresSignature: e.target.checked })} className="accent-cyan-500" />
+            <input aria-label="Requires signature" type="checkbox" checked={form.requiresSignature} onChange={e => setForm({ ...form, requiresSignature: e.target.checked })} className="accent-cyan-500" />
             Needs signature
           </label>
         </div>
-        <input value={form.fileUrl} onChange={e => setForm({ ...form, fileUrl: e.target.value })} placeholder="Attachment URL (optional)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-        <textarea value={form.bodyText} onChange={e => setForm({ ...form, bodyText: e.target.value })} placeholder="Document body / form text" rows={3} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <input aria-label="Attachment URL (optional)" value={form.fileUrl} onChange={e => setForm({ ...form, fileUrl: e.target.value })} placeholder="Attachment URL (optional)" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+        <textarea aria-label="Document body / form text" value={form.bodyText} onChange={e => setForm({ ...form, bodyText: e.target.value })} placeholder="Document body / form text" rows={3} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <div className="mb-2">
           <LocalRecordNotice>
             Local record only — publishing here posts the document inside your Concord workspace only. It is not an official filing, gazette notice, or public record with any authority, and a signature flag here signs nothing.
@@ -153,10 +153,10 @@ export function DocumentLibraryPanel() {
                         <div className="space-y-1.5">
                           <div className="text-[10px] uppercase text-gray-400 inline-flex items-center gap-1"><PenLine className="w-3 h-3" />E-sign this document</div>
                           <div className="grid grid-cols-2 gap-2">
-                            <input value={signForm.signerName} onChange={e => setSignForm({ ...signForm, signerName: e.target.value })} placeholder="Full legal name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                            <input value={signForm.signerEmail} onChange={e => setSignForm({ ...signForm, signerEmail: e.target.value })} placeholder="Email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                            <input aria-label="Full legal name" value={signForm.signerName} onChange={e => setSignForm({ ...signForm, signerName: e.target.value })} placeholder="Full legal name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
+                            <input aria-label="Email" value={signForm.signerEmail} onChange={e => setSignForm({ ...signForm, signerEmail: e.target.value })} placeholder="Email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                           </div>
-                          <input value={signForm.typedSignature} onChange={e => setSignForm({ ...signForm, typedSignature: e.target.value })} placeholder="Type your full name to sign" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white italic" />
+                          <input aria-label="Type your full name to sign" value={signForm.typedSignature} onChange={e => setSignForm({ ...signForm, typedSignature: e.target.value })} placeholder="Type your full name to sign" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white italic" />
                           {signError && <div className="text-[10px] text-rose-400">{signError}</div>}
                           <button onClick={() => sign(d.id)} className="px-3 py-1 text-[10px] rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center gap-1">
                             <PenLine className="w-3 h-3" />Sign document

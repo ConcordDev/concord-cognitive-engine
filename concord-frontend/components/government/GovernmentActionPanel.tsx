@@ -175,16 +175,16 @@ export function GovernmentActionPanel() {
       </LocalRecordNotice>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <input type="text" maxLength={5} value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="ZIP" />
-        <input type="text" value={billQuery} onChange={(e) => setBillQuery(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Bill query" />
-        <select value={permitType} onChange={(e) => setPermitType(e.target.value as typeof permitType)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
+        <input aria-label="ZIP" type="text" maxLength={5} value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="ZIP" />
+        <input aria-label="Bill query" type="text" value={billQuery} onChange={(e) => setBillQuery(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Bill query" />
+        <select aria-label="Permit type" value={permitType} onChange={(e) => setPermitType(e.target.value as typeof permitType)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
           {(['building', 'business', 'zoning', 'environmental'] as const).map(p => <option key={p} value={p}>{p}</option>)}
         </select>
-        <select value={violationSeverity} onChange={(e) => setViolationSeverity(e.target.value as typeof violationSeverity)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
+        <select aria-label="Violation severity" value={violationSeverity} onChange={(e) => setViolationSeverity(e.target.value as typeof violationSeverity)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white">
           {(['minor', 'moderate', 'severe'] as const).map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         <div className="md:col-span-5 flex items-center gap-2 flex-wrap">
-          <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+          <input aria-label="DM recipient" type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
           <RecallSlot ctl={dmRecall} />
           <RecallSlot ctl={publishRecall} />
         </div>
