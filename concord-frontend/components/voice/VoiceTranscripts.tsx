@@ -156,7 +156,7 @@ export function VoiceTranscripts() {
 
           {active ? (
             <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 min-w-0">
                 <h4 className="text-sm font-bold text-zinc-100 flex-1 min-w-0 break-all">{active.title}</h4>
                 <button onClick={summarize} className="px-2.5 py-1 text-xs rounded bg-violet-600/20 text-violet-300 hover:bg-violet-600/30 inline-flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />Summarize

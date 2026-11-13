@@ -253,7 +253,7 @@ export function VoiceRecordingStudio({ refreshKey }: { refreshKey?: number }) {
 
           {/* Summary controls */}
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3">
-            <div className="flex flex-wrap items-center gap-2 mb-2">
+            <div className="flex flex-wrap items-center gap-2 mb-2 min-w-0">
               <h4 className="text-sm font-bold text-zinc-100 flex-1 truncate">{active.title}</h4>
               <button onClick={() => summarize(false)} disabled={busy !== null}
                 className="px-2.5 py-1 text-xs rounded bg-zinc-700/60 text-zinc-200 hover:bg-zinc-700 inline-flex items-center gap-1 disabled:opacity-40">
