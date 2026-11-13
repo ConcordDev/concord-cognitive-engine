@@ -36,6 +36,18 @@ interface Message {
   read?: boolean;
 }
 
+export const MESSAGE_COMPOSE_EVENT = 'message:compose';
+let messageComposePending = false;
+
+/** Open the composer, even when the inbox panel is not mounted yet —
+ *  the page's 'New message' button switches views first, and a bare
+ *  event dispatched before this panel mounts is lost (FIX-message-001).
+ *  Same pending-flag shape as feed's requestFeedCompose. */
+export function requestMessageCompose() {
+  messageComposePending = true;
+  window.dispatchEvent(new CustomEvent(MESSAGE_COMPOSE_EVENT));
+}
+
 export function InboxPanel() {
   const [activeLabelId, setActiveLabelId] = useState('inbox');
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -196,9 +208,10 @@ export function InboxPanel() {
   }, []);
 
   useEffect(() => {
-    const open = () => setComposing(true);
-    window.addEventListener('message:compose', open);
-    return () => window.removeEventListener('message:compose', open);
+    const open = () => { messageComposePending = false; setComposing(true); };
+    if (messageComposePending) open();
+    window.addEventListener(MESSAGE_COMPOSE_EVENT, open);
+    return () => window.removeEventListener(MESSAGE_COMPOSE_EVENT, open);
   }, []);
 
   useLensCommand(
@@ -256,6 +269,7 @@ export function InboxPanel() {
         onSelectThread={(t) => setActiveConversationId(t.id)}
         onReply={focusReply}
         onForward={forwardThread}
+        showChildrenWithoutThread={composing}
       >
         {composing ? (
           <article className="space-y-3">

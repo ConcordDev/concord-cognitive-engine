@@ -14,7 +14,7 @@
  * (performance.memory, navigation timing) — never seeded.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { useDebugProject } from './ProjectContext';
 import { ChartKit } from '@/components/viz';
@@ -57,6 +57,14 @@ interface AlertRule {
   lastTriggeredAt: string | null;
   lastValue: number | null;
 }
+
+// FIX-debug-005: the alert-rule form's state lives in this component,
+// so every keystroke used to re-render the recharts area chart below —
+// heavy lag under load, with keystrokes visibly landing late or in the
+// wrong field. The chart is memoized and fed stable props, so form
+// typing no longer re-renders it; it redraws only when the series data
+// or the active metric actually changes.
+const MemoChartKit = memo(ChartKit);
 
 type PerfMemory = { usedJSHeapSize?: number };
 
@@ -104,6 +112,25 @@ export function MetricsAndAlerts() {
   });
   const [testNote, setTestNote] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Stable chart props (FIX-debug-005): rebuilt only when the series
+  // or the active metric changes, never on rule-form keystrokes.
+  const chartData = useMemo(
+    () =>
+      points.map((p) => ({
+        t: new Date(p.at).toLocaleTimeString(),
+        value: p.value,
+        max: p.max ?? p.value,
+      })),
+    [points],
+  );
+  const chartSeries = useMemo(
+    () => [
+      { key: 'value', label: activeMetric || 'value', color: '#3b82f6' },
+      { key: 'max', label: 'bucket max', color: '#f59e0b' },
+    ],
+    [activeMetric],
+  );
 
   const loadSeries = useCallback(async (metric: string) => {
     const r = await lensRun('debug', 'metric-series', {
@@ -342,19 +369,12 @@ export function MetricsAndAlerts() {
                 ))}
               </div>
             )}
-            <ChartKit
+            <MemoChartKit
               kind="area"
               height={220}
-              data={points.map((p) => ({
-                t: new Date(p.at).toLocaleTimeString(),
-                value: p.value,
-                max: p.max ?? p.value,
-              }))}
+              data={chartData}
               xKey="t"
-              series={[
-                { key: 'value', label: activeMetric || 'value', color: '#3b82f6' },
-                { key: 'max', label: 'bucket max', color: '#f59e0b' },
-              ]}
+              series={chartSeries}
             />
             <div className="flex justify-end">
               <StickyDeleteConfirm

@@ -39,6 +39,23 @@ function weekDates(start: Date): string[] {
   return Array.from({ length: 7 }, (_, i) => shiftDateKey(startKey, i));
 }
 
+/**
+ * FIX-cooking-005: a recipe whose photoUrl points at a dead or bogus
+ * image rendered the browser's broken-image glyph in the tile corner.
+ * A photo that fails to load now falls back to the same ChefHat tile a
+ * recipe with no photo gets.
+ */
+export function RecipePhoto({ url, title }: { url?: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!url || failed) {
+    return <div className="w-full h-full flex items-center justify-center"><ChefHat className="w-8 h-8 text-gray-700" /></div>;
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- recipe photos come from arbitrary external cooking sites
+    <img src={url} alt={title} onError={() => setFailed(true)} className="w-full h-full object-cover" />
+  );
+}
+
 export function RecipeBoxSection() {
   const [tab, setTab] = useState<Tab>('recipes');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -337,10 +354,7 @@ export function RecipeBoxSection() {
                 {visibleRecipes.map(r => (
                   <div key={r.id} className="rounded border border-white/10 bg-black/30 overflow-hidden group">
                     <div className="aspect-video bg-black/40">
-                      {r.photoUrl
-                        // eslint-disable-next-line @next/next/no-img-element -- recipe photos come from arbitrary external cooking sites
-                        ? <img src={r.photoUrl} alt="" className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center"><ChefHat className="w-8 h-8 text-gray-700" /></div>}
+                      <RecipePhoto url={r.photoUrl} title={r.title} />
                     </div>
                     <div className="p-2.5">
                       <div className="text-sm text-white font-medium truncate">{r.title}</div>

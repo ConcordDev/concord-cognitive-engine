@@ -23,6 +23,7 @@ import { lensRun } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { useArticleDetail } from './ArticleDetailContext';
+import { formatArticleDate } from './article-date';
 
 interface FullArticle {
   id: string;
@@ -196,7 +197,7 @@ export function ArticleDetailModal({ onMutated }: { onMutated?: () => void } = {
             <span>·</span>
             <span className="capitalize">{article.topic}</span>
             <span>·</span>
-            <span>{String(article.publishedAt).slice(0, 10)}</span>
+            <span>{formatArticleDate(article.publishedAt)}</span>
             {article.read && (
               <span className="ml-1 rounded border border-zinc-700 bg-zinc-800/60 px-1.5 py-0.5 text-[10px] text-zinc-400">
                 read

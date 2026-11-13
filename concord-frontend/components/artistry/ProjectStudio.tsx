@@ -32,7 +32,7 @@ interface Comment { id: string; userId: string; displayName?: string; isMine?: b
 const RESOLVED_IMG_CACHE = new Map<string, string>();
 const IMG_REF_PREFIX = 'artistry-img:';
 
-function ResolvedImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+export function ResolvedImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const isRef = src.startsWith(IMG_REF_PREFIX);
   const [resolved, setResolved] = useState<string | null>(isRef ? RESOLVED_IMG_CACHE.get(src) || null : src);
   const [failed, setFailed] = useState(false);
@@ -62,7 +62,11 @@ function ResolvedImage({ src, alt, className }: { src: string; alt: string; clas
 
   if (failed) return <ImageIcon className="w-8 h-8 text-gray-600" data-testid="artistry-img-failed" />;
   if (!resolved) return <Loader2 className="w-5 h-5 animate-spin text-gray-500" data-testid="artistry-img-loading" />;
-  return <img src={resolved} alt={alt} className={className} />;
+  // FIX-artistry-005: the failure state above only covered the
+  // reference-resolution path. A plain external cover URL that fails
+  // to load (dead host, 404) rendered the browser's broken-image
+  // glyph — route it to the same fallback.
+  return <img src={resolved} alt={alt} className={className} onError={() => setFailed(true)} />;
 }
 
 export function ProjectStudio() {

@@ -186,9 +186,20 @@ export default function DxPlatformPage() {
           <Card title="Billing dashboard" href="/lenses/dx-platform/billing">
             CC balance, last-7d usage, top macros, current-minute quota.
           </Card>
-          <Card title="API keys" href="/api-keys">
-            Issue / revoke / view scopes for your plugin keys (advanced).
-          </Card>
+          {/* FIX-expert-mode-008: this card linked to /api-keys, a page
+              retired when phase 7.4 replaced pasted keys with the OAuth
+              flow (see this file's header). No such route exists, so
+              Next.js prefetch 404'd on every render of the grid. The
+              card now opens the onboarding view that documents the
+              current flow instead of promising a dead page. */}
+          <button
+            type="button"
+            onClick={() => setView('start')}
+            className="block rounded-2xl border border-white/10 bg-[#111] p-4 text-left hover:border-white/20"
+          >
+            <div className="font-medium">API access</div>
+            <div className="mt-1 text-sm text-zinc-400">Connect tools with the OAuth sign-in flow — pasted plugin keys were retired in phase 7.4.</div>
+          </button>
           <button
             type="button"
             onClick={() => setView('tune')}

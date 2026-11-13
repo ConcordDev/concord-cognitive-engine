@@ -12,6 +12,7 @@ import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
 import { notifyPodcastChanged } from './podcast-events';
+import { showToast } from '@/components/common/Toasts';
 
 interface Show {
   id: string; title: string; author: string | null; category: string;
@@ -97,7 +98,14 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
     notifyPodcastChanged();
   };
   const subscribe = async (sh: Show) => {
-    await lensRun('podcast', 'show-subscribe', { id: sh.id });
+    // FIX-podcast-008: the toggle's result was ignored entirely — no
+    // confirmation on subscribe OR unsubscribe, and a failed toggle
+    // refreshed silently as if it had worked. The action returns the
+    // new state; speak it via the lens's own toast (as ItunesSearch
+    // does) and surface failures on the panel error line.
+    const r = await lensRun<{ showId: string; subscribed: boolean }>('podcast', 'show-subscribe', { id: sh.id });
+    if (r.data?.ok === false) { setError(r.data?.error || 'Could not update your subscription.'); return; }
+    showToast('success', r.data?.result?.subscribed ? `Subscribed to ${sh.title}` : `Unsubscribed from ${sh.title}`);
     await refresh();
     if (selected?.id === sh.id) await openShow(sh);
     onChange();

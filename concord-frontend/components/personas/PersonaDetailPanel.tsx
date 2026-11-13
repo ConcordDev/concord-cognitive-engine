@@ -251,17 +251,22 @@ export function PersonaDetailPanel({
             </label>
           </>
         )}
+        {/* FIX-personas-016: Install was withheld from the author with
+            no explanation, though personas.install accepts any actor —
+            the author included (only rating excludes the author, by
+            design). A published persona offers Install to everyone;
+            Remix stays a non-author action. */}
+        {persona.published && (
+          <button
+            type="button" onClick={doInstall}
+            className="text-xs px-3 py-1.5 rounded-lg bg-cyan-800 hover:bg-cyan-700 text-cyan-100"
+          >Install persona</button>
+        )}
         {!persona.isAuthor && persona.published && (
-          <>
-            <button
-              type="button" onClick={doInstall}
-              className="text-xs px-3 py-1.5 rounded-lg bg-cyan-800 hover:bg-cyan-700 text-cyan-100"
-            >Install persona</button>
-            <button
-              type="button" onClick={doRemix}
-              className="text-xs px-3 py-1.5 rounded-lg bg-purple-800 hover:bg-purple-700 text-purple-100"
-            >Remix</button>
-          </>
+          <button
+            type="button" onClick={doRemix}
+            className="text-xs px-3 py-1.5 rounded-lg bg-purple-800 hover:bg-purple-700 text-purple-100"
+          >Remix</button>
         )}
       </div>
 
@@ -320,6 +325,14 @@ export function PersonaDetailPanel({
 
       {tab === 'reviews' && (
         <div className="space-y-3">
+          {/* FIX-personas-016: the author saw only "No reviews yet"
+              with no rate control and no reason. The server refuses
+              author ratings by design (cannot_rate_own) — say so. */}
+          {persona.isAuthor && (
+            <p role="note" className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-xs text-zinc-400">
+              You can&rsquo;t rate your own persona — ratings and reviews come from the people who install it.
+            </p>
+          )}
           {!persona.isAuthor && persona.published && (
             <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 space-y-2">
               <div className="flex items-center gap-1">

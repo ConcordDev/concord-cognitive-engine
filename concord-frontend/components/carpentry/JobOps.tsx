@@ -671,7 +671,7 @@ function PhotoJobLog() {
 
 /* ───────────────────────── 6. Invoicing + Client Portal ───────────────────────── */
 
-interface Invoice { id: string; invoiceNumber: string; estimateId: string; client: string; subtotal: number; tax: number; total: number; depositPct: number; depositDue: number; status: string; signature: { signedBy: string; decision: string } | null }
+interface Invoice { id: string; invoiceNumber: string; estimateId: string; client: string; subtotal: number; tax: number; taxPct?: number; total: number; depositPct: number; depositDue: number; status: string; signature: { signedBy: string; decision: string } | null }
 interface InvoiceListResult { invoices: Invoice[]; outstanding: number; collected: number }
 interface PortalShare { token: string; client: string; estimateId: string; estimateAmount: number; jobName: string; progressPct: number; status: string; expiresAt?: string; clientDecision: { decision: string; signedBy: string } | null; milestones: { label: string; done: boolean }[] }
 
@@ -799,6 +799,15 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                     <span className="text-[12px] text-white">{iv.invoiceNumber} · {iv.client}</span>
                     <span className="font-mono text-[12px] text-emerald-300">${iv.total.toLocaleString()}</span>
                   </div>
+                  {/* FIX-carpentry-009: the card showed only the total,
+                      though the invoice carries the full breakdown —
+                      render subtotal / tax / total lines like the
+                      estimate panel above does. */}
+                  <dl className="mt-1 space-y-0.5 text-[11px]">
+                    <div className="flex justify-between"><dt className="text-zinc-400">Subtotal</dt><dd className="font-mono text-zinc-200">${iv.subtotal.toFixed(2)}</dd></div>
+                    <div className="flex justify-between"><dt className="text-zinc-400">Tax{iv.taxPct != null ? ` (${iv.taxPct}%)` : ''}</dt><dd className="font-mono text-zinc-200">${iv.tax.toFixed(2)}</dd></div>
+                    <div className="flex justify-between border-t border-zinc-800 pt-0.5"><dt className="text-zinc-200">Total</dt><dd className="font-mono font-semibold text-emerald-200">${iv.total.toFixed(2)}</dd></div>
+                  </dl>
                   {/* F4: the deposit the conversion collected, applied as a line. */}
                   {iv.depositDue > 0 && (
                     <div className="mt-0.5 text-[10px] text-zinc-400">

@@ -600,22 +600,30 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
       </header>
 
       {newThreadOpen && (
-        <div className="p-3 border-b border-lattice-border bg-lattice-surface/40 flex items-center gap-2">
-          <input
-            ref={newThreadInputRef}
-            value={newThreadTitle}
-            onChange={(e) => setNewThreadTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !creatingThread) void handleCreateThread(); if (e.key === 'Escape') setNewThreadOpen(false); }}
-            placeholder="Thread title…"
-            aria-label="New thread title"
-            className="flex-1 bg-lattice-deep border border-lattice-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-neon-purple/50"
-          />
-          <button disabled={creatingThread} onClick={handleCreateThread} className="btn-neon px-3 py-1.5 text-sm disabled:opacity-40">
-            {creatingThread ? 'Creating…' : 'Create'}
-          </button>
-          <button onClick={() => setNewThreadOpen(false)} className="p-1.5 rounded hover:bg-lattice-elevated text-gray-400" aria-label="Cancel">
-            <X className="w-4 h-4" />
-          </button>
+        <div className="p-3 border-b border-lattice-border bg-lattice-surface/40">
+          <div className="flex items-center gap-2">
+            <input
+              ref={newThreadInputRef}
+              value={newThreadTitle}
+              onChange={(e) => setNewThreadTitle(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !creatingThread) void handleCreateThread(); if (e.key === 'Escape') setNewThreadOpen(false); }}
+              placeholder="Thread title…"
+              aria-label="New thread title"
+              className="flex-1 bg-lattice-deep border border-lattice-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-neon-purple/50"
+            />
+            <button disabled={creatingThread} onClick={handleCreateThread} className="btn-neon px-3 py-1.5 text-sm disabled:opacity-40">
+              {creatingThread ? 'Creating…' : 'Create'}
+            </button>
+            <button onClick={() => setNewThreadOpen(false)} className="p-1.5 rounded hover:bg-lattice-elevated text-gray-400" aria-label="Cancel">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {/* FIX-thread-003: the form never said who can see a thread.
+              Threads here are the owner's own records — no share or
+              publish control exists on this surface — so say so. */}
+          <p role="note" className="mt-2 text-xs text-gray-500">
+            Threads are private — only you can see the threads you create here.
+          </p>
         </div>
       )}
 
@@ -703,7 +711,20 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
         </aside>
 
         <main className="flex-1 flex flex-col overflow-hidden">
-          {selectedThread ? (
+          {/* FIX-thread-003: a search that excludes the selected thread
+              must not leave its details standing beside "No threads
+              match" — say the thread is filtered out instead (the
+              FIX-mail-019 rule: the detail pane never shows what the
+              visible list no longer contains). The selection itself is
+              kept, so clearing the search restores the thread. */}
+          {selectedThread && threadSearch.trim() && !filteredThreads.some((t) => t.id === selectedThread.id) ? (
+            <div className="flex-1 flex items-center justify-center p-8">
+              <p role="note" className="max-w-sm text-center text-sm text-gray-400">
+                &ldquo;{selectedThread.title}&rdquo; doesn&rsquo;t match your search, so its details are
+                hidden. Clear the search to see it again.
+              </p>
+            </div>
+          ) : selectedThread ? (
             <>
               <div className="p-4 border-b border-lattice-border bg-lattice-surface/30 space-y-3">
                 <div className="flex items-center justify-between">

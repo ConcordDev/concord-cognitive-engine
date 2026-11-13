@@ -178,7 +178,10 @@ export function PersonaMarketplace({ onOpen }: { onOpen: (personaId: string) => 
                     </div>
                   </div>
                 </button>
-                {user?.id && p.authorUserId !== user.id && (
+                {/* FIX-personas-016: the author's own listing withheld
+                    Install here too, though the server accepts author
+                    installs — offer it to any signed-in viewer. */}
+                {user?.id && (
                   <button
                     type="button"
                     aria-label={`Install ${p.name}`}

@@ -67,6 +67,12 @@ export interface InboxShellProps {
   onArchive?: (thread: InboxThread) => void;
   /** Reading pane content for the selected thread. */
   children: React.ReactNode;
+  /** Render the reading-pane children even with no thread selected —
+   *  the compose surface lives in the children and must be reachable
+   *  from a fresh inbox (FIX-message-001: with no thread selected the
+   *  children never mounted, so 'New message' flipped state that had
+   *  no visual effect). */
+  showChildrenWithoutThread?: boolean;
   className?: string;
 }
 
@@ -91,6 +97,7 @@ export function InboxShell({
   onForward,
   onArchive,
   children,
+  showChildrenWithoutThread,
   className,
 }: InboxShellProps) {
   const activeThread = threads.find((t) => t.id === activeThreadId);
@@ -198,9 +205,9 @@ export function InboxShell({
 
       {/* Reading pane */}
       <main className="flex-1 overflow-y-auto bg-lattice-void">
-        {activeThreadId ? (
+        {activeThreadId || showChildrenWithoutThread ? (
           <div className="max-w-4xl mx-auto px-8 py-6">
-            {(onReply || onForward || onArchive) && (
+            {(activeThreadId && (onReply || onForward || onArchive)) && (
               <div className="flex items-center gap-2 mb-6 border-b border-lattice-border pb-3">
                 {onReply && (
                   <button

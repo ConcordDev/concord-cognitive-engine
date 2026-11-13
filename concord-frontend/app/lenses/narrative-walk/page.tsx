@@ -168,11 +168,22 @@ export default function NarrativeWalkLensPage() {
       localStorage.removeItem(OPEN_KEY);
       localStorage.removeItem(WATCHED_KEY);
     } catch { /* storage unavailable — state below still resets */ }
-    setOpen(null);
     setWatched([]);
     setActionError('');
-    setNote('The trail is open again. Begin when you are ready.');
-  }, []);
+    // FIX-narrative-walk-001: "Walk it again" cleared the journal but
+    // dropped the walker at "No walk open", needing a second Begin —
+    // the header contract is that it RESTARTS the trail. Clear, then
+    // open the first step (show() re-journals it against the cleared
+    // watched list). Only an empty catalog falls back to the
+    // begin-when-ready state.
+    if (catalog.length) {
+      setNote('');
+      void show(catalog[0]);
+    } else {
+      setOpen(null);
+      setNote('The trail is open again. Begin when you are ready.');
+    }
+  }, [catalog, show]);
 
   const goBack = useCallback(() => {
     if (!open) return;

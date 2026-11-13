@@ -159,9 +159,15 @@ export function IntelDesk({ initialCategory = 'top' }: { initialCategory?: NewsC
   function addPulledHeadlineToDirectory(h: Headline) {
     void lensRun('news', 'article-add', {
       title: h.title,
-      source: h.source || 'unknown',
+      // FIX-news-003: the pull dropped the headline's own summary
+      // (Concord's summary for summary-only outlets, the feed snippet
+      // for full ones) by passing null, so every pulled story read
+      // "No summary provided" in the reader; and a missing source was
+      // stored as a lowercase 'unknown' instead of the server's
+      // "Unknown" default. Pass what the headline actually carries.
+      source: h.source || undefined,
       topic: h.category,
-      summary: null,
+      summary: h.summary ?? h.snippet ?? null,
       url: h.url,
       publishedAt: h.publishedAt ?? undefined,
     }).catch(() => { /* directory add is best-effort; the DTU pull already succeeded */ });

@@ -427,7 +427,16 @@ function Discovery({
       const res = await api.get<{ posts?: unknown; trending?: unknown }>('/api/social/trending', { params: { limit: 20 } });
       const posts = res.data?.posts;
       const rows = Array.isArray(posts) ? jsonArray(posts) : jsonArray(res.data?.trending);
-      return rows.map((row) => asTrendingCard(asTrendingInput(row)));
+      const cards = rows.map((row) => asTrendingCard(asTrendingInput(row)));
+      // FIX-feed-005: the Filters bar is global to Explore, but this
+      // query only carried categoryFilter in its key — it refetched
+      // the same unfiltered list, so Audio/Video/Images/Docs/Text
+      // changed nothing on the default Trending tab (the Media tab
+      // already filters server-side). Apply the filter here: a card's
+      // type is its mediaType, and a post with no media attachment is
+      // a text post.
+      if (categoryFilter === 'all') return cards;
+      return cards.filter((c) => (c.mediaType || 'text') === categoryFilter);
     },
     enabled: activeTab === 'trending',
   });
@@ -494,7 +503,14 @@ function Discovery({
         params.mediaType = categoryFilter;
       }
       const res = await api.get('/api/media/feed', { params });
-      return (res.data.feed || []) as TrendingDTU[];
+      // The media feed's rows are media-DTU shaped ({ id, author, ... }),
+      // NOT TrendingDTU shaped — casting them raw left dtuId undefined
+      // and MediaCard crashed reading 'length' in pickGradient on every
+      // row (FIX-feed-004). Normalize through the same card adapter the
+      // trending tab uses, which maps id → dtuId and defaults the rest.
+      const feed = (res.data as { feed?: unknown } | undefined)?.feed;
+      const rows = Array.isArray(feed) ? jsonArray(feed) : [];
+      return rows.map((row) => asTrendingCard(asTrendingInput(row)));
     },
     enabled: activeTab === 'media',
   });

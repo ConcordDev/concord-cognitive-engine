@@ -127,10 +127,10 @@ export function ClaimTracker() {
               <option value="liability">Liability</option>
               <option value="other">Other</option>
             </select>
-            <input value={draft.carrier || ''} onChange={e => setDraft({ ...draft, carrier: e.target.value })} placeholder="Carrier" className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
+            <input value={draft.carrier || ''} maxLength={120} onChange={e => setDraft({ ...draft, carrier: e.target.value })} placeholder="Carrier" className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
             <input type="number" value={draft.claimAmount || 0} onChange={e => setDraft({ ...draft, claimAmount: Number(e.target.value) })} placeholder="Amount $" className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
           </div>
-          <textarea value={draft.description || ''} onChange={e => setDraft({ ...draft, description: e.target.value })} placeholder="Describe what happened…" rows={3} className="w-full px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white resize-y" />
+          <textarea value={draft.description || ''} maxLength={5000} onChange={e => setDraft({ ...draft, description: e.target.value })} placeholder="Describe what happened…" rows={3} className="w-full px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white resize-y" />
           <input type="date" value={draft.incidentDate || ''} onChange={e => setDraft({ ...draft, incidentDate: e.target.value })} className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
           <div className="flex items-center gap-2">
             <button onClick={fileNew} className="px-3 py-1 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">File claim</button>

@@ -379,6 +379,13 @@ function LibraryTab() {
             className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 text-xs text-emerald-100 disabled:opacity-40">
             <Save className="w-3 h-3" /> Save
           </button>
+          {(!draft.name.trim() || !draft.sequence.trim()) && (
+            <p role="note" className="text-[11px] text-gray-400">
+              {!draft.name.trim() && !draft.sequence.trim()
+                ? 'Name and sequence are required.'
+                : !draft.name.trim() ? 'Name is required.' : 'Sequence is required.'}
+            </p>
+          )}
         </div>
       )}
 

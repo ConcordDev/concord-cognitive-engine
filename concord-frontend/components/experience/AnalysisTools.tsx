@@ -252,6 +252,20 @@ function UsabilityScoreResult({ result }: { result: Record<string, unknown> }) {
           </div>
         ))}
       </div>
+      {typeof result.formula === 'string' && (
+        <div className="text-[10px] text-gray-500 space-y-0.5">
+          <p>{result.formula as string}</p>
+          {result.components != null && (
+            <p>
+              Contributions: task success {(result.components as Record<string, number>).taskSuccess}
+              {' + '}time {(result.components as Record<string, number>).time}
+              {' + '}errors {(result.components as Record<string, number>).errors}
+              {' + '}satisfaction {(result.components as Record<string, number>).satisfaction}
+              {' = '}{susScore}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

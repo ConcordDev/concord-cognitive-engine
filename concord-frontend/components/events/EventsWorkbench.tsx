@@ -2274,7 +2274,11 @@ export function EventsWorkbench({
                   </div>
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
                     <p className="text-xs text-gray-400">Remaining</p>
-                    <p className="text-sm font-bold">{(totalAvail - totalSold).toLocaleString()}</p>
+                    {/* FIX-events-008: comps are seats given away — they
+                        consume capacity. Remaining used to subtract only
+                        paid sales, so 50 available with 3 comps still
+                        read Remaining 50 instead of 47. */}
+                    <p className="text-sm font-bold">{Math.max(0, totalAvail - totalSold - totalComp).toLocaleString()}</p>
                   </div>
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
                     <p className="text-xs text-gray-400">Checked In</p>
@@ -2301,10 +2305,16 @@ export function EventsWorkbench({
                     const td = t.data as Record<string, unknown>;
                     const sold = Number(td.sold || 0);
                     const avail = Number(td.totalAvailable || 0);
+                    const comps = Number(td.compTickets || 0);
                     const price = Number(td.price || 0);
                     const tierRev = sold * price;
                     const st = t.meta?.status as string;
-                    const soldOut = sold >= avail;
+                    // FIX-events-006: a blank Total Available (0) means
+                    // NO CAP — the server tier model treats quantity 0
+                    // as unlimited — not a tier that is instantly sold
+                    // out (0 >= 0). Comps consume seats (events-008),
+                    // so they count toward filling a capped tier.
+                    const soldOut = avail > 0 && sold + comps >= avail;
                     return (
                       <div
                         key={t.id}
@@ -2319,11 +2329,17 @@ export function EventsWorkbench({
                         <p className="text-xl font-bold text-neon-cyan mb-2">
                           {fmtCurrency(price)}
                         </p>
-                        <ProgressBar
-                          value={sold}
-                          max={avail}
-                          color={soldOut ? 'red-400' : 'neon-cyan'}
-                        />
+                        {avail > 0 ? (
+                          <ProgressBar
+                            value={sold + comps}
+                            max={avail}
+                            color={soldOut ? 'red-400' : 'neon-cyan'}
+                          />
+                        ) : (
+                          <p className="text-xs text-gray-400">
+                            No cap set · {sold.toLocaleString()} sold{comps > 0 ? ` · ${comps.toLocaleString()} comps` : ''}
+                          </p>
+                        )}
                         <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
                           <div>
                             <span className="text-gray-400">Revenue:</span>{' '}

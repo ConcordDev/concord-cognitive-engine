@@ -21,7 +21,7 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { cn } from '@/lib/utils';
-import { InboxPanel } from '@/components/message/InboxPanel';
+import { InboxPanel, requestMessageCompose } from '@/components/message/InboxPanel';
 import { WorkbenchPanel } from '@/components/message/WorkbenchPanel';
 import { LabelManagerPanel } from '@/components/message/LabelManagerPanel';
 import { ConnectPanel } from '@/components/message/ConnectPanel';
@@ -51,7 +51,11 @@ export default function MessageLensPage() {
 
   const compose = () => {
     setActive('inbox');
-    requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('message:compose')));
+    // Pending-flag request, not a bare rAF event: when the inbox panel
+    // still has to mount (view switch + exit animation), an event
+    // dispatched on the next frame fires before any listener exists
+    // and the click is lost (FIX-message-001).
+    requestMessageCompose();
   };
 
   useLensCommand(

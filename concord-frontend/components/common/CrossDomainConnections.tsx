@@ -28,6 +28,14 @@ interface ConnectionItem {
   similarity: number;
   /** Optional snippet / excerpt for context. */
   excerpt?: string;
+  /**
+   * FIX-strategic-adds-016: where the item came from. 'corpus' items
+   * are public content from the shared Concord corpus (any account,
+   * including platform samples) found by semantic search / the graph;
+   * 'registered' items are this lens's OWN saved work. The panel
+   * labels both instead of presenting one unmarked list.
+   */
+  origin: 'corpus' | 'registered';
 }
 
 /** The shape returned by graph.force after normalisation. */
@@ -69,6 +77,7 @@ function normaliseGraphNodes(nodes: GraphNode[], currentDomain: string): Connect
       title: n.title || n.label || n.name || 'Untitled',
       sourceDomain: n.domain || n.group || n.scope || 'unknown',
       similarity: n.score ?? n.weight ?? n.similarity ?? 0,
+      origin: 'corpus' as const,
     }))
     .sort((a, b) => b.similarity - a.similarity);
 }
@@ -152,6 +161,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                 sourceDomain: r.tags?.[0] || 'unknown',
                 similarity: r.score ?? 0,
                 excerpt: r.summary,
+                origin: 'corpus' as const,
               })
             );
           return { items, source: 'semantic' as const };
@@ -214,6 +224,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
         sourceDomain: n.domain,
         similarity: 0,
         excerpt: n.summary || undefined,
+        origin: 'registered' as const,
       }));
     return [...base, ...registered];
   }, [connectionData, registeredData]);
@@ -361,6 +372,17 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                       {connections.length !== 1 ? 's' : ''} across {domainKeys.length} domain
                       {domainKeys.length !== 1 ? 's' : ''}
                     </p>
+                    {/* FIX-strategic-adds-016: say where these come
+                        from — corpus items are public content from
+                        every account (platform samples included), not
+                        the viewer's own work; only Registered items
+                        are this lens's own saved work. */}
+                    <p role="note" className="text-[11px] text-gray-500 -mt-3">
+                      Found across the shared Concord corpus — public items from all
+                      accounts and lenses, not just yours. Items marked
+                      {' '}<span className="text-gray-300">Registered</span> are this
+                      lens&rsquo;s own saved work.
+                    </p>
 
                     {domainKeys.map((domKey) => (
                       <div key={domKey}>
@@ -399,6 +421,11 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                                 )}
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
+                                {item.origin === 'registered' && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-neon-purple/15 text-purple-200">
+                                    Registered
+                                  </span>
+                                )}
                                 <span className="text-[10px] font-mono text-gray-400 tabular-nums">
                                   {formatScore(item.similarity)}
                                 </span>

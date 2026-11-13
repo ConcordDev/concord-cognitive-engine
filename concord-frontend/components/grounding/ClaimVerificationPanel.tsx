@@ -134,7 +134,16 @@ export function ClaimVerificationPanel() {
       const res = r.data.result;
       setCredibilityResult(res);
       const top = res?.sources?.[0];
-      if (top) ok(`${top.credibilityLabel} (${top.credibilityScore}/100).`);
+      if (top) {
+        ok(`${top.credibilityLabel} (${top.credibilityScore}/100).`);
+        // FIX-grounding-012: leave an audit-trail entry, best-effort
+        // like recordCheck — a record failure never fails the scoring.
+        void lensRun('grounding', 'recordActivity', {
+          kind: 'source-tier',
+          claim: top.name || top.url || srcName.trim() || srcUrl.trim(),
+          summary: `${top.credibilityLabel} (${top.credibilityScore}/100)`,
+        }).catch(() => { /* the audit copy is best-effort; the scoring stands */ });
+      }
       else ok(res?.message || 'No sources scored.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -151,7 +160,16 @@ export function ClaimVerificationPanel() {
       if (!r.data.ok) { err(r.data.error ?? 'decompose failed'); return; }
       const res = r.data.result;
       setDecomposeResult(res);
-      ok(res?.atomicClaimCount ? `${res.atomicClaimCount} atomic claims (${res.logicalStructure}).` : (res?.message || 'No claims decomposed.'));
+      if (res?.atomicClaimCount) {
+        ok(`${res.atomicClaimCount} atomic claims (${res.logicalStructure}).`);
+        // FIX-grounding-012: audit-trail entry, best-effort.
+        void lensRun('grounding', 'recordActivity', {
+          kind: 'decompose',
+          claim: claim.trim(),
+          summary: `${res.atomicClaimCount} atomic claims (${res.logicalStructure})`,
+        }).catch(() => { /* the audit copy is best-effort; the decomposition stands */ });
+      }
+      else ok(res?.message || 'No claims decomposed.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -182,7 +200,16 @@ export function ClaimVerificationPanel() {
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
-      if (id) { setMintedDtuId(id); ok(`Verification DTU ${id}`); }
+      if (id) {
+        setMintedDtuId(id); ok(`Verification DTU ${id}`);
+        // FIX-grounding-012: audit-trail entry carrying the minted id,
+        // best-effort — a record failure never fails the mint.
+        void lensRun('grounding', 'recordActivity', {
+          kind: 'mint',
+          claim: claim.trim(),
+          dtuId: id,
+        }).catch(() => { /* the audit copy is best-effort; the mint stands */ });
+      }
       else err('No DTU id returned.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }

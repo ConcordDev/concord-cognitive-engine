@@ -28,6 +28,38 @@ interface Work {
   dtuId?: string;
 }
 
+/**
+ * FIX-gallery-001: a hung work's image is an arbitrary external URL.
+ * When it cannot be loaded (dead host, 404, a file-page URL pasted
+ * instead of the image URL) the wall used to show the browser's
+ * broken-image glyph with no explanation. The work now falls back to
+ * a labelled tile naming the failure; the work itself stays on the
+ * wall and can be taken down or re-hung with a working URL.
+ */
+export function WallImage({ src, title }: { src: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    let host = src;
+    try { host = new URL(src).host || src; } catch { /* keep the raw value */ }
+    return (
+      <div className="mb-3 flex max-h-80 w-full items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] px-4 py-10 text-center">
+        <p className="text-[12px] text-zinc-400">
+          Image didn’t load from {host}. The work is saved — check the image URL or take it down and re-hang it.
+        </p>
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- arbitrary user/museum-supplied URLs, not a local asset.
+    <img
+      src={src}
+      alt={title}
+      onError={() => setFailed(true)}
+      className="mb-3 max-h-80 w-auto max-w-full rounded-lg border border-white/10 object-contain"
+    />
+  );
+}
+
 type Phase = 'loading' | 'ready' | 'error';
 
 interface CollectionMeta {
@@ -307,12 +339,7 @@ export default function GalleryPage() {
                   ) : (
                     <>
                       {work.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- arbitrary user/museum-supplied URLs, not a local asset.
-                        <img
-                          src={work.image}
-                          alt={work.title}
-                          className="mb-3 max-h-80 w-auto max-w-full rounded-lg border border-white/10 object-contain"
-                        />
+                        <WallImage src={work.image} title={work.title} />
                       ) : null}
                       <div className="flex flex-wrap items-baseline gap-3">
                         <h2 className="font-vault text-[1.5rem] text-zinc-100">{work.title}</h2>

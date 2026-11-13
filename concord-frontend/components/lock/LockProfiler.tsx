@@ -11,6 +11,7 @@
  *   blameAttribution  — acquisition-site blame from captured stack traces
  *   amdahlProjection  — throughput-under-contention / Amdahl + USL modeling
  *   deadlockDetect    — wait-for graph cycle detection
+ *   fairnessScore     — Jain's fairness index + starvation over trace waits
  * No hardcoded data — the trace is recorded through recordLockEvent.
  */
 
@@ -24,6 +25,7 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  Scale,
   Trash2,
   TrendingUp,
 } from 'lucide-react';
@@ -100,7 +102,7 @@ interface CurvePoint {
   efficiency: number;
 }
 
-type TabId = 'timeline' | 'ordering' | 'hotspots' | 'blame' | 'amdahl' | 'deadlock';
+type TabId = 'timeline' | 'ordering' | 'hotspots' | 'blame' | 'amdahl' | 'deadlock' | 'fairness';
 
 const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
   { id: 'timeline', label: 'Hold Timeline', icon: Activity },
@@ -109,6 +111,9 @@ const TABS: { id: TabId; label: string; icon: typeof Activity }[] = [
   { id: 'deadlock', label: 'Wait-For Graph', icon: AlertTriangle },
   { id: 'blame', label: 'Blame Attribution', icon: Layers },
   { id: 'amdahl', label: 'Amdahl / USL', icon: TrendingUp },
+  // FIX-lock-005: fairnessScore was the one server analysis with no
+  // surface — Jain's index, starvation, per-resource fairness.
+  { id: 'fairness', label: 'Fairness', icon: Scale },
 ];
 
 function fmtMs(ms: number): string {
@@ -140,6 +145,7 @@ export function LockProfiler() {
   const [blame, setBlame] = useState<any>(null);
   const [amdahl, setAmdahl] = useState<any>(null);
   const [deadlock, setDeadlock] = useState<any>(null);
+  const [fairness, setFairness] = useState<any>(null);
 
   const refreshAll = useCallback(async () => {
     setBusy(true);
@@ -335,6 +341,31 @@ export function LockProfiler() {
     }
   }, [tab, deadlock, ordering, runDeadlock]);
 
+  // FIX-lock-005: fairnessScore takes no hand-built payload from
+  // here — with no processWaits supplied the server derives the
+  // waits from the recorded trace, like its sibling analyses.
+  const runFairness = useCallback(async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await lensRun('lock', 'fairnessScore', {});
+      if (res.data?.ok === false) {
+        throw new Error(res.data?.error || 'fairnessScore failed');
+      }
+      setFairness(res.data?.result || null);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'fairnessScore failed');
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'fairness' && !fairness) {
+      runFairness();
+    }
+  }, [tab, fairness, runFairness]);
+
   const hasTrace = (timeline?.eventCount || 0) > 0;
 
   return (
@@ -500,6 +531,9 @@ export function LockProfiler() {
       {hasTrace && tab === 'blame' && <BlamePanel blame={blame} />}
       {hasTrace && tab === 'amdahl' && (
         <AmdahlPanel amdahl={amdahl} onRecompute={refreshAll} />
+      )}
+      {hasTrace && tab === 'fairness' && (
+        <FairnessPanel fairness={fairness} onRun={runFairness} busy={busy} />
       )}
     </div>
   );
@@ -846,6 +880,120 @@ function DeadlockPanel({
                   <span className="text-neon-cyan">{from}</span>
                   <span className="text-gray-600"> waits-for </span>
                   <span className="text-amber-400">{tos.join(', ')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ── Fairness (FIX-lock-005) ───────────────────────────────────── */
+function FairnessPanel({
+  fairness,
+  onRun,
+  busy,
+}: {
+  fairness: any;
+  onRun: () => void;
+  busy: boolean;
+}) {
+  const processes: any[] = fairness?.processes || [];
+  const resources: any[] = fairness?.resourceFairness || [];
+  const starvation = fairness?.starvation;
+  const dist = fairness?.waitDistribution;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-400">
+          Jain&rsquo;s fairness index over the recorded trace&rsquo;s wait times,
+          with starvation detection.
+        </p>
+        <button
+          onClick={onRun}
+          disabled={busy}
+          className="btn-secondary text-xs flex items-center gap-1 disabled:opacity-50"
+        >
+          {busy ? (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          ) : (
+            <RefreshCw className="w-3 h-3" />
+          )}
+          Score Fairness
+        </button>
+      </div>
+
+      {!fairness && (
+        <p className="text-xs text-gray-500">Run Score Fairness to analyze the trace.</p>
+      )}
+      {fairness?.message && (
+        <p className="text-xs text-gray-400">{fairness.message}</p>
+      )}
+      {fairness && !fairness.message && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div className="rounded-lg border border-white/10 bg-lattice-deep p-3">
+              <p className="text-gray-400">Jain&rsquo;s index</p>
+              <p className="text-lg text-white font-mono">{fairness.jainsIndex}</p>
+              <p className="text-gray-400 capitalize">{fairness.fairnessLevel}</p>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-lattice-deep p-3">
+              <p className="text-gray-400">Mean wait</p>
+              <p className="text-lg text-white font-mono">{dist ? fmtMs(dist.mean) : '—'}</p>
+              <p className="text-gray-400">σ {dist ? fmtMs(dist.stdDev) : '—'}</p>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-lattice-deep p-3">
+              <p className="text-gray-400">Max / min wait</p>
+              <p className="text-lg text-white font-mono">{dist?.maxMinRatio ?? '—'}</p>
+              <p className="text-gray-400">CV {dist?.coefficientOfVariation ?? '—'}</p>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-lattice-deep p-3">
+              <p className="text-gray-400">Starved processes</p>
+              <p className="text-lg text-white font-mono">{fairness.summary?.starvedCount ?? 0}</p>
+              <p className="text-gray-400">
+                of {fairness.summary?.totalProcesses ?? processes.length} processes
+              </p>
+            </div>
+          </div>
+
+          {starvation?.detected && (
+            <div className="p-3 bg-rose-500/5 border border-rose-500/20 rounded-lg text-xs">
+              <p className="text-rose-300 font-medium">
+                Starvation detected — average wait above {fmtMs(starvation.threshold)}:
+              </p>
+              {starvation.starvedProcesses.map((p: any) => (
+                <p key={p.processId} className="font-mono text-gray-300 mt-1">
+                  {p.processId} · avg {fmtMs(p.avgWaitMs)} ({p.ratioToMean}× the mean)
+                </p>
+              ))}
+            </div>
+          )}
+
+          {processes.length > 0 && (
+            <div className="rounded-lg border border-white/10 bg-lattice-deep p-3 text-xs">
+              <p className="text-gray-400 mb-2">Average wait by process</p>
+              {processes.map((p: any) => (
+                <div key={p.processId} className="flex justify-between font-mono mb-1">
+                  <span className="text-neon-cyan">{p.processId}</span>
+                  <span className="text-gray-300">
+                    avg {fmtMs(p.avgWaitMs)} · max {fmtMs(p.maxWaitMs)} · {p.lockRequests} waits
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {resources.length > 0 && (
+            <div className="rounded-lg border border-white/10 bg-lattice-deep p-3 text-xs">
+              <p className="text-gray-400 mb-2">Fairness by lock</p>
+              {resources.map((r: any) => (
+                <div key={r.resource} className="flex justify-between font-mono mb-1">
+                  <span className="text-neon-cyan">{r.resource}</span>
+                  <span className={r.fair ? 'text-emerald-400' : 'text-amber-400'}>
+                    J {r.jainsIndex} · {r.fair ? 'fair' : 'uneven'} · {r.processCount} processes
+                  </span>
                 </div>
               ))}
             </div>

@@ -93,6 +93,8 @@ export function PlatformGrowth() {
         <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-zinc-200">Time series <span className="text-[10px] text-cyan-300">users</span> + <span className="text-[10px] text-orange-300">dtus</span></div>
         {growth.isPending ? (
           <div className="flex items-center gap-2 py-6 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling growth series…</div>
+        ) : growth.data && (growth.data.series?.length ?? 0) === 0 ? (
+          <div className="py-6 text-xs text-zinc-400">No growth snapshots in the {period} range yet — snapshots are recorded every 5 minutes while the backend runs.</div>
         ) : (
           <div ref={hostRef} className="w-full" />
         )}

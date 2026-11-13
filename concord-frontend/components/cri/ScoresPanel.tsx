@@ -43,6 +43,25 @@ interface DTUWithCRETI {
 }
 
 const CRETI_KEYS = ['coherence', 'relevance', 'evidence', 'timeliness', 'integration'] as const;
+
+// FIX-cri-001: a DTU record's `creti` field is its human-readable TEXT
+// (a string) unless a scorer has stamped dimension scores onto it.
+// This panel used to read numeric dimensions off that string (every
+// score 0%), while the Quality Loop badge counted any text-bearing
+// DTU as "scored" (67/181) — the two could never agree. "Scored" now
+// means exactly what the server's trend-snapshot normDtu means: creti
+// is an object carrying numeric dimensions. Unscored DTUs render an
+// explicit unscored state instead of a fake 0%.
+function cretiScores(d: DTUWithCRETI): Record<string, number> | null {
+  const c: unknown = (d as { creti?: unknown }).creti;
+  if (!c || typeof c !== 'object') return null;
+  const out: Record<string, number> = {};
+  for (const k of [...CRETI_KEYS, 'composite']) {
+    const v = (c as Record<string, unknown>)[k];
+    if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
 const CRETI_COLORS: Record<string, string> = {
   coherence: '#00d4ff',
   relevance: '#a855f7',
@@ -112,14 +131,18 @@ export function ScoresPanel() {
 
   const dtus: DTUWithCRETI[] = useMemo(() => dtusData?.dtus || [], [dtusData]);
 
-  const getComposite = (dtu: DTUWithCRETI): number => {
-    if (dtu.creti?.composite != null) return dtu.creti.composite;
-    const scores = CRETI_KEYS.map(k => (dtu.creti as Record<string, number>)?.[k] ?? 0);
-    return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+  const getComposite = (dtu: DTUWithCRETI): number | null => {
+    const s = cretiScores(dtu);
+    if (!s) return null;
+    if (s.composite != null) return s.composite;
+    const vals = CRETI_KEYS.map(k => s[k]).filter(v => v != null);
+    return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
   };
 
+  const scoredDtus = useMemo(() => dtus.filter(d => getComposite(d) != null), [dtus]);
+
   const distribution = useMemo(() => {
-    const composites = dtus.map(d => getComposite(d));
+    const composites = scoredDtus.map(d => getComposite(d) as number);
     if (composites.length === 0) return { avg: 0, min: 0, max: 0, median: 0, buckets: new Array(10).fill(0) };
 
     const sorted = [...composites].sort((a, b) => a - b);
@@ -141,18 +164,25 @@ export function ScoresPanel() {
   const dimAverages = useMemo(() => {
     const result: Record<string, number> = {};
     CRETI_KEYS.forEach(key => {
-      const vals = dtus.map(d => (d.creti as Record<string, number>)?.[key]).filter(v => v != null) as number[];
+      const vals = dtus.map(d => cretiScores(d)?.[key]).filter(v => v != null) as number[];
       result[key] = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
     });
     return result;
   }, [dtus]);
 
   const sortedDtus = useMemo(() => {
-    const filtered = dtus.filter(d => getComposite(d) >= thresholdFilter);
+    const filtered = dtus.filter(d => {
+      const c = getComposite(d);
+      return thresholdFilter <= 0 ? true : (c != null && c >= thresholdFilter);
+    });
 
     filtered.sort((a, b) => {
-      const aVal = sortKey === 'composite' ? getComposite(a) : ((a.creti as Record<string, number>)?.[sortKey] ?? 0);
-      const bVal = sortKey === 'composite' ? getComposite(b) : ((b.creti as Record<string, number>)?.[sortKey] ?? 0);
+      const aVal = sortKey === 'composite' ? getComposite(a) : (cretiScores(a)?.[sortKey] ?? null);
+      const bVal = sortKey === 'composite' ? getComposite(b) : (cretiScores(b)?.[sortKey] ?? null);
+      // Unscored DTUs always sort last — a missing score is not a 0.
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
       return sortDir === 'desc' ? bVal - aVal : aVal - bVal;
     });
 
@@ -160,7 +190,7 @@ export function ScoresPanel() {
   }, [dtus, sortKey, sortDir, thresholdFilter]);
 
   const outliers = useMemo(() => {
-    const byScore = [...dtus].sort((a, b) => getComposite(b) - getComposite(a));
+    const byScore = [...scoredDtus].sort((a, b) => (getComposite(b) as number) - (getComposite(a) as number));
     return {
       top: byScore.slice(0, 5),
       bottom: byScore.slice(-5).reverse(),
@@ -198,13 +228,14 @@ export function ScoresPanel() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             {[
               { value: dtus.length.toString(), label: 'Total DTUs', color: 'text-white' },
-              { value: `${(distribution.avg * 100).toFixed(0)}%`, label: 'Avg Score', color: 'text-neon-cyan' },
-              { value: `${(distribution.max * 100).toFixed(0)}%`, label: 'Max Score', color: 'text-neon-green' },
-              { value: `${(distribution.median * 100).toFixed(0)}%`, label: 'Median', color: 'text-neon-purple' },
-              { value: `${(distribution.min * 100).toFixed(0)}%`, label: 'Min Score', color: 'text-gray-400' },
+              { value: `${scoredDtus.length}/${dtus.length}`, label: 'Scored', color: 'text-white' },
+              { value: scoredDtus.length ? `${(distribution.avg * 100).toFixed(0)}%` : '—', label: 'Avg Score', color: 'text-neon-cyan' },
+              { value: scoredDtus.length ? `${(distribution.max * 100).toFixed(0)}%` : '—', label: 'Max Score', color: 'text-neon-green' },
+              { value: scoredDtus.length ? `${(distribution.median * 100).toFixed(0)}%` : '—', label: 'Median', color: 'text-neon-purple' },
+              { value: scoredDtus.length ? `${(distribution.min * 100).toFixed(0)}%` : '—', label: 'Min Score', color: 'text-gray-400' },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label}
@@ -232,7 +263,7 @@ export function ScoresPanel() {
             <div className="grid grid-cols-10 gap-1">
               {dtus.slice(0, 50).map((d, i) => {
                 const score = getComposite(d);
-                const bg = score >= 0.8 ? 'bg-neon-green/60' : score >= 0.6 ? 'bg-neon-cyan/50' : score >= 0.4 ? 'bg-amber-400/50' : score >= 0.2 ? 'bg-orange-500/50' : 'bg-red-500/50';
+                const bg = score == null ? 'bg-zinc-700/40' : score >= 0.8 ? 'bg-neon-green/60' : score >= 0.6 ? 'bg-neon-cyan/50' : score >= 0.4 ? 'bg-amber-400/50' : score >= 0.2 ? 'bg-orange-500/50' : 'bg-red-500/50';
                 return (
                   <motion.div
                     key={d.id}
@@ -240,7 +271,7 @@ export function ScoresPanel() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.01 }}
                     className={`aspect-square rounded-sm cursor-pointer hover:ring-1 hover:ring-white/50 transition-all ${bg}`}
-                    title={`${d.title || d.id.slice(0, 8)}: ${(score * 100).toFixed(0)}%`}
+                    title={score == null ? `${d.title || d.id.slice(0, 8)}: unscored` : `${d.title || d.id.slice(0, 8)}: ${(score * 100).toFixed(0)}%`}
                     onClick={() => setSelectedDtu(d)}
                   />
                 );
@@ -421,13 +452,15 @@ export function ScoresPanel() {
                         {d.title || d.summary?.slice(0, 30) || d.id.slice(0, 8)}
                       </td>
                       <td className="py-2 px-2 text-right font-mono text-neon-cyan">
-                        {(getComposite(d) * 100).toFixed(0)}%
+                        {getComposite(d) == null
+                          ? <span className="text-gray-500 font-sans text-xs">unscored</span>
+                          : `${((getComposite(d) as number) * 100).toFixed(0)}%`}
                       </td>
                       {CRETI_KEYS.map(key => {
-                        const val = (d.creti as Record<string, number>)?.[key] ?? 0;
+                        const val = cretiScores(d)?.[key];
                         return (
                           <td key={key} className="py-2 px-2 text-right font-mono" style={{ color: CRETI_COLORS[key] }}>
-                            {(val * 100).toFixed(0)}%
+                            {val == null ? '—' : `${(val * 100).toFixed(0)}%`}
                           </td>
                         );
                       })}
@@ -446,15 +479,20 @@ export function ScoresPanel() {
               <h2 className="font-semibold text-white mb-3">
                 {selectedDtu.title || selectedDtu.summary?.slice(0, 60) || 'DTU Detail'}
               </h2>
+              {cretiScores(selectedDtu) == null && (
+                <p className="text-xs text-gray-500 mb-3">
+                  This DTU has not been CRETI-scored yet — its record carries the CRETI text, not dimension scores.
+                </p>
+              )}
               <div className="grid grid-cols-5 gap-3">
                 {CRETI_KEYS.map(key => {
-                  const val = (selectedDtu.creti as Record<string, number>)?.[key] ?? 0;
+                  const val = cretiScores(selectedDtu)?.[key];
                   return (
                     <div key={key} className="text-center">
                       <div className="w-14 h-14 mx-auto rounded-full border-4 flex items-center justify-center"
                         style={{ borderColor: CRETI_COLORS[key] }}>
                         <span className="text-sm font-bold" style={{ color: CRETI_COLORS[key] }}>
-                          {(val * 100).toFixed(0)}
+                          {val == null ? '—' : (val * 100).toFixed(0)}
                         </span>
                       </div>
                       <p className="text-xs text-gray-400 mt-1 capitalize">{key}</p>

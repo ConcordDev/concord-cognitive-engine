@@ -95,6 +95,14 @@ type View = 'chart' | 'bubble' | 'map' | 'dashboard' | 'rankings' | 'saved';
 export function DataExplorer() {
   const [view, setView] = useState<View>('chart');
   const [aliases, setAliases] = useState<Record<string, string>>({});
+  // FIX-society-007: the country/indicator selection lives HERE, not in
+  // each view. Views unmount on switch, so per-view state reset the
+  // selection to USA · gdpPerCapita on every switch — a chart plotted
+  // in one view was silently replaced by the defaults when the user
+  // opened the Chart view and clicked Share link. Shared selection
+  // survives switching; Share saves the chart actually being viewed.
+  const [country, setCountry] = useState('USA');
+  const [indicator, setIndicator] = useState('gdpPerCapita');
 
   useEffect(() => {
     (async () => {
@@ -161,11 +169,11 @@ export function DataExplorer() {
         ))}
       </nav>
 
-      {view === 'chart' && <ChartView aliases={aliases} />}
+      {view === 'chart' && <ChartView aliases={aliases} country={country} indicator={indicator} onCountryChange={setCountry} onIndicatorChange={setIndicator} />}
       {view === 'bubble' && <BubbleView aliases={aliases} />}
       {view === 'map' && <MapChoroView aliases={aliases} />}
-      {view === 'dashboard' && <DashboardView />}
-      {view === 'rankings' && <RankingsView aliases={aliases} />}
+      {view === 'dashboard' && <DashboardView country={country} onCountryChange={setCountry} />}
+      {view === 'rankings' && <RankingsView aliases={aliases} indicator={indicator} onIndicatorChange={setIndicator} />}
       {view === 'saved' && <SavedView />}
     </div>
   );
@@ -294,9 +302,13 @@ function downloadCsv(filename: string, csv: string) {
 // toggling recomputes instantly client-side via `wb-transform-series`
 // against the cached raw series (+ a population series fetched once and
 // cached per-country for per-capita).
-function ChartView({ aliases }: { aliases: Record<string, string> }) {
-  const [country, setCountry] = useState('USA');
-  const [indicator, setIndicator] = useState('gdpPerCapita');
+function ChartView({ aliases, country, indicator, onCountryChange, onIndicatorChange }: {
+  aliases: Record<string, string>;
+  country: string; indicator: string;
+  onCountryChange: (v: string) => void; onIndicatorChange: (v: string) => void;
+}) {
+  const setCountry = onCountryChange;
+  const setIndicator = onIndicatorChange;
   const [kind, setKind] = useState<'line' | 'bar' | 'area'>('line');
   const [perCapita, setPerCapita] = useState(false);
   const [inflationAdjust, setInflationAdjust] = useState(false);
@@ -627,8 +639,8 @@ function MapChoroView({ aliases }: { aliases: Record<string, string> }) {
 }
 
 // ─── Country dashboard ───────────────────────────────────────────────────────
-function DashboardView() {
-  const [country, setCountry] = useState('USA');
+function DashboardView({ country, onCountryChange }: { country: string; onCountryChange: (v: string) => void }) {
+  const setCountry = onCountryChange;
   const [data, setData] = useState<DashResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -700,8 +712,11 @@ function DashboardView() {
 }
 
 // ─── Rankings (region / income aggregates) ───────────────────────────────────
-function RankingsView({ aliases }: { aliases: Record<string, string> }) {
-  const [indicator, setIndicator] = useState('gdpPerCapita');
+function RankingsView({ aliases, indicator, onIndicatorChange }: {
+  aliases: Record<string, string>;
+  indicator: string; onIndicatorChange: (v: string) => void;
+}) {
+  const setIndicator = onIndicatorChange;
   const [data, setData] = useState<RankResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
