@@ -143,6 +143,7 @@ import { resolvePiperVoice } from "./lib/voice-piper-voice.js";
 import { lensRunParams as _lensRunParams, peelRedundantArtifactWrapper as _peelRedundantArtifactWrapper } from "./lib/lens-input-normalize.js";
 import { httpErrorFromLensAction as _httpErrorFromLensAction } from "./lib/lens-action-http.js";
 import { shapeLensRunHttp as _shapeLensRunHttp, respondMacroResult as _respondMacroResult } from "./lib/lens-run-http.js";
+import { isUserNotification as _isUserNotification } from "./lib/notification-queue.js";
 import { createLensRunLogger as _createLensRunLogger } from "./lib/lens-run-log.js";
 import { resolveDualRegistry as _resolveDualRegistry } from "./lib/dual-registry-resolve.js";
 import {
@@ -68576,7 +68577,10 @@ app.get("/api/notifications/count", (req, res) => {
   ensureQueues();
   const userId = req.user?.id;
   const all = STATE.queues?.notifications || [];
-  const userNotifs = userId ? all.filter(n => !n.targetUserId || n.targetUserId === userId) : all;
+  // FIX-social-020: the queue also holds the autogen pipeline's operator
+  // proposals (dtu_proposal) — never a user's notifications, in the count
+  // or the list. isUserNotification is the one discriminator (lib).
+  const userNotifs = all.filter(n => _isUserNotification(n) && (!userId || !n.targetUserId || n.targetUserId === userId));
   const unread = userNotifs.filter(n => !n.readAt);
   res.json({ ok: true, count: userNotifs.length, unread: unread.length });
 });
@@ -68592,7 +68596,7 @@ app.get("/api/notifications", (req, res) => {
   const userId = req.user?.id;
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const all = STATE.queues?.notifications || [];
-  const mine = userId ? all.filter(n => !n.targetUserId || n.targetUserId === userId) : all;
+  const mine = all.filter(n => _isUserNotification(n) && (!userId || !n.targetUserId || n.targetUserId === userId));
   const notifications = [...mine]
     .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
     .slice(0, limit);
@@ -68605,7 +68609,7 @@ app.post("/api/notifications/read-all", (req, res) => {
   const all = STATE.queues?.notifications || [];
   let marked = 0;
   for (const n of all) {
-    if ((!userId || !n.targetUserId || n.targetUserId === userId) && !n.readAt) {
+    if (_isUserNotification(n) && (!userId || !n.targetUserId || n.targetUserId === userId) && !n.readAt) {
       n.readAt = new Date().toISOString();
       marked++;
     }
@@ -68618,7 +68622,7 @@ app.post("/api/notifications/:id/read", (req, res) => {
   ensureQueues();
   const userId = req.user?.id;
   const item = (STATE.queues?.notifications || []).find(n => n.id === req.params.id);
-  if (!item) return res.status(404).json({ ok: false, error: "Notification not found" });
+  if (!item || !_isUserNotification(item)) return res.status(404).json({ ok: false, error: "Notification not found" });
   if (userId && item.targetUserId && item.targetUserId !== userId) {
     return res.status(404).json({ ok: false, error: "Notification not found" });
   }
@@ -68630,7 +68634,7 @@ app.delete("/api/notifications/:id", (req, res) => {
   ensureQueues();
   const userId = req.user?.id;
   const all = STATE.queues?.notifications || [];
-  const idx = all.findIndex(n => n.id === req.params.id && (!userId || !n.targetUserId || n.targetUserId === userId));
+  const idx = all.findIndex(n => n.id === req.params.id && _isUserNotification(n) && (!userId || !n.targetUserId || n.targetUserId === userId));
   if (idx < 0) return res.status(404).json({ ok: false, error: "Notification not found" });
   all.splice(idx, 1);
   saveStateDebounced();
