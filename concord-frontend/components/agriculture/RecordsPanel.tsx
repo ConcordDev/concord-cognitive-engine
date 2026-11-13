@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Children, cloneElement, useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import {
   Bug,
   Calendar,
@@ -965,10 +965,17 @@ function EditorModal({
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
+  // The label is programmatically linked to its control (FIX-agriculture-009):
+  // the child receives a generated id, the label points at it, and every
+  // modal field's placeholder is raised from ds.input's gray-500 to
+  // gray-400 so field text reads on the dark dialog surface.
+  const rid = useId().replace(/[^a-zA-Z0-9]/g, '');
+  const id = `ag-field-${rid}`;
+  const child = Children.only(children) as ReactElement<{ id?: string; className?: string }>;
   return (
     <div>
-      <label className={ds.label}>{label}</label>
-      {children}
+      <label className={ds.label} htmlFor={id}>{label}</label>
+      {cloneElement(child, { id, className: cn(child.props.className, 'placeholder:text-gray-400') })}
     </div>
   );
 }

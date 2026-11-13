@@ -249,12 +249,12 @@ export function AgricultureActionPanel() {
                 <span className="text-zinc-400">after </span>
                 <span className="font-mono text-green-200">{f.lastCrop ?? '?'}</span>
                 <span className="text-zinc-400"> → </span>
-                {(f.suggestedNext ?? []).length > 0 ? (f.suggestedNext ?? []).join(', ') : <span className="text-zinc-500">no recommendation</span>}
+                {(f.suggestedNext ?? []).length > 0 ? (f.suggestedNext ?? []).join(', ') : <span className="text-zinc-400">no recommendation</span>}
                 {f.soilNote && <div className="text-[10px] text-emerald-300 mt-0.5">{f.soilNote}</div>}
                 {(f.avoid ?? []).length > 0 && <div className="text-[10px] text-amber-300 mt-0.5">avoid: {(f.avoid ?? []).join(', ')}</div>}
               </div>
             ))}
-            {(rotResult.fields ?? []).length === 0 && <div className="text-[10px] text-zinc-500 mt-0.5">No rotation candidates.</div>}
+            {(rotResult.fields ?? []).length === 0 && <div className="text-[10px] text-zinc-400 mt-0.5">No rotation candidates.</div>}
           </div>
         )}
         {waterResult && (() => {
