@@ -2557,6 +2557,16 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   const _elevated = _roleResolved && (callerRole === "owner" || callerRole === "founder");
   // Offer only the tools this caller can run (run_python: founder/sovereign + WASM).
   try { messages[0].content = messages[0].content.replace(TOOL_SCHEMA_BLOCK, () => toolSchemaBlockFor({ role: callerRole })); } catch { /* keep the full schema */ }
+  // GB-1500 CKPT-06: a short per-turn tool menu instead of all ~34 tools.
+  if (cockpitFlag("MENU")) {
+    try {
+      const { buildToolMenu, menuSchemaBlock } = await import("./cockpit/tool-menu.js");
+      const fullBlock = toolSchemaBlockFor({ role: callerRole });
+      const { menu } = await buildToolMenu({ goal: message, profile: "local-30b", lensActions, role: callerRole });
+      const block = menuSchemaBlock(menu, fullBlock);
+      if (block) messages[0].content = messages[0].content.replace(fullBlock, () => block);
+    } catch { /* keep the full schema */ }
+  }
   const ctx = {
     db,
     // Tests inject a fixed OpenStax lookup; production uses openstax-lookup.js.
