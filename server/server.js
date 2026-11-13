@@ -29265,6 +29265,35 @@ if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
         const _m = sess.messages[_i];
         if (_m?.role === "assistant") { _prevAgentRoute = _m.meta?.agentRoute || null; _prevReply = String(_m.content || ""); break; }
       }
+      // GB-1500 CKPT-16: with CONCORD_COCKPIT_ROUTE on, the cockpit decides whether this turn is an
+      // answer, one call, a run, or the reply to a waiting run. null means "not ours": the old route runs.
+      let _cockpitTurn = null;
+      try {
+        const { cockpitFlag: _cockpitFlag } = await import("./lib/cockpit/flags.js");
+        if (_cockpitFlag("ROUTE") && ctx?.actor?.userId) {
+          const { handleChatTurn: _handleCockpitTurn } = await import("./lib/cockpit/chat-entry.js");
+          _cockpitTurn = await _handleCockpitTurn({
+            db: ctx?.db || globalThis._concordSTATE?.db || null, userId: ctx.actor.userId,
+            chatSessionId: sessionId || null, message: prompt, lensContext: currentLens || null,
+            surface: "chat", prevRoute: _prevAgentRoute, prevReply: _prevReply,
+            runMacro, lensActions: LENS_ACTIONS,
+            chatProgress: (e) => { try { _chatProgress(ctx, e); } catch { /* progress never blocks */ } },
+            deadlineMs: Date.now() + 25000,
+          });
+        }
+      } catch (_ckErr) { console.warn("[cockpit] chat entry failed, using the old route:", _ckErr?.message || _ckErr); }
+      if (_cockpitTurn?.handled) {
+        const _ckReply = _cockpitTurn.reply;
+        const _ckMeta = { llmUsed: true, mode, source: "chat_agent", agentRoute: "cockpit", cockpit: _cockpitTurn.meta.cockpit, toolCallCount: 0, tools: [] };
+        sess.messages.push({ role: "assistant", content: _ckReply, ts: nowISO(), meta: _ckMeta });
+        _persistDeterministicTurn(_ckReply, _ckMeta);
+        saveStateDebounced();
+        return {
+          ok: true, reply: _ckReply, content: _ckReply, sessionId, mode, llmUsed: true,
+          route: "chat_agent", agentRoute: "cockpit", toolCalls: [], artifacts: [], sources: [],
+          meta: { panel: "chat", sessionId, ..._ckMeta },
+        };
+      }
       const _agentRouteKind = _ar.chatAgentRoute(prompt, { prevRoute: _prevAgentRoute, prevReply: _prevReply });
       const _agentCtx = { ...ctx, db: ctx?.db || globalThis._concordSTATE?.db || null };
       if (_agentRouteKind && _agentCtx.db && _agentCtx.actor?.userId) {
