@@ -2277,3 +2277,20 @@ Records in records/b3.jsonl; every fix pinned by a suite with a pristine negativ
 | FIX-mental-health-004 | `4558923aa` | Workspace tier, records-private notice, publish confirmation (records-visibility leg = desk/design) |
 | FIX-byo-keys-013 | `68091f723` | Catalog paging, sort, row detail (custom-provider leg = feature build, named) |
 | FIX-graph-004 | `7d36e7c97` | Field pan/zoom: drag, wheel-at-pointer, zoom buttons |
+
+## Money-lens slice — B3 (founder ruling 2026-11-13, office assignment; batch-and-hold)
+
+17 ids: 10 FIXED_PENDING_VERIFY, 7 stayed OPEN with named verdicts (bridge completion post).
+
+- FIX-auction-004 — Start CC opens empty; the pre-filled '1' mangled typed values. `73ee58b7d` (+ shipped CREATE-flow pin updated `b8d2d168d`).
+- FIX-auction-009 — wallet balance on the board + bid dialog via useWalletBalance. `446ab8482`.
+- FIX-marketplace-004 — balance leg fixed (MarketplaceApp header, `446ab8482`); currency-denomination leg named for the desk as a product call (USD shopfront pricing vs CC licensing both in-tree by design).
+- FIX-marketplace-003 — browse search debounced 300 ms (query key + params); client filter keeps the raw string. `d4a28e300` (pins `186e21eb0`).
+- FIX-marketplace-005 — browse reads parallelized; seller listings load failure surfaces with retry. `d4a28e300`.
+- FIX-marketplace-008 — browse stacks on mobile; Shop Manager sidebar collapses to an icon rail below sm. `882d5b25f`.
+- FIX-market-002 — 'Your Library' grounds on /api/dtus/mine total; the listings payload never carried the library field it read. `090dd3ff2`.
+- FIX-market-004 — seller-form listing titles (create + edit) capped at 120 with counters; the market lens's own form has no title field. `107f1659b` (pins `ae676d144`).
+- FIX-market-005 — the New listing CTA opens the create form (event to the panel) instead of focusing search. `107f1659b`.
+- FIX-black-market-012 — watch-update server action + inline edit on saved searches. `6c6ef94d5`.
+
+Stayed OPEN: FIX-auction-007 · FIX-questmarket-007 (delete-confirm present at branch state on both shared feed surfaces) · FIX-auction-010 (publisher confirms in place with a View post link) · FIX-questmarket-003 (full description path traced clean, parity 36/36) · FIX-questmarket-009 (the CTA overlap class is fixed at the shared frame) · FIX-questmarket-010 (session transport 502/503, desk class) · FIX-black-market-004 (all six load actions resolve in-tree; no failing action named — live-repro set).
