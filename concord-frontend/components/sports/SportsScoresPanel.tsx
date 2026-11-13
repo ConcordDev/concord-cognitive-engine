@@ -62,7 +62,7 @@ function GameCard({ g, onChange, watchIds, refresh }: {
         <div className="flex items-center gap-1">
           <span className="text-[10px] text-zinc-400 uppercase">{g.league} · {g.date}</span>
           <button aria-label="Favorite" type="button" onClick={watch}
-            className={cn('p-0.5', watchIds.includes(g.id) ? 'text-amber-400' : 'text-zinc-600 hover:text-amber-400')}>
+            className={cn('inline-flex min-h-11 min-w-11 items-center justify-center p-0.5', watchIds.includes(g.id) ? 'text-amber-400' : 'text-zinc-400 hover:text-amber-400')}>
             <Star className={cn('w-3.5 h-3.5', watchIds.includes(g.id) && 'fill-amber-400')} />
           </button>
           <button aria-label={`Edit ${g.homeTeam} vs ${g.awayTeam}`} type="button"

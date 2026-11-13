@@ -16,7 +16,6 @@
  *   8. Race-plan (agent) → chat_agent.do "build a race-day plan"
  */
 
-import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import {
   Trophy, BarChart3, ClipboardList, AlertTriangle, Users,
@@ -231,9 +230,9 @@ export function ActivityActionPanel() {
         `Return: 1) pace + fueling strategy for race day; 2) the 3 things to avoid in the final week; 3) the warm-up sequence.`,
       ].filter(Boolean).join(' ');
       const r = await lensRun({ domain: 'chat_agent', name: 'do', input: { task, maxTurns: 4 } });
-      const reply = readAgentReply(r.data);
-      if (reply.ok) { setAgentReply(reply.text); ok('Race plan ready.'); }
-      else err(reply.reason);
+      const reply = r.data?.result?.answer ?? r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      if (reply) { setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2)); ok('Race plan ready.'); }
+      else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -253,7 +252,7 @@ export function ActivityActionPanel() {
     <div className="rounded-lg border border-emerald-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-emerald-500/10 pb-2">
         <Trophy className="h-4 w-4 text-emerald-400" />
-        <h3 className="text-sm font-semibold text-white">Activity workbench</h3>
+        <h2 className="text-sm font-semibold text-white">Activity workbench</h2>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
           espn fantasy · strava
         </span>
@@ -262,13 +261,13 @@ export function ActivityActionPanel() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <div>
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Sport</label>
-          <select value={sport} onChange={(e) => setSport(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white capitalize">
+          <select aria-label="Sport" value={sport} onChange={(e) => setSport(e.target.value)} className="min-h-11 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white capitalize">
             {SPORTS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div>
           <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Level</label>
-          <select value={level} onChange={(e) => setLevel(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white capitalize">
+          <select aria-label="Level" value={level} onChange={(e) => setLevel(e.target.value)} className="min-h-11 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white capitalize">
             {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
         </div>

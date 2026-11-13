@@ -60,7 +60,7 @@ export function SportsStatsPanel() {
 
       {decided > 0 && (
         <div className={ds.panel}>
-          <h3 className={cn(ds.heading3, 'mb-3')}>Record</h3>
+          <h2 className={cn(ds.heading3, 'mb-3')}>Record</h2>
           <div className="flex rounded-full overflow-hidden h-3 bg-lattice-elevated">
             {stats.wins > 0 && (
               <div
@@ -91,7 +91,7 @@ export function SportsStatsPanel() {
 
       {games.filter((g) => g.result === 'win' || g.result === 'loss' || g.result === 'draw').length > 0 && (
         <div className={ds.panel}>
-          <h3 className={cn(ds.heading3, 'mb-3')}>Form</h3>
+          <h2 className={cn(ds.heading3, 'mb-3')}>Form</h2>
           <div className="flex gap-1">
             {[...games]
               .filter((g) => g.result === 'win' || g.result === 'loss' || g.result === 'draw')

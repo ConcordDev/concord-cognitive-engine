@@ -24,7 +24,7 @@ export function SportsLeaguesPanel() {
   return (
     <div className="space-y-3">
       <div>
-        <h3 className={ds.heading3}>Live league engine</h3>
+        <h2 className={ds.heading3}>Live league engine</h2>
         <p className={cn(ds.textMuted, 'text-xs mt-1')}>
           Create a league, add teams, schedule and simulate matches. Each play uses the
           sports-league-engine power-score formula on the server.
@@ -33,7 +33,7 @@ export function SportsLeaguesPanel() {
 
       {leagues.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+          <span className="text-[10px] uppercase tracking-wider text-zinc-400">
             Recent (this browser)
           </span>
           {leagues.map((l) => (
@@ -48,7 +48,7 @@ export function SportsLeaguesPanel() {
                   : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200',
               )}
             >
-              {l.name} <span className="text-zinc-500">· {l.sportKind}</span>
+              {l.name} <span className="text-zinc-400">· {l.sportKind}</span>
             </button>
           ))}
         </div>
@@ -64,7 +64,7 @@ export function SportsLeaguesPanel() {
         {active ? (
           <MatchSimulator leagueId={active.id} reloadToken={tableRev} onPlayed={bumpTable} />
         ) : (
-          <div className={cn(ds.panel, 'text-center text-xs text-zinc-500')}>
+          <div className={cn(ds.panel, 'text-center text-xs text-zinc-400')}>
             Create a league on the left to unlock match scheduling.
           </div>
         )}

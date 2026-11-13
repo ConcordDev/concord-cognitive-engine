@@ -301,7 +301,7 @@ export function SportsMatchesPanel() {
           >
             <div className={cn(ds.panel, 'space-y-3')}>
               <div className="flex items-center justify-between">
-                <h3 className={ds.heading3}>Log a match</h3>
+                <h2 className={ds.heading3}>Log a match</h2>
                 <button
                   type="button"
                   onClick={() => setShowCreate(false)}
@@ -484,7 +484,7 @@ export function SportsMatchesPanel() {
                     armAriaLabel={`Delete match ${g.title}`}
                     confirmAriaLabel={`Confirm delete match ${g.title}`}
                     confirmLabel={`Delete ${g.title}?`}
-                    className="text-gray-500 hover:text-red-400 p-1"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-gray-400 hover:text-red-400 p-1"
                   />
                 </div>
               </div>

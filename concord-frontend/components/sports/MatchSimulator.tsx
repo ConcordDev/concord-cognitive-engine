@@ -125,18 +125,18 @@ export function MatchSimulator({
       {!matchId ? (
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
-            <select
+            <select aria-label="Home team"
               value={homeId ?? ''}
               onChange={(e) => setHomeId(e.target.value || null)}
-              className="rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
+              className="min-h-11 rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
             >
               <option value="">Home team</option>
               {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
-            <select
+            <select aria-label="Away team"
               value={awayId ?? ''}
               onChange={(e) => setAwayId(e.target.value || null)}
-              className="rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
+              className="min-h-11 rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
             >
               <option value="">Away team</option>
               {teams.filter((t) => t.id !== homeId).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
