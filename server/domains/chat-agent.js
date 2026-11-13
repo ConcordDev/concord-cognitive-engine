@@ -53,7 +53,7 @@ export default function registerChatAgentMacros(register) {
     const runMacroFn = ctx?.runMacro || (typeof globalThis.__concordRunMacro === "function" ? globalThis.__concordRunMacro : null);
     const lensActions = ctx?.lensActions || globalThis.__concordLensActions || new Map();
 
-    return runAgentLoop({
+    const _loop = await runAgentLoop({
       db, userId, message: resolvedMessage, history,
       runMacro: runMacroFn,
       lensActions,
@@ -80,5 +80,7 @@ export default function registerChatAgentMacros(register) {
           : (Number(input.deadlineMs) > 0 ? { chatTransport: "json" } : {})),
       },
     });
+    // CKPT-19: one reply field every panel can read (the loop's text is `answer`).
+    return _loop && typeof _loop === "object" ? { ..._loop, reply: _loop.answer ?? null } : _loop;
   }, { note: "Agent Mode — runs an agentic tool-use loop with web search, compute, browse_url, run_lens_action (any of 200+ lens domain actions), create_dtu, expert_mode. Routes through Sprint 10 BYO router so user's API key kicks in. Returns answer + toolCalls + artifacts + provenance. Accepts input.message or input.task (alias)." });
 }
