@@ -83,7 +83,7 @@ export function DatamusePanel({ domain, className }: DatamusePanelProps) {
     <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden', className)}>
       <header className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/80 bg-zinc-900/40">
         <Pilcrow className="w-4 h-4 text-fuchsia-300" aria-hidden="true" />
-        <h3 className="text-sm font-medium text-zinc-100 flex-1">Datamuse · word relationships</h3>
+        <h2 className="text-sm font-medium text-zinc-100 flex-1">Datamuse · word relationships</h2>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
         <button
           type="button"
@@ -107,10 +107,10 @@ export function DatamusePanel({ domain, className }: DatamusePanelProps) {
             className="w-full pl-7 pr-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-fuchsia-500/40"
           />
         </div>
-        <select
+        <select aria-label="Relationship type"
           value={kind}
           onChange={(e) => onKindChange(e.target.value)}
-          className="text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-fuchsia-500/40"
+          className="min-h-11 text-xs bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100 focus:outline-none focus:ring-1 focus:ring-fuchsia-500/40"
         >
           {KIND_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>

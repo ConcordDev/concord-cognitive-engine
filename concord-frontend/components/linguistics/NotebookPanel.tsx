@@ -304,9 +304,9 @@ export function NotebookPanel({
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {langs.length > 0 && (
               <div className="panel p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
                   <Languages className="w-4 h-4 text-pink-400" /> Languages Studied
-                </h3>
+                </h2>
                 <div className="flex flex-wrap gap-2">
                   {langs.map(lang => {
                     const count = allRecords.filter(i => i.data.language === lang).length;
@@ -328,9 +328,9 @@ export function NotebookPanel({
             )}
             {Object.keys(subfieldCounts).length > 0 && (
               <div className="panel p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
                   <GraduationCap className="w-4 h-4 text-purple-400" /> Entries by Subfield
-                </h3>
+                </h2>
                 <div className="space-y-2">
                   {Object.entries(subfieldCounts).sort((a, b) => b[1] - a[1]).map(([subfield, count]) => (
                     <div key={subfield} className="flex items-center gap-2">
@@ -394,9 +394,9 @@ export function NotebookPanel({
               />
             </div>
             <select
-              value={subfieldFilter}
+              aria-label="Filter by subfield" value={subfieldFilter}
               onChange={e => setSubfieldFilter(e.target.value as LingSubfield | '')}
-              className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-white"
+              className="min-h-11 px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-white"
             >
               <option value="">All Subfields</option>
               <option value="phonology">Phonology</option>
@@ -433,9 +433,9 @@ export function NotebookPanel({
               />
               <div className="grid grid-cols-2 gap-3">
                 <select
-                  value={formSubfield}
+                  aria-label="Subfield" value={formSubfield}
                   onChange={e => setFormSubfield(e.target.value as LingSubfield)}
-                  className="input-lattice"
+                  className="min-h-11 input-lattice"
                 >
                   <option value="phonology">Phonology</option>
                   <option value="morphology">Morphology</option>
@@ -530,8 +530,6 @@ export function NotebookPanel({
               )}
               <div className="flex gap-2">
                 <button onClick={handleCreate} disabled={!formTitle.trim()} className="px-3 py-1.5 bg-pink-400/20 text-pink-400 rounded-lg text-sm font-medium hover:bg-pink-400/30 disabled:opacity-50">{editingId ? 'Save changes' : 'Create'}</button>
-                {/* FIX-linguistics-005: the disabled button never said why — a note names the missing field while the title is blank (the same form serves Analyses, Lexicon, Grammars, Corpora and Translations). */}
-                {!formTitle.trim() && <span role="note" className="text-xs text-gray-400 self-center">Title is required.</span>}
                 <button onClick={() => { resetForm(); setShowCreate(false); }} className="text-sm text-gray-400 hover:text-white">Cancel</button>
               </div>
             </div>
@@ -668,7 +666,7 @@ export function NotebookPanel({
                         ) : (
                           <p className="text-xs text-amber-300">This stored tree does not parse: {parsed.error}</p>
                         )}
-                        <pre className="text-[11px] font-mono text-gray-500 bg-lattice-deep/60 p-2 rounded overflow-auto max-h-24 mt-1">{selected.data.syntaxTree}</pre>
+                        <pre className="text-[11px] font-mono text-gray-400 bg-lattice-deep/60 p-2 rounded overflow-auto max-h-24 mt-1">{selected.data.syntaxTree}</pre>
                       </div>
                     );
                   })()}

@@ -61,7 +61,7 @@ export function WordLookup() {
       <header className="flex items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2">
           <Languages className="h-5 w-5 text-cyan-400" />
-          <h2 className="text-sm font-semibold text-white">Word Lookup</h2>
+          <h3 className="text-sm font-semibold text-white">Word Lookup</h3>
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">free-dictionary · datamuse</span>
         </div>
       </header>
@@ -80,7 +80,7 @@ export function WordLookup() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-baseline gap-2">
-                    <h3 className="text-xl font-semibold text-white">{e.word}</h3>
+                    <h4 className="text-xl font-semibold text-white">{e.word}</h4>
                     {e.phonetic && <span className="font-mono text-sm text-cyan-300">{e.phonetic}</span>}
                   </div>
                   {e.phonetics?.[0]?.audio && (

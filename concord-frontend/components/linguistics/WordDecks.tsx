@@ -87,7 +87,7 @@ export function WordDecks({ onImported }: { onImported?: () => void }) {
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
         <Library className="w-4 h-4 text-cyan-400" />
-        <h3 className="text-sm font-bold text-zinc-100">Word Decks</h3>
+        <h2 className="text-sm font-bold text-zinc-100">Word Decks</h2>
         <button
           onClick={() => setCreating(!creating)}
           className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white inline-flex items-center gap-1"
