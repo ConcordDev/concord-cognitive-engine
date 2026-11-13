@@ -141,6 +141,12 @@ export default function ARLensPage() {
   const [arSupported, setArSupported] = useState(false);
   const renderPlanRef = useRef<ArRenderPlan | null>(null);
   renderPlanRef.current = renderPlan;
+  // Generation of the live viewport init. initThree is async (dynamic
+  // three import); a re-run while an earlier init is still in flight
+  // must orphan that init, or the two race to own the container and the
+  // stale one can win — the saved scene never renders, or a previous
+  // scene stays up (FIX-ar-004).
+  const initGenRef = useRef(0);
 
   // Feature-detect immersive-ar once (WebXR needs a secure context; defaults to `self`).
   useEffect(() => {
@@ -154,12 +160,13 @@ export default function ARLensPage() {
 
     const container = viewportRef.current;
     let disposed = false;
+    const gen = ++initGenRef.current;
 
     interface RenderDrawItem { id?: string; kind?: string; model?: string | null; transform?: { position?: { x: number; y: number; z: number }; rotation?: { x: number; y: number; z: number }; scale?: number }; opacity?: number; color?: string }
 
     const initThree = async () => {
       const THREE = await import('three');
-      if (disposed || !container) return;
+      if (disposed || gen !== initGenRef.current || !container) return;
 
       const width = container.clientWidth;
       const height = container.clientHeight;
@@ -278,6 +285,7 @@ export default function ARLensPage() {
 
     initThree();
     return () => {
+      disposed = true;
       const cleanup = (container as unknown as Record<string, unknown>).__threeCleanup as (() => void) | undefined;
       if (cleanup) cleanup();
     };
