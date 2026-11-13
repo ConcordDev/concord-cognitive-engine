@@ -1,3 +1,4 @@
+import { registerLensExportProvider } from "../lib/lens-export.js";
 // The frontier card opens a link, then a bearing, then a mark.
 // The cross-world feed and the royalty window stay off this domain.
 // List returns id and name. The bearing and the mark come back
@@ -135,7 +136,28 @@ function linkFace(link) {
   return { id: link.id, name: link.name };
 }
 
+
+// ── lens export provider (FIX-concord-link-frontier-004) ──────────────
+// Link records live in this domain's own stores (the in-memory bucket,
+// backed by the concord_link_frontier_links table) — neither is a store
+// the shared export's legs read, so the export called a lens full of the
+// user's links empty. orderedLinks is the domain's own merged read
+// (bucket + table, caller-scoped); the provider reuses it as-is.
+function clfExportRows(ctx) {
+  const userId = linkActor(ctx);
+  if (!userId) return [];
+  return orderedLinks(ctx, userId).map((link) => ({
+    id: link.id,
+    type: "link",
+    title: link.name,
+    createdAt: link.createdAt || null,
+    updatedAt: link.updatedAt || link.createdAt || null,
+    data: { bearing: link.bearing || "", mark: link.mark ?? null },
+  }));
+}
+
 export default function registerConcordLinkFrontierActions(registerLensAction) {
+  registerLensExportProvider("concord-link-frontier", clfExportRows);
   registerLensAction("concord-link-frontier", "link-open", (ctx, _artifact, params = {}) => {
     try {
       const userId = linkActor(ctx);
