@@ -133,7 +133,7 @@ export function FireIncidents() {
         <p className="text-[11px] text-zinc-400">InciWeb reports no active incidents{state ? ` in ${state}` : ''} right now.{firesPulledAt ? ` Pulled ${firesPulledAt.toLocaleTimeString()}.` : ''}</p>
       )}
       {!firesError && fires.length > 0 && firesPulledAt && (
-        <p className="text-[10px] text-zinc-500">Source: InciWeb · pulled {firesPulledAt.toLocaleTimeString()}</p>
+        <p className="text-[10px] text-zinc-400">Source: InciWeb · pulled {firesPulledAt.toLocaleTimeString()}</p>
       )}
 
       <div className="border-t border-zinc-800 pt-3">
@@ -159,7 +159,7 @@ export function FireIncidents() {
               <div key={p.objectId ?? p.incidentName} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950/40 px-2.5 py-1.5">
                 <div className="min-w-0 flex-1">
                   <span className="text-xs font-medium text-white">{p.incidentName || 'Unnamed perimeter'}</span>
-                  <span className="ml-2 text-[10px] text-zinc-500">{p.mapMethod || ''}{p.polygonDateTime ? ` · mapped ${p.polygonDateTime}` : ''}</span>
+                  <span className="ml-2 text-[10px] text-zinc-400">{p.mapMethod || ''}{p.polygonDateTime ? ` · mapped ${p.polygonDateTime}` : ''}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {p.gisAcres != null && <span className="font-mono text-[11px] text-amber-300">{Math.round(p.gisAcres).toLocaleString()} ac</span>}

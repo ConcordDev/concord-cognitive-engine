@@ -196,7 +196,7 @@ export function StandManager() {
               <button onClick={() => setActive(active === st.id ? null : st.id)} className="text-left min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{st.name}</p>
                 <p className="text-[10px] text-zinc-400">{st.species.replace(/_/g, ' ')} · {st.acres} ac · ~{st.estimatedTrees.toLocaleString()} trees · {st.activityCount} activities</p>
-                <p className="text-[10px] text-zinc-500 font-mono">stand id {st.id}</p>
+                <p className="text-[10px] text-zinc-400 font-mono">stand id {st.id}</p>
               </button>
               <button type="button" aria-label={`Edit ${st.name}`} onClick={() => startEdit(st)} className="text-zinc-400 hover:text-zinc-100"><Pencil className="w-3 h-3" /></button>
               <button aria-label="Delete" onClick={() => setConfirmDelete(confirmDelete === st.id ? null : st.id)} className="text-rose-400"><Trash2 className="w-3 h-3" /></button>

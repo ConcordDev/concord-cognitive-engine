@@ -124,7 +124,7 @@ export function GrowthProjectionPanel() {
             {result.boardFeetPerTree?.toLocaleString() ?? '—'} bf/tree now · {result.treesPerAcre ?? 100} trees/ac · site index {result.siteIndex ?? 80}.
             Peak mean annual increment of {result.peakMai.toLocaleString()} bf/ac/yr at age {result.biologicalRotationAge} for {result.species.replace(/_/g, ' ')}.
           </p>
-          {result.formula && <p className="text-[10px] text-zinc-500 leading-snug">{result.formula}</p>}
+          {result.formula && <p className="text-[10px] text-zinc-400 leading-snug">{result.formula}</p>}
         </div>
       )}
       {!result && !busy && <p className="text-xs text-zinc-400 italic">No projection yet. Enter stand details above.</p>}
