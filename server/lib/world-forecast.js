@@ -336,6 +336,11 @@ export async function composeRegional(db, STATE, worldId) {
 // the archive (no stored samples, no writer). The panel is labelled
 // accordingly; scoring against realized state would need an as-of
 // embodied-signal read, which does not exist yet.
+// A same-kind pair counts as agreement only within this temperature
+// drift — beyond it the two forecasts describe different weather
+// whatever the shared category label says (FIX-forecast-005).
+const AGREEMENT_TEMP_TOLERANCE_C = 5;
+
 export async function forecastAccuracy(db, worldId, limit = 20) {
   if (!db || !worldId) return { ok: false, reason: "missing_inputs" };
   if (badNumericField({ limit }, ["limit"])) return { ok: false, error: "invalid_limit" };
@@ -343,13 +348,21 @@ export async function forecastAccuracy(db, worldId, limit = 20) {
     ensureForecastTable(db);
     const rows = db.prepare(`
       SELECT forecast_json, composed_at FROM world_forecasts
-      WHERE world_id = ? ORDER BY composed_at ASC
+      WHERE world_id = ? ORDER BY composed_at ASC, id ASC
     `).all(worldId);
-    const parsed = rows.map(r => {
+    const parsedAll = rows.map(r => {
       let j = null;
       try { j = JSON.parse(r.forecast_json); } catch { /* skip */ }
       return { composedAt: r.composed_at, forecast: j };
     }).filter(x => x.forecast);
+    // One forecast per instant (FIX-forecast-005): a double compose in the
+    // same second persists two rows for one moment, and both used to score
+    // as separate samples — the view showed duplicate samples with
+    // identical timestamps. The later row is that instant's forecast;
+    // earlier same-second rows are superseded.
+    const byInstant = new Map();
+    for (const x of parsedAll) byInstant.set(x.composedAt, x);
+    const parsed = [...byInstant.values()].sort((a, b) => a.composedAt - b.composedAt);
     const scored = [];
     for (let i = 0; i < parsed.length; i++) {
       const p = parsed[i];
@@ -370,7 +383,15 @@ export async function forecastAccuracy(db, worldId, limit = 20) {
       if (typeof pred.temperature_c === "number" && typeof real.temperature_c === "number") {
         tempErr = Number(Math.abs(pred.temperature_c - real.temperature_c).toFixed(2));
       }
-      if (pred.kind && real.kind) kindHit = pred.kind === real.kind;
+      // Agreement must be plausible (FIX-forecast-005): the kind is a
+      // coarse category, so a 15° forecast against a 0.5° realization of
+      // the same kind used to count as agreement and the view read 100%
+      // over wild swings. A sample agrees only when the kinds match AND,
+      // where both temperatures are known, the drift is within the
+      // consistency tolerance.
+      if (pred.kind && real.kind) {
+        kindHit = pred.kind === real.kind && (tempErr === null || tempErr <= AGREEMENT_TEMP_TOLERANCE_C);
+      }
       scored.push({
         forecast_ts: p.composedAt,
         target_ts: targetTs,
@@ -378,8 +399,11 @@ export async function forecastAccuracy(db, worldId, limit = 20) {
         predicted_kind: pred.kind || null,
         realized_kind: real.kind || null,
         kind_hit: kindHit,
-        predicted_temp_c: pred.temperature_c ?? null,
-        realized_temp_c: real.temperature_c ?? null,
+        // Rounded at the source (FIX-forecast-005): raw signal arithmetic
+        // carries binary float noise (0.4800000000000002) that the view
+        // rendered verbatim.
+        predicted_temp_c: typeof pred.temperature_c === "number" ? Number(pred.temperature_c.toFixed(2)) : null,
+        realized_temp_c: typeof real.temperature_c === "number" ? Number(real.temperature_c.toFixed(2)) : null,
         temp_abs_error_c: tempErr,
       });
     }
