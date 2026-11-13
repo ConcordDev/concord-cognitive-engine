@@ -285,6 +285,8 @@ function NotebookTab() {
 
   const create = async () => {
     if (!title.trim()) { setErr('entry title required'); return; }
+    // FIX-lab-003: state the cap in words (the server refuses by name too).
+    if (title.trim().length > 200) { setErr('Entry title must be 200 characters or fewer.'); return; }
     setBusy(true);
     try {
       await run('notebook-create', { title, project, body });
@@ -311,7 +313,7 @@ function NotebookTab() {
   return (
     <div className="space-y-4">
       <div className="grid md:grid-cols-3 gap-2">
-        <Field label="Entry title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="PCR optimisation" />
+        <Field label="Entry title" value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} placeholder="PCR optimisation" />
         <Field label="Project" value={project} onChange={(e) => setProject(e.target.value)} placeholder="Unfiled" />
         <div className="flex items-end">
           <button onClick={create} disabled={busy} className="btn-neon cyan flex items-center gap-1 w-full justify-center">

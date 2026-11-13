@@ -774,6 +774,12 @@ export default function registerLabActions(registerLensAction) {
         if (!gate.ok) return gate;
         store = "orgNotebook"; key = orgId;
       }
+      // FIX-lab-003: a title past the 200 cap was silently sliced by
+      // labClean and the entry created under a different title than
+      // typed. Refuse by name instead; the form caps at 200 too.
+      if (String(params.title == null ? "" : params.title).trim().length > 200) {
+        return { ok: false, error: "entry title must be 200 characters or fewer" };
+      }
       const title = labClean(params.title, 200);
       if (!title) return { ok: false, error: "entry title required" };
       const entry = {
