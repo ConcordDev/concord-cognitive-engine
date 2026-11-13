@@ -17647,11 +17647,22 @@ register("transfer", "classify_domain", (ctx, input = {}) => {
   try {
   enforceEthosInvariant("transfer_classify");
   const dtuId = String(input.dtuId || "");
-  if (!dtuId) return { ok: false, error: "dtuId required" };
-  const dtu = ctx.state.dtus?.get(dtuId);
-  if (!dtu) return { ok: false, error: "DTU not found" };
-  const domain = classifyDomain(dtu);
-  return { ok: true, dtuId, domain };
+  if (dtuId) {
+    const dtu = ctx.state.dtus?.get(dtuId);
+    if (!dtu) return { ok: false, error: "DTU not found" };
+    const domain = classifyDomain(dtu);
+    return { ok: true, dtuId, domain };
+  }
+  // FIX-transfer-009: the Transfer UI classifies free text — it sends
+  // { content } and has no DTU to point at, so every classification
+  // from the UI died on "dtuId required". Classify the text through
+  // the platform's own pseudo-DTU shape (the multi-lens convergence
+  // pattern) instead of demanding a stored record.
+  const content = String(input.content || "").trim();
+  if (!content) return { ok: false, error: "dtuId or content required — pass a DTU id, or the text to classify" };
+  const pseudoDtu = { title: content.slice(0, 200), human: { summary: content.slice(0, 2000) }, tags: [] };
+  const domain = classifyDomain(pseudoDtu);
+  return { ok: true, domain, classifiedFrom: "content" };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 }, { public: true });
 
@@ -84323,28 +84334,52 @@ function syllogisticReason(input = {}, userId = "anon") {
   }
 
   if (minorUniversal) {
-    // Canonical Barbara: All Z are X + All X are Y ⊢ All Z are Y.
+    // Canonical Barbara, in either slot order — the two universal premises
+    // chain through their shared middle term whichever field each was
+    // typed into:
+    //   subclass order: All X are Y + All Z are X ⊢ All Z are Y
+    //     (the minor names a subclass of the major's subject);
+    //   chain order:    All X are Y + All Y are Z ⊢ All X are Z
+    //     (the minor's subject is the major's object).
+    // Only the subclass order was tried before, so the audit's chain-order
+    // entry ('All A are B' / 'All B are C') was refused with
+    // 'Category mismatch: "c" does not match "a"' — it compared the minor's
+    // object against the major's subject and never tried the chain
+    // (FIX-inference-002).
     const minorCategoryTyped = minorUniversal[1];
     const minorObject = minorUniversal[2].toLowerCase();
-    if (stem(minorObject) !== stem(category)) {
+    const minorCategory = _singularizeCategory(minorCategoryTyped.toLowerCase());
+    let conclusionSubject, conclusionSubjectTyped, conclusionObject, minorFactObject, ruleConsequent;
+    if (stem(minorObject) === stem(category)) {
+      conclusionSubject = minorCategory;
+      conclusionSubjectTyped = minorCategoryTyped;
+      conclusionObject = property;
+      minorFactObject = category;
+      ruleConsequent = property;
+    } else if (stem(minorCategory) === stem(property)) {
+      conclusionSubject = category;
+      conclusionSubjectTyped = majorMatch[1];
+      conclusionObject = minorObject;
+      minorFactObject = minorObject;
+      ruleConsequent = minorObject;
+    } else {
       return {
         ok: false,
         step: "category",
         error: `Category mismatch: "${minorObject}" does not match "${category}"`
       };
     }
-    const minorCategory = _singularizeCategory(minorCategoryTyped.toLowerCase());
     addInferenceFact({
       subject: category, predicate: "is", object: property, universal: true, source: "major_premise"
     }, userId);
     addInferenceFact({
-      subject: minorCategory, predicate: "is", object: category, universal: true, source: "minor_premise"
+      subject: minorCategory, predicate: "is", object: minorFactObject, universal: true, source: "minor_premise"
     }, userId);
     addInferenceRule({
-      name: `All ${category} are ${property}`,
+      name: `All ${category} are ${ruleConsequent}`,
       type: "implication",
       antecedent: { predicate: "is", object: category },
-      consequent: { predicate: "is", object: property },
+      consequent: { predicate: "is", object: ruleConsequent },
       confidence: 1.0
     });
     _inferenceNoteDeskOperation(userId, "inference");
@@ -84354,14 +84389,14 @@ function syllogisticReason(input = {}, userId = "anon") {
     // path (S-INF-1).
     const kbU = STATE.reasoning.knowledgeBase;
     const standingU = [...kbU.facts.values(), ...kbU.derived.values()].find(d =>
-      d.subject === minorCategory && d.predicate === "is" && d.object === property && d.universal
+      d.subject === conclusionSubject && d.predicate === "is" && d.object === conclusionObject && d.universal
     );
     if (!standingU) {
       const derivedFact = {
         id: uid("derived"),
-        subject: minorCategory,
+        subject: conclusionSubject,
         predicate: "is",
-        object: property,
+        object: conclusionObject,
         universal: true,
         negated: false,
         confidence: 1.0,
@@ -84375,19 +84410,19 @@ function syllogisticReason(input = {}, userId = "anon") {
     }
     return {
       ok: true,
-      conclusion: `All ${minorCategoryTyped.toLowerCase()} are ${property}`,
+      conclusion: `All ${conclusionSubjectTyped.toLowerCase()} are ${conclusionObject}`,
       derivation: {
         majorPremise,
         minorPremise,
-        conclusion: `all ${minorCategory} are ${property}`,
+        conclusion: `all ${conclusionSubject} are ${conclusionObject}`,
         rule: "Syllogistic reasoning (Barbara): transitivity of universal premises",
         confidence: 1.0,
         derivedThisRun: !standingU,
         alreadyDerived: Boolean(standingU)
       },
       kbWrites: {
-        premisesStored: [`all ${category} are ${property}`, `all ${minorCategory} are ${category}`],
-        ruleAdded: `All ${category} are ${property}`,
+        premisesStored: [`all ${category} are ${property}`, `all ${minorCategory} are ${minorFactObject}`],
+        ruleAdded: `All ${category} are ${ruleConsequent}`,
         conclusionStored: true
       }
     };
