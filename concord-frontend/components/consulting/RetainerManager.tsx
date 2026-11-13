@@ -135,7 +135,7 @@ export function RetainerManager() {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} role="button" tabIndex={0}>
           <div className="w-full max-w-xs bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0}>
-            <h4 className="text-sm font-bold text-zinc-100 mb-3">New Retainer</h4>
+            <h2 className="text-sm font-bold text-zinc-100 mb-3">New Retainer</h2>
             <div className="space-y-2">
               <input value={form.client} onChange={e => setForm({ ...form, client: e.target.value })} placeholder="Client"
                 className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
@@ -143,8 +143,8 @@ export function RetainerManager() {
                 className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
               <input value={form.monthlyAmount} onChange={e => setForm({ ...form, monthlyAmount: e.target.value })} placeholder="Amount per period ($)"
                 className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
-              <select value={form.cadence} onChange={e => setForm({ ...form, cadence: e.target.value })}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
+              <select aria-label="Billing cadence" onChange={e => setForm({ ...form, cadence: e.target.value })}
+                className="min-h-11 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
                 <option value="quarterly">Quarterly</option>

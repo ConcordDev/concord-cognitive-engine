@@ -113,13 +113,13 @@ export function StaffingPlanner({ engagements }: { engagements: EngagementOption
       </div>
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 flex flex-wrap gap-1.5">
-        <select value={aForm.consultantId} onChange={e => setAForm({ ...aForm, consultantId: e.target.value })}
-          className="flex-1 min-w-[110px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
+        <select aria-label="Consultant" onChange={e => setAForm({ ...aForm, consultantId: e.target.value })}
+          className="min-h-11 flex-1 min-w-[110px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
           <option value="">Consultant…</option>
           {rows.map(r => <option key={r.consultantId} value={r.consultantId}>{r.name}</option>)}
         </select>
-        <select value={aForm.engagementId} onChange={e => setAForm({ ...aForm, engagementId: e.target.value })}
-          className="flex-1 min-w-[110px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
+        <select aria-label="Engagement" onChange={e => setAForm({ ...aForm, engagementId: e.target.value })}
+          className="min-h-11 flex-1 min-w-[110px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
           <option value="">Engagement…</option>
           {engagements.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>

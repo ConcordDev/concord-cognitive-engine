@@ -136,9 +136,9 @@ export function EngagementTracker({ onChanged, newFocusSignal = 0 }: { onChanged
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-1">
         <Briefcase className="w-4 h-4 text-indigo-400" />
-        <h3 className="text-sm font-bold text-zinc-100">Engagement Tracker</h3>
+        <h2 className="text-sm font-bold text-zinc-100">Engagement Tracker</h2>
       </div>
-      <p className="text-[10px] text-zinc-500 mb-3">
+      <p className="text-[10px] text-zinc-400 mb-3">
         Engagement status, rates, and time logs — for freeform briefs and scope notes,
         open Engagement notes in the records rail.
       </p>
@@ -196,8 +196,8 @@ export function EngagementTracker({ onChanged, newFocusSignal = 0 }: { onChanged
                   <input value={editForm.budgetHours} onChange={e2 => setEditForm({ ...editForm, budgetHours: e2.target.value })}
                     className="ml-1.5 w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
                 </label>
-                <select value={editForm.status} onChange={e2 => setEditForm({ ...editForm, status: e2.target.value })}
-                  className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200">
+                <select aria-label="Engagement status" onChange={e2 => setEditForm({ ...editForm, status: e2.target.value })}
+                  className="min-h-11 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200">
                   {EDITABLE_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                 </select>
                 <button onClick={() => saveEdit(e.id)} className="px-2 py-1 text-[11px] rounded bg-indigo-600 hover:bg-indigo-500 text-white font-semibold inline-flex items-center gap-1"><Check className="w-3 h-3" />Save</button>

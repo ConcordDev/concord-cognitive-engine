@@ -75,7 +75,7 @@ export function LiveTimer({ engagements, onLogged }: { engagements: EngagementOp
     <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
       <div className="flex items-center gap-2 mb-3">
         <TimerIcon className="w-4 h-4 text-indigo-400" />
-        <h3 className="text-sm font-bold text-zinc-100">Live Timer</h3>
+        <h2 className="text-sm font-bold text-zinc-100">Live Timer</h2>
       </div>
 
       {timer ? (
@@ -98,8 +98,8 @@ export function LiveTimer({ engagements, onLogged }: { engagements: EngagementOp
         </div>
       ) : (
         <div className="space-y-2">
-          <select value={engId} onChange={e => setEngId(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
+          <select aria-label="Engagement" onChange={e => setEngId(e.target.value)}
+            className="min-h-11 w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200">
             <option value="">Select engagement…</option>
             {engagements.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
           </select>

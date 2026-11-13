@@ -89,8 +89,8 @@ export function ExpenseTracker({ engagements }: { engagements: EngagementOption[
       </div>
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 flex flex-wrap gap-1.5 items-center">
-        <select value={form.engagementId} onChange={e => setForm({ ...form, engagementId: e.target.value })}
-          className="flex-1 min-w-[120px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
+        <select aria-label="Engagement" onChange={e => setForm({ ...form, engagementId: e.target.value })}
+          className="min-h-11 flex-1 min-w-[120px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
           <option value="">Engagement…</option>
           {engagements.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
