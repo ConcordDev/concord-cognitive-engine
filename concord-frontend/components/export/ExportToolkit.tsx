@@ -70,6 +70,7 @@ export function ExportToolkit() {
       <PdfExport dtus={dtus} />
       <EncryptedArchive dtus={dtus} />
       <DecryptedArchive />
+      <ImportDtuPanel />
       <CloudDestinations />
       <ExportHistory />
     </div>
@@ -464,6 +465,83 @@ export function DecryptedArchive() {
         </label>
         <button onClick={decrypt} disabled={busy || !envelope} className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} Decrypt + download
+        </button>
+      </div>
+      {fileName && <p className="mt-1 text-[10px] text-zinc-500">Loaded: {fileName}</p>}
+      {info && <p className="mt-2 text-[10px] text-zinc-400">{info}</p>}
+    </Panel>
+  );
+}
+
+
+// ── [S] import a .dtu export (FIX-export-002) ──────────────────────────
+// The .dtu round trip existed only halfway: every lens's ↓.dtu button
+// downloads a real binary DTU (POST /api/lens/:domain/export-dtu) and
+// the server validates + imports that exact format at
+// POST /api/lens/:domain/import-dtu (inspectDTU), but no surface called
+// it — the toolkit's only file-in panel was Decrypt. This panel closes
+// the trip: pick a .dtu file, name the lens it belongs to (the file's
+// own recorded domain is preserved on the created DTU), and the server
+// validates the file before anything is created. A too-small file is
+// refused here, before any request, on the server's own size floor.
+export function ImportDtuPanel() {
+  const [bytes, setBytes] = useState<ArrayBuffer | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [domain, setDomain] = useState('export');
+  const [busy, setBusy] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+
+  const onFile = async (file: File) => {
+    setInfo(null);
+    try {
+      const buf = await file.arrayBuffer();
+      if (buf.byteLength < 48) {
+        setBytes(null); setFileName(null);
+        setInfo('That file is too small to be a Concord .dtu export — nothing is loaded now.');
+        return;
+      }
+      setBytes(buf);
+      setFileName(file.name);
+    } catch {
+      setBytes(null); setFileName(null);
+      setInfo('Could not read this file — nothing is loaded now.');
+    }
+  };
+
+  const importFile = async () => {
+    if (!bytes) { setInfo('Choose a .dtu export file first.'); return; }
+    const target = domain.trim().toLowerCase();
+    if (!target) { setInfo('Name the lens this export belongs to.'); return; }
+    setBusy(true); setInfo(null);
+    try {
+      const res = await api.post(`/api/lens/${target}/import-dtu`, bytes, {
+        headers: { 'Content-Type': 'application/octet-stream' },
+      });
+      const data = res.data as { imported?: boolean; dtuId?: string; metadata?: { title?: string; domain?: string } };
+      if (!data?.imported) { setInfo('The server did not confirm the import — nothing was created.'); return; }
+      const title = data.metadata?.title ? ` "${data.metadata.title}"` : '';
+      setInfo(`Imported${title} as DTU ${data.dtuId || ''} — validated and added to your corpus.`);
+    } catch (e) {
+      const err = e as { response?: { data?: { error?: string } } };
+      setInfo(err.response?.data?.error ? `Import refused: ${err.response.data.error}` : 'Import failed — could not reach the server. Nothing was created.');
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Panel icon={FileDown} title="Import a .dtu export" tag="round trip">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
+          .dtu file
+          <input type="file" accept=".dtu,application/octet-stream" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); }}
+            className="w-56 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white file:mr-2 file:rounded file:border-0 file:bg-zinc-800 file:px-2 file:py-0.5 file:text-zinc-300" />
+        </label>
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
+          Lens
+          <input type="text" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="export"
+            className="w-36 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
+        </label>
+        <button onClick={importFile} disabled={busy || !bytes} className="flex items-center gap-1 rounded bg-teal-600 px-2.5 py-1.5 text-xs text-white hover:bg-teal-500 disabled:opacity-40">
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} Import + validate
         </button>
       </div>
       {fileName && <p className="mt-1 text-[10px] text-zinc-500">Loaded: {fileName}</p>}
