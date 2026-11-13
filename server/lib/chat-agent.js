@@ -104,7 +104,7 @@ const ECHOED_TOOL_RESULT_RE = /^\s*\[TOOL_RESULT:/;
 // Order: this map is the source of truth for what's REQUIRED, not for the
 // full param shape. Optional params are documented in TOOL_SCHEMA_BLOCK but
 // not enforced here. Keep this list in sync with TOOL_SCHEMA_BLOCK.
-const TOOL_REQUIRED_PARAMS = {
+export const TOOL_REQUIRED_PARAMS = {
   web_search:        ["query"],
   run_compute:       ["key", "input"],
   dtu_search:        ["query"],
