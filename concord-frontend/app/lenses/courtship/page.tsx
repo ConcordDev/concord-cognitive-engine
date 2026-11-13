@@ -18,6 +18,7 @@ import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { NorthStarFrame } from '@/components/lens/NorthStarFrame';
 import { HeartEventModal } from '@/components/courtship/HeartEventModal';
 import { ConfirmDissolveModal } from '@/components/courtship/ConfirmDissolveModal';
+import { partnerLabel } from '@/components/courtship/courtship-types';
 import { useCourtshipDesk } from '@/components/courtship/useCourtshipDesk';
 import { CourtshipsPanel } from '@/components/courtship/CourtshipsPanel';
 import { MarriagesPanel } from '@/components/courtship/MarriagesPanel';
@@ -160,7 +161,7 @@ export default function CourtshipLensPage() {
 
       {desk.dissolveTarget && (
         <ConfirmDissolveModal
-          partnerLabel={`${desk.dissolveTarget.partner_kind}:${String(desk.dissolveTarget.partner_id ?? "").slice(0, 14)}`}
+          partnerLabel={partnerLabel(desk.dissolveTarget)}
           pending={desk.pending}
           onConfirm={desk.confirmDissolve}
           onCancel={() => desk.setDissolveTarget(null)}

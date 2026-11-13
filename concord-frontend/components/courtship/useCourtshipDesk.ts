@@ -24,6 +24,7 @@ import {
   type LoadState,
   DEFAULT_ENGAGE_THRESHOLD,
   DEFAULT_MARRY_THRESHOLD,
+  partnerLabel,
 } from '@/components/courtship/courtship-types';
 
 export function useCourtshipDesk() {
@@ -160,7 +161,7 @@ export function useCourtshipDesk() {
       } else if (j?.heartEvent) {
         setHeartEvent({
           scene: j.heartEvent as HeartEventScene,
-          partnerLabel: `${c.partner_kind}:${String(c.partner_id ?? "").slice(0, 14)}`,
+          partnerLabel: partnerLabel(c),
         });
       } else if (j?.capped) {
         // FIX-courtship-007: at the affinity cap (or floor) the
@@ -222,6 +223,7 @@ export function useCourtshipDesk() {
           pregnancyId: result.pregnancyId,
           partnerKind: m.partner_kind,
           partnerId: m.partner_id,
+          partnerName: m.partner_name ?? null,
           dueAt: result.dueAt,
           conceivedAt: Math.floor(Date.now() / 1000),
         };
