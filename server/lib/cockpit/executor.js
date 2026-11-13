@@ -9,6 +9,7 @@ import { recordToolDispatch, recordToolOutcome } from "../marathon-tick-durabili
 import { updateStep, getApprovals } from "./run-store.js";
 import { needsConfirm } from "./confirm.js";
 import { recordToolOutcomeEvent } from "./telemetry.js";
+import { deskSlowThisCall } from "./desk-fixture.js";
 
 /** Turn a cockpit call into an executeToolCall call. */
 export function toAgentCall(call, key = null) {
@@ -81,8 +82,10 @@ export async function runTool(a) {
       timer = setTimeout(() => resolve({ ok: false, reason: "timeout", error: "This step ran out of time." }), wall);
       if (typeof timer.unref === "function") timer.unref();
     });
+    // Desk seam (refused in production): the first call of this tool in this run never answers in time.
+    const slow = deskSlowThisCall(a.run.id, a.call.tool);
     r = await Promise.race([
-      withJob(`cockpit:${a.call.tool}`, () => a.deps.exec(toAgentCall(a.call, key), { approved: eff.risk === "high" })),
+      slow ? new Promise(() => {}) : withJob(`cockpit:${a.call.tool}`, () => a.deps.exec(toAgentCall(a.call, key), { approved: eff.risk === "high" })),
       timeout,
     ]);
   } catch (e) {

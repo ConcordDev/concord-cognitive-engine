@@ -1,6 +1,7 @@
 // Cockpit HTTP surface (GB-1500): failure counts (CKPT-01) and runs (CKPT-15).
 import { failureCounts } from "../lib/cockpit/telemetry.js";
 import { cockpitFlag } from "../lib/cockpit/flags.js";
+import { deskFixtureAllowed, planFromFixtureSteps } from "../lib/cockpit/desk-fixture.js";
 import { getRunForUser, getStep, listSteps, listRunsForUser, countActiveRuns, createRun, updateRun, DEFAULT_BUDGET } from "../lib/cockpit/run-store.js";
 import { planRun, materializePlan } from "../lib/cockpit/planner.js";
 import { driveRun, runProgress } from "../lib/cockpit/engine.js";
@@ -77,7 +78,9 @@ export function mountCockpitRoutes({ app, db, makeDeps = null, lensActions = nul
     try {
       const profile = defaultProfile();
       const lensContext = req.body?.lensContext ? String(req.body.lensContext).slice(0, 80) : null;
-      const plan = await planRun({ db, userId, goal, lensContext, profile, lensActions, deps: planDeps || undefined });
+      // Desk/test seam: a fixed plan, only outside production and only with CONCORD_COCKPIT_DESK_FIXTURE=1.
+      const fixture = deskFixtureAllowed() && req.body?.steps ? planFromFixtureSteps(req.body.steps) : null;
+      const plan = fixture ? { ok: true, source: "fixture", steps: fixture } : await planRun({ db, userId, goal, lensContext, profile, lensActions, deps: planDeps || undefined });
       if (!plan.ok) return res.status(400).json({ ok: false, error: plan.reason || "no_plan" });
       const created = createRun(db, {
         userId, surface: SURFACES.has(req.body?.surface) ? req.body.surface : "chat", goal,

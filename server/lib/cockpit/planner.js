@@ -117,7 +117,8 @@ export async function planRun(a) {
 
 /** Store a plan: assign step ids, rewrite dependsOn from keys to ids, insert. */
 export function materializePlan(db, runId, planVersion, planSteps) {
-  const idByKey = new Map(planSteps.map((s) => [s.key, newStepId()]));
+  // A step may carry a pre-assigned id (the desk fixture rewrites $ref heads to it).
+  const idByKey = new Map(planSteps.map((s) => [s.key, s.id || newStepId()]));
   return insertSteps(db, runId, planVersion, planSteps.map((s) => ({
     id: idByKey.get(s.key), goal: s.goal, tool: s.tool, args: s.args, expects: s.expects,
     dependsOn: (s.dependsOn || []).map((k) => idByKey.get(k)).filter(Boolean), required: s.required,
