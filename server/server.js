@@ -14673,7 +14673,7 @@ function _recordLensActivity(domain, action, ctx, input, result) {
     if (!userId || userId === "anon" || userId === "system") return;
     if (ctx?.internal === true || ctx?.actor?.internal === true) return;
     if (typeof domain !== "string" || !domain || typeof action !== "string" || !action) return;
-    if (isQuietLensAction(domain, action)) return;
+    if (isQuietLensAction(domain, action, input)) return;
     const verb = lensActivityLabel(domain, action);
     const label = lensActivityObject(domain, action, input, result);
     log(domain, label ? `${verb}: ${label}` : verb, { domain, action }, userId);
