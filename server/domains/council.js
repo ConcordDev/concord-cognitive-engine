@@ -960,7 +960,10 @@ export default function registerCouncilActions(registerLensAction) {
       authorName,
       action: "Created proposal",
       target: proposal.id,
-      details: proposal.title,
+      // FIX-council-001 — a fresh proposal is a draft, and a draft is
+      // the author's alone: the shared audit trail records the act,
+      // never the draft's title.
+      details: "Draft proposal",
       category: "proposal",
     });
     cSave();
@@ -971,11 +974,20 @@ export default function registerCouncilActions(registerLensAction) {
     const s = getCouncilState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     if (!cUser(ctx)) return { ok: true, result: { proposals: [], total: 0, signedIn: false } };
+    const viewerId = cUser(ctx);
     const proposals = cShared(s.proposals).slice()
+      .filter((p) => cCanSeeProposal(p, viewerId))
       .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))
       .map((p) => cPublicProposal(s, p));
     return { ok: true, result: { proposals, total: proposals.length, signedIn: true } };
   });
+
+  // FIX-council-001 — drafts are author-only. Every other status is
+  // the council's shared business; a draft is visible to its author
+  // alone until the author moves it on.
+  function cCanSeeProposal(p, userId) {
+    return !!p && (p.status !== "draft" || p.authorId === userId);
+  }
 
   function findProposal(s, id) {
     if (!id) return null;
@@ -1020,7 +1032,7 @@ export default function registerCouncilActions(registerLensAction) {
     if (gate) return gate;
     const userId = cUser(ctx);
     const p = findProposal(s, params.id);
-    if (!p) return { ok: false, error: "proposal not found" };
+    if (!p || !cCanSeeProposal(p, userId)) return { ok: false, error: "proposal not found" };
     if (!cIsMember(s, userId)) return { ok: false, error: "not eligible" };
     const choice = String(params.choice || params.vote || "").trim();
     if (!C_VOTE_CHOICES.includes(choice)) return { ok: false, error: "vote invalid" };
