@@ -50,11 +50,20 @@ export function OverviewPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end">
-        <div className="sovereignty-lock lock-70 px-4 py-2 rounded-lg">
+        {/* FIX-invariant-003: this badge carried the global lock-70
+            class, whose ::after paints a hardcoded '70%' — so it read
+            70% with 0/0 monitors. The chip now renders the real
+            active percentage, and only when monitors exist. */}
+        <div className="sovereignty-lock relative px-4 py-2 rounded-lg">
           <span className="text-lg font-bold text-sovereignty-locked">
             {active}/{total}
           </span>
           <span className="text-sm ml-2 text-gray-400">Monitors active</span>
+          {total > 0 && (
+            <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-[10px] font-bold bg-sovereignty-locked text-white rounded">
+              {activePct}%
+            </span>
+          )}
         </div>
       </div>
 
