@@ -96,7 +96,7 @@ export function ProjectsBacklog() {
                 </div>
                 {p.description && <div className="text-[11px] text-gray-400 ml-5 mb-1">{p.description}</div>}
                 <div className="ml-5 flex items-center gap-1">
-                  <select value={p.status} onChange={e => setStatus(p.id, e.target.value)} className={cn('text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border-0', STATUS_COLOUR[p.status])}>
+                  <select aria-label="Project status" value={p.status} onChange={e => setStatus(p.id, e.target.value)} className={cn('min-h-11 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border-0', STATUS_COLOUR[p.status])}>
                     {Object.keys(STATUS_COLOUR).map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                   </select>
                 </div>

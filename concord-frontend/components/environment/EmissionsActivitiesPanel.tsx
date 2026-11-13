@@ -82,7 +82,7 @@ export function EmissionsActivitiesPanel() {
         <Leaf className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Emissions activities</span>
         <span className="ml-auto text-[10px] text-gray-400">{activities.length} entries · {totals.total.toFixed(1)} tCO₂e</span>
-        <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Filter by scope" value={filter} onChange={e => setFilter(e.target.value as typeof filter)} className="min-h-11 text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">All scopes</option><option value="1">Scope 1</option><option value="2">Scope 2</option><option value="3">Scope 3</option>
         </select>
       </header>
@@ -93,7 +93,7 @@ export function EmissionsActivitiesPanel() {
         <Tile label="Total" value={`${totals.total.toFixed(1)}t`} tone="emerald" />
       </div>
       <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
-        <select value={form.factorKey} onChange={e => setForm({ ...form, factorKey: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Emission factor" value={form.factorKey} onChange={e => setForm({ ...form, factorKey: e.target.value })} className="min-h-11 col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           {factors.map(f => <option key={f.key} value={f.key}>S{f.scope} · {f.key.replace(/_/g, ' ')} ({f.unit})</option>)}
         </select>
         <input type="number" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="Amount" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -109,7 +109,7 @@ export function EmissionsActivitiesPanel() {
           ) : (
             <span>{preview.co2e} kg CO₂e per {preview.unit}</span>
           )}
-          <span className="text-gray-500">· {preview.source}</span>
+          <span className="text-gray-400">· {preview.source}</span>
         </div>
       )}
       <div className="max-h-96 overflow-y-auto">

@@ -22,7 +22,6 @@
  * data, not EPA monitor readings.
  */
 
-import { readAgentReply } from '@/lib/agent-reply';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
@@ -238,11 +237,11 @@ export function AirQualityActionStack() {
         name: 'do',
         input: { task, maxTurns: 4 },
       });
-      const reply = readAgentReply(r.data);
-      if (reply.ok) {
-        setAgentReply(reply.text);
+      const reply = r.data?.result?.reply ?? r.data?.result?.summary ?? r.data?.result?.output;
+      if (reply) {
+        setAgentReply(typeof reply === 'string' ? reply : JSON.stringify(reply, null, 2));
         ok('Agent finished risk brief.');
-      } else err(reply.reason);
+      } else err('Agent returned empty.');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
   }
@@ -273,7 +272,7 @@ export function AirQualityActionStack() {
     <div className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3 space-y-3">
       <header className="flex items-center gap-2 border-b border-cyan-500/10 pb-2">
         <Wind className="h-4 w-4 text-cyan-400" />
-        <h3 className="text-sm font-semibold text-white">Air quality actions</h3>
+        <h2 className="text-sm font-semibold text-white">Air quality actions</h2>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
           open-meteo · live
         </span>

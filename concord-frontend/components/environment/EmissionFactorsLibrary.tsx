@@ -48,7 +48,7 @@ export function EmissionFactorsLibrary() {
       <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2 text-[11px] text-gray-400">
         <Search className="w-3 h-3" />
         <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Filter by name…" className="flex-1 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
-        <select value={scope} onChange={e => setScope(e.target.value as typeof scope)} className="px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
+        <select aria-label="Scope" value={scope} onChange={e => setScope(e.target.value as typeof scope)} className="min-h-11 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">All</option><option value="1">S1</option><option value="2">S2</option><option value="3">S3</option>
         </select>
       </div>
