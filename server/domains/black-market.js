@@ -646,6 +646,48 @@ export default function registerBlackMarketActions(registerLensAction) {
   });
 
   /**
+   * watch-update — edit one of the caller's saved searches
+   * (FIX-black-market-012: saved searches could only be removed,
+   * never edited). Same validation as watch-add; only the caller's
+   * own watch can change, and the duplicate guard excludes itself.
+   */
+  registerLensAction("black-market", "watch-update", (ctx, _artifact, params = {}) => {
+  try {
+    const s = getState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const uid = actId(ctx);
+    const watchId = str(params.watchId);
+    if (!watchId) return { ok: false, error: "watchId required" };
+    const keyword = str(params.keyword).toLowerCase();
+    if (!keyword) return { ok: false, error: "keyword required" };
+    if (keyword.length > 60) return { ok: false, error: "keyword too long (max 60)" };
+    let maxPrice = null;
+    if (params.maxPrice != null && params.maxPrice !== "") {
+      const priced = Number(params.maxPrice);
+      if (!Number.isFinite(priced) || priced < 1) {
+        return { ok: false, error: "invalid_input", message: "Max price must be a number that is 1 or greater." };
+      }
+      maxPrice = Math.round(priced);
+    }
+    const tier = params.tier != null ? str(params.tier) : null;
+    if (tier && !TIER_ORDER.includes(tier)) {
+      return { ok: false, error: "tier invalid" };
+    }
+    const list = ensureList(s.watchlist, uid);
+    const watch = list.find((w) => w.id === watchId);
+    if (!watch) return { ok: false, error: "watch not found" };
+    if (list.some((w) => w.id !== watchId && w.keyword === keyword && w.maxPrice === maxPrice && w.tier === tier)) {
+      return { ok: false, error: "duplicate watch" };
+    }
+    watch.keyword = keyword;
+    watch.maxPrice = maxPrice;
+    watch.tier = tier;
+    save();
+    return { ok: true, result: { watch } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  /**
    * watch-check — evaluate every saved search against the live market
    * (open auctions + listed resales) and return matching alerts. Only
    * tiers the caller's reputation has unlocked are considered.
