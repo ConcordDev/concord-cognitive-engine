@@ -94,6 +94,19 @@ describe("dtu list source", () => {
     assert.equal(dtuExcludedFromUserList(null), true);
   });
 
+  it("hides lens exhaust — the provenance pointer, not a saved record (FIX-science-003)", () => {
+    // The exact shape _lensEmitDTU writes for one artifact create.
+    const exhaust = {
+      tier: "regular",
+      title: 'Lens:science create Experiment',
+      machine: { kind: "lens_exhaust", domain: "science", action: "create", artifactType: "Experiment", artifactId: "lart_1" },
+      tags: ["lens:science", "artifact:Experiment", "action:create"],
+    };
+    assert.equal(dtuExcludedFromUserList(exhaust), true);
+    // A record the person actually saved in the same lens stays listed.
+    assert.equal(dtuExcludedFromUserList({ tier: "regular", machine: { kind: "note" }, tags: ["lens:science"] }), false);
+  });
+
   it("matches an owner on author or ownerId and a tag case-insensitively", () => {
     assert.equal(dtuListedOwner({ author: "a", ownerId: "b" }), "a");
     assert.equal(dtuListedOwner({ ownerId: "b" }), "b");

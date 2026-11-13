@@ -55,6 +55,14 @@ export const LIST_HIDDEN_KINDS = new Set([
   "client_error",
   "chat_output",
   "chat_mega",
+  // Lens exhaust: the provenance pointer a lens artifact create/update/
+  // run/export emits (server.js _lensEmitDTU). Bookkeeping, not
+  // something a person saved — the export mirror and the integrity
+  // check already treat it that way. It stays in the store, linked
+  // from its artifact and reachable via dtu.search; it just stops
+  // masquerading as a user record in vault/corpus lists, where one
+  // artifact's lifecycle otherwise reads as many records (FIX-science-003).
+  "lens_exhaust",
 ]);
 
 /** True when a vault or corpus list should omit this row. */
