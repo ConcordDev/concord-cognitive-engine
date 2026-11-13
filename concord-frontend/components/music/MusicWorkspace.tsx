@@ -896,7 +896,7 @@ export function MusicWorkspace() {
                 aria-current={view === nav.id ? 'page' : undefined}
                 className={cn(
                   'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  view === nav.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200'
+                  view === nav.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200'
                 )}
               >
                 <nav.icon className="h-3.5 w-3.5" />
@@ -1024,7 +1024,7 @@ export function MusicWorkspace() {
                   </div>
                 )}
 
-                <p className="max-w-2xl text-[14px] leading-relaxed text-zinc-500">
+                <p className="max-w-2xl text-[14px] leading-relaxed text-zinc-400">
                   Post your music for free. Background play, real artist profiles, remix rights for listeners. You keep 90%+. No ads, no algorithmic gatekeeping.
                 </p>
 
@@ -2093,7 +2093,7 @@ export function MusicWorkspace() {
               <div className="space-y-6 max-w-4xl">
                 <div>
                   <h1 className="text-xl font-bold">Revenue Dashboard</h1>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-400 mt-1">
                     Your real creator earnings across everything you&apos;ve published on Concord — not
                     filtered to music specifically (marketplace + royalty ledger rows don&apos;t carry a
                     reliable per-lens tag to split by).
@@ -2225,7 +2225,7 @@ export function MusicWorkspace() {
                     </div>
                   )}
                   {!revenueLoading && !revenueError && (creatorDashboard?.recentListings?.length ?? 0) === 0 && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       No listings yet — publish a track to the marketplace to see it here.
                     </p>
                   )}

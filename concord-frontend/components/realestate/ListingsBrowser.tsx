@@ -162,7 +162,7 @@ export function ListingsBrowser({
         <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
           <div className="col-span-3">
             <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Title" maxLength={200} aria-label="Listing title" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-            <div className={cn('text-right text-[10px] mt-0.5', form.title.length > 200 ? 'text-rose-400' : 'text-gray-500')}>{form.title.length}/200</div>
+            <div className={cn('text-right text-[10px] mt-0.5', form.title.length > 200 ? 'text-rose-400' : 'text-gray-400')}>{form.title.length}/200</div>
           </div>
           <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Address" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="City" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />

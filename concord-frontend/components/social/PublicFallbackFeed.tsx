@@ -103,7 +103,7 @@ export function PublicFallbackFeed({ currentUserId, onFindPeople }: PublicFallba
           Follow people to fill this feed
         </button>
       </div>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-zinc-400">
         Your Following feed is empty — here are public posts from across the site while you find people to follow.
       </p>
       <ul className="space-y-2">
@@ -128,7 +128,7 @@ export function PublicFallbackFeed({ currentUserId, onFindPeople }: PublicFallba
               )}
             </div>
             <p className="text-sm leading-snug text-zinc-300">{post.content}</p>
-            {post.sensitiveHidden && <p className="mt-1 text-xs text-zinc-500">Sensitive media hidden</p>}
+            {post.sensitiveHidden && <p className="mt-1 text-xs text-zinc-400">Sensitive media hidden</p>}
             <PostMediaCard mediaType={post.mediaType} mediaUrl={post.mediaUrl} listing={post.listing} />
           </li>
         ))}

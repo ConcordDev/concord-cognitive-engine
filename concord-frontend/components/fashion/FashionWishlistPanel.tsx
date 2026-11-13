@@ -151,7 +151,7 @@ export function FashionWishlistPanel({ onChange }: { onChange?: () => void }) {
                       </a>
                     )}
                   </p>
-                  {w.note && <p className="text-[11px] text-zinc-500 mt-1">{w.note}</p>}
+                  {w.note && <p className="text-[11px] text-zinc-400 mt-1">{w.note}</p>}
                 </div>
                 <StickyDeleteConfirm
                   onConfirm={() => remove(w.id)}

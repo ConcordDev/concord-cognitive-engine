@@ -136,25 +136,25 @@ function DeskSentences({ results, raw }: { results: Record<string, unknown>; raw
       )}
       {explanation?.map((line, i) => <p key={i} className={line.startsWith('Contradiction:') ? 'text-red-300' : undefined}>{line}</p>)}
       {!explanation && facts?.map((f, i) => (
-        <p key={i}>{f.subject} {f.predicate} {f.object}{f.negated ? ' (negated)' : ''}{f.source ? <span className="text-gray-500"> · {f.source}</span> : null}</p>
+        <p key={i}>{f.subject} {f.predicate} {f.object}{f.negated ? ' (negated)' : ''}{f.source ? <span className="text-gray-400"> · {f.source}</span> : null}</p>
       ))}
       {derivations && derivations.length > 0 && (
         <>
-          <p className="text-xs uppercase tracking-wide text-gray-500">Derived</p>
+          <p className="text-xs uppercase tracking-wide text-gray-400">Derived</p>
           {derivations.map((d, i) => (
-            <p key={i}>{d.subject} {d.predicate} {d.object}{d.negated ? ' (negated)' : ''}{typeof d.confidence === 'number' ? <span className="text-gray-500"> · {(d.confidence * 100).toFixed(0)}%</span> : null}</p>
+            <p key={i}>{d.subject} {d.predicate} {d.object}{d.negated ? ' (negated)' : ''}{typeof d.confidence === 'number' ? <span className="text-gray-400"> · {(d.confidence * 100).toFixed(0)}%</span> : null}</p>
           ))}
         </>
       )}
       {derivations && derivations.length === 0 && (
         <p className="text-gray-400">No new derivations — the standing facts and rules derive nothing further.</p>
       )}
-      {typeof results.persistence === 'string' && <p className="text-[11px] text-gray-500">{results.persistence} Derived total: {String(results.derivedTotal ?? 0)}.</p>}
+      {typeof results.persistence === 'string' && <p className="text-[11px] text-gray-400">{results.persistence} Derived total: {String(results.derivedTotal ?? 0)}.</p>}
       {contradictions.map((c, i) => (
         <p key={`c${i}`} className="text-red-300">⚠ Contradiction in the results: “{c.subject} {c.predicate} {c.object}” and its negation both stand.</p>
       ))}
       <details className="text-xs">
-        <summary className="cursor-pointer text-gray-500">Raw result</summary>
+        <summary className="cursor-pointer text-gray-400">Raw result</summary>
         <pre className="whitespace-pre-wrap text-[10px] text-gray-400 font-mono mt-1 max-h-48 overflow-y-auto">{JSON.stringify(raw, null, 2)}</pre>
       </details>
     </div>
@@ -174,16 +174,16 @@ function KbFactList() {
   const contradictions = (data?.contradictions ?? []) as Array<{ subject: string; predicate: string; object: string }>;
   const contraKeys = new Set(contradictions.map((c) => `${c.subject}|${c.predicate}|${c.object}`));
   if (facts.length === 0) {
-    return <p className="text-[11px] text-gray-500">The knowledge base is empty — facts you add appear here with their source.</p>;
+    return <p className="text-[11px] text-gray-400">The knowledge base is empty — facts you add appear here with their source.</p>;
   }
   return (
     <div className="space-y-1">
-      <p className="text-[11px] uppercase tracking-wide text-gray-500">Knowledge base ({facts.length})</p>
+      <p className="text-[11px] uppercase tracking-wide text-gray-400">Knowledge base ({facts.length})</p>
       {facts.map((f, i) => (
         <p key={i} className="text-xs text-gray-300">
           {f.subject} {f.predicate} {f.object}
           {f.negated ? <span className="text-amber-300"> (negated)</span> : null}
-          {f.source ? <span className="text-gray-500"> · {f.source}</span> : null}
+          {f.source ? <span className="text-gray-400"> · {f.source}</span> : null}
           {contraKeys.has(`${f.subject}|${f.predicate}|${f.object}`) ? <span className="text-red-300"> · ⚠ contradicted by its negation</span> : null}
         </p>
       ))}
@@ -435,7 +435,7 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-gray-500 mt-2">
+        <p className="text-[11px] text-gray-400 mt-2">
           The desk engines — facts, query, syllogism, forward chain, unify — are deterministic and do not use a model; this selector does not change their answers. (The Rule Engine below runs its own Prolog; Frameworks reads live GitHub data.)
         </p>
       </div>
@@ -616,14 +616,14 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
                     <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Major premise</p>
                     <p className="text-sm text-white">{d.derivation.majorPremise}</p>
                   </div>
-                  <div className="flex items-center justify-center text-gray-500">
+                  <div className="flex items-center justify-center text-gray-400">
                     <span className="text-lg">+</span>
                   </div>
                   <div className="lens-card border-l-2 border-neon-purple/60">
                     <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Minor premise</p>
                     <p className="text-sm text-white">{d.derivation.minorPremise}</p>
                   </div>
-                  <div className="flex items-center justify-center text-gray-500">
+                  <div className="flex items-center justify-center text-gray-400">
                     <span className="text-lg">↓</span>
                   </div>
                   <div className="lens-card border-l-2 border-neon-green/60 bg-neon-green/5">
@@ -635,7 +635,7 @@ export function InferenceDeskPanel({ mode }: { mode: DeskMode }) {
                     {d.derivation.alreadyDerived ? ' · derived from these premises before — same result, as it must be' : d.derivation.derivedThisRun ? ' · derived by this run' : ''}
                   </p>
                   {d.kbWrites && (
-                    <p className="text-[10px] text-gray-500">
+                    <p className="text-[10px] text-gray-400">
                       Stored in the knowledge base by this run: premises “{d.kbWrites.premisesStored.join('” · “')}”, rule “{d.kbWrites.ruleAdded}”{d.kbWrites.conclusionStored ? ', and the conclusion (in the derived store)' : ''}.
                     </p>
                   )}

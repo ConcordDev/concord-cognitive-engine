@@ -237,7 +237,7 @@ export function InterventionPlanner({ onTracked }: { onTracked: () => void }) {
           <div className="space-y-1.5">
             {result.rankedInterventions.map((r, i) => (
               <div key={r.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.03] border border-white/10">
-                <span className="text-xs text-gray-500 w-5 shrink-0">#{i + 1}</span>
+                <span className="text-xs text-gray-400 w-5 shrink-0">#{i + 1}</span>
                 <span className="text-sm flex-1 truncate">{r.description}</span>
                 <span className="text-[11px] text-gray-400 shrink-0">cov {(r.coverage * 100).toFixed(0)}%</span>
                 <span className="text-[11px] text-gray-400 shrink-0">ROI {formatRoiPct(r.roi)}%</span>

@@ -106,7 +106,7 @@ function RiskBadge({ level }: { level?: string }) {
 }
 
 const inputCls =
-  'bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-neon-blue/50';
+  'bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-400 focus:outline-none focus:border-neon-blue/50';
 const runBtnCls =
   'px-3 py-1.5 text-xs bg-neon-blue/15 border border-neon-blue/30 rounded-lg hover:bg-neon-blue/25 disabled:opacity-50 flex items-center gap-1.5 text-neon-blue transition-colors';
 
@@ -164,7 +164,7 @@ function InventoryTool() {
         <button onClick={add} className={runBtnCls}><Plus className="w-3 h-3" /> Add</button>
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {rows.length === 0 && <span className="text-xs text-gray-500">No data items — add categories above.</span>}
+        {rows.length === 0 && <span className="text-xs text-gray-400">No data items — add categories above.</span>}
         {rows.map((r, i) => (
           <span
             key={`${r.category}-${i}`}
@@ -262,11 +262,11 @@ function ConsentTool() {
         <button onClick={add} className={runBtnCls}><Plus className="w-3 h-3" /> Add</button>
       </div>
       <div className="space-y-1">
-        {rows.length === 0 && <span className="text-xs text-gray-500">No consent records.</span>}
+        {rows.length === 0 && <span className="text-xs text-gray-400">No consent records.</span>}
         {rows.map((r, i) => (
           <div key={`${r.subject}-${i}`} className="flex items-center justify-between rounded-lg border border-white/5 bg-black/30 px-2.5 py-1.5">
-            <span className="text-[11px] text-gray-200">{r.subject} · <span className="text-gray-400">{r.status}</span>{r.expiry ? <span className="text-gray-500"> · exp {r.expiry}</span> : null}</span>
-            <button onClick={() => setRows((rr) => rr.filter((_, j) => j !== i))} className="text-gray-500 hover:text-rose-400" aria-label={`Remove consent record for ${r.subject}`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
+            <span className="text-[11px] text-gray-200">{r.subject} · <span className="text-gray-400">{r.status}</span>{r.expiry ? <span className="text-gray-400"> · exp {r.expiry}</span> : null}</span>
+            <button onClick={() => setRows((rr) => rr.filter((_, j) => j !== i))} className="text-gray-400 hover:text-rose-400" aria-label={`Remove consent record for ${r.subject}`}><Trash2 className="w-3 h-3" aria-hidden="true" /></button>
           </div>
         ))}
       </div>
@@ -336,7 +336,7 @@ function DpiaTool() {
     placeholder: string,
   ) => (
     <div className="space-y-1.5">
-      <p className="text-[11px] uppercase tracking-wider text-gray-500">{label}</p>
+      <p className="text-[11px] uppercase tracking-wider text-gray-400">{label}</p>
       <div className="flex flex-wrap items-center gap-2">
         <input
           value={draft}
@@ -531,7 +531,7 @@ export function DpoStudioPanel() {
             >
               <t.icon className="w-3.5 h-3.5" />
               <span>{t.label}</span>
-              <span className="hidden sm:inline text-[10px] text-gray-500">· {t.hint}</span>
+              <span className="hidden sm:inline text-[10px] text-gray-400">· {t.hint}</span>
             </button>
           );
         })}

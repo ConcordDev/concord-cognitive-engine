@@ -153,7 +153,7 @@ export function MusicPlayerPanel({ onChange }: { onChange: () => void }) {
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => void saveLyrics()} className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] transition-colors hover:bg-emerald-500">Save lyrics</button>
                 <button type="button" onClick={() => setLyricsDraft(null)} className="text-[11px] text-zinc-400 hover:text-zinc-200">Cancel</button>
-                <span className="text-[10px] text-zinc-500">Stamp every line with [m:ss] to sync them to playback.</span>
+                <span className="text-[10px] text-zinc-400">Stamp every line with [m:ss] to sync them to playback.</span>
               </div>
               {lyricsError && <p role="alert" className="text-[11px] text-rose-400">{lyricsError}</p>}
             </div>

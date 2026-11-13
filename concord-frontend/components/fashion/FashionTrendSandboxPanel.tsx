@@ -99,7 +99,7 @@ export function FashionTrendSandboxPanel() {
           {rows.map((row, idx) => (
             <li key={idx} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
               <span className="text-xs text-zinc-200">
-                {row.name} <span className="text-zinc-500">· {row.category} · {row.popularity}%{row.trending ? ' · trending' : ''}</span>
+                {row.name} <span className="text-zinc-400">· {row.category} · {row.popularity}%{row.trending ? ' · trending' : ''}</span>
               </span>
               <button aria-label={`Remove ${row.name}`} type="button" onClick={() => removeRow(idx)} className="text-zinc-600 hover:text-rose-400">
                 <Trash2 className="w-3.5 h-3.5" />

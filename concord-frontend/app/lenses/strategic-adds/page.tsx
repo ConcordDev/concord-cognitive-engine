@@ -13,7 +13,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 
 function PanelSkeleton() {
   return (
-    <div role="status" aria-busy="true" aria-live="polite" className="h-40 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-500">
+    <div role="status" aria-busy="true" aria-live="polite" className="h-40 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-400">
       Loading panel…
     </div>
   );

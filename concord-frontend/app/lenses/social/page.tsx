@@ -310,7 +310,7 @@ export default function SocialHubPage() {
 
   const subTabClass = (on: boolean) => cn(
     'inline-flex min-h-[44px] items-center rounded-full px-4 text-[14px] transition-colors',
-    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:text-zinc-200',
   );
 
   return (
@@ -447,7 +447,7 @@ export default function SocialHubPage() {
                         }}
                       />
                     </div>
-                    <p className="text-sm text-zinc-500">Share something you made...</p>
+                    <p className="text-sm text-zinc-400">Share something you made...</p>
                     {currentUserId ? (
                       <QuickPostComposer
                         currentUserId={currentUserId}
@@ -746,7 +746,7 @@ function FollowingTimeline({ currentUserId, onFindPeople, onOpenPost }: { curren
             )}
           </div>
           <p className="text-sm text-zinc-300 leading-snug">{item.content}</p>
-          {item.sensitiveHidden && <p className="mt-1 text-xs text-zinc-500">Sensitive media hidden</p>}
+          {item.sensitiveHidden && <p className="mt-1 text-xs text-zinc-400">Sensitive media hidden</p>}
           {/* Attached Studio track or Marketplace item → real media card
               (play button, never autoplay) instead of a bare text line.
               `relative` keeps its controls above the open-post overlay. */}

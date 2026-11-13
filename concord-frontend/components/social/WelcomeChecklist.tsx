@@ -109,7 +109,7 @@ export function WelcomeChecklist({ currentUserId, fallbackDisplayName, onStartPo
           type="button"
           onClick={() => dismiss.mutate()}
           disabled={dismiss.isPending}
-          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-200"
           aria-label="Dismiss the welcome checklist"
         >
           {dismiss.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <X className="h-4 w-4" aria-hidden="true" />}
@@ -127,7 +127,7 @@ export function WelcomeChecklist({ currentUserId, fallbackDisplayName, onStartPo
             >
               {step.done ? <Check className="h-3 w-3" /> : null}
             </span>
-            <span className={cn('text-sm', step.done ? 'text-zinc-500' : 'text-zinc-200')}>
+            <span className={cn('text-sm', step.done ? 'text-zinc-400' : 'text-zinc-200')}>
               {step.label}
               {step.done ? ' — done' : ''}
             </span>

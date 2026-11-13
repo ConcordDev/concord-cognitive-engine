@@ -153,7 +153,7 @@ export default function TranslationLens() {
       <DepthBadge lensId="translation" size="sm" className="ml-2" />
       <div data-lens-theme="translation" className="relative min-h-full px-8 pb-28 pt-6">
         <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Translation</h1>
-        <p className="mb-6 max-w-2xl text-[14px] text-zinc-500">
+        <p className="mb-6 max-w-2xl text-[14px] text-zinc-400">
           Machine translation on your own hardware — powered by the local LLM. Text never leaves your server.
         </p>
 

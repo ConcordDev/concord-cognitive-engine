@@ -181,15 +181,15 @@ function CreateOrJoin({ notify, onDone }: { notify: (f: Feedback) => void; onDon
 
       {mode === 'browse' && (
         <div className="space-y-1.5">
-          {busy && browse === null && <p className="text-[11px] text-zinc-500 flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>}
+          {busy && browse === null && <p className="text-[11px] text-zinc-400 flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>}
           {browse !== null && browse.length === 0 && (
-            <p className="text-[11px] text-zinc-500 py-2 text-center">No open agencies exist yet. Create the first one.</p>
+            <p className="text-[11px] text-zinc-400 py-2 text-center">No open agencies exist yet. Create the first one.</p>
           )}
           {(browse || []).map((o) => (
             <div key={o.id} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5">
               <div>
                 <div className="text-[11px] font-semibold text-white">{o.name}</div>
-                <div className="text-[9px] text-zinc-500">{o.memberCount} member{o.memberCount === 1 ? '' : 's'} · <span className="font-mono">{o.id}</span></div>
+                <div className="text-[9px] text-zinc-400">{o.memberCount} member{o.memberCount === 1 ? '' : 's'} · <span className="font-mono">{o.id}</span></div>
               </div>
               <button onClick={() => { setJoinId(o.id); setMode('join'); }} className="text-[10px] text-red-300 hover:text-red-200 font-semibold">Join →</button>
             </div>
@@ -266,7 +266,7 @@ function MutualAidView({
   };
 
   if (!data) {
-    return <p className="text-[11px] text-zinc-500 flex items-center gap-1.5 py-4"><Loader2 className="w-3 h-3 animate-spin" /> Loading mutual aid…</p>;
+    return <p className="text-[11px] text-zinc-400 flex items-center gap-1.5 py-4"><Loader2 className="w-3 h-3 animate-spin" /> Loading mutual aid…</p>;
   }
 
   return (
@@ -275,7 +275,7 @@ function MutualAidView({
         <div className="flex items-center gap-2 text-[11px] text-zinc-300">
           <Radio className="w-3.5 h-3.5 text-red-400" />
           Mutual-aid intake for this agency is{' '}
-          <span className={data.mutualAidEnabled ? 'text-emerald-400 font-semibold' : 'text-zinc-500 font-semibold'}>
+          <span className={data.mutualAidEnabled ? 'text-emerald-400 font-semibold' : 'text-zinc-400 font-semibold'}>
             {data.mutualAidEnabled ? 'ON — other agencies can share incidents with us' : 'OFF — other agencies cannot share incidents with us'}
           </span>
         </div>
@@ -308,7 +308,7 @@ function MutualAidView({
       <div className="grid md:grid-cols-2 gap-3">
         <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5">
           <div className="flex items-center gap-1.5 mb-1.5"><Share2 className="w-3.5 h-3.5 text-amber-400" /><span className={LABEL}>Shared by us ({data.sharedByUs.length})</span></div>
-          {data.sharedByUs.length === 0 && <p className="text-[10px] text-zinc-500 py-2 text-center">We haven&apos;t requested mutual aid from anyone yet.</p>}
+          {data.sharedByUs.length === 0 && <p className="text-[10px] text-zinc-400 py-2 text-center">We haven&apos;t requested mutual aid from anyone yet.</p>}
           <div className="space-y-1.5">
             {data.sharedByUs.map((r) => (
               <div key={r.id} className="rounded border border-zinc-800 bg-zinc-900/50 px-2 py-1.5 text-[10px]">
@@ -316,14 +316,14 @@ function MutualAidView({
                   <span className="text-zinc-200 truncate">{r.incident?.summary ?? '(incident closed)'}</span>
                   <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-semibold', r.status === 'active' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-zinc-700 text-zinc-400')}>{r.status}</span>
                 </div>
-                <div className="text-zinc-500 mt-0.5">→ {r.targetOrgName} · {r.committedUnits.length} unit{r.committedUnits.length === 1 ? '' : 's'} committed</div>
+                <div className="text-zinc-400 mt-0.5">→ {r.targetOrgName} · {r.committedUnits.length} unit{r.committedUnits.length === 1 ? '' : 's'} committed</div>
                 {r.committedUnits.length > 0 && (
                   <ul className="mt-1 space-y-0.5">
                     {r.committedUnits.map((c) => <li key={c.unitId} className="text-emerald-300">✓ {c.unitName} ({c.unitKind})</li>)}
                   </ul>
                 )}
                 {r.status === 'active' && canWrite && (
-                  <button onClick={() => recall(r.id)} disabled={busy} className="mt-1 flex items-center gap-1 text-[9px] text-zinc-500 hover:text-rose-400">
+                  <button onClick={() => recall(r.id)} disabled={busy} className="mt-1 flex items-center gap-1 text-[9px] text-zinc-400 hover:text-rose-400">
                     <Undo2 className="w-2.5 h-2.5" /> Recall
                   </button>
                 )}
@@ -334,7 +334,7 @@ function MutualAidView({
 
         <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5">
           <div className="flex items-center gap-1.5 mb-1.5"><Siren className="w-3.5 h-3.5 text-rose-400" /><span className={LABEL}>Shared with us ({data.sharedWithUs.length})</span></div>
-          {data.sharedWithUs.length === 0 && <p className="text-[10px] text-zinc-500 py-2 text-center">No agency has requested mutual aid from us yet.</p>}
+          {data.sharedWithUs.length === 0 && <p className="text-[10px] text-zinc-400 py-2 text-center">No agency has requested mutual aid from us yet.</p>}
           <div className="space-y-1.5">
             {data.sharedWithUs.map((r) => (
               <div key={r.id} className="rounded border border-rose-500/20 bg-rose-500/5 px-2 py-1.5 text-[10px]">
@@ -342,7 +342,7 @@ function MutualAidView({
                   <span className="text-zinc-200 truncate">{r.incident?.summary ?? '(incident closed)'}</span>
                   <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-semibold', r.status === 'active' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-zinc-700 text-zinc-400')}>{r.status}</span>
                 </div>
-                <div className="text-zinc-500 mt-0.5">from {r.sourceOrgName}{r.note ? ` — "${r.note}"` : ''}</div>
+                <div className="text-zinc-400 mt-0.5">from {r.sourceOrgName}{r.note ? ` — "${r.note}"` : ''}</div>
                 {r.committedUnits.length > 0 && (
                   <ul className="mt-1 space-y-0.5">
                     {r.committedUnits.map((c) => <li key={c.unitId} className="text-emerald-300">✓ {c.unitName} ({c.unitKind})</li>)}
@@ -452,7 +452,7 @@ function AgencyWorkspace({
   };
 
   if (!detail) {
-    return <p className="text-[11px] text-zinc-500 flex items-center gap-1.5 py-4"><Loader2 className="w-3 h-3 animate-spin" /> Loading {org.name}…</p>;
+    return <p className="text-[11px] text-zinc-400 flex items-center gap-1.5 py-4"><Loader2 className="w-3 h-3 animate-spin" /> Loading {org.name}…</p>;
   }
 
   return (
@@ -464,14 +464,14 @@ function AgencyWorkspace({
           {myEmsRole && <RoleBadge role={myEmsRole} />}
         </div>
         {detail.myOrgRole !== 'leader' && (
-          <button onClick={leave} disabled={busy} className={cn(BTN, 'text-zinc-500 hover:text-rose-400')}>
+          <button onClick={leave} disabled={busy} className={cn(BTN, 'text-zinc-400 hover:text-rose-400')}>
             <LogOut className="w-3.5 h-3.5" /> Leave
           </button>
         )}
       </div>
 
       {myEmsRole && (
-        <p className="text-[10px] text-zinc-500 flex items-center gap-1.5">
+        <p className="text-[10px] text-zinc-400 flex items-center gap-1.5">
           <Search className="w-3 h-3" /> Viewing as <strong className={EMS_ROLE_META[myEmsRole].tone.split(' ')[0]}>{EMS_ROLE_META[myEmsRole].label}</strong> — {EMS_ROLE_META[myEmsRole].desc}.
         </p>
       )}
@@ -534,8 +534,8 @@ function AgencyWorkspace({
               )}
               {!canWrite && <p className="text-[9px] text-zinc-600 mb-1.5">Trainee view — read-only.</p>}
               {incidents.length === 0
-                ? <p className="text-[10px] text-zinc-500 py-2 text-center">No incidents logged for this agency yet.</p>
-                : <ul className="space-y-0.5">{incidents.slice(0, 8).map((i) => <li key={i.id} className="text-[10px] text-zinc-300">{i.summary} <span className="text-zinc-500">· {i.status}</span></li>)}</ul>}
+                ? <p className="text-[10px] text-zinc-400 py-2 text-center">No incidents logged for this agency yet.</p>
+                : <ul className="space-y-0.5">{incidents.slice(0, 8).map((i) => <li key={i.id} className="text-[10px] text-zinc-300">{i.summary} <span className="text-zinc-400">· {i.status}</span></li>)}</ul>}
             </div>
             <div className="rounded-md border border-zinc-800 bg-zinc-900/30 p-2.5">
               <div className="flex items-center gap-1.5 mb-1.5"><Truck className="w-3.5 h-3.5 text-emerald-400" /><span className={LABEL}>Unit roster ({units.length})</span></div>
@@ -549,8 +549,8 @@ function AgencyWorkspace({
               )}
               {!canWrite && <p className="text-[9px] text-zinc-600 mb-1.5">Trainee view — read-only.</p>}
               {units.length === 0
-                ? <p className="text-[10px] text-zinc-500 py-2 text-center">No units on this agency&apos;s roster yet.</p>
-                : <ul className="space-y-0.5">{units.slice(0, 8).map((u) => <li key={u.id} className="text-[10px] text-zinc-300">{u.name} <span className="text-zinc-500">· {u.status}</span></li>)}</ul>}
+                ? <p className="text-[10px] text-zinc-400 py-2 text-center">No units on this agency&apos;s roster yet.</p>
+                : <ul className="space-y-0.5">{units.slice(0, 8).map((u) => <li key={u.id} className="text-[10px] text-zinc-300">{u.name} <span className="text-zinc-400">· {u.status}</span></li>)}</ul>}
             </div>
           </div>
         </>
@@ -608,7 +608,7 @@ export function AgencyMutualAidPanel() {
         </div>
       )}
 
-      {orgs === null && <p className="text-[11px] text-zinc-500 flex items-center gap-1.5 py-4"><Loader2 className="w-3 h-3 animate-spin" /> Loading your agencies…</p>}
+      {orgs === null && <p className="text-[11px] text-zinc-400 flex items-center gap-1.5 py-4"><Loader2 className="w-3 h-3 animate-spin" /> Loading your agencies…</p>}
 
       {orgs !== null && orgs.length === 0 && <CreateOrJoin notify={notify} onDone={loadOrgs} />}
 
@@ -618,7 +618,7 @@ export function AgencyMutualAidPanel() {
             <select className={cn(INPUT, 'max-w-xs')} value={selectedId ?? ''} onChange={(e) => setSelectedId(e.target.value)}>
               {orgs.map((o) => <option key={o.id} value={o.id}>{o.name} ({o.myEmsRole ? EMS_ROLE_META[o.myEmsRole].label : o.myRole})</option>)}
             </select>
-            <button onClick={() => setSelectedId(null)} className="text-[10px] text-zinc-500 hover:text-zinc-300 underline">
+            <button onClick={() => setSelectedId(null)} className="text-[10px] text-zinc-400 hover:text-zinc-300 underline">
               + Create or join another
             </button>
           </div>

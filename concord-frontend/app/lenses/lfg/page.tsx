@@ -225,7 +225,7 @@ export default function LfgLensPage() {
 
             {/* STATE: empty */}
             {loadState === 'ready' && requests.length === 0 && (
-              <div role="status" className="rounded-md border border-slate-700 bg-slate-900/30 p-6 text-center text-[11px] text-slate-500">
+              <div role="status" className="rounded-md border border-slate-700 bg-slate-900/30 p-6 text-center text-[11px] text-slate-400">
                 No open requests in this filter. Post one yourself →
               </div>
             )}
@@ -305,7 +305,7 @@ export default function LfgLensPage() {
               {busy === 'post' && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
               Post request
             </button>
-            <p className="mt-2 text-[10px] text-slate-500">Posting again in the same world replaces your previous open request.</p>
+            <p className="mt-2 text-[10px] text-slate-400">Posting again in the same world replaces your previous open request.</p>
           </div>
         </section>
       </NorthStarFrame>

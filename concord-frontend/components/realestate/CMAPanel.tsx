@@ -215,9 +215,9 @@ export function CMAPanel() {
       {result && result.compCount === 0 && (
         <div className="px-4 pb-4">
           <div className="rounded-md border border-dashed border-white/10 bg-white/[0.02] p-4 text-center">
-            <BarChart3 className="w-6 h-6 mx-auto mb-2 text-gray-500 opacity-40" />
+            <BarChart3 className="w-6 h-6 mx-auto mb-2 text-gray-400 opacity-40" />
             <p className="text-xs text-gray-300">{result.message}</p>
-            <p className="text-[10px] text-gray-500 mt-1.5">{result.methodology}</p>
+            <p className="text-[10px] text-gray-400 mt-1.5">{result.methodology}</p>
           </div>
         </div>
       )}
@@ -239,7 +239,7 @@ export function CMAPanel() {
             <StatTile label="Max $/sqft" value={`$${result.valuation.maxPricePerSqft}`} />
           </div>
 
-          <p className="text-[10px] text-gray-500 font-mono bg-white/[0.02] border border-white/10 rounded p-2">{result.valuation.formula}</p>
+          <p className="text-[10px] text-gray-400 font-mono bg-white/[0.02] border border-white/10 rounded p-2">{result.valuation.formula}</p>
           <p className="text-[11px] text-gray-400 leading-relaxed">{result.methodology}</p>
 
           <div className="rounded-lg border border-white/10 overflow-hidden">

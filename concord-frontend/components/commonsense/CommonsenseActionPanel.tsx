@@ -368,7 +368,7 @@ export function CommonsenseActionPanel() {
             {(plausResult.violations?.items ?? []).slice(0, 4).map((v, i) => (
               <div key={i} className="text-[10px] text-zinc-300 mt-1 flex items-start gap-1.5">
                 <span className={cn('shrink-0 px-1 rounded text-[9px] uppercase', v.severity === 'high' ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300')}>{v.severity}</span>
-                <span className="text-zinc-500">[{v.type}]</span>
+                <span className="text-zinc-400">[{v.type}]</span>
                 <span>{v.description}</span>
               </div>
             ))}
@@ -395,7 +395,7 @@ export function CommonsenseActionPanel() {
           <div className="rounded-md border border-teal-500/30 bg-teal-500/5 p-2.5 md:col-span-2">
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-teal-300 font-semibold">
               <span>{reasonResult.instanceClass}</span>
-              <span className="normal-case text-zinc-500">via</span>
+              <span className="normal-case text-zinc-400">via</span>
               <span className="font-mono text-zinc-300 normal-case">{(reasonResult.inheritanceChain ?? []).join(' → ')}</span>
             </div>
             <div className="flex items-center gap-3 text-[10px] text-zinc-400 mt-1">

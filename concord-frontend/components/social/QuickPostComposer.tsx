@@ -314,7 +314,7 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
             rows={3}
             aria-label="Post text"
             placeholder={mode === 'story' ? "What's happening right now? (24h)" : "What's on your mind? Type @ to mention someone"}
-            className="w-full px-3 py-2 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none resize-none"
+            className="w-full px-3 py-2 bg-transparent text-sm text-zinc-100 placeholder-zinc-400 focus:outline-none resize-none"
             onKeyDown={(e) => {
               props.onKeyDown?.(e);
               if (e.defaultPrevented) return;
@@ -430,15 +430,15 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
       {draftsOpen && (
         <div className="border-t border-zinc-800/40 px-3 py-2">
           {draftsQuery.isLoading ? (
-            <p className="text-[11px] text-zinc-500">Loading drafts…</p>
+            <p className="text-[11px] text-zinc-400">Loading drafts…</p>
           ) : drafts.length === 0 ? (
-            <p className="text-[11px] text-zinc-500">No drafts yet — Save draft keeps the text here.</p>
+            <p className="text-[11px] text-zinc-400">No drafts yet — Save draft keeps the text here.</p>
           ) : (
             <ul className="space-y-1.5">
               {drafts.map((draft) => (
                 <li key={draft.id} className="flex items-center gap-2 rounded border border-zinc-800/60 px-2 py-1.5">
                   <span className="min-w-0 flex-1 truncate text-[11px] text-zinc-300">{draft.content}</span>
-                  <span className="shrink-0 text-[10px] text-zinc-500">{new Date(draft.updatedAt).toLocaleDateString()}</span>
+                  <span className="shrink-0 text-[10px] text-zinc-400">{new Date(draft.updatedAt).toLocaleDateString()}</span>
                   <button
                     type="button"
                     onClick={() => reopenDraft(draft)}

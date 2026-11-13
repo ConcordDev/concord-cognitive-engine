@@ -333,7 +333,7 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
                 <h3 id="track-detail-title" className="text-sm font-bold text-zinc-100 truncate">{detail.title}</h3>
                 <p className="text-xs text-zinc-400 truncate">{detail.artist}{detail.album ? ` · ${detail.album}` : ''}</p>
               </div>
-              <button type="button" data-overlay-close="" onClick={() => setDetail(null)} aria-label="Close details" className="text-zinc-500 hover:text-zinc-200 shrink-0"><X className="w-4 h-4" /></button>
+              <button type="button" data-overlay-close="" onClick={() => setDetail(null)} aria-label="Close details" className="text-zinc-400 hover:text-zinc-200 shrink-0"><X className="w-4 h-4" /></button>
             </div>
             <dl className="grid grid-cols-2 gap-2 text-[11px]">
               <Field label="Genre" value={detail.genre || '—'} />
@@ -358,7 +358,7 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1.5">
-      <dt className="text-[9px] text-zinc-500 uppercase tracking-wide">{label}</dt>
+      <dt className="text-[9px] text-zinc-400 uppercase tracking-wide">{label}</dt>
       <dd className="text-zinc-200 truncate">{value}</dd>
     </div>
   );

@@ -178,7 +178,7 @@ export function FashionSocialPanel() {
                             disabled={cloningId === itemId || cloned}
                             title={cloned ? 'Cloned to your closet' : 'Clone to my closet'}
                             aria-label={`Clone ${n} to my closet`}
-                            className="text-zinc-500 hover:text-fuchsia-400 disabled:opacity-60 disabled:hover:text-zinc-500">
+                            className="text-zinc-400 hover:text-fuchsia-400 disabled:opacity-60 disabled:hover:text-zinc-500">
                             {cloningId === itemId ? <Loader2 className="w-3 h-3 animate-spin" />
                               : cloned ? <Check className="w-3 h-3 text-emerald-400" />
                                 : <Copy className="w-3 h-3" />}

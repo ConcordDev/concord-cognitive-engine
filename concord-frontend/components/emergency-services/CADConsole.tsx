@@ -637,7 +637,7 @@ export function CADConsole() {
                   </span>
                 </div>
                 {(u.station || u.lat != null) && (
-                  <p className="mt-0.5 text-[10px] text-zinc-500">
+                  <p className="mt-0.5 text-[10px] text-zinc-400">
                     {u.station}
                     {u.lat != null && u.lng != null ? `${u.station ? ' · ' : ''}${u.lat}, ${u.lng}` : ''}
                   </p>

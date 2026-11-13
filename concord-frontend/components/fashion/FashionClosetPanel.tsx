@@ -160,8 +160,8 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
       </div>
 
       <div className="flex items-center gap-1.5">
-        <Shirt className="w-3 h-3 text-zinc-500 shrink-0" />
-        <span className="text-[10px] text-zinc-500 shrink-0">What can I wear:</span>
+        <Shirt className="w-3 h-3 text-zinc-400 shrink-0" />
+        <span className="text-[10px] text-zinc-400 shrink-0">What can I wear:</span>
         <div className="flex flex-wrap gap-1">
           <button type="button" onClick={() => setLaundryFilter('')}
             aria-pressed={laundryFilter === ''}
@@ -241,7 +241,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button aria-label={`Edit ${i.name}`} type="button" onClick={() => beginEdit(i)} className="text-zinc-500 hover:text-fuchsia-300">
+                  <button aria-label={`Edit ${i.name}`} type="button" onClick={() => beginEdit(i)} className="text-zinc-400 hover:text-fuchsia-300">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <StickyDeleteConfirm

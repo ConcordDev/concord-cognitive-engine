@@ -98,7 +98,7 @@ export function EmergencyWorkspace() {
       <header>
         <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">Emergency Services</h1>
         {boardOpened && dashboard && (
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-zinc-400">
             {dashboard.openIncidents} open · {dashboard.availableUnits} available · {dashboard.units} rostered
           </p>
         )}
@@ -110,7 +110,7 @@ export function EmergencyWorkspace() {
       <LimitationNotice register="emergency" className="mt-4" />
 
       {loading ? (
-        <div role="status" aria-live="polite" className="flex min-h-[60vh] items-center justify-center gap-2 text-sm text-zinc-500">
+        <div role="status" aria-live="polite" className="flex min-h-[60vh] items-center justify-center gap-2 text-sm text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading the call board...
         </div>
       ) : loadError ? (
@@ -137,7 +137,7 @@ export function EmergencyWorkspace() {
                   tabIndex={rovingTabIndex(active, index, true)}
                   className={cn(
                     'flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                    active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200',
+                    active ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200',
                   )}
                 >
                   <Icon className="h-4 w-4" />

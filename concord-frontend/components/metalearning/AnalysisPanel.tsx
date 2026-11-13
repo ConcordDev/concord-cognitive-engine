@@ -176,7 +176,7 @@ export function AnalysisPanel() {
                 )}
               </div>
               {typeof actionResult.confidenceBasis === 'string' && (
-                <p className="text-[11px] text-gray-500">Confidence here is the {actionResult.confidenceBasis as string}.</p>
+                <p className="text-[11px] text-gray-400">Confidence here is the {actionResult.confidenceBasis as string}.</p>
               )}
               {'rankings' in actionResult && Array.isArray(actionResult.rankings) && actionResult.rankings.length > 0 && (
                 <div className="space-y-1">
@@ -208,7 +208,7 @@ export function AnalysisPanel() {
               )}
               {'sharedConcepts' in actionResult && Array.isArray(actionResult.sharedConcepts) && actionResult.sharedConcepts.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-[11px] text-gray-500 uppercase tracking-wider">Shared concepts</p>
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wider">Shared concepts</p>
                   <div className="flex flex-wrap gap-1">
                     {(actionResult.sharedConcepts as string[]).map((c, i) => (
                       <span key={i} className="text-xs bg-neon-cyan/10 border border-neon-cyan/20 rounded px-2 py-0.5 text-neon-cyan">{c}</span>
@@ -218,7 +218,7 @@ export function AnalysisPanel() {
               )}
               {'sharedSkills' in actionResult && Array.isArray(actionResult.sharedSkills) && actionResult.sharedSkills.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-[11px] text-gray-500 uppercase tracking-wider">Shared skills</p>
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wider">Shared skills</p>
                   <div className="flex flex-wrap gap-1">
                     {(actionResult.sharedSkills as string[]).map((c, i) => (
                       <span key={i} className="text-xs bg-neon-purple/10 border border-neon-purple/20 rounded px-2 py-0.5 text-neon-purple">{c}</span>
@@ -233,7 +233,7 @@ export function AnalysisPanel() {
             <div className="space-y-2">
               <div className="flex items-baseline gap-3">
                 <span className="text-neon-cyan font-bold text-xl">{typeof actionResult.overallScore === 'number' ? (actionResult.overallScore as number).toFixed(2) : String(actionResult.overallScore)}</span>
-                <span className="text-gray-500 text-[11px]">overall score — mean of your difficulty-adjusted skill scores</span>
+                <span className="text-gray-400 text-[11px]">overall score — mean of your difficulty-adjusted skill scores</span>
                 <span className="text-gray-400 text-xs">Style: <span className="text-neon-purple">{String(actionResult.learningStyle)}</span></span>
               </div>
               {'optimalDifficulty' in actionResult && typeof actionResult.optimalDifficulty === 'object' && actionResult.optimalDifficulty != null && (

@@ -214,7 +214,7 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                 aria-label="Search people"
                 className="w-full rounded bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 outline-none"
               />
-              {searching && <p className="text-[11px] text-zinc-500">Searching…</p>}
+              {searching && <p className="text-[11px] text-zinc-400">Searching…</p>}
               <ul className="space-y-1">
                 {matches.map((person) => (
                   <li key={person.id}>
@@ -224,13 +224,13 @@ export function DMInbox({ currentUserId }: DMInboxProps) {
                       className="w-full rounded px-2 py-1.5 text-left text-xs text-zinc-200 hover:bg-zinc-900"
                     >
                       {person.displayName || person.username}
-                      <span className="ml-1 text-zinc-500">@{person.username}</span>
+                      <span className="ml-1 text-zinc-400">@{person.username}</span>
                     </button>
                   </li>
                 ))}
               </ul>
               {query.trim().length >= 2 && !searching && matches.length === 0 && (
-                <p className="text-[11px] text-zinc-500">No matching people.</p>
+                <p className="text-[11px] text-zinc-400">No matching people.</p>
               )}
             </div>
           ) : (

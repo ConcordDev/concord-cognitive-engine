@@ -577,7 +577,7 @@ function Discovery({
           onFocus={() => setIsSearchFocused(true)}
           onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
           className={cn(
-            'w-full pl-11 pr-4 py-3 rounded-xl bg-lattice-deep border text-white placeholder-gray-500 focus:outline-none transition-all',
+            'w-full pl-11 pr-4 py-3 rounded-xl bg-lattice-deep border text-white placeholder-gray-400 focus:outline-none transition-all',
             isSearchFocused
               ? 'border-neon-cyan/40 shadow-lg shadow-neon-cyan/5'
               : 'border-lattice-border'
@@ -601,7 +601,7 @@ function Discovery({
                 <div>
                   {searchQuery_.data.people.length > 0 && (
                     <div className="py-1">
-                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-500">People</p>
+                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-400">People</p>
                       {searchQuery_.data.people.map((person) => (
                         <button
                           key={person.id}
@@ -624,7 +624,7 @@ function Discovery({
                   )}
                   {searchQuery_.data.posts.length > 0 && (
                     <div className="py-1">
-                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-500">Posts</p>
+                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-400">Posts</p>
                       {searchQuery_.data.posts.map((post) => (
                         <button
                           key={post.id}
@@ -645,7 +645,7 @@ function Discovery({
                   )}
                   {searchQuery_.data.hashtags.length > 0 && (
                     <div className="py-1">
-                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-500">Topics</p>
+                      <p className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-gray-400">Topics</p>
                       {searchQuery_.data.hashtags.map((tag) => (
                         <button
                           key={tag.tag}

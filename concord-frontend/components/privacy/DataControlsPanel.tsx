@@ -983,7 +983,7 @@ function AccountDeletionSection() {
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
               placeholder={`Type ${DELETE_CONFIRM_PHRASE} to confirm`}
-              className="flex-1 min-w-[220px] bg-black/40 border border-rose-500/30 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-500 font-mono"
+              className="flex-1 min-w-[220px] bg-black/40 border border-rose-500/30 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-400 font-mono"
             />
             <button
               onClick={startDeletion}
@@ -1060,7 +1060,7 @@ export function DataControlsPanel() {
               role="tab"
               aria-selected={selected}
               onClick={() => setTab(t.id)}
-              className={`px-3 py-2 text-sm ${selected ? 'border-b-2 border-teal-400 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+              className={`px-3 py-2 text-sm ${selected ? 'border-b-2 border-teal-400 text-white' : 'text-zinc-400 hover:text-zinc-300'}`}
             >
               {t.label}
             </button>

@@ -89,7 +89,7 @@ export function RealtorShell({
           value={query}
           onChange={(e) => onQueryChange?.(e.target.value)}
           placeholder="Search by city, address, or natural language — e.g. '3 bed condo under $500k in Austin'"
-          className="flex-1 bg-transparent text-sm outline-none placeholder-gray-500"
+          className="flex-1 bg-transparent text-sm outline-none placeholder-gray-400"
         />
         <button type="submit" className="px-3 py-1 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">Search</button>
       </form>

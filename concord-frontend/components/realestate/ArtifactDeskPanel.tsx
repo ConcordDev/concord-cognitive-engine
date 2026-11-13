@@ -1830,7 +1830,7 @@ export function ArtifactDeskPanel() {
                               )}
                             </div>
                             <div className="mt-3 pt-2 border-t border-lattice-border flex items-center justify-between">
-                              <span className="text-xs text-gray-500">From Search</span>
+                              <span className="text-xs text-gray-400">From Search</span>
                               {confirmRemoveReId === l.id ? (
                                 <span className="flex items-center gap-2 text-xs">
                                   <span className="text-gray-300">Remove this listing?</span>

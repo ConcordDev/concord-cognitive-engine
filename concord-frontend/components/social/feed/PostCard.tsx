@@ -218,7 +218,7 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
     <article className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 hover:border-indigo-500/20 transition-colors">
       <div className="flex items-baseline gap-2">
         <span className="text-sm font-medium text-zinc-100">{author.name}</span>
-        {author.handle && author.handle !== author.name && <span className="text-xs text-zinc-500">@{author.handle}</span>}
+        {author.handle && author.handle !== author.name && <span className="text-xs text-zinc-400">@{author.handle}</span>}
         <span className="text-[10px] text-zinc-400">{relTime(post.createdAt)}</span>
         <div className="relative ml-auto">
           <button
@@ -282,7 +282,7 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
         </div>
       </div>
 
-      {post.editedAt && <p className="text-[10px] text-zinc-500">edited</p>}
+      {post.editedAt && <p className="text-[10px] text-zinc-400">edited</p>}
       {post.isPinned && <p className="text-[10px] text-amber-300/80">pinned</p>}
       {editing ? (
         <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); void saveEdit(); }}>
@@ -390,7 +390,7 @@ export function PostCard({ post, username, currentUserId, onChanged, onQuote, on
             aria-label="Choose a reaction"
             aria-expanded={showReactions}
             onClick={() => setShowReactions((v) => !v)}
-            className="flex items-center text-xs text-zinc-500 hover:text-zinc-300"
+            className="flex items-center text-xs text-zinc-400 hover:text-zinc-300"
           >
             <ChevronDown className="w-3.5 h-3.5" />
           </button>

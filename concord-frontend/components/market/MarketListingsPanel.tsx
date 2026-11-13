@@ -77,7 +77,7 @@ function MediaListenCard({ listing }: { listing: MarketListingItem }) {
       {listing.description && <p className="text-xs text-gray-400">{listing.description}</p>}
       <PreviewAwareMedia src={listing.streamUrl as string} kind={isVideo ? 'video' : 'audio'} className={isVideo ? 'w-full rounded' : 'w-full'} />
       {listing.tags && listing.tags.length > 0 && (
-        <p className="text-[10px] text-gray-500">{listing.tags.map((t) => `#${t}`).join(' ')}</p>
+        <p className="text-[10px] text-gray-400">{listing.tags.map((t) => `#${t}`).join(' ')}</p>
       )}
     </div>
   );
