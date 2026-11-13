@@ -3,6 +3,7 @@
 // relationship graph analysis, and attribute validation.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import {
   listNodes as wbListNodes, getNode as wbGetNode, putNode as wbPutNode,
   deleteNode as wbDeleteNode, listEdges as wbListEdges, putEdge as wbPutEdge,
@@ -10,7 +11,53 @@ import {
   putSchema as wbPutSchema, deleteSchema as wbDeleteSchema,
   migrateUser as wbMigrateUser, migrationReceipt as wbMigrationReceipt,
 } from "../lib/entity-substrate.js";
+
+// ── lens export provider (FIX-entity-013) ─────────────────────────────
+// The caller's own Registry entities are entity DTUs whose only tag is
+// machine.kind "entity-node" / "entity-schema" — no domain, no meta.lens —
+// so the export's DTU leg drops them twice (the list macro's domain
+// filter and the export's own membership check both match on domain or
+// kind === the domain name), and the export filled its rows with the
+// shared Registry's artifacts instead. This provider emits the caller's
+// own nodes and schemas through the substrate's owner-scoped reads.
+// Provider rows join the merged export uncapped (the export's limit is
+// per-leg), so the caller's full set — up to the workbench's own caps —
+// is exported. Edges are typed relations on the node DTUs, not
+// standalone records, so they are not separate rows.
+function entityExportRows(ctx) {
+  const state = globalThis._concordSTATE;
+  const uid = ctx?.actor?.userId || ctx?.userId || null;
+  if (!state || !state.dtus || !uid || uid === "anon") return [];
+  const rows = [];
+  for (const n of wbListNodes(state, uid)) {
+    rows.push({
+      id: n.id,
+      type: "entity-node",
+      title: n.name || n.id,
+      createdAt: n.createdAt ?? null,
+      updatedAt: n.createdAt ?? null,
+      data: {
+        entityType: n.entityType || "generic",
+        attributes: n.attributes || {},
+        wikidataId: n.wikidataId ?? null,
+      },
+    });
+  }
+  for (const sc of wbListSchemas(state, uid)) {
+    rows.push({
+      id: sc.id,
+      type: "entity-schema",
+      title: sc.className || sc.id,
+      createdAt: sc.createdAt ?? null,
+      updatedAt: sc.updatedAt ?? sc.createdAt ?? null,
+      data: { className: sc.className || "", attributes: sc.attributes || [] },
+    });
+  }
+  return rows;
+}
+
 export default function registerEntityActions(registerLensAction) {
+  registerLensExportProvider("entity", entityExportRows);
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * entityResolution
