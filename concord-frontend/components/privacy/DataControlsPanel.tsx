@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, lensRun } from '@/lib/api/client';
+import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { TimelineView, TreeDiagram } from '@/components/viz';
 import type { TimelineEvent, TreeNode } from '@/components/viz';
 import {
@@ -223,6 +224,14 @@ function DsarSection() {
     else setError(r.data.error || 'advance failed');
   }, [reload]);
 
+  // FIX-privacy-004: a filed request can now be removed (owner-scoped
+  // server-side), behind the platform two-step confirm.
+  const remove = useCallback(async (dsarId: string) => {
+    const r = await lensRun('privacy', 'dsarDelete', { dsarId });
+    if (r.data.ok) await reload();
+    else setError(r.data.error || 'delete failed');
+  }, [reload]);
+
   return (
     <SectionCard
       icon={FileSearch}
@@ -254,6 +263,7 @@ function DsarSection() {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Describe the request…"
+          maxLength={1000}
           className="flex-1 min-w-[180px] bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-400"
         />
         <button
@@ -266,6 +276,9 @@ function DsarSection() {
         </button>
       </div>
       {error && <p className="text-xs text-rose-400">{error}</p>}
+      {!note.trim() && !error && (
+        <p className="text-[11px] text-gray-400">Add a note to submit your request. Notes are capped at 1000 characters.</p>
+      )}
       <div className="space-y-1.5">
         {list?.requests.length === 0 && (
           <p className="text-xs text-gray-400">No requests yet.</p>
@@ -289,30 +302,39 @@ function DsarSection() {
                 {r.note ? ` · ${r.note}` : ''}
               </p>
             </div>
-            {r.status !== 'completed' && r.status !== 'rejected' && (
-              <div className="flex gap-1 shrink-0">
-                {r.status === 'received' && (
+            <div className="flex gap-1 shrink-0 items-center">
+              {r.status !== 'completed' && r.status !== 'rejected' && (
+                <>
+                  {r.status === 'received' && (
+                    <button
+                      onClick={() => advance(r.id, 'in_review')}
+                      className="px-2 py-1 text-[10px] rounded bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
+                    >
+                      Start review
+                    </button>
+                  )}
                   <button
-                    onClick={() => advance(r.id, 'in_review')}
-                    className="px-2 py-1 text-[10px] rounded bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
+                    onClick={() => advance(r.id, 'completed')}
+                    className="px-2 py-1 text-[10px] rounded bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
                   >
-                    Start review
+                    Complete
                   </button>
-                )}
-                <button
-                  onClick={() => advance(r.id, 'completed')}
-                  className="px-2 py-1 text-[10px] rounded bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
-                >
-                  Complete
-                </button>
-                <button
-                  onClick={() => advance(r.id, 'rejected')}
-                  className="px-2 py-1 text-[10px] rounded bg-rose-500/15 text-rose-300 hover:bg-rose-500/25"
-                >
-                  Reject
-                </button>
-              </div>
-            )}
+                  <button
+                    onClick={() => advance(r.id, 'rejected')}
+                    className="px-2 py-1 text-[10px] rounded bg-rose-500/15 text-rose-300 hover:bg-rose-500/25"
+                  >
+                    Reject
+                  </button>
+                </>
+              )}
+              <StickyDeleteConfirm
+                onConfirm={() => remove(r.id)}
+                armAriaLabel={`Delete request ${r.id}`}
+                confirmAriaLabel={`Confirm delete request ${r.id}`}
+                armLabel="Delete"
+                className="rounded px-2 py-1 text-[10px] text-slate-400 hover:bg-red-600/20 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -658,6 +680,57 @@ function CookieConfigSection() {
 
 // ── Retention policy editor ───────────────────────────────────────────────
 
+// FIX-privacy-002: the days field is a draft, not a per-keystroke wire to
+// the server. Text edits stay local; a value commits only when it is a
+// whole number inside 0–3650. Out-of-range text is never sent (the old
+// path sent it and the server silently clamped it to the max, so a
+// typed value could land as 3650 with no sign) — it shows the range
+// inline instead, and leaving the field restores the saved value.
+function RetentionDaysInput({
+  policy,
+  onCommit,
+}: {
+  policy: RetentionPolicy;
+  onCommit: (days: number) => void;
+}) {
+  const [text, setText] = useState<string | null>(null);
+  const [invalid, setInvalid] = useState(false);
+  const shown = text ?? String(policy.windowDays);
+  return (
+    <span className="flex flex-col">
+      <input
+        type="number"
+        min={0}
+        max={3650}
+        aria-label={`${policy.category} window days`}
+        value={shown}
+        onChange={(e) => {
+          const v = e.target.value;
+          setText(v);
+          if (v.trim() === '') { setInvalid(false); return; }
+          const n = Number(v);
+          if (Number.isInteger(n) && n >= 0 && n <= 3650) {
+            setInvalid(false);
+            if (n !== policy.windowDays) onCommit(n);
+          } else {
+            setInvalid(true);
+          }
+        }}
+        onBlur={() => {
+          if (text !== null && (text.trim() === '' || invalid)) {
+            setText(null);
+            setInvalid(false);
+          }
+        }}
+        className="w-16 bg-black/40 border border-white/10 rounded px-1.5 py-1 text-xs text-white"
+      />
+      {invalid && (
+        <span className="text-[9px] text-rose-400">enter 0–3650 days</span>
+      )}
+    </span>
+  );
+}
+
 function RetentionSection() {
   const [policies, setPolicies] = useState<RetentionPolicy[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -678,10 +751,22 @@ function RetentionSection() {
         windowDays: patch.windowDays ?? cur?.windowDays ?? 0,
         action: patch.action ?? cur?.action ?? 'delete',
       });
-      if (r.data.ok) await reload();
-      else setError(r.data.error || 'update failed');
+      if (r.data.ok) {
+        // FIX-privacy-002: apply the saved policy locally instead of
+        // reloading the whole list — the reload used to land mid-typing
+        // and overwrite the field with a stale value.
+        const saved = (r.data.result || {}) as { windowDays?: number; action?: string };
+        setPolicies((prev) =>
+          prev.map((p) =>
+            p.category === category
+              ? { ...p, windowDays: saved.windowDays ?? patch.windowDays ?? p.windowDays, action: saved.action ?? patch.action ?? p.action, isDefault: false }
+              : p,
+          ),
+        );
+        setError(null);
+      } else setError(r.data.error || 'update failed');
     },
-    [policies, reload],
+    [policies],
   );
 
   return (
@@ -704,17 +789,7 @@ function RetentionSection() {
               )}
             </span>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={0}
-                max={3650}
-                aria-label={`${p.category} window days`}
-                value={p.windowDays}
-                onChange={(e) =>
-                  update(p.category, { windowDays: parseInt(e.target.value) || 0 })
-                }
-                className="w-16 bg-black/40 border border-white/10 rounded px-1.5 py-1 text-xs text-white"
-              />
+              <RetentionDaysInput policy={p} onCommit={(days) => update(p.category, { windowDays: days })} />
               <span className="text-[10px] text-gray-400">days</span>
               <select
                 aria-label={`${p.category} action`}
@@ -757,6 +832,14 @@ function FlowMapSection() {
     if (r.data.ok) { setDestination(''); await reload(); }
     else setError(r.data.error || 'register failed');
   }, [destination, direction, reload]);
+
+  // FIX-privacy-004: a registered flow can now be removed (owner-scoped
+  // server-side), behind the platform two-step confirm.
+  const remove = useCallback(async (flowId: string) => {
+    const r = await lensRun('privacy', 'flowDelete', { flowId });
+    if (r.data.ok) await reload();
+    else setError(r.data.error || 'delete failed');
+  }, [reload]);
 
   const toggle = useCallback(
     async (flowId: string, active: boolean) => {
@@ -816,6 +899,7 @@ function FlowMapSection() {
           value={destination}
           onChange={(e) => setDestination(e.target.value)}
           placeholder="Federation peer / destination…"
+          maxLength={96}
           className="flex-1 min-w-[160px] bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-gray-400"
         />
         <select
@@ -854,13 +938,22 @@ function FlowMapSection() {
                   {f.direction === 'outbound' ? '→ ' : '← '}
                   {f.destination}
                 </span>
-                <button
-                  onClick={() => toggle(f.id, !f.active)}
-                  className={`px-2 py-0.5 rounded text-[10px] flex items-center gap-1 ${f.active ? 'bg-amber-500/15 text-amber-300' : 'bg-gray-500/15 text-gray-400'}`}
-                >
-                  {f.active ? <CheckCircle2 className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                  {f.active ? 'active' : 'paused'}
-                </button>
+                <span className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => toggle(f.id, !f.active)}
+                    className={`px-2 py-0.5 rounded text-[10px] flex items-center gap-1 ${f.active ? 'bg-amber-500/15 text-amber-300' : 'bg-gray-500/15 text-gray-400'}`}
+                  >
+                    {f.active ? <CheckCircle2 className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                    {f.active ? 'active' : 'paused'}
+                  </button>
+                  <StickyDeleteConfirm
+                    onConfirm={() => remove(f.id)}
+                    armAriaLabel={`Delete flow to ${f.destination}`}
+                    confirmAriaLabel={`Confirm delete flow to ${f.destination}`}
+                    armLabel="Delete"
+                    className="rounded px-2 py-0.5 text-[10px] text-slate-400 hover:bg-red-600/20 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </span>
               </div>
             ))}
           </div>

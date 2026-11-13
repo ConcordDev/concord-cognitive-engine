@@ -47,6 +47,7 @@ function privacyState() {
       cookieConfig: new Map(), // userId -> bannerConfig
       retention: new Map(),    // userId -> Map<category, { windowDays, action }>
       flows: new Map(),        // userId -> Map<flowId, dataFlow>
+      dpo: new Map(),          // userId -> { inventory: [], consents: [] }
     };
   }
   return STATE.privacyLens;
@@ -163,6 +164,7 @@ export function appendAccessEvent(userId, opts = {}) {
 }
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 import { advisory } from "../lib/lens-inputs.js";
 import { measuredPercent } from "../lib/measured-rate.js";
 
@@ -260,6 +262,73 @@ export default function registerPrivacyActions(registerLensAction) {
       if (next === "completed" || next === "rejected") req.resolvedAt = now();
       save();
       return { ok: true, result: { request: req } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── DSAR delete (FIX-privacy-004) ───────────────────────────────────────
+  // A filed request could be advanced but never removed, so test and
+  // mistaken requests lived forever as leftovers. Owner-scoped like
+  // every other DSAR action: a caller can only delete their own.
+  registerLensAction("privacy", "dsarDelete", (ctx, _artifact, params) => {
+    try {
+      const uid = uidOf(ctx);
+      const dsarId = clean(params?.dsarId, 64);
+      if (!dsarId) return { ok: false, error: "dsarId required" };
+      const s = privacyState();
+      const bucket = userMap(s.dsars, uid);
+      if (!bucket.has(dsarId)) return { ok: false, error: "request not found" };
+      bucket.delete(dsarId);
+      save();
+      return { ok: true, result: { deleted: dsarId, totalRequests: bucket.size } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // ── DPO studio working sets (FIX-privacy-001) ───────────────────────────
+  // The DPO Inventory / Consent tools held their rows in browser memory
+  // only — a create showed instantly, then vanished on tab switch and
+  // reload, silently, against the tools' own presentation as a register
+  // and a catalog. The working sets now persist per user, like every
+  // other privacy control in this domain.
+  function dpoBucket(s, uid) {
+    if (!s.dpo.has(uid)) s.dpo.set(uid, { inventory: [], consents: [] });
+    return s.dpo.get(uid);
+  }
+  registerLensAction("privacy", "dpoGet", (ctx, _artifact, _params) => {
+    try {
+      const uid = uidOf(ctx);
+      const s = privacyState();
+      const b = dpoBucket(s, uid);
+      return { ok: true, result: { inventory: b.inventory, consents: b.consents } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  registerLensAction("privacy", "dpoSet", (ctx, _artifact, params) => {
+    try {
+      const uid = uidOf(ctx);
+      const which = clean(params?.which, 16);
+      if (which !== "inventory" && which !== "consents") {
+        return { ok: false, error: "which must be inventory or consents" };
+      }
+      const items = Array.isArray(params?.items) ? params.items : null;
+      if (!items) return { ok: false, error: "items must be an array" };
+      if (items.length > 200) return { ok: false, error: "too many items (max 200)" };
+      const cleaned = [];
+      for (const it of items) {
+        if (which === "inventory") {
+          const category = clean(it?.category, 64);
+          if (!category) return { ok: false, error: "every inventory item needs a category" };
+          cleaned.push({ category, sensitive: !!it?.sensitive });
+        } else {
+          const subject = clean(it?.subject, 64);
+          if (!subject) return { ok: false, error: "every consent record needs a subject" };
+          const status = ["active", "withdrawn", "pending"].includes(it?.status) ? it.status : "active";
+          cleaned.push({ subject, status, expiry: clean(it?.expiry, 16) });
+        }
+      }
+      const s = privacyState();
+      const b = dpoBucket(s, uid);
+      b[which] = cleaned;
+      save();
+      return { ok: true, result: { which, items: cleaned, total: cleaned.length } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
   });
 
@@ -465,9 +534,14 @@ export default function registerPrivacyActions(registerLensAction) {
         return { ok: false, error: "unknown retention category" };
       }
       const action = RETENTION_ACTIONS.includes(params?.action) ? params.action : "delete";
-      let windowDays = parseInt(params?.windowDays);
-      if (!Number.isFinite(windowDays) || windowDays < 0) windowDays = 0;
-      windowDays = Math.min(windowDays, 3650); // cap at 10 years
+      // FIX-privacy-002: an out-of-range or non-numeric window is REFUSED
+      // in words — the old silent clamp to 3650 mangled typed values
+      // (a typed 400 could land as the 3650 max with no sign anything
+      // had been overridden).
+      const windowDays = Number(params?.windowDays);
+      if (!Number.isFinite(windowDays) || !Number.isInteger(windowDays) || windowDays < 0 || windowDays > 3650) {
+        return { ok: false, error: "windowDays must be a whole number of days between 0 and 3650" };
+      }
       const s = privacyState();
       const bucket = userMap(s.retention, uid);
       const policy = { windowDays, action, updatedAt: now() };
@@ -580,5 +654,55 @@ export default function registerPrivacyActions(registerLensAction) {
       save();
       return { ok: true, result: { flow } };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // flowDelete (FIX-privacy-004) — remove one of the caller's own flows;
+  // flows could be registered and toggled but never removed.
+  registerLensAction("privacy", "flowDelete", (ctx, _artifact, params) => {
+    try {
+      const uid = uidOf(ctx);
+      const flowId = clean(params?.flowId, 64);
+      if (!flowId) return { ok: false, error: "flowId required" };
+      const s = privacyState();
+      const bucket = userMap(s.flows, uid);
+      if (!bucket.has(flowId)) return { ok: false, error: "flow not found" };
+      bucket.delete(flowId);
+      save();
+      return { ok: true, result: { deleted: flowId, totalFlows: bucket.size } };
+    } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+
+  // Header export provider (FIX-privacy-008) — the lens header's
+  // JSON/CSV export reads the generic artifact store plus registered
+  // providers; every privacy record lives in this domain's per-user
+  // STATE buckets, so without a provider the header export reported
+  // "no saved lens items" while the lens was full of the caller's own
+  // records. Scoped to the calling user, read-only (no buckets created).
+  registerLensExportProvider("privacy", (ctx) => {
+    const uid = uidOf(ctx);
+    const s = privacyState();
+    const rows = [];
+    const dsars = s.dsars.get(uid);
+    if (dsars) for (const r of dsars.values()) {
+      rows.push({ id: r.id, type: "dsar_request", title: `${r.kind} request`, createdAt: r.submittedAt, updatedAt: r.resolvedAt || r.submittedAt, data: r });
+    }
+    const flows = s.flows.get(uid);
+    if (flows) for (const f of flows.values()) {
+      rows.push({ id: f.id, type: "data_flow", title: f.destination, createdAt: f.registeredAt, updatedAt: f.updatedAt || f.registeredAt, data: f });
+    }
+    const retention = s.retention.get(uid);
+    if (retention) for (const [category, v] of retention.entries()) {
+      rows.push({ id: `retention_${category}`, type: "retention_policy", title: category, createdAt: v.updatedAt, updatedAt: v.updatedAt, data: { category, ...v } });
+    }
+    const sharing = s.lensSharing.get(uid);
+    if (sharing) for (const [lensId, v] of sharing.entries()) {
+      rows.push({ id: `sharing_${lensId}`, type: "lens_sharing", title: lensId, createdAt: v.updatedAt, updatedAt: v.updatedAt, data: { lensId, ...v } });
+    }
+    const dpo = s.dpo.get(uid);
+    if (dpo) {
+      dpo.inventory.forEach((it, i) => rows.push({ id: `dpo_inventory_${i}`, type: "data_inventory_item", title: it.category, createdAt: null, updatedAt: null, data: it }));
+      dpo.consents.forEach((it, i) => rows.push({ id: `dpo_consent_${i}`, type: "consent_record", title: it.subject, createdAt: null, updatedAt: null, data: it }));
+    }
+    return rows;
   });
 }
