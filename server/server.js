@@ -51492,9 +51492,11 @@ try {
 try {
   const { startCockpitPump } = await import("./lib/cockpit/pump.js");
   const { makeExec } = await import("./lib/cockpit/executor.js");
+  const { verifyStep } = await import("./lib/cockpit/verifier.js");
   globalThis.__cockpitPump = startCockpitPump({ db, makeDeps: (run) => ({
     exec: makeExec({ db, userId: run.userId, sessionId: run.chatSessionId, runMacro, lensActions: LENS_ACTIONS, surface: run.surface }),
     lensActions: LENS_ACTIONS,
+    verify: verifyStep,
   }) });
 } catch (e) { console.warn("[cockpit] pump not started:", e?.message || e); }
 
