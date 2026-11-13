@@ -347,11 +347,17 @@ function SchedulingTab() {
   const [gantt, setGantt] = useState<any>(null);
   const [err, setErr] = useState('');
   const [form, setForm] = useState({ name: '', resource: 'Line A', durationHours: '', priority: '3', dueDate: '' });
+  // FIX-manufacturing-011: schedule-gantt anchors unpinned jobs at the
+  // horizon start, which defaults to the wall clock — so every reload
+  // re-placed the same jobs at a new start time and the Gantt drifted.
+  // The horizon is pinned once for this tab's lifetime and sent with
+  // every load, so a job keeps the start time it was first shown with.
+  const [horizonStart] = useState(() => new Date().toISOString());
 
   const load = useCallback(async () => {
-    const d = await run('schedule-gantt');
+    const d = await run('schedule-gantt', { horizonStart });
     if (d.ok) setGantt(d.result);
-  }, []);
+  }, [horizonStart]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
@@ -889,6 +895,7 @@ function NCRTab() {
 function MaintenanceTab() {
   const [sched, setSched] = useState<any>(null);
   const [err, setErr] = useState('');
+  const [doneNote, setDoneNote] = useState('');
   const [form, setForm] = useState({ machineId: '', task: '', intervalDays: '', assignedTo: '' });
 
   const load = useCallback(async () => {
@@ -912,10 +919,15 @@ function MaintenanceTab() {
   const complete = async (planId: string) => {
     // S5: this leg used to swallow every failure — no error, no reload —
     // so any refusal read as a dead button. Surface it like create does.
+    // FIX-manufacturing-011: success was silent too — the only sign was
+    // the row's dates quietly changing on reload. Name it.
     setErr('');
+    setDoneNote('');
     try {
       const d = await run('maintenance-complete', { planId });
       if (!d.ok) { setErr(d.error || 'Could not mark done.'); return; }
+      const plan = (sched?.plans || []).find((p: any) => p.id === planId);
+      setDoneNote(`Marked “${plan?.task || 'maintenance plan'}” done — its next due date has been rescheduled below.`);
       load();
     } catch (e) {
       setErr(String((e as Error)?.message || e));
@@ -963,6 +975,8 @@ function MaintenanceTab() {
           <div className={card}><p className="text-xs text-zinc-400">Due soon</p><p className={`text-lg font-bold ${sched.dueSoonCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{sched.dueSoonCount}</p></div>
         </div>
       )}
+
+      {doneNote && <p role="status" className="rounded border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">{doneNote}</p>}
 
       {plans.length === 0 ? (
         <p className="text-sm text-zinc-400">No maintenance plans.</p>

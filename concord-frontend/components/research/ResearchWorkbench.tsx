@@ -56,7 +56,25 @@ export function ResearchWorkbench({ open = true, onClose, embedded = false }: Pr
         )}
       </header>
 
-      <nav className="px-3 py-2 border-b border-white/10 flex items-center gap-1 flex-wrap">
+      <nav aria-label="Research views"
+        onKeyDown={(e) => {
+          // FIX-research-004: the view bar took Tab focus but arrow keys
+          // did nothing. Left/Right (and Home/End) now move across views
+          // and activate them, the way a tablist behaves.
+          if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(e.key)) return;
+          const btns = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('[data-research-tab]'));
+          if (btns.length === 0) return;
+          const idx = btns.findIndex((b) => b === document.activeElement);
+          let next = idx;
+          if (e.key === 'ArrowRight') next = idx < 0 ? 0 : (idx + 1) % btns.length;
+          else if (e.key === 'ArrowLeft') next = idx < 0 ? btns.length - 1 : (idx - 1 + btns.length) % btns.length;
+          else if (e.key === 'Home') next = 0;
+          else if (e.key === 'End') next = btns.length - 1;
+          e.preventDefault();
+          btns[next]?.focus();
+          btns[next]?.click();
+        }}
+        className="px-3 py-2 border-b border-white/10 flex items-center gap-1 flex-wrap">
         {([
           { id: 'notes',      label: 'Notes',      icon: FileText },
           { id: 'daily',      label: 'Daily',      icon: Calendar },
@@ -70,7 +88,7 @@ export function ResearchWorkbench({ open = true, onClose, embedded = false }: Pr
           const Icon = t.icon;
           const active = tab === t.id;
           return (
-            <button key={t.id} type="button" onClick={() => { setTab(t.id); setActiveNoteId(null); }}
+            <button key={t.id} type="button" data-research-tab={t.id} onClick={() => { setTab(t.id); setActiveNoteId(null); }}
               className={cn(
                 'inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded transition',
                 active
@@ -163,6 +181,11 @@ function NotesTab({ onOpen }: { onOpen: (id: string) => void }) {
             className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-fuchsia-500/40 bg-fuchsia-500/15 text-xs text-fuchsia-100 disabled:opacity-40">
             <Save className="w-3 h-3" /> Save
           </button>
+          {/* FIX-research-004: Save disabled itself in silence on an empty
+              title. The precondition is named while it is missing. */}
+          {!draft.title.trim() && (
+            <p className="text-[11px] text-zinc-500" role="note">Give the note a title to save it.</p>
+          )}
         </div>
       )}
       {notice && (
@@ -478,30 +501,55 @@ function NoteEditor({ noteId, onBack, onOpenNote }: { noteId: string; onBack: ()
 function DailyTab() {
   const [note, setNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  // S9 (F12b): send the USER'S LOCAL date. The macro accepts an explicit
+  // date; without one it falls back to the server's UTC date, which titled
+  // the note with tomorrow's date for anyone west of Greenwich in their
+  // evening. Local getters give the calendar day on the user's own clock.
+  const localDate = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+
+  const fetchDaily = async (create: boolean) => {
+    const r = await lensRun({ domain: 'research', action: 'daily-note', input: { date: localDate(), ...(create ? {} : { create: false }) } });
+    return ((r.data as { result?: { note?: Note } }).result?.note) || null;
+  };
 
   useEffect(() => {
     (async () => {
       try {
-        // S9 (F12b): send the USER'S LOCAL date. The macro accepts an
-        // explicit date; without one it falls back to the server's UTC
-        // date, which titled the note with tomorrow's date for anyone
-        // west of Greenwich in their evening. Local getters give the
-        // calendar day on the user's own clock.
-        const now = new Date();
-        const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const r = await lensRun({ domain: 'research', action: 'daily-note', input: { date: localDate } });
-        setNote(((r.data as { result?: { note?: Note } }).result?.note) || null);
-      } catch (e) { console.error(e); }
+        // FIX-research-003: opening this tab used to auto-create the day's
+        // note. The first read is create:false — the note is minted only
+        // when the user presses Start.
+        setNote(await fetchDaily(false));
+      } catch (e) { console.error(e); setLoadFailed(true); }
       finally { setLoading(false); }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const startToday = async () => {
+    setLoading(true);
+    try { setNote(await fetchDaily(true)); }
+    catch (e) { console.error(e); setLoadFailed(true); }
+    finally { setLoading(false); }
+  };
+
   if (loading) return <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
-  if (!note) return <p className="text-xs text-gray-400 p-4">Could not load daily note.</p>;
+  if (!note) return (
+    <div className="p-4 space-y-2">
+      <p className="text-xs text-gray-400">{loadFailed ? 'Could not load the daily note.' : 'No daily note for today yet — opening this tab no longer creates one.'}</p>
+      {!loadFailed && (
+        <button type="button" onClick={() => void startToday()} className="px-3 py-1.5 rounded-md border border-fuchsia-500/40 bg-fuchsia-500/15 text-xs text-fuchsia-100">Start today&rsquo;s note</button>
+      )}
+    </div>
+  );
 
   return (
     <div className="p-3 space-y-2">
-      <p className="text-[10px] text-gray-400">Auto-created daily note. Edit via Notes tab.</p>
+      <p className="text-[10px] text-gray-400">Daily note. Edit via Notes tab.</p>
       <h3 className="text-lg font-semibold text-gray-100">{note.title}</h3>
       <pre className="text-xs text-gray-200 whitespace-pre-wrap font-mono border border-white/10 rounded p-3 bg-black/20">{note.body}</pre>
     </div>

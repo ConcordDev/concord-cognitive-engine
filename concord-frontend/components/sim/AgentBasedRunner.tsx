@@ -91,15 +91,25 @@ export function AgentBasedRunner() {
     } else if (kind === 'schelling') {
       params.threshold = threshold;
     }
-    const r = await lensRun<ABMResult>('sim', 'agentBased', params);
-    if (r.data.ok && r.data.result) {
-      setResult(r.data.result);
-      recordStudioRun();
-    } else {
+    // FIX-sim-005: no try/finally — a REJECTED run (the connection
+    // dropping mid-simulation) escaped before setRunning(false), so
+    // the button sat on "Stepping agents…" forever with the result
+    // never arriving and no error shown.
+    try {
+      const r = await lensRun<ABMResult>('sim', 'agentBased', params);
+      if (r.data.ok && r.data.result) {
+        setResult(r.data.result);
+        recordStudioRun();
+      } else {
+        setResult(null);
+        setError(r.data.error || 'Agent simulation failed.');
+      }
+    } catch (e) {
       setResult(null);
-      setError(r.data.error || 'Agent simulation failed.');
+      setError(e instanceof Error ? `The simulation did not finish: ${e.message}` : 'The simulation did not finish — the connection was lost.');
+    } finally {
+      setRunning(false);
     }
-    setRunning(false);
   }, [kind, steps, gridSize, seed, population, infectionRate, recoveryRate, threshold]);
 
   const meta = MODEL_META[kind];

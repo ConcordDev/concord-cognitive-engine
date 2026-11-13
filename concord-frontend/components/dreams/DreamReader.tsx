@@ -114,9 +114,15 @@ export function DreamReader({
     const tags = tagDraft.split(',').map((t) => t.trim()).filter(Boolean);
     const r = await lensRun<{ message?: string }>('dreams', 'tag', { dreamId, tags });
     if (r.data.ok) {
-      setTagNote(r.data.result?.message || r.data.message || null);
+      // FIX-dreams-004: a successful save with no server message used to
+      // confirm nothing — the card just changed. And a failure said
+      // nothing at all. Both outcomes speak now.
+      setTagNote(r.data.result?.message || r.data.message || 'Tags saved.');
       await load();
       onChanged?.();
+    } else {
+      setTagNote(null);
+      setError(r.data.error || 'Tags could not be saved.');
     }
     setBusy(false);
   };

@@ -214,6 +214,16 @@ export default function CareersLens() {
     }
   }, [selected, addToast, loadProgress]);
 
+  // FIX-careers-003: Clock in started the timing marker with no way
+  // back out except Stop (which works the shift) and no stated state.
+  // Clock out abandons the started shift without working it.
+  const onClockOut = useCallback(() => {
+    if (timingStart === null || working) return;
+    setTimingStart(null);
+    setMarkerPos(0);
+    setNote('Clocked out — the shift was abandoned, nothing was worked or earned.');
+  }, [timingStart, working]);
+
   const onShiftButton = useCallback(() => {
     if (working) return;
     if (timingStart === null) {
@@ -316,6 +326,15 @@ export default function CareersLens() {
               >
                 {working ? 'Working…' : timingStart === null ? 'Play shift' : 'Stop'}
               </button>
+              {timingStart !== null && !working && (
+                <button
+                  onClick={onClockOut}
+                  aria-label="Clock out without working the shift"
+                  className="border border-white/15 hover:border-white/30 transition-colors text-zinc-300 font-medium rounded px-3 py-1"
+                >
+                  Clock out
+                </button>
+              )}
               {progress && (
                 <span className="text-xs text-gray-400 tabular-nums">
                   Tier {progress.tier} · {progress.xp} XP{progress.tier < 10 ? ` / ${progress.tier * 100} to promote` : ' · top tier'} · {progress.shifts} shifts
@@ -334,10 +353,10 @@ export default function CareersLens() {
                 <div className="absolute inset-y-0 left-[40%] w-[20%] bg-amber-500/25" />
                 <div className="absolute inset-y-0 w-1 rounded bg-amber-200" style={{ left: `calc(${(markerPos * 100).toFixed(2)}% - 2px)` }} />
               </div>
-              <p className="mt-1 text-[11px] text-gray-500">
+              <p className="mt-1 text-[11px] text-gray-500" role="status">
                 {timingStart !== null
-                  ? 'Stop the marker inside the shaded zone. Closer to the centre is a better shift.'
-                  : 'Start a shift, then stop the marker in the centre. Accuracy is your shift skill.'}
+                  ? 'You are clocked in. Stop the marker inside the shaded zone to work the shift (closer to the centre is a better shift), or Clock out to abandon it.'
+                  : 'You are clocked out. Start a shift, then stop the marker in the centre. Accuracy is your shift skill.'}
               </p>
               <p className="mt-1 text-[11px] text-gray-500">
                 {sparksBalance !== null && (

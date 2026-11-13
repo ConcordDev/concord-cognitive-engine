@@ -771,14 +771,19 @@ function FlowMapSection() {
     if (!data) return [];
     const outbound = data.flows.filter((f) => f.direction === 'outbound');
     const inbound = data.flows.filter((f) => f.direction === 'inbound');
+    // FIX-strategic-adds-003: the header counts ACTIVE flows (the server
+    // counts f.active) while the branches counted every flow, so the text
+    // and the visual disagreed about how many items exist. Branch labels
+    // now carry the same active count as the header, and paused flows in
+    // the tree say so.
     const branch = (label: string, flows: DataFlow[]): TreeNode => ({
       id: label,
-      label: `${label} (${flows.length})`,
+      label: `${label} (${flows.filter((f) => f.active).length} active${flows.some((f) => !f.active) ? ` · ${flows.length} total` : ''})`,
       tone: 'info',
       children: flows.map((f) => ({
         id: f.id,
         label: f.destination,
-        detail: `${f.dataCategory} · ${f.purpose}`,
+        detail: `${f.dataCategory} · ${f.purpose}${f.active ? '' : ' · paused'}`,
         tone: f.active ? 'warn' : 'default',
       })),
     });
@@ -828,11 +833,17 @@ function FlowMapSection() {
           <Plus className="w-3 h-3" /> Register Flow
         </button>
       </div>
-      {data && data.flows.length === 0 ? (
+      {!data && !error ? (
+        // FIX-strategic-adds-003: before the first answer arrives the tree
+        // used to announce "No tree to display yet" — an empty claim made
+        // while the data was still loading. Say it is loading instead.
+        <p className="text-xs text-gray-400">Loading your data flows…</p>
+      ) : data && data.flows.length === 0 ? (
         <p className="text-xs text-gray-400">No data flows registered yet.</p>
       ) : (
         <>
           <TreeDiagram root={tree} />
+          <p className="text-[10px] text-gray-500">These flows live in your account&rsquo;s Data Controls and are shared across lenses — a flow registered from another lens appears here too.</p>
           <div className="space-y-1 pt-1">
             {data?.flows.map((f) => (
               <div

@@ -162,13 +162,20 @@ export function IncidentConsole() {
     const r = await run<{ notifications: Notification[] }>('notifyList', {});
     if (r) setNotifications(r.notifications || []);
   }, []);
+  // FIX-ops-003: these two loaders used the null-swallowing run(), so
+  // a 403 left their tabs on "Loading…" forever. They now keep the
+  // failure and the tabs render it (permission vs other) in words.
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const loadAnalytics = useCallback(async () => {
-    const r = await run<Analytics>('analytics', {});
-    if (r) setAnalytics(r);
+    const r = await runResult<Analytics>('analytics', {});
+    if (r.ok) { setAnalytics(r.result); setAnalyticsError(null); }
+    else setAnalyticsError(r.error);
   }, []);
   const loadStatus = useCallback(async () => {
-    const r = await run<StatusPage>('statusPage', {});
-    if (r) setStatus(r);
+    const r = await runResult<StatusPage>('statusPage', {});
+    if (r.ok) { setStatus(r.result); setStatusError(null); }
+    else setStatusError(r.error);
   }, []);
 
   useEffect(() => {
@@ -331,8 +338,8 @@ export function IncidentConsole() {
         />
       )}
       {tab === 'policies' && <PoliciesTab policies={policies} busy={busy} onCreate={createPolicy} />}
-      {tab === 'analytics' && <AnalyticsTab analytics={analytics} />}
-      {tab === 'status' && <StatusTab status={status} />}
+      {tab === 'analytics' && <AnalyticsTab analytics={analytics} error={analyticsError} />}
+      {tab === 'status' && <StatusTab status={status} error={statusError} />}
     </div>
   );
 }
@@ -866,8 +873,20 @@ function PoliciesTab({
 }
 
 // ───────────────────────── analytics ─────────────────────────
-function AnalyticsTab({ analytics }: { analytics: Analytics | null }) {
+function LoadFailure({ error, what }: { error: string; what: string }) {
+  const forbidden = /403|forbidden|admin|operator|permission/i.test(error);
+  return (
+    <p role="alert" className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">
+      {forbidden
+        ? `${what} needs operator access — the server refused this request for your role.`
+        : `${what} could not be loaded (${error}).`}
+    </p>
+  );
+}
+
+function AnalyticsTab({ analytics, error }: { analytics: Analytics | null; error?: string | null }) {
   if (!analytics) {
+    if (error) return <LoadFailure error={error} what="Analytics" />;
     return <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">Loading analytics…</p>;
   }
   return (
@@ -925,8 +944,9 @@ const COMP_STATUS: Record<string, string> = {
   operational: '#22c55e', degraded: '#eab308', partial_outage: '#f97316', major_outage: '#ef4444',
 };
 
-function StatusTab({ status }: { status: StatusPage | null }) {
+function StatusTab({ status, error }: { status: StatusPage | null; error?: string | null }) {
   if (!status) {
+    if (error) return <LoadFailure error={error} what="The status page" />;
     return <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">Loading status page…</p>;
   }
   const overall = OVERALL_LABEL[status.overall] || { text: status.overall, color: '#64748b' };

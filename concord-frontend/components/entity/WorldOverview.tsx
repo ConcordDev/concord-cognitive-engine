@@ -82,9 +82,9 @@ export function WorldOverview({ entityCount }: { entityCount: number }) {
       </p>
 
       <Section title="Simulate the whole world" hint={entityCount < 2 ? 'Needs at least two entities with relations to produce insights.' : 'Steps every entity forward along its relations and reports what moved.'}>
-        <input value={hypothesis} onChange={(e) => setHypothesis(e.target.value)} placeholder="Hypothesis (optional)" aria-label="World hypothesis" className={cn(fieldCls, 'w-full')} />
+        <input id="entity-worldoverview-world-hypothesis" name="world-hypothesis" value={hypothesis} onChange={(e) => setHypothesis(e.target.value)} placeholder="Hypothesis (optional)" aria-label="World hypothesis" className={cn(fieldCls, 'w-full')} />
         <label className="block text-[12px] text-zinc-400">Steps · {steps}
-          <input type="range" min={5} max={50} value={steps} onChange={(e) => setSteps(Number(e.target.value))} className="mt-1 w-full accent-teal-400" aria-label="World simulation steps" />
+          <input id="entity-worldoverview-world-simulation-steps" name="world-simulation-steps" type="range" min={5} max={50} value={steps} onChange={(e) => setSteps(Number(e.target.value))} className="mt-1 w-full accent-teal-400" aria-label="World simulation steps" />
         </label>
         <button type="button" onClick={() => sim.mutate()} disabled={sim.isPending} className={primaryBtn}>
           {sim.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
@@ -121,7 +121,7 @@ export function WorldOverview({ entityCount }: { entityCount: number }) {
 
       <Section title="Snapshots" hint="Freeze the graph's current shape so you can compare it later.">
         <div className="flex gap-1.5">
-          <input value={label} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') snap.mutate(); }} placeholder="Label (optional)" aria-label="Snapshot label" className={cn(fieldCls, 'min-w-0 flex-1')} />
+          <input id="entity-worldoverview-snapshot-label" name="snapshot-label" value={label} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') snap.mutate(); }} placeholder="Label (optional)" aria-label="Snapshot label" className={cn(fieldCls, 'min-w-0 flex-1')} />
           <button type="button" onClick={() => snap.mutate()} disabled={snap.isPending} className={primaryBtn}><Camera className="h-3.5 w-3.5" />{snap.isPending ? 'Saving…' : 'Snapshot'}</button>
         </div>
         {snapList.length > 0 && (
@@ -138,7 +138,7 @@ export function WorldOverview({ entityCount }: { entityCount: number }) {
 
       <Section title="Extract from a DTU" hint="Pull entities and relations out of a knowledge unit already in the substrate. Paste its id.">
         <div className="flex gap-1.5">
-          <input value={dtuId} onChange={(e) => setDtuId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && dtuId.trim()) extract.mutate(); }} placeholder="DTU id" aria-label="DTU id" className={cn(fieldCls, 'min-w-0 flex-1 font-mono')} />
+          <input id="entity-worldoverview-dtu-id" name="dtu-id" value={dtuId} onChange={(e) => setDtuId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && dtuId.trim()) extract.mutate(); }} placeholder="DTU id" aria-label="DTU id" className={cn(fieldCls, 'min-w-0 flex-1 font-mono')} />
           <button type="button" onClick={() => extract.mutate()} disabled={!dtuId.trim() || extract.isPending} className={primaryBtn}><FileInput className="h-3.5 w-3.5" />{extract.isPending ? 'Extracting…' : 'Extract'}</button>
         </div>
       </Section>

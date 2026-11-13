@@ -29,7 +29,7 @@ interface QuoteMeta {
 }
 
 /** One line per honest caveat; empty when the reply came from the primary source unfiltered. */
-function quoteNotes(meta: QuoteMeta): string[] {
+function quoteNotes(meta: QuoteMeta, filterAppliedLocally = false): string[] {
   const notes: string[] = [];
   if (meta.degraded) {
     notes.push(
@@ -39,9 +39,26 @@ function quoteNotes(meta: QuoteMeta): string[] {
     );
   }
   if (meta.filtersIgnored && meta.filtersIgnored.length > 0) {
-    notes.push('author/tag filter not applied');
+    // FIX-daily-009: the bare 'filter not applied' line left the user
+    // guessing. The panel now applies the tag filter to the fallback
+    // batch itself when it can (see below); when it cannot, the note
+    // says why — the fallback sources cannot filter, and none of the
+    // quotes they returned carries the requested tag.
+    notes.push(
+      filterAppliedLocally
+        ? 'Tag filter applied to the fallback quotes (the live source, which filters server-side, is unavailable).'
+        : 'Author/tag filter not applied — the live source is unavailable, the fallback sources cannot filter, and no quote they returned carries the requested tag.',
+    );
   }
   return notes;
+}
+
+/** FIX-daily-009: fallback quote sources cannot honour the tag filter
+ * server-side, so the panel applies it to the batch it got back. */
+function applyTagFilter(quotes: Q[], tag?: string): Q[] {
+  if (!tag) return quotes;
+  const wanted = tag.toLowerCase();
+  return quotes.filter((q) => (q.tags || []).some((t) => t.toLowerCase() === wanted));
 }
 
 /** Lens-run envelope: the macro's own reply sits under `result`. */
@@ -84,7 +101,9 @@ export function QuotablePanel({ domain, tag, className }: QuotablePanelProps) {
   const fetchData = async () => {
     setLoading(true);
     setError(null);
-    const r = await runMacro(domain, 'live_quote', { limit: 3, ...(tag ? { tag } : {}) });
+    // With a tag bias, fetch the server's max batch so the client-side
+    // fallback filter (FIX-daily-009) has something to work with.
+    const r = await runMacro(domain, 'live_quote', { limit: tag ? 10 : 3, ...(tag ? { tag } : {}) });
     if (r.ok) {
       setQuotes(r.quotes || []);
       setMeta(r);
@@ -95,7 +114,7 @@ export function QuotablePanel({ domain, tag, className }: QuotablePanelProps) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const r = await runMacro(domain, 'live_quote', { limit: 3, ...(tag ? { tag } : {}) });
+      const r = await runMacro(domain, 'live_quote', { limit: tag ? 10 : 3, ...(tag ? { tag } : {}) });
       if (cancelled) return;
       if (r.ok) {
         setQuotes(r.quotes || []);
@@ -106,7 +125,15 @@ export function QuotablePanel({ domain, tag, className }: QuotablePanelProps) {
     return () => { cancelled = true; };
   }, [domain, tag]);
 
-  const notes = quoteNotes(meta);
+  // FIX-daily-009: when the serving source ignored the tag filter, apply
+  // it here over the returned batch; show applied matches (up to 3) and
+  // let the footer note say the filter was applied locally. When nothing
+  // matches, show the batch unfiltered with the fuller explanation.
+  const filterIgnored = Boolean(meta.filtersIgnored && meta.filtersIgnored.length > 0);
+  const localMatches = filterIgnored ? applyTagFilter(quotes, tag) : [];
+  const filterAppliedLocally = localMatches.length > 0;
+  const displayQuotes = filterAppliedLocally ? localMatches.slice(0, 3) : quotes.slice(0, 3);
+  const notes = quoteNotes(meta, filterAppliedLocally);
 
   return (
     <section className={cn('rounded-lg border border-zinc-800 bg-zinc-950/80 overflow-hidden', className)}>
@@ -131,9 +158,9 @@ export function QuotablePanel({ domain, tag, className }: QuotablePanelProps) {
         </div>
       )}
 
-      {!error && quotes.length > 0 && (
+      {!error && displayQuotes.length > 0 && (
         <ul className="divide-y divide-zinc-800/40">
-          {quotes.map((q, i) => (
+          {displayQuotes.map((q, i) => (
             <li key={q.id ?? `${q.author}-${i}`} className="px-4 py-3">
               <blockquote className="text-sm text-zinc-200 italic leading-relaxed">
                 &ldquo;{q.content}&rdquo;

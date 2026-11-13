@@ -152,6 +152,27 @@ function SearchTab() {
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [totalIndexed, setTotalIndexed] = useState(0);
+  const [searched, setSearched] = useState(false);
+  const [indexing, setIndexing] = useState(false);
+  const [indexNote, setIndexNote] = useState('');
+
+  // FIX-message-008: the corpus count used to be a dead end — 0 indexed
+  // with no way to index. Messages sent now are indexed as they are
+  // created; older channel history enters via this backfill.
+  const backfill = async () => {
+    setIndexing(true);
+    try {
+      const r = await lensRun({
+        domain: 'message', action: 'index-backfill', input: {},
+      });
+      const data = (r.data as { result?: { added?: number; total?: number } }).result;
+      if (data) {
+        setTotalIndexed(data.total || 0);
+        setIndexNote(data.added ? `Indexed ${data.added} more message${data.added === 1 ? '' : 's'} from your channels.` : 'Your channel history is already fully indexed.');
+      }
+    } catch (e) { console.error(e); setIndexNote('Indexing failed — try again.'); }
+    finally { setIndexing(false); }
+  };
 
   const search = async () => {
     if (query.trim().length < 2) return;
@@ -164,6 +185,7 @@ function SearchTab() {
       const data = (r.data as { result?: { hits?: SearchHit[]; totalIndexed?: number } }).result;
       setHits(data?.hits || []);
       setTotalIndexed(data?.totalIndexed || 0);
+      setSearched(true);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -185,6 +207,16 @@ function SearchTab() {
           </button>
         </div>
         <p className="text-[10px] text-gray-400">{totalIndexed} messages indexed in your local search corpus.</p>
+        {searched && totalIndexed === 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[11px] text-gray-300">Nothing is indexed yet, so search has nothing to look through. New messages are indexed as they are sent — and your existing channel history can be indexed now:</p>
+            <button type="button" onClick={() => void backfill()} disabled={indexing}
+              className="px-3 py-1 rounded-md border border-sky-500/40 bg-sky-500/15 text-xs text-sky-100 disabled:opacity-40">
+              {indexing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Index my messages'}
+            </button>
+          </div>
+        )}
+        {indexNote && <p className="text-[11px] text-sky-200" role="status">{indexNote}</p>}
       </div>
 
       {hits.length > 0 && (

@@ -460,12 +460,37 @@ function RecurringTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors:
 // ===========================================================================
 // Communications
 // ===========================================================================
+const COMM_DRAFT_KEY = 'concord-nonprofit-comm-draft';
+
 function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () => Promise<void> }) {
   const [donorId, setDonorId] = useState('');
   const [kind, setKind] = useState<'thank_you' | 'appeal' | 'receipt' | 'custom'>('thank_you');
   const [cause, setCause] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  // FIX-nonprofit-012: a failed send used to strand the writer twice —
+  // "connect Gmail" with no route to connect, and the composed draft
+  // gone when the panel unmounted. The draft now persists locally and
+  // restores on return; a successful send clears it.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(COMM_DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw) as { donorId?: string; kind?: typeof kind; cause?: string; subject?: string; body?: string };
+      if (d.donorId) setDonorId(d.donorId);
+      if (d.kind) setKind(d.kind);
+      if (d.cause) setCause(d.cause);
+      if (d.subject) setSubject(d.subject);
+      if (d.body) setBody(d.body);
+    } catch { /* a corrupt draft is just no draft */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    try {
+      if (!donorId && !subject && !body && !cause) window.localStorage.removeItem(COMM_DRAFT_KEY);
+      else window.localStorage.setItem(COMM_DRAFT_KEY, JSON.stringify({ donorId, kind, cause, subject, body }));
+    } catch { /* storage unavailable — the form still works in place */ }
+  }, [donorId, kind, cause, subject, body]);
   const [preview, setPreview] = useState<{ subject: string; body: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [autoLines, setAutoLines] = useState<string[] | null>(null);
@@ -495,7 +520,11 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
     setBusy(true); setFeedback(null);
     const r = await lensRun('nonprofit', 'comm-send', { donorId, kind, cause, subject, body });
     setFeedback(commSendFeedback(kind, r.data));
-    if (r.data?.ok && (r.data.result?.status === 'sent' || r.data.result?.comm?.status === 'sent')) setPreview(null);
+    if (r.data?.ok && (r.data.result?.status === 'sent' || r.data.result?.comm?.status === 'sent')) {
+      setPreview(null);
+      try { window.localStorage.removeItem(COMM_DRAFT_KEY); } catch { /* best effort */ }
+      setSubject(''); setBody('');
+    }
     if (r.data?.ok) await reloadDonors();
     setBusy(false);
   };
@@ -562,6 +591,9 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
           </div>
         )}
         {feedback && <p role="status" className={`text-[11px] ${feedback.startsWith('Sent ') ? 'text-emerald-400' : 'text-amber-300'}`}>{feedback}</p>}
+        {feedback === 'Not sent: connect Gmail' && (
+          <p className="text-[11px] text-zinc-300">Sending runs through your own Gmail. <a href="/lenses/integrations" className="text-sky-300 underline">Connect Gmail in the Integrations lens</a>, then come back — your draft is kept here.</p>
+        )}
       </div>
     </div>
   );

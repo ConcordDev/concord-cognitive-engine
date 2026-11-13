@@ -807,6 +807,25 @@ export default function registerPhysicsActions(registerLensAction) {
     };
   });
 
+  // FIX-physics-007: sharing minted a code with no way to take it back.
+  // scene-unshare revokes the calling owner's code: the shares entry is
+  // deleted (the code stops loading for everyone) and the scene's
+  // shareCode is cleared. Owner-scoped like scene-share itself.
+  registerLensAction("physics", "scene-unshare", (ctx, _artifact, params = {}) => {
+    const s = getPhysState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const map = s.scenes.get(physActor(ctx));
+    const scene = map?.get(String(params.id));
+    if (!scene) return { ok: false, error: "scene not found" };
+    if (!scene.shareCode) return { ok: true, result: { revoked: false, shareCode: null } };
+    const code = scene.shareCode;
+    s.shares.delete(code);
+    scene.shareCode = null;
+    scene.updatedAt = nowIsoPhys();
+    savePhysState();
+    return { ok: true, result: { revoked: true, shareCode: code } };
+  });
+
   registerLensAction("physics", "scene-load-shared", (ctx, _artifact, params = {}) => {
     const s = getPhysState();
     if (!s) return { ok: false, error: "STATE unavailable" };

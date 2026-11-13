@@ -111,8 +111,10 @@ export function ActorKeysPanel() {
         <KeyRound className="w-4 h-4" /> Signed-actor keys
       </h2>
       <p className="text-xs text-gray-400 mb-3">
-        Register each peer&apos;s signing key. Re-registering a different key
-        rotates it and preserves the prior fingerprint.
+        Your own key book: register a peer&apos;s signing key here so its
+        signatures can be verified against it. Re-registering a different key
+        rotates your record and preserves the prior fingerprint. This is
+        personal to your account — it changes nothing instance-wide.
       </p>
 
       {/* Register */}

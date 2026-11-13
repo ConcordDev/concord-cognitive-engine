@@ -143,7 +143,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
             <Radio className="h-4 w-4" /> New monitor
           </h3>
           <div className="space-y-2">
-            <input
+            <input id="sentinel-sentinelmonitors-monitor-name" name="monitor-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Monitor name…"
@@ -153,7 +153,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
             <div className="flex gap-2">
               <label className="flex-1 text-[10px] uppercase tracking-wider text-blue-700">
                 Min severity
-                <select
+                <select id="sentinel-sentinelmonitors-field" name="field"
                   value={minSeverity}
                   onChange={(e) => setMinSeverity(e.target.value as (typeof SEVERITIES)[number])}
                   className="min-h-11 mt-1 w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1 text-xs capitalize text-blue-100 focus:border-blue-500 focus:outline-none"
@@ -163,7 +163,7 @@ export function SentinelMonitors({ onChanged }: { onChanged?: () => void }) {
               </label>
               <label className="flex-1 text-[10px] uppercase tracking-wider text-blue-700">
                 Interval (min)
-                <input
+                <input id="sentinel-sentinelmonitors-field-2" name="field-2"
                   type="number"
                   min={5}
                   max={1440}

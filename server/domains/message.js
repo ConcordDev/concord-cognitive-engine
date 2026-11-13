@@ -159,6 +159,42 @@ export default function registerMessageActions(registerLensAction) {
     return { ok: true, result: { messageId, total } };
   });
 
+  // FIX-message-008: creation paths index new messages, but history from
+  // before that wiring (and anything already sitting in channels) never
+  // entered the corpus, and the Search tab offered no way to index it —
+  // it just reported "0 messages indexed". Backfill walks the caller's
+  // own channels (plus shared channels they belong to) and indexes every
+  // message not already in the corpus. Idempotent.
+  registerLensAction("message", "index-backfill", (ctx, _artifact, _params = {}) => {
+    const s = getMessageState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = msgActor(ctx);
+    const seen = new Set((s.searchIdx.get(userId) || []).map((m) => m.messageId));
+    const before = seen.size;
+    let added = 0;
+    const channels = [...listB(s.channels, userId)];
+    for (const ch of s.channelIndex.values()) {
+      if (isChannelMember(ch, userId) && !channels.some((c) => c.id === ch.id)) channels.push(ch);
+    }
+    for (const ch of channels) {
+      for (const m of channelMessages(s, userId, ch)) {
+        const mid = String(m.id || m.messageId || "");
+        if (!mid || seen.has(mid)) continue;
+        seen.add(mid);
+        indexMessageEntry(s, userId, {
+          messageId: mid,
+          threadId: ch.id,
+          body: m.body || m.text || "",
+          sender: m.sender || m.senderId || "",
+          ts: m.ts || m.createdAt,
+        });
+        added++;
+      }
+    }
+    if (added > 0) saveMessageState();
+    return { ok: true, result: { added, before, total: (s.searchIdx.get(userId) || []).length } };
+  });
+
   registerLensAction("message", "search-messages", (ctx, _artifact, params = {}) => {
   try {
     const s = getMessageState();

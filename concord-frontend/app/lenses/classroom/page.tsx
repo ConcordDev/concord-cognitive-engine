@@ -319,6 +319,31 @@ export default function ClassroomPage() {
             {loading && <div role="status" aria-busy="true" className="text-[13px] italic text-zinc-500">Loading classroom cohorts…</div>}
             {refusal('list')}
 
+            {activeCohort !== null && (() => {
+              const t = teaching.find((c) => c.id === activeCohort);
+              const st = studying.find((c) => c.id === activeCohort);
+              const c = t || st;
+              if (!c) return null;
+              return (
+                <section className={cn(cardCls, 'space-y-1')} aria-label={`Cohort ${c.id} details`}>
+                  <h2 className="text-[13px] font-medium text-zinc-300">
+                    Cohort #{c.id} — {c.name}
+                  </h2>
+                  <p className="text-[12px] text-zinc-500">
+                    {t ? 'You teach this cohort' : `You study in this cohort · teacher: ${teacherLabel(c)}`}
+                    {typeof c.enrolled === 'number' ? ` · ${c.enrolled} student${c.enrolled === 1 ? '' : 's'} enrolled` : ''}
+                    {c.rubric_dtu_id ? ` · rubric DTU ${c.rubric_dtu_id}` : ' · no rubric DTU attached'}
+                  </p>
+                  <p className="text-[12px] text-zinc-500">
+                    The workspace below is scoped to this cohort.{' '}
+                    <button type="button" onClick={() => { setActiveCohort(null); writeStoredCohort(null); }}
+                      className="text-teal-300 underline hover:text-teal-200">Clear scope</button>
+                    {' '}to return to all your work. A named student roster is not available in this view yet.
+                  </p>
+                </section>
+              );
+            })()}
+
             <div className="grid gap-5 lg:grid-cols-2">
               <section className={cardCls}>
                 <h2 className="mb-3 text-[13px] font-medium text-zinc-300">Teaching</h2>
@@ -339,7 +364,14 @@ export default function ClassroomPage() {
         {view === 'workspace' && (
           <section>
             <p className="mb-3 text-[13px] text-zinc-500">
-              {activeCohort ? `Scoped to cohort #${activeCohort}. Pick another on the Cohorts view.` : 'Showing all your work. Select a cohort on the Cohorts view to scope it.'}
+              {activeCohort ? (
+                <>
+                  {`Scoped to cohort #${activeCohort}. Pick another on the Cohorts view, or `}
+                  <button type="button" onClick={() => { setActiveCohort(null); writeStoredCohort(null); }}
+                    className="text-teal-300 underline hover:text-teal-200">clear the scope</button>
+                  {' to see all your work.'}
+                </>
+              ) : 'Showing all your work. Select a cohort on the Cohorts view to scope it.'}
             </p>
             <ClassroomWorkspace cohortId={activeCohort} />
           </section>
@@ -353,6 +385,7 @@ export default function ClassroomPage() {
 
         <CrossLensRecentsPanel lensId="classroom" sinceDays={7} limit={6} hideWhenEmpty className="mt-8" />
 
+        {view !== 'cohorts' && (
         <button
           type="button"
           onClick={newCohort}
@@ -362,6 +395,7 @@ export default function ClassroomPage() {
           <Plus className="h-4 w-4" />
           Create a cohort
         </button>
+        )}
       </div>
     </LensShell>
   );

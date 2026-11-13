@@ -2202,6 +2202,11 @@ export function ChatWorkspacePanel({ active, onActiveChange }: ChatWorkspacePane
         setCopiedMessageId(messageId);
         setTimeout(() => setCopiedMessageId(null), 2000);
       }
+    }).catch(() => {
+      // FIX-chat-012: a rejected clipboard write (permissions, insecure
+      // context) used to fail in total silence — the copy simply never
+      // happened and nothing said so.
+      useUIStore.getState().addToast({ type: 'error', message: 'Copy failed — the browser refused clipboard access. Select the text and copy it manually.' });
     });
   }, []);
 

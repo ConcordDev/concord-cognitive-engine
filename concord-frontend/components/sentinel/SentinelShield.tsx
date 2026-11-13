@@ -124,7 +124,7 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
   const [reportHash, setReportHash] = useState('');
   const [reportVector, setReportVector] = useState('');
   const [reportBusy, setReportBusy] = useState(false);
-  const [reportResult, setReportResult] = useState<{ status?: string; message?: string; threatDtu?: { id?: string } } | null>(null);
+  const [reportResult, setReportResult] = useState<{ status?: string; message?: string; threatDtu?: { id?: string }; triageCaseId?: string } | null>(null);
 
   // Fortify Suite — full lattice sweep.
   const [sweeping, setSweeping] = useState(false);
@@ -243,14 +243,37 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
       vector: reportVector.trim() || undefined,
     });
     const result = (r.data?.result ?? r.data) as { status?: string; message?: string; threatDtu?: { id?: string } } | null;
-    setReportResult(result);
-    setReportBusy(false);
     if (r.data?.ok) {
       setReportDesc('');
       setReportHash('');
       setReportVector('');
+      // FIX-sentinel-002: a submitted report used to land as a private
+      // lattice entry with no case anywhere — the reporter could not
+      // track it. Open the reporter's own triage case for it and say so;
+      // if that fails, the saved-pending message stands on its own.
+      if (result?.threatDtu?.id) {
+        const t = await lensRun('sentinel', 'triage.open', {
+          threatId: result.threatDtu.id,
+          title: reportDesc.trim().slice(0, 120),
+          severity: reportSeverity,
+          description: reportDesc.trim(),
+          vector: reportVector.trim() || null,
+        });
+        const caseId = (t.data?.result as { case?: { caseId?: string } } | undefined)?.case?.caseId;
+        if (t.data?.ok && caseId) {
+          setReportResult({ ...result, triageCaseId: caseId, message: `${result.message || 'Report saved.'} A triage case was opened for it — track it under the Triage tab.` });
+          onTriageOpened?.();
+        } else {
+          setReportResult(result);
+        }
+      } else {
+        setReportResult(result);
+      }
       await load();
+    } else {
+      setReportResult(result);
     }
+    setReportBusy(false);
   }
 
   async function runSweep() {
@@ -309,7 +332,7 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
                 <Send className="h-4 w-4" /> Report a threat
               </h3>
               <div className="grid gap-2 sm:grid-cols-2">
-                <select
+                <select id="sentinel-sentinelshield-threat-subtype" name="threat-subtype"
                   value={reportSubtype}
                   onChange={(e) => setReportSubtype(e.target.value as typeof REPORT_SUBTYPES[number])}
                   className="min-h-11 rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
@@ -319,7 +342,7 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
                 </select>
                 <label className="flex items-center gap-2 text-xs text-blue-400">
                   Severity
-                  <input
+                  <input id="sentinel-sentinelshield-severity" name="severity"
                     type="range" min={1} max={10} value={reportSeverity}
                     onChange={(e) => setReportSeverity(Number(e.target.value))}
                     className="min-h-11 flex-1"
@@ -327,19 +350,19 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
                   />
                   <span className="w-4 text-right font-mono text-blue-200">{reportSeverity}</span>
                 </label>
-                <input
+                <input id="sentinel-sentinelshield-attack-vector-e-g-email-attachment" name="attack-vector-e-g-email-attachment"
                   value={reportVector}
                   onChange={(e) => setReportVector(e.target.value)}
                   placeholder="attack vector (e.g. email attachment)"
                   className="min-h-11 rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none sm:col-span-2"
                 />
-                <input
+                <input id="sentinel-sentinelshield-sha-256-hash-optional" name="sha-256-hash-optional"
                   value={reportHash}
                   onChange={(e) => setReportHash(e.target.value)}
                   placeholder="SHA-256 hash (optional)"
                   className="min-h-11 rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 font-mono text-xs text-blue-100 focus:border-blue-500 focus:outline-none sm:col-span-2"
                 />
-                <textarea
+                <textarea id="sentinel-sentinelshield-describe-what-you-observed" name="describe-what-you-observed"
                   value={reportDesc}
                   onChange={(e) => setReportDesc(e.target.value)}
                   placeholder="Describe what you observed…"
@@ -362,6 +385,9 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
               {reportResult && (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <p className="text-[11px] text-blue-400">{reportResult.message}</p>
+                  {reportResult.triageCaseId && (
+                    <span className="text-[11px] text-blue-200">Triage case {reportResult.triageCaseId}</span>
+                  )}
                   {reportResult.threatDtu?.id && reportResult.status !== 'known_threat' && (
                     <button
                       type="button"
@@ -386,7 +412,7 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-200">
               <ScanLine className="h-4 w-4" /> On-demand scan
             </h3>
-            <textarea
+            <textarea id="sentinel-sentinelshield-scan-input" name="scan-input"
               value={scanInput}
               onChange={(e) => setScanInput(e.target.value)}
               placeholder="Paste file content, or a SHA-256 / MD5 hash, to scan…"
@@ -525,7 +551,7 @@ export function SentinelShield({ onTriageOpened }: { onTriageOpened?: () => void
             </summary>
             <div className="space-y-3 border-t border-blue-900/20 p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <input
+                <input id="sentinel-sentinelshield-threat-family" name="threat-family"
                   list="sentinel-threat-families"
                   value={family}
                   onChange={(e) => setFamily(e.target.value)}

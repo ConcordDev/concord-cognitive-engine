@@ -37,7 +37,7 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
       <span className="flex items-center justify-between text-[12px] text-zinc-400">
         {label}<span className="tabular-nums text-zinc-200">{pct(value)}%</span>
       </span>
-      <input
+      <input id="entity-entityinspector-field" name="field"
         type="range" min={0} max={100} value={pct(value)}
         onChange={(e) => onChange(Number(e.target.value) / 100)}
         className="mt-1 w-full accent-teal-400"
@@ -117,8 +117,8 @@ function OverviewTab({ entity, onFork, forking, onDeleted }: { entity: WorldEnti
 
   return (
     <div className="space-y-4">
-      <input value={name} onChange={(e) => setName(e.target.value)} aria-label="Entity name" className={cn(fieldCls, 'w-full text-[15px] font-medium')} />
-      <textarea
+      <input id="entity-entityinspector-entity-name" name="entity-name" value={name} onChange={(e) => setName(e.target.value)} aria-label="Entity name" className={cn(fieldCls, 'w-full text-[15px] font-medium')} />
+      <textarea id="entity-entityinspector-description" name="description"
         value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
         placeholder="What is this entity?" aria-label="Description" className={cn(fieldCls, 'w-full resize-y')}
       />
@@ -139,8 +139,8 @@ function OverviewTab({ entity, onFork, forking, onDeleted }: { entity: WorldEnti
         <div className="space-y-1.5">
           {props.map(([k, v], i) => (
             <div key={i} className="flex gap-1.5">
-              <input value={k} onChange={(e) => setProps((p) => p.map((r, j) => (j === i ? [e.target.value, r[1]] : r)))} placeholder="key" aria-label="Property key" className={cn(fieldCls, 'w-2/5')} />
-              <input value={v} onChange={(e) => setProps((p) => p.map((r, j) => (j === i ? [r[0], e.target.value] : r)))} placeholder="value" aria-label="Property value" className={cn(fieldCls, 'min-w-0 flex-1')} />
+              <input name="property-key" value={k} onChange={(e) => setProps((p) => p.map((r, j) => (j === i ? [e.target.value, r[1]] : r)))} placeholder="key" aria-label="Property key" className={cn(fieldCls, 'w-2/5')} />
+              <input name="property-value" value={v} onChange={(e) => setProps((p) => p.map((r, j) => (j === i ? [r[0], e.target.value] : r)))} placeholder="value" aria-label="Property value" className={cn(fieldCls, 'min-w-0 flex-1')} />
             </div>
           ))}
         </div>
@@ -235,10 +235,10 @@ function RelationsTab({ entity, relations, others, onSelect }: { entity: WorldEn
             </button>
           ))}
         </div>
-        <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Relation type" className={cn(fieldCls, 'w-full bg-[#111]')}>
+        <select id="entity-entityinspector-relation-type" name="relation-type" value={type} onChange={(e) => setType(e.target.value)} aria-label="Relation type" className={cn(fieldCls, 'w-full bg-[#111]')}>
           {RELATION_TYPES.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
         </select>
-        <select value={target} onChange={(e) => setTarget(e.target.value)} aria-label="Other entity" className={cn(fieldCls, 'w-full bg-[#111]')}>
+        <select id="entity-entityinspector-other-entity" name="other-entity" value={target} onChange={(e) => setTarget(e.target.value)} aria-label="Other entity" className={cn(fieldCls, 'w-full bg-[#111]')}>
           <option value="">Pick an entity…</option>
           {candidates.map((o) => <option key={o.id} value={o.id}>{o.name} · {o.type}</option>)}
         </select>
@@ -304,20 +304,20 @@ function SimulateTab({ entity, relations }: { entity: WorldEntity; relations: Wo
       </p>
       {mode === 'whatif' && (
         <div className="flex gap-1.5">
-          <select value={property} onChange={(e) => setProperty(e.target.value)} aria-label="Property to change" className={cn(fieldCls, 'min-w-0 flex-1 bg-[#111]')}>
+          <select id="entity-entityinspector-property-to-change" name="property-to-change" value={property} onChange={(e) => setProperty(e.target.value)} aria-label="Property to change" className={cn(fieldCls, 'min-w-0 flex-1 bg-[#111]')}>
             <option value="salience">salience</option>
             <option value="confidence">confidence</option>
             {propKeys.map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
-          <input value={altValue} onChange={(e) => setAltValue(e.target.value)} aria-label="Alternative value" className={cn(fieldCls, 'w-24')} />
+          <input id="entity-entityinspector-alternative-value" name="alternative-value" value={altValue} onChange={(e) => setAltValue(e.target.value)} aria-label="Alternative value" className={cn(fieldCls, 'w-24')} />
         </div>
       )}
       {mode === 'evolve' && (
         <label className="block text-[12px] text-zinc-400">Steps · {steps}
-          <input type="range" min={5} max={50} value={steps} onChange={(e) => setSteps(Number(e.target.value))} className="mt-1 w-full accent-teal-400" aria-label="Simulation steps" />
+          <input id="entity-entityinspector-simulation-steps" name="simulation-steps" type="range" min={5} max={50} value={steps} onChange={(e) => setSteps(Number(e.target.value))} className="mt-1 w-full accent-teal-400" aria-label="Simulation steps" />
         </label>
       )}
-      <input value={hypothesis} onChange={(e) => setHypothesis(e.target.value)} placeholder="Hypothesis (optional)" aria-label="Hypothesis" className={cn(fieldCls, 'w-full')} />
+      <input id="entity-entityinspector-hypothesis" name="hypothesis" value={hypothesis} onChange={(e) => setHypothesis(e.target.value)} placeholder="Hypothesis (optional)" aria-label="Hypothesis" className={cn(fieldCls, 'w-full')} />
       <button type="button" onClick={() => run.mutate()} disabled={run.isPending} className={cn(primaryBtn, 'inline-flex items-center gap-1.5')}>
         {run.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
         {run.isPending ? 'Running…' : mode === 'whatif' ? 'Run what-if' : 'Run simulation'}
@@ -380,7 +380,7 @@ function TerminalTab() {
         <div ref={endRef} />
       </div>
       <div className="flex gap-2">
-        <input value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Enter a command" aria-label="Terminal command" className={cn(fieldCls, 'flex-1 font-mono')} />
+        <input id="entity-entityinspector-terminal-command" name="terminal-command" value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Enter a command" aria-label="Terminal command" className={cn(fieldCls, 'flex-1 font-mono')} />
         <button type="button" onClick={submit} disabled={!command.trim() || exec.isPending} aria-label="Run command" className={cn(ghostBtn, 'px-3')}><Play className="h-3.5 w-3.5" /></button>
       </div>
     </div>

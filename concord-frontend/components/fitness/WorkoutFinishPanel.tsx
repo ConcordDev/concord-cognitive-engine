@@ -28,6 +28,7 @@ import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 import { useLensStatePersistence } from '@/lib/lens-state-persistence';
+import { UserPicker } from '@/components/social/UserPicker';
 
 interface LiftEntry {
   name: string;
@@ -89,11 +90,15 @@ export function WorkoutFinishPanel() {
   const [restingHr, setRestingHr] = useState(str(savedForm.restingHr, ''));
   const [age, setAge] = useState(str(savedForm.age, '30'));
   const [partnerId, setPartnerId] = useState(str(savedForm.partnerId, ''));
+  // FIX-fitness-017: the partner was a raw user id typed from memory.
+  // It is now picked from user search; the label persists alongside
+  // the id so the restored draft still says who the partner is.
+  const [partnerLabel, setPartnerLabel] = useState(str(savedForm.partnerLabel, ''));
   const [isPr, setIsPr] = useState(savedForm.isPr === true);
 
   useEffect(() => {
-    persist({ title, lifts, avgHr, restingHr, age, partnerId, isPr });
-  }, [title, lifts, avgHr, restingHr, age, partnerId, isPr, persist]);
+    persist({ title, lifts, avgHr, restingHr, age, partnerId, partnerLabel, isPr });
+  }, [title, lifts, avgHr, restingHr, age, partnerId, partnerLabel, isPr, persist]);
 
   const [busy, setBusy] = useState<ActionId | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -238,7 +243,7 @@ export function WorkoutFinishPanel() {
 
   async function actDm() {
     if (!ready) { err('Add at least one logged lift.'); return; }
-    if (!partnerId.trim()) { err('Enter a training-partner user id.'); return; }
+    if (!partnerId.trim()) { err('Pick a training partner from the search results — a name, not a user id.'); return; }
     setBusy('dm'); setFeedback(null);
     const liftLines = lifts.filter(l => l.name.trim()).map(l => {
       const top = l.sets.reduce((max, s) => s.weight > (max?.weight ?? 0) ? s : max, l.sets[0]);
@@ -254,7 +259,7 @@ export function WorkoutFinishPanel() {
     ].filter(Boolean).join('\n');
     try {
       const r = await api.post('/api/social/dm', { toUserId: partnerId.trim(), content: body });
-      if (r.data?.ok !== false) { ok(`Sent to ${partnerId.trim()}.`); setPartnerId(''); }
+      if (r.data?.ok !== false) { ok(`Sent to ${partnerLabel || partnerId.trim()}.`); setPartnerId(''); setPartnerLabel(''); }
       else err(r.data?.error ?? 'send failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }
@@ -343,7 +348,12 @@ export function WorkoutFinishPanel() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <input id="fitness-workout-title-push-day-legs-a" name="workout-title-push-day-legs-a" aria-label="Workout title (Push Day, Legs A, …)" type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-orange-400/40" placeholder="Workout title (Push Day, Legs A, …)" />
-        <input id="fitness-trainingpartner-user-id" name="trainingpartner-user-id" aria-label="Training-partner user id" type="text" value={partnerId} onChange={(e) => setPartnerId(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white focus:outline-none focus:ring-2 focus:ring-pink-400/40" placeholder="Training-partner user id" />
+        <UserPicker
+          value={partnerId ? { userId: partnerId, username: partnerLabel || partnerId, displayName: partnerLabel || undefined } : null}
+          onPick={(u) => { setPartnerId(u?.userId || ''); setPartnerLabel(u ? (u.displayName || u.username) : ''); }}
+          placeholder="Training partner — search by name"
+          ariaLabel="Training partner"
+        />
         <label className="flex items-center gap-2 px-3 py-1.5 rounded border border-zinc-800 bg-zinc-900 text-[12px] text-zinc-300 cursor-pointer hover:bg-zinc-800">
           <input id="fitness-field-24" name="field-24" type="checkbox" checked={isPr} onChange={(e) => setIsPr(e.target.checked)} className="rounded" />
           🏆 PR session

@@ -140,8 +140,11 @@ export function SavedSearchesPanel({
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); void save(); }} className="flex flex-wrap items-center gap-2">
-        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label this search" maxLength={40}
+        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label this search" maxLength={40} aria-describedby="saved-search-label-count"
           className="w-40 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:border-violet-500 focus:outline-none" />
+        {/* FIX-genesis-005: the 40-char cap was silent — the label just
+            stopped growing. The bound is named with a live counter. */}
+        <span id="saved-search-label-count" className="text-[10px] text-zinc-500">{label.length}/40</span>
         <span className="flex-1 min-w-[8rem] truncate text-[11px] text-zinc-400" title={filterSummary(currentFilters) || undefined}>
           {hasActiveFilters ? `Saves: ${filterSummary(currentFilters)}` : 'No active filters on the roster below'}
         </span>

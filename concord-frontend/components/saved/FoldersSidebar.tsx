@@ -165,6 +165,12 @@ export function FoldersSidebar({
           </button>
         </div>
       )}
+      {/* FIX-saved-003: a blank name used to submit into silence (the
+          submit returned early and the form just stayed). The missing
+          precondition is named while it is missing. */}
+      {creating && !newName.trim() && (
+        <p className="px-1 text-[10px] text-zinc-500" role="note">Name the collection to create it.</p>
+      )}
     </aside>
   );
 }

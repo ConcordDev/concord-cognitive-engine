@@ -19,7 +19,7 @@ interface AQIPanelProps {
 }
 
 export function AQIPanel({ lat, lng }: AQIPanelProps) {
-  const { data, loading, error, refresh } = useAqiData({ lat, lng });
+  const { data, loading, error, refresh, lastFetchedAt } = useAqiData({ lat, lng });
 
   if (loading && !data) {
     return (
@@ -76,6 +76,10 @@ export function AQIPanel({ lat, lng }: AQIPanelProps) {
       <footer className="px-4 py-1.5 border-t border-white/10 text-[10px] text-gray-400 flex items-center gap-2">
         <AlertCircle className="w-3 h-3" />
         Source: {data.source} · refresh every 5 min
+        {/* FIX-eco-007: the reading carried no updated-at, and a refresh
+            showed nothing but a spinning icon. The fetch time is named. */}
+        {lastFetchedAt && <span>· Updated {new Date(lastFetchedAt).toLocaleTimeString()}</span>}
+        {loading && <span aria-live="polite">· Refreshing…</span>}
       </footer>
     </div>
   );

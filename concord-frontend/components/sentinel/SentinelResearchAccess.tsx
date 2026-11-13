@@ -240,14 +240,14 @@ export function SentinelResearchAccess({ onChanged }: { onChanged?: () => void }
           reviewer to approve before Tier 2 data becomes reachable.
         </p>
         <div className="space-y-2">
-          <input
+          <input id="sentinel-sentinelresearchaccess-institution" name="institution"
             value={institution}
             onChange={(e) => setInstitution(e.target.value)}
             placeholder="Institution…"
             className="w-full rounded border border-blue-900/40 bg-black/40 px-2 py-1.5 text-xs text-blue-100 focus:border-blue-500 focus:outline-none"
             aria-label="Institution"
           />
-          <textarea
+          <textarea id="sentinel-sentinelresearchaccess-purpose" name="purpose"
             value={purpose}
             onChange={(e) => setPurpose(e.target.value)}
             placeholder="Research purpose…"
@@ -299,7 +299,7 @@ export function SentinelResearchAccess({ onChanged }: { onChanged?: () => void }
           <Clock className="h-4 w-4" /> My applications
         </h3>
         <div className="mb-3 flex gap-2">
-          <input
+          <input id="sentinel-sentinelresearchaccess-application-id-to-track" name="application-id-to-track"
             value={manualId}
             onChange={(e) => setManualId(e.target.value)}
             placeholder="Track an application by ID…"
@@ -410,7 +410,7 @@ export function SentinelResearchAccess({ onChanged }: { onChanged?: () => void }
             application ID the applicant gives you.
           </p>
           <div className="flex gap-2">
-            <input
+            <input id="sentinel-sentinelresearchaccess-application-id-to-review" name="application-id-to-review"
               value={reviewId}
               onChange={(e) => setReviewId(e.target.value)}
               placeholder="Application ID…"

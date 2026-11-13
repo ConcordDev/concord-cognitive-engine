@@ -32,7 +32,7 @@ export function SentinelCves() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-rose-400" /><h2 className="text-sm font-semibold text-white">NVD sentinel alerts</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">NVD · via Concord server · {sev}</span></div>
         <div className="flex items-center gap-2">
-          <select value={sev} onChange={(e) => setSev(e.target.value as typeof SEVERITY[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{SEVERITY.map((s) => <option key={s} value={s}>{s}</option>)}</select>
+          <select id="sentinel-sentinelcves-field" name="field" value={sev} onChange={(e) => setSev(e.target.value as typeof SEVERITY[number])} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">{SEVERITY.map((s) => <option key={s} value={s}>{s}</option>)}</select>
           {list.length > 0 && <SaveAsDtuButton compact apiSource="nvd-sentinel" apiUrl="https://nvd.nist.gov/vuln/search" title={`NVD sentinel — ${sev} (${list.length})`} content={list.slice(0, 20).map((v, i) => { const desc = v.cve.descriptions?.find((d) => d.lang === 'en')?.value || ''; return `${i + 1}. ${v.cve.id}\n   ${desc.slice(0, 200)}`; }).join('\n\n')} extraTags={['sentinel', 'nvd', sev.toLowerCase()]} rawData={{ severity: sev, cves: list }} />}
         </div>
       </header>

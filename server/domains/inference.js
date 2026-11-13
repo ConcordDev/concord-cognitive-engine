@@ -366,8 +366,11 @@ export default function registerInferenceActions(registerLensAction) {
    */
   registerLensAction("inference", "unify", (ctx, artifact, _params) => {
   try {
-    const term1 = artifact.data?.term1;
-    const term2 = artifact.data?.term2;
+    // FIX-inference-001: the desk panel sends the terms as action params;
+    // reading only artifact.data starved the tool (and a null artifact
+    // crashed it). Params are the fallback; an attached artifact wins.
+    const term1 = artifact?.data?.term1 || _params.term1;
+    const term2 = artifact?.data?.term2 || _params.term2;
     if (!term1 || !term2) return { ok: false, error: "Both term1 and term2 are required." };
 
     function isVar(t) {

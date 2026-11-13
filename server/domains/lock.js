@@ -12,11 +12,56 @@ export default function registerLockActions(registerLensAction) {
    */
   registerLensAction("lock", "deadlockDetect", (ctx, artifact, params) => {
   try {
-    const locks = (Array.isArray(params?.locks) && params.locks)
+    const supplied = (Array.isArray(params?.locks) && params.locks)
       || (Array.isArray(params?.data?.locks) && params.data.locks)
       || artifact?.data?.locks
       || [];
-    if (locks.length === 0) {
+    // FIX-lock-001: deadlockDetect used to read ONLY a caller-supplied
+    // snapshot, while every sibling analysis reads the recorded trace —
+    // so the Wait-For Graph said "no lock data" (or missed the cycle)
+    // on traces Lock Ordering analysed fine. Derive wait-for rows from
+    // the same events: replay the trace, and a thread that waits on a
+    // lock another thread holds — and never acquires it later in the
+    // trace — contributes a { holder, waiting } row.
+    const traceEvents = (Array.isArray(artifact?.data?.trace) && artifact.data.trace.length > 0)
+      ? artifact.data.trace
+      : tracesFor(ctx);
+    const traceRows = [];
+    if (Array.isArray(traceEvents) && traceEvents.length > 0) {
+      const events = traceEvents.slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      const waits = []; // { thread, lock, index }
+      events.forEach((ev, i) => {
+        if (ev && ev.action === "wait" && ev.thread && ev.lock) waits.push({ thread: ev.thread, lock: ev.lock, index: i });
+      });
+      // Replay the holds in order; at each wait, the lock's current
+      // holder is who the waiter waits for.
+      const heldAt = new Map();
+      const acquiredLater = new Set(); // `${thread}|${lock}` acquired at a later index than its wait
+      events.forEach((ev, i) => {
+        if (!ev || !ev.thread || !ev.lock) return;
+        if (ev.action === "acquire") {
+          heldAt.set(ev.lock, ev.thread);
+          for (const w of waits) if (w.index < i && w.thread === ev.thread && w.lock === ev.lock) acquiredLater.add(`${w.thread}|${w.lock}`);
+        } else if (ev.action === "release") {
+          if (heldAt.get(ev.lock) === ev.thread) heldAt.delete(ev.lock);
+        } else if (ev.action === "wait") {
+          const holder = heldAt.get(ev.lock);
+          if (holder && holder !== ev.thread) traceRows.push({ holder, waiting: ev.thread, _lock: ev.lock });
+        }
+      });
+      for (let i = traceRows.length - 1; i >= 0; i--) {
+        if (acquiredLater.has(`${traceRows[i].waiting}|${traceRows[i]._lock}`)) traceRows.splice(i, 1);
+      }
+    }
+    const seenRow = new Set();
+    const locks = [];
+    for (const row of [...supplied, ...traceRows]) {
+      const key = `${row?.holder}|${Array.isArray(row?.waiting) ? row.waiting.join(",") : row?.waiting}`;
+      if (seenRow.has(key)) continue;
+      seenRow.add(key);
+      locks.push(row);
+    }
+    if (locks.length === 0 && !(Array.isArray(traceEvents) && traceEvents.length > 0)) {
       return { ok: true, result: { deadlocked: false, cycles: [], message: "No lock data provided." } };
     }
 

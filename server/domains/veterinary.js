@@ -654,6 +654,27 @@ export default function registerVeterinaryActions(registerLensAction) {
           else if (due <= horizon) dueSoon.push(entry);
         }
       }
+      // FIX-veterinary-010: reminders only ever looked at vaccination
+      // nextDue dates, so a booked appointment inside the window was
+      // invisible here — the panel answered "Nothing due in the next
+      // 30 days" with an appointment sitting in it. Scheduled
+      // appointments are reminders too: past-dated ones still marked
+      // scheduled read as overdue (missed), upcoming ones as due soon.
+      const apptCol = vtCollection(s, "appointments");
+      for (const a of vtList(apptCol, vtActor(ctx))) {
+        if (a.status !== "scheduled" || !a.date) continue;
+        const due = new Date(`${a.date}T${a.time || "09:00"}`);
+        if (Number.isNaN(due.getTime())) continue;
+        const daysOut = Math.round((due.getTime() - now.getTime()) / 86400000);
+        const entry = {
+          kind: "appointment",
+          patientId: a.patientId || "", patientName: a.patientName, owner: a.owner || "",
+          vaccine: `Appointment — ${a.type}${a.reason ? `: ${a.reason}` : ""}`,
+          nextDue: a.date, time: a.time || "", daysOut,
+        };
+        if (due < now) overdue.push(entry);
+        else if (due <= horizon) dueSoon.push(entry);
+      }
       overdue.sort((a, b) => a.daysOut - b.daysOut);
       dueSoon.sort((a, b) => a.daysOut - b.daysOut);
       return {

@@ -297,7 +297,9 @@ export default function LfgLensPage() {
             </label>
             <label className="mb-2 block">
               <span className="text-[10px] uppercase tracking-wider text-slate-400">Note (optional)</span>
-              <textarea ref={noteRef} aria-label="Request note" value={postForm.note} onChange={(e) => setPostForm({ ...postForm, note: e.target.value })} rows={3} maxLength={240} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
+              <textarea ref={noteRef} aria-label="Request note" aria-describedby="lfg-note-count" value={postForm.note} onChange={(e) => setPostForm({ ...postForm, note: e.target.value })} rows={3} maxLength={240} className="mt-0.5 block w-full rounded-md border border-slate-700 bg-slate-900/60 px-2 py-1 text-[11px] text-slate-100" />
+              {/* FIX-lfg-004: the 240-char cap was silent. The bound is named. */}
+              <span id="lfg-note-count" className="mt-0.5 block text-right text-[10px] text-slate-500">{postForm.note.length}/240</span>
             </label>
             <button onClick={handlePost} disabled={lfgPostDisabled(busy)} className="flex w-full items-center justify-center gap-1 rounded-md border border-fuchsia-500/40 bg-fuchsia-500/20 px-2 py-1 text-[11px] text-fuchsia-100 hover:bg-fuchsia-500/30 disabled:opacity-40">
               {busy === 'post' && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}

@@ -23,6 +23,13 @@ export function EnqueueForm({
 }) {
   const [name, setName] = useState('');
   const [queue, setQueue] = useState(queues[0] || 'ingest');
+  // FIX-queue-002: the selector only ever offered the seeded names
+  // (ingest / autocrawl / terminal), which read as the shared system
+  // queues. The store is per-user — those are private copies — and any
+  // name creates the caller's own queue row server-side. The form now
+  // says so and offers queue creation directly.
+  const [newQueue, setNewQueue] = useState('');
+  const effectiveQueue = queue === '__new__' ? newQueue.trim().slice(0, 40) : queue;
   const [priority, setPriority] = useState<'high' | 'normal' | 'low'>('normal');
   const [delaySec, setDelaySec] = useState(0);
   const [maxAttempts, setMaxAttempts] = useState(3);
@@ -30,9 +37,9 @@ export function EnqueueForm({
 
   const submit = () => {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    if (!trimmed || !effectiveQueue) return;
     onEnqueue({
-      queue,
+      queue: effectiveQueue,
       name: trimmed,
       priority,
       delayMs: Math.max(0, delaySec) * 1000,
@@ -67,7 +74,18 @@ export function EnqueueForm({
               {q}
             </option>
           ))}
+          <option value="__new__">New queue…</option>
         </select>
+        {queue === '__new__' && (
+          <input
+            value={newQueue}
+            onChange={(e) => setNewQueue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            placeholder="Name your own queue (e.g. sandbox)"
+            aria-label="New queue name"
+            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-sm text-white placeholder:text-zinc-600"
+          />
+        )}
         <select
           value={priority}
           onChange={(e) => setPriority(e.target.value as 'high' | 'normal' | 'low')}
@@ -97,6 +115,10 @@ export function EnqueueForm({
           />
         </div>
       </div>
+      <p className="text-xs text-zinc-500">
+        Queues are yours alone: the built-in names (ingest, autocrawl, terminal) are your private copies,
+        not the shared system queues, and a job you enqueue here never mixes with system work or anyone else&apos;s jobs.
+      </p>
       <div className="flex items-center justify-between">
         <label className="flex items-center gap-2 text-xs text-zinc-400">
           <input
@@ -114,9 +136,12 @@ export function EnqueueForm({
           {!name.trim() && (
             <span role="note" className="text-xs text-zinc-500">Give the job a name to enqueue it.</span>
           )}
+          {queue === '__new__' && !effectiveQueue && (
+            <span role="note" className="text-xs text-zinc-500">Name the new queue to enqueue into it.</span>
+          )}
           <button
             onClick={submit}
-            disabled={busy || !name.trim()}
+            disabled={busy || !name.trim() || !effectiveQueue}
             className="flex items-center gap-1.5 rounded-lg bg-cyan-500/20 px-3 py-1.5 text-sm text-cyan-300 hover:bg-cyan-500/30 disabled:opacity-50"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}

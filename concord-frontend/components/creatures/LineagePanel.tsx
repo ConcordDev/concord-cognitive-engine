@@ -19,7 +19,8 @@ export function LineagePanel() {
   );
 
   const fetchLineage = async () => {
-    if (!lineageId) return;
+    // FIX-creatures-012: an empty lookup used to be a silent no-op.
+    if (!lineageId) { setLineageError('Enter a creature id first.'); return; }
     setLineageSearched(true);
     setLineageError(null);
     try {

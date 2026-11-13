@@ -182,8 +182,8 @@ export function SwarmRegistryPanel({ createOpen = false, onCreateClose }: { crea
           </div>
           <p className="mb-3 text-[12px] text-zinc-400">{TYPE_BLURB[type]}</p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Supply chain resilience" aria-label="Entity name" className={fieldCls} />
-            <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" aria-label="Entity description" className={fieldCls} />
+            <input id="entity-swarmregistrypanel-entity-name" name="entity-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, e.g. Supply chain resilience" aria-label="Entity name" className={fieldCls} />
+            <input id="entity-swarmregistrypanel-entity-description" name="entity-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" aria-label="Entity description" className={fieldCls} />
           </div>
           <button type="submit" disabled={!name.trim() || create.isPending} className="mt-3 inline-flex min-h-11 items-center rounded-full bg-teal-400 px-4 text-[13px] font-medium text-black transition-colors hover:bg-teal-300 disabled:opacity-40">
             {create.isPending ? 'Spawning…' : 'Spawn'}
@@ -196,9 +196,9 @@ export function SwarmRegistryPanel({ createOpen = false, onCreateClose }: { crea
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <label className="relative min-w-[12rem] flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search entities" aria-label="Search entities" className={cn(fieldCls, 'w-full pl-9')} />
+              <input id="entity-swarmregistrypanel-search-entities" name="search-entities" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search entities" aria-label="Search entities" className={cn(fieldCls, 'w-full pl-9')} />
             </label>
-            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort entities" className={cn(fieldCls, 'bg-[#111]')}>
+            <select id="entity-swarmregistrypanel-sort-entities" name="sort-entities" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort entities" className={cn(fieldCls, 'bg-[#111]')}>
               {SORTS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
             </select>
           </div>

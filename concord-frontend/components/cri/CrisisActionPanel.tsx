@@ -20,7 +20,11 @@ import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
-  const r = await apiHelpers.lens.runDomain('cri', action, { input });
+  // FIX-cri-004: the payload used to be double-wrapped ({ input }) — the
+  // dispatch sets artifact.data = body.input, so the handlers saw
+  // { input: {...} } and every artifact.data.* read came back empty
+  // (Timeline 0 phases, Impact 0 groups). Send the payload as the input.
+  const r = await apiHelpers.lens.runDomain('cri', action, input);
   const data = (r as { data?: { ok: boolean; result?: T } }).data;
   if (!data) return { ok: false, error: 'empty response' };
   if (data.ok && data.result && typeof data.result === 'object' && 'ok' in data.result) {
@@ -37,7 +41,7 @@ function pickMessage(e: unknown): string {
   return ax?.response?.data?.error ?? ax?.message ?? 'request failed';
 }
 
-interface SeverityResult { severity?: string; score?: number; factors?: string[]; recommendation?: string }
+interface SeverityResult { severity?: string; severityLevel?: string; score?: number; severityScore?: number; factors?: string[]; recommendation?: string; responseProtocol?: string }
 interface TimelineResult { phases?: Array<{ phase: string; window: string; actions: string[] }>; totalDurationHours?: number }
 interface ImpactResult { stakeholders?: Array<{ group: string; impact: string; priority?: string }>; totalAffected?: number }
 
@@ -76,7 +80,7 @@ export function CrisisActionPanel() {
     setBusy('severity'); setFeedback(null);
     try {
       const r = await callMacro<SeverityResult>('severityAssessment', { name: crisisName.trim(), eventType, scope, affectedCount: a, durationHours: d });
-      if (r.ok && r.result) { setSeverityResult(r.result); pipe.publish('cri.severity', r.result, { label: `Severity ${r.result.severity}` }); ok(`Severity: ${r.result.severity ?? '—'}.`); }
+      if (r.ok && r.result) { const norm = { ...r.result, severity: r.result.severityLevel ?? r.result.severity, score: r.result.severityScore ?? r.result.score, recommendation: r.result.responseProtocol ?? r.result.recommendation }; setSeverityResult(norm); pipe.publish('cri.severity', norm, { label: `Severity ${norm.severity}` }); ok(`Severity: ${norm.severity ?? '—'}.`); }
       else err(r.reason ?? r.error ?? 'severity failed');
     } catch (e) { err(pickMessage(e)); }
     finally { setBusy(null); }

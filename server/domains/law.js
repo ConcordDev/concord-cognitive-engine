@@ -1731,14 +1731,30 @@ export default function registerLawActions(registerLensAction) {
     let current = null;
     const headingRe = /^\s*((?:\d+(?:\.\d+)*\.?)|(?:[A-Z]\.)|(?:ARTICLE\s+[IVX0-9]+)|(?:SECTION\s+\d+))\s*[.:)-]?\s*(.{0,90}?)\s*$/;
     const capsHeadingRe = /^\s*([A-Z][A-Z \-&]{4,60})\s*$/;
+    // FIX-law-003: contracts whose section headings are plain Title Case
+    // ("Confidentiality", "Term and Termination", "Governing Law:") matched
+    // no heading rule, so the whole document landed in one 'Preamble'
+    // clause. A short line that follows a blank line, carries no sentence
+    // punctuation, and is mostly capitalised words is a heading too.
+    const titleCaseHeading = (line, prevBlank) => {
+      if (!prevBlank || line.length > 80) return null;
+      const words = line.replace(/:$/, "").split(/\s+/).filter(Boolean);
+      if (words.length === 0 || words.length > 9) return null;
+      if (/[.!?;]$/.test(line)) return null;
+      const capped = words.filter((w) => /^[A-Z0-9]/.test(w)).length;
+      return capped / words.length >= 0.6 ? words.join(" ") : null;
+    };
+    let prevBlank = true; // the start of the document counts as a break
     for (const raw of lines) {
       const line = raw.trim();
-      if (!line) continue;
+      if (!line) { prevBlank = true; continue; }
       const h = line.match(headingRe);
       const ch = !h && line.length < 70 ? line.match(capsHeadingRe) : null;
-      if (h || ch) {
+      const tc = !h && !ch ? titleCaseHeading(line, prevBlank) : null;
+      prevBlank = false;
+      if (h || ch || tc) {
         if (current) clauses.push(current);
-        const heading = h ? (h[2] || h[1]).trim() : ch[1].trim();
+        const heading = h ? (h[2] || h[1]).trim() : ch ? ch[1].trim() : tc;
         current = { title: heading.slice(0, 120) || "Untitled clause", text: "" };
       } else if (current) {
         current.text += (current.text ? " " : "") + line;

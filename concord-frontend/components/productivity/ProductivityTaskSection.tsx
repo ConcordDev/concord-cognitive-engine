@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Sun, ListTodo, Repeat, Timer, Loader2, Wand2, Bell, Filter, CalendarDays, Users, Flame } from 'lucide-react';
+import { Sun, ListTodo, Repeat, Timer, Loader2, Wand2, Bell, Filter, CalendarDays, Users, Flame, Inbox } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ProductivityTodayPanel } from './ProductivityTodayPanel';
@@ -18,6 +18,7 @@ import { ProductivityRemindersPanel } from './ProductivityRemindersPanel';
 import { ProductivityFiltersPanel } from './ProductivityFiltersPanel';
 import { ProductivityCalendarPanel } from './ProductivityCalendarPanel';
 import { ProductivityCollabPanel } from './ProductivityCollabPanel';
+import { ProductivityCapturesPanel } from './ProductivityCapturesPanel';
 
 interface Dash {
   activeTasks: number; dueToday: number; projects: number; habits: number;
@@ -30,7 +31,7 @@ interface ProdStats {
 
 export type ProductivityTabId =
   | 'today' | 'quickadd' | 'tasks' | 'filters' | 'calendar'
-  | 'reminders' | 'collab' | 'habits' | 'focus';
+  | 'reminders' | 'collab' | 'habits' | 'focus' | 'captures';
 
 /**
  * Tab metadata is exported so the lens page can register the same
@@ -49,6 +50,7 @@ export const PRODUCTIVITY_TABS: {
   { id: 'collab', label: 'Collaborate', icon: Users, chord: 'g b', hint: 'b' },
   { id: 'habits', label: 'Habits', icon: Repeat, chord: 'g h', hint: 'h' },
   { id: 'focus', label: 'Focus', icon: Timer, chord: 'g o', hint: 'o' },
+  { id: 'captures', label: 'Captures', icon: Inbox, chord: 'g i', hint: 'i' },
 ];
 
 interface ProductivityTaskSectionProps {
@@ -135,6 +137,7 @@ export function ProductivityTaskSection({ activeTab, onTabChange }: Productivity
         {tab === 'collab' && <ProductivityCollabPanel onChange={refreshDash} />}
         {tab === 'habits' && <ProductivityHabitsPanel onChange={refreshDash} />}
         {tab === 'focus' && <ProductivityFocusPanel onChange={refreshDash} />}
+        {tab === 'captures' && <ProductivityCapturesPanel />}
       </div>
     </div>
   );

@@ -363,7 +363,29 @@ export function PhysicsLab() {
       if (r.data.ok && r.data.result) {
         setShareCode(r.data.result.shareCode);
         setScene((s) => ({ ...s, shareCode: r.data.result!.shareCode }));
-        setStatus(`Share code created: ${r.data.result.shareCode}`);
+        setStatus(`Share code created: ${r.data.result.shareCode} — anyone with it can load a copy of this scene. Revoke it from the Share & embed box.`);
+      } else {
+        setStatus(`Share failed: ${r.data.error || 'unknown'}`);
+      }
+    } finally {
+      setBusy(null);
+    }
+  }, [scene.id]);
+
+  // FIX-physics-007: minting a share code is a disclosure, so it takes an
+  // explicit confirmation first; and a minted code can be revoked.
+  const [confirmShare, setConfirmShare] = useState(false);
+  const revokeShare = useCallback(async () => {
+    if (!scene.id) return;
+    setBusy('share');
+    try {
+      const r = await lensRun<{ revoked: boolean }>('physics', 'scene-unshare', { id: scene.id });
+      if (r.data.ok) {
+        setShareCode('');
+        setScene((s) => ({ ...s, shareCode: null }));
+        setStatus('Share code revoked — it no longer loads this scene.');
+      } else {
+        setStatus(`Revoke failed: ${r.data.error || 'unknown'}`);
       }
     } finally {
       setBusy(null);
@@ -704,7 +726,7 @@ export function PhysicsLab() {
         </button>
         <button
           type="button"
-          onClick={shareScene}
+          onClick={() => { if (shareCode) { setStatus(`This scene already has a share code: ${shareCode} — revoke it from the Share & embed box.`); } else { setConfirmShare(true); } }}
           disabled={busy === 'share'}
           className="px-3 py-1.5 text-xs rounded bg-fuchsia-500/20 text-fuchsia-200 border border-fuchsia-500/40 flex items-center gap-1 disabled:opacity-50"
         >
@@ -1113,9 +1135,24 @@ export function PhysicsLab() {
             <span className="text-xs font-semibold text-zinc-200 flex items-center gap-1">
               <Share2 className="w-3.5 h-3.5 text-fuchsia-400" /> Share &amp; embed
             </span>
+            {confirmShare && !shareCode && (
+              <div className="rounded border border-fuchsia-500/30 bg-fuchsia-500/5 px-2 py-1.5 space-y-1.5">
+                <p className="text-[11px] text-fuchsia-100">Create a share code for this scene? Anyone with the code can load a copy of it. You can revoke the code here at any time.</p>
+                <div className="flex gap-1">
+                  <button type="button" onClick={() => { setConfirmShare(false); void shareScene(); }} disabled={busy === 'share'}
+                    className="px-2 py-1 text-[11px] rounded bg-fuchsia-500/25 text-fuchsia-100 border border-fuchsia-500/40 disabled:opacity-50">Create share code</button>
+                  <button type="button" onClick={() => setConfirmShare(false)}
+                    className="px-2 py-1 text-[11px] rounded border border-white/10 text-zinc-300">Cancel</button>
+                </div>
+              </div>
+            )}
             {shareCode && (
-              <div className="text-[10px] font-mono bg-black/40 border border-white/10 rounded px-2 py-1 text-fuchsia-200 break-all">
-                {shareCode}
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-mono bg-black/40 border border-white/10 rounded px-2 py-1 text-fuchsia-200 break-all">
+                  {shareCode}
+                </div>
+                <button type="button" onClick={() => void revokeShare()} disabled={busy === 'share'}
+                  className="px-2 py-1 text-[11px] rounded border border-rose-500/30 text-rose-200 hover:bg-rose-500/10 disabled:opacity-50">Revoke share code</button>
               </div>
             )}
             <div className="flex gap-1">

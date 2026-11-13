@@ -56,8 +56,13 @@ export default function registerGroundingActions(registerLensAction) {
    */
   registerLensAction("grounding", "factCheck", (ctx, artifact, _params) => {
   try {
-    const claim = artifact.data?.claim || {};
-    const evidence = artifact.data?.evidence || [];
+    // FIX-grounding-008/009: the verification panel sends claim/evidence
+    // as action params; these handlers read only artifact.data, so a call
+    // without an attached DTU starved them (no claim, 0 evidence ->
+    // 'unverifiable', or a crash on a null artifact). Params are the
+    // fallback; an attached artifact still wins.
+    const claim = artifact?.data?.claim || _params.claim || {};
+    const evidence = artifact?.data?.evidence || _params.evidence || [];
     const claimText = (claim.text || "").toLowerCase();
 
     if (!claimText) {
@@ -220,7 +225,7 @@ export default function registerGroundingActions(registerLensAction) {
    */
   registerLensAction("grounding", "sourceCredibility", (ctx, artifact, _params) => {
   try {
-    const sources = artifact.data?.sources || [];
+    const sources = artifact?.data?.sources || _params.sources || [];
     if (sources.length === 0) {
       return { ok: true, result: { message: "No sources provided." } };
     }
@@ -396,8 +401,8 @@ export default function registerGroundingActions(registerLensAction) {
    */
   registerLensAction("grounding", "claimDecomposition", (ctx, artifact, _params) => {
   try {
-    const claim = artifact.data?.claim || {};
-    const evidence = artifact.data?.evidence || [];
+    const claim = artifact?.data?.claim || _params.claim || {};
+    const evidence = artifact?.data?.evidence || _params.evidence || [];
     const text = claim.text || "";
 
     if (!text) {

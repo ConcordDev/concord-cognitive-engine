@@ -470,6 +470,10 @@ export default function registerToolsActions(register) {
     const links = issueSigningLinks("tools", userId, env.id, targets);
     const delivery = await deliverSigningLinks(ctx?.db, userId, links, { title: env.title, senderName: ctx?.actor?.displayName || ctx?.actor?.username || "A Concord user" });
     const at = isoNow();
+    // FIX-tools-007: the audit trail jumped from 'created' to per-recipient
+    // delivery entries with no routing event. The send IS the routing:
+    // record it once, before the per-recipient outcomes.
+    env.audit.push({ event: "routed", actor: userId, at, detail: `Envelope routed to ${targets.length} recipient${targets.length === 1 ? "" : "s"} for signature` });
     for (const d of delivery) {
       const p = env.parties.find((x) => x.id === d.recipientId);
       if (p) p.delivery = { method: d.delivered, reason: d.reason || null, at };
@@ -535,11 +539,17 @@ export default function registerToolsActions(register) {
     });
     const signedParties = checks.filter((c) => c.status === "signed");
     const allValid = documentIntact && signedParties.length > 0 && signedParties.every((c) => c.verified);
+    // FIX-tools-007: an envelope nobody has signed yet is PENDING, not a
+    // verification failure — the panel painted it with the same red
+    // "Verification failed" banner as a tampered document. The state is
+    // named here so the UI can be neutral about it.
+    const state = allValid ? "verified" : (documentIntact && signedParties.length === 0) ? "pending" : "failed";
     return {
       ok: true,
       result: {
         envelopeId: env.id,
         envelopeNumber: env.number,
+        state,
         documentIntact,
         currentHash,
         expectedHash: env.documentHash,

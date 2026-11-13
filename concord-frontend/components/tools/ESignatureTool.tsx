@@ -48,6 +48,8 @@ interface VerifyResult {
   envelopeId: string; envelopeNumber: string; documentIntact: boolean;
   currentHash: string; expectedHash: string; checks: VerifyCheck[];
   allValid: boolean; verifiedAt: string;
+  /** FIX-tools-007: 'pending' = nobody has signed yet (neutral), 'failed' = tampered/invalid, 'verified' = all valid. */
+  state?: 'verified' | 'pending' | 'failed';
 }
 
 interface PartyDraft { name: string; email: string; role: string; isSender?: boolean }
@@ -453,11 +455,13 @@ export function ESignatureTool() {
             </div>
 
             {verify && (
-              <div className={`rounded border p-2.5 text-xs ${verify.allValid ? 'border-emerald-800/60 bg-emerald-950/20' : 'border-red-900/60 bg-red-950/20'}`}>
+              <div className={`rounded border p-2.5 text-xs ${verify.allValid ? 'border-emerald-800/60 bg-emerald-950/20' : verify.state === 'pending' ? 'border-yellow-800/60 bg-yellow-950/20' : 'border-red-900/60 bg-red-950/20'}`}>
                 <div className="flex items-center gap-1.5 font-semibold">
                   {verify.allValid
                     ? <><ShieldCheck className="h-4 w-4 text-emerald-400" aria-hidden /><span className="text-emerald-300">All signatures valid</span></>
-                    : <><ShieldAlert className="h-4 w-4 text-red-400" aria-hidden /><span className="text-red-300">Verification failed</span></>}
+                    : verify.state === 'pending'
+                      ? <><ShieldAlert className="h-4 w-4 text-yellow-400" aria-hidden /><span className="text-yellow-200">Pending signatures — nothing to verify yet</span></>
+                      : <><ShieldAlert className="h-4 w-4 text-red-400" aria-hidden /><span className="text-red-300">Verification failed</span></>}
                 </div>
                 <p className="mt-1 text-[11px] text-yellow-600">
                   Document {verify.documentIntact ? 'intact' : 'TAMPERED — hash mismatch'} ·
@@ -467,7 +471,7 @@ export function ESignatureTool() {
                   {verify.checks.map((c) => (
                     <li key={c.partyId} className="flex items-center justify-between">
                       <span className="text-yellow-300">{c.partyName}</span>
-                      <span className={c.verified ? 'text-emerald-400' : 'text-red-400'}>
+                      <span className={c.verified ? 'text-emerald-400' : c.reason === 'not signed' ? 'text-yellow-500' : 'text-red-400'}>
                         {c.verified ? 'verified' : (c.reason || 'invalid')}
                       </span>
                     </li>

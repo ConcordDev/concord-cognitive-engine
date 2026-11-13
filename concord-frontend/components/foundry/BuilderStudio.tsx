@@ -1038,6 +1038,9 @@ function CollabTab({ worldId, ok, err }: TabProps) {
     // Ping presence + refresh the roster so co-editors show online.
     fcall('collab_ping', { id: worldId, node: 'builder-studio' });
     const t = setInterval(() => {
+      // Same visibility discipline as the federation trust graph
+      // (FIX-federation-008): no presence pings from a hidden tab.
+      if (document.visibilityState !== 'visible') return;
       fcall('collab_ping', { id: worldId, node: 'builder-studio' });
       load();
     }, 30_000);

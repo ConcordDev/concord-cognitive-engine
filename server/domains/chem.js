@@ -1454,8 +1454,8 @@ export default function registerChemActions(registerLensAction) {
    * theoretical yield of every product, and percent yield if an actual
    * yield is supplied.
    *
-   * params.equation = "2H2 + O2 -> 2H2O"  (must already be balanced OR
-   *   pass balance:true to balance it first)
+   * params.equation = "2H2 + O2 -> 2H2O"  (must already be balanced —
+   *   an unbalanced equation is refused, naming the element that is off)
    * params.amounts = { "H2": { grams: 4 }, "O2": { grams: 40 } }
    * params.actualYield = { compound: "H2O", grams: 30 }  (optional)
    */
@@ -1474,6 +1474,34 @@ export default function registerChemActions(registerLensAction) {
     const products = sides[1].split("+").map((s) => parseTerm(s)).filter((t) => t.formula);
     if (!reactants.length || !products.length) {
       return { ok: false, error: "need at least one reactant and one product" };
+    }
+
+    // FIX-chem-001: this action used to accept unbalanced equations and
+    // compute yields from coefficients that do not conserve atoms. Count
+    // atoms per side (formula counts x coefficient, same parser the MW
+    // pass uses) and refuse, naming the first element that is off. A
+    // formula that cannot be parsed skips this check — the MW pass below
+    // refuses it by name.
+    const atomTotals = (terms) => {
+      const totals = {};
+      for (const t of terms) {
+        let counts;
+        try { counts = parseFormulaMW(t.formula); } catch { return null; }
+        for (const [sym, n] of Object.entries(counts)) totals[sym] = (totals[sym] || 0) + n * t.coeff;
+      }
+      return totals;
+    };
+    const leftAtoms = atomTotals(reactants);
+    const rightAtoms = atomTotals(products);
+    if (leftAtoms && rightAtoms) {
+      const elements = new Set([...Object.keys(leftAtoms), ...Object.keys(rightAtoms)]);
+      for (const el of elements) {
+        const l = leftAtoms[el] || 0;
+        const r = rightAtoms[el] || 0;
+        if (l !== r) {
+          return { ok: false, error: `equation is not balanced: ${el} has ${l} atom${l === 1 ? "" : "s"} on the left and ${r} on the right — balance the equation first (the reaction balancer can help) and try again` };
+        }
+      }
     }
 
     function mwOf(formula) {

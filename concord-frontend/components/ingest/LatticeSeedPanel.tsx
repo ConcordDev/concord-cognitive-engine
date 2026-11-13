@@ -43,6 +43,18 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'jobs', label: 'Research jobs' },
 ];
 
+/** A queueable page address parses as an http(s) URL. */
+function isQueueableUrl(raw: string): boolean {
+  const v = raw.trim();
+  if (!v) return false;
+  try {
+    const u = new URL(v);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export function LatticeSeedPanel() {
   const [tab, setTab] = useState<TabId>('queue');
   const [busy, setBusy] = useState(false);
@@ -205,15 +217,23 @@ export function LatticeSeedPanel() {
             </h3>
             <input
               aria-label="Page URL to queue"
+              aria-describedby="ingest-page-url-note"
               value={pageUrl}
               onChange={(e) => setPageUrl(e.target.value)}
               placeholder="https://… page to queue"
               className="w-full px-3 py-1.5 bg-lattice-surface border border-lattice-border rounded-lg text-xs text-white placeholder-gray-500 font-mono"
             />
+            {/* FIX-ingest-002: the queue field took anything non-blank —
+                'not-a-url' queued without a word. What can be judged
+                inline (does it parse as an http(s) address) is judged
+                inline; reachability stays the fetch's own verdict. */}
+            {pageUrl.trim() && !isQueueableUrl(pageUrl) && (
+              <p id="ingest-page-url-note" className="text-[11px] text-amber-300" role="note">That doesn&rsquo;t read as a web address — it should look like https://example.com/page.</p>
+            )}
             <div className="flex gap-2">
               <button
                 type="button"
-                disabled={busy || !sourceId || !pageUrl.trim()}
+                disabled={busy || !sourceId || !isQueueableUrl(pageUrl)}
                 onClick={() => void run('queuePage', { sourceId, url: pageUrl.trim() }, 'Page queued')}
                 className="px-3 py-1.5 text-xs border border-lattice-border rounded-lg text-gray-200 disabled:opacity-40"
               >

@@ -114,9 +114,13 @@ export function AcademicSearchPanel() {
       </div>
 
       {error && (
-        <p className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded p-2">
-          {error}
-        </p>
+        <div className="flex items-center gap-2 text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded p-2">
+          <p className="flex-1">{error}</p>
+          <button type="button" onClick={() => void search()} disabled={loading}
+            className="shrink-0 px-2 py-1 rounded border border-rose-400/40 text-rose-100 disabled:opacity-40">
+            Retry
+          </button>
+        </div>
       )}
 
       {!loading && searched && results.length === 0 && !error && (

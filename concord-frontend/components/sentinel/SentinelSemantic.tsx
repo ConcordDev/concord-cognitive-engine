@@ -145,7 +145,7 @@ export function SentinelSemantic() {
               </button>
             ))}
           </div>
-          <textarea
+          <textarea id="sentinel-sentinelsemantic-semantic-query" name="semantic-query"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={mode === 'similar' ? 'Query the DTU corpus for similar content…' : 'Text to classify / extract from…'}
