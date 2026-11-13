@@ -11,7 +11,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Shield, Plus, Loader2, AlertTriangle, RefreshCw, Ban, Check, X, Coins, History } from 'lucide-react';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 interface Beneficiary { userId: string; sharePct: number; accepted?: boolean }
@@ -38,6 +39,25 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export function MutualAidPactsPanel({ className }: { className?: string }) {
+  const { user } = useAuth();
+  // Beneficiary picker (FIX-insurance-014): search the user directory
+  // instead of demanding a raw user id the writer has no way to know.
+  const [benQuery, setBenQuery] = useState('');
+  const [benResults, setBenResults] = useState<Array<{ id: string; username: string; displayName: string }>>([]);
+  const [benNote, setBenNote] = useState('');
+  const [benBusy, setBenBusy] = useState(false);
+  const searchBeneficiary = async () => {
+    const q = benQuery.trim().replace(/^@/, '');
+    if (!q) { setBenNote('Type a username to search the directory.'); return; }
+    setBenBusy(true); setBenNote('');
+    try {
+      const r = await api.get('/api/social/users/search', { params: { q } });
+      const users = (r.data?.users ?? []) as Array<{ id: string; username: string; displayName: string }>;
+      setBenResults(users.slice(0, 6));
+      if (users.length === 0) setBenNote(`No Concord user matches '${q}'.`);
+    } catch { setBenNote('Could not search the directory just now — try again, or paste a user id below.'); }
+    finally { setBenBusy(false); }
+  };
   const [written, setWritten] = useState<Pact[]>([]);
   const [beneficiaryOf, setBeneficiaryOf] = useState<Pact[]>([]);
   const [payouts, setPayouts] = useState<{ paidOut: Payout[]; received: Payout[] }>({ paidOut: [], received: [] });
@@ -174,9 +194,32 @@ export function MutualAidPactsPanel({ className }: { className?: string }) {
 
       {showForm && (
         <form onSubmit={(e) => { e.preventDefault(); void write(); }} className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-zinc-800 bg-zinc-950/50 p-3">
-          <label className="col-span-2 text-[11px] text-zinc-400">Beneficiary user id
-            <input value={form.beneficiaryUserId} onChange={(e) => setForm((f) => ({ ...f, beneficiaryUserId: e.target.value }))} placeholder="user id"
-              className="mt-0.5 w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 focus:border-blue-500 focus:outline-none" /></label>
+          <div className="col-span-2">
+            <label className="text-[11px] text-zinc-400">Beneficiary — search by username
+              <span className="mt-0.5 flex gap-1.5">
+                <input aria-label="Beneficiary username search" value={benQuery} onChange={(e) => setBenQuery(e.target.value)} placeholder="@username"
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 focus:border-blue-500 focus:outline-none" />
+                <button type="button" onClick={() => void searchBeneficiary()} disabled={benBusy}
+                  className="shrink-0 rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50">{benBusy ? 'Searching…' : 'Look up'}</button>
+              </span></label>
+            {benNote && <p className="mt-1 text-[11px] text-zinc-400">{benNote}</p>}
+            {benResults.length > 0 && (
+              <ul className="mt-1.5 space-y-1">
+                {benResults.map((u) => (
+                  <li key={u.id}>
+                    <button type="button" onClick={() => { setForm((f) => ({ ...f, beneficiaryUserId: u.id })); setBenNote(`Beneficiary set to ${u.displayName || u.username} (@${u.username}).`); setBenResults([]); }}
+                      className="w-full rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-left text-xs text-zinc-200 hover:border-blue-500/50">
+                      {u.displayName || u.username} <span className="text-zinc-400">@{u.username}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <label className="mt-2 block text-[11px] text-zinc-400">Beneficiary user id
+              <input value={form.beneficiaryUserId} onChange={(e) => setForm((f) => ({ ...f, beneficiaryUserId: e.target.value }))} placeholder="user id"
+                className="mt-0.5 w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 focus:border-blue-500 focus:outline-none" /></label>
+            {user && <p className="mt-1 text-[11px] text-zinc-400">Your own user id: <span className="font-mono text-zinc-300">{user.id}</span> (@{user.username}) — a beneficiary must be someone else.</p>}
+          </div>
           <label className="text-[11px] text-zinc-400">Payout sparks
             <input type="number" min={1} value={form.payoutSparks} onChange={(e) => setForm((f) => ({ ...f, payoutSparks: e.target.value }))}
               className="mt-0.5 w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 focus:outline-none" /></label>
