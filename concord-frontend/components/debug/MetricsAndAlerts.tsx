@@ -109,9 +109,15 @@ export function MetricsAndAlerts() {
       buckets: 40,
     });
     if (r.data?.ok && r.data.result) {
-      setMetricNames(r.data.result.metrics || []);
+      const names = r.data.result.metrics || [];
+      setMetricNames(names);
       setPoints(r.data.result.points || []);
       setStats(r.data.result.stats || null);
+      // The server answers an unnamed request with the metric list only,
+      // so a first mount with no active metric would render "No samples
+      // yet" over data that exists. Open on the first metric instead —
+      // refresh re-runs with it named (the Datadog/Grafana shape).
+      if (!metric && names.length > 0) setActiveMetric(names[0]);
     }
   }, [projectId]);
 
