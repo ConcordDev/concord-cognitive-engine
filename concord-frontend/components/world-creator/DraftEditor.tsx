@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { lensRun } from '@/lib/api/client';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
+import { dtuRecordId, dtuReadBackCall, dtuReadBackMatches } from '@/components/wallet/walletReceipt';
 import { SceneCanvas, type SceneTool } from './SceneCanvas';
 import { BiomePreview } from './BiomePreview';
 
@@ -57,6 +58,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
   const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState<'scene' | 'biome' | 'rules' | 'publish'>('scene');
   const [checkResult, setCheckResult] = useState<{ ready: boolean; issues: string[]; warnings: string[] } | null>(null);
+  const [saveNote, setSaveNote] = useState<string | null>(null);
   // Pending NPC placement: a click with the NPC tool active opens an inline
   // form (name/backstory/level) instead of committing immediately — mirrors
   // the FactionPanel's inline-form pattern rather than a browser prompt().
@@ -223,6 +225,41 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
     }
   }, [draftId, draft, router]);
 
+  // FIX-world-creator-015: the lens had no Save-as-DTU for the world
+  // being authored (the only SaveAsDtuButton in the lens saves Reddit
+  // inspiration posts). Save the draft itself as a private DTU through
+  // the standing dtu.create path — the author's own work, so no
+  // public-data provenance — with the full draft in the machine
+  // payload, and verify by read-back before claiming the save.
+  const saveAsDtu = async () => {
+    if (!draft) return;
+    setBusy(true); setErr(null); setSaveNote(null);
+    const summary = `${draft.name} — a World Creator draft (${draft.universeType}, ${draft.biome} biome): ${draft.props.length} props, ${draft.npcs.length} NPCs, ${draft.zones.length} zones, ${draft.spawnPoints.length} spawn points, ${draft.factions.length} factions.${draft.description ? ` ${draft.description}` : ''}`;
+    const created = await lensRun('dtu', 'create', {
+      title: draft.name,
+      content: summary,
+      tags: ['world-creator', 'world-draft'],
+      source: 'world-creator:draft',
+      human: { summary },
+      machine: { kind: 'world_creator_draft', version: 1, draft },
+      meta: { visibility: 'private', createdFrom: 'world-creator', worldCreator: { draftId: draft.id } },
+    });
+    const id = dtuRecordId(created.data || {});
+    if (!created.data?.ok || !id) {
+      setBusy(false);
+      setErr(created.data?.error || 'Save as DTU failed — the record store refused it.');
+      return;
+    }
+    const rb = dtuReadBackCall(id);
+    const back = await lensRun(rb.domain, rb.action, rb.input);
+    setBusy(false);
+    if (!dtuReadBackMatches(id, back.data || {})) {
+      setErr(`Saved as DTU ${id} but the read-back did not return it — check your DTU library before relying on it.`);
+      return;
+    }
+    setSaveNote(`Saved as DTU ${id} — a private snapshot of this draft in your DTU library. The draft itself is unchanged; saving again makes a new snapshot.`);
+  };
+
   if (!draft) {
     return (
       <div className="rounded-lg border border-stone-800 bg-stone-950 p-6 text-sm text-stone-400">
@@ -250,6 +287,10 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
           </p>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => void saveAsDtu()} disabled={busy}
+            className="rounded border border-amber-700/60 px-3 py-1.5 text-sm text-amber-300 hover:bg-amber-500/10 disabled:opacity-50">
+            Save as DTU
+          </button>
           <button onClick={playtest} disabled={busy}
             className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50">
             ▶ Playtest
@@ -261,6 +302,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
       </div>
 
       {err && <div role="alert" className="rounded border border-red-800 bg-red-950/40 px-3 py-2 text-sm text-red-200">{err}</div>}
+      {saveNote && <div className="rounded border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200">{saveNote}</div>}
 
       <div className="flex gap-1 border-b border-stone-800">
         {(['scene', 'biome', 'rules', 'publish'] as const).map(t => (
