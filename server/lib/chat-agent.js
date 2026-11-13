@@ -2788,7 +2788,13 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       }
       if (_deadlineMs) ctx.chatGenTimeoutMs = Math.max(1, _left() - _budgetReserveMs);
       let result = await raceDeadline(
-        executeToolCall(ctx, runMacro, lensActions, call),
+        cockpitFlag("RETRY")
+          ? (async () => {
+              const { runWithRetry } = await import("./cockpit/retry-policy.js");
+              const { getToolSpec } = await import("./cockpit/tool-spec.js");
+              return (await runWithRetry((c) => executeToolCall(ctx, runMacro, lensActions, c), call, { getSpec: (id) => getToolSpec(id, { lensActions }) })).result;
+            })()
+          : executeToolCall(ctx, runMacro, lensActions, call),
         _deadlineMs ? _deadlineMs - 1_000 : 0,
         () => ({ tool: call.tool, ok: false, stage: "budget", reason: "timeout", error: "It ran out of time before this step finished." }),
       );
@@ -2889,7 +2895,16 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     // A failed tool, or a plain create_dtu save, is answered from the tool
     // results — never a free-generated follow-up that leaks prompt fragments
     // ("Mention in a sentence.") or drops the stored title (INC-SWEEP F3).
-    const skipFollowup = shouldSkipToolFollowup(results, { allowRetry: recoveriesUsed < _maxRecoveries });
+    // GB-1500 CKPT-05: a hard stop ends the turn; every other class keeps going
+    // until the retry allowance (at least 4) is spent.
+    let skipFollowup;
+    if (cockpitFlag("RETRY")) {
+      const { classifyFailure } = await import("./cockpit/failure-taxonomy.js");
+      const _anyHard = results.some((x) => x && !x.ok && classifyFailure(x).hard);
+      skipFollowup = _anyHard || shouldSkipToolFollowup(results, { allowRetry: recoveriesUsed < Math.max(_maxRecoveries, 4) });
+    } else {
+      skipFollowup = shouldSkipToolFollowup(results, { allowRetry: recoveriesUsed < _maxRecoveries });
+    }
     if (skipFollowup) {
       finalAnswer = guardPlaybackClaim(
         composeToolTurnReply(results)

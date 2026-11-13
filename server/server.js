@@ -30668,6 +30668,7 @@ ${_operatorV6Block}` : "";
   // before it happens on a CSL rejection, and gives a single point to attach
   // cslRouted/proofArtifact onto every result (Task 6) without editing any
   // individual case.
+  const _cockpitRetryOn = (await import("./lib/cockpit/flags.js")).cockpitFlag("RETRY");
   const _executeToolCalls = async (calls) => {
     const results = [];
     for (const call of calls.slice(0, 5)) { // cap at 5 tool calls per turn
@@ -30678,7 +30679,12 @@ ${_operatorV6Block}` : "";
         result = { tool: call.tool, ok: false, error: _gate.reason || "csl_rejected" };
       } else {
         // running/done reach a streaming client as the call really starts and ends
-        result = await _chatWithToolProgress(ctx, call, () => _executeToolCall(call));
+        result = await _chatWithToolProgress(ctx, call, async () => {
+          if (!_cockpitRetryOn) return _executeToolCall(call);
+          const { runWithRetry } = await import("./lib/cockpit/retry-policy.js");
+          const { getToolSpec } = await import("./lib/cockpit/tool-spec.js");
+          return (await runWithRetry(_executeToolCall, call, { getSpec: (id) => getToolSpec(id, { lensActions: LENS_ACTIONS }) })).result;
+        });
       }
       if (_gate) {
         result.cslRouted = !!_gate.cslRouted;
@@ -31129,6 +31135,19 @@ ${_operatorV6Block}` : "";
             _toolResults[_i] = await _executeToolCall(_next);
           }
           _toolCallsExecuted = _toolResults;
+        }
+        // GB-1500 CKPT-05: plain chat has one tool round; when every call failed
+        // for a recoverable reason, run one bounded recovery pass before giving up.
+        if (_cockpitRetryOn && _toolResults.length && _toolResults.every((r) => !r.ok)) {
+          const { classifyFailure } = await import("./lib/cockpit/failure-taxonomy.js");
+          const _recoverable = _toolResults.every((r) => classifyFailure(r).retryable);
+          if (_recoverable) {
+            const { chatAgentRecoveryTurn } = await import("./lib/cockpit/retry-policy.js");
+            const _rec = await chatAgentRecoveryTurn({ runMacro, ctx, prompt, failed: _toolResults, lensActions: LENS_ACTIONS });
+            if (_rec?.ok && Array.isArray(_rec.toolCalls) && _rec.toolCalls.some((t) => t.ok)) {
+              _toolResults.length = 0; _toolResults.push(..._rec.toolCalls); _toolCallsExecuted = _toolResults;
+            }
+          }
         }
         const _arithOnly = _toolResults.length > 0 && _toolResults.every((r) => r.ok && r.key === "symbolic.evaluate" && r.expression);
 
