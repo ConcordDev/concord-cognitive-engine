@@ -23,6 +23,7 @@ import {
   Store as MobileTabStore,
 } from 'lucide-react';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { FeedBanner } from '@/components/lens/FeedBanner';
@@ -67,6 +68,12 @@ const PANELS: Record<MarketplaceTabId, ComponentType> = {
 
 export function MarketplaceApp() {
   const m = useMarketplace();
+  // FIX-marketplace-004 (balance leg): neither sellers nor buyers
+  // could see a CC balance anywhere in the lens. Display-only, via
+  // the shared hook. (The currency-denomination leg is a product
+  // call — the lens carries both USD shopfront pricing and CC
+  // licensing — named for the desk in the slice record.)
+  const ccBalance = useWalletBalance();
   const reduceMotion = useReducedMotion();
   const {
     latestData: realtimeData,
@@ -117,6 +124,9 @@ export function MarketplaceApp() {
     <>
 
       <DepthBadge lensId="marketplace" size="sm" className="ml-2" />
+      <span className="ml-2 inline-flex items-center gap-1 text-[11px] text-gray-300" aria-label={`Your balance: ${ccBalance} CC`}>
+        Balance: <span className="font-mono font-semibold text-white">{ccBalance.toLocaleString()} CC</span>
+      </span>
       <div className="lens-marketplace relative min-h-full space-y-5 px-4 pb-28 pt-6 sm:px-6 lg:px-8" data-lens-theme="marketplace">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
