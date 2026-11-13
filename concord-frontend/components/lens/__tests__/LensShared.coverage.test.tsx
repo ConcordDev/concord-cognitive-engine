@@ -266,7 +266,7 @@ describe('LensFeedButton', () => {
   it('pulls a feed in full and compact forms and reports a failure', async () => {
     const full = render(<LensFeedButton domain="seismology" label="Pull quakes" />);
     await press(/Pull feed/);
-    expect(full.container.textContent).toMatch(/Ingested 3 new DTUs from USGS · 2 already seen/);
+    expect(full.container.textContent).toMatch(/Ingested 3 new DTUs from USGS — saved to My Vault · 2 already seen/);
     cleanup();
     const compact = render(<LensFeedButton domain="seismology" compact />);
     await press(/Pull feed/);
