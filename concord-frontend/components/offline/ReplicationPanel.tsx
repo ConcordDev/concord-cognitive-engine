@@ -588,13 +588,13 @@ export function ReplicationPanel({
                     aria-label={`Use filter ${f.name} for pull`}
                   />
                   <span className="truncate text-zinc-100">{f.name}</span>
-                  <span className="truncate font-mono text-[10px] text-zinc-500">{summarizeFilter(f)}</span>
+                  <span className="truncate font-mono text-[10px] text-zinc-400">{summarizeFilter(f)}</span>
                 </label>
                 <button
                   onClick={() => deleteFilter(f.id)}
                   disabled={filterBusy}
                   aria-label={`Delete filter ${f.name}`}
-                  className="shrink-0 rounded border border-red-500/30 p-1 text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                  className="shrink-0 rounded border border-red-500/30 p-1 text-red-300 hover:bg-red-500/10 disabled:opacity-75"
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
@@ -675,7 +675,7 @@ export function ReplicationPanel({
               <button
                 onClick={createFilter}
                 disabled={filterBusy}
-                className="flex items-center gap-1.5 rounded bg-cyan-500/15 px-3 py-1.5 text-xs text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded bg-cyan-500/15 px-3 py-1.5 text-xs text-cyan-300 hover:bg-cyan-500/25 disabled:opacity-75"
               >
                 {filterBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                 Save filter
@@ -709,7 +709,7 @@ export function ReplicationPanel({
         <button
           onClick={syncBoth}
           disabled={!!busy}
-          className="flex items-center gap-1.5 rounded bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-75"
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowLeftRight className="h-3.5 w-3.5" />}
           Sync (push + pull)
@@ -717,7 +717,7 @@ export function ReplicationPanel({
         <button
           onClick={push}
           disabled={!!busy}
-          className="flex items-center gap-1.5 rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:text-white disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:text-white disabled:opacity-75"
         >
           {busy === 'push' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
           Push ({dirtyCount})
@@ -725,7 +725,7 @@ export function ReplicationPanel({
         <button
           onClick={pull}
           disabled={!!busy}
-          className="flex items-center gap-1.5 rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:text-white disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:text-white disabled:opacity-75"
         >
           {busy === 'pull' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
           Pull{selectedFilterId ? ' (filtered)' : ''}
@@ -733,7 +733,7 @@ export function ReplicationPanel({
         <button
           onClick={wipeLocal}
           disabled={!!busy || docs.length === 0}
-          className="flex items-center gap-1.5 rounded border border-red-500/30 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded border border-red-500/30 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-75"
         >
           <Trash2 className="h-3.5 w-3.5" />
           Wipe local
