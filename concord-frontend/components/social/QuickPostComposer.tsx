@@ -143,6 +143,10 @@ export function QuickPostComposer({ currentUserId, username, onPosted, className
       setContent('');
       setTagsRaw('');
       setMentionedUsers([]);
+      // FIX-social-006 — a one-off audience choice (e.g. Private) must
+      // not silently become the next post's audience: reset to the
+      // Public default after every successful post.
+      choosePrivacy('public');
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 1500);
       useUIStore.getState().addToast({ type: 'success', message: 'Posted.' });

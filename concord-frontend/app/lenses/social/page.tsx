@@ -98,6 +98,7 @@ interface FollowingActivityItem {
   mediaType?: string;
   mediaUrl?: string | null;
   sensitiveHidden?: boolean;
+  privacy?: string;
   listing?: {
     id: string;
     title?: string | null;
@@ -722,6 +723,12 @@ function FollowingTimeline({ currentUserId, onFindPeople, onOpenPost }: { curren
             <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">
               {item.kind}
             </span>
+            {item.kind === 'post' && item.privacy === 'private' && (
+              <span className="text-[10px] font-medium text-zinc-300 border border-zinc-700 rounded px-1 py-px">Private</span>
+            )}
+            {item.kind === 'post' && item.privacy === 'followers' && (
+              <span className="text-[10px] font-medium text-zinc-300 border border-zinc-700 rounded px-1 py-px">Followers</span>
+            )}
             <span className="text-[10px] text-zinc-400 ml-auto">
               {new Date(item.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
             </span>

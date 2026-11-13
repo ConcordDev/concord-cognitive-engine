@@ -264,6 +264,12 @@ export default function registerSocialActions(registerLensAction) {
     const s = getSocialState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
     const body = clip(params.body, 2000);
+    // FIX-social-006 — honor the composer's audience choice. The read
+    // side (canViewPost) already enforces this exact vocabulary:
+    // private = author only, followers = followers, else public.
+    // Anything unrecognized falls back to public, never to a wider
+    // audience than the author picked.
+    const privacy = ["public", "followers", "private"].includes(params.privacy) ? params.privacy : "public";
     // #3 — screen the post at the publish boundary (sync local checks for the
     // public tier). Blocks policy-violating content; allows the rest.
     if (body) {
@@ -319,7 +325,7 @@ export default function registerSocialActions(registerLensAction) {
       shares: [],
       bookmarks: new Set(),
       reactions: new Map(),
-      privacy: "public",
+      privacy,
       sensitive: params.sensitive === true,
       lensReplies: [],
       lensReactions: new Map(),
