@@ -70,8 +70,10 @@ describe("mail full build (real migrated DB)", () => {
     assert.match(entry.note, /Gmail/);
   });
 
-  it("registers the full surface including the new delete verb", () => {
-    assert.deepEqual(reg.names.sort(), ["claim", "delete", "get", "list", "read", "send", "sent"]);
+  it("registers the full surface including the delete and decline verbs", () => {
+    // \"decline\" joins with FIX-mail-014; \"draft-get\"/\"draft-save\" (FIX-mail-002)
+    // were already on the surface — this pin had gone stale against them.
+    assert.deepEqual(reg.names.sort(), ["claim", "decline", "delete", "draft-get", "draft-save", "get", "list", "read", "send", "sent"]);
   });
 
   it("S2: list/sent/get carry resolved names; an unresolved party carries nulls, never its id", async () => {

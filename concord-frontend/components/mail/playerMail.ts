@@ -25,6 +25,9 @@ export interface MailClaimBody {
   mail?: MailRow[];
   claimed?: boolean;
   alreadyClaimed?: boolean;
+  declined?: boolean;
+  alreadyDeclined?: boolean;
+  refundedCc?: number;
   dtuIds?: string[];
   draft?: MailDraft | null;
   payout?: { attachmentCc?: number; codCcPaid?: number };
@@ -72,6 +75,24 @@ export function deleteResultText(j: PlayerMailResult): { kind: 'ok' | 'err'; msg
     return { kind: 'err', msg: 'Not removed. Mail could not be reached just now.' };
   }
   return { kind: 'ok', msg: 'Removed from your Sent list. The recipient keeps their copy.' };
+}
+
+export function declineResultText(j: PlayerMailResult): { kind: 'ok' | 'err'; msg: string } {
+  if (!j.ok) {
+    if (j.error === 'already_claimed') return { kind: 'err', msg: 'Not declined. This mail was already claimed.' };
+    if (j.error === 'expired') return { kind: 'err', msg: 'Not declined. This mail already expired and its attachments went back.' };
+    if (j.error === 'not_authorized') return { kind: 'err', msg: 'Not declined. You can only decline mail addressed to you.' };
+    if (j.error === 'not_found') return { kind: 'err', msg: 'Not declined. That mail is already gone.' };
+    return { kind: 'err', msg: 'Not declined. Mail could not be reached just now.' };
+  }
+  if (j.alreadyDeclined) return { kind: 'ok', msg: 'Already declined. Nothing moved.' };
+  const refunded = j.refundedCc || 0;
+  return {
+    kind: 'ok',
+    msg: refunded > 0
+      ? `Declined. The ${refunded} CC gift and any DTUs went back to the sender; you paid nothing.`
+      : 'Declined. The attachments went back to the sender; you paid nothing.',
+  };
 }
 
 export function claimResultText(j: PlayerMailResult): { kind: 'ok' | 'err'; msg: string } {

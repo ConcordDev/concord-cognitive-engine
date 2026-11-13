@@ -54,8 +54,9 @@ describe("mail.* domain macros (real migrated DB)", () => {
   it("registers the full mail macro surface", () => {
     // "delete" joins the surface with the mail full build (S4): the
     // sender-side removal of their own sent copy. "draft-get"/"draft-save"
-    // join with FIX-mail-002 (compose draft autosave).
-    assert.deepEqual(reg.names.sort(), ["claim", "delete", "draft-get", "draft-save", "get", "list", "read", "send", "sent"]);
+    // join with FIX-mail-002 (compose draft autosave). "decline" joins
+    // with FIX-mail-014 (the recipient's return-to-sender answer to COD).
+    assert.deepEqual(reg.names.sort(), ["claim", "decline", "delete", "draft-get", "draft-save", "get", "list", "read", "send", "sent"]);
   });
 
   it("send → list → claim full envelope upholds the contract invariants", async () => {

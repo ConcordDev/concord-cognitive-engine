@@ -7,7 +7,7 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { MailKeepMenu } from './MailKeepMenu';
 import { mailRecordSentence } from './mailKeep';
-import { claimResultText, deleteResultText, mailPartyLabel, playerMail } from './playerMail';
+import { claimResultText, declineResultText, deleteResultText, mailPartyLabel, playerMail } from './playerMail';
 import { STATUS_FILTERS, type MailRow, type StatusFilter } from './types';
 
 export function MailFolderPanel({
@@ -28,6 +28,7 @@ export function MailFolderPanel({
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const [claimNote, setClaimNote] = useState<{ mailId: string; msg: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [declineArmId, setDeclineArmId] = useState<string | null>(null);
   const [openNote, setOpenNote] = useState<string | null>(null);
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
@@ -110,6 +111,23 @@ export function MailFolderPanel({
       setClaimNote({ mailId, msg: note.msg });
       showFlash(note.kind, note.msg);
       if (j.ok) refresh();
+    } finally { setBusy(null); }
+  }, [refresh, showFlash]);
+
+  // FIX-mail-014: Decline is the recipient's other answer to a COD /
+  // attachment mail — the escrowed gift and DTUs return to the sender and
+  // no COD is charged. Two-step, like the remove-from-Sent confirm.
+  const handleDecline = useCallback(async (mailId: string) => {
+    setBusy(`decline-${mailId}`);
+    try {
+      const j = await playerMail('decline', { id: mailId });
+      const note = declineResultText(j);
+      setClaimNote({ mailId, msg: note.msg });
+      showFlash(note.kind, note.msg);
+      if (j.ok) {
+        setDeclineArmId(null);
+        refresh();
+      }
     } finally { setBusy(null); }
   }, [refresh, showFlash]);
 
@@ -374,7 +392,7 @@ export function MailFolderPanel({
                 {selected.codCc > 0 && (
                   <p className="text-red-300">COD due on claim: <span className="tabular-nums">{selected.codCc}</span> CC</p>
                 )}
-                {folder === 'inbox' && selected.status !== 'claimed' && selected.status !== 'expired' && (
+                {folder === 'inbox' && selected.status !== 'claimed' && selected.status !== 'expired' && selected.status !== 'declined' && (
                   <button
                     onClick={() => handleClaim(selected.id)}
                     disabled={busy === `claim-${selected.id}`}
@@ -383,6 +401,34 @@ export function MailFolderPanel({
                     Claim {selected.codCc > 0 ? `(pay ${selected.codCc} CC)` : ''}
                   </button>
                 )}
+                {folder === 'inbox' && (selected.status === 'unread' || selected.status === 'read') && (
+                  declineArmId === selected.id ? (
+                    <span className="ml-2 inline-flex items-center gap-2">
+                      <span className="text-gray-300">Decline this mail? The gift CC and DTUs go back to the sender and you pay nothing.</span>
+                      <button
+                        onClick={() => handleDecline(selected.id)}
+                        disabled={busy === `decline-${selected.id}`}
+                        className="px-1 text-[11px] font-medium text-rose-300 hover:text-rose-200"
+                      >
+                        Decline and return
+                      </button>
+                      <button
+                        onClick={() => setDeclineArmId(null)}
+                        className="px-1 text-[11px] text-gray-300 hover:text-white"
+                      >
+                        Keep
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setDeclineArmId(selected.id)}
+                      aria-label={`Decline mail ${selected.subject}`}
+                      className="ml-2 mt-2 px-3 py-1 text-[11px] text-gray-300 underline decoration-dotted hover:text-white"
+                    >
+                      Decline
+                    </button>
+                  )
+                )}
                 {claimNote && claimNote.mailId === selected.id && <p className="mt-2 text-[11px] text-gray-200" role="status">{claimNote.msg}</p>}
                 {selected.status === 'claimed' && (
                   <p className="mt-1 text-[10px] italic text-gray-400">
@@ -390,6 +436,11 @@ export function MailFolderPanel({
                   </p>
                 )}
                 {selected.status === 'expired' && <p className="mt-1 text-[10px] italic text-red-400">Expired — attachments returned to sender.</p>}
+                {selected.status === 'declined' && (
+                  <p className="mt-1 text-[10px] italic text-gray-400">
+                    Declined{selected.declinedAt ? <> <span className="tabular-nums">{new Date(selected.declinedAt * 1000).toLocaleString()}</span></> : ''} — attachments returned to the sender; nothing was charged.
+                  </p>
+                )}
               </div>
             )}
           </div>

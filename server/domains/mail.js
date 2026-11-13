@@ -18,6 +18,7 @@ import {
   readMail,
   claimAttachments,
   deleteSentMail,
+  declineMail,
 } from "../lib/player-mail.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
 
@@ -83,7 +84,7 @@ export default function registerMailMacros(register) {
     if (!db) return { ok: false, error: "no_db" };
     const userId = actorId(ctx, input);
     if (!userId) return { ok: false, error: "no_user" };
-    const status = ["unread", "read", "claimed", "expired"].includes(input.status)
+    const status = ["unread", "read", "claimed", "expired", "declined"].includes(input.status)
       ? input.status : undefined;
     const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
     return { ok: true, mail: listInbox(db, userId, { status, limit }) };
@@ -172,6 +173,22 @@ export default function registerMailMacros(register) {
     if (!input.id) return { ok: false, error: "missing_id" };
     return deleteSentMail(db, String(input.id), userId);
   }, { note: "remove the caller's own sent copy (recipient's copy untouched)" });
+
+  /**
+   * mail.decline — decline a piece of mail instead of claiming it
+   * (FIX-mail-014). Recipient-only: the escrowed gift CC and the DTU
+   * escrow stamps return to the sender in one transaction and the COD
+   * charge is never collected. Idempotent.
+   * input: { id, userId? }
+   */
+  register("mail", "decline", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "no_db" };
+    const userId = actorId(ctx, input);
+    if (!userId) return { ok: false, error: "no_user" };
+    if (!input.id) return { ok: false, error: "missing_id" };
+    return declineMail(db, String(input.id), userId);
+  }, { note: "decline mail (escrow returns to sender; no COD charged)" });
 
   /**
    * mail.draft-get — the caller's autosaved compose draft, if any.
