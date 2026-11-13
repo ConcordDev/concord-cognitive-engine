@@ -7,6 +7,7 @@ import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { Plus, X, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { shouldIgnoreLensHotkey } from '@/lib/a11y/editable-target';
 
 interface QuickCaptureProps {
   domain: string;
@@ -33,6 +34,8 @@ function QuickCapture({ domain }: QuickCaptureProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+        // A field keeps Ctrl/Cmd+N while the user is typing (FIX-commonsense-004).
+        if (shouldIgnoreLensHotkey(e)) return;
         e.preventDefault();
         setIsOpen((prev) => !prev);
       }
